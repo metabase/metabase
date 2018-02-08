@@ -7,7 +7,7 @@ import RemappedValue from "metabase/containers/RemappedValue";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { MetabaseApi } from "metabase/services";
-import { addRemappings } from "metabase/redux/metadata";
+import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { debounce } from "underscore";
 import { stripId } from "metabase/lib/formatting";
@@ -15,7 +15,8 @@ import { stripId } from "metabase/lib/formatting";
 const MAX_SEARCH_RESULTS = 100;
 
 const mapDispatchToProps = {
-    addRemappings
+    addRemappings,
+    fetchFieldValues
 };
 
 @connect(null, mapDispatchToProps)
@@ -32,6 +33,13 @@ export default class FieldValuesWidget extends Component {
       color: "purple",
       maxResults: MAX_SEARCH_RESULTS
   };
+
+  componentWillMount() {
+    const { field, fetchFieldValues } = this.props;
+    if (field.has_field_values === "list") {
+      fetchFieldValues(field.id);
+    }
+  }
 
   onInputChange = (value) => {
     const { field } = this.props;

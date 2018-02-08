@@ -299,7 +299,7 @@ export const fetchField = createThunkAction(FETCH_FIELD, function(fieldId, reloa
 export const FETCH_FIELD_VALUES = "metabase/metadata/FETCH_FIELD_VALUES";
 export const fetchFieldValues = createThunkAction(FETCH_FIELD_VALUES, function(fieldId, reload) {
     return async function(dispatch, getState) {
-        const requestStatePath = ["metadata", "fields", fieldId];
+        const requestStatePath = ["metadata", "fields", fieldId, "values"];
         const existingStatePath = requestStatePath;
         const getData = () => MetabaseApi.field_values({ fieldId })
 
@@ -558,7 +558,7 @@ const fields = handleActions({
             }
         })},
     [FETCH_FIELD_VALUES]: { next: (state, { payload: fieldValues }) =>
-        fieldValues ? assocIn(state, [fieldValues.field_id, "values"], fieldValues) : state },
+        fieldValues ? assocIn(state, [fieldValues.field_id, "values"], fieldValues.values) : state },
     [ADD_PARAM_VALUES]: { next: (state, { payload: paramValues }) => {
         for (const fieldValues of Object.values(paramValues)) {
             state = assocIn(state, [fieldValues.field_id, "values"], fieldValues);
