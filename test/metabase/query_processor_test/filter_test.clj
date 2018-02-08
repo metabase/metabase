@@ -164,7 +164,7 @@
   [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
    [74 "Chez Jay"           2 34.0104 -118.493 2]]
   (-> (data/run-query venues
-        (ql/filter (ql/starts-with $name "CHE" {:case-sensitive? false}))
+        (ql/filter (ql/starts-with $name "CHE" {:case-sensitive false}))
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
@@ -195,7 +195,7 @@
    [45 "Tu Lan Restaurant"             4 37.7821 -122.41  1]
    [55 "Dal Rae Restaurant"           67 33.983  -118.096 4]]
   (-> (data/run-query venues
-        (ql/filter (ql/ends-with $name "RESTAURANT" {:case-sensitive? false}))
+        (ql/filter (ql/ends-with $name "RESTAURANT" {:case-sensitive false}))
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
@@ -223,7 +223,7 @@
    [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
    [39 "Baby Blues BBQ"           5 34.0003 -118.465 2]]
   (-> (data/run-query venues
-        (ql/filter (ql/contains $name "bbq" {:case-sensitive? false}))
+        (ql/filter (ql/contains $name "bbq" {:case-sensitive false}))
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 

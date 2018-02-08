@@ -289,7 +289,7 @@ const OPERATORS_BY_TYPE_ORDERED = {
         { name: "DOES_NOT_CONTAIN", verboseName: t`Does not contain`},
         { name: "IS_NULL",          verboseName: t`Is empty`, advanced: true },
         { name: "NOT_NULL",         verboseName: t`Not empty`, advanced: true },
-        { name: "STARTS_WITH",      verboseName: t`Starts with`, advanced: true},
+        {00 name: "STARTS_WITH",      verboseName: t`Starts with`, advanced: true},
         { name: "ENDS_WITH",        verboseName: t`Ends with`, advanced: true}
     ],
     [STRING_LIKE]: [

@@ -296,26 +296,27 @@
   added. For backwards-compatibility, and to avoid possible performance implications, case-sensitive is the default
   option if no `options-maps` is specified."
   ([filter-type f s]
-   (string-filter filter-type f s {:case-sensitive? true}))
+   (string-filter filter-type f s {:case-sensitive true}))
   ([filter-type f s options-map]
-   (i/strict-map->StringFilter (assoc options-map
-                                 :filter-type filter-type
-                                 :field       (field f)
-                                 :value       (value f s)))))
+   (i/strict-map->StringFilter
+    {:filter-type     filter-type
+     :field           (field f)
+     :value           (value f s)
+     :case-sensitive? (qputil/get-normalized options-map :case-sensitive true)})))
 
 (def ^:ql ^{:arglists '([f s] [f s options-map])} starts-with
   "Filter subclause. Return results where F starts with the string S. By default, is case-sensitive, but you may pass an
-  `options-map` with `{:case-sensitive? false}` for case-insensitive searches."
+  `options-map` with `{:case-sensitive false}` for case-insensitive searches."
   (partial string-filter :starts-with))
 
 (def ^:ql ^{:arglists '([f s] [f s options-map])} contains
   "Filter subclause. Return results where F contains the string S. By default, is case-sensitive, but you may pass an
-  `options-map` with `{:case-sensitive? false}` for case-insensitive searches."
+  `options-map` with `{:case-sensitive false}` for case-insensitive searches."
   (partial string-filter :contains))
 
 (def ^:ql ^{:arglists '([f s] [f s options-map])} ends-with
   "Filter subclause. Return results where F ends with with the string S. By default, is case-sensitive, but you may pass
-  an `options-map` with `{:case-sensitive? false}` for case-insensitive searches."
+  an `options-map` with `{:case-sensitive false}` for case-insensitive searches."
   (partial string-filter :ends-with))
 
 

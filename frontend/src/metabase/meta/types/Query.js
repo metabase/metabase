@@ -121,7 +121,12 @@ export type NotFilter          = ["not", Filter];
 export type EqualityFilter     = ["="|"!=", ConcreteField, Value];
 export type ComparisonFilter   = ["<"|"<="|">="|">", ConcreteField, OrderableValue];
 export type BetweenFilter      = ["between", ConcreteField, OrderableValue, OrderableValue];
-export type StringFilter       = ["starts-with"|"contains"|"does-not-contain"|"ends-with", ConcreteField, StringLiteral];
+export type StringFilter       = ["starts-with"|"contains"|"does-not-contain"|"ends-with", ConcreteField, StringLiteral] |
+                                 ["starts-with"|"contains"|"does-not-contain"|"ends-with", ConcreteField, StringLiteral, StringFilterOptions];
+
+export type StringFilterOptions = {
+    "case-sensitive?"?: false
+};
 
 export type NullFilter         = ["is-null", ConcreteField];
 export type NotNullFilter      = ["not-null", ConcreteField];
@@ -129,6 +134,7 @@ export type InsideFilter       = ["inside", ConcreteField, ConcreteField, Numeri
 export type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit] |
                                  ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit, FilterOptions];
 
+// TODO - rename this to TimeIntervalFilterOptions because it is only used for those types of filters
 export type FilterOptions = {
   "include-current"?: bool
 }

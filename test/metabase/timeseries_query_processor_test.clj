@@ -409,7 +409,7 @@
    :rows    [["Mediterannian"] ["Mexican"]]}
   (data (data/run-query checkins
           (ql/breakout $venue_category_name)
-          (ql/filter (ql/starts-with $venue_category_name "ME" {:case-sensitive? false})))))
+          (ql/filter (ql/starts-with $venue_category_name "ME" {:case-sensitive false})))))
 
 ;;; filter ENDS_WITH
 (expect-with-timeseries-dbs
@@ -445,7 +445,7 @@
              ["Mexican"]]}
   (data (data/run-query checkins
           (ql/breakout $venue_category_name)
-          (ql/filter (ql/ends-with $venue_category_name "AN" {:case-sensitive? false})))))
+          (ql/filter (ql/ends-with $venue_category_name "AN" {:case-sensitive false})))))
 
 ;;; filter CONTAINS
 (expect-with-timeseries-dbs
@@ -481,7 +481,7 @@
              ["Southern"]]}
   (data (data/run-query checkins
           (ql/breakout $venue_category_name)
-          (ql/filter (ql/contains $venue_category_name "eR" {:case-sensitive? false})))))
+          (ql/filter (ql/contains $venue_category_name "eR" {:case-sensitive false})))))
 
 ;;; order by aggregate field (?)
 (expect-with-timeseries-dbs
