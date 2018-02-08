@@ -104,14 +104,6 @@
                                                      middle))))
                    (conj (partition bucket-size body) [tail]))))))
 
-(def ^{:arglists '([series])} saddles
-  "Returns the number of saddles in a given series."
-  (partial transduce (comp (x/partition 2 1)
-                           (partition-by (fn [[[_ y1] [_ y2]]]
-                                           (>= y2 y1)))
-                           (drop 1))
-           stats/count))
-
 ; The largest dataset returned will be 2*target-1 points as we need at least
 ; 2 points per bucket for downsampling to have any effect.
 (def ^:private ^Long datapoint-target-smooth 100)
@@ -122,7 +114,7 @@
 (defn- target-size
   [series]
   (if (some-> series
-              saddles
+              math/saddles
               (safe-divide (count series))
               (> noisiness-threshold))
     datapoint-target-noisy
@@ -230,7 +222,9 @@
 
 (defn- cardinality-extractor
   [{:keys [cardinality histogram]}]
-  (let [cardinality (or cardinality (-> histogram h/bins count))
+  (let [cardinality (or cardinality
+                        (and (h/categorical? histogram)
+                             (-> histogram h/bins count)))
         uniqueness  (safe-divide cardinality (h/total-count histogram))]
     {:uniqueness    uniqueness
      :cardinality   cardinality

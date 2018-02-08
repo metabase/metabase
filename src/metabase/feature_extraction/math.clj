@@ -26,15 +26,13 @@
         (neg? x1)                 (- (growth x2 x1))
         :else                     (/ (- x2 x1) x1)))))
 
-(defn saddles
+(def ^{:arglists '([series])} saddles
   "Returns the number of saddles in a given series."
-  [series]
-  (->> series
-       (partition 2 1)
-       (partition-by (fn [[[_ y1] [_ y2]]]
-                       (>= y2 y1)))
-       rest
-       count))
+  (partial transduce (comp (x/partition 2 1)
+                           (partition-by (fn [[[_ y1] [_ y2]]]
+                                           (>= y2 y1)))
+                           (drop 1))
+           stats/count))
 
 (defn roughly=
   "Is `x` èqual to `y` within precision `precision` (default 0.05)."
