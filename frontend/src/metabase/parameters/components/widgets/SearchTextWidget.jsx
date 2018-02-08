@@ -48,6 +48,12 @@ export default class SearchTextWidget extends Component<*, Props, State> {
         }
     }
 
+    componentWillReceiveProps(nextProps) {
+      if (this.props.value !== nextProps.value) {
+        this.setState({ value: nextProps.value })
+      }
+    }
+
     render() {
         let { setValue, isEditing, fields, parentFocusChanged } = this.props;
         let { value, isFocused } = this.state;

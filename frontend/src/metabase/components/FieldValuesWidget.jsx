@@ -190,7 +190,7 @@ export default class FieldValuesWidget extends Component {
           onInputChange={this.onInputChange}
           parseFreeformValue={v => {
             // trim whitespace
-            v = v.trim();
+            v = String(v||"").trim();
             // if the field is numeric we need to parse the string into an integer
             if (field.isNumeric()) {
               if (/^-?\d+(\.\d+)?$/.test(v)) {
