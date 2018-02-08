@@ -82,7 +82,8 @@
   "Dates are iso formatted, i.e. 2014-09-18T00:00:00.000-07:00. We can just drop the T and everything after it since
   we don't want to change the timezone or alter the date part."
   [^String date-str]
-  (subs date-str 0 (.indexOf date-str "T")))
+  (when date-str
+      (subs date-str 0 (.indexOf date-str "T"))))
 
 (defn- swap-date-columns [date-col-indexes]
   (fn [row]
