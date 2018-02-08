@@ -16,10 +16,10 @@
    (h/empty? (transduce identity h/histogram nil))])
 
 (expect
-  [4.0 2 6.0 true false false false]
-  [(impl/total-count hist-categories)
-   (h/nil-count hist-categories)
+  [2 6.0 4.0 true false false true]
+  [(h/nil-count hist-categories)
    (h/total-count hist-categories)
+   (h/count hist-categories)
    (h/categorical? hist-categories)
    (h/categorical? hist-numbers)
    (h/categorical? hist-empty)
@@ -52,3 +52,31 @@
 (expect
   AssertionError
   (h/optimal-bin-width hist-categories))
+
+;; Test different construction tehniques
+(expect
+  [true true]
+  (let [m {:a 4
+           :b 15
+           :c 8
+           :d 22
+           :e 1
+           :f 4}
+        h1 (transduce (map val) h/histogram m)
+        h2 (transduce (mapcat (fn [[k v]]
+                                (repeat v k)))
+                      h/histogram-categorical
+                      m)
+        h3 (transduce identity (h/map->histogram-categorical key val) m)]
+    [(= (h/iqr h1) (h/iqr h2) (h/iqr h3))
+     (= (h/bins h2) (h/bins h3))]))
+(expect
+  [true true]
+  (let [m  {1 10 2 4 nil 8}
+        h1 (transduce (mapcat (fn [[k v]]
+                                (repeat v k)))
+                      h/histogram
+                      m)
+        h2 (transduce identity (h/map->histogram key val) m)]
+    [(= (h/iqr h1) (h/iqr h2))
+     (= (h/nil-count h1) (h/nil-count h2) (m nil))]))

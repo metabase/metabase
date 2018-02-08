@@ -55,7 +55,7 @@
 (defn- nice-bins
   [histogram]
   (cond
-    (h/categorical? histogram) (h/equidistant-bins histogram)
+    (h/categorical? histogram) (h/bins histogram)
     (h/empty? histogram)       []
     :else
     (let [{:keys [min max]} (h.impl/bounds histogram)]
@@ -69,7 +69,7 @@
                                 h/optimal-bin-width
                                 (binning/calculate-num-bins min max))
                 :strategy  :num-bins})]
-          (h/equidistant-bins min-value max-value bin-width histogram))))))
+          (h/bins min-value max-value bin-width histogram))))))
 
 (defn- largest-triangle
   "Find the point in `points` that frorms the largest triangle with verteices
@@ -116,8 +116,8 @@
 
 ; The largest dataset returned will be 2*target-1 points as we need at least
 ; 2 points per bucket for downsampling to have any effect.
-(def ^:private ^Integer datapoint-target-smooth 100)
-(def ^:private ^Integer datapoint-target-noisy  300)
+(def ^:private ^Long datapoint-target-smooth 100)
+(def ^:private ^Long datapoint-target-noisy  300)
 
 (def ^:private ^Double noisiness-threshold 0.05)
 
@@ -142,7 +142,7 @@
 (defn- histogram->dataset
   ([field histogram] (histogram->dataset identity field histogram))
   ([keyfn field histogram]
-   {:rows    (let [norm (safe-divide (h.impl/total-count histogram))]
+   {:rows    (let [norm (safe-divide (h/count histogram))]
                (for [[bin count] (nice-bins histogram)]
                  [(keyfn bin) (* count norm)]))
     :columns [(:name field) "SHARE"]
@@ -211,18 +211,14 @@
 (def ^:private Num      [:type/Number :type/*])
 (def ^:private DateTime [:type/DateTime :type/*])
 (def ^:private Category [:type/* :type/Category])
-(def ^:private Any      [:type/* :type/*])
 (def ^:private Text     [:type/Text :type/*])
 
 (prefer-method feature-extractor Category Text)
 (prefer-method feature-extractor Num Category)
-(prefer-method feature-extractor [DateTime Num] [Any Num])
 (prefer-method x-ray Category Text)
 (prefer-method x-ray Num Category)
-(prefer-method x-ray [DateTime Num] [Any Num])
 (prefer-method comparison-vector Category Text)
 (prefer-method comparison-vector Num Category)
-(prefer-method comparison-vector [DateTime Num] [Any Num])
 
 (defn- histogram-extractor
   [{:keys [histogram]}]
@@ -519,15 +515,15 @@
                               :display_name "Decomposition residual"
                               :base_type    :type/Float}])))))
 
-(defmethod feature-extractor [Any Num]
+(defmethod feature-extractor [Category Num]
   [{:keys [max-cost]} field]
   (redux/post-complete
-   (redux/fuse {:histogram (h/histogram-aggregated first second)})
+   (redux/fuse {:histogram (h/map->histogram-categorical first second)})
    (merge-juxt
     (field-metadata-extractor field)
     histogram-extractor)))
 
-(defmethod x-ray [Any Num]
+(defmethod x-ray [Category Num]
   [{:keys [field histogram] :as features}]
   (-> features
       (update :histogram (partial histogram-aggregated->dataset field))))

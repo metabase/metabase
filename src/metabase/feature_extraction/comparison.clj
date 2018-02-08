@@ -107,8 +107,8 @@
         ;; We are only interested in the shape, hence scale-free comparison
         p             (map second pdf-a)
         q             (map second pdf-b)
-        m             (h.impl/total-count a)
-        n             (h.impl/total-count b)
+        m             (h/count a)
+        n             (h/count b)
         distance      (math/chi-squared-distance p q)]
     {:difference       distance
      :significant?     (and (math/ks-test m p n q)
