@@ -85,8 +85,7 @@
   (some-> h
           iqr
           :iqr
-          (* 2 (math/pow (impl/total-count h)
-                         (/ -3)))))
+          (* 2 (math/pow (impl/total-count h) (/ -3)))))
 
 (defn bins
   "Split histogram into `bin-width` wide bins. If `bin-width` is not given use
@@ -111,8 +110,9 @@
                  [p (impl/sum h p)]))
           (concat [[min-value 0.0]])
           (partition 2 1)
-          (map (fn [[[x s1] [_ s2]]]
-                 [x (- s2 s1)]))))))
+          (into (sorted-map)
+            (map (fn [[[x s1] [_ s2]]]
+                   [x (- s2 s1)])))))))
 
 (def ^{:arglists '([^Histogram h])} nil-count
   "Return number of nil values histogram holds."
@@ -140,17 +140,11 @@
    https://en.wikipedia.org/wiki/Probability_density_function"
   [^Histogram h]
   (when-not (empty? h)
-    (let [norm (/ (count h))
-          bins (if (categorical? h)
-                 (bins h)
-                 (let [{:keys [min max]} (impl/bounds h)]
-                   (bins min max (binning/calculate-bin-width
-                                              min
-                                              max
-                                              pdf-sample-points)
-                                     h)))]
-      (for [[bin count] bins]
-        [bin (* count norm)]))))
+    (->> (if (categorical? h)
+           (bins h)
+           (let [{:keys [min max]} (impl/bounds h)]
+             (bins (binning/calculate-bin-width min max pdf-sample-points) h)))
+         (m/map-vals (partial * (/ (count h)))))))
 
 (defn entropy
   "Calculate (Shannon) entropy of given histogram.

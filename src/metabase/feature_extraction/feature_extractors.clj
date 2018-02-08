@@ -56,11 +56,11 @@
   [histogram]
   (cond
     (h/categorical? histogram) (h/bins histogram)
-    (h/empty? histogram)       []
+    (h/empty? histogram)       {}
     :else
     (let [{:keys [min max]} (h.impl/bounds histogram)]
       (if (= min max)
-        [[min 1.0]]
+        {min 1.0}
         (let [{:keys [min-value max-value bin-width]}
               (binning/nicer-breakout
                {:min-value min
@@ -154,7 +154,7 @@
 
 (defn- histogram-aggregated->dataset
   [field histogram]
-  {:rows    (nice-bins histogram)
+  {:rows    (vec (nice-bins histogram))
    :columns (map :name field)
    :cols    (map #(dissoc % :remapped_from) field)})
 
