@@ -68,6 +68,7 @@
    :points_of_interest          nil
    :cache_field_values_schedule "0 50 0 * * ? *"
    :metadata_sync_schedule      "0 50 * * * ? *"
+   :options                     nil
    :timezone                    nil})
 
 (defn- db-details
