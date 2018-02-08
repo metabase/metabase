@@ -104,15 +104,13 @@
                                                      middle))))
                    (conj (partition bucket-size body) [tail]))))))
 
-(defn saddles
+(def ^{:arglists '([series])} saddles
   "Returns the number of saddles in a given series."
-  [series]
-  (->> series
-       (partition 2 1)
-       (partition-by (fn [[[_ y1] [_ y2]]]
-                       (>= y2 y1)))
-       rest
-       count))
+  (partial transduce (comp (x/partition 2 1)
+                           (partition-by (fn [[[_ y1] [_ y2]]]
+                                           (>= y2 y1)))
+                           (drop 1))
+           stats/count))
 
 ; The largest dataset returned will be 2*target-1 points as we need at least
 ; 2 points per bucket for downsampling to have any effect.
@@ -232,7 +230,8 @@
 
 (defn- cardinality-extractor
   [{:keys [cardinality histogram]}]
-  (let [uniqueness (safe-divide cardinality (h/total-count histogram))]
+  (let [cardinality (or cardinality (-> histogram h/bins count))
+        uniqueness  (safe-divide cardinality (h/total-count histogram))]
     {:uniqueness    uniqueness
      :cardinality   cardinality
      :all-distinct? (some-> uniqueness (>= (- 1 cardinality-error)))}))
@@ -599,8 +598,7 @@
 (defmethod feature-extractor Category
   [_ field]
   (redux/post-complete
-   (redux/fuse {:histogram   h/histogram-categorical
-                :cardinality cardinality})
+   (redux/fuse {:histogram   h/histogram-categorical})
    (merge-juxt
     histogram-extractor
     cardinality-extractor
