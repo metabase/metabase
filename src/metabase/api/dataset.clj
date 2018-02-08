@@ -83,7 +83,7 @@
   we don't want to change the timezone or alter the date part."
   [^String date-str]
   (when date-str
-      (subs date-str 0 (.indexOf date-str "T"))))
+    (subs date-str 0 (.indexOf date-str "T"))))
 
 (defn- swap-date-columns [date-col-indexes]
   (fn [row]
