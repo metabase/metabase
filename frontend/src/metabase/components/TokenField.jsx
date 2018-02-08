@@ -53,8 +53,6 @@ export default class TokenField extends Component {
         valueRenderer: PropTypes.func.isRequired, // TODO: default
         optionRenderer: PropTypes.func.isRequired, // TODO: default
         layoutRenderer: PropTypes.func,
-
-
     };
 
     static defaultProps = {
@@ -102,14 +100,34 @@ export default class TokenField extends Component {
       return (typeof labelKey === "function") ? labelKey(option) : option[labelKey];
     }
 
+    _isLastFreeformValue(inputValue) {
+      const { value, parseFreeformValue, updateOnInputChange } = this.props;
+      if (parseFreeformValue && updateOnInputChange) {
+        const freeformValue = parseFreeformValue(inputValue);
+        const currentLastValue = value[value.length - 1];
+        // check to see if the current last value is the same as the inputValue, in which case we should replace it or remove it
+        return currentLastValue === freeformValue;
+      }
+    }
+
     _updateFilteredValues = () => {
       const { options, value, removeSelected, filterOption } = this.props;
       let { inputValue, selectedOptionValue } = this.state;
       let selectedValues = new Set(value.map(v => JSON.stringify(v)));
 
       let filteredOptions = options.filter(option =>
-          // filter out options who have already been selected
-          (!removeSelected || !selectedValues.has(JSON.stringify(this._value(option)))) &&
+          // filter out options who have already been selected, unless:
+          (
+            // remove selected is disabled
+            !removeSelected
+            // or it's not in the selectedValues
+            || !selectedValues.has(JSON.stringify(this._value(option)))
+            // or it's the current "freeform" value, which updates as we type
+            || (
+              this._isLastFreeformValue(this._value(option)) &&
+              this._isLastFreeformValue(inputValue)
+            )
+          ) &&
           this.filterOption(option, inputValue)
       );
 
@@ -141,10 +159,7 @@ export default class TokenField extends Component {
 
       // if updateOnInputChange is true and parseFreeformValue is enabled then try adding/updating the freeform value immediately
       if (updateOnInputChange && parseFreeformValue) {
-        const currentLastValue = this.props.value[this.props.value.length - 1];
-        const currentFreeformValue = parseFreeformValue(this.state.inputValue);
-        // check to see if the current last value is the same as the inputValue, in which case we should replace it or remove it
-        const replaceLast = currentLastValue === currentFreeformValue;
+        const replaceLast = this._isLastFreeformValue(this.state.inputValue);
         // call parseFreeformValue to make sure we can add it
         const freeformValue = parseFreeformValue(value);
         if (freeformValue != null) {
@@ -153,7 +168,7 @@ export default class TokenField extends Component {
         } else {
           // otherwise remove the value if necessary, e.x. after deleting
           if (replaceLast) {
-            this.removeValue(currentFreeformValue);
+            this.removeValue(parseFreeformValue(this.state.inputValue));
           }
         }
       }
@@ -236,6 +251,11 @@ export default class TokenField extends Component {
         this.setState({ focused: false });
     }
 
+    clearInputValue() {
+      this.setInputValue("")
+      // setTimeout(() => this.setInputValue(""), 0);
+    }
+
     addSelectedOption(e) {
         const { multi } = this.props
         const { selectedOptionValue } = this.state;
@@ -243,6 +263,10 @@ export default class TokenField extends Component {
         let option = _.find(this.state.filteredOptions, (option) => this._valueIsEqual(selectedOptionValue, this._value(option)));
         if (option) {
             this.addOption(option);
+            // clear the input if the option is the same as the last value
+            if (this._isLastFreeformValue(this._value(option))) {
+                this.clearInputValue();
+            }
             return true;
         } else if (this.props.parseFreeformValue) {
             // if we previously updated on input change then we don't need to do it again,
@@ -250,7 +274,7 @@ export default class TokenField extends Component {
               // also prevent the input from changing due to this key press
               e.preventDefault();
               // and clear the input
-              setTimeout(() => this.setInputValue(""), 0);
+              this.clearInputValue()
               // return false so we don't stop the keyDown from propagating in case we're listening
               // for it, e.x. in the filter popover this allows enter to commit the filter
               return false;
@@ -258,7 +282,7 @@ export default class TokenField extends Component {
               const value = this.props.parseFreeformValue(input.value);
               if (value != null && (multi || value !== this.props.value[0])) {
                   this.addValue(value);
-                  setTimeout(() => this.setInputValue(""), 0);
+                  this.clearInputValue()
                   return true;
               }
             }
@@ -266,8 +290,9 @@ export default class TokenField extends Component {
     }
 
     addOption = (option) => {
+        const replaceLast = this._isLastFreeformValue(this.state.inputValue);
         // add the option's value to the current value
-        this.addValue(this._value(option));
+        this.addValue(this._value(option), replaceLast);
     }
 
     addValue(valueToAdd, replaceLast = false) {

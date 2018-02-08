@@ -38,7 +38,10 @@ export default class ComponentsApp extends Component {
                             <Section title="Props">
                                 <div className="border-left border-right border-bottom text-code">
                                     {Object.keys(component.propTypes).map(prop =>
-                                        <div>{prop} {component.defaultProps[prop] !== undefined ? "(default: " + JSON.stringify(component.defaultProps[prop]) + ")" : ""}</div>
+                                        <div>{prop} {(component.defaultProps && component.defaultProps[prop] !== undefined) ?
+                                          "(default: " + JSON.stringify(component.defaultProps[prop]) + ")" :
+                                          ""
+                                        }</div>
                                     )}
                                 </div>
                             </Section>
