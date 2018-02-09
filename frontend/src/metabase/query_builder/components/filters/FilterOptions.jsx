@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import { t, jt } from 'c-3po';
 
 import CheckBox from "metabase/components/CheckBox";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { getOperator } from "./pickers/DatePicker.jsx";
 
@@ -50,15 +51,16 @@ export default class FilterOptions extends Component {
 
   toggleCurrentPeriod = () => {
     const { filter } = this.props;
-      const operator = getOperator(filter);
+    const operator = getOperator(filter);
 
-      if (operator && operator.options && operator.options["include-current"]) {
-          const options = getFilterOptions(filter);
-          this.props.onFilterChange(setFilterOptions(filter, {
-            ...options,
-            "include-current": !options["include-current"]
-          }));
-      }
+    if (operator && operator.options && operator.options["include-current"]) {
+        const options = getFilterOptions(filter);
+        this.props.onFilterChange(setFilterOptions(filter, {
+          ...options,
+          "include-current": !options["include-current"]
+        }));
+        MetabaseAnalytics.trackEvent("QueryBuilder", "Filter", "ToggleCurrentPeriod", !options["include-current"])
+    }
   }
 
   render() {

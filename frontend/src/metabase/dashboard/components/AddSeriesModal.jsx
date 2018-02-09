@@ -212,7 +212,7 @@ export default class AddSeriesModal extends Component {
                     <div className="flex-full ml2 mr1 relative">
                         <Visualization
                             className="spread"
-                            series={series}
+                            rawSeries={series}
                             showTitle
                             isDashboard
                             isMultiseries

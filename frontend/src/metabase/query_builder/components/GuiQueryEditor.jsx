@@ -6,13 +6,13 @@ import ReactDOM from "react-dom";
 import { t } from 'c-3po';
 import AggregationWidget_LEGACY from './AggregationWidget.jsx';
 import BreakoutWidget_LEGACY from './BreakoutWidget.jsx';
-import DataSelector from './DataSelector.jsx';
 import ExtendedOptions from "./ExtendedOptions.jsx";
 import FilterList from './filters/FilterList.jsx';
 import FilterPopover from './filters/FilterPopover.jsx';
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from 'metabase/components/IconBorder.jsx';
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -274,21 +274,25 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderDataSection() {
-        const { query } = this.props;
+        const { databases, query, isShowingTutorial } = this.props;
         const tableMetadata = query.tableMetadata();
+        const datasetQuery = query.datasetQuery();
+        const databaseId = datasetQuery && datasetQuery.database
+        const sourceTableId = datasetQuery && datasetQuery.query && datasetQuery.query.source_table;
+        const isInitiallyOpen = (!datasetQuery.database || !sourceTableId) && !isShowingTutorial;
+
         return (
             <div className={"GuiBuilder-section GuiBuilder-data flex align-center arrow-right"}>
                 <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
                 { this.props.features.data ?
-                    <DataSelector
-                        ref="dataSection"
-                        includeTables={true}
-                        datasetQuery={query.datasetQuery()}
-                        databases={this.props.databases}
-                        tables={this.props.tables}
+                    <DatabaseSchemaAndTableDataSelector
+                        databases={databases}
+                        selected={sourceTableId}
+                        selectedDatabaseId={databaseId}
+                        selectedTableId={sourceTableId}
                         setDatabaseFn={this.props.setDatabaseFn}
                         setSourceTableFn={this.props.setSourceTableFn}
-                        isInitiallyOpen={(!query.datasetQuery().database || !query.query().source_table) && !this.props.isShowingTutorial}
+                        isInitiallyOpen={isInitiallyOpen}
                     />
                     :
                     <span className="flex align-center px2 py2 text-bold text-grey">

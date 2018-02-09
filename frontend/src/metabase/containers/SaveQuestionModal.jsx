@@ -11,7 +11,6 @@ import Button from "metabase/components/Button";
 import CollectionList from "metabase/questions/containers/CollectionList";
 
 import Query from "metabase/lib/query";
-import { cancelable } from "metabase/lib/promise";
 import { t } from 'c-3po';
 import "./SaveQuestionModal.css";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
@@ -53,12 +52,6 @@ export default class SaveQuestionModal extends Component {
         this.validateForm();
     }
 
-    componentWillUnmount() {
-        if (this.requestPromise) {
-            this.requestPromise.cancel();
-        }
-    }
-
     validateForm() {
         let { details } = this.state;
 
@@ -85,6 +78,14 @@ export default class SaveQuestionModal extends Component {
             }
 
             let { details } = this.state;
+            // TODO Atte Keinäenn 31/1/18 Refactor this
+            // I think that the primary change should be that
+            // SaveQuestionModal uses Question objects instead of directly modifying card objects –
+            // but that is something that doesn't need to be done first)
+            // question
+            //     .setDisplayName(details.name.trim())
+            //     .setDescription(details.description ? details.description.trim() : null)
+            //     .setCollectionId(details.collection_id)
             let { card, originalCard, createFn, saveFn } = this.props;
 
             card = {
@@ -102,14 +103,12 @@ export default class SaveQuestionModal extends Component {
             };
 
             if (details.saveType === "create") {
-                this.requestPromise = cancelable(createFn(card));
+                await createFn(card);
             } else if (details.saveType === "overwrite") {
                 card.id = this.props.originalCard.id;
-                this.requestPromise = cancelable(saveFn(card));
+                await saveFn(card);
             }
 
-            await this.requestPromise;
-            this.requestPromise = null;
             this.props.onClose();
         } catch (error) {
             if (error && !error.isCanceled) {

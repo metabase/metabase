@@ -189,7 +189,9 @@ function getSetting(settingDefs, id, vizSettings, series) {
         }
 
         if (settingDef.getDefault) {
-            return vizSettings[id] = settingDef.getDefault(series, vizSettings);
+            const defaultValue = settingDef.getDefault(series, vizSettings)
+
+            return vizSettings[id] = defaultValue;
         }
 
         if ("default" in settingDef) {
@@ -212,6 +214,26 @@ function getSettingDefintionsForSeries(series) {
         definitions[id].id = id
     }
     return definitions;
+}
+
+export function getPersistableDefaultSettings(series) {
+    // A complete set of settings (not only defaults) is loaded because
+    // some persistable default settings need other settings as dependency for calculating the default value
+    const completeSettings = getSettings(series)
+
+    let persistableDefaultSettings = {};
+    let settingsDefs = getSettingDefintionsForSeries(series);
+
+    for (let id in settingsDefs) {
+        const settingDef = settingsDefs[id]
+        const seriesForSettingsDef = settingDef.useRawSeries && series._raw ? series._raw : series
+
+        if (settingDef.persistDefault) {
+            persistableDefaultSettings[id] = settingDef.getDefault(seriesForSettingsDef, completeSettings)
+        }
+    }
+
+    return persistableDefaultSettings;
 }
 
 export function getSettings(series) {

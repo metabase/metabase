@@ -64,17 +64,17 @@
          (sort-by first)
          (take 5))))
 
-(def ^:const ^:private ^String native-query-1
+(def ^:private ^String native-query-1
   (json/generate-string
     {:intervals   ["1900-01-01/2100-01-01"]
      :granularity :all
      :queryType   :select
      :pagingSpec  {:threshold 2}
      :dataSource  :checkins
-     :dimensions  [:venue_price
-                   :venue_name
+     :dimensions  [:id
                    :user_name
-                   :id]
+                   :venue_price
+                   :venue_name]
      :metrics     [:count]}))
 
 (defn- process-native-query [query]
@@ -107,7 +107,7 @@
 
 
 ;; make sure we can run a native :timeseries query. This was throwing an Exception -- see #3409
-(def ^:const ^:private ^String native-query-2
+(def ^:private ^String native-query-2
   (json/generate-string
     {:intervals    ["1900-01-01/2100-01-01"]
      :granularity  {:type     :period
