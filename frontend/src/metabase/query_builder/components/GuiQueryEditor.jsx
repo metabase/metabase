@@ -210,18 +210,17 @@ export default class GuiQueryEditor extends Component {
                     aggregationList.push(
                         <span key={"and"+index} className="text-bold">{t`and`}</span>
                     );
+                } else {
+                  <div className="Query-section Query-section-aggregation disabled">
+                      <a className="QueryOption p1 flex align-center">{t`Raw data`}</a>
+                  </div>
                 }
             }
             return (
-                <div className="Aggregation-section-breakout scroll-x scroll-show">{aggregationList}</div>
+            <div   className="Aggregation-section-breakout scroll-x scroll-show">
+              {aggregationList}
+            </div>
             )
-        } else {
-            // TODO: move this into AggregationWidget?
-            return (
-                <div className="Query-section Query-section-aggregation disabled">
-                    <a className="QueryOption p1 flex align-center">{t`Raw data`}</a>
-                </div>
-            );
         }
     }
 
