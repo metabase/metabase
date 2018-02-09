@@ -117,7 +117,7 @@ export default class LoginApp extends Component {
                         <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />
                     </div>
                     <div className="Login-content Grid-cell">
-                        <form className="Form-new bg-white bordered rounded shadowed" name="form" onSubmit={(e) => this.formSubmitted(e)} noValidate>
+                        <form className="Form-new bg-white bordered rounded shadowed" name="form" onSubmit={(e) => this.formSubmitted(e)}>
                             <h3 className="Login-header Form-offset">{t`Sign in to Metabase`}</h3>
 
                             { Settings.ssoEnabled() &&
@@ -134,7 +134,7 @@ export default class LoginApp extends Component {
 
                             <FormField key="username" fieldName="username" formError={loginError}>
                                 <FormLabel title={Settings.ldapEnabled() ? t`Username or email address` : t`Email address`} fieldName={"username"} formError={loginError} />
-                                <input className="Form-input Form-offset full py1" name="username" placeholder="youlooknicetoday@email.com" type="text" onChange={(e) => this.onChange("username", e.target.value)} autoFocus />
+                                <input className="Form-input Form-offset full py1" name="username" placeholder="youlooknicetoday@email.com" type="email" onChange={(e) => this.onChange("username", e.target.value)} autoFocus />
                                 <span className="Form-charm"></span>
                             </FormField>
 
