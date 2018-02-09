@@ -29,17 +29,19 @@ import RunButton from "metabase/query_builder/components/RunButton";
 import BreakoutWidget from "metabase/query_builder/components/BreakoutWidget";
 import { getCard } from "metabase/query_builder/selectors";
 import { TestTable } from "metabase/visualizations/visualizations/Table";
-import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
+import ChartClickActions, { ChartClickAction } from "metabase/visualizations/components/ChartClickActions";
 
 import { delay } from "metabase/lib/promise";
 import * as Urls from "metabase/lib/urls";
+import DataSelector, { TableTriggerContent } from "metabase/query_builder/components/DataSelector";
+import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
 
 const initQbWithDbAndTable = (dbId, tableId) => {
     return async () => {
         const store = await createTestStore()
         store.pushPath(Urls.plainQuestion());
         const qb = mount(store.connectContainer(<QueryBuilder />));
-        await store.waitForActions([INITIALIZE_QB]);
+        await store.waitForActions([INITIALIZE_QB])
 
         // Use Products table
         store.dispatch(setQueryDatabase(dbId));
@@ -58,6 +60,37 @@ describe("QueryBuilder", () => {
     })
 
     describe("drill-through", () => {
+        describe("View details action", () => {
+            it("works for foreign keys", async () => {
+                const {store, qb} = await initQbWithOrdersTable();
+                click(qb.find(RunButton));
+                await store.waitForActions([QUERY_COMPLETED]);
+                const table = qb.find(TestTable);
+
+                expect(qb.find(DataSelector).find(TableTriggerContent).text()).toBe("Orders")
+                const headerCells = table.find("thead th").map((cell) => cell.text())
+                const productIdIndex = headerCells.indexOf("Product ID")
+
+                const firstRowCells = table.find("tbody tr").first().find("td");
+                const productIdCell = firstRowCells.at(productIdIndex)
+                click(productIdCell.children().first());
+
+                // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
+                await delay(150);
+
+                const viewDetailsButton = qb.find(ChartClickActions)
+                    .find(ChartClickAction)
+                    .filterWhere(action => /View details/.test(action.text()))
+                    .first()
+
+                click(viewDetailsButton);
+
+                await store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
+
+                expect(qb.find(ObjectDetail).length).toBe(1)
+                expect(qb.find(DataSelector).find(TableTriggerContent).text()).toBe("Products")
+            })
+        })
         describe("Zoom In action for broken out fields", () => {
             it("works for Count of rows aggregation and Subtotal 50 Bins breakout", async () => {
                 const {store, qb} = await initQbWithOrdersTable();
@@ -71,7 +104,6 @@ describe("QueryBuilder", () => {
                     }
                 }));
 
-
                 click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
@@ -79,7 +111,9 @@ describe("QueryBuilder", () => {
                 const firstRowCells = table.find("tbody tr").first().find("td");
                 expect(firstRowCells.length).toBe(2);
 
-                expect(firstRowCells.first().text()).toBe("4  –  6");
+                // NOTE: Commented out due to the randomness involved in sample dataset generation
+                // which sometimes causes the cell value to be different
+                // expect(firstRowCells.first().text()).toBe("4  –  6");
 
                 const countCell = firstRowCells.last();
                 expect(countCell.text()).toBe("2");
@@ -187,6 +221,10 @@ describe("QueryBuilder", () => {
                 // Should have visualization type set to the previous visualization
                 const card = getCard(store.getState())
                 expect(card.display).toBe("bar");
+
+                // Some part of visualization seems to be asynchronous, causing a cluster of errors
+                // about missing query results if this delay isn't present
+                await delay(100)
             });
         })
     })

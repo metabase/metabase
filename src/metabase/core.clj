@@ -42,6 +42,8 @@
 
 ;;; CONFIG
 
+;; TODO - why not just put this in `metabase.middleware` with *all* of our other custom middleware. Also, what's the
+;; difference between this and `streaming-json-response`?
 (defn- streamed-json-response
   "Write `RESPONSE-SEQ` to a PipedOutputStream as JSON, returning the connected PipedInputStream"
   [response-seq options]
