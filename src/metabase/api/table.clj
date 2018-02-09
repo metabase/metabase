@@ -222,7 +222,7 @@
   (let [table (api/read-check Table id)
         driver (driver/database-id->driver (:db_id table))]
     (-> table
-        (hydrate :db [:fields :target :dimensions] :segments :metrics)
+        (hydrate :db [:fields :target :dimensions :has_field_values] :segments :metrics)
         (update :fields with-normal-values)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options driver)

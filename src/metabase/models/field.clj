@@ -157,24 +157,26 @@
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))
 
-(def ^:private ^:const listable-field-values-threshold
-  "Any Field with this many distinct values or less should display a list widget rather than a search widget. (?)"
-  300)
+(defn with-has-field-values
+  "Infer what the value of the `has_field_values` should be for Fields where it's not set. Admins can set this to one
+  of the values below, but if it's `nil` in the DB we'll infer it automatically.
 
-(defn with-has-remappings
-  "Efficiently add a `has_remappings` property to each Field in `fields`. There are three possible values:
-
-    *  `:list`       - Anything that has a `Dimension` (i.e. remapping), and has a cardinality under the threshold
-                       above
-    *  `:searchable` - Anything else with a `Dimension` but *above* the threshold
-    *  `nil`         - Anything without a `Dimension`."
+  *  `list`   = has an associated FieldValues object
+  *  `search` = does not have FieldValues
+  *  `none`   = admin has explicitly disabled search behavior for this Field"
+  {:batched-hydrate :has_field_values}
   [fields]
-  ;; TODO - I am not sure this acutally what we want. Ask Tom what exactly he wants
-  (for [{{{:keys [distinct-count]} :global} :fingerprint, dimensions :dimensions :as field} (with-dimensions fields)]
-    (assoc field :has_remappings (when (and distinct-count (seq dimensions))
-                                   (if (<= distinct-count listable-field-values-threshold)
-                                     :list
-                                     :searchable)))))
+  (let [fields-without-has-field-values-ids (set (for [field fields
+                                                       :when (nil? (:has_field_values field))]
+                                                   (:id field)))
+        fields-with-fieldvalues-ids         (when (seq fields-without-has-field-values-ids)
+                                              (db/select-field :field_id FieldValues
+                                                :id [:in fields-without-has-field-values-ids]))]
+    (for [field fields]
+      (assoc field :has_field_values (or (:has_field_values field)
+                                         (if (fields-with-fieldvalues-ids (u/get-id field))
+                                           :list
+                                           :search))))))
 
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"
