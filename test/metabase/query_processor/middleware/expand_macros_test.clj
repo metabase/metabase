@@ -184,3 +184,7 @@
 (expect
   {:query {:aggregation [[:metric :ga:users]]}}
   (#'expand-macros/expand-metrics-and-segments {:query {:aggregation [[:metric :ga:users]]}}))
+
+(expect
+  {:query {:aggregation [[:metric :gaid:users]]}}
+  (#'expand-macros/expand-metrics-and-segments {:query {:aggregation [[:metric :gaid:users]]}}))
