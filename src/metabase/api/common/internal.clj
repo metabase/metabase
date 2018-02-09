@@ -234,6 +234,7 @@
                (let [stacktrace (u/filtered-stacktrace e)]
                  (merge (assoc other-info
                           :message    message
+                          :type       (class e)
                           :stacktrace stacktrace)
                         (when (instance? SQLException e)
                           {:sql-exception-chain (str/split (with-out-str (jdbc/print-sql-exception-chain e))
