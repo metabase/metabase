@@ -12,9 +12,7 @@
              [values :as values]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.middleware.binning :as binning]
-            [metabase
-             [query-processor :as qp]
-             [util :as u]]
+            [metabase.util :as u]
             [net.cgrand.xforms :as x]
             [redux.core :as redux]
             [toucan.db :as db])
@@ -298,8 +296,7 @@
   [features]
   (select-keys features
                [:histogram :mean :median :min :max :sd :count :kurtosis :zero%
-                :skewness :entropy :nil% :uniqueness :range :min-vs-max :q1
-                :q3]))
+                :skewness :entropy :nil% :uniqueness :range :min-vs-max :q1 :q3]))
 
 (defmethod x-ray Num
   [{:keys [field histogram histogram-categorical] :as features}]
