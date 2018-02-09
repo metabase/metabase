@@ -134,7 +134,7 @@
 
 (def Email
   "Schema for a valid email string."
-  (with-api-error-message (s/constrained s/Str u/is-email? "Valid email address")
+  (with-api-error-message (s/constrained s/Str u/email? "Valid email address")
     "value must be a valid email address."))
 
 (def ComplexPassword
