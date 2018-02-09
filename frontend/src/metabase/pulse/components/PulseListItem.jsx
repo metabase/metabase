@@ -32,16 +32,23 @@ export default class PulseListItem extends Component {
         const creator = <span className="text-bold">{pulse.creator && pulse.creator.common_name}</span>;
         return (
             <div ref="pulseListItem" className={cx("PulseListItem bordered rounded mb2 pt3", {"PulseListItem--focused": this.props.scrollTo})}>
-                <div className="flex px4 mb2">
-                    <div>
-                        <h2 className="mb1">{pulse.name}</h2>
-                        <span>{jt`Pulse by ${creator}`}</span>
+                <div className="px4 mb2">
+                    <div className="flex align-center mb1">
+                        <h2 className="break-word" style={{ maxWidth: '80%' }}>
+                            {pulse.name}
+                        </h2>
+                        { !pulse.read_only &&
+                            <div className="ml-auto">
+                                <Link
+                                    to={"/pulse/" + pulse.id}
+                                    className="PulseEditButton PulseButton Button no-decoration text-bold"
+                                >
+                                    {t`Edit`}
+                                </Link>
+                            </div>
+                        }
                     </div>
-                    { !pulse.read_only &&
-                        <div className="flex-align-right">
-                            <Link to={"/pulse/" + pulse.id} className="PulseEditButton PulseButton Button no-decoration text-bold">{t`Edit`}</Link>
-                        </div>
-                    }
+                    <span>{jt`Pulse by ${creator}`}</span>
                 </div>
                 <ol className="mb2 px4 flex flex-wrap">
                     { pulse.cards.map((card, index) =>
