@@ -76,7 +76,7 @@
   [[_ id]]
   (boolean
    (when ((some-fn string? keyword?) id)
-     (re-find #"^ga:" (name id)))))
+     (re-find #"^ga(id)?:" (name id)))))
 
 (defn- metric? [aggregation]
   (and (is-clause? #{:metric} aggregation)

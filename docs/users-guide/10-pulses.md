@@ -20,10 +20,24 @@ When you select a saved question, Metabase will show you a preview of how it’l
 
 ![Behold! The metamorphosis.](images/pulses/04-transformation.png)
 
+#### Attaching a .csv or .xls with results
+You can also optionally include the results of a saved question in an emailed pulse as a .csv or .xls file attachment. Just click the paperclip icon on an included saved question to add the attachment. Click the paperclip again to remove the attachment.
+
+![Attach button](images/pulses/attach-button.png)
+
+Choose between a .csv or .xls file by clicking on the text buttons:
+
+![Attached](images/pulses/attached.png)
+
+Your attachments will be included in your emailed pulse just like a regular email attachment:
+
+![Email attachment](images/pulses/email.png)
+
+#### Limitations
 Currently, there are a few restrictions on what kinds of saved questions you can put into a pulse:
 
-* Raw data can’t be put in a pulse
-* Tables will be cropped to a maximum of three columns and 10 rows
+* Raw data questions won't be displayed, but will be included as a file attachment
+* Pivot tables will be cropped to a maximum of three columns and 10 rows
 * Bar charts (and pie charts which get turned into bar charts) will be cropped to one column for the labels, one column for the values, and 10 total rows
 
 ### Choose How and When to Deliver Your Data

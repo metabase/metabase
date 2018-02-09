@@ -71,7 +71,7 @@ export default class MoveToCollection extends Component {
                 <CollectionList writable>
                     { collections =>
                         <ol className="List text-brand ml-auto mr-auto" style={{ width: 520 }}>
-                            { [{ name: "None", id: null }].concat(collections).map((collection, index) =>
+                            { [{ name: t`None`, id: null }].concat(collections).map((collection, index) =>
                                 <li
                                     className={cx("List-item flex align-center cursor-pointer mb1 p1", { "List-item--selected": collection.id === currentCollection.id })}
                                     key={index}
