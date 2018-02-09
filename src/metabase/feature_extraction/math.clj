@@ -5,6 +5,7 @@
              [core :as stats]
              [math :as math]]
             [metabase.feature-extraction.histogram :as h]
+            [net.cgrand.xforms :as x]
             [redux.core :as redux]))
 
 (defn safe-divide
