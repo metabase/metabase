@@ -4020,3 +4020,15 @@ databaseChangeLog:
                   remarks: 'True if a XLS of the data should be included for this pulse card'
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 74
+      author: camsaul
+      comment: 'Added 0.29.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: has_field_values
+                  type: text
+                  remarks: 'Whether we have FieldValues ("list"), should ad-hoc search ("search"), disable entirely ("none"), or infer dynamically (null)"'

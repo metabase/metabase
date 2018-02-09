@@ -64,14 +64,17 @@
 
 (api/defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest special_type visibility_type], :as body} :body}]
+  [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest special_type
+                   visibility_type has_field_values]
+            :as body} :body}]
   {caveats            (s/maybe su/NonBlankString)
    description        (s/maybe su/NonBlankString)
    display_name       (s/maybe su/NonBlankString)
    fk_target_field_id (s/maybe su/IntGreaterThanZero)
    points_of_interest (s/maybe su/NonBlankString)
    special_type       (s/maybe FieldType)
-   visibility_type    (s/maybe FieldVisibilityType)}
+   visibility_type    (s/maybe FieldVisibilityType)
+   has_field_values   (s/maybe (s/enum "search" "list" "none"))}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-special-type   (keyword (get body :special_type (:special_type field)))
         removed-fk?        (removed-fk-special-type? (:special_type field) new-special-type)
@@ -92,7 +95,8 @@
         (clear-dimension-on-type-change! field (:base_type field) new-special-type)
         (db/update! Field id
           (u/select-keys-when (assoc body :fk_target_field_id (when-not removed-fk? fk-target-field-id))
-            :present #{:caveats :description :fk_target_field_id :points_of_interest :special_type :visibility_type}
+            :present #{:caveats :description :fk_target_field_id :points_of_interest :special_type :visibility_type
+                       :has_field_values}
             :non-nil #{:display_name})))))
     ;; return updated field
     (hydrate (Field id) :dimensions)))
