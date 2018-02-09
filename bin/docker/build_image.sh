@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-set -eu
+set -e
 
 BASEDIR=$(dirname $0)
 PROJECT_ROOT="$BASEDIR/../.."

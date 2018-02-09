@@ -4,16 +4,22 @@
              [core :as json]
              [generate :as generate]]
             [clojure.data.csv :as csv]
+            [clojure.java.jdbc :as jdbc]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [medley.core :as m]
             [metabase.api.dataset :refer [default-query-constraints]]
-            [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.models
+             [database :refer [Database]]
+             [query-execution :refer [QueryExecution]]]
             [metabase.query-processor.middleware.expand :as ql]
+            [metabase.sync :as sync]
             [metabase.test
              [data :refer :all]
              [util :as tu]]
-            [metabase.test.data.users :refer :all]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [users :refer :all]]
             [toucan.db :as db]))
 
 (defn user-details [user]
@@ -175,6 +181,29 @@
                 (json/generate-string (wrap-inner-query
                                         (query checkins))))]
     (take 5 (parse-and-sort-csv result))))
+
+;; Check an empty date column
+(expect
+  [["1" "2014-04-07" "" "5" "12"]
+   ["2" "2014-09-18" "" "1" "31"]
+   ["3" "2014-09-15" "" "8" "56"]
+   ["4" "2014-03-11" "" "5" "4"]
+   ["5" "2013-05-05" "" "3" "49"]]
+  (with-db (get-or-create-database! defs/test-data)
+    (let [db (Database :name "test-data")]
+      (jdbc/with-db-connection [conn {:classname "org.h2.Driver", :subprotocol "h2", :subname "mem:test-data"}]
+        ;; test-data doesn't include any null date values, add a date column to ensure we can handle null dates on export
+        (jdbc/execute! conn "ALTER TABLE CHECKINS ADD COLUMN MYDATECOL DATE")
+        (sync/sync-database! db)
+        (try
+          (let [result ((user->client :rasta) :post 200 "dataset/csv" :query
+                        (json/generate-string (wrap-inner-query
+                                                (query checkins))))]
+            (take 5 (parse-and-sort-csv result)))
+          (finally
+            ;; ensure we remove the column when we're done otherwise subsequent tests will break
+            (jdbc/execute! conn "ALTER TABLE CHECKINS DROP COLUMN MYDATECOL")
+            (sync/sync-database! db)))))))
 
 ;; DateTime fields are untouched when exported
 (expect
