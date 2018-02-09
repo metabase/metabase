@@ -152,7 +152,8 @@
                    :aot [metabase.logger]}                            ; Log appender class needs to be compiled for log4j to use it
              :ci {:jvm-opts ["-Xmx3g"]}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
-             :expectations {:injections [(require 'metabase.test-setup)]
+             :expectations {:injections [(require 'metabase.test-setup  ; for test setup stuff
+                                                  'metabase.test.util)] ; for the toucan.util.test default values for temp models
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"
                                   :mb-run-mode "test"}
