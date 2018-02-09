@@ -60,3 +60,30 @@ export function isCompoundFilter(filter: FilterClause): boolean {
 export function isFieldFilter(filter: FilterClause): boolean {
     return !isSegmentFilter(filter) && !isCompoundFilter(filter);
 }
+
+
+// TODO: is it save to assume if the last item is an object then it's options?
+export function hasFilterOptions(filter: FieldFilter): bool {
+  const o = filter[filter.length - 1];
+  return typeof o == 'object' && o.constructor == Object;
+}
+
+export function getFilterOptions(filter: FieldFilter): FilterOptions {
+  if (hasFilterOptions(filter)) {
+    return filter[filter.length - 1];
+  } else {
+    return {};
+  }
+}
+
+export function setFilterOptions<T: FieldFilter>(filter: T, options: FilterOptions): T {
+  // if we have option, strip it off for now
+  if (hasFilterOptions(filter)) {
+    filter = filter.slice(0, -1);
+  }
+  // if options isn't emtpy, append it
+  if (Object.keys(options).length > 0) {
+    filter = [...filter, options];
+  }
+  return filter;
+}

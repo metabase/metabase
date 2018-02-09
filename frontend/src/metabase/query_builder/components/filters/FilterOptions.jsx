@@ -1,12 +1,19 @@
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import { t, jt } from 'c-3po';
+import { getFilterOptions, setFilterOptions } from "metabase/lib/query/filter"
 
 import CheckBox from "metabase/components/CheckBox";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import { getOperator } from "./pickers/DatePicker.jsx";
-
+const OPTION_NAMES = {
+  "include-current": (field) => {
+    const period = <b>{getCurrentIntervalName(this.props.filter)}</b>;
+    return jt`Include ${period}`
+  },
+  "case-sensitive": () => t`Case sensitive`
+}
 
 const CURRENT_INTERVAL_NAME = {
     "day":    t`today`,
@@ -25,57 +32,61 @@ function getCurrentIntervalName(filter: FieldFilter): ?string {
   return null;
 }
 
-function getFilterOptions(filter: FieldFilter): FilterOptions {
-  if (filter[0] === "time-interval") {
-    // $FlowFixMe:
-    const options: FilterOptions = filter[4] || {};
-    return options;
-  }
-  return {};
-}
-
-function setFilterOptions<T: FieldFilter>(filter: T, options: FilterOptions): T {
-  if (filter[0] === "time-interval") {
-    // $FlowFixMe
-    return [...filter.slice(0,4), options];
-  } else {
-    return filter;
-  }
-}
 
 export default class FilterOptions extends Component {
-  hasCurrentPeriod = () => {
-      const { filter } = this.props;
-      return getFilterOptions(filter)["include-current"] || false;
+  static propTypes = {
+    filter:           PropTypes.array.isRequired,
+    getFilterOptions: PropTypes.func.isRequired,
+    // either an operator from schema_metadata or DatePicker
+    operator:         PropTypes.object.isRequired,
   }
 
-  toggleCurrentPeriod = () => {
-    const { filter } = this.props;
-    const operator = getOperator(filter);
-
-    if (operator && operator.options && operator.options["include-current"]) {
-        const options = getFilterOptions(filter);
-        this.props.onFilterChange(setFilterOptions(filter, {
-          ...options,
-          "include-current": !options["include-current"]
-        }));
-        MetabaseAnalytics.trackEvent("QueryBuilder", "Filter", "ToggleCurrentPeriod", !options["include-current"])
+  getOptionName(name) {
+    if (OPTION_NAMES[name]) {
+      return OPTION_NAMES[name](this.props.field);
     }
+    return name;
+  }
+
+  getOptionValue(name) {
+      const { filter, operator } = this.props;
+      let value = getFilterOptions(filter)[name];
+      if (value !== undefined) {
+        return value;
+      }
+      return operator.options[name].defaultValue;
+  }
+
+  setOptionValue(name, value) {
+    const { filter } = this.props;
+    const options = getFilterOptions(filter);
+    this.props.onFilterChange(setFilterOptions(filter, {
+      ...options,
+      [name]: !options[name]
+    }));
+    MetabaseAnalytics.trackEvent("QueryBuilder", "Filter", "SetOption", name)
+  }
+
+  toggleOptionValue(name) {
+    this.setOptionValue(name, !this.getOptionValue(name));
   }
 
   render() {
-    const { filter } = this.props;
-    const operator = getOperator(filter);
-    if (operator && operator.options && operator.options["include-current"]) {
-      return (
-        <div className="flex align-center" onClick={() => this.toggleCurrentPeriod()}>
-            <CheckBox checked={this.hasCurrentPeriod()} />
-            <label className="ml1">
-                {jt`Include ${<b>{getCurrentIntervalName(filter)}</b>}`}
-            </label>
-        </div>
-      )
+    const { filter, operator } = this.props;
+    const options = Object.entries(operator.options || {});
+    if (operator.length === 0) {
+      return null;
     }
-    return null;
+    return (
+      <div className="flex align-center">
+        { options.map(([name, option]) =>
+            <div key={name} className="flex align-center" onClick={() => this.toggleOptionValue(name)}>
+                <CheckBox checked={this.getOptionValue(name)} />
+                <label className="ml1">{this.getOptionName(name)}</label>
+            </div>
+          )
+        }
+      </div>
+    );
   }
 }

@@ -125,7 +125,7 @@ export type StringFilter       = ["starts-with"|"contains"|"does-not-contain"|"e
                                  ["starts-with"|"contains"|"does-not-contain"|"ends-with", ConcreteField, StringLiteral, StringFilterOptions];
 
 export type StringFilterOptions = {
-    "case-sensitive?"?: false
+    "case-sensitive"?: false
 };
 
 export type NullFilter         = ["is-null", ConcreteField];

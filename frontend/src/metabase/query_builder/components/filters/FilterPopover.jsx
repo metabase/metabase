@@ -6,7 +6,7 @@ import { t } from 'c-3po';
 import FieldList from "../FieldList.jsx";
 import OperatorSelector from "./OperatorSelector.jsx";
 import FilterOptions from "./FilterOptions";
-import DatePicker from "./pickers/DatePicker.jsx";
+import DatePicker, { getOperator } from "./pickers/DatePicker.jsx";
 import TimePicker from "./pickers/TimePicker.jsx";
 import NumberPicker from "./pickers/NumberPicker.jsx";
 import SelectPicker from "./pickers/SelectPicker.jsx";
@@ -19,6 +19,7 @@ import { isDate, isTime } from "metabase/lib/schema_metadata";
 import { formatField, singularize } from "metabase/lib/formatting";
 
 import cx from "classnames";
+import _ from "underscore";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { Filter, FieldFilter, ConcreteField } from "metabase/meta/types/Query";
@@ -119,8 +120,8 @@ export default class FilterPopover extends Component {
     _updateOperator(oldFilter: FieldFilter, operatorName: ?string): FieldFilter {
         const { query } = this.props;
         let { field } = Query.getFieldTarget(oldFilter[1], query.table());
-        let operator = field.operators_lookup[operatorName];
-        let oldOperator = field.operators_lookup[oldFilter[0]];
+        let operator = field.operator(operatorName);
+        let oldOperator = field.operator(oldFilter[0]);
 
         // update the operator
         // $FlowFixMe
@@ -133,6 +134,9 @@ export default class FilterPopover extends Component {
                 } else {
                     filter.push(undefined);
                 }
+            }
+            if (operator.optionsDefaults) {
+                filter.push(operator.optionsDefaults);
             }
             if (oldOperator) {
                 // copy over values of the same type
@@ -300,7 +304,17 @@ export default class FilterPopover extends Component {
                         </div>
                     }
                     <div className="FilterPopover-footer border-top flex align-center p2">
-                        <FilterOptions filter={filter} onFilterChange={this.setFilter} />
+                        <FilterOptions
+                          filter={filter}
+                          onFilterChange={this.setFilter}
+                          operator={
+                            isDate(field) ?
+                              // DatePicker uses a different set of operator objects
+                              getOperator(filter) :
+                              // Normal operators defined in schema_metadata
+                              field.operator(operator)
+                          }
+                        />
                         <button
                             data-ui-tag="add-filter"
                             className={cx("Button Button--purple ml-auto", { "disabled": !this.isValid() })}
