@@ -22,7 +22,7 @@ describe("Mode", () => {
         .mode();
 
     describe("forQuestion(question)", () => {
-        it("with structured query question", () => {
+        describe("with structured query question", () => {
             // testbed for generative testing? see http://leebyron.com/testcheck-js
 
             it("returns `segment` mode with raw data", () => {});
@@ -39,11 +39,11 @@ describe("Mode", () => {
             it("returns `default` mode with >=0 aggregations and >=3 breakouts", () => {});
             it("returns `default` mode with >=1 aggregations and >=1 breakouts when first neither date or category", () => {});
         });
-        it("with native query question", () => {
+        describe("with native query question", () => {
             it("returns `NativeMode` for empty query", () => {});
             it("returns `NativeMode` for query with query text", () => {});
         });
-        it("with oddly constructed query", () => {
+        describe("with oddly constructed query", () => {
             it("should throw an error", () => {
                 // this is not the actual behavior atm (it returns DefaultMode)
             });

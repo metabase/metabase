@@ -50,10 +50,6 @@
 
 (def ^:private ^:const ^String metabase-usage-url "https://xuq0fbkk0j.execute-api.us-east-1.amazonaws.com/prod")
 
-(def ^:private ^Integer anonymous-id
-  "Generate an anonymous id. Don't worry too much about hash collisions or localhost cases, etc.
-   The goal is to be able to get a rough sense for how many different hosts are throwing a specific error/event."
-  (hash (str (java.net.InetAddress/getLocalHost))))
 
 (defn- bin-micro-number
   "Return really small bin number. Assumes positive inputs."
@@ -374,7 +370,7 @@
   "generate a map of the usage stats for this instance"
   []
   (merge (instance-settings)
-         {:uuid anonymous-id, :timestamp (Date.)}
+         {:uuid (public-settings/site-uuid) :timestamp (Date.)}
          {:stats {:cache      (cache-metrics)
                   :collection (collection-metrics)
                   :dashboard  (dashboard-metrics)

@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
 import ModalContent from "metabase/components/ModalContent";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { getQuestion } from "metabase/query_builder/selectors";
+import { getQuestion, getVisualizationSettings } from "metabase/query_builder/selectors";
 import _ from "underscore";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
 import { fetchPulseFormInput, fetchUsers } from "metabase/pulse/actions";
@@ -28,6 +28,7 @@ import MetabaseCookies from "metabase/lib/cookies";
 import cxs from 'cxs';
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import { apiUpdateQuestion } from "metabase/query_builder/actions";
 
 const getScheduleFromChannel = (channel) =>
     _.pick(channel, "schedule_day", "schedule_frame", "schedule_hour", "schedule_type")
@@ -37,12 +38,13 @@ const classes = cxs ({
 
 @connect((state) => ({
     question: getQuestion(state),
+    visualizationSettings: getVisualizationSettings(state),
     isAdmin: getUserIsAdmin(state),
     user: getUser(state),
     hasLoadedChannelInfo: hasLoadedChannelInfoSelector(state),
     hasConfiguredAnyChannel: hasConfiguredAnyChannelSelector(state),
     hasConfiguredEmailChannel: hasConfiguredEmailChannelSelector(state)
-}), { createAlert, fetchPulseFormInput })
+}), { createAlert, fetchPulseFormInput, apiUpdateQuestion })
 export class CreateAlertModalContent extends Component {
     props: {
         onCancel: () => void,
@@ -52,11 +54,11 @@ export class CreateAlertModalContent extends Component {
     constructor(props) {
         super()
 
-        const { question, user } = props
+        const { question, user, visualizationSettings } = props
 
         this.state = {
             hasSeenEducationalScreen: MetabaseCookies.getHasSeenAlertSplash(),
-            alert: getDefaultAlert(question, user)
+            alert: getDefaultAlert(question, user, visualizationSettings)
         }
     }
 
@@ -83,10 +85,14 @@ export class CreateAlertModalContent extends Component {
     onAlertChange = (alert) => this.setState({ alert })
 
     onCreateAlert = async () => {
-        const { createAlert, onAlertCreated } = this.props
+        const { createAlert, apiUpdateQuestion, onAlertCreated } = this.props
         const { alert } = this.state
 
+        // Resave the question here (for persisting the x/y axes; see #6749)
+        await apiUpdateQuestion()
+
         await createAlert(alert)
+
         // should close be triggered manually like this
         // but the creation notification would appear automatically ...?
         // OR should the modal visibility be part of QB redux state
@@ -102,6 +108,7 @@ export class CreateAlertModalContent extends Component {
     render() {
         const {
             question,
+            visualizationSettings,
             onCancel,
             hasConfiguredAnyChannel,
             hasConfiguredEmailChannel,
@@ -140,7 +147,7 @@ export class CreateAlertModalContent extends Component {
                 <div className="PulseEdit ml-auto mr-auto mb4" style={{maxWidth: "550px"}}>
                     <AlertModalTitle text={t`Let's set up your alert`} />
                     <AlertEditForm
-                        alertType={question.alertType()}
+                        alertType={question.alertType(visualizationSettings)}
                         alert={alert}
                         onAlertChange={this.onAlertChange}
                     />
@@ -199,7 +206,8 @@ export class AlertEducationalScreen extends Component {
     user: getUser(state),
     isAdmin: getUserIsAdmin(state),
     question: getQuestion(state),
-}), { updateAlert, deleteAlert })
+    visualizationSettings: getVisualizationSettings(state)
+}), { apiUpdateQuestion, updateAlert, deleteAlert })
 export class UpdateAlertModalContent extends Component {
     props: {
         alert: any,
@@ -220,8 +228,12 @@ export class UpdateAlertModalContent extends Component {
     onAlertChange = (modifiedAlert) => this.setState({ modifiedAlert })
 
     onUpdateAlert = async () => {
-        const { updateAlert, onAlertUpdated } = this.props
+        const { apiUpdateQuestion, updateAlert, onAlertUpdated } = this.props
         const { modifiedAlert } = this.state
+
+        // Resave the question here (for persisting the x/y axes; see #6749)
+        await apiUpdateQuestion()
+
         await updateAlert(modifiedAlert)
         onAlertUpdated()
     }
@@ -233,7 +245,7 @@ export class UpdateAlertModalContent extends Component {
     }
 
     render() {
-        const { onCancel, question, alert, user, isAdmin } = this.props
+        const { onCancel, question, visualizationSettings, alert, user, isAdmin } = this.props
         const { modifiedAlert } = this.state
 
         const isCurrentUser = alert.creator.id === user.id
@@ -246,7 +258,7 @@ export class UpdateAlertModalContent extends Component {
                 <div className="PulseEdit ml-auto mr-auto mb4" style={{maxWidth: "550px"}}>
                     <AlertModalTitle text={title} />
                     <AlertEditForm
-                        alertType={question.alertType()}
+                        alertType={question.alertType(visualizationSettings)}
                         alert={modifiedAlert}
                         onAlertChange={this.onAlertChange}
                     />
@@ -494,12 +506,27 @@ export class AlertEditChannels extends Component {
 }
 
 // TODO: Not sure how to translate text with formatting properly
-export const RawDataAlertTip = () =>
-    <div className="border-row-divider p3 flex align-center">
-        <div className="circle flex align-center justify-center bg-grey-0 p2 mr2 text-grey-3">
-            <Icon name="lightbulb" size="20" />
-        </div>
-        <div>
-            {jt`${<strong>Tip:</strong>} This kind of alert is most useful when your saved question doesn’t ${<em>usually</em>} return any results, but you want to know when it does.`}
-        </div>
-    </div>
+@connect((state) => ({ question: getQuestion(state), visualizationSettings: getVisualizationSettings(state) }))
+export class RawDataAlertTip extends Component {
+    render() {
+        const display = this.props.question.display()
+        const vizSettings = this.props.visualizationSettings
+        const goalEnabled = vizSettings["graph.show_goal"]
+        const isLineAreaBar = display === "line" || display === "area" || display === "bar"
+        const isMultiSeries =
+            isLineAreaBar && vizSettings["graph.metrics"] && vizSettings["graph.metrics"].length > 1
+        const showMultiSeriesGoalAlert = goalEnabled && isMultiSeries
+
+        return (
+            <div className="border-row-divider p3 flex align-center">
+                <div className="circle flex align-center justify-center bg-grey-0 p2 mr2 text-grey-3">
+                    <Icon name="lightbulb" size="20" />
+                </div>
+                { showMultiSeriesGoalAlert ? <MultiSeriesAlertTip /> : <NormalAlertTip /> }
+            </div>
+        )
+    }
+}
+
+export const MultiSeriesAlertTip = () => <div>{jt`${<strong>Heads up:</strong>} Goal-based alerts aren't yet supported for charts with more than one line, so this alert will be sent whenever the chart has ${<em>results</em>}.`}</div>
+export const NormalAlertTip  = () => <div>{jt`${<strong>Tip:</strong>} This kind of alert is most useful when your saved question doesn’t ${<em>usually</em>} return any results, but you want to know when it does.`}</div>

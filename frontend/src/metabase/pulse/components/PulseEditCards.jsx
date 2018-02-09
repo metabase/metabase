@@ -38,10 +38,17 @@ export default class PulseEditCards extends Component {
         });
     }
 
+    trackPulseEvent = (eventName: string, eventValue: string) => {
+        MetabaseAnalytics.trackEvent(
+            (this.props.pulseId) ? "PulseEdit" : "PulseCreate",
+            eventName,
+            eventValue
+        );
+    }
+
     addCard(index, cardId) {
         this.setCard(index, { id: cardId })
-
-        MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "AddCard", index);
+        this.trackPulseEvent("AddCard", index);
     }
 
     removeCard(index) {
@@ -51,7 +58,7 @@ export default class PulseEditCards extends Component {
             cards: [...pulse.cards.slice(0, index), ...pulse.cards.slice(index + 1)]
         });
 
-        MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "RemoveCard", index);
+        this.trackPulseEvent("RemoveCard", index);
     }
 
     getNotices(card, cardPreview, index) {
@@ -61,7 +68,7 @@ export default class PulseEditCards extends Component {
         if (hasAttachment) {
             notices.push({
                 head: t`Attachment`,
-                body: <AttachmentWidget card={card} onChange={(card) => this.setCard(index, card)} />
+                body: <AttachmentWidget card={card} onChange={(card) => this.setCard(index, card)} trackPulseEvent={this.trackPulseEvent} />
             });
         }
         if (cardPreview) {
@@ -117,7 +124,7 @@ export default class PulseEditCards extends Component {
 
         return (
             <div className="py1">
-                <h2>Pick your data</h2>
+                <h2>{t`Pick your data`}</h2>
                 <p className="mt1 h4 text-bold text-grey-3">{t`Choose questions you'd like to send in this pulse`}.</p>
                 <ol className="my3">
                     {cards && pulseCards.map((card, index) =>
@@ -134,6 +141,7 @@ export default class PulseEditCards extends Component {
                                             onRemove={this.removeCard.bind(this, index)}
                                             fetchPulseCardPreview={this.props.fetchPulseCardPreview}
                                             attachmentsEnabled={this.props.attachmentsEnabled}
+                                            trackPulseEvent={this.trackPulseEvent}
                                         />
                                     :
                                         <CardPicker
@@ -155,7 +163,7 @@ export default class PulseEditCards extends Component {
 
 const ATTACHMENT_TYPES = ["csv", "xls"];
 
-const AttachmentWidget = ({ card, onChange }) =>
+const AttachmentWidget = ({ card, onChange, trackPulseEvent }) =>
     <div>
         { ATTACHMENT_TYPES.map(type =>
             <span
@@ -166,6 +174,8 @@ const AttachmentWidget = ({ card, onChange }) =>
                     for (const attachmentType of ATTACHMENT_TYPES) {
                       newCard["include_" + attachmentType] = type === attachmentType;
                     }
+
+                    trackPulseEvent("AttachmentTypeChanged", type);
                     onChange(newCard)
                 }}
             >
@@ -176,5 +186,6 @@ const AttachmentWidget = ({ card, onChange }) =>
 
 AttachmentWidget.propTypes = {
     card: PropTypes.object.isRequired,
-    onChange: PropTypes.func.isRequired
+    onChange: PropTypes.func.isRequired,
+    trackPulseEvent: PropTypes.func.isRequired
 }

@@ -122,7 +122,7 @@ class CardXRay extends Component {
                             <div className="full">
                                 <div className="py1 px2" style={{ height: 320}}>
                                     <Visualization
-                                        series={[
+                                        rawSeries={[
                                             {
                                                 card: xray.features.model,
                                                 data: xray.features.series
@@ -148,7 +148,7 @@ class CardXRay extends Component {
                         <div className="full">
                             <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
                                 <Visualization
-                                    series={[
+                                    rawSeries={[
                                         {
                                             card: {
                                                 display: 'line',
@@ -179,7 +179,7 @@ class CardXRay extends Component {
                         <div className="full">
                             <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
                                 <Visualization
-                                    series={[
+                                    rawSeries={[
                                         {
                                             card: {
                                                 display: 'line',
