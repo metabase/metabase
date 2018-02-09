@@ -279,6 +279,7 @@ export default class GuiQueryEditor extends Component {
         const { databases, query, isShowingTutorial } = this.props;
         const tableMetadata = query.tableMetadata();
         const datasetQuery = query.datasetQuery();
+        const databaseId = datasetQuery && datasetQuery.database
         const sourceTableId = datasetQuery && datasetQuery.query && datasetQuery.query.source_table;
         const isInitiallyOpen = (!datasetQuery.database || !sourceTableId) && !isShowingTutorial;
 
@@ -287,8 +288,9 @@ export default class GuiQueryEditor extends Component {
                 <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
                 { this.props.features.data ?
                     <DatabaseSchemaAndTableDataSelector
-                        ref="dataSection"
                         databases={databases}
+                        selected={sourceTableId}
+                        selectedDatabaseId={databaseId}
                         selectedTableId={sourceTableId}
                         setDatabaseFn={this.props.setDatabaseFn}
                         setSourceTableFn={this.props.setSourceTableFn}

@@ -2,7 +2,7 @@
 
 Metabase provides an official Docker image via Dockerhub that can be used for deployments on any system that is running Docker.
 
-If you're trying to upgrade your Metabase version on Docker, check out these [upgrading instructions](./start.md#upgrading-metabase).
+If you're trying to upgrade your Metabase version on Docker, check out these [upgrading instructions](./start.html#upgrading-metabase).
 
 ### Launching Metabase on a new container
 
@@ -73,7 +73,7 @@ Keep in mind that Metabase will be connecting from within your docker container,
 
 ### Migrating from H2 to Postgres as the Metabase application database
 
-For general information, see instructions for [migrating from H2 to MySQL or Postgres](./start.md#migrating-from-using-the-h2-database-to-mysql-or-postgres).
+For general information, see instructions for [migrating from H2 to MySQL or Postgres](./start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres).
 
 To migrate an existing Metabase container from an H2 application database to another database container (e.g. Postgres, MySQL), there are a few considerations to keep in mind:
 
@@ -112,7 +112,7 @@ It's best to set your Java timezone to match the timezone you'd like all your re
 
 ### Additional custom settings
 
-While running Metabase on docker you can use any of the custom settings from [Customizing the Metabase Jetty Webserver](./start.md#customizing-the-metabase-jetty-webserver) by setting environment variables on your docker run command.
+While running Metabase on docker you can use any of the custom settings from [Customizing the Metabase Jetty Webserver](./start.html#customizing-the-metabase-jetty-webserver) by setting environment variables on your docker run command.
 
 In addition to the standard custom settings there are two docker specific environment variables `MUID` and `MGID` which are used to set the user and group IDs used by metabase when running in a docker container. These settings make it possible to match file permissions when files, such as the application database, are shared between the host and the container.
 
@@ -141,4 +141,4 @@ On some hosts Metabase can fail to start with an error message like:
     java.lang.OutOfMemoryError: Java heap space
 
 If that happens, you'll need to set a JVM option to manually configure the maximum amount of memory the JVM uses for the heap. Refer
-to [these instructions](./start.md#metabase-fails-to-start-due-to-heap-space-outofmemoryerrors) for details on how to do that.
+to [these instructions](./start.html#metabase-fails-to-start-due-to-heap-space-outofmemoryerrors) for details on how to do that.

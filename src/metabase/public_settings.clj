@@ -11,8 +11,7 @@
             [metabase.util.password :as password]
             [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db])
-  (:import java.util.Locale
-           java.util.TimeZone))
+  (:import [java.util Locale TimeZone UUID]))
 
 (defsetting check-for-updates
   (tru "Identify when new versions of Metabase are available.")
@@ -27,6 +26,20 @@
 (defsetting site-name
   (tru "The name used for this instance of Metabase.")
   :default "Metabase")
+
+(defsetting site-uuid
+  ;; Don't i18n this docstring because it's not user-facing! :)
+  "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
+  its magic getter. Nice!"
+  :internal? true
+  :setter    (fn [& _]
+               (throw (UnsupportedOperationException. "site-uuid is automatically generated. Don't try to change it!")))
+  ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
+  :getter    (fn []
+               (or (setting/get-string :site-uuid)
+                   (let [value (str (UUID/randomUUID))]
+                     (setting/set-string! :site-uuid value)
+                     value))))
 
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's not protocol when it comes in
