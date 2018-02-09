@@ -133,4 +133,4 @@ msgstr "Laden {0}..."
 #. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 #: src/metabase/util.clj
 msgid "Metabase"
-msgstr "Metabaes"
+msgstr "Metabase"
