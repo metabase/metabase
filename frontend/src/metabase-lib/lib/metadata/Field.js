@@ -197,14 +197,4 @@ export default class Field extends Base {
         }
         return null;
     }
-
-    hasFieldValues() {
-      if (this.values && this.values.length > 0) {
-        return "list";
-      } else if (this.searchField()) {
-        return "search";
-      } else {
-        return null;
-      }
-    }
 }

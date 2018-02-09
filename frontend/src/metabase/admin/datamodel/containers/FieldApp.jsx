@@ -41,6 +41,12 @@ import {
     discardFieldValues
 } from "../field";
 
+const HAS_FIELD_VALUES_OPTIONS = [
+  { name: "Disable", value: "none" },
+  { name: "List all values", value: "list" },
+  { name: "Allow searching for values", value: "search" },
+]
+
 const SelectClasses = 'h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold'
 
 const mapStateToProps = (state, props) => {
@@ -188,6 +194,19 @@ export default class FieldApp extends Component {
                                     idfields={idfields}
                                     selectSeparator={<SelectSeparator />}
                                 />
+                            </Section>
+
+                            <Section>
+                              <SectionHeader
+                                title={t`TODO: Field Values something-or-other`}
+                                description={t`TODO: Something something something`}
+                              />
+                              <Select
+                                triggerClasses={SelectClasses}
+                                value={_.findWhere(HAS_FIELD_VALUES_OPTIONS, { value: field.has_field_values })}
+                                onChange={(option) => this.onUpdateFieldProperties({ has_field_values: option.value })}
+                                options={HAS_FIELD_VALUES_OPTIONS}
+                              />
                             </Section>
 
                             <Section>

@@ -203,5 +203,3 @@ export class SpecialTypeAndTargetPicker extends Component {
         )
     }
 }
-
-

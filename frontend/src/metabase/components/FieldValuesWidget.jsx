@@ -44,7 +44,7 @@ export default class FieldValuesWidget extends Component {
   onInputChange = (value) => {
     const { field } = this.props;
 
-    if (field.hasFieldValues() === "search") {
+    if (field.has_field_values === "search") {
       this._search(value);
     }
 
@@ -133,12 +133,11 @@ export default class FieldValuesWidget extends Component {
   render() {
     const { value, onChange, field, multi, autoFocus, color } = this.props;
     const { loadingState } = this.state;
-    const hasFieldValues = field.hasFieldValues();
 
     let placeholder;
-    if (hasFieldValues === "list") {
+    if (field.has_field_values === "list") {
       placeholder = `Select a ${field.display_name}`;
-    } else if (hasFieldValues === "search") {
+    } else if (field.has_field_values === "search") {
       placeholder = `Search for a ${stripId(field.searchField().display_name)}`;
       if (field.isID()) {
         placeholder += ` or enter an ID`;
@@ -148,9 +147,9 @@ export default class FieldValuesWidget extends Component {
     }
 
     let options = [];
-    if (hasFieldValues === "list") {
+    if (field.has_field_values === "list" && field.values) {
       options = field.values;
-    } else if (hasFieldValues === "search" && loadingState === "LOADED") {
+    } else if (field.has_field_values === "search" && loadingState === "LOADED") {
       options = this.state.options;
     } else {
       options = [];
