@@ -1,5 +1,6 @@
 (ns metabase.driver.googleanalytics.query-processor
-  "The Query Processor is responsible for translating the Metabase Query Language into Google Analytics request format."
+  "The Query Processor is responsible for translating the Metabase Query Language into Google Analytics request format.
+  See https://developers.google.com/analytics/devguides/reporting/core/v3"
   (:require [clojure.string :as s]
             [clojure.tools.reader.edn :as edn]
             [medley.core :as m]
@@ -50,7 +51,7 @@
 (def ^:private ^{:arglists '([s])} escape-for-regex         (u/rpartial s/escape (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
 (def ^:private ^{:arglists '([s])} escape-for-filter-clause (u/rpartial s/escape (char-escape-map ",;\\")))
 
-(defn- ga-filter [& parts]
+(defn- ga-filter ^String [& parts]
   (escape-for-filter-clause (apply str parts)))
 
 
@@ -95,26 +96,31 @@
 ;;; ### filter
 
 ;; TODO: implement negate?
-(defn- parse-filter-subclause:filters [{:keys [filter-type field value], :as filter} & [negate?]]
-  (if negate? (throw (Exception. ":not is :not yet implemented")))
-  (when-not (instance? DateTimeField field)
-    (let [field (when field (->rvalue field))
-          value (when value (->rvalue value))]
-      (case filter-type
-        :contains    (ga-filter field "=@" value)
-        :starts-with (ga-filter field "=~^" (escape-for-regex value))
-        :ends-with   (ga-filter field "=~"  (escape-for-regex value) "$")
-        :=           (ga-filter field "==" value)
-        :!=          (ga-filter field "!=" value)
-        :>           (ga-filter field ">" value)
-        :<           (ga-filter field "<" value)
-        :>=          (ga-filter field ">=" value)
-        :<=          (ga-filter field "<=" value)
-        :between     (str (ga-filter field ">=" (->rvalue (:min-val filter)))
-                          ";"
-                          (ga-filter field "<=" (->rvalue (:max-val filter))))))))
+(defn- parse-filter-subclause:filters
+  (^String [filter-clause negate?]
+   ;; if optional arg `negate?` is truthy then prepend a `!` to negate the filter.
+   ;; See https://developers.google.com/analytics/devguides/reporting/core/v3/segments-feature-reference#not-operator
+   (str (when negate? "!") (parse-filter-subclause:filters filter-clause)))
 
-(defn- parse-filter-clause:filters [{:keys [compound-type subclause subclauses], :as clause}]
+  (^String [{:keys [filter-type field value case-sensitive?], :as filter-clause}]
+   (when-not (instance? DateTimeField field)
+     (let [field (when field (->rvalue field))
+           value (when value (->rvalue value))]
+       (case filter-type
+         :contains    (ga-filter field "=~" (if case-sensitive? "(?-i)" "(?i)")    (escape-for-regex value))
+         :starts-with (ga-filter field "=~" (if case-sensitive? "(?-i)" "(?i)") \^ (escape-for-regex value))
+         :ends-with   (ga-filter field "=~" (if case-sensitive? "(?-i)" "(?i)")    (escape-for-regex value) \$)
+         :=           (ga-filter field "==" value)
+         :!=          (ga-filter field "!=" value)
+         :>           (ga-filter field ">" value)
+         :<           (ga-filter field "<" value)
+         :>=          (ga-filter field ">=" value)
+         :<=          (ga-filter field "<=" value)
+         :between     (str (ga-filter field ">=" (->rvalue (:min-val filter-clause)))
+                           ";"
+                           (ga-filter field "<=" (->rvalue (:max-val filter-clause)))))))))
+
+(defn- parse-filter-clause:filters ^String [{:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
     :and (s/join ";" (remove nil? (map parse-filter-clause:filters subclauses)))
     :or  (s/join "," (remove nil? (map parse-filter-clause:filters subclauses)))
@@ -183,6 +189,7 @@
 (defn mbql->native
   "Transpile MBQL query into parameters required for a Google Analytics request."
   [{:keys [query], :as raw}]
+  (println "(u/pprint-to-str 'blue query):" (u/pprint-to-str 'blue query)) ; NOCOMMIT
   {:query (merge (handle-source-table    query)
                  (handle-breakout        query)
                  (handle-filter:interval query)
@@ -243,7 +250,7 @@
      :annotate mbql?}))
 
 
-;;; ------------------------------------------------------------ "transform-query" ------------------------------------------------------------
+;;; ----------------------------------------------- "transform-query" ------------------------------------------------
 
 ;;; metrics
 
@@ -281,7 +288,8 @@
     ;; if the top-level filter isn't compound check if it's built-in and return it if it is
     (when (built-in-segment? filter-clause)
       (second filter-clause))
-    ;; otherwise if it *is* compound return the first subclause that is built-in; if more than one is built-in throw exception
+    ;; otherwise if it *is* compound return the first subclause that is built-in; if more than one is built-in throw
+    ;; exception
     (when-let [[built-in-segment-name & more] (seq (for [subclause filter-clause
                                                          :when     (built-in-segment? subclause)]
                                                      (second subclause)))]
