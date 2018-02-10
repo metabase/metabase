@@ -417,18 +417,25 @@
 
 /* AGGREGATION LIST SECTION */
 
+/* .Aggregation-list {
+  max-width: 400px;
+} */
+
 .Aggregation-section-breakout {
   display: flex;
   white-space: nowrap;
   overflow-y: hidden;
   max-width: 400px;
-
 }
 
 .Aggregation-sectoin-breakout.Aggregation-sectoin-breakout--right {
     justify-content: flex-end;
 }
 /* FILTER BY SECTION */
+
+.Filter-section-breakout {
+  max-width: 400px;
+}
 
 .Filter-section-field,
 .Filter-section-operator {

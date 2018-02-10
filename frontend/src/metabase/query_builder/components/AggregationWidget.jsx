@@ -128,7 +128,6 @@ export default class AggregationWidget extends Component {
 
             return (
                 <div className={cx("Query-section Query-section-aggregation", { "selected": this.state.isOpen })}>
-                    <div>
                         <Clearable onClear={this.props.removeAggregation}>
                             <div id="Query-section-aggregation" onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
                                 <span className="View-section-aggregation QueryOption py1 mx1">
@@ -143,14 +142,15 @@ export default class AggregationWidget extends Component {
                             </div>
                         </Clearable>
                         {this.renderPopover()}
-                    </div>
                 </div>
             );
         } else if (addButton) {
             return (
                 <div className={cx("Query-section Query-section-aggregation")} onClick={this.open}>
+                  <div className="mx2">
                     {addButton}
                     {this.renderPopover()}
+                  </div>
                 </div>
             );
         } else {

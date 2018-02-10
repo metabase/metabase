@@ -217,9 +217,9 @@ export default class GuiQueryEditor extends Component {
                 }
             }
             return (
-            <div   className="Aggregation-section-breakout scroll-x scroll-show">
-              {aggregationList}
-            </div>
+              <div  className="Aggregation-section-breakout scroll-x scroll-show">
+                {aggregationList}
+               </div>
             )
         }
     }
@@ -268,9 +268,11 @@ export default class GuiQueryEditor extends Component {
         }
 
         return (
-            <div className={cx("Query-section Query-section-breakout scroll-x scroll-show", { disabled: breakoutList.length === 0 })}>
+        <div className="scroll-x scroll-show">
+            <div className={cx("Query-section Filter-section-breakout", { disabled: breakoutList.length === 0 })}>
                 {breakoutList}
             </div>
+          </div>
         );
     }
 
