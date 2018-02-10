@@ -189,7 +189,6 @@
 (defn mbql->native
   "Transpile MBQL query into parameters required for a Google Analytics request."
   [{:keys [query], :as raw}]
-  (println "(u/pprint-to-str 'blue query):" (u/pprint-to-str 'blue query)) ; NOCOMMIT
   {:query (merge (handle-source-table    query)
                  (handle-breakout        query)
                  (handle-filter:interval query)

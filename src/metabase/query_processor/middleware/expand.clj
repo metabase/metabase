@@ -4,6 +4,7 @@
   (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max + - / *])
   (:require [clojure.core :as core]
             [clojure.tools.logging :as log]
+            [metabase.driver :as driver]
             [metabase.query-processor
              [interface :as i]
              [util :as qputil]]
@@ -294,9 +295,13 @@
   "String search filter clauses: `contains`, `starts-with`, and `ends-with`. First shipped in `0.11.0` (before initial
   public release) but only supported case-sensitive searches. In `0.29.0` support for case-insensitive searches was
   added. For backwards-compatibility, and to avoid possible performance implications, case-sensitive is the default
-  option if no `options-maps` is specified."
+  option if no `options-maps` is specified for all drivers except GA. Whether we should default to case-sensitive can
+  be specified by the `IDriver` method `default-to-case-sensitive?`."
   ([filter-type f s]
-   (string-filter filter-type f s {:case-sensitive true}))
+   (string-filter filter-type f s {:case-sensitive (if i/*driver*
+                                                     (driver/default-to-case-sensitive? i/*driver*)
+                                                     ;; if *driver* isn't bound then just assume `true`
+                                                     true)}))
   ([filter-type f s options-map]
    (i/strict-map->StringFilter
     {:filter-type     filter-type
