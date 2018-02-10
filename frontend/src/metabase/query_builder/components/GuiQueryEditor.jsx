@@ -217,9 +217,9 @@ export default class GuiQueryEditor extends Component {
                 }
             }
             return (
-              <div  className="Aggregation-section-breakout scroll-x scroll-show">
-                {aggregationList}
-               </div>
+              <div className="Aggregation-section-breakout scroll-x scroll-show">
+                  {aggregationList}
+              </div>
             )
         }
     }
