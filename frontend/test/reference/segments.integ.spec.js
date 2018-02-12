@@ -4,7 +4,6 @@ import {
 } from "__support__/integrated_tests";
 
 import React from 'react';
-import { mount } from 'enzyme';
 
 import { CardApi, SegmentApi } from 'metabase/services'
 
@@ -52,7 +51,7 @@ describe("The Reference Section", () => {
                 it("Should show no segments in the list", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments");
-                mount(store.connectContainer(<SegmentListContainer />));
+                store.mountContainer(<SegmentListContainer />);
                 await store.waitForActions([FETCH_SEGMENTS])
             })
 
@@ -84,14 +83,14 @@ describe("The Reference Section", () => {
             it("Should show the segments in the list", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments");
-                mount(store.connectContainer(<SegmentListContainer />));
+                store.mountContainer(<SegmentListContainer />);
                 await store.waitForActions([FETCH_SEGMENTS])
             })
             // segment detail
             it("Should show the segment detail view for a specific id", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments/"+segmentIds[0]);
-                mount(store.connectContainer(<SegmentDetailContainer />));
+                store.mountContainer(<SegmentDetailContainer />);
                 await store.waitForActions([FETCH_SEGMENT_TABLE])
             })
 
@@ -99,14 +98,14 @@ describe("The Reference Section", () => {
             it("Should show the segment fields list", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments/"+segmentIds[0]+"/fields");
-                mount(store.connectContainer(<SegmentFieldListContainer />));
+                store.mountContainer(<SegmentFieldListContainer />);
                 await store.waitForActions([FETCH_SEGMENT_TABLE, FETCH_SEGMENT_FIELDS])
             })
             // segment detail
             it("Should show the segment field detail view for a specific id", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments/"+segmentIds[0]+"/fields/" + 1);
-                mount(store.connectContainer(<SegmentFieldDetailContainer />));
+                store.mountContainer(<SegmentFieldDetailContainer />);
                 await store.waitForActions([FETCH_SEGMENT_TABLE, FETCH_SEGMENT_FIELDS])
             })
 
@@ -114,14 +113,14 @@ describe("The Reference Section", () => {
             it("Should show no questions based on a new segment", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments/"+segmentIds[0]+'/questions');
-                mount(store.connectContainer(<SegmentQuestionsContainer />));
+                store.mountContainer(<SegmentQuestionsContainer />);
                 await store.waitForActions([FETCH_SEGMENT_TABLE, LOAD_ENTITIES])
             })
             // segment revisions
             it("Should show revisions", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments/"+segmentIds[0]+'/revisions');
-                mount(store.connectContainer(<SegmentRevisionsContainer />));
+                store.mountContainer(<SegmentRevisionsContainer />);
                 await store.waitForActions([FETCH_SEGMENT_TABLE, FETCH_SEGMENT_REVISIONS])
             })
 
@@ -136,7 +135,7 @@ describe("The Reference Section", () => {
 
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments/"+segmentIds[0]+'/questions');
-                mount(store.connectContainer(<SegmentQuestionsContainer />));
+                store.mountContainer(<SegmentQuestionsContainer />);
                 await store.waitForActions([FETCH_SEGMENT_TABLE, LOAD_ENTITIES])
             })
                       

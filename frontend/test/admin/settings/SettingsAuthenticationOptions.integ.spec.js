@@ -4,7 +4,6 @@ import {
 } from "__support__/integrated_tests";
 import { click } from "__support__/enzyme_utils"
 
-import { mount } from "enzyme";
 
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp"
 import SettingsAuthenticationOptions from "metabase/admin/settings/components/SettingsAuthenticationOptions"
@@ -23,7 +22,7 @@ describe('Admin Auth Options', () => {
 
         store.pushPath("/admin/settings");
 
-        const app = mount(store.getAppContainer())
+        const app = store.mountApp()
         await store.waitForActions([INITIALIZE_SETTINGS])
         const settingsWrapper = app.find(SettingsEditorApp)
         const authListItem = settingsWrapper.find('span[children="Authentication"]')

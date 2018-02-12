@@ -5,7 +5,6 @@ import {
 import { click } from "__support__/enzyme_utils";
 
 import React from 'react';
-import { mount } from "enzyme";
 
 import {
     INITIALIZE_QB, QUERY_COMPLETED, setQuerySourceTable,
@@ -31,7 +30,7 @@ describe("FieldPane", () => {
         store = await createTestStore()
 
         store.pushPath(Urls.plainQuestion());
-        queryBuilder = mount(store.connectContainer(<QueryBuilder />));
+        queryBuilder = store.mountContainer(<QueryBuilder />);
         await store.waitForActions([INITIALIZE_QB]);
     })
 

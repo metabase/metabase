@@ -10,7 +10,7 @@ import "./mocks";
 
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
-import { CardApi, DashboardApi, SessionApi } from "metabase/services";
+import { DashboardApi, SessionApi } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from 'metabase/reducers-main';
 import publicReducers from 'metabase/reducers-public';
@@ -23,6 +23,7 @@ import { getStore } from "metabase/store";
 import { createRoutes, Router, useRouterHistory } from "react-router";
 import _ from 'underscore';
 import chalk from "chalk";
+import { mount } from 'enzyme'
 
 // Importing isomorphic-fetch sets the global `fetch` and `Headers` objects that are used here
 import fetch from 'isomorphic-fetch';
@@ -53,6 +54,7 @@ global.jt = jt;
 
 // set the locale before loading anything else
 import { setLocalization } from "metabase/lib/i18n";
+
 if (window.MetabaseLocalization) {
     setLocalization(window.MetabaseLocalization)
 }
@@ -185,6 +187,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
             _allDispatchedActions: [],
             _latestDispatchedActions: [],
             _finalStoreInstance: null,
+            _enzymeWrapper: null,
 
             /**
              * Redux dispatch method middleware that records all dispatched actions
@@ -229,6 +232,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
                 if (allActionsAreTriggered()) {
                     // Short-circuit if all action types are already in the history of dispatched actions
                     store._latestDispatchedActions = getRemainingActions();
+                    if (store._enzymeWrapper) store._enzymeWrapper.update()
                     return Promise.resolve();
                 } else {
                     return new Promise((resolve, reject) => {
@@ -252,6 +256,9 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
                                 store._latestDispatchedActions = getRemainingActions();
                                 store._onActionDispatched = null;
                                 clearTimeout(timeoutID);
+                                // Enzyme wrapper doesn't know that the internal state of
+                                // React components has changed so this will trigger the update
+                                if (store._enzymeWrapper) store._enzymeWrapper.update()
                                 resolve()
                             }
                         };
@@ -295,33 +302,64 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
              * For testing an individual component that is rendered to the router context.
              * The component will receive the same router props as it would if it was part of the complete app component tree.
              *
-             * This is usually a lot faster than `getAppContainer` but doesn't work well with react-router links.
+             * This is usually a lot faster than `mountAppContainer` but doesn't work well with react-router links.
              */
-            connectContainer: (reactContainer) => {
+            mountContainer: (reactContainer) => {
                 store.warnIfStoreCreationNotComplete();
 
                 const routes = createRoutes(getRoutes(store._finalStoreInstance))
-                return store._connectWithStore(
-                    <Router
-                        routes={routes}
-                        history={history}
-                        render={(props) => React.cloneElement(reactContainer, props)}
-                    />
-                );
+                const enzymeWrapper = store._augmentEnzymeWrapper(mount(
+                    store._connectWithStore(
+                        <Router
+                            routes={routes}
+                            history={history}
+                            render={(props) => React.cloneElement(reactContainer, props)}
+                        />
+                    )
+                ));
+
+                store._enzymeWrapper = enzymeWrapper
+
+                return enzymeWrapper
             },
 
             /**
              * Renders the whole app tree.
              * Useful if you want to navigate between different sections of your app in your tests.
              */
-            getAppContainer: () => {
+            mountApp: () => {
                 store.warnIfStoreCreationNotComplete();
 
-                return store._connectWithStore(
-                    <Router history={history}>
-                        {getRoutes(store._finalStoreInstance)}
-                    </Router>
-                )
+                const enzymeWrapper = store._augmentEnzymeWrapper(mount(
+                    store._connectWithStore(
+                        <Router history={history}>
+                            {getRoutes(store._finalStoreInstance)}
+                        </Router>
+                    )
+                ))
+
+                store._enzymeWrapper = enzymeWrapper
+
+                return enzymeWrapper
+            },
+
+            _getChainedCallByNameObject: (getObject, augmenter) =>
+                (...props) => new Proxy(getObject(...props), {
+                    get: function(target, propKey, receiver) {
+                        return augmenter(getObject(...props))[propKey]
+                    }
+                }),
+
+            _augmentEnzymeWrapper: (enzymeWrapper) => {
+                const originalFind = enzymeWrapper.find.bind(enzymeWrapper)
+                const augmentedWrapper = Object.assign(enzymeWrapper, {
+                    find: store._getChainedCallByNameObject(
+                        (selector) => originalFind(selector),
+                        store._augmentEnzymeWrapper
+                    )
+                });
+
+                return augmentedWrapper
             },
 
             /** For having internally access to the store with all middlewares included **/
@@ -347,9 +385,8 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 // Commonly used question helpers that are temporarily here
 // TODO Atte Keinänen 6/27/17: Put all metabase-lib -related test helpers to one file
 export const createSavedQuestion = async (unsavedQuestion) => {
-    const savedCard = await CardApi.create(unsavedQuestion.card())
-    const savedQuestion = unsavedQuestion.setCard(savedCard);
-    savedQuestion._card = { ...savedQuestion._card, original_card_id: savedQuestion.id() }
+    const savedQuestion = await unsavedQuestion.apiCreate()
+    savedQuestion._card = { ...savedQuestion.card(), original_card_id: savedQuestion.id() }
     return savedQuestion
 }
 

@@ -10,7 +10,7 @@ import ExternalLink from "metabase/components/ExternalLink.jsx";
 
 import { isDate, isNumber, isCoordinate, isLatitude, isLongitude } from "metabase/lib/schema_metadata";
 import { isa, TYPE } from "metabase/lib/types";
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp,parseTime } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
@@ -191,6 +191,15 @@ export function formatTimeWithUnit(value: Value, unit: DatetimeUnit, options: Fo
     }
 }
 
+export function formatTimeValue(value: Value) {
+    let m = parseTime(value);
+    if (!m.isValid()){
+        return String(value);
+    } else {
+        return m.format("LT");
+    }
+}
+
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
 const EMAIL_WHITELIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
@@ -263,6 +272,8 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         return formatUrl(value, options);
     } else if (column && isa(column.special_type, TYPE.Email)) {
         return formatEmail(value, options);
+    } else if (column && isa(column.base_type, TYPE.Time)) {
+        return formatTimeValue(value);
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
     } else if (isDate(column) || moment.isDate(value) || moment.isMoment(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {

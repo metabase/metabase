@@ -7,7 +7,6 @@ import {
     click
 } from "__support__/enzyme_utils"
 
-import { mount } from "enzyme";
 import {
     CardApi,
     SegmentApi,
@@ -118,7 +117,7 @@ describe("xray integration tests", () => {
             const store = await createTestStore()
             store.pushPath(`/xray/table/1/approximate`);
 
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([FETCH_TABLE_XRAY], { timeout: 20000 })
 
             const tableXRay = app.find(TableXRay)
@@ -134,7 +133,7 @@ describe("xray integration tests", () => {
             // have anything real to compare with yet
             store.pushPath(`/xray/compare/tables/1/1/approximate`);
 
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([FETCH_SHARED_TYPE_COMPARISON_XRAY], { timeout: 20000 })
 
             const tableComparisonXray = app.find(TableLikeComparisonXRay)
@@ -149,7 +148,7 @@ describe("xray integration tests", () => {
             const store = await createTestStore()
             store.pushPath(`/xray/field/2/approximate`);
 
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([FETCH_FIELD_XRAY], { timeout: 20000 })
 
             const fieldXRay = app.find(FieldXray)
@@ -168,7 +167,7 @@ describe("xray integration tests", () => {
             const store = await createTestStore()
             store.pushPath(`/xray/compare/cards/${segmentQuestion.id()}/${segmentQuestion2.id()}/approximate`);
 
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([FETCH_SHARED_TYPE_COMPARISON_XRAY], { timeout: 20000 })
 
             const segmentTableComparisonXray = app.find(TableLikeComparisonXRay)
@@ -183,7 +182,7 @@ describe("xray integration tests", () => {
             const store = await createTestStore()
             store.pushPath(`/xray/segment/${segmentId}/approximate`);
 
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([FETCH_SEGMENT_XRAY], { timeout: 20000 })
 
             const segmentXRay = app.find(SegmentXRay)
@@ -201,7 +200,7 @@ describe("xray integration tests", () => {
             const store = await createTestStore()
             store.pushPath(`/xray/compare/segments/${segmentId}/${segmentId2}/approximate`);
 
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([FETCH_SHARED_TYPE_COMPARISON_XRAY], { timeout: 20000 })
 
             const segmentComparisonXray = app.find(TableLikeComparisonXRay)
@@ -214,7 +213,7 @@ describe("xray integration tests", () => {
             const store = await createTestStore()
             store.pushPath(`/xray/compare/segment/${segmentId}/table/1/approximate`);
 
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([FETCH_TWO_TYPES_COMPARISON_XRAY], { timeout: 20000 })
 
             const segmentTableComparisonXray = app.find(TableLikeComparisonXRay)
@@ -247,7 +246,7 @@ describe("xray integration tests", () => {
             const store = await createTestStore()
             store.pushPath(`/xray/compare/segment/${segmentId}/card/${segmentQuestion.id()}/approximate`);
 
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([FETCH_TWO_TYPES_COMPARISON_XRAY], { timeout: 20000 })
 
             const segmentTableComparisonXray = app.find(TableLikeComparisonXRay)
@@ -261,7 +260,7 @@ describe("xray integration tests", () => {
             const store = await createTestStore()
             store.pushPath(`/xray/table/1/approximate`);
 
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([FETCH_TABLE_XRAY], { timeout: 20000 })
 
             const tableXray = app.find(TableXRay)
@@ -290,7 +289,7 @@ describe("xray integration tests", () => {
             const store = await createTestStore()
             // make sure xrays are on and at the proper cost
             store.pushPath(Urls.question(timeBreakoutQuestion.id()))
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED])
             // NOTE Atte Keinänen: Not sure why we need this delay to get most of action widget actions to appear :/
@@ -318,7 +317,7 @@ describe("xray integration tests", () => {
         it("let you see segment xray for a question containing a segment", async () => {
             const store = await createTestStore()
             store.pushPath(Urls.question(segmentQuestion.id()))
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED])
 
@@ -345,7 +344,7 @@ describe("xray integration tests", () => {
 
             store.pushPath('/admin/settings/x_rays')
 
-            app = mount(store.getAppContainer())
+            app = store.mountApp()
 
             await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS], { timeout: 20000 })
 
@@ -389,7 +388,7 @@ describe("xray integration tests", () => {
             const store = await createTestStore()
 
             store.pushPath(Urls.question(segmentQuestion.id()))
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED])
             await delay(500);
@@ -406,7 +405,7 @@ describe("xray integration tests", () => {
 
             store.pushPath('/admin/settings/x_rays')
 
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
 
@@ -444,7 +443,7 @@ describe("xray integration tests", () => {
 
             store.pushPath('/reference/databases/1/tables/1')
 
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([END_LOADING])
 
@@ -463,7 +462,7 @@ describe("xray integration tests", () => {
             await SettingsApi.put({ key: 'enable-xrays', value: false })
             const store = await createTestStore()
 
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             store.pushPath('/reference/databases/1/tables/1')
 

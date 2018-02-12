@@ -2,7 +2,7 @@ import React from "react";
 import renderer from "react-test-renderer";
 import moment from "moment";
 import mockDate from "mockdate";
-import { mount } from "enzyme";
+import { mount } from 'enzyme';
 
 import Calendar from "../../src/metabase/components/Calendar";
 
@@ -21,6 +21,7 @@ describe("Calendar", () => {
     });
 
     it("should switch months correctly", () => {
+        mockDate.set('2018-01-12T12:00:00Z', 0);
         const calendar = mount(
             <Calendar selected={moment("2018-01-01")} onChange={() => {}}/>
         );

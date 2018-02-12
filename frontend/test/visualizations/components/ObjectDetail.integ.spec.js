@@ -9,7 +9,6 @@ import {
     dispatchBrowserEvent
 } from "__support__/enzyme_utils"
 
-import { mount } from 'enzyme'
 import { delay } from 'metabase/lib/promise'
 
 import {
@@ -40,7 +39,7 @@ describe('ObjectDetail', () => {
 
             store.pushPath(savedQuestion.getUrl());
 
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
             await delay(100); // Trying to address random CI failures with a small delay

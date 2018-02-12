@@ -6,7 +6,6 @@ import {
 import { click } from "__support__/enzyme_utils"
 
 import React from 'react';
-import { mount } from "enzyme";
 import {
     orders_past_300_days_segment,
     unsavedOrderCountQuestion,
@@ -54,7 +53,7 @@ describe("HomepageApp", () => {
             const store = await createTestStore()
 
             store.pushPath("/");
-            const homepageApp = mount(store.connectContainer(<HomepageApp />));
+            const homepageApp = store.mountContainer(<HomepageApp />);
             await store.waitForActions([FETCH_ACTIVITY])
 
             const activityFeed = homepageApp.find(Activity);
@@ -82,7 +81,7 @@ describe("HomepageApp", () => {
             store.pushPath("/");
 
             // In this test we have to render the whole app in order to get links work properly
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
             await store.waitForActions([FETCH_ACTIVITY])
             const homepageApp = app.find(HomepageApp);
 

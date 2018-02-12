@@ -4,7 +4,6 @@ import {
 } from "__support__/integrated_tests";
 
 import React from 'react';
-import { mount } from 'enzyme';
 
 import { CardApi, MetricApi } from 'metabase/services'
 
@@ -48,7 +47,7 @@ describe("The Reference Section", () => {
             it("Should show no metrics in the list", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/metrics");
-                mount(store.connectContainer(<MetricListContainer />));
+                store.mountContainer(<MetricListContainer />);
                 await store.waitForActions([FETCH_METRICS])
             })
 
@@ -78,28 +77,28 @@ describe("The Reference Section", () => {
             it("Should show no metrics in the list", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/metrics");
-                mount(store.connectContainer(<MetricListContainer />));
+                store.mountContainer(<MetricListContainer />);
                 await store.waitForActions([FETCH_METRICS])
             })
             // metric detail
             it("Should show the metric detail view for a specific id", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/metrics/"+metricIds[0]);
-                mount(store.connectContainer(<MetricDetailContainer />));
+                store.mountContainer(<MetricDetailContainer />);
                 await store.waitForActions([FETCH_METRIC_TABLE, FETCH_GUIDE])
             })
             // metrics questions 
             it("Should show no questions based on a new metric", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/metrics/"+metricIds[0]+'/questions');
-                mount(store.connectContainer(<MetricQuestionsContainer />));
+                store.mountContainer(<MetricQuestionsContainer />);
                 await store.waitForActions([FETCH_METRICS, FETCH_METRIC_TABLE])
             })
             // metrics revisions
             it("Should show revisions", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/metrics/"+metricIds[0]+'/revisions');
-                mount(store.connectContainer(<MetricRevisionsContainer />));
+                store.mountContainer(<MetricRevisionsContainer />);
                 await store.waitForActions([FETCH_METRICS, FETCH_METRIC_REVISIONS])
             })
 
@@ -112,7 +111,7 @@ describe("The Reference Section", () => {
                         const store = await createTestStore()
 
                         store.pushPath("/reference/metrics/"+metricIds[0]+'/questions');
-                        mount(store.connectContainer(<MetricQuestionsContainer />));
+                        store.mountContainer(<MetricQuestionsContainer />);
                         await store.waitForActions([FETCH_METRICS, FETCH_METRIC_TABLE])
                     } finally {
                         // even if the code above results in an exception, try to delete the question

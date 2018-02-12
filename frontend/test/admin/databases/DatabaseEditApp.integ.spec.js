@@ -4,7 +4,6 @@ import {
 } from "__support__/integrated_tests";
 
 import React from "react";
-import { mount } from "enzyme";
 import {
     INITIALIZE_DATABASE,
     RESCAN_DATABASE_FIELDS,
@@ -38,7 +37,7 @@ describe("DatabaseEditApp", () => {
         it("shows the connection settings for sample dataset correctly", async () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp/>));
+            const dbEditApp = store.mountContainer(<DatabaseEditApp/>);
             await store.waitForActions([INITIALIZE_DATABASE])
 
             const editForm = dbEditApp.find(DatabaseEditForms)
@@ -53,7 +52,7 @@ describe("DatabaseEditApp", () => {
         it("lets you modify the connection settings", async () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
+            const dbEditApp = store.mountContainer(<DatabaseEditApp />);
             await store.waitForActions([INITIALIZE_DATABASE])
 
             const editForm = dbEditApp.find(DatabaseEditForms)
@@ -85,7 +84,7 @@ describe("DatabaseEditApp", () => {
 
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp/>));
+            const dbEditApp = store.mountContainer(<DatabaseEditApp/>);
             await store.waitForActions([INITIALIZE_DATABASE, MIGRATE_TO_NEW_SCHEDULING_SETTINGS])
 
             const editForm = dbEditApp.find(DatabaseEditForms)
@@ -115,7 +114,7 @@ describe("DatabaseEditApp", () => {
             // Start the actual interaction test
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp/>));
+            const dbEditApp = store.mountContainer(<DatabaseEditApp/>);
             await store.waitForActions([INITIALIZE_DATABASE, MIGRATE_TO_NEW_SCHEDULING_SETTINGS])
 
             const editForm = dbEditApp.find(DatabaseEditForms)
@@ -157,7 +156,7 @@ describe("DatabaseEditApp", () => {
         it("shows the initial scheduling settings correctly", async () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
+            const dbEditApp = store.mountContainer(<DatabaseEditApp />);
             await store.waitForActions([INITIALIZE_DATABASE])
 
             const editForm = dbEditApp.find(DatabaseEditForms)
@@ -180,7 +179,7 @@ describe("DatabaseEditApp", () => {
             const store = await createTestStore()
 
             store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
+            const dbEditApp = store.mountContainer(<DatabaseEditApp />);
             await store.waitForActions([INITIALIZE_DATABASE])
 
             click(dbEditApp.find(Tab).last());
@@ -202,7 +201,7 @@ describe("DatabaseEditApp", () => {
         it("lets you change the table change frequency to Never", async () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
+            const dbEditApp = store.mountContainer(<DatabaseEditApp />);
             await store.waitForActions([INITIALIZE_DATABASE])
 
             click(dbEditApp.find(Tab).last())
@@ -225,7 +224,7 @@ describe("DatabaseEditApp", () => {
         it("shows the modified scheduling settings correctly", async () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
+            const dbEditApp = store.mountContainer(<DatabaseEditApp />);
             await store.waitForActions([INITIALIZE_DATABASE])
 
             click(dbEditApp.find(Tab).last())
@@ -260,7 +259,7 @@ describe("DatabaseEditApp", () => {
         it("lets you trigger the manual database schema sync", async () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
+            const dbEditApp = store.mountContainer(<DatabaseEditApp />);
             await store.waitForActions([INITIALIZE_DATABASE])
 
             clickButton(dbEditApp.find(".Button--syncDbSchema"))
@@ -271,7 +270,7 @@ describe("DatabaseEditApp", () => {
         it("lets you trigger the manual rescan of field values", async () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
+            const dbEditApp = store.mountContainer(<DatabaseEditApp />);
             await store.waitForActions([INITIALIZE_DATABASE])
 
             clickButton(dbEditApp.find(".Button--rescanFieldValues"))
@@ -285,7 +284,7 @@ describe("DatabaseEditApp", () => {
             MetabaseApi.db_discard_values = jest.fn();
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
+            const dbEditApp = store.mountContainer(<DatabaseEditApp />);
             await store.waitForActions([INITIALIZE_DATABASE])
 
             click(dbEditApp.find(".Button--discardSavedFieldValues"))
@@ -301,7 +300,7 @@ describe("DatabaseEditApp", () => {
 
             // const store = await createTestStore()
             // store.pushPath("/admin/databases/1");
-            // const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
+            // const dbEditApp = store.mountContainer(<DatabaseEditApp />);
             // await store.waitForActions([INITIALIZE_DATABASE])
             //
             // try {

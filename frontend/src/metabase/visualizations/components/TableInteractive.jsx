@@ -16,6 +16,8 @@ import _ from "underscore";
 import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
+
+// $FlowFixMe: had to ignore react-virtualized in flow, probably due to different version
 import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 
@@ -154,7 +156,7 @@ export default class TableInteractive extends Component {
                 )}
             </div>
         , this._div, () => {
-          const contentWidths = [...this._div.getElementsByClassName("fake-column")].map(columnElement =>
+          const contentWidths = [].map.call(this._div.getElementsByClassName("fake-column"), columnElement =>
               columnElement.offsetWidth
           );
 
@@ -268,7 +270,8 @@ export default class TableInteractive extends Component {
         const isSortable = isClickable && column.source;
         const isRightAligned = isColumnRightAligned(column);
 
-        const isSorted = sort && sort[0] && sort[0][0] === column.id;
+        // the column id is in `["field-id", fieldId]` format
+        const isSorted = sort && sort[0] && sort[0][0] && sort[0][0][1] === column.id;
         const isAscending = sort && sort[0] && sort[0][1] === "ascending";
 
         return (

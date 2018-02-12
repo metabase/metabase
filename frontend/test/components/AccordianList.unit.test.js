@@ -1,5 +1,5 @@
 import React from "react";
-import { mount } from "enzyme";
+import { mount } from 'enzyme';
 
 import AccordianList from "metabase/components/AccordianList";
 import ListSearchField from "metabase/components/ListSearchField";

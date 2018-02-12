@@ -1,6 +1,6 @@
 import React from 'react'
 import Logs from '../../src/metabase/components/Logs'
-import { mount } from 'enzyme'
+import { mount } from 'enzyme';
 
 import { UtilApi } from 'metabase/services'
 

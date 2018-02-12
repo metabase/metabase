@@ -138,7 +138,6 @@ import {
     click
 } from "__support__/enzyme_utils"
 
-import { mount } from "enzyme"
 
 import { FETCH_DATABASES } from "metabase/redux/metadata";
 import { INITIALIZE_QB } from "metabase/query_builder/actions";
@@ -160,7 +159,7 @@ describe("Query builder", () => {
         store.pushPath('/question')
 
         // Get React container for the whole app and mount it using Enzyme
-        const app = mount(store.getAppContainer())
+        const app = store.mountApp()
 
         // Usually you want to wait until the page has completely loaded, and our way to do that is to
         // wait until the completion of specified Redux actions. `waitForActions` is also useful for verifying that

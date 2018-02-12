@@ -48,7 +48,7 @@ However, in [Metabase version 0.25 we introduced nested queries](http://www.meta
 
 By default, Metabase attempts to make field names more readable by changing things like `somehorriblename` to `Some Horrible Name`. This does not work well for languages other than English, or for fields that have lots of abbreviations or codes in them. If you'd like to turn this setting off, you can do so from the Admin Panel under Settings > General > Friendly Table and Field Names.
 
-Note that even with this setting turned off, Metabase will replace underscores with spaces. To manually fix field or table names if they still look wrong, you can go to the Metadata section of the Admin Panel, select the database that contains the table or field you want to edit, select the table, and then edit the name(s) in the input boxes that appear.
+To manually fix field or table names if they still look wrong, you can go to the Metadata section of the Admin Panel, select the database that contains the table or field you want to edit, select the table, and then edit the name(s) in the input boxes that appear.
 
 ## Dashboards
 

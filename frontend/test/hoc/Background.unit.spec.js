@@ -1,7 +1,7 @@
 import React from 'react'
 import jsdom from 'jsdom'
-import { mount } from 'enzyme'
 import { withBackground } from 'metabase/hoc/Background'
+import { mount } from 'enzyme';
 
 describe('withBackground', () => {
     let wrapper

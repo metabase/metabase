@@ -1,5 +1,9 @@
 (ns metabase.driver.bigquery
-  (:require [clojure
+  (:require [clj-time
+             [coerce :as tcoerce]
+             [core :as time]
+             [format :as tformat]]
+            [clojure
              [set :as set]
              [string :as str]
              [walk :as walk]]
@@ -18,8 +22,7 @@
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.models
              [database :refer [Database]]
-             [field :as field]
-             [table :as table]]
+             [field :as field]]
             [metabase.query-processor.util :as qputil]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db])
@@ -27,8 +30,9 @@
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
            [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema
             TableList TableList$Tables TableReference TableRow TableSchema]
+           java.sql.Time
            [java.util Collections Date]
-           [metabase.query_processor.interface DateTimeValue Value]))
+           [metabase.query_processor.interface DateTimeValue TimeValue Value]))
 
 (defrecord BigQueryDriver []
   clojure.lang.Named
@@ -103,6 +107,7 @@
     "DATE"      :type/Date
     "DATETIME"  :type/DateTime
     "TIMESTAMP" :type/DateTime
+    "TIME"      :type/Time
     :type/*))
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
@@ -148,6 +153,19 @@
                      (.getDSTSavings default-timezone)
                      (.getRawOffset  default-timezone)))))
 
+(def ^:private bigquery-time-format (tformat/formatter "HH:mm:SS" time/utc))
+
+(defn- parse-bigquery-time [time-string]
+  (->> time-string
+       (tformat/parse bigquery-time-format)
+       tcoerce/to-long
+       Time.))
+
+(defn- unparse-bigquery-time [coercible-to-dt]
+  (->> coercible-to-dt
+       tcoerce/to-date-time
+       (tformat/unparse bigquery-time-format)))
+
 (def ^:private type->parser
   "Functions that should be used to coerce string values in responses to the appropriate type for their column."
   {"BOOLEAN"   #(Boolean/parseBoolean %)
@@ -157,7 +175,8 @@
    "STRING"    identity
    "DATE"      parse-timestamp-str
    "DATETIME"  parse-timestamp-str
-   "TIMESTAMP" parse-timestamp-str})
+   "TIMESTAMP" parse-timestamp-str
+   "TIME"      parse-bigquery-time})
 
 (defn- post-process-native
   ([^QueryResponse response]
@@ -300,7 +319,6 @@
                   (update results :columns (partial map keyword)))]
     (assoc results :annotate? mbql?)))
 
-
 ;; These provide implementations of `->honeysql` that prevents HoneySQL from converting forms to prepared
 ;; statement parameters (`?`)
 (defmethod sqlqp/->honeysql [BigQueryDriver String]
@@ -316,6 +334,12 @@
   [_ date]
   (hsql/call :timestamp (hx/literal (u/date->iso-8601 date))))
 
+(defmethod sqlqp/->honeysql [BigQueryDriver TimeValue]
+  [driver {:keys [value]}]
+  (->> value
+       unparse-bigquery-time
+       (sqlqp/->honeysql driver)
+       hx/->time))
 
 (defn- field->alias [{:keys [^String schema-name, ^String field-name, ^String table-name, ^Integer index, field], :as this}]
   {:pre [(map? this) (or field

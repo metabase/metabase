@@ -7,7 +7,7 @@ import {
 } from "__support__/enzyme_utils"
 
 import React from 'react'
-import { mount, shallow } from 'enzyme'
+import { shallow } from 'enzyme'
 
 import ActionsWidget from '../../../src/metabase/query_builder/components/ActionsWidget';
 import Question from "metabase-lib/lib/Question";
@@ -68,7 +68,7 @@ describe('ActionsWidget', () => {
 
             const store = await createTestStore()
             store.pushPath(url)
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED, LOAD_TABLE_METADATA])
 

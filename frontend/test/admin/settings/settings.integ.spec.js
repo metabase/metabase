@@ -3,7 +3,6 @@ import {
     useSharedAdminLogin,
     createTestStore,
 } from "__support__/integrated_tests";
-import { mount } from "enzyme";
 import SettingInput from "metabase/admin/settings/components/widgets/SettingInput";
 import { INITIALIZE_SETTINGS, UPDATE_SETTING } from "metabase/admin/settings/settings";
 import { LOAD_CURRENT_USER } from "metabase/redux/user";
@@ -23,7 +22,7 @@ describe("admin/settings", () => {
             const store = await createTestStore();
 
             store.pushPath('/admin/settings/general');
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
 
@@ -41,7 +40,7 @@ describe("admin/settings", () => {
             const store = await createTestStore();
 
             store.pushPath('/admin/settings/general');
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
 

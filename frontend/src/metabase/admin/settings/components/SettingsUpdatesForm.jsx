@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from 'c-3po';
+import { t, jt } from 'c-3po';
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting.jsx";
@@ -73,14 +73,14 @@ export default class SettingsUpdatesForm extends Component {
         if (!versionInfo || MetabaseUtils.compareVersions(currentVersion, versionInfo.latest.version) >= 0) {
             return (
                 <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
-                    {t`You're running Metabase {this.removeVersionPrefixIfNeeded(currentVersion)} which is the latest and greatest!`}
+                    {jt`You're running Metabase ${this.removeVersionPrefixIfNeeded(currentVersion)} which is the latest and greatest!`}
                 </div>
             );
         } else {
             return (
                 <div>
                     <div className="p2 bg-green bordered rounded border-green flex flex-row align-center justify-between">
-                        <span className="text-white text-bold">{t`Metabase ${this.removeVersionPrefixIfNeeded(versionInfo.latest.version)} is available.  You're running {this.removeVersionPrefixIfNeeded(currentVersion)}`}</span>
+                        <span className="text-white text-bold">{jt`Metabase ${this.removeVersionPrefixIfNeeded(versionInfo.latest.version)} is available.  You're running ${this.removeVersionPrefixIfNeeded(currentVersion)}`}</span>
                         <a data-metabase-event={"Updates Settings; Update link clicked; "+versionInfo.latest.version} className="Button Button--white Button--medium borderless" href="http://www.metabase.com/start" target="_blank">{t`Update`}</a>
                     </div>
 

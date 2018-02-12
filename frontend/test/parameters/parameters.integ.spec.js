@@ -11,7 +11,6 @@ import {
     setInputValue
 } from "__support__/enzyme_utils"
 
-import { mount } from "enzyme";
 
 import { LOAD_CURRENT_USER } from "metabase/redux/user";
 import { INITIALIZE_SETTINGS, UPDATE_SETTING, updateSetting } from "metabase/admin/settings/settings";
@@ -21,7 +20,7 @@ import EmbeddingLegalese from "metabase/admin/settings/components/widgets/Embedd
 import {
     CREATE_PUBLIC_LINK,
     INITIALIZE_QB,
-    NOTIFY_CARD_CREATED,
+    API_CREATE_QUESTION,
     QUERY_COMPLETED,
     RUN_QUERY,
     SET_QUERY_MODE,
@@ -34,7 +33,7 @@ import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEdit
 import { delay } from "metabase/lib/promise";
 import TagEditorSidebar from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { getQuery } from "metabase/query_builder/selectors";
-import { ADD_PARAM_VALUES, FETCH_FIELD_VALUES } from "metabase/redux/metadata";
+import { ADD_PARAM_VALUES, FETCH_TABLE_METADATA } from "metabase/redux/metadata";
 import RunButton from "metabase/query_builder/components/RunButton";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import Parameters from "metabase/parameters/components/Parameters";
@@ -45,7 +44,10 @@ import SharingPane from "metabase/public/components/widgets/SharingPane";
 import { EmbedTitle } from "metabase/public/components/widgets/EmbedModalContent";
 import PreviewPane from "metabase/public/components/widgets/PreviewPane";
 import CopyWidget from "metabase/components/CopyWidget";
+import ListSearchField from "metabase/components/ListSearchField";
 import * as Urls from "metabase/lib/urls";
+import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
+import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
 
 async function updateQueryText(store, queryText) {
     // We don't have Ace editor so we have to trigger the Redux action manually
@@ -77,7 +79,7 @@ describe("parameters", () => {
 
             // load public sharing settings
             store.pushPath('/admin/settings/public_sharing');
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
 
@@ -100,7 +102,7 @@ describe("parameters", () => {
 
             // load public sharing settings
             store.pushPath('/admin/settings/embedding_in_other_applications');
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
 
@@ -112,6 +114,7 @@ describe("parameters", () => {
             expect(enabledToggleContainer.text()).toBe("Enabled");
         });
 
+        // Note: Test suite is sequential, so individual test cases can't be run individually
         it("should allow users to create parameterized SQL questions", async () => {
             // Don't render Ace editor in tests because it uses many DOM methods that aren't supported by jsdom
             // NOTE Atte Keinänen 8/9/17: Ace provides a MockRenderer class which could be used for pseudo-rendering and
@@ -123,7 +126,7 @@ describe("parameters", () => {
 
             // load public sharing settings
             store.pushPath(Urls.plainQuestion());
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
             await store.waitForActions([INITIALIZE_QB]);
 
             click(app.find(".Icon-sql"));
@@ -137,19 +140,32 @@ describe("parameters", () => {
             expect(fieldFilterVarType.text()).toBe("Field Filter");
             click(fieldFilterVarType);
 
+            // there's an async error here for some reason
             await store.waitForActions([UPDATE_TEMPLATE_TAG]);
 
             await delay(500);
 
-            setInputValue(tagEditorSidebar.find(".TestPopoverBody .AdminSelect").first(), "cat")
-            const categoryRow = tagEditorSidebar.find(".TestPopoverBody .ColumnarSelector-row").first();
-            expect(categoryRow.text()).toBe("ProductsCategory");
+            const productsRow = tagEditorSidebar.find(".TestPopoverBody .List-section").at(4).find("a");
+            expect(productsRow.text()).toBe("Products");
+            click(productsRow);
+
+            // Table fields should be loaded on-the-fly before showing the field selector
+            await store.waitForActions(FETCH_TABLE_METADATA)
+            // Needed due to state update after fetching metadata
+            await delay(100)
+
+            const searchField = tagEditorSidebar.find(".TestPopoverBody").find(ListSearchField).find("input").first()
+            setInputValue(searchField, "cat")
+
+            const categoryRow = tagEditorSidebar.find(".TestPopoverBody .List-section").at(2).find("a");
+            expect(categoryRow.text()).toBe("Category");
             click(categoryRow);
 
-            await store.waitForActions([UPDATE_TEMPLATE_TAG, FETCH_FIELD_VALUES])
+            await store.waitForActions([UPDATE_TEMPLATE_TAG])
 
             // close the template variable sidebar
             click(tagEditorSidebar.find(".Icon-close"));
+
 
             // test without the parameter
             click(app.find(RunButton));
@@ -171,14 +187,15 @@ describe("parameters", () => {
             setInputValue(app.find(SaveQuestionModal).find("input[name='name']"), "sql parametrized");
 
             clickButton(app.find(SaveQuestionModal).find("button").last());
-            await store.waitForActions([NOTIFY_CARD_CREATED]);
+            await store.waitForActions([API_CREATE_QUESTION]);
+            await delay(100)
 
             click(app.find('#QuestionSavedModal .Button[children="Not now"]'))
             // wait for modal to close :'(
             await delay(500);
 
             // open sharing panel
-            click(app.find(".Icon-share"));
+            click(app.find(QuestionEmbedWidget).find(EmbedWidget));
 
             // "Embed this question in an application"
             click(app.find(SharingPane).find("h3").last());
@@ -212,7 +229,7 @@ describe("parameters", () => {
 
             async function runSharedQuestionTests(store, questionUrl, apiRegex) {
                 store.pushPath(questionUrl);
-                const app = mount(store.getAppContainer())
+                const app = store.mountApp()
 
                 await store.waitForActions([ADD_PARAM_VALUES]);
 

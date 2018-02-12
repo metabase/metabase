@@ -12,7 +12,7 @@ export default class ChannelSetupModal extends Component {
         user: PropTypes.object.isRequired,
         entityNamePlural: PropTypes.string.isRequired,
         channels: PropTypes.array,
-        fullPageModal: PropTypes.boolean,
+        fullPageModal: PropTypes.bool,
     };
 
     static defaultProps = {
@@ -36,4 +36,3 @@ export default class ChannelSetupModal extends Component {
         );
     }
 }
-

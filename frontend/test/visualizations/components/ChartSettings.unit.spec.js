@@ -4,7 +4,7 @@ import ChartSettings from "metabase/visualizations/components/ChartSettings";
 
 import { TableCard } from "../__support__/visualizations";
 
-import { mount } from "enzyme";
+import { mount } from 'enzyme';
 import { click } from "__support__/enzyme_utils"
 
 function renderChartSettings(enabled = true) {

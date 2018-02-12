@@ -10,7 +10,6 @@ import {
 } from "__support__/enzyme_utils"
 
 import { fetchTableMetadata } from "metabase/redux/metadata";
-import { mount } from "enzyme";
 import { setIn } from "icepick";
 import { AlertApi, CardApi, PulseApi, UserApi } from "metabase/services";
 import Question from "metabase-lib/lib/Question";
@@ -24,7 +23,10 @@ import {
     AlertEducationalScreen,
     AlertSettingToggle,
     CreateAlertModalContent,
-    RawDataAlertTip, UpdateAlertModalContent
+    MultiSeriesAlertTip,
+    NormalAlertTip,
+    RawDataAlertTip,
+    UpdateAlertModalContent
 } from "metabase/query_builder/components/AlertModals";
 import Button from "metabase/components/Button";
 import {
@@ -54,7 +56,7 @@ const initQbWithAlertMenuItemClicked = async (question, { hasSeenAlertSplash = t
 
     const store = await createTestStore()
     store.pushPath(Urls.question(question.id()))
-    const app = mount(store.getAppContainer());
+    const app = store.mountApp();
 
     await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED, FETCH_ALERTS_FOR_QUESTION])
     await delay(500);
@@ -72,6 +74,7 @@ describe("Alerts", () => {
     let rawDataQuestion = null;
     let timeSeriesQuestion = null;
     let timeSeriesWithGoalQuestion = null;
+    let timeMultiSeriesWithGoalQuestion = null;
     let progressBarQuestion = null;
 
     beforeAll(async () => {
@@ -95,9 +98,13 @@ describe("Alerts", () => {
             Question.create({databaseId: 1, tableId: 1, metadata })
                 .query()
                 .addAggregation(["count"])
-                .addBreakout(["datetime-field", ["field-id", 1], "day"])
+                .addBreakout(["datetime-field", ["field-id", 1], "month"])
                 .question()
                 .setDisplay("line")
+                .setVisualizationSettings({
+                    "graph.dimensions": ["CREATED_AT"],
+                    "graph.metrics": ["count"]
+                })
                 .setDisplayName("Time series line")
         )
 
@@ -105,13 +112,34 @@ describe("Alerts", () => {
             Question.create({databaseId: 1, tableId: 1, metadata })
                 .query()
                 .addAggregation(["count"])
-                .addBreakout(["datetime-field", ["field-id", 1], "day"])
+                .addBreakout(["datetime-field", ["field-id", 1], "month"])
                 .question()
                 .setDisplay("line")
-                .setVisualizationSettings({ "graph.show_goal": true, "graph.goal_value": 10 })
+                .setVisualizationSettings({
+                    "graph.show_goal": true,
+                    "graph.goal_value": 10,
+                    "graph.dimensions": ["CREATED_AT"],
+                    "graph.metrics": ["count"]
+                })
                 .setDisplayName("Time series line with goal")
         )
 
+        timeMultiSeriesWithGoalQuestion = await createSavedQuestion(
+            Question.create({databaseId: 1, tableId: 1, metadata })
+                .query()
+                .addAggregation(["count"])
+                .addAggregation(["sum", ["field-id", 6]])
+                .addBreakout(["datetime-field", ["field-id", 1], "month"])
+                .question()
+                .setDisplay("line")
+                .setVisualizationSettings({
+                    "graph.show_goal": true,
+                    "graph.goal_value": 10,
+                    "graph.dimensions": ["CREATED_AT"],
+                    "graph.metrics": ["count", "sum"]
+                })
+                .setDisplayName("Time multiseries line with goal")
+        )
         progressBarQuestion = await createSavedQuestion(
             Question.create({databaseId: 1, tableId: 1, metadata })
                 .query()
@@ -127,6 +155,7 @@ describe("Alerts", () => {
         await CardApi.delete({cardId: rawDataQuestion.id()})
         await CardApi.delete({cardId: timeSeriesQuestion.id()})
         await CardApi.delete({cardId: timeSeriesWithGoalQuestion.id()})
+        await CardApi.delete({cardId: timeMultiSeriesWithGoalQuestion.id()})
         await CardApi.delete({cardId: progressBarQuestion.id()})
     })
 
@@ -137,7 +166,7 @@ describe("Alerts", () => {
 
                 const store = await createTestStore()
                 store.pushPath(Urls.question(rawDataQuestion.id()))
-                const app = mount(store.getAppContainer());
+                const app = store.mountApp();
 
                 await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED, FETCH_ALERTS_FOR_QUESTION])
 
@@ -176,7 +205,7 @@ describe("Alerts", () => {
             useSharedAdminLogin()
             const store = await createTestStore()
             store.pushPath(Urls.question(rawDataQuestion.id()))
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED, FETCH_ALERTS_FOR_QUESTION])
 
@@ -196,7 +225,7 @@ describe("Alerts", () => {
             useSharedNormalLogin()
             const store = await createTestStore()
             store.pushPath(Urls.question(rawDataQuestion.id()))
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED, FETCH_ALERTS_FOR_QUESTION])
 
@@ -260,6 +289,7 @@ describe("Alerts", () => {
             const alertModal = app.find(QueryHeader).find(".test-modal")
             const creationScreen = alertModal.find(CreateAlertModalContent)
             expect(creationScreen.find(RawDataAlertTip).length).toBe(1)
+            expect(creationScreen.find(NormalAlertTip).length).toBe(1)
             expect(creationScreen.find(AlertSettingToggle).length).toBe(0)
 
             clickButton(creationScreen.find(".Button.Button--primary"))
@@ -307,6 +337,22 @@ describe("Alerts", () => {
             expect(alert.alert_above_goal).toBe(false)
             expect(alert.alert_first_only).toBe(true)
         })
+
+        it("should fall back to raw data alert and show a warning for time-multiseries questions with a set goal", async () => {
+            useSharedNormalLogin()
+            const { app, store } = await initQbWithAlertMenuItemClicked(timeMultiSeriesWithGoalQuestion)
+
+            await store.waitForActions([FETCH_PULSE_FORM_INPUT])
+            const alertModal = app.find(QueryHeader).find(".test-modal")
+            const creationScreen = alertModal.find(CreateAlertModalContent)
+            // console.log(creationScreen.debug())
+            expect(creationScreen.find(RawDataAlertTip).length).toBe(1)
+            expect(creationScreen.find(MultiSeriesAlertTip).length).toBe(1)
+            expect(creationScreen.find(AlertSettingToggle).length).toBe(0)
+
+            clickButton(creationScreen.find(".Button.Button--primary"))
+            await store.waitForActions([CREATE_ALERT])
+        })
     })
 
     describe("alert list for a question", () => {
@@ -316,7 +362,6 @@ describe("Alerts", () => {
             // as a recipient.
             useSharedAdminLogin()
             const adminUser = await UserApi.current();
-            // TODO TODO TODO THIS ALERT HAZ A COMP-LETELY WRONG TYPE!
             await AlertApi.create(getDefaultAlert(timeSeriesWithGoalQuestion, adminUser))
 
             useSharedNormalLogin()

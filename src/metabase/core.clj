@@ -2,11 +2,8 @@
 (ns metabase.core
   (:gen-class)
   (:require [cheshire.core :as json]
-            [clojure
-             [pprint :as pprint]
-             [string :as s]]
+            [clojure.pprint :as pprint]
             [clojure.tools.logging :as log]
-            environ.core
             [medley.core :as m]
             [metabase
              [config :as config]
@@ -45,6 +42,8 @@
 
 ;;; CONFIG
 
+;; TODO - why not just put this in `metabase.middleware` with *all* of our other custom middleware. Also, what's the
+;; difference between this and `streaming-json-response`?
 (defn- streamed-json-response
   "Write `RESPONSE-SEQ` to a PipedOutputStream as JSON, returning the connected PipedInputStream"
   [response-seq options]
@@ -255,86 +254,9 @@
       (log/error "Metabase Initialization FAILED: " (.getMessage e))
       (System/exit 1))))
 
-;;; ---------------------------------------- Special Commands ----------------------------------------
-
-(defn ^:command migrate
-  "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."
-  [direction]
-  (mdb/migrate! (keyword direction)))
-
-(defn ^:command load-from-h2
-  "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars."
-  ([]
-   (load-from-h2 nil))
-  ([h2-connection-string]
-   (require 'metabase.cmd.load-from-h2)
-   (binding [mdb/*disable-data-migrations* true]
-     ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
-
-(defn ^:command profile
-  "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
-  []
-  ;; override env var that would normally make Jetty block forever
-  (intern 'environ.core 'env (assoc environ.core/env :mb-jetty-join "false"))
-  (u/profile "start-normally" (start-normally)))
-
-(defn ^:command reset-password
-  "Reset the password for a user with EMAIL-ADDRESS."
-  [email-address]
-  (require 'metabase.cmd.reset-password)
-  ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
-
-(defn ^:command help
-  "Show this help message listing valid Metabase commands."
-  []
-  (println "Valid commands are:")
-  (doseq [[symb varr] (sort (ns-interns 'metabase.core))
-          :when       (:command (meta varr))]
-    (println symb (s/join " " (:arglists (meta varr))))
-    (println "\t" (:doc (meta varr))))
-  (println "\nSome other commands you might find useful:\n")
-  (println "java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db")
-  (println "\tOpen an SQL shell for the Metabase H2 DB"))
-
-(defn ^:command version
-  "Print version information about Metabase and the current system."
-  []
-  (println "Metabase version:" config/mb-version-info)
-  (println "\nOS:"
-           (System/getProperty "os.name")
-           (System/getProperty "os.version")
-           (System/getProperty "os.arch"))
-  (println "\nJava version:"
-           (System/getProperty "java.vm.name")
-           (System/getProperty "java.version"))
-  (println "\nCountry:" (System/getProperty "user.country"))
-  (println "System timezone:" (System/getProperty "user.timezone"))
-  (println "Language:" (System/getProperty "user.language"))
-  (println "File encoding:" (System/getProperty "file.encoding")))
-
-(defn ^:command api-documentation
-  "Generate a markdown file containing documentation for all API endpoints. This is written to a file called `docs/api-documentation.md`."
-  []
-  (require 'metabase.cmd.endpoint-dox)
-  ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
-
-
-(defn- cmd->fn [command-name]
-  (or (when (seq command-name)
-        (when-let [varr (ns-resolve 'metabase.core (symbol command-name))]
-          (when (:command (meta varr))
-            @varr)))
-      (do (println (u/format-color 'red "Unrecognized command: %s" command-name))
-          (help)
-          (System/exit 1))))
-
-(defn- run-cmd [cmd & args]
-  (try (apply (cmd->fn cmd) args)
-       (catch Throwable e
-         (.printStackTrace e)
-         (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
-         (System/exit 1)))
-  (System/exit 0))
+(defn- run-cmd [cmd args]
+  (require 'metabase.cmd)
+  ((resolve 'metabase.cmd/run-cmd) cmd args))
 
 
 ;;; ---------------------------------------- App Entry Point ----------------------------------------
@@ -343,5 +265,5 @@
   "Launch Metabase in standalone mode."
   [& [cmd & args]]
   (if cmd
-    (apply run-cmd cmd args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
-    (start-normally)))       ; with no command line args just start Metabase normally
+    (run-cmd cmd args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
+    (start-normally))) ; with no command line args just start Metabase normally

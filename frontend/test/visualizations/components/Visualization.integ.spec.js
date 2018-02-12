@@ -9,7 +9,7 @@ import LegendItem from "metabase/visualizations/components/LegendItem";
 
 import { ScalarCard, LineCard, MultiseriesLineCard, TextCard } from "../__support__/visualizations";
 
-import { mount } from "enzyme";
+import { mount } from 'enzyme';
 import { click } from "__support__/enzyme_utils"
 
 function renderVisualization(props) {
@@ -30,22 +30,22 @@ describe("Visualization", () => {
     describe("not in dashboard", () => {
         describe("scalar card", () => {
             it("should not render title", () => {
-                let viz = renderVisualization({ series: [ScalarCard("Foo")] });
+                let viz = renderVisualization({ rawSeries: [ScalarCard("Foo")] });
                 expect(getScalarTitles(viz)).toEqual([]);
             });
         });
 
         describe("line card", () => {
             it("should not render card title", () => {
-                let viz = renderVisualization({ series: [LineCard("Foo")] });
+                let viz = renderVisualization({ rawSeries: [LineCard("Foo")] });
                 expect(getTitles(viz)).toEqual([]);
             });
             it("should not render setting title", () => {
-                let viz = renderVisualization({ series: [LineCard("Foo", { card: { visualization_settings: { "card.title": "Foo_title" }}})] });
+                let viz = renderVisualization({ rawSeries: [LineCard("Foo", { card: { visualization_settings: { "card.title": "Foo_title" }}})] });
                 expect(getTitles(viz)).toEqual([]);
             });
             it("should render breakout multiseries titles", () => {
-                let viz = renderVisualization({ series: [MultiseriesLineCard("Foo")] });
+                let viz = renderVisualization({ rawSeries: [MultiseriesLineCard("Foo")] });
                 expect(getTitles(viz)).toEqual([
                     ["Foo_cat1", "Foo_cat2"]
                 ]);
@@ -56,28 +56,28 @@ describe("Visualization", () => {
     describe("in dashboard", () => {
         describe("scalar card", () => {
             it("should render a scalar title, not a legend title", () => {
-                let viz = renderVisualization({ series: [ScalarCard("Foo")], showTitle: true, isDashboard: true });
+                let viz = renderVisualization({ rawSeries: [ScalarCard("Foo")], showTitle: true, isDashboard: true });
                 expect(getTitles(viz)).toEqual([]);
                 expect(getScalarTitles(viz).length).toEqual(1);
             });
             it("should render title when loading", () => {
-                let viz = renderVisualization({ series: [ScalarCard("Foo", { data: null })], showTitle: true });
+                let viz = renderVisualization({ rawSeries: [ScalarCard("Foo", { data: null })], showTitle: true });
                 expect(getTitles(viz)).toEqual([
                     ["Foo_name"]
                 ]);
             });
             it("should render title when there's an error", () => {
-                let viz = renderVisualization({ series: [ScalarCard("Foo")], showTitle: true, error: "oops" });
+                let viz = renderVisualization({ rawSeries: [ScalarCard("Foo")], showTitle: true, error: "oops" });
                 expect(getTitles(viz)).toEqual([
                     ["Foo_name"]
                 ]);
             });
             it("should not render scalar title", () => {
-                let viz = renderVisualization({ series: [ScalarCard("Foo")], showTitle: true });
+                let viz = renderVisualization({ rawSeries: [ScalarCard("Foo")], showTitle: true });
                 expect(getTitles(viz)).toEqual([]);
             });
             it("should render multi scalar titles", () => {
-                let viz = renderVisualization({ series: [ScalarCard("Foo"), ScalarCard("Bar")], showTitle: true });
+                let viz = renderVisualization({ rawSeries: [ScalarCard("Foo"), ScalarCard("Bar")], showTitle: true });
                 expect(getTitles(viz)).toEqual([
                     ["Foo_name", "Bar_name"]
                 ]);
@@ -86,26 +86,26 @@ describe("Visualization", () => {
 
         describe("line card", () => {
             it("should render normal title", () => {
-                let viz = renderVisualization({ series: [LineCard("Foo")], showTitle: true });
+                let viz = renderVisualization({ rawSeries: [LineCard("Foo")], showTitle: true });
                 expect(getTitles(viz)).toEqual([
                     ["Foo_name"]
                 ]);
             });
             it("should render normal title and breakout multiseries titles", () => {
-                let viz = renderVisualization({ series: [MultiseriesLineCard("Foo")], showTitle: true });
+                let viz = renderVisualization({ rawSeries: [MultiseriesLineCard("Foo")], showTitle: true });
                 expect(getTitles(viz)).toEqual([
                     ["Foo_name"],
                     ["Foo_cat1", "Foo_cat2"]
                 ]);
             });
             it("should render dashboard multiseries titles", () => {
-                let viz = renderVisualization({ series: [LineCard("Foo"), LineCard("Bar")], showTitle: true });
+                let viz = renderVisualization({ rawSeries: [LineCard("Foo"), LineCard("Bar")], showTitle: true });
                 expect(getTitles(viz)).toEqual([
                     ["Foo_name", "Bar_name"]
                 ]);
             });
             it("should render dashboard multiseries titles and chart setting title", () => {
-                let viz = renderVisualization({ series: [
+                let viz = renderVisualization({ rawSeries: [
                     LineCard("Foo", { card: { visualization_settings: { "card.title": "Foo_title" }}}),
                     LineCard("Bar")
                 ], showTitle: true });
@@ -115,7 +115,7 @@ describe("Visualization", () => {
                 ]);
             });
             it("should render multiple breakout multiseries titles (with both card titles and breakout values)", () => {
-                let viz = renderVisualization({ series: [MultiseriesLineCard("Foo"), MultiseriesLineCard("Bar")], showTitle: true });
+                let viz = renderVisualization({ rawSeries: [MultiseriesLineCard("Foo"), MultiseriesLineCard("Bar")], showTitle: true });
                 expect(getTitles(viz)).toEqual([
                     ["Foo_name: Foo_cat1", "Foo_name: Foo_cat2", "Bar_name: Bar_cat1", "Bar_name: Bar_cat2"]
                 ]);
@@ -125,7 +125,7 @@ describe("Visualization", () => {
         describe("text card", () => {
             describe("when not editing", () => {
                 it("should not render edit and preview actions", () => {
-                    let viz = renderVisualization({ series: [TextCard("Foo")], isEditing: false});
+                    let viz = renderVisualization({ rawSeries: [TextCard("Foo")], isEditing: false});
                     expect(viz.find(".Icon-editdocument").length).toEqual(0);
                     expect(viz.find(".Icon-eye").length).toEqual(0);
                 });
@@ -139,7 +139,7 @@ describe("Visualization", () => {
                             }
                         },
                     });
-                    let viz = renderVisualization({ series: [textCard], isEditing: false});
+                    let viz = renderVisualization({ rawSeries: [textCard], isEditing: false});
                     expect(viz.find("textarea").length).toEqual(0);
                     expect(viz.find(".text-card-markdown").find("h1").length).toEqual(1);
                     expect(viz.find(".text-card-markdown").text()).toEqual("Foobar");
@@ -148,19 +148,19 @@ describe("Visualization", () => {
 
             describe("when editing", () => {
                 it("should render edit and preview actions", () => {
-                    let viz = renderVisualization({ series: [TextCard("Foo")], isEditing: true});
+                    let viz = renderVisualization({ rawSeries: [TextCard("Foo")], isEditing: true});
                     expect(viz.find(".Icon-editdocument").length).toEqual(1);
                     expect(viz.find(".Icon-eye").length).toEqual(1);
                 });
 
                 it("should render in the edit mode", () => {
-                    let viz = renderVisualization({ series: [TextCard("Foo")], isEditing: true});
+                    let viz = renderVisualization({ rawSeries: [TextCard("Foo")], isEditing: true});
                     expect(viz.find("textarea").length).toEqual(1);
                 });
 
                 describe("toggling edit/preview modes", () => {
                     it("should switch between rendered markdown and textarea input", () => {
-                        let viz = renderVisualization({ series: [TextCard("Foo")], isEditing: true});
+                        let viz = renderVisualization({ rawSeries: [TextCard("Foo")], isEditing: true});
                         expect(viz.find("textarea").length).toEqual(1);
                         click(viz.find(".Icon-eye"));
                         expect(viz.find("textarea").length).toEqual(0);
