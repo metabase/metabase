@@ -19,7 +19,6 @@ import { isDate, isTime } from "metabase/lib/schema_metadata";
 import { formatField, singularize } from "metabase/lib/formatting";
 
 import cx from "classnames";
-import _ from "underscore";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { Filter, FieldFilter, ConcreteField } from "metabase/meta/types/Query";

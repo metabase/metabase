@@ -72,7 +72,7 @@ export default class FilterOptions extends Component {
   }
 
   render() {
-    const { filter, operator } = this.props;
+    const { operator } = this.props;
     const options = Object.entries(operator.options || {});
     if (operator.length === 0) {
       return null;
