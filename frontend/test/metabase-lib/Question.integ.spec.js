@@ -40,11 +40,11 @@ describe("Question", () => {
             });
 
             // Without a template tag the query should fail
-            const results1 = await question.getResults({ ignoreCache: true });
+            const results1 = await question.apiGetResults({ ignoreCache: true });
             expect(results1[0].status).toBe("failed");
 
             question._parameterValues = { [templateTagId]: "5" };
-            const results2 = await question.getResults({ ignoreCache: true });
+            const results2 = await question.apiGetResults({ ignoreCache: true });
             expect(results2[0]).toBeDefined();
             expect(results2[0].data.rows[0][0]).toEqual(116.35497575401975);
         });
@@ -72,12 +72,12 @@ describe("Question", () => {
                 }
             });
 
-            const results1 = await question.getResults({ ignoreCache: true });
+            const results1 = await question.apiGetResults({ ignoreCache: true });
             expect(results1[0]).toBeDefined();
             expect(results1[0].data.rows.length).toEqual(10000);
 
             question._parameterValues = { [templateTagId]: "5" };
-            const results2 = await question.getResults({ ignoreCache: true });
+            const results2 = await question.apiGetResults({ ignoreCache: true });
             expect(results2[0]).toBeDefined();
             expect(results2[0].data.rows[0][0]).toEqual(116.35497575401975);
         });

@@ -21,6 +21,7 @@ describe("Calendar", () => {
     });
 
     it("should switch months correctly", () => {
+        mockDate.set('2018-01-12T12:00:00Z', 0);
         const calendar = mount(
             <Calendar selected={moment("2018-01-01")} onChange={() => {}}/>
         );

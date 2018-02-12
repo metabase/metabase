@@ -47,7 +47,8 @@ import {
     getQuery,
     getQuestion,
     getOriginalQuestion,
-    getSettings
+    getSettings,
+    getRawSeries
 } from "../selectors";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
@@ -98,6 +99,7 @@ const mapStateToProps = (state, props) => {
 
         result:                    getQueryResult(state),
         results:                   getQueryResults(state),
+        rawSeries:                 getRawSeries(state),
 
         isDirty:                   getIsDirty(state),
         isNew:                     getIsNew(state),
