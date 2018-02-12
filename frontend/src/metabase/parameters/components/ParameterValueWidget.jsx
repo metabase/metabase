@@ -15,7 +15,7 @@ import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget.jsx";
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget.jsx";
 import CategoryWidget from "./widgets/CategoryWidget.jsx";
 import TextWidget from "./widgets/TextWidget.jsx";
-import SearchTextWidget from "./widgets/SearchTextWidget";
+import ParameterFieldWidget from "./widgets/ParameterFieldWidget";
 
 import S from "./ParameterWidget.css";
 
@@ -75,10 +75,10 @@ export default class ParameterValueWidget extends Component {
     static getWidget(parameter, values) {
         if (DATE_WIDGETS[parameter.type]) {
             return DATE_WIDGETS[parameter.type];
+        } else if (parameter.fields && parameter.fields.length === 1) {
+            return ParameterFieldWidget;
         } else if (values && values.length > 0) {
             return CategoryWidget;
-        } else if (parameter.fields && parameter.fields.length === 1) {
-            return SearchTextWidget;
         } else {
             return TextWidget;
         }

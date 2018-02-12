@@ -33,7 +33,7 @@ type State = {
     loadingState: LoadingState,
 };
 
-export default class SearchTextWidget extends Component<*, Props, State> {
+export default class ParameterFieldWidget extends Component<*, Props, State> {
     props: Props;
     state: State;
 

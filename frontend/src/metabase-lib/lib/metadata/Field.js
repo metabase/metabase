@@ -187,14 +187,24 @@ export default class Field extends Base {
     /**
      * Returns the field to be searched for this field, either the remapped field or itself
      */
-    searchField(): ?Field {
+    parameterSearchField(): ?Field {
         let remappedField = this.remappedField();
         if (remappedField && remappedField.isSearchable()) {
-          return remappedField;
+            return remappedField;
         }
         if (this.isSearchable()) {
-          return this;
+            return this;
         }
         return null;
+    }
+
+    filterSearchField(): ?Field {
+        if (this.isPK()) {
+            if (this.isSearchable()) {
+                return this;
+            }
+        } else {
+            return this.parameterSearchField();
+        }
     }
 }

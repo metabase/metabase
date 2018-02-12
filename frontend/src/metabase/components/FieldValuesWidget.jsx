@@ -41,10 +41,15 @@ export default class FieldValuesWidget extends Component {
     }
   }
 
+  isSearchable() {
+    const { field, searchField } = this.props;
+    return searchField && field.has_field_values === "search";
+  }
+
   onInputChange = (value) => {
     const { field } = this.props;
 
-    if (field.has_field_values === "search") {
+    if (this.isSearchable()) {
       this._search(value);
     }
 
@@ -52,8 +57,7 @@ export default class FieldValuesWidget extends Component {
   }
 
   search = async (value: String, cancelled: Promise<void>) => {
-      const { field, maxResults } = this.props;
-      const searchField = field.searchField()
+      const { field, searchField, maxResults } = this.props;
 
       if (!field || !searchField || !value) {
           return;
@@ -71,7 +75,7 @@ export default class FieldValuesWidget extends Component {
           { cancelled }
       );
 
-      if (results && field !== searchField) {
+      if (results && field.remappedField() === searchField) {
           // $FlowFixMe: addRemappings provided by @connect
           this.props.addRemappings(field.id, results);
       }
@@ -131,16 +135,25 @@ export default class FieldValuesWidget extends Component {
 
 
   render() {
-    const { value, onChange, field, multi, autoFocus, color } = this.props;
+    const { value, onChange, field, searchField, multi, autoFocus, color } = this.props;
     const { loadingState } = this.state;
 
     let placeholder;
+    // TODO: better placeholder text
     if (field.has_field_values === "list") {
       placeholder = `Select a ${field.display_name}`;
-    } else if (field.has_field_values === "search") {
-      placeholder = `Search for a ${stripId(field.searchField().display_name)}`;
-      if (field.isID()) {
-        placeholder += ` or enter an ID`;
+    } else if (this.isSearchable()) {
+      let objectName;
+      if (field.isPK()) {
+        objectName = field.table.display_name;
+      } else if (field.isFK() && field !== searchField) {
+        objectName = stripId(field.display_name);
+      } else {
+        objectName = field.display_name;
+      }
+      placeholder = `Search for a ${objectName}`;
+      if (field.isID() && field !== searchField) {
+        placeholder += ` or enter a ${field.display_name}`;
       }
     } else {
       placeholder = `Enter a ${field.display_name}`

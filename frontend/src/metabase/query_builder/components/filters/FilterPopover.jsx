@@ -204,6 +204,7 @@ export default class FilterPopover extends Component {
                       multi={operator.multi}
                       placeholder={placeholder}
                       field={field}
+                      searchField={field.filterSearchField()}
                     />
                 );
             } else if (operatorField.type === "select") {

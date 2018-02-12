@@ -42,7 +42,7 @@ export default class TokenField extends Component {
         multi: PropTypes.bool,
 
         style: PropTypes.object,
-        color: PropTypes.oneOf(Object.keys(defaultColors)),
+        color: PropTypes.string,
 
         valueKey: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.func]),
         labelKey: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.func]),
@@ -53,7 +53,7 @@ export default class TokenField extends Component {
         onChange: PropTypes.func.isRequired,
         onInputChange: PropTypes.func,
         onInputKeyDown: PropTypes.func,
-        updateOnInputChange: PropTypes.func,
+        updateOnInputChange: PropTypes.bool,
         parseFreeformValue: PropTypes.func,
 
         valueRenderer: PropTypes.func.isRequired, // TODO: default
@@ -391,8 +391,8 @@ export default class TokenField extends Component {
                   <input
                       ref="input"
                       className="full h4 text-bold text-default no-focus borderless"
-                      // set size=1 since we're using "width: 100%"
-                      size={1}
+                      // set size to be small enough that it fits in a parameter.
+                      size={10}
                       placeholder={placeholder}
                       value={inputValue}
                       autoFocus={focused}
@@ -406,14 +406,19 @@ export default class TokenField extends Component {
           </ul>
 
         const optionsList = filteredOptions.length === 0 ? null :
-            <ul className="ml1 scroll-y scroll-show" style={{ maxHeight: 300 }}>
+            <ul
+              className="ml1 scroll-y scroll-show"
+              style={{ maxHeight: 300 }}
+              onMouseEnter={() => this.setState({ listIsHovered: true })}
+              onMouseLeave={() => this.setState({ listIsHovered: false })}
+            >
                 {filteredOptions.map(option =>
                     <li key={this._value(option)}>
                       <div
                         className={cx(
                           `py1 pl1 pr2 block rounded text-bold inline-block cursor-pointer`,
                           `text-white-hover bg-${color}-hover`, {
-                            [`text-white bg-${color}`]: this._valueIsEqual(selectedOptionValue, this._value(option))
+                            [`text-white bg-${color}`]: !this.state.listIsHovered && this._valueIsEqual(selectedOptionValue, this._value(option))
                           }
                         )}
                         onClick={(e) => {

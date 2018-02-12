@@ -23,7 +23,7 @@ type State = {
 };
 
 // TODO: rename this something else since we're using it for more than searching and more than text
-export default class SearchTextWidget extends Component<*, Props, State> {
+export default class ParameterFieldWidget extends Component<*, Props, State> {
     props: Props;
     state: State;
 
@@ -77,7 +77,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
             return (
                 <div className="flex-full" onClick={() => focusChanged(true)}>
                     { value.length > 0 ?
-                      SearchTextWidget.format(value, field)
+                      ParameterFieldWidget.format(value, field)
                     :
                       <span>
                         {placeholder}
@@ -97,13 +97,13 @@ export default class SearchTextWidget extends Component<*, Props, State> {
                 onClose={() => focusChanged(false)}
               >
                 <FieldValuesWidget
-                  // TODO: multi
                   value={value}
                   onChange={(value) => {
                     this.setState({ value });
                   }}
                   placeholder={placeholder}
                   field={field}
+                  searchField={field.parameterSearchField()}
                   multi
                   autoFocus
                   color="brand"
@@ -114,7 +114,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
                 />
                 <Button
                   primary
-                  className="mx1 mb1"
+                  className="m1"
                   onClick={() => {
                     setValue(value.length > 0 ? value : null);
                     focusChanged(false);
