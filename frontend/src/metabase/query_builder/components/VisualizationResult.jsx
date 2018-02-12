@@ -16,7 +16,8 @@ type Props = {
     results: any[],
     isDirty: boolean,
     lastRunDatasetQuery: DatasetQuery,
-    navigateToNewCardInsideQB: (any) => void
+    navigateToNewCardInsideQB: (any) => void,
+    rawSeries: any
 }
 
 export default class VisualizationResult extends Component {
@@ -34,7 +35,7 @@ export default class VisualizationResult extends Component {
     }
 
     render() {
-        const { question, isDirty, isObjectDetail, lastRunDatasetQuery, navigateToNewCardInsideQB, result, results, ...props } = this.props
+        const { question, isDirty, navigateToNewCardInsideQB, result, rawSeries, ...props } = this.props
         const { showCreateAlertModal } = this.state
 
         const noResults = datasetContainsNoResults(result.data);
@@ -65,21 +66,9 @@ export default class VisualizationResult extends Component {
                 </Modal> }
             </div>
         } else {
-            // we want to provide the visualization with a card containing the latest
-            // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
-            // BUT the last executed "dataset_query" (to ensure data matches the query)
-            const series = question.atomicQueries().map((metricQuery, index) => ({
-                card: {
-                    ...question.card(),
-                    display: isObjectDetail ? "object" : question.card().display,
-                    dataset_query: lastRunDatasetQuery
-                },
-                data: results[index] && results[index].data
-            }));
-
             return (
                 <Visualization
-                    series={series}
+                    rawSeries={rawSeries}
                     onChangeCardAndRun={navigateToNewCardInsideQB}
                     isEditing={true}
                     card={question.card()}

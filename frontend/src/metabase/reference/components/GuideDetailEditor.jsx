@@ -8,10 +8,10 @@ import S from "./GuideDetailEditor.css";
 
 import Select from "metabase/components/Select.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import DataSelector from "metabase/query_builder/components/DataSelector.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
 import { typeToBgClass } from "../utils.js";
+import { SchemaTableAndSegmentDataSelector } from "metabase/query_builder/components/DataSelector";
 
 const GuideDetailEditor = ({
     className,
@@ -80,23 +80,20 @@ const GuideDetailEditor = ({
                         }}
                         placeholder={t`Select...`}
                     /> :
-                    <DataSelector
+                    <SchemaTableAndSegmentDataSelector
                         className={cx(selectClasses, 'inline-block', 'rounded', 'text-bold')}
                         triggerIconSize={12}
-                        includeTables={true}
-                        datasetQuery={{
-                            query: {
-                                source_table: formField.type.value === 'table' &&
-                                    Number.parseInt(formField.id.value)
-                            },
-                            database: (
-                                formField.type.value === 'table' &&
-                                tables[formField.id.value] &&
-                                tables[formField.id.value].db_id
-                            ) || Number.parseInt(Object.keys(databases)[0]),
-                            segment: formField.type.value === 'segment' &&
-                                Number.parseInt(formField.id.value)
-                        }}
+                        selectedTableId={
+                            formField.type.value === 'table' && Number.parseInt(formField.id.value)
+                        }
+                        selectedDatabaseId={
+                            formField.type.value === 'table' &&
+                            tables[formField.id.value] &&
+                            tables[formField.id.value].db_id
+                        }
+                        selectedSegmentId={
+                            formField.type.value === 'segment' && Number.parseInt(formField.id.value)
+                        }
                         databases={
                             Object.values(databases)
                                 .map(database => ({
@@ -114,8 +111,8 @@ const GuideDetailEditor = ({
                             const table = tables[tableId];
                             formField.id.onChange(table.id);
                             formField.type.onChange('table');
-                            formField.points_of_interest.onChange(table.points_of_interest || '');
-                            formField.caveats.onChange(table.caveats || '');
+                            formField.points_of_interest.onChange(table.points_of_interest || null);
+                            formField.caveats.onChange(table.caveats || null);
                         }}
                         segments={Object.values(segments)}
                         disabledSegmentIds={selectedIdTypePairs

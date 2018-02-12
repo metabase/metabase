@@ -158,7 +158,7 @@
     "test": "yarn run test-integrated && yarn run test-unit && yarn run test-karma",
     "test-integrated": "babel-node ./frontend/test/__runner__/run_integrated_tests.js",
     "test-integrated-watch": "babel-node ./frontend/test/__runner__/run_integrated_tests.js --watch",
-    "test-unit": "jest --maxWorkers=10 --config jest.unit.conf.json --coverage",
+    "test-unit": "jest --maxWorkers=8 --config jest.unit.conf.json --coverage",
     "test-unit-watch": "jest --maxWorkers=10 --config jest.unit.conf.json --watch",
     "test-unit-update-snapshot": "jest --maxWorkers=10 --config jest.unit.conf.json --updateSnapshot",
     "test-karma": "karma start frontend/test/karma.conf.js --single-run",

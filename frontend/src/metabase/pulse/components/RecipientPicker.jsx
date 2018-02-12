@@ -35,7 +35,7 @@ export default class RecipientPicker extends Component {
             inputValue: "",
             filteredUsers: [],
             selectedUserID: null,
-            focused: props.recipients.length === 0
+            focused: props.autoFocus && props.recipients.length === 0
         };
     }
 
@@ -47,10 +47,12 @@ export default class RecipientPicker extends Component {
         users: PropTypes.array,
         isNewPulse: PropTypes.bool.isRequired,
         onRecipientsChange: PropTypes.func.isRequired,
+        autoFocus: PropTypes.bool,
     };
 
     static defaultProps = {
-        recipientTypes: ["user", "email"]
+        recipientTypes: ["user", "email"],
+        autoFocus: true
     };
 
     setInputValue(inputValue) {

@@ -11,6 +11,7 @@
              [dashboard :as dashboard-api]]
             [metabase.models
              [card :refer [Card]]
+             [collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
              [dashboard-card-series :refer [DashboardCardSeries]]
@@ -143,6 +144,19 @@
                   DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
     (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id)))))
 
+;; ## GET /api/dashboard/:id with a series, should fail if the user doesn't have access to the collection
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Collection          [{coll-id :id}      {:name "Collection 1"}]
+                  Dashboard           [{dashboard-id :id} {:name       "Test Dashboard"
+                                                           :creator_id (user->id :crowberto)}]
+                  Card                [{card-id :id}      {:name          "Dashboard Test Card"
+                                                           :collection_id coll-id}]
+                  Card                [{card-id2 :id}     {:name          "Dashboard Test Card 2"
+                                                           :collection_id coll-id}]
+                  DashboardCard       [{dbc_id :id}       {:dashboard_id dashboard-id, :card_id card-id}]
+                  DashboardCardSeries [_                  {:dashboardcard_id dbc_id, :card_id card-id2, :position 0}]]
+    ((user->client :rasta) :get 403 (format "dashboard/%d" dashboard-id))))
 
 ;; ## PUT /api/dashboard/:id
 (expect

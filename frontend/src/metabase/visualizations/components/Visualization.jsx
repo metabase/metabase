@@ -35,7 +35,7 @@ import type { HoverObject, ClickObject, Series, OnChangeCardAndRun } from "metab
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 type Props = {
-    series: Series,
+    rawSeries: Series,
 
     className: string,
 
@@ -125,7 +125,7 @@ export default class Visualization extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        if (!isSameSeries(newProps.series, this.props.series) || !Utils.equals(newProps.settings, this.props.settings)) {
+        if (!isSameSeries(newProps.rawSeries, this.props.rawSeries) || !Utils.equals(newProps.settings, this.props.settings)) {
             this.transform(newProps);
         }
     }
@@ -142,7 +142,7 @@ export default class Visualization extends Component {
 
     componentDidCatch(error, info) {
         console.error("Error caught in <Visualization>", error, info);
-        this.setState({ error: "An error occurred displaying this visualization." })
+        this.setState({ error: new Error("An error occurred displaying this visualization.") })
     }
 
     // $FlowFixMe
@@ -150,7 +150,7 @@ export default class Visualization extends Component {
         let warnings = state.warnings || [];
         // don't warn about truncated data for table since we show a warning in the row count
         if (state.series[0].card.display !== "table") {
-            warnings = warnings.concat(props.series
+            warnings = warnings.concat(props.rawSeries
                 .filter(s => s.data && s.data.rows_truncated != null)
                 .map(s => t`Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`));
         }
@@ -170,7 +170,7 @@ export default class Visualization extends Component {
             error: null,
             warnings: [],
             yAxisSplit: null,
-            ...getVisualizationTransformed(extractRemappings(newProps.series))
+            ...getVisualizationTransformed(extractRemappings(newProps.rawSeries))
         });
     }
 
@@ -204,9 +204,9 @@ export default class Visualization extends Component {
             return [];
         }
         // TODO: push this logic into Question?
-        const { series, metadata } = this.props;
+        const { rawSeries, metadata } = this.props;
         const seriesIndex = clicked.seriesIndex || 0;
-        const card = series[seriesIndex].card;
+        const card = rawSeries[seriesIndex].card;
         const question = new Question(metadata, card);
         const mode = question.mode();
         return mode ? mode.actionsForClick(clicked, {}) : [];

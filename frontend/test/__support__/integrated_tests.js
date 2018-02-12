@@ -10,7 +10,7 @@ import "./mocks";
 
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
-import { CardApi, DashboardApi, SessionApi } from "metabase/services";
+import { DashboardApi, SessionApi } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from 'metabase/reducers-main';
 import publicReducers from 'metabase/reducers-public';
@@ -385,9 +385,8 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 // Commonly used question helpers that are temporarily here
 // TODO Atte Keinänen 6/27/17: Put all metabase-lib -related test helpers to one file
 export const createSavedQuestion = async (unsavedQuestion) => {
-    const savedCard = await CardApi.create(unsavedQuestion.card())
-    const savedQuestion = unsavedQuestion.setCard(savedCard);
-    savedQuestion._card = { ...savedQuestion._card, original_card_id: savedQuestion.id() }
+    const savedQuestion = await unsavedQuestion.apiCreate()
+    savedQuestion._card = { ...savedQuestion.card(), original_card_id: savedQuestion.id() }
     return savedQuestion
 }
 

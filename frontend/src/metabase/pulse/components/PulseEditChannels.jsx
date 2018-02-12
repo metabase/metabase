@@ -16,7 +16,7 @@ import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import { channelIsValid } from "metabase/lib/pulse";
+import { channelIsValid, createChannel } from "metabase/lib/pulse";
 
 import cx from "classnames";
 
@@ -45,7 +45,7 @@ export default class PulseEditChannels extends Component {
         userList: PropTypes.array.isRequired,
         setPulse: PropTypes.func.isRequired,
         testPulse: PropTypes.func,
-        cardPreviews: PropTypes.array,
+        cardPreviews: PropTypes.object,
         hideSchedulePicker: PropTypes.bool,
         emailRecipientText: PropTypes.string
     };
@@ -59,27 +59,7 @@ export default class PulseEditChannels extends Component {
             return;
         }
 
-        let details = {};
-        // if (channelSpec.fields) {
-        //     for (let field of channelSpec.fields) {
-        //         if (field.required) {
-        //             if (field.type === "select") {
-        //                 details[field.name] = field.options[0];
-        //             }
-        //         }
-        //     }
-        // }
-
-        let channel = {
-            channel_type: type,
-            enabled: true,
-            recipients: [],
-            details: details,
-            schedule_type: channelSpec.schedules[0],
-            schedule_day: "mon",
-            schedule_hour: 8,
-            schedule_frame: "first"
-        };
+        let channel = createChannel(channelSpec);
 
         this.props.setPulse({ ...pulse, channels: pulse.channels.concat(channel) });
 
@@ -184,6 +164,7 @@ export default class PulseEditChannels extends Component {
                         <div className="h4 text-bold mb1">{ this.props.emailRecipientText || "To:" }</div>
                         <RecipientPicker
                             isNewPulse={this.props.pulseId === undefined}
+                            autoFocus={!!this.props.pulse.name}
                             recipients={channel.recipients}
                             recipientTypes={channelSpec.recipients}
                             users={this.props.userList}

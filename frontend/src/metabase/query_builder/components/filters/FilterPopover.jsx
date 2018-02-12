@@ -7,6 +7,7 @@ import FieldList from "../FieldList.jsx";
 import OperatorSelector from "./OperatorSelector.jsx";
 import FilterOptions from "./FilterOptions";
 import DatePicker from "./pickers/DatePicker.jsx";
+import TimePicker from "./pickers/TimePicker.jsx";
 import NumberPicker from "./pickers/NumberPicker.jsx";
 import SelectPicker from "./pickers/SelectPicker.jsx";
 import TextPicker from "./pickers/TextPicker.jsx";
@@ -14,7 +15,7 @@ import TextPicker from "./pickers/TextPicker.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
 import Query from "metabase/lib/query";
-import { isDate } from "metabase/lib/schema_metadata";
+import { isDate, isTime } from "metabase/lib/schema_metadata";
 import { formatField, singularize } from "metabase/lib/formatting";
 
 import cx from "classnames";
@@ -276,7 +277,13 @@ export default class FilterPopover extends Component {
                         <h3 className="mx1">-</h3>
                         <h3 className="text-default">{formatField(field)}</h3>
                     </div>
-                    { isDate(field) ?
+                    { isTime(field) ?
+                        <TimePicker
+                            className="mt1 border-top"
+                            filter={filter}
+                            onFilterChange={this.setFilter}
+                        />
+                    : isDate(field) ?
                         <DatePicker
                             className="mt1 border-top"
                             filter={filter}
