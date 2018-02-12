@@ -134,10 +134,11 @@ export type InsideFilter       = ["inside", ConcreteField, ConcreteField, Numeri
 export type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit] |
                                  ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit, FilterOptions];
 
-// TODO - rename this to TimeIntervalFilterOptions because it is only used for those types of filters
-export type FilterOptions = {
+export type TimeIntervalFilterOptions = {
   "include-current"?: bool
 }
+
+export type FilterOptions = StringFilterOptions | TimeIntervalFilterOptions;
 
 // NOTE: currently the backend expects SEGMENT to be uppercase
 export type SegmentFilter      = ["SEGMENT", SegmentId];
