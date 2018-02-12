@@ -9,6 +9,8 @@ import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper';
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 
+import { normal as defaultColors } from "metabase/lib/colors";
+
 import {
     KEYCODE_ESCAPE,
     KEYCODE_ENTER,
@@ -39,6 +41,9 @@ export default class TokenField extends Component {
         autoFocus: PropTypes.bool,
         multi: PropTypes.bool,
 
+        style: PropTypes.object,
+        color: PropTypes.oneOf(Object.keys(defaultColors)),
+
         valueKey: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.func]),
         labelKey: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.func]),
 
@@ -48,6 +53,7 @@ export default class TokenField extends Component {
         onChange: PropTypes.func.isRequired,
         onInputChange: PropTypes.func,
         onInputKeyDown: PropTypes.func,
+        updateOnInputChange: PropTypes.func,
         parseFreeformValue: PropTypes.func,
 
         valueRenderer: PropTypes.func.isRequired, // TODO: default
@@ -111,7 +117,7 @@ export default class TokenField extends Component {
     }
 
     _updateFilteredValues = () => {
-      const { options, value, removeSelected, filterOption } = this.props;
+      const { options, value, removeSelected } = this.props;
       let { inputValue, selectedOptionValue } = this.state;
       let selectedValues = new Set(value.map(v => JSON.stringify(v)));
 

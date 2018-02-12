@@ -6,8 +6,6 @@ import RemappedValue from "metabase/containers/RemappedValue";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import { getIn } from "icepick";
-
 import type { Value as ValueType } from "metabase/meta/types/Dataset";
 import type { FormattingOptions } from "metabase/lib/formatting"
 

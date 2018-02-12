@@ -55,6 +55,7 @@ export default ComposedComponent =>
         }
 
         render() {
+            // eslint-disable-next-line no-unused-vars
             let { displayValue, displayColumn, fetchRemapping, ...props } = this.props;
             if (displayValue === undefined) {
                 displayColumn = null;
