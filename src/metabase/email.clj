@@ -56,7 +56,7 @@
 (def ^:private EmailMessage
   (s/constrained
    {:subject      s/Str
-    :recipients   [(s/pred u/is-email?)]
+    :recipients   [(s/pred u/email?)]
     :message-type (s/enum :text :html :attachments)
     :message      (s/cond-pre s/Str [su/Map])} ; TODO - what should this be a sequence of?
    (fn [{:keys [message-type message]}]
