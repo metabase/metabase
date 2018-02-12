@@ -171,14 +171,12 @@
                                                    (:id field)))
         fields-with-fieldvalues-ids         (when (seq fields-without-has-field-values-ids)
                                               (db/select-field :field_id FieldValues
-                                                :id [:in fields-without-has-field-values-ids]))]
-    (if-not (seq fields-with-fieldvalues-ids)
-      fields
-      (for [field fields]
-        (assoc field :has_field_values (or (:has_field_values field)
-                                           (if (fields-with-fieldvalues-ids (u/get-id field))
-                                             :list
-                                             :search)))))))
+                                                :field_id [:in fields-without-has-field-values-ids]))]
+    (for [field fields]
+      (assoc field :has_field_values (or (:has_field_values field)
+                                         (if (contains? fields-with-fieldvalues-ids (u/get-id field))
+                                           :list
+                                           :search))))))
 
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"

@@ -193,7 +193,7 @@
 
 (defn- db-metadata [id]
   (-> (api/read-check Database id)
-      (hydrate [:tables [:fields :target :values :has_field_values] :segments :metrics])
+      (hydrate [:tables [:fields :target :has_field_values] :segments :metrics])
       (update :tables (fn [tables]
                         (for [table tables
                               :when (mi/can-read? table)]

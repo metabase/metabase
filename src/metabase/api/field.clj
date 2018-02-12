@@ -32,7 +32,7 @@
   "Get `Field` with ID."
   [id]
   (-> (api/read-check Field id)
-      (hydrate [:table :db])))
+      (hydrate [:table :db] :has_field_values)))
 
 (defn- clear-dimension-on-fk-change! [{{dimension-id :id dimension-type :type} :dimensions :as field}]
   (when (and dimension-id (= :external dimension-type))
