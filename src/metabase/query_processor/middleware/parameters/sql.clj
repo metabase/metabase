@@ -7,6 +7,7 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [instaparse.core :as insta]
+            [metabase.driver :as driver]
             [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.query-processor.middleware.expand :as ql]
@@ -485,14 +486,22 @@
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- prepare-sql-param-for-driver [param]
+  ((resolve 'metabase.driver.generic-sql/prepare-sql-param) *driver* param))
+
 (s/defn ^:private expand-query-params
   [{sql :query, :as native}, param-key->value :- ParamValues]
-  (let [parsed-template (insta/parse sql-template-parser sql)]
-    (merge native (insta/transform (parse-transform-map param-key->value) parsed-template))))
+  (merge native
+         (-> (parse-transform-map param-key->value)
+             (insta/transform (insta/parse sql-template-parser sql))
+             ;; `prepare-sql-param-for-driver` can't be lazy as it needs `*driver*` to be bound
+             (update :params #(mapv prepare-sql-param-for-driver %)))))
 
 (defn expand
   "Expand parameters inside a *SQL* QUERY."
   [query]
   (binding [*driver*   (:driver query)
             *timezone* (get-in query [:settings :report-timezone])]
-    (update query :native expand-query-params (query->params-map query))))
+    (if (driver/driver-supports? *driver* :native-query-params)
+      (update query :native expand-query-params (query->params-map query))
+      query)))
