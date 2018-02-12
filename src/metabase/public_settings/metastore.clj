@@ -86,10 +86,14 @@
   "Token for premium embedding. Go to the MetaStore to get yours!"
   :setter (fn [new-value]
             ;; validate the new value if we're not unsetting it
-            (when (seq new-value)
-              (check-embedding-token-is-valid new-value)
-              (log/info "Token is valid."))
-            (setting/set-string! :premium-embedding-token new-value)))
+            (try
+              (when (seq new-value)
+                (check-embedding-token-is-valid new-value)
+                (log/info "Token is valid."))
+              (setting/set-string! :premium-embedding-token new-value)
+              (catch Throwable e
+                (log/error e "Error setting premium embedding token")
+                (throw (ex-info (.getMessage e) {:status-code 400}))))))
 
 (defn hide-embed-branding?
   "Should we hide the 'Powered by Metabase' attribution on the embedding pages? `true` if we have a valid premium
