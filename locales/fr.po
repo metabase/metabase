@@ -22,7 +22,7 @@ msgstr ""
 
 #: frontend/src/metabase/home/components/Activity.jsx:131
 msgid "Hello World!"
-msgstr "Bonjour tout le monde!"
+msgstr "Bonjour le Monde"
 
 #: frontend/src/metabase/home/components/Activity.jsx:132
 msgid "Metabase is up and running."
@@ -30,11 +30,11 @@ msgstr "Metabase est opérationnel."
 
 #: frontend/src/metabase/home/components/Activity.jsx:176
 msgid "removed the filter {item.details.name}"
-msgstr "enlever le filtre {item.details.name}"
+msgstr "filtre {item.details.name} supprimé"
 
 #: frontend/src/metabase/home/components/Activity.jsx:179
 msgid "joined!"
-msgstr "joint!"
+msgstr "nous rejoint!"
 
 #: frontend/src/metabase/home/components/NextStep.jsx:31
 msgid "Setup Tip"
