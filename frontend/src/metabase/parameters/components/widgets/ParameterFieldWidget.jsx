@@ -15,7 +15,7 @@ type Props = {
 
     isEditing: bool,
 
-    fields: Field[],
+    field: Field,
 };
 
 type State = {
@@ -55,10 +55,8 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     }
 
     render() {
-        let { setValue, isEditing, fields, parentFocusChanged } = this.props;
+        let { setValue, isEditing, field, parentFocusChanged } = this.props;
         let { value, isFocused } = this.state;
-
-        const field = fields[0];
 
         if (!Array.isArray(value)) {
           value = value != null ? [value] : [];

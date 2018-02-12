@@ -159,10 +159,18 @@ export const getParameters = createSelector(
                 .uniq()
                 .filter(fieldId => fieldId != null)
                 .value();
+            const fieldIdsWithFKResolved = _.chain(fieldIds)
+                .map(id => metadata.fields[id])
+                .filter(f => f)
+                .map(f => (f.target || f).id)
+                .uniq()
+                .value();
             return {
                 ...parameter,
                 field_ids: fieldIds,
-                fields: fieldIds.map(id => metadata.fields[id]).filter(f => f)
+                // if there's a single uniqe field (accounting for FKs) then
+                // include it as the one true field_id
+                field_id: fieldIdsWithFKResolved.length === 1 ? fieldIdsWithFKResolved[0] : null
             }
         })
 )

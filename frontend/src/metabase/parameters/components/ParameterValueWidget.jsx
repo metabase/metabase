@@ -17,6 +17,8 @@ import CategoryWidget from "./widgets/CategoryWidget.jsx";
 import TextWidget from "./widgets/TextWidget.jsx";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget";
 
+import { getMetadata } from "metabase/selectors/metadata";
+
 import S from "./ParameterWidget.css";
 
 import cx from "classnames";
@@ -31,19 +33,21 @@ const DATE_WIDGETS = {
     "date/all-options": DateAllOptionsWidget
 }
 
-import { fetchFieldValues } from "metabase/redux/metadata";
+import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
 import { makeGetMergedParameterFieldValues } from "metabase/selectors/metadata";
 
 const makeMapStateToProps = () => {
     const getMergedParameterFieldValues = makeGetMergedParameterFieldValues();
     const mapStateToProps = (state, props) => ({
+        metadata: getMetadata(state),
         values: getMergedParameterFieldValues(state, props),
     })
     return mapStateToProps;
 }
 
 const mapDispatchToProps = {
-    fetchFieldValues
+    fetchFieldValues,
+    fetchField,
 }
 
 @connect(makeMapStateToProps, mapDispatchToProps)
@@ -72,10 +76,16 @@ export default class ParameterValueWidget extends Component {
         className: ""
     };
 
-    static getWidget(parameter, values) {
+    getField() {
+        const { parameter, metadata } = this.props;
+        return parameter.field_id != null ? metadata.fields[parameter.field_id] : null;
+    }
+
+    getWidget() {
+        const { parameter, values } = this.props;
         if (DATE_WIDGETS[parameter.type]) {
             return DATE_WIDGETS[parameter.type];
-        } else if (parameter.fields && parameter.fields.length === 1) {
+        } else if (this.getField()) {
             return ParameterFieldWidget;
         } else if (values && values.length > 0) {
             return CategoryWidget;
@@ -109,7 +119,8 @@ export default class ParameterValueWidget extends Component {
 
     updateFieldValues(props) {
         if (props.parameter.field_id != null) {
-            props.fetchFieldValues(props.parameter.field_id)
+            props.fetchField(props.parameter.field_id);
+            props.fetchFieldValues(props.parameter.field_id);
         }
     }
 
@@ -119,7 +130,7 @@ export default class ParameterValueWidget extends Component {
 
         let hasValue = value != null;
 
-        let Widget = ParameterValueWidget.getWidget(parameter, values);
+        let Widget = this.getWidget();
 
         const focusChanged = (isFocused) => {
             if (parentFocusChanged) {
@@ -163,7 +174,7 @@ export default class ParameterValueWidget extends Component {
                         placeholder={placeholder}
                         value={value}
                         values={values}
-                        fields={parameter.fields}
+                        field={this.getField()}
                         setValue={setValue}
                         isEditing={isEditing}
                         commitImmediately={commitImmediately}
