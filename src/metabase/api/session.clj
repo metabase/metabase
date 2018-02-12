@@ -187,7 +187,7 @@
   (last (re-find #"^.*@(.*$)" email)))
 
 (defn- email-in-domain? ^Boolean [email domain]
-  {:pre [(u/is-email? email)]}
+  {:pre [(u/email? email)]}
   (= (email->domain email) domain))
 
 (defn- autocreate-user-allowed-for-email? [email]
