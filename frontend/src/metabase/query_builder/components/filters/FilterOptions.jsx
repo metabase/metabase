@@ -8,8 +8,8 @@ import CheckBox from "metabase/components/CheckBox";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 const OPTION_NAMES = {
-  "include-current": (field) => {
-    const period = <b>{getCurrentIntervalName(this.props.filter)}</b>;
+  "include-current": (filter) => {
+    const period = <strong key="notsurewhythisneedsakey">{getCurrentIntervalName(filter)}</strong>;
     return jt`Include ${period}`
   },
   "case-sensitive": () => t`Case sensitive`
@@ -36,25 +36,34 @@ function getCurrentIntervalName(filter: FieldFilter): ?string {
 export default class FilterOptions extends Component {
   static propTypes = {
     filter:           PropTypes.array.isRequired,
-    getFilterOptions: PropTypes.func.isRequired,
+    onFilterChange:   PropTypes.func.isRequired,
     // either an operator from schema_metadata or DatePicker
     operator:         PropTypes.object.isRequired,
   }
 
+  getOptions() {
+    return  (this.props.operator && this.props.operator.options) || {};
+  }
+
   getOptionName(name) {
     if (OPTION_NAMES[name]) {
-      return OPTION_NAMES[name](this.props.field);
+      return OPTION_NAMES[name](this.props.filter);
     }
     return name;
   }
 
   getOptionValue(name) {
-      const { filter, operator } = this.props;
+      const { filter } = this.props;
       let value = getFilterOptions(filter)[name];
       if (value !== undefined) {
         return value;
       }
-      return operator.options[name].defaultValue;
+      const option = this.getOptions()[name];
+      if (option && option.defaultValue !== undefined) {
+        return option.defaultValue;
+      }
+      // for now values are always boolean, default to false
+      return false
   }
 
   setOptionValue(name, value) {
@@ -72,9 +81,8 @@ export default class FilterOptions extends Component {
   }
 
   render() {
-    const { operator } = this.props;
-    const options = Object.entries(operator.options || {});
-    if (operator.length === 0) {
+    const options = Object.entries(this.getOptions());
+    if (options.length === 0) {
       return null;
     }
     return (

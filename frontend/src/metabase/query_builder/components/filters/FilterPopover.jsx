@@ -187,7 +187,7 @@ export default class FilterPopover extends Component {
         let operator: ?Operator = field.operators_lookup[filter[0]];
         return operator && operator.fields.map((operatorField, index) => {
             if (!operator) {
-                return;
+                return null;
             }
             let values, onValuesChange;
             let placeholder = operator && operator.placeholders && operator.placeholders[index] || undefined;
@@ -201,6 +201,7 @@ export default class FilterPopover extends Component {
             if (operatorField.type === "select") {
                 return (
                     <SelectPicker
+                        key={index}
                         options={operatorField.values}
                         // $FlowFixMe
                         values={(values: Array<string>)}
@@ -213,6 +214,7 @@ export default class FilterPopover extends Component {
             } else if (operatorField.type === "text") {
                 return (
                     <TextPicker
+                        key={index}
                         // $FlowFixMe
                         values={(values: Array<string>)}
                         onValuesChange={onValuesChange}
@@ -224,6 +226,7 @@ export default class FilterPopover extends Component {
             } else if (operatorField.type === "number") {
                 return (
                     <NumberPicker
+                        key={index}
                         // $FlowFixMe
                         values={(values: Array<number|null>)}
                         onValuesChange={onValuesChange}
@@ -233,7 +236,11 @@ export default class FilterPopover extends Component {
                     />
                 );
             }
-            return <span>{t`not implemented ${operatorField.type}`} {operator.multi ? t`true` : t`false`}</span>;
+            return (
+              <span key={index}>
+                {t`not implemented ${operatorField.type}`} {operator.multi ? t`true` : t`false`}
+              </span>
+            );
         });
     }
 

@@ -33,7 +33,7 @@ export default class DateOperatorSelector extends Component {
                   compact
                 >
                   { operators.map(operator =>
-                    <Option value={operator}>{operator.displayName}</Option>
+                    <Option key={operator.name} value={operator}>{operator.displayName}</Option>
                   )}
                 </Select>
             </div>
