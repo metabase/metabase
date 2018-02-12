@@ -6,7 +6,7 @@ import { t } from 'c-3po';
 import FieldList from "../FieldList.jsx";
 import OperatorSelector from "./OperatorSelector.jsx";
 import FilterOptions from "./FilterOptions";
-import DatePicker from "./pickers/DatePicker.jsx";
+import DatePicker, { getOperator } from "./pickers/DatePicker.jsx";
 import TimePicker from "./pickers/TimePicker.jsx";
 import NumberPicker from "./pickers/NumberPicker.jsx";
 import SelectPicker from "./pickers/SelectPicker.jsx";
@@ -120,8 +120,8 @@ export default class FilterPopover extends Component {
     _updateOperator(oldFilter: FieldFilter, operatorName: ?string): FieldFilter {
         const { query } = this.props;
         let { field } = Query.getFieldTarget(oldFilter[1], query.table());
-        let operator = field.operators_lookup[operatorName];
-        let oldOperator = field.operators_lookup[oldFilter[0]];
+        let operator = field.operator(operatorName);
+        let oldOperator = field.operator(oldFilter[0]);
 
         // update the operator
         // $FlowFixMe
@@ -134,6 +134,9 @@ export default class FilterPopover extends Component {
                 } else {
                     filter.push(undefined);
                 }
+            }
+            if (operator.optionsDefaults) {
+                filter.push(operator.optionsDefaults);
             }
             if (oldOperator) {
                 // copy over values of the same type
@@ -185,7 +188,7 @@ export default class FilterPopover extends Component {
         let operator: ?Operator = field.operators_lookup[filter[0]];
         return operator && operator.fields.map((operatorField, index) => {
             if (!operator) {
-                return;
+                return null;
             }
             let values, onValuesChange;
             let placeholder = operator && operator.placeholders && operator.placeholders[index] || undefined;
@@ -210,6 +213,7 @@ export default class FilterPopover extends Component {
             } else if (operatorField.type === "select") {
                 return (
                     <SelectPicker
+                        key={index}
                         options={operatorField.values}
                         // $FlowFixMe
                         values={(values: Array<string>)}
@@ -222,6 +226,7 @@ export default class FilterPopover extends Component {
             } else if (operatorField.type === "text") {
                 return (
                     <TextPicker
+                        key={index}
                         // $FlowFixMe
                         values={(values: Array<string>)}
                         onValuesChange={onValuesChange}
@@ -233,6 +238,7 @@ export default class FilterPopover extends Component {
             } else if (operatorField.type === "number") {
                 return (
                     <NumberPicker
+                        key={index}
                         // $FlowFixMe
                         values={(values: Array<number|null>)}
                         onValuesChange={onValuesChange}
@@ -242,7 +248,11 @@ export default class FilterPopover extends Component {
                     />
                 );
             }
-            return <span>{t`not implemented ${operatorField.type}`} {operator.multi ? t`true` : t`false`}</span>;
+            return (
+              <span key={index}>
+                {t`not implemented ${operatorField.type}`} {operator.multi ? t`true` : t`false`}
+              </span>
+            );
         });
     }
 
@@ -312,7 +322,17 @@ export default class FilterPopover extends Component {
                         </div>
                     }
                     <div className="FilterPopover-footer border-top flex align-center p2">
-                        <FilterOptions filter={filter} onFilterChange={this.setFilter} />
+                        <FilterOptions
+                          filter={filter}
+                          onFilterChange={this.setFilter}
+                          operator={
+                            isDate(field) ?
+                              // DatePicker uses a different set of operator objects
+                              getOperator(filter) :
+                              // Normal operators defined in schema_metadata
+                              field.operator(operator)
+                          }
+                        />
                         <button
                             data-ui-tag="add-filter"
                             className={cx("Button Button--purple ml-auto", { "disabled": !this.isValid() })}

@@ -422,9 +422,11 @@
                             field        :- AnyField
                             max-val      :- OrderableValueOrPlaceholder])
 
-(s/defrecord StringFilter [filter-type :- (s/enum :starts-with :contains :ends-with)
-                           field       :- AnyField
-                           value       :- (s/cond-pre s/Str StringValueOrPlaceholder)]) ; TODO - not 100% sure why this is also allowed to accept a plain string
+(s/defrecord StringFilter [filter-type     :- (s/enum :starts-with :contains :ends-with)
+                           field           :- AnyField
+                           ;; TODO - not 100% sure why this is also allowed to accept a plain string
+                           value           :- (s/cond-pre s/Str StringValueOrPlaceholder)
+                           case-sensitive? :- s/Bool])
 
 (def SimpleFilterClause
   "Schema for a non-compound, non-`not` MBQL `filter` clause."

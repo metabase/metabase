@@ -222,6 +222,12 @@ function longitudeFieldSelectArgument(field, table) {
     };
 }
 
+const CASE_SENSITIVE_OPTION = {
+  "case-sensitive": {
+    defaultValue: true
+  }
+}
+
 const OPERATORS = {
     "=": {
         validArgumentsFilters: [equivalentArgument],
@@ -257,16 +263,24 @@ const OPERATORS = {
         validArgumentsFilters: [comparableArgument, comparableArgument]
     },
     "STARTS_WITH": {
-        validArgumentsFilters: [freeformArgument]
+        validArgumentsFilters: [freeformArgument],
+        options: CASE_SENSITIVE_OPTION,
+        optionsDefaults: { "case-sensitive": false }
     },
     "ENDS_WITH": {
-        validArgumentsFilters: [freeformArgument]
+        validArgumentsFilters: [freeformArgument],
+        options: CASE_SENSITIVE_OPTION,
+        optionsDefaults: { "case-sensitive": false }
     },
     "CONTAINS": {
-        validArgumentsFilters: [freeformArgument]
+        validArgumentsFilters: [freeformArgument],
+        options: CASE_SENSITIVE_OPTION,
+        optionsDefaults: { "case-sensitive": false }
     },
     "DOES_NOT_CONTAIN": {
-        validArgumentsFilters: [freeformArgument]
+        validArgumentsFilters: [freeformArgument],
+        options: CASE_SENSITIVE_OPTION,
+        optionsDefaults: { "case-sensitive": false }
     }
 };
 
@@ -290,7 +304,7 @@ const OPERATORS_BY_TYPE_ORDERED = {
         { name: "DOES_NOT_CONTAIN", verboseName: t`Does not contain`},
         { name: "IS_NULL",          verboseName: t`Is empty`, advanced: true },
         { name: "NOT_NULL",         verboseName: t`Not empty`, advanced: true },
-        { name: "STARTS_WITH",      verboseName: t`Starts with`, advanced: true},
+        { name: "STARTS_WITH",      verboseName: t`Starts with`, advanced: true },
         { name: "ENDS_WITH",        verboseName: t`Ends with`, advanced: true}
     ],
     [STRING_LIKE]: [

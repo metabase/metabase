@@ -64,9 +64,9 @@
   (let [columns (jdbc/query
                  (sql/db->jdbc-connection-spec database)
                  [(format "select column_name, data_type as type_name
-                            from information_schema.columns
-                            where table_name like '%s' and table_schema like '%s'
-                            and data_type != 'object_array'" name schema)])] ; clojure jdbc can't handle fields of type "object_array" atm
+                           from information_schema.columns
+                           where table_name like '%s' and table_schema like '%s'
+                           and data_type != 'object_array'" name schema)])] ; clojure jdbc can't handle fields of type "object_array" atm
     (set (for [{:keys [column_name type_name]} columns]
            {:name      column_name
             :custom    {:column-type type_name}

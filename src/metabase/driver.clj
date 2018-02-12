@@ -212,7 +212,12 @@
      returned in any given order.")
 
   (current-db-time ^org.joda.time.DateTime [this ^DatabaseInstance database]
-    "Returns the current time and timezone from the perspective of `DATABASE`."))
+    "Returns the current time and timezone from the perspective of `DATABASE`.")
+
+  (default-to-case-sensitive? ^Boolean [this]
+    "Should this driver default to case-sensitive string search filter clauses (e.g. `starts-with` or `contains`)? The
+    default is `true` since that was the behavior of all drivers with the exception of GA before `0.29.0` when we
+    introduced case-insensitive string search filters as an option."))
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
@@ -228,7 +233,8 @@
                                         (throw
                                          (NoSuchMethodException.
                                           (str (name driver) " does not implement table-rows-seq."))))
-   :current-db-time                   (constantly nil)})
+   :current-db-time                   (constantly nil)
+   :default-to-case-sensitive?        (constantly true)})
 
 
 ;;; ## CONFIG
