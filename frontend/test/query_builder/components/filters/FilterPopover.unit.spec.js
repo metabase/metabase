@@ -13,16 +13,19 @@ import {
     ORDERS_TABLE_ID,
     ORDERS_TOTAL_FIELD_ID,
     ORDERS_CREATED_DATE_FIELD_ID,
+    ORDERS_PRODUCT_FK_FIELD_ID,
+    PRODUCT_TILE_FIELD_ID,
     metadata
 } from "__support__/sample_dataset_fixture";
 
 const RELATIVE_DAY_FILTER = ["time-interval", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], -30, "day"]
-
-const FILTER_WITH_CURRENT_PERIOD = RELATIVE_DAY_FILTER.concat([
+const RELATIVE_DAY_FILTER_WITH_CURRENT_PERIOD = RELATIVE_DAY_FILTER.concat([
     {"include-current": true }
 ])
 
 const NUMERIC_FILTER = ["=", ["field-id", ORDERS_TOTAL_FIELD_ID], 1234];
+
+const STRING_CONTAINS_FILTER = ["CONTAINS", ["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_TILE_FIELD_ID], "asdf"]
 
 const QUERY = Question.create({
     databaseId: DATABASE_ID,
@@ -33,6 +36,7 @@ const QUERY = Question.create({
 .addAggregation(["count"])
 .addFilter(RELATIVE_DAY_FILTER)
 .addFilter(NUMERIC_FILTER)
+.addFilter(STRING_CONTAINS_FILTER)
 
 describe('FilterPopover', () => {
     describe('existing filter', () => {
@@ -47,8 +51,8 @@ describe('FilterPopover', () => {
                 expect(wrapper.find(DatePicker).length).toBe(1)
             })
         })
-        describe('including the current period', () => {
-            it('should not show a control to the user for the appropriate types of queries', () => {
+        describe('filter options', () => {
+            it('should not show a control to the user if the filter has no options', () => {
                 const wrapper = mount(
                     <FilterPopover
                         query={QUERY}
@@ -57,20 +61,29 @@ describe('FilterPopover', () => {
                 )
                 expect(wrapper.find(CheckBox).length).toBe(0)
             })
-            it('should show a control to the user for the appropriate types of queries', () => {
+            it('should show "current-period" option to the user for "time-intervals" filters', () => {
                 const wrapper = mount(
                     <FilterPopover
                         query={QUERY}
-                        filter={QUERY.filters()[0]}
+                        filter={RELATIVE_DAY_FILTER}
                     />
                 )
                 expect(wrapper.find(CheckBox).length).toBe(1)
             })
-            it('should let the user toggle', () => {
+            it('should show "case-sensitive" option to the user for "contains" filters', () => {
                 const wrapper = mount(
                     <FilterPopover
                         query={QUERY}
-                        filter={QUERY.filters()[0]}
+                        filter={STRING_CONTAINS_FILTER}
+                    />
+                )
+                expect(wrapper.find(CheckBox).length).toBe(1)
+            })
+            it('should let the user toggle an option', () => {
+                const wrapper = mount(
+                    <FilterPopover
+                        query={QUERY}
+                        filter={RELATIVE_DAY_FILTER}
                     />
                 )
 
@@ -78,7 +91,7 @@ describe('FilterPopover', () => {
                 expect(toggle.props().checked).toBe(false)
                 toggle.simulate('click')
 
-                expect(wrapper.state().filter).toEqual(FILTER_WITH_CURRENT_PERIOD)
+                expect(wrapper.state().filter).toEqual(RELATIVE_DAY_FILTER_WITH_CURRENT_PERIOD)
                 expect(wrapper.find(CheckBox).props().checked).toBe(true)
             })
         })

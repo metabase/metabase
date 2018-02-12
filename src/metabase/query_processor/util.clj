@@ -66,14 +66,17 @@
   ([m k]
    {:pre [(or (u/maybe? map? m)
               (println "Not a map:" m))]}
-   (let [k (normalize-token k)]
-     (some (fn [[map-k v]]
-             (when (= k (normalize-token map-k))
-               v))
-           m)))
+   (when (seq m)
+     (let [k (normalize-token k)]
+       (loop [[[map-k v] & more] (seq m)]
+         (cond
+           (= k (normalize-token map-k)) v
+           (seq more)                    (recur more))))))
   ([m k not-found]
-   (or (get-normalized m k)
-       not-found)))
+   (let [v (get-normalized m k)]
+     (if (some? v)
+       v
+       not-found))))
 
 (defn get-in-normalized
   "Like `get-normalized`, but accepts a sequence of keys KS, like `get-in`.
@@ -86,8 +89,10 @@
        m
        (recur (get-normalized m k) more))))
   ([m ks not-found]
-   (or (get-in-normalized m ks)
-       not-found)))
+   (let [v (get-in-normalized m ks)]
+     (if (some? v)
+       v
+       not-found))))
 
 (defn dissoc-normalized
   "Remove all matching keys from map M regardless of case, string/keyword, or hypens/underscores.

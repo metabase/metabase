@@ -227,22 +227,39 @@
   (apply h/merge-select honeysql-form (for [field fields]
                                         (as driver (->honeysql driver field) field))))
 
+(defn- like-clause
+  "Generate a SQL `LIKE` clause. `value` is assumed to be a `Value` object (a record type with a key `:value` as well as
+  some sort of type info) or similar as opposed to a raw value literal."
+  [driver field value case-sensitive?]
+  ;; TODO - don't we need to escape underscores and percent signs in the pattern, since they have special meanings in
+  ;; LIKE clauses? That's what we're doing with Druid...
+  ;;
+  ;; TODO - Postgres supports `ILIKE`. Does that make a big enough difference performance-wise that we should do a
+  ;; custom implementation?
+  (if case-sensitive?
+    [:like field                    (->honeysql driver value)]
+    [:like (hsql/call :lower field) (->honeysql driver (update value :value str/lower-case))]))
+
 (defn filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a HoneySQL filter predicate form for use in HoneySQL `where`."
-  [driver {:keys [filter-type field value], :as filter}]
+  [driver {:keys [filter-type field value case-sensitive?], :as filter}]
   {:pre [(map? filter) field]}
   (let [field (->honeysql driver field)]
     (case          filter-type
-      :between     [:between field (->honeysql driver (:min-val filter)) (->honeysql driver (:max-val filter))]
-      :starts-with [:like    field (->honeysql driver (update value :value (fn [s] (str    s \%)))) ]
-      :contains    [:like    field (->honeysql driver (update value :value (fn [s] (str \% s \%))))]
-      :ends-with   [:like    field (->honeysql driver (update value :value (fn [s] (str \% s))))]
-      :>           [:>       field (->honeysql driver value)]
-      :<           [:<       field (->honeysql driver value)]
-      :>=          [:>=      field (->honeysql driver value)]
-      :<=          [:<=      field (->honeysql driver value)]
-      :=           [:=       field (->honeysql driver value)]
-      :!=          [:not=    field (->honeysql driver value)])))
+      :between     [:between field
+                    (->honeysql driver (:min-val filter))
+                    (->honeysql driver (:max-val filter))]
+
+      :starts-with (like-clause driver field (update value :value #(str    % \%)) case-sensitive?)
+      :contains    (like-clause driver field (update value :value #(str \% % \%)) case-sensitive?)
+      :ends-with   (like-clause driver field (update value :value #(str \% %))    case-sensitive?)
+
+      :>           [:>    field (->honeysql driver value)]
+      :<           [:<    field (->honeysql driver value)]
+      :>=          [:>=   field (->honeysql driver value)]
+      :<=          [:<=   field (->honeysql driver value)]
+      :=           [:=    field (->honeysql driver value)]
+      :!=          [:not= field (->honeysql driver value)])))
 
 (defn filter-clause->predicate
   "Given a filter CLAUSE, return a HoneySQL filter predicate form for use in HoneySQL `where`.

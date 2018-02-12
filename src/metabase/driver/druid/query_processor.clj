@@ -6,7 +6,7 @@
              [format :as tformat]]
             [clojure.core.match :refer [match]]
             [clojure.math.numeric-tower :as math]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver.druid.js :as js]
             [metabase.query-processor
@@ -351,7 +351,7 @@
   [& function-str-parts]
   {:pre [(every? string? function-str-parts)]}
   {:type     :javascript
-   :function (s/replace (apply str function-str-parts) #"\s+" " ")})
+   :function (str/replace (apply str function-str-parts) #"\s+" " ")})
 
 ;; don't try to make this a ^:const map -- extract:timeFormat looks up timezone info at query time
 (defn- unit->extraction-fn [unit]
@@ -467,7 +467,7 @@
       (assoc-in [:query :dimensions] (mapv ->dimension-rvalue breakout-fields))))
 
 
-;;; ### handle-filter
+;;; ### handle-filter. See http://druid.io/docs/latest/querying/filters.html
 
 (defn- filter:and [filters]
   {:type   :and
@@ -493,11 +493,40 @@
                       :dimension nil
                       :metric    0))))
 
-(defn- filter:js [field fn-format-str & args]
-  {:pre [field (string? fn-format-str)]}
-  {:type      :javascript
-   :dimension (->rvalue field)
-   :function  (apply format fn-format-str args)})
+(defn- filter:like
+  "Build a `like` filter clause, which is almost just like a SQL `LIKE` clause."
+  [field pattern case-sensitive?]
+  {:type         :like
+   :dimension    (->rvalue field)
+   ;; tell Druid to use backslash as an escape character
+   :escape       "\\"
+   ;; if this is a case-insensitive search we'll lower-case the search pattern and add an extraction function to
+   ;; lower-case the dimension values we're matching against
+   :pattern      (cond-> pattern
+                   (not case-sensitive?) str/lower-case)
+   :extractionFn (when-not case-sensitive?
+                   {:type :lower})})
+
+(defn- escape-like-filter-pattern
+  "Escape `%`, `_`, and backslash symbols that aren't meant to have special meaning in `like` filters
+  patterns. Backslashes wouldn't normally have a special meaning, but we specify backslash as our escape character in
+  the `filter:like` function above, so they need to be escaped as well."
+  [s]
+  (str/replace s #"([%_\\])" "\\\\$1"))
+
+(defn- filter:bound
+  "Numeric `bound` filter, for finding values of `field` that are less than some value, greater than some value, or
+  both. Defaults to being `inclusive` (e.g. `<=` instead of `<`) but specify option `inclusive?` to change this."
+  [field & {:keys [lower upper inclusive?]
+            :or   {inclusive? true}}]
+  (u/prog1 {:type        :bound
+            :ordering    :numeric
+            :dimension   (->rvalue field)
+            :lower       (num (->rvalue lower))
+            :upper       (num (->rvalue upper))
+            :lowerStrict (not inclusive?)
+            :upperStrict (not inclusive?)}
+    (println "inclusive?" inclusive? (u/pprint-to-str 'blue <>))))
 
 (defn- check-filter-fields [filter-type & fields]
   (doseq [field fields]
@@ -507,7 +536,7 @@
         (u/format-color 'red "WARNING: Filtering only works on dimensions! '%s' is a metric. Ignoring %s filter."
           (->rvalue field) filter-type))))))
 
-(defn- parse-filter-subclause:filter [{:keys [filter-type field value] :as filter}]
+(defn- parse-filter-subclause:filter [{:keys [filter-type field value case-sensitive?] :as filter}]
   {:pre [filter]}
   ;; We'll handle :timestamp separately. It needs to go in :intervals instead
   (when-not (instance? DateTimeField field)
@@ -521,16 +550,13 @@
                    lat-field (:field lat)
                    lon-field (:field lon)]
                (check-filter-fields :inside lat-field lon-field)
-               {:type   :and
-                :fields [(filter:js lat-field "function (x) { return x >= %s && x <= %s; }"
-                                    (num (->rvalue (:min lat))) (num (->rvalue (:max lat))))
-                         (filter:js lon-field "function (x) { return x >= %s && x <= %s; }"
-                                    (num (->rvalue (:min lon))) (num (->rvalue (:max lon))))]})
+               (filter:and
+                [(filter:bound lat-field, :lower (:min lat), :upper (:max lat))
+                 (filter:bound lon-field, :lower (:min lon), :upper (:max lon))]))
 
              :between
              (let [{:keys [min-val max-val]} filter]
-               (filter:js field "function (x) { return x >= %s && x <= %s; }"
-                          (num (->rvalue (:value min-val))) (num (->rvalue (:value max-val)))))
+               (filter:bound field, :lower min-val, :upper max-val))
 
              :is-null
              (filter:nil? field)
@@ -541,25 +567,19 @@
              :contains
              {:type      :search
               :dimension (->rvalue field)
-              :query     {:type  :insensitive_contains
-                          :value value}}
+              :query     {:type          :contains
+                          :value         value
+                          :caseSensitive case-sensitive?}}
 
-             :starts-with
-             (filter:js field
-                        "function (x) { return typeof x === 'string' && x.length >= %d && x.slice(0, %d) === '%s'; }"
-                        (count value) (count value) (s/replace value #"'" "\\\\'"))
+             :starts-with (filter:like field (str (escape-like-filter-pattern value) \%) case-sensitive?)
+             :ends-with   (filter:like field (str \% (escape-like-filter-pattern value)) case-sensitive?)
 
-             :ends-with
-             (filter:js field
-                        "function (x) { return typeof x === 'string' && x.length >= %d && x.slice(-%d) === '%s'; }"
-                        (count value) (count value) (s/replace value #"'" "\\\\'"))
-
-             :=           (filter:= field value)
-             :!=          (filter:not (filter:= field value))
-             :<           (filter:js field "function (x) { return x < %s; }"  (num value))
-             :>           (filter:js field "function (x) { return x > %s; }"  (num value))
-             :<=          (filter:js field "function (x) { return x <= %s; }" (num value))
-             :>=          (filter:js field "function (x) { return x >= %s; }" (num value))))
+             :=  (filter:= field value)
+             :!= (filter:not (filter:= field value))
+             :<  (filter:bound field, :lower value, :inclusive? false)
+             :>  (filter:bound field, :upper value, :inclusive? false)
+             :<= (filter:bound field, :lower value)
+             :>= (filter:bound field, :upper value)))
          (catch Throwable e
            (log/warn (.getMessage e))))))
 
