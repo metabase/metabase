@@ -4020,3 +4020,14 @@ databaseChangeLog:
                   remarks: 'True if a XLS of the data should be included for this pulse card'
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 75
+      author: camsaul
+      comment: 'Added 0.28.2'
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              name: read_permissions
+              type: text
+              remarks: 'Permissions required to view this Card and run its query.'
