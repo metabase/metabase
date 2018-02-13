@@ -47,9 +47,7 @@ export default class FieldValuesWidget extends Component {
   }
 
   onInputChange = (value) => {
-    const { field } = this.props;
-
-    if (this.isSearchable()) {
+    if (value && this.isSearchable()) {
       this._search(value);
     }
 

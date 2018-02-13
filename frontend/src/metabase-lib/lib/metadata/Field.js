@@ -134,22 +134,22 @@ export default class Field extends Base {
         }
     };
 
-
     /**
      * Returns the remapped field, if any
      */
     remappedField(): ?Field {
-        const displayFieldId = this.dimensions && this.dimensions.human_readable_field_id;
+        const displayFieldId = this.dimensions &&
+            this.dimensions.human_readable_field_id;
         if (displayFieldId != null) {
-            return this.metadata.fields[displayFieldId]
+            return this.metadata.fields[displayFieldId];
         }
         // this enables "implicit" remappings from type/PK to type/Name on the same table,
         // used in FieldValuesWidget, but not table/object detail listings
         if (this.isPK()) {
-          const nameField = _.find(this.table.fields, f => f.isEntityName());
-          if (nameField) {
-            return nameField;
-          }
+            const nameField = _.find(this.table.fields, f => f.isEntityName());
+            if (nameField) {
+                return nameField;
+            }
         }
         return null;
     }

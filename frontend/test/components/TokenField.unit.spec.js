@@ -21,6 +21,7 @@ class TokenFieldWithStateAndDefaults extends React.Component {
   }
   render() {
     // allow overriding everything except value and onChange which we provide
+    // eslint-disable-next-line no-unused-vars
     const { value, onChange, ...props } = this.props;
     return (
       <TokenField

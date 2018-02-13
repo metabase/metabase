@@ -17,7 +17,8 @@ import CategoryWidget from "./widgets/CategoryWidget.jsx";
 import TextWidget from "./widgets/TextWidget.jsx";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget";
 
-import { getMetadata } from "metabase/selectors/metadata";
+import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
+import { getMetadata, makeGetMergedParameterFieldValues } from "metabase/selectors/metadata";
 
 import S from "./ParameterWidget.css";
 
@@ -32,9 +33,6 @@ const DATE_WIDGETS = {
     "date/quarter-year": DateQuarterYearWidget,
     "date/all-options": DateAllOptionsWidget
 }
-
-import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
-import { makeGetMergedParameterFieldValues } from "metabase/selectors/metadata";
 
 const makeMapStateToProps = () => {
     const getMergedParameterFieldValues = makeGetMergedParameterFieldValues();
@@ -59,13 +57,16 @@ export default class ParameterValueWidget extends Component {
         value: PropTypes.any,
         setValue: PropTypes.func.isRequired,
         placeholder: PropTypes.string,
-        values: PropTypes.array,
         isEditing: PropTypes.bool,
         noReset: PropTypes.bool,
         commitImmediately: PropTypes.bool,
         focusChanged: PropTypes.func,
         isFullscreen: PropTypes.bool,
-        className: PropTypes.string
+        className: PropTypes.string,
+
+        // provided by @connect
+        values: PropTypes.array,
+        metadata: PropTypes.object.isRequired,
     };
 
     static defaultProps = {

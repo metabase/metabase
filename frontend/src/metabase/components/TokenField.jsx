@@ -9,8 +9,6 @@ import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper';
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 
-import { normal as defaultColors } from "metabase/lib/colors";
-
 import {
     KEYCODE_ESCAPE,
     KEYCODE_ENTER,
