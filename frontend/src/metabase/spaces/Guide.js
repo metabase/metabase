@@ -27,15 +27,12 @@ const GuideLink = ({ to, title, space, color, icon }) => {
             mx={2}
             bg={color}
             color='white'
-            style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                flexDirection: 'column'
-            }}
         >
             <Link to={to} params={{ space }}>
-                <Flex p={2} style={{ height: 180 }} direction='row' align='self-end'>
-                    {icon}
+                <Flex p={2} style={{ height: 180 }} direction='column' align='center' justifyContent='center' alignItems='center'>
+                    <Box>
+                        {icon}
+                    </Box>
                     <Subhead>{title}</Subhead>
                 </Flex>
             </Link>
@@ -113,6 +110,7 @@ export class Guide extends Component {
                                 title='Dashboards & Pulses'
                                 space={params.space}
                                 color={normal.blue}
+                                icon={<Icon name='dashboard' size={40}/>}
                             />
 
                             <GuideLink
@@ -120,21 +118,21 @@ export class Guide extends Component {
                                 title='Metrics'
                                 space={params.space}
                                 color={normal.green}
-                                icon={<Icon name='insight'/>}
+                                icon={<Icon name='insight' size={40}/>}
+                            />
+                            <GuideLink
+                                to='Segments'
+                                title='Segments'
+                                space={params.space}
+                                color={normal.indigo}
+                                icon={<Icon name='segment' size={40}/>}
                             />
                             <GuideLink
                                 to='Questions'
                                 title='Questions'
                                 space={params.space}
                                 color={normal.blue}
-                                icon={<Icon name='insight'/>}
-                            />
-                            <GuideLink
-                                to='Segments'
-                                title='Useful data'
-                                space={params.space}
-                                color={normal.indigo}
-                                icon={<Icon name='segment'/>}
+                                icon={<Icon name='insight' size={40}/>}
                             />
                         </Flex>
                     </Section>
