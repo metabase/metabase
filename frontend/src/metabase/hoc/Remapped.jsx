@@ -53,5 +53,3 @@ export default ComposedComponent => (
         }
     }
 );
-
-export const TestRemapped = (ComposedComponent) => (props) => <ComposedComponent {...props} />

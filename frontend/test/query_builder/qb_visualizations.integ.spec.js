@@ -22,7 +22,7 @@ import { LOAD_COLLECTIONS } from "metabase/questions/collections";
 import { CardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 import VisualizationSettings from "metabase/query_builder/components/VisualizationSettings";
-import { TestPopover } from "metabase/components/Popover";
+import Popover from "metabase/components/Popover";
 
 const timeBreakoutQuestion = Question.create({databaseId: 1, tableId: 1, metadata: null})
     .query()
@@ -80,7 +80,7 @@ describe("Query Builder visualization logic", () => {
         const vizSettings = app.find(VisualizationSettings)
         const vizSettingsTrigger = vizSettings.find("a").first()
         click(vizSettingsTrigger)
-        const areaChartOption = vizSettings.find(TestPopover).find('span').filterWhere((elem) => /Area/.test(elem.text()))
+        const areaChartOption = vizSettings.find(Popover).find('span').filterWhere((elem) => /Area/.test(elem.text()))
         click(areaChartOption)
         await store.waitForActions([SET_CARD_VISUALIZATION])
 

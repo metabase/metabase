@@ -38,7 +38,7 @@ import {
     FieldVisibilityPicker,
     SpecialTypeAndTargetPicker
 } from "metabase/admin/datamodel/components/database/ColumnItem";
-import { TestPopover } from "metabase/components/Popover";
+import Popover from "metabase/components/Popover";
 import Select from "metabase/components/Select";
 import SelectButton from "metabase/components/SelectButton";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
@@ -132,7 +132,7 @@ describe("FieldApp", () => {
 
             const visibilitySelect = fieldApp.find(FieldVisibilityPicker);
             click(visibilitySelect);
-            click(visibilitySelect.find(TestPopover).find("li").at(1).children().first());
+            click(visibilitySelect.find(Popover).find("li").at(1).children().first());
 
             await store.waitForActions([UPDATE_FIELD])
         })
@@ -169,7 +169,7 @@ describe("FieldApp", () => {
             const typeSelect = picker.find(Select).at(0)
             click(typeSelect);
 
-            const noSpecialTypeButton = typeSelect.find(TestPopover).find("li").last().children().first()
+            const noSpecialTypeButton = typeSelect.find(Popover).find("li").last().children().first()
             click(noSpecialTypeButton);
 
             await store.waitForActions([UPDATE_FIELD])
@@ -182,7 +182,7 @@ describe("FieldApp", () => {
             const typeSelect = picker.find(Select).at(0)
             click(typeSelect);
 
-            const noSpecialTypeButton = typeSelect.find(TestPopover)
+            const noSpecialTypeButton = typeSelect.find(Popover)
                 .find("li")
                 .filterWhere(li => li.text() === "Number").first()
                 .children().first();
@@ -199,7 +199,7 @@ describe("FieldApp", () => {
             const typeSelect = picker.find(Select).at(0)
             click(typeSelect);
 
-            const foreignKeyButton = typeSelect.find(TestPopover).find("li").at(2).children().first();
+            const foreignKeyButton = typeSelect.find(Popover).find("li").at(2).children().first();
             click(foreignKeyButton);
             await store.waitForActions([UPDATE_FIELD])
 
@@ -207,7 +207,7 @@ describe("FieldApp", () => {
             const fkFieldSelect = picker.find(Select).at(1)
             click(fkFieldSelect);
 
-            const productIdField = fkFieldSelect.find(TestPopover)
+            const productIdField = fkFieldSelect.find(Popover)
                 .find("li")
                 .filterWhere(li => /The numerical product number./.test(li.text()))
                 .first().children().first();
@@ -238,7 +238,7 @@ describe("FieldApp", () => {
             expect(mappingTypePicker.text()).toBe('Use original value')
 
             click(mappingTypePicker);
-            const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
+            const pickerOptions = mappingTypePicker.find(Popover).find("li");
             expect(pickerOptions.length).toBe(1);
         })
 
@@ -249,7 +249,7 @@ describe("FieldApp", () => {
             expect(mappingTypePicker.text()).toBe('Use original value')
 
             click(mappingTypePicker);
-            const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
+            const pickerOptions = mappingTypePicker.find(Popover).find("li");
             expect(pickerOptions.length).toBe(2);
 
             const useFKButton = pickerOptions.at(1).children().first()
@@ -263,7 +263,7 @@ describe("FieldApp", () => {
             expect(fkFieldSelect.text()).toBe("Name");
             click(fkFieldSelect);
 
-            const sourceField = fkFieldSelect.parent().find(TestPopover)
+            const sourceField = fkFieldSelect.parent().find(Popover)
                 .find(".List-item")
                 .filterWhere(li => /Source/.test(li.text()))
                 .first().children().first();
@@ -284,7 +284,7 @@ describe("FieldApp", () => {
             const fkFieldSelect = section.find(SelectButton);
             click(fkFieldSelect);
 
-            const popover = fkFieldSelect.parent().find(TestPopover);
+            const popover = fkFieldSelect.parent().find(Popover);
             expect(popover.length).toBe(1);
 
             const dateFieldIcons = popover.find("svg.Icon-calendar")
@@ -298,7 +298,7 @@ describe("FieldApp", () => {
             expect(mappingTypePicker.text()).toBe('Use foreign key')
 
             click(mappingTypePicker);
-            const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
+            const pickerOptions = mappingTypePicker.find(Popover).find("li");
             const useOriginalValue = pickerOptions.first().children().first()
             click(useOriginalValue);
 
@@ -319,7 +319,7 @@ describe("FieldApp", () => {
             const mappingTypePicker = section.find(Select);
             expect(mappingTypePicker.text()).toBe('Use original value')
             click(mappingTypePicker);
-            const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
+            const pickerOptions = mappingTypePicker.find(Popover).find("li");
             expect(pickerOptions.length).toBe(2);
 
             const useFKButton = pickerOptions.at(1).children().first()
@@ -342,7 +342,7 @@ describe("FieldApp", () => {
 
             expect(mappingTypePicker.text()).toBe('Use original value')
             click(mappingTypePicker);
-            const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
+            const pickerOptions = mappingTypePicker.find(Popover).find("li");
             expect(pickerOptions.length).toBe(1);
         });
 
@@ -354,7 +354,7 @@ describe("FieldApp", () => {
 
             expect(mappingTypePicker.text()).toBe('Use original value')
             click(mappingTypePicker);
-            const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
+            const pickerOptions = mappingTypePicker.find(Popover).find("li");
             expect(pickerOptions.length).toBe(2);
 
             const customMappingButton = pickerOptions.at(1).children().first()
