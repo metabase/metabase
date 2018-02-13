@@ -203,6 +203,10 @@ export default class FieldValuesWidget extends Component {
           parseFreeformValue={v => {
             // trim whitespace
             v = String(v||"").trim();
+            // empty string is not valid
+            if (!v) {
+              return null;
+            }
             // if the field is numeric we need to parse the string into an integer
             if (field.isNumeric()) {
               if (/^-?\d+(\.\d+)?$/.test(v)) {

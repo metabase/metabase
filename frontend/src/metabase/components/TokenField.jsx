@@ -54,6 +54,8 @@ export default class TokenField extends Component {
         onInputChange: PropTypes.func,
         onInputKeyDown: PropTypes.func,
         updateOnInputChange: PropTypes.bool,
+        // if provided, parseFreeformValue parses the input string into a value,
+        // or returns null to indicate an invalid value
         parseFreeformValue: PropTypes.func,
 
         valueRenderer: PropTypes.func.isRequired, // TODO: default

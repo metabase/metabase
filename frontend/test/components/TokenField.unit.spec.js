@@ -137,32 +137,33 @@ describe("TokenField", () => {
     })
 
     describe("when updateOnInputChange is provided", () => {
-      it("should add freeform value immediately if updateOnInputChange is provided", () => {
-          const component = mount(<TokenFieldWithStateAndDefaults
-            options={["bar", "baz"]}
-            multi
-            parseFreeformValue={(value) => value}
-            updateOnInputChange
-          />)
-          const input = component.find("input");
-          input.simulate("focus");
+      let component, input;
+      beforeEach(() => {
+        component = mount(<TokenFieldWithStateAndDefaults
+          options={["Doohickey", "Gadget", "Gizmo", "Widget"]}
+          multi
+          // return null for empty string since it's not a valid
+          parseFreeformValue={(value) => value || null}
+          updateOnInputChange
+        />)
+        input = component.find("input");
+      })
+      function focusAndType(str) {
+        input.simulate("focus");
+        input.simulate("change", { target: { value: str } });
+      }
+      function blur() {
+        input.simulate("blur");
+      }
 
-          input.simulate("change", { target: { value: "yep" } });
+      it("should add freeform value immediately if updateOnInputChange is provided", () => {
+          focusAndType("yep");
           expect(component.state().value).toEqual(["yep"])
       })
 
       it("should only add one option when filtered and clicked",async () => {
-          const component = mount(<TokenFieldWithStateAndDefaults
-            options={["Doohickey", "Gadget", "Gizmo", "Widget"]}
-            multi
-            parseFreeformValue={(value) => value}
-            updateOnInputChange
-          />)
-          const input = component.find("input");
-          input.simulate("focus");
-
           expect(component.state().value).toEqual([]);
-          input.simulate("change", { target: { value: "Do" } });
+          focusAndType("Do")
           expect(component.state().value).toEqual(["Do"])
 
           // click the first option
@@ -172,17 +173,8 @@ describe("TokenField", () => {
       })
 
       it("should only add one option when filtered and enter is pressed",async () => {
-          const component = mount(<TokenFieldWithStateAndDefaults
-            options={["Doohickey", "Gadget", "Gizmo", "Widget"]}
-            multi
-            parseFreeformValue={(value) => value}
-            updateOnInputChange
-          />)
-          const input = component.find("input");
-          input.simulate("focus");
-
           expect(component.state().value).toEqual([]);
-          input.simulate("change", { target: { value: "Do" } });
+          focusAndType("Do");
           expect(component.state().value).toEqual(["Do"])
 
           // press enter
@@ -192,38 +184,28 @@ describe("TokenField", () => {
       })
 
       it("shouldn't hide option matching input freeform value", () => {
-          const component = mount(<TokenFieldWithStateAndDefaults
-            options={["Doohickey", "Gadget", "Gizmo", "Widget"]}
-            multi
-            parseFreeformValue={(value) => value}
-            updateOnInputChange
-          />)
-          const input = component.find("input");
-          input.simulate("focus");
-
           expect(component.find(MockOption).length).toEqual(4);
-          input.simulate("change", { target: { value: "Doohickey" } });
+          focusAndType("Doohickey");
           expect(component.state().value).toEqual(["Doohickey"])
           expect(component.find(MockOption).length).toEqual(1);
       })
 
       it("should commit after typing an option and hitting enter", () => {
-          const component = mount(<TokenFieldWithStateAndDefaults
-            options={["Doohickey", "Gadget", "Gizmo", "Widget"]}
-            multi
-            parseFreeformValue={(value) => value}
-            updateOnInputChange
-          />)
-          const input = component.find("input");
-          input.simulate("focus");
-
           expect(component.find(MockOption).length).toEqual(4);
-          input.simulate("change", { target: { value: "Doohickey" } });
+          focusAndType("Doohickey");
           expect(component.state().value).toEqual(["Doohickey"])
 
           input.simulate("keydown", { keyCode: KEYCODE_ENTER })
           expect(component.find(MockValue).length).toEqual(1);
           expect(component.find(MockOption).length).toEqual(3);
+      })
+
+      it("should not commit empty freeform value", () => {
+        focusAndType("Doohickey");
+        focusAndType("");
+        blur();
+        expect(component.state().value).toEqual([])
+        expect(component.find(MockValue).length).toEqual(0);
       })
     })
 })
