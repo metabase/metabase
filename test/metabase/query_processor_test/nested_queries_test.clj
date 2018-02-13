@@ -31,7 +31,7 @@
 
 
 ;; make sure we can do a basic query with MBQL source-query
-(datasets/expect-with-engines (engines-that-support :nested-queries)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
   {:rows [[1 "Red Medicine"                  4 10.0646 -165.374 3]
           [2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
           [3 "The Apple Pan"                11 34.0406 -118.428 2]
@@ -74,7 +74,7 @@
   (comp quote-identifier identifier))
 
 ;; make sure we can do a basic query with a SQL source-query
-(datasets/expect-with-engines (engines-that-support :nested-queries)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
   {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
           [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
           [3 -118.428 11 2 "The Apple Pan"                34.0406]
@@ -112,7 +112,7 @@
           {:name "count", :base_type :type/Integer}]})
 
 ;; make sure we can do a query with breakout and aggregation using an MBQL source query
-(datasets/expect-with-engines (engines-that-support :nested-queries)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
   breakout-results
   (rows+cols
     (format-rows-by [int int]
@@ -124,7 +124,7 @@
                     :breakout     [[:field-literal (keyword (data/format-name :price)) :type/Integer]]}}))))
 
 ;; make sure we can do a query with breakout and aggregation using a SQL source query
-(datasets/expect-with-engines (engines-that-support :nested-queries)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
   breakout-results
   (rows+cols
     (format-rows-by [int int]
@@ -410,7 +410,7 @@
       results-metadata))
 
 ;; make sure using a time interval filter works
-(datasets/expect-with-engines (engines-that-support :nested-queries)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
   :completed
   (tt/with-temp Card [card (mbql-card-def
                              :source-table (data/id :checkins))]
@@ -420,7 +420,7 @@
         :status)))
 
 ;; make sure that wrapping a field literal in a datetime-field clause works correctly in filters & breakouts
-(datasets/expect-with-engines (engines-that-support :nested-queries)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
   :completed
   (tt/with-temp Card [card (mbql-card-def
                              :source-table (data/id :checkins))]
