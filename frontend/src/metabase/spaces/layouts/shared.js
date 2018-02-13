@@ -36,4 +36,9 @@ export const PageLayout = ({ children }) =>
         { children }
     </Box>
 
+export const PageSidebar = ({ children }) =>
+    <Box w={1/3}>
+        { children }
+    </Box>
+
 

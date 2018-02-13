@@ -1,10 +1,13 @@
 import React, { Component } from 'react'
 import { Link } from "metabase/spaces/Link"
 import { connect } from 'react-redux'
+import { normal } from 'metabase/lib/colors'
 
-import { Absolute, Box, Card, Flex, Heading, Subhead } from 'rebass'
+import Icon from 'metabase/components/Icon'
 
-import { Wrapper, Section, SectionHeading } from './layouts/shared'
+import { Absolute, Box, Card, Flex, Subhead } from 'rebass'
+
+import { Wrapper, Section, SectionHeading, PageHeading } from './layouts/shared'
 
 import {
     getCurrentSpace,
@@ -13,40 +16,26 @@ import {
     getLogsForSpace
 } from './selectors'
 
-import {
-    Menu
-} from './EntityLayout'
 import { SPACES } from "metabase/spaces/fixtures";
 import { loadEntities } from "metabase/questions/questions";
 
-const MoreMenu = () =>
-    <Menu name='More'>
-        <Box my={3}>
-            <Link>Permissions</Link>
-        </Box>
-    </Menu>
-
-
-class EditMenu extends React.Component {
-    render () {
-        return (
-            <Menu name='Edit'>
-                <Box my={3}>
-                    <Link>Edit collection details</Link>
-                </Box>
-                <Box my={3}>
-                    <Link>Archive</Link>
-                </Box>
-            </Menu>
-        )
-    }
-}
-
-const GuideLink = ({ to, title, space }) => {
+const GuideLink = ({ to, title, space, color, icon }) => {
     return (
-        <Card w={1/3} p={3} mx={2}>
+        <Card
+            w={1/3}
+            p={3}
+            mx={2}
+            bg={color}
+            color='white'
+            style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                flexDirection: 'column'
+            }}
+        >
             <Link to={to} params={{ space }}>
                 <Flex p={2} style={{ height: 180 }} direction='row' align='self-end'>
+                    {icon}
                     <Subhead>{title}</Subhead>
                 </Flex>
             </Link>
@@ -112,17 +101,10 @@ export class Guide extends Component {
                 )}
                 <div style={{ marginTop: hasPinnedDash ? dashHeight + 30 : 0 }}>
 
-                    <Flex align='center'>
-                        <Heading>{ currentSpace.name } Guide</Heading>
-                        { !currentSpace.personal && (
-                            <Flex ml='auto' align='center'>
-                                <Box mx={2}>
-                                    <EditMenu />
-                                </Box>
-                                <MoreMenu />
-                            </Flex>
-                        )}
-                    </Flex>
+                    <PageHeading
+                        icon={<Icon name='all' size={32} />}
+                        title={currentSpace.name}
+                    />
 
                     <Section>
                         <Flex>
@@ -130,22 +112,29 @@ export class Guide extends Component {
                                 to='Shared'
                                 title='Dashboards & Pulses'
                                 space={params.space}
+                                color={normal.blue}
                             />
 
                             <GuideLink
                                 to='Metrics'
                                 title='Metrics'
                                 space={params.space}
+                                color={normal.green}
+                                icon={<Icon name='insight'/>}
                             />
                             <GuideLink
                                 to='Questions'
                                 title='Questions'
                                 space={params.space}
+                                color={normal.blue}
+                                icon={<Icon name='insight'/>}
                             />
                             <GuideLink
                                 to='Segments'
                                 title='Useful data'
                                 space={params.space}
+                                color={normal.indigo}
+                                icon={<Icon name='segment'/>}
                             />
                         </Flex>
                     </Section>
