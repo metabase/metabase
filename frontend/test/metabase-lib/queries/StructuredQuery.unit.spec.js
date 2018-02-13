@@ -336,7 +336,7 @@ describe("StructuredQuery unit tests", () => {
         });
         describe("breakoutOptions", () => {
             it("returns the correct count of dimensions", () => {
-                expect(query.breakoutOptions().dimensions.length).toBe(5);
+                expect(query.breakoutOptions().dimensions.length).toBe(7);
             });
 
             it("excludes the already used breakouts", () => {
@@ -346,7 +346,7 @@ describe("StructuredQuery unit tests", () => {
                 ]);
                 expect(
                     queryWithBreakout.breakoutOptions().dimensions.length
-                ).toBe(4);
+                ).toBe(6);
             });
 
             it("includes an explicitly provided breakout although it has already been used", () => {
@@ -354,12 +354,12 @@ describe("StructuredQuery unit tests", () => {
                 const queryWithBreakout = query.addBreakout(breakout);
                 expect(
                     queryWithBreakout.breakoutOptions().dimensions.length
-                ).toBe(4);
+                ).toBe(6);
                 expect(
                     queryWithBreakout.breakoutOptions(
                         breakout
                     ).dimensions.length
-                ).toBe(5);
+                ).toBe(7);
             });
         });
         describe("canAddBreakout", () => {
@@ -444,7 +444,7 @@ describe("StructuredQuery unit tests", () => {
 
         describe("sortOptions", () => {
             it("returns the correct count of dimensions", () => {
-                expect(query.sortOptions().dimensions.length).toBe(5);
+                expect(query.sortOptions().dimensions.length).toBe(7);
             });
 
             it("excludes the already used sorts", () => {
@@ -453,7 +453,7 @@ describe("StructuredQuery unit tests", () => {
                     "ascending"
                 ]);
                 expect(queryWithBreakout.sortOptions().dimensions.length).toBe(
-                    4
+                    6
                 );
             });
 
@@ -461,11 +461,11 @@ describe("StructuredQuery unit tests", () => {
                 const sort = [["field-id", ORDERS_TOTAL_FIELD_ID], "ascending"];
                 const queryWithBreakout = query.addSort(sort);
                 expect(queryWithBreakout.sortOptions().dimensions.length).toBe(
-                    4
+                    6
                 );
                 expect(
                     queryWithBreakout.sortOptions(sort).dimensions.length
-                ).toBe(5);
+                ).toBe(7);
             });
         });
 
@@ -548,21 +548,14 @@ describe("StructuredQuery unit tests", () => {
         describe("fieldOptions", () => {
             it("includes the correct number of dimensions", () => {
                 // Should just include the non-fk keys from the current table
-                expect(query.fieldOptions().dimensions.length).toBe(5);
-            });
-            it("does not include foreign key fields in the dimensions list", () => {
-                const dimensions = query.fieldOptions().dimensions;
-                const fkDimensions = dimensions.filter(
-                    dim => dim.field() && dim.field().isFK()
-                );
-                expect(fkDimensions.length).toBe(0);
+                expect(query.fieldOptions().dimensions.length).toBe(7);
             });
 
             it("returns correct count of foreign keys", () => {
                 expect(query.fieldOptions().fks.length).toBe(2);
             });
             it("returns a correct count of fields", () => {
-                expect(query.fieldOptions().count).toBe(26);
+                expect(query.fieldOptions().count).toBe(28);
             });
         });
         describe("dimensions", () => {

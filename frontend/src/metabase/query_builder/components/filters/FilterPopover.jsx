@@ -23,7 +23,9 @@ import cx from "classnames";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { Filter, FieldFilter, ConcreteField } from "metabase/meta/types/Query";
-import type { FieldMetadata, Operator } from "metabase/meta/types/Metadata";
+import type { Operator } from "metabase/meta/types/Metadata";
+
+import Field from "metabase-lib/lib/metadata/Field";
 
 type Props = {
     maxHeight?: number,
@@ -80,7 +82,7 @@ export default class FilterPopover extends Component {
             filter[1] = fieldId;
 
             // default to the first operator
-            let { field } = Query.getFieldTarget(filter[1], query.table());
+            let { field } = query.table().fieldTarget(filter[1]);
 
             // let the DatePicker choose the default operator, otherwise use the first one
             let operator = isDate(field) ? null : field.operators[0].name;
@@ -119,7 +121,7 @@ export default class FilterPopover extends Component {
 
     _updateOperator(oldFilter: FieldFilter, operatorName: ?string): FieldFilter {
         const { query } = this.props;
-        let { field } = Query.getFieldTarget(oldFilter[1], query.table());
+        let { field } = query.table().fieldTarget(oldFilter[1]);
         let operator = field.operator(operatorName);
         let oldOperator = field.operator(oldFilter[0]);
 
@@ -160,7 +162,7 @@ export default class FilterPopover extends Component {
             return false;
         }
         // field/operator combo is valid
-        let { field } = Query.getFieldTarget(filter[1], query.table());
+        let { field } = query.table().fieldTarget(filter[1]);
         let operator = field.operators_lookup[filter[0]];
         if (operator) {
             // has the mininum number of arguments
@@ -184,7 +186,7 @@ export default class FilterPopover extends Component {
         this.setState({ filter: [...filter.slice(0, 1), null, ...filter.slice(2)] });
     }
 
-    renderPicker(filter: FieldFilter, field: FieldMetadata) {
+    renderPicker(filter: FieldFilter, field: Field) {
         let operator: ?Operator = field.operators_lookup[filter[0]];
         return operator && operator.fields.map((operatorField, index) => {
             if (!operator) {
@@ -196,6 +198,7 @@ export default class FilterPopover extends Component {
                 values = this.state.filter.slice(2);
                 onValuesChange = (values) => this.setValues(values);
             } else {
+                // $FlowFixMe
                 values = [this.state.filter[2 + index]];
                 onValuesChange = (values) => this.setValue(index, values[0]);
             }
@@ -283,7 +286,7 @@ export default class FilterPopover extends Component {
                 </div>
             );
         } else {
-            let { table, field } = Query.getFieldTarget(fieldRef, query.table());
+            let { table, field } = query.table().fieldTarget(fieldRef);
             const dimension = query.parseFieldReference(fieldRef);
             return (
                 <div style={{
@@ -330,7 +333,7 @@ export default class FilterPopover extends Component {
                               // DatePicker uses a different set of operator objects
                               getOperator(filter) :
                               // Normal operators defined in schema_metadata
-                              field.operator(operator)
+                              (field.operator && field.operator(operator))
                           }
                         />
                         <button

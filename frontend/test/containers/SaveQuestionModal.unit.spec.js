@@ -3,6 +3,7 @@ import { shallow } from 'enzyme'
 
 import SaveQuestionModal from '../../src/metabase/containers/SaveQuestionModal';
 import Question from "metabase-lib/lib/Question";
+
 import {
     DATABASE_ID,
     ORDERS_TABLE_ID,

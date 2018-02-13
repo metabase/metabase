@@ -1,28 +1,11 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import { createSelector } from "reselect";
-
 import { getMetadata } from "metabase/selectors/metadata";
 import { fetchRemapping } from "metabase/redux/metadata";
 
-const getField = createSelector(
-    [getMetadata, (state, props) => props.column && props.column.id],
-    (metadata, columnId) => metadata.fields[columnId]
-);
-
-const getDisplayValue = createSelector(
-    [(state, props) => props.value, getField],
-    (value, field) => field && field.remappedValue(value)
-);
-const getDisplayColumn = createSelector(
-    [getField],
-    field => field && field.remappedField()
-);
-
 const mapStateToProps = (state, props) => ({
-    displayValue: getDisplayValue(state, props),
-    displayColumn: getDisplayColumn(state, props)
+    metadata: getMetadata(state, props)
 });
 
 const mapDispatchToProps = {
@@ -56,10 +39,10 @@ export default ComposedComponent =>
 
         render() {
             // eslint-disable-next-line no-unused-vars
-            let { displayValue, displayColumn, fetchRemapping, ...props } = this.props;
-            if (displayValue === undefined) {
-                displayColumn = null;
-            }
+            const { metadata, fetchRemapping, ...props } = this.props;
+            const field = metadata.field(props.column && props.column.id);
+            const displayValue = field && field.remappedValue(props.value);
+            const displayColumn = (displayValue != null && field && field.remappedField()) || null;
             return (
                 <ComposedComponent
                     {...props}

@@ -2,6 +2,8 @@
 
 import React, { Component } from "react";
 
+import { t } from "c-3po";
+
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Popover from "metabase/components/Popover";
 import Button from "metabase/components/Button";
@@ -16,9 +18,11 @@ type Props = {
     isEditing: bool,
 
     field: Field,
+    parentFocusChanged: (bool) => void,
 };
 
 type State = {
+    value: any[],
     isFocused: bool,
 };
 
@@ -48,7 +52,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
         }
     }
 
-    componentWillReceiveProps(nextProps) {
+    componentWillReceiveProps(nextProps: Props) {
       if (this.props.value !== nextProps.value) {
         this.setState({ value: nextProps.value })
       }

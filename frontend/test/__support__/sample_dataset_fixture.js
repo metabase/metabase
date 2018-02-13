@@ -1,3 +1,7 @@
+import React from "react";
+import { Provider } from "react-redux";
+import { getStore } from "metabase/store";
+
 import Question from "metabase-lib/lib/Question";
 import { getMetadata } from "metabase/selectors/metadata";
 import { assocIn } from "icepick";
@@ -1590,3 +1594,11 @@ export const vendor_count_metric = {
         "source_table": 3
     }
 };
+
+const nopMetadataReducer = (s = state.metadata, a) => s;
+
+// simple provider which only supports static metadata defined above, no actions will take effect
+export const StaticMetadataProvider = ({ children }) =>
+  <Provider store={getStore({ metadata: nopMetadataReducer }, null, state)}>
+    {children}
+  </Provider>

@@ -15,13 +15,13 @@ import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
 
+import Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase/meta/types/Dataset";
-import type { Field } from "metabase/meta/types/Field";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
 
 export type FormattingOptions = {
-    column?: Column,
+    column?: Column|Field,
     majorWidth?: number,
     type?: "axis"|"cell"|"tooltip",
     jsx?: boolean,
@@ -255,12 +255,13 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
     };
 
     if (options.remap && column) {
-      // "column" may be a Field object with hasRemappedValue/remappedValue methods
+      // $FlowFixMe: column could be Field or Column
       if (column.hasRemappedValue && column.hasRemappedValue(value)) {
+        // $FlowFixMe: column could be Field or Column
         return column.remappedValue(value);
       }
       // or it may be a raw column object with a "remapping" object
-      if (column.remapping && column.remapping.has(value)) {
+      if (column.remapping instanceof Map && column.remapping.has(value)) {
         return column.remapping.get(value);
       }
       // TODO: get rid of one of these two code paths?

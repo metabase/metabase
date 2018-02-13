@@ -1,3 +1,4 @@
+// import { getMetadata } from "metabase/selectors/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
 
 import { chain } from "icepick";
@@ -25,7 +26,10 @@ const STATE = {
     metadata: {
         databases: {},
         tables: {},
-        fields: {},
+        fields: {
+          1: { id: 1 },
+          2: { id: 2 },
+        },
         metrics: {},
         segments: {}
     }
@@ -42,7 +46,8 @@ describe("dashboard/selectors", () => {
                 .value();
             expect(getParameters(state)).toEqual([{
                 id: 1,
-                field_ids: []
+                field_ids: [],
+                field_id: null,
             }]);
         })
         it("should not include field id with one mapping, no field id", () => {
@@ -56,7 +61,8 @@ describe("dashboard/selectors", () => {
                 .value();
             expect(getParameters(state)).toEqual([{
                 id: 1,
-                field_ids: []
+                field_ids: [],
+                field_id: null,
             }]);
         })
         it("should include field id with one mappings, with field id", () => {
@@ -70,7 +76,8 @@ describe("dashboard/selectors", () => {
                 .value();
             expect(getParameters(state)).toEqual([{
                 id: 1,
-                field_ids: [1]
+                field_ids: [1],
+                field_id: 1,
             }]);
         })
         it("should include field id with two mappings, with same field id", () => {
@@ -89,7 +96,8 @@ describe("dashboard/selectors", () => {
                 .value();
             expect(getParameters(state)).toEqual([{
                 id: 1,
-                field_ids: [1]
+                field_ids: [1],
+                field_id: 1,
             }]);
         })
         it("should include field id with two mappings, one with field id, one without", () => {
@@ -108,7 +116,8 @@ describe("dashboard/selectors", () => {
                 .value();
             expect(getParameters(state)).toEqual([{
                 id: 1,
-                field_ids: [1]
+                field_ids: [1],
+                field_id: 1,
             }]);
         })
         it("should include all field ids with two mappings, with different field ids", () => {
@@ -127,7 +136,8 @@ describe("dashboard/selectors", () => {
                 .value();
             expect(getParameters(state)).toEqual([{
                 id: 1,
-                field_ids: [1, 2]
+                field_ids: [1, 2],
+                field_id: null,
             }]);
         })
     })

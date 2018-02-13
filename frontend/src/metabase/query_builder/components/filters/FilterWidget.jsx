@@ -16,6 +16,8 @@ import _ from "underscore";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { Filter } from "metabase/meta/types/Query";
+import type { Value as ValueType } from "metabase/meta/types/Dataset";
+
 
 type Props = {
     query: StructuredQuery,
@@ -55,10 +57,11 @@ export default class FilterWidget extends Component {
 
     renderOperatorFilter() {
         const { query, filter, maxDisplayValues } = this.props;
-        let [op, field, ...values] = filter;
-        if (hasFilterOptions(filter)) {
-          values = values.slice(0, -1);
-        }
+        let [op, field] = filter;
+        // $FlowFixMe
+        let values: ValueType[] = hasFilterOptions(filter) ?
+          filter.slice(2, -1) :
+          filter.slice(2)
 
         const dimension = query.parseFieldReference(field);
         if (!dimension) {

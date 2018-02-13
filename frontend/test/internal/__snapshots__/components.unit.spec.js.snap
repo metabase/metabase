@@ -755,3 +755,159 @@ exports[`Toggle should render "on" correctly 1`] = `
   }
 />
 `;
+
+exports[`TokenField should render "" correctly 1`] = `
+<div>
+  <ul
+    className="m1 px1 pb1 bordered rounded flex flex-wrap bg-white"
+    onMouseDownCapture={[Function]}
+    style={undefined}
+  >
+    <li
+      className="flex-full mr1 py1 pl1 mt1 bg-white"
+    >
+      <input
+        autoFocus={undefined}
+        className="full h4 text-bold text-default no-focus borderless"
+        onBlur={[Function]}
+        onChange={[Function]}
+        onFocus={[Function]}
+        onKeyDown={[Function]}
+        onPaste={[Function]}
+        placeholder={undefined}
+        size={10}
+        value=""
+      />
+    </li>
+  </ul>
+  <ul
+    className="ml1 scroll-y scroll-show"
+    onMouseEnter={[Function]}
+    onMouseLeave={[Function]}
+    style={
+      Object {
+        "maxHeight": 300,
+      }
+    }
+  >
+    <li>
+      <div
+        className="py1 pl1 pr2 block rounded text-bold inline-block cursor-pointer text-white-hover bg-brand-hover"
+        onClick={[Function]}
+      >
+        <span>
+          Doohickey
+        </span>
+      </div>
+    </li>
+    <li>
+      <div
+        className="py1 pl1 pr2 block rounded text-bold inline-block cursor-pointer text-white-hover bg-brand-hover"
+        onClick={[Function]}
+      >
+        <span>
+          Gadget
+        </span>
+      </div>
+    </li>
+    <li>
+      <div
+        className="py1 pl1 pr2 block rounded text-bold inline-block cursor-pointer text-white-hover bg-brand-hover"
+        onClick={[Function]}
+      >
+        <span>
+          Gizmo
+        </span>
+      </div>
+    </li>
+    <li>
+      <div
+        className="py1 pl1 pr2 block rounded text-bold inline-block cursor-pointer text-white-hover bg-brand-hover"
+        onClick={[Function]}
+      >
+        <span>
+          Widget
+        </span>
+      </div>
+    </li>
+  </ul>
+</div>
+`;
+
+exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
+<div>
+  <ul
+    className="m1 px1 pb1 bordered rounded flex flex-wrap bg-white"
+    onMouseDownCapture={[Function]}
+    style={undefined}
+  >
+    <li
+      className="flex-full mr1 py1 pl1 mt1 bg-white"
+    >
+      <input
+        autoFocus={undefined}
+        className="full h4 text-bold text-default no-focus borderless"
+        onBlur={[Function]}
+        onChange={[Function]}
+        onFocus={[Function]}
+        onKeyDown={[Function]}
+        onPaste={[Function]}
+        placeholder={undefined}
+        size={10}
+        value=""
+      />
+    </li>
+  </ul>
+  <ul
+    className="ml1 scroll-y scroll-show"
+    onMouseEnter={[Function]}
+    onMouseLeave={[Function]}
+    style={
+      Object {
+        "maxHeight": 300,
+      }
+    }
+  >
+    <li>
+      <div
+        className="py1 pl1 pr2 block rounded text-bold inline-block cursor-pointer text-white-hover bg-brand-hover"
+        onClick={[Function]}
+      >
+        <span>
+          Doohickey
+        </span>
+      </div>
+    </li>
+    <li>
+      <div
+        className="py1 pl1 pr2 block rounded text-bold inline-block cursor-pointer text-white-hover bg-brand-hover"
+        onClick={[Function]}
+      >
+        <span>
+          Gadget
+        </span>
+      </div>
+    </li>
+    <li>
+      <div
+        className="py1 pl1 pr2 block rounded text-bold inline-block cursor-pointer text-white-hover bg-brand-hover"
+        onClick={[Function]}
+      >
+        <span>
+          Gizmo
+        </span>
+      </div>
+    </li>
+    <li>
+      <div
+        className="py1 pl1 pr2 block rounded text-bold inline-block cursor-pointer text-white-hover bg-brand-hover"
+        onClick={[Function]}
+      >
+        <span>
+          Widget
+        </span>
+      </div>
+    </li>
+  </ul>
+</div>
+`;

@@ -1,3 +1,5 @@
+/* eslint-disable react/display-name */
+
 import React from "react";
 import { mount } from "enzyme";
 
@@ -6,11 +8,30 @@ import TokenField from "../../src/metabase/components/TokenField";
 import { delay } from '../../src/metabase/lib/promise';
 
 import {
+    KEYCODE_DOWN,
+    KEYCODE_TAB,
     KEYCODE_ENTER,
-} from "metabase/lib/keyboard";
+    KEYCODE_COMMA
+} from "metabase/lib/keyboard"
+
+const DEFAULT_OPTIONS = ["Doohickey", "Gadget", "Gizmo", "Widget"];
 
 const MockValue = ({ value }) => <span>{value}</span>
 const MockOption = ({ option }) => <span>{option}</span>
+
+const DEFAULT_TOKEN_FIELD_PROPS = {
+  options: [],
+  value: [],
+  valueKey: option => option,
+  labelKey: option => option,
+  valueRenderer: (value) => <MockValue value={value} />,
+  optionRenderer: (option) => <MockOption option={option} />,
+  layoutRenderer: ({ valuesList, optionsList }) =>
+    <div>
+      {valuesList}
+      {optionsList}
+    </div>
+}
 
 class TokenFieldWithStateAndDefaults extends React.Component {
   constructor(props) {
@@ -25,20 +46,10 @@ class TokenFieldWithStateAndDefaults extends React.Component {
     const { value, onChange, ...props } = this.props;
     return (
       <TokenField
-          options={[]}
+          {...DEFAULT_TOKEN_FIELD_PROPS}
+          {...props}
           value={this.state.value}
           onChange={(value) => { this.setState({ value }); if (onChange) { onChange(value); } }}
-          valueKey={option => option}
-          labelKey={option => option}
-          valueRenderer={(value) => <MockValue value={value} />}
-          optionRenderer={(option) => <MockOption option={option} />}
-          layoutRenderer={({ valuesList, optionsList }) =>
-            <div>
-              {valuesList}
-              {optionsList}
-            </div>
-          }
-          {...props}
       />
     )
   }
@@ -141,7 +152,7 @@ describe("TokenField", () => {
       let component, input;
       beforeEach(() => {
         component = mount(<TokenFieldWithStateAndDefaults
-          options={["Doohickey", "Gadget", "Gizmo", "Widget"]}
+          options={DEFAULT_OPTIONS}
           multi
           // return null for empty string since it's not a valid
           parseFreeformValue={(value) => value || null}
@@ -208,5 +219,46 @@ describe("TokenField", () => {
         expect(component.state().value).toEqual([])
         expect(component.find(MockValue).length).toEqual(0);
       })
+    })
+
+    describe('key selection', () => {
+        [KEYCODE_TAB, KEYCODE_ENTER, KEYCODE_COMMA].map(key =>
+            it(`should allow the user to use arrow keys and then ${key} to select a recipient`, () => {
+                const spy = jest.fn()
+
+                const component = mount(
+                    <TokenField
+                        {...DEFAULT_TOKEN_FIELD_PROPS}
+                        options={DEFAULT_OPTIONS}
+                        onChange={spy}
+                    />
+                )
+
+                const input = component.find("input")
+
+                // limit our options by typing
+                input.simulate("focus");
+                input.simulate('change', { target: { value: 'G' }})
+
+                // the initially selected option should be the first option
+                expect(component.state().selectedOptionValue).toBe(DEFAULT_OPTIONS[1])
+
+                input.simulate('keydown', {
+                    keyCode: KEYCODE_DOWN,
+                    preventDefault: jest.fn()
+                })
+
+                // the next possible option should be selected now
+                expect(component.state().selectedOptionValue).toBe(DEFAULT_OPTIONS[2])
+
+                input.simulate('keydown', {
+                    keyCode: key,
+                    preventDefalut: jest.fn()
+                })
+
+                expect(spy).toHaveBeenCalledTimes(1)
+                expect(spy).toHaveBeenCalledWith([DEFAULT_OPTIONS[2]])
+            })
+        )
     })
 })
