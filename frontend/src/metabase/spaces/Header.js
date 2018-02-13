@@ -2,12 +2,13 @@ import React from 'react'
 import { Link } from "metabase/spaces/Link"
 import { Absolute, Box, Flex } from 'rebass'
 import { Burger } from 'reline'
+import Icon from 'metabase/components/Icon'
 
 import SpaceHomeLink from './SpaceHomeLink'
 
 const Header = () => {
     return (
-        <Box mb={3} z={4}>
+        <Flex mb={3} z={4}>
             <Absolute top left>
                 <Flex align='center'>
                     <Link to='Home'>
@@ -20,7 +21,10 @@ const Header = () => {
                     </Box>
                 </Flex>
             </Absolute>
-        </Box>
+            <Box ml='auto' py={3}>
+                <Icon name='search' />
+            </Box>
+        </Flex>
     )
 }
 

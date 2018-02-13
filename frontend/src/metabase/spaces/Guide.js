@@ -2,11 +2,11 @@ import React, { Component } from 'react'
 import { Link } from "metabase/spaces/Link"
 import { connect } from 'react-redux'
 
-import { Absolute, Border, Box, Card, Flex, Heading, Subhead } from 'rebass'
+import { Absolute, Box, Card, Flex, Heading, Subhead } from 'rebass'
 
-import { Wrapper } from './layouts/shared'
+import { Wrapper, Section, SectionHeading } from './layouts/shared'
 
-import { 
+import {
     getCurrentSpace,
     getMetricsForSpace,
     getImportantSegmentsForSpace,
@@ -53,18 +53,6 @@ const GuideLink = ({ to, title, space }) => {
         </Card>
     )
 }
-const Section = ({ children }) => 
-    <Box py={4}>
-        { children }
-    </Box>
-
-const SectionHeading = ({ children }) =>
-    <Border bottom mb={3} pb={2}>
-        <Flex align='center'>
-            <Subhead>{ children }</Subhead>
-        </Flex>
-    </Border>
-
 
 const mapStateToProps = (state) => {
     // temporary override for having a mixture of real and fixture data
@@ -78,8 +66,7 @@ const mapStateToProps = (state) => {
 
     return {
         logs: getLogsForSpace(stateWithFixtureSpace).slice(0, 8),
-        currentSpace: null,
-        // currentSpace: getCurrentSpace(stateWithFixtureSpace),
+        currentSpace: getCurrentSpace(stateWithFixtureSpace),
         // this should actually just be called important
         recents: getMetricsForSpace(stateWithFixtureSpace).slice(0, 8),
         segments: getImportantSegmentsForSpace(stateWithFixtureSpace).slice(0, 5),

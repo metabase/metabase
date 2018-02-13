@@ -35,7 +35,8 @@ import { EntityLayout } from './layouts/Entity'
 const LayoutViewComponent = ({ layout, view, children, ...props }) =>
     <RebassProvider
         theme={{
-            font: '"Lato", "Helvetica Neue", "sans-serif"'
+            font: '"Lato", "Helvetica Neue", "sans-serif"',
+            radius: 6
         }}
     >
         { React.cloneElement(layout, props, view) }
