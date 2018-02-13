@@ -17,7 +17,7 @@ const mapStateToProps = (state) => {
 }
 
 @connect(mapStateToProps)
-export class Tables {
+export class Tables extends React.Component {
     render() {
         const { tables } = this.props
 
