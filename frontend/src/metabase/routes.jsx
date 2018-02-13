@@ -100,6 +100,8 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx"
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
 import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
+import { DashboardHistoryModal } from "metabase/dashboard/components/DashboardHistoryModal";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 const MetabaseIsSetup = UserAuthWrapper({
     predicate: authData => !authData.hasSetupToken,
@@ -180,6 +182,7 @@ export const getRoutes = (store) =>
                 <Route path="google_no_mb_account" component={GoogleNoAccount} />
             </Route>
 
+
             {/* MAIN */}
             <Route component={IsAuthenticated}>
                 {/* HOME */}
@@ -190,7 +193,9 @@ export const getRoutes = (store) =>
                 <Route path="/dashboards/archive" title={t`Dashboards`} component={DashboardsArchive} />
 
                 {/* INDIVIDUAL DASHBOARDS */}
-                <Route path="/dashboard/:dashboardId" title={t`Dashboard`} component={DashboardApp} />
+                <Route path="/dashboard/:dashboardId" title={t`Dashboard`} component={DashboardApp}>
+                    <ModalRoute path="history" modal={DashboardHistoryModal} />
+                </Route>
 
                 {/* QUERY BUILDER */}
                 <Route path="/question">
