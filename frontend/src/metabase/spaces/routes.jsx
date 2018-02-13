@@ -27,6 +27,7 @@ import { Segments } from './Segments'
 import { Metadata } from './Metadata'
 import { NewCollection } from './NewCollection'
 
+
 // Layouts
 import { OverworldLayout } from './layouts/Overworld'
 import { SpaceLayout } from './layouts/Space'
@@ -41,6 +42,7 @@ const LayoutViewComponent = ({ layout, view, children, ...props }) =>
     >
         { React.cloneElement(layout, props, view) }
     </RebassProvider>
+
 
 const getRoutes = (store) =>
 <Route path="/_spaces" component={LayoutViewComponent}>

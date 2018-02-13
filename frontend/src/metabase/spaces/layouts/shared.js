@@ -42,3 +42,17 @@ export const PageSidebar = ({ children }) =>
     </Box>
 
 
+export const Grid = ({ children, gl, columnWidth }) => {
+    console.log(children)
+    return (
+        <Flex wrap>
+            { React.Children.map(children, (child, i) => {
+                <Box w={columnWidth} px={gl} key={i}>
+                    { React.cloneElement(child) }
+                </Box>
+            })}
+        </Flex>
+    )
+}
+
+

@@ -33,7 +33,7 @@ export class SpacesList extends Component {
             <Box>
                 <Flex mt={4}>
                     <PageLayout>
-                        <Flex align='center' py={3}>
+                        <Flex align='center' py={3} px={2}>
                             <PageHeading
                                 icon={<Icon name='all' size={32} />}
                                 title="Collections"
@@ -47,7 +47,7 @@ export class SpacesList extends Component {
                         <Flex wrap>
                             { spaces.map(space => {
                                 return (
-                                    <Box w={1/2} p={3} id={space.id}>
+                                    <Box w={1/2} px={2} py={1} id={space.id}>
                                         <Link to={`/_spaces/${space.slug}/guide`}>
                                             <Card bg='white' p={4} style={{ height: 200, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                                                     <Subhead>{space.name}</Subhead>
