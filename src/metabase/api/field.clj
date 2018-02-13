@@ -272,7 +272,7 @@
                   {:database (db-id field)
                    :type     :query
                    :query    {:source-table (table-id field)
-                              :filter       [:starts-with [:field-id (u/get-id search-field)] value]
+                              :filter       [:starts-with [:field-id (u/get-id search-field)] value {:case-sensitive false}]
                               :breakout     [[:field-id (u/get-id field)]]
                               :fields       [[:field-id (u/get-id field)]
                                              [:field-id (u/get-id search-field)]]
