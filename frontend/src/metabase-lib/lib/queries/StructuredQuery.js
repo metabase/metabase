@@ -637,8 +637,8 @@ export default class StructuredQuery extends AtomicQuery {
 
             const filteredNonFKDimensions = this.dimensions().filter(
                 dimensionFilter
-            );
-            //.filter(d => !dimensionIsFKReference(d));
+            )
+            .filter(d => !dimensionIsFKReference(d));
 
             for (const dimension of filteredNonFKDimensions) {
                 fieldOptions.count++;

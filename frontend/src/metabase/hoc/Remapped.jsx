@@ -12,7 +12,7 @@ const mapDispatchToProps = {
     fetchRemapping
 };
 
-export default ComposedComponent =>
+export default ComposedComponent => (
     @connect(mapStateToProps, mapDispatchToProps)
     class extends Component {
         static displayName = "Remapped[" +
@@ -51,4 +51,7 @@ export default ComposedComponent =>
                 />
             );
         }
-    };
+    }
+);
+
+export const TestRemapped = (ComposedComponent) => (props) => <ComposedComponent {...props} />
