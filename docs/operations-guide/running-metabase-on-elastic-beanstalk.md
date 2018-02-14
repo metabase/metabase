@@ -84,6 +84,8 @@ Then make sure enhanced health checks are enabled. This is a free option, unless
 
 ![Elastic Beanstalk Monitoring Settings](images/EBMonitoringSettings.png)
 
+You should set the route to `/api/health`.
+
 ##### Configuring RDS for Metabase
 
 To run Metabase in a cloud environment of any kind we highly recommend using an independent database server with high availability such as Amazon RDS.  So for standard deployments we will choose to create an RDS instance with our Elastic Beanstalk application.
