@@ -257,7 +257,11 @@ Once your application is working properly over HTTPS we recommend setting an add
 * Under `Environment Properties` add an entry for `NGINX_FORCE_SSL` with a value of `1`
 * Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
 
+# Keep MetaBot Connected to Slack
 
+MetaBot connects to Slack via WebSockets, which by default do not work properly on Elastic Beanstalk. Go to Configuration > Load Balancer and set the protocol field from "HTTP" to "TCP". If you are using HTTPS, it should also work to set "HTTPS" to "SSL".
+
+Configured this way, ELB can't do sticky sessions - which is a moot point, since currently, running Metabase on multiple instances is not supported.
 
 # Setting the JVM Timezone
 
