@@ -18,6 +18,7 @@ import {
     KEYCODE_DOWN,
     KEYCODE_BACKSPACE
 } from "metabase/lib/keyboard";
+import { isObscured } from "metabase/lib/dom";
 
 // somewhat matches react-select's API: https://github.com/JedWatson/react-select
 export default class TokenField extends Component {
@@ -333,6 +334,15 @@ export default class TokenField extends Component {
       return JSON.stringify(v1) === JSON.stringify(v2);
     }
 
+    componentDidUpdate(prevProps, prevState) {
+      if (prevState.selectedOptionValue !== this.state.selectedOptionValue && this.scrollElement) {
+        const element = findDOMNode(this.scrollElement);
+        if (element && isObscured(element)) {
+          element.scrollIntoView(element)
+        }
+      }
+    }
+
     render() {
         let { value, placeholder, multi, optionRenderer, valueRenderer, layoutRenderer, color, parseFreeformValue, updateOnInputChange } = this.props;
         let { inputValue, filteredOptions, focused, selectedOptionValue } = this.state;
@@ -415,6 +425,7 @@ export default class TokenField extends Component {
                 {filteredOptions.map(option =>
                     <li key={this._value(option)}>
                       <div
+                        ref={this._valueIsEqual(selectedOptionValue, this._value(option)) ? (_ => this.scrollElement = _) : null}
                         className={cx(
                           `py1 pl1 pr2 block rounded text-bold inline-block cursor-pointer`,
                           `text-white-hover bg-${color}-hover`, {
