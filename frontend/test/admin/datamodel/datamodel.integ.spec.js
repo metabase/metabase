@@ -121,7 +121,7 @@ describe("admin/datamodel", () => {
 
             const addFilterButton = filterPopover.find(".Button.disabled");
 
-            setInputValue(filterPopover.find('textarea.border-purple'), "gmail");
+            setInputValue(filterPopover.find('input'), "gmail");
             await clickButton(addFilterButton);
 
             await store.waitForActions([UPDATE_PREVIEW_SUMMARY]);
