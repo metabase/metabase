@@ -4020,3 +4020,17 @@ databaseChangeLog:
                   remarks: 'True if a XLS of the data should be included for this pulse card'
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 73
+      author: camsaul
+      comment: 'Added 0.29.0'
+      changes:
+        # add a new 'options' (serialized JSON) column to Database to store things like whether we should default to
+        # making string searches case-insensitive
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: options
+                  type: text
+                  remarks: 'Serialized JSON containing various options like QB behavior.'

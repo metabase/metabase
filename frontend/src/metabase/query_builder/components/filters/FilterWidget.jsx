@@ -9,6 +9,7 @@ import FilterPopover from "./FilterPopover.jsx";
 
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { formatValue } from "metabase/lib/formatting";
+import { hasFilterOptions } from "metabase/lib/query/filter";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -55,6 +56,9 @@ export default class FilterWidget extends Component {
     renderOperatorFilter() {
         const { query, filter, maxDisplayValues } = this.props;
         let [op, field, ...values] = filter;
+        if (hasFilterOptions(filter)) {
+          values = values.slice(0, -1);
+        }
 
         const dimension = query.parseFieldReference(field);
         if (!dimension) {

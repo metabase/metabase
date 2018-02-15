@@ -110,6 +110,7 @@
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:database :db])
           :types          (constantly {:details                     :encrypted-json
+                                       :options                     :json
                                        :engine                      :keyword
                                        :metadata_sync_schedule      :cron-string
                                        :cache_field_values_schedule :cron-string})
@@ -160,6 +161,8 @@
   "The string to replace passwords with when serializing Databases."
   "**MetabasePass**")
 
+;; when encoding a Database as JSON remove the `details` for any non-admin User. For admin users they can still see
+;; the `details` but remove the password. No one gets to see this in an API response!
 (add-encoder
  DatabaseInstance
  (fn [db json-generator]
