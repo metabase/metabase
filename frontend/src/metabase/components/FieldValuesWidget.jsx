@@ -31,7 +31,8 @@ export default class FieldValuesWidget extends Component {
 
   static defaultProps = {
       color: "purple",
-      maxResults: MAX_SEARCH_RESULTS
+      maxResults: MAX_SEARCH_RESULTS,
+      alwaysShowOptions: true,
   };
 
   componentWillMount() {
@@ -192,7 +193,11 @@ export default class FieldValuesWidget extends Component {
           layoutRenderer={({ valuesList, optionsList, focused, onClose }) =>
             <div>
               {valuesList}
-              {optionsList}
+              { this.props.alwaysShowOptions || this.state.focused ?
+                optionsList
+              :
+                null
+              }
             </div>
           }
 

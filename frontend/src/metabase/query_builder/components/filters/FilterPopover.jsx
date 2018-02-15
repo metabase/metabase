@@ -224,6 +224,8 @@ export default class FilterPopover extends Component {
                       placeholder={placeholder}
                       field={field}
                       searchField={field.filterSearchField()}
+                      autoFocus={index === 0}
+                      alwaysShowOptions={operator.fields.length === 1}
                     />
                 );
             } else if (operatorField.type === "text") {
