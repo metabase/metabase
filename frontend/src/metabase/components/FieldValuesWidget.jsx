@@ -145,19 +145,19 @@ export default class FieldValuesWidget extends Component {
     let { placeholder } = this.props;
     if (!placeholder) {
       if (this.hasList()) {
-        placeholder = t`Filter the list`;
+        placeholder = t`Search the list`;
       } else if (this.isSearchable()) {
         placeholder = t`Search by ${searchField.display_name}`
         if (field.isID()) {
-          placeholder += t` or enter desired ID`
+          placeholder += t` or enter an ID`
         }
       } else {
         if (field.isID()) {
-            placeholder =  t`Enter desired ID`
+            placeholder =  t`Enter an ID`
         } else if (field.isNumeric()) {
-            placeholder =  t`Enter desired number`
+            placeholder =  t`Enter a number`
         } else {
-            placeholder =  t`Enter desired text`
+            placeholder =  t`Enter some text`
         }
       }
     }
