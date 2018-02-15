@@ -10,8 +10,6 @@ import { delay } from "metabase/lib/promise";
 
 import React from 'react';
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
-import FieldValuesWidget from "metabase/components/FieldValuesWidget"
-import TokenField from "metabase/components/TokenField"
 import { mount } from "enzyme";
 import {
     INITIALIZE_QB,
@@ -29,7 +27,6 @@ import {
 import FieldList, { DimensionPicker } from "metabase/query_builder/components/FieldList";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 
-import CheckBox from "metabase/components/CheckBox";
 import FilterWidget from "metabase/query_builder/components/filters/FilterWidget";
 import FieldName from "metabase/query_builder/components/FieldName";
 import RunButton from "metabase/query_builder/components/RunButton";
@@ -39,7 +36,6 @@ import BreakoutWidget from "metabase/query_builder/components/BreakoutWidget";
 import { getQueryResults } from "metabase/query_builder/selectors";
 
 import * as Urls from "metabase/lib/urls";
-import { KEYCODE_COMMA } from "metabase/lib/keyboard";
 
 const initQbWithDbAndTable = (dbId, tableId) => {
     return async () => {
