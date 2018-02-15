@@ -18,6 +18,7 @@
              [data :refer :all]
              [util :as tu]]
             [metabase.test.data
+             [datasets :refer [expect-with-engine]]
              [dataset-definitions :as defs]
              [users :refer :all]]
             [toucan.db :as db]))
@@ -204,6 +205,18 @@
             ;; ensure we remove the column when we're done otherwise subsequent tests will break
             (jdbc/execute! conn "ALTER TABLE CHECKINS DROP COLUMN MYDATECOL")
             (sync/sync-database! db)))))))
+
+;; SQLite doesn't return proper date objects but strings, they just pass through the qp untouched
+(expect-with-engine :sqlite
+  [["1" "2014-04-07" "5" "12"]
+   ["2" "2014-09-18" "1" "31"]
+   ["3" "2014-09-15" "8" "56"]
+   ["4" "2014-03-11" "5" "4"]
+   ["5" "2013-05-05" "3" "49"]]
+  (let [result ((user->client :rasta) :post 200 "dataset/csv" :query
+                (json/generate-string (wrap-inner-query
+                                        (query checkins))))]
+    (take 5 (parse-and-sort-csv result))))
 
 ;; DateTime fields are untouched when exported
 (expect

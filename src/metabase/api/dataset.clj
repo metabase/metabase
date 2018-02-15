@@ -16,6 +16,7 @@
              [database :as database :refer [Database]]
              [query :as query]]
             [metabase.query-processor.util :as qputil]
+            [metabase.util :as util]
             [metabase.util
              [export :as ex]
              [schema :as su]]
@@ -80,10 +81,15 @@
 
 (defn- datetime-str->date
   "Dates are iso formatted, i.e. 2014-09-18T00:00:00.000-07:00. We can just drop the T and everything after it since
-  we don't want to change the timezone or alter the date part."
+  we don't want to change the timezone or alter the date part. SQLite dates are not iso formatted and separate the
+  date from the time using a space, this function handles that as well"
   [^String date-str]
-  (when date-str
-    (subs date-str 0 (.indexOf date-str "T"))))
+  (if-let [time-index (and (string? date-str)
+                           ;; clojure.string/index-of returns nil if the string is not found
+                           (or (str/index-of date-str "T")
+                               (str/index-of date-str " ")))]
+    (subs date-str 0 time-index)
+    date-str))
 
 (defn- swap-date-columns [date-col-indexes]
   (fn [row]
