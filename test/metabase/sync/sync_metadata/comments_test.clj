@@ -62,11 +62,12 @@
     (sync/sync-table! (Table (data/id "comment_after_sync")))
     (db->fields db)))
 
-;; TODO: test basic comments on table
-;(expect-with-engines #{:h2 :postgres}
-;  #{{:name (data/format-name "table_with_comment"), :description "table comment"}}
-;  (data/with-temp-db [db (map->DatabaseDefinition {:database-name     "table_with_comment_db"
-;                                                   :table-definitions [{:table-name        "table_with_comment"
-;                                                                        :field-definitions [{:field-name "foo", :base-type :type/Text}]}]
-;                                                   :table-comment     "table comment"})]
-;    (set (map (partial into {}) (db/select ['Table :name :description])))))
+;; test basic comments on table
+(ds/expect-with-engines #{:h2 :postgres}
+  #{{:name (data/format-name "table_with_comment"), :description "table comment"}}
+  (data/with-temp-db [db (i/map->DatabaseDefinition {:database-name     "table_with_comment_db"
+                                                     :table-definitions [{:table-name        "table_with_comment"
+                                                                          :field-definitions [{:field-name "foo", :base-type :type/Text}]
+                                                                          :rows              [["bar"]]
+                                                                          :table-comment     "table comment"}]})]
+    (set (map (partial into {}) (db/select ['Table :name :description] :db_id (u/get-id db))))))
