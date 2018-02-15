@@ -129,36 +129,6 @@
         (hx/* bin-width)
         (hx/+ min-value))))
 
-;; e.g. the ["aggregation" 0] fields we allow in order-by
-(defmethod ->honeysql [Object AgFieldRef]
-  [_ {index :index}]
-  (let [{:keys [aggregation-type]} (aggregation-at-index index)]
-    ;; For some arcane reason we name the results of a distinct aggregation "count",
-    ;; everything else is named the same as the aggregation
-    (if (= aggregation-type :distinct)
-      :count
-      aggregation-type)))
-
-(defmethod ->honeysql [Object Value]
-  [driver {:keys [value]}]
-  (->honeysql driver value))
-
-(defmethod ->honeysql [Object DateTimeValue]
-  [driver {{unit :unit} :field, value :value}]
-  (sql/date driver unit (->honeysql driver value)))
-
-(defmethod ->honeysql [Object RelativeDateTimeValue]
-  [driver {:keys [amount unit], {field-unit :unit} :field}]
-  (sql/date driver field-unit (if (zero? amount)
-                                (sql/current-datetime-fn driver)
-                                (driver/date-interval driver unit amount))))
-
-(defmethod ->honeysql [Object TimeValue]
-  [driver  {:keys [value]}]
-  (->honeysql driver value))
-
-;;; ## Clause Handlers
-
 (defn- aggregation->honeysql
   "Generate the HoneySQL form for an aggregation."
   [driver aggregation-type field]
@@ -181,7 +151,7 @@
       (->honeysql driver field))))
 
 ;; TODO - can't we just roll this into the ->honeysql method for `expression`?
-(defn- expression-aggregation->honeysql
+(defn expression-aggregation->honeysql
   "Generate the HoneySQL form for an expression aggregation."
   [driver expression]
   (->honeysql driver
@@ -192,6 +162,42 @@
                   (number? arg)           arg
                   (:aggregation-type arg) (aggregation->honeysql driver (:aggregation-type arg) (:field arg))
                   (:operator arg)         (expression-aggregation->honeysql driver arg)))))))
+
+;; e.g. the ["aggregation" 0] fields we allow in order-by
+(defmethod ->honeysql [Object AgFieldRef]
+  [driver {index :index}]
+  (let [{:keys [aggregation-type] :as aggregation} (aggregation-at-index index)]
+    (cond
+      ;; For some arcane reason we name the results of a distinct aggregation "count",
+      ;; everything else is named the same as the aggregation
+      (= aggregation-type :distinct)
+      :count
+
+      (instance? Expression aggregation)
+      (expression-aggregation->honeysql driver aggregation)
+
+      :else
+      aggregation-type)))
+
+(defmethod ->honeysql [Object Value]
+  [driver {:keys [value]}]
+  (->honeysql driver value))
+
+(defmethod ->honeysql [Object DateTimeValue]
+  [driver {{unit :unit} :field, value :value}]
+  (sql/date driver unit (->honeysql driver value)))
+
+(defmethod ->honeysql [Object RelativeDateTimeValue]
+  [driver {:keys [amount unit], {field-unit :unit} :field}]
+  (sql/date driver field-unit (if (zero? amount)
+                                (sql/current-datetime-fn driver)
+                                (driver/date-interval driver unit amount))))
+
+(defmethod ->honeysql [Object TimeValue]
+  [driver  {:keys [value]}]
+  (->honeysql driver value))
+
+;;; ## Clause Handlers
 
 (defn- apply-expression-aggregation [driver honeysql-form expression]
   (h/merge-select honeysql-form [(expression-aggregation->honeysql driver expression)

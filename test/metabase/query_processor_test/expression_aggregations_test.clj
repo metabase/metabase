@@ -150,6 +150,15 @@
             (ql/aggregation (ql/+ 1 (ql/count)))
             (ql/breakout $price)))))
 
+;; Sorting by an un-named aggregate expression
+(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+  [[1 2] [2 2] [12 2] [4 4] [7 4] [10 4] [11 4] [8 8]]
+  (format-rows-by [int int]
+    (rows (data/run-query users
+            (ql/aggregation (ql/* (ql/count) 2))
+            (ql/breakout (ql/datetime-field $last_login :month-of-year))
+            (ql/order-by (ql/asc (ql/aggregation 0)))))))
+
 ;; aggregation with math inside the aggregation :scream_cat:
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1  44]
