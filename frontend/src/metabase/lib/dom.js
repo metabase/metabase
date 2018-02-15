@@ -26,6 +26,9 @@ export const IFRAMED_IN_SELF = (function() {
 })();
 
 export function isObscured(element, offset) {
+    if (!document.elementFromPoint) {
+      return false;
+    }
     // default to the center of the element
     offset = offset || {
         top: Math.round(element.offsetHeight / 2),
