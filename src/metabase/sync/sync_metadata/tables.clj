@@ -88,7 +88,7 @@
   (log/info "Found new tables:"
             (for [table new-tables]
               (sync-util/name-for-logging (table/map->TableInstance table))))
-  (doseq [{schema :schema, table-name :name, :as table} new-tables]
+  (doseq [{schema :schema, table-name :name, table-comment :table-comment, :as table} new-tables]
     (if-let [existing-id (db/select-one-id Table
                            :db_id  (u/get-id database)
                            :schema schema
@@ -105,7 +105,8 @@
         :display_name    (humanization/name->human-readable-name table-name)
         :active          true
         :visibility_type (when (is-crufty-table? table)
-                           :cruft)))))
+                           :cruft)
+        :description     table-comment))))
 
 
 (s/defn ^:private retire-tables!

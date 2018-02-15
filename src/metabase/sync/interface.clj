@@ -13,8 +13,9 @@
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
-  {:name   su/NonBlankString
-   :schema (s/maybe su/NonBlankString)})
+  {:name          su/NonBlankString
+   :schema        (s/maybe su/NonBlankString)
+   (s/optional-key :table-comment) (s/maybe s/Str)})
 
 (def DatabaseMetadata
   "Schema for the expected output of `describe-database`."
