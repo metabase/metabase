@@ -284,8 +284,10 @@ export default class TokenField extends Component {
         } else if (this.props.parseFreeformValue) {
             // if we previously updated on input change then we don't need to do it again,
             if (this.props.updateOnInputChange) {
-              // also prevent the input from changing due to this key press
-              e.preventDefault();
+              // if multi=true also prevent the input from changing due to this key press
+              if (multi) {
+                e.preventDefault();
+              }
               // and clear the input
               this.clearInputValue()
               // return false so we don't stop the keyDown from propagating in case we're listening

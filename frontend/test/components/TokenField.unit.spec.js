@@ -261,4 +261,38 @@ describe("TokenField", () => {
             })
         )
     })
+
+    describe("with multi=true", () => {
+      it("should prevent blurring on tab", () => {
+        const preventDefault = jest.fn()
+        const component = mount(<TokenFieldWithStateAndDefaults
+          options={DEFAULT_OPTIONS}
+          // return null for empty string since it's not a valid
+          parseFreeformValue={(value) => value || null}
+          updateOnInputChange
+          multi
+        />)
+        const input = component.find("input");
+        input.simulate("focus");
+        input.simulate("change", { target: { value: "asdf" } });
+        input.simulate("keydown", { keyCode: KEYCODE_TAB, preventDefault: preventDefault })
+        expect(preventDefault).toHaveBeenCalled();
+      })
+    })
+    describe("with multi=false", () => {
+      it("should not prevent blurring on tab", () => {
+        const preventDefault = jest.fn()
+        const component = mount(<TokenFieldWithStateAndDefaults
+          options={DEFAULT_OPTIONS}
+          // return null for empty string since it's not a valid
+          parseFreeformValue={(value) => value || null}
+          updateOnInputChange
+        />)
+        const input = component.find("input");
+        input.simulate("focus");
+        input.simulate("change", { target: { value: "asdf" } });
+        input.simulate("keydown", { keyCode: KEYCODE_TAB, preventDefault: preventDefault })
+        expect(preventDefault).not.toHaveBeenCalled();
+      })
+    })
 })
