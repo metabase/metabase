@@ -226,10 +226,16 @@ export default class TokenField extends Component {
     }
 
     onInputFocus = () => {
+        if (this.props.onFocus) {
+            this.props.onFocus()
+        }
         this.setState({ focused: true });
     }
 
     onInputBlur = () => {
+        if (this.props.onBlur) {
+            this.props.onBlur()
+        }
         setTimeout(() => {
           this.setState({ focused: false });
         }, 100)

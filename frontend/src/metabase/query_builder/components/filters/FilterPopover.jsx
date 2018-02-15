@@ -202,18 +202,7 @@ export default class FilterPopover extends Component {
                 values = [this.state.filter[2 + index]];
                 onValuesChange = (values) => this.setValue(index, values[0]);
             }
-            if (field) {
-                return (
-                    <FieldValuesWidget
-                      value={(values: Array<string>)}
-                      onChange={onValuesChange}
-                      multi={operator.multi}
-                      placeholder={placeholder}
-                      field={field}
-                      searchField={field.filterSearchField()}
-                    />
-                );
-            } else if (operatorField.type === "select") {
+            if (operatorField.type === "select") {
                 return (
                     <SelectPicker
                         key={index}
@@ -224,6 +213,17 @@ export default class FilterPopover extends Component {
                         placeholder={placeholder}
                         multi={operator.multi}
                         onCommit={this.onCommit}
+                    />
+                );
+            } else if (field) {
+                return (
+                    <FieldValuesWidget
+                      value={(values: Array<string>)}
+                      onChange={onValuesChange}
+                      multi={operator.multi}
+                      placeholder={placeholder}
+                      field={field}
+                      searchField={field.filterSearchField()}
                     />
                 );
             } else if (operatorField.type === "text") {

@@ -41,6 +41,11 @@ export default class FieldValuesWidget extends Component {
     }
   }
 
+  hasList() {
+    const { field } = this.props;
+    return field.has_field_values === "list" && field.values;
+  }
+
   isSearchable() {
     const { field, searchField } = this.props;
     return searchField && field.has_field_values === "search";
@@ -136,25 +141,24 @@ export default class FieldValuesWidget extends Component {
     const { value, onChange, field, searchField, multi, autoFocus, color } = this.props;
     const { loadingState } = this.state;
 
-    let placeholder;
-    // TODO: better placeholder text
-    if (field.has_field_values === "list") {
-      placeholder = `Select a ${field.display_name}`;
-    } else if (this.isSearchable()) {
-      let objectName;
-      if (field.isPK()) {
-        objectName = field.table.display_name;
-      } else if (field.isFK() && field !== searchField) {
-        objectName = stripId(field.display_name);
+    let { placeholder } = this.props;
+    if (!placeholder) {
+      if (this.hasList()) {
+        placeholder = t`Filter the list`;
+      } else if (this.isSearchable()) {
+        placeholder = t`Search by ${searchField.display_name}`
+        if (field.isID()) {
+          placeholder += t` or enter desired ID`
+        }
       } else {
-        objectName = field.display_name;
+        if (field.isID()) {
+            placeholder =  t`Enter desired ID`
+        } else if (field.isNumeric()) {
+            placeholder =  t`Enter desired number`
+        } else {
+            placeholder =  t`Enter desired text`
+        }
       }
-      placeholder = `Search for a ${objectName}`;
-      if (field.isID() && field !== searchField) {
-        placeholder += ` or enter a ${field.display_name}`;
-      }
-    } else {
-      placeholder = `Enter a ${field.display_name}`
     }
 
     let options = [];
@@ -215,6 +219,9 @@ export default class FieldValuesWidget extends Component {
             }
             return v;
           }}
+
+          onFocus={() => this.setState({ focused: true })}
+          onBlur={() => this.setState({ focused: false })}
         />
         { loadingState === "LOADING" &&
             <div className="flex layout-centered align-center" style={{ minHeight: 100 }}>
