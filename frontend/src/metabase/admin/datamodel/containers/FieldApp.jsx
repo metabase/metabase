@@ -62,6 +62,7 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
     fetchDatabaseMetadata: metadataActions.fetchDatabaseMetadata,
     fetchTableMetadata: metadataActions.fetchTableMetadata,
+    fetchFieldValues: metadataActions.fetchFieldValues,
     updateField: metadataActions.updateField,
     updateFieldValues: metadataActions.updateFieldValues,
     updateFieldDimension: metadataActions.updateFieldDimension,
@@ -84,6 +85,7 @@ export default class FieldApp extends Component {
 
         fetchDatabaseMetadata: (number) => Promise<void>,
         fetchTableMetadata: (number) => Promise<void>,
+        fetchFieldValues: (number) => Promise<void>,
         updateField: (any) => Promise<void>,
         updateFieldValues: (any) => Promise<void>,
         updateFieldDimension: (any) => Promise<void>,
@@ -92,7 +94,7 @@ export default class FieldApp extends Component {
     }
 
     async componentWillMount() {
-        const {databaseId, tableId, fetchDatabaseMetadata, fetchTableMetadata, fetchDatabaseIdfields} = this.props;
+        const {databaseId, tableId, fieldId, fetchDatabaseMetadata, fetchTableMetadata, fetchDatabaseIdfields, fetchFieldValues} = this.props;
 
         // A complete database metadata is needed in case that foreign key is changed
         // and then we need to show FK remapping options for a new table
@@ -101,6 +103,12 @@ export default class FieldApp extends Component {
         // Only fetchTableMetadata hydrates `dimension` in the field object
         // Force reload to ensure that we are not showing stale information
         await fetchTableMetadata(tableId, true);
+
+        // load field values if has_field_values === "list"
+        const field = this.props.metadata.field(fieldId);
+        if (field && field.has_field_values === "list") {
+            await fetchFieldValues(fieldId);
+        }
 
         // TODO Atte Keinänen 7/10/17: Migrate this to redux/metadata
         await fetchDatabaseIdfields(databaseId);
@@ -308,10 +316,22 @@ export class FieldHeader extends Component {
 
 // consider renaming this component to something more descriptive
 export class ValueRemappings extends Component {
-    constructor(props, context) {
-        super(props, context);
+    state = {
+        editingRemappings: new Map()
+    }
 
-        const editingRemappings = new Map([...props.remappings]
+    componentWillMount() {
+        this._updateEditingRemappings(this.props.remappings)
+    }
+
+    componentWillReceiveProps(nextProps) {
+        if (nextProps.remappings !== this.props.remappings) {
+            this._updateEditingRemappings(nextProps.remappings)
+        }
+    }
+
+    _updateEditingRemappings(remappings) {
+        const editingRemappings = new Map([...remappings]
             .map(([original, mappedOrUndefined]) => {
                 // Use currently the original value as the "default custom mapping" as the current backend implementation
                 // requires that all original values must have corresponding mappings
@@ -324,7 +344,7 @@ export class ValueRemappings extends Component {
             })
         )
 
-        const containsUnsetMappings = [...props.remappings].some(([_, mappedOrUndefined]) => {
+        const containsUnsetMappings = [...remappings].some(([_, mappedOrUndefined]) => {
             return mappedOrUndefined === undefined;
         })
         if (containsUnsetMappings) {
@@ -332,10 +352,7 @@ export class ValueRemappings extends Component {
             // the dimension type is "internal" but we don't have any values in metabase_fieldvalues
             this.props.updateRemappings(editingRemappings);
         }
-
-        this.state = {
-            editingRemappings
-        }
+        this.setState({ editingRemappings })
     }
 
     onSetRemapping(original, newMapped) {
