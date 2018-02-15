@@ -287,7 +287,7 @@
    limit (s/maybe su/IntStringGreaterThanZero)}
   (let [field        (api/read-check Field id)
         search-field (api/read-check Field search-id)]
-    (search-values field search-field value (when limit (Integer/parseUnsignedInt limit)))))
+    (search-values field search-field value (when limit (Integer/parseInt limit)))))
 
 
 (defn remapped-value
