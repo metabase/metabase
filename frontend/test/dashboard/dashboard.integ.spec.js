@@ -1,4 +1,6 @@
+import "__support__/mocks";
 import {
+    BROWSER_HISTORY_PUSH,
     createTestStore,
     useSharedAdminLogin
 } from "__support__/integrated_tests";
@@ -17,7 +19,8 @@ import {
     FETCH_DASHBOARD,
     SAVE_DASHBOARD_AND_CARDS,
     SET_EDITING_DASHBOARD,
-    SET_EDITING_PARAMETER_ID
+    SET_EDITING_PARAMETER_ID,
+    FETCH_REVISIONS
 } from "metabase/dashboard/dashboard";
 import EditBar from "metabase/components/EditBar";
 
@@ -27,6 +30,7 @@ import { ParameterOptionItem, ParameterOptionsSection } from "metabase/dashboard
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 import { PredefinedRelativeDatePicker } from "metabase/parameters/components/widgets/DateRelativeWidget";
 import HeaderModal from "metabase/components/HeaderModal";
+import { DashboardHistoryModal } from "metabase/dashboard/components/DashboardHistoryModal";
 
 // TODO Atte Keinänen 7/17/17: When we have a nice way to create dashboards in tests, this could use a real saved dashboard
 // instead of mocking the API endpoint
@@ -161,6 +165,47 @@ describe("Dashboard", () => {
 
             // Wait until the header modal exit animation is finished
             await store.waitForActions([SET_EDITING_PARAMETER_ID])
+        })
+
+        it("lets you open and close the revisions screen", async () => {
+            if (!dashboardId) throw new Error("Test fails because previous tests failed to create a dashboard");
+
+            const store = await createTestStore();
+            const dashboardUrl = Urls.dashboard(dashboardId)
+            store.pushPath(dashboardUrl);
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([FETCH_DASHBOARD])
+
+            click(app.find(".Icon.Icon-pencil"));
+            await store.waitForActions([SET_EDITING_DASHBOARD]);
+
+            click(app.find(".Icon.Icon-history"));
+
+            await store.waitForActions([FETCH_REVISIONS])
+            const modal = app.find(DashboardHistoryModal)
+            expect(modal.length).toBe(1)
+            expect(store.getPath()).toBe(`${dashboardUrl}/history`)
+
+            click(modal.find(".Icon.Icon-close"))
+            await store.waitForActions([BROWSER_HISTORY_PUSH])
+            expect(store.getPath()).toBe(`/dashboard/${dashboardId}`)
+        })
+
+        it("lets you go directly to the revisions screen via url", async () => {
+            const store = await createTestStore();
+            const dashboardUrl = Urls.dashboard(dashboardId)
+            store.pushPath(dashboardUrl+`/history`);
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([FETCH_REVISIONS])
+
+            const modal = app.find(DashboardHistoryModal)
+            expect(modal.length).toBe(1)
+            expect(store.getPath()).toBe(`${dashboardUrl}/history`)
+
+            // check that we can normally return to the revisions screen
+            click(modal.find(".Icon.Icon-close"))
+            await store.waitForActions([BROWSER_HISTORY_PUSH])
+            expect(store.getPath()).toBe(`/dashboard/${dashboardId}`)
         })
 
         afterAll(async () => {

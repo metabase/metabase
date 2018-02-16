@@ -5,7 +5,7 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :refer [engines-that-support first-row format-rows-by]]]
+             [query-processor-test :refer [non-timeseries-engines-with-feature first-row format-rows-by]]]
             [metabase.query-processor.middleware.parameters.sql :as sql :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data
@@ -437,7 +437,7 @@
 
 ;; as with the MBQL parameters tests Redshift and Crate fail for unknown reasons; disable their tests for now
 (def ^:private ^:const sql-parameters-engines
-  (disj (engines-that-support :native-parameters) :redshift :crate))
+  (disj (non-timeseries-engines-with-feature :native-parameters) :redshift :crate))
 
 (defn- process-native {:style/indent 0} [& kvs]
   (qp/process-query

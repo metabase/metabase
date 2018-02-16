@@ -2,7 +2,7 @@
 
 import { mbqlEq, op, args, noNullValues, add, update, remove, clear } from "./util";
 
-import type { FilterClause, Filter } from "metabase/meta/types/Query";
+import type { FilterClause, Filter, FilterOptions } from "metabase/meta/types/Query";
 
 // returns canonical list of Filters
 export function getFilters(filter: ?FilterClause): Filter[] {
@@ -59,4 +59,35 @@ export function isCompoundFilter(filter: FilterClause): boolean {
 
 export function isFieldFilter(filter: FilterClause): boolean {
     return !isSegmentFilter(filter) && !isCompoundFilter(filter);
+}
+
+
+// TODO: is it safe to assume if the last item is an object then it's options?
+export function hasFilterOptions(filter: Filter): bool {
+  const o = filter[filter.length - 1];
+  return !!o && typeof o == 'object' && o.constructor == Object;
+}
+
+export function getFilterOptions(filter: Filter): FilterOptions {
+  // NOTE: just make a new "any" variable since getting flow to type checking this is a nightmare
+  let _filter: any = filter;
+  if (hasFilterOptions(filter)) {
+    return _filter[_filter.length - 1];
+  } else {
+    return {};
+  }
+}
+
+export function setFilterOptions<T: Filter>(filter: T, options: FilterOptions): T {
+  // NOTE: just make a new "any" variable since getting flow to type checking this is a nightmare
+  let _filter: any = filter;
+  // if we have option, strip it off for now
+  if (hasFilterOptions(filter)) {
+    _filter = _filter.slice(0, -1)
+  }
+  // if options isn't emtpy, append it
+  if (Object.keys(options).length > 0) {
+    _filter = [..._filter, options];
+  }
+  return _filter;
 }

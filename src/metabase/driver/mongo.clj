@@ -205,7 +205,7 @@
                                                              :display-name "Additional Mongo connection string options"
                                                              :placeholder  "readPreference=nearest&replicaSet=test"}]))
           :execute-query                     (u/drop-first-arg qp/execute-query)
-          :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
+          :features                          (constantly #{:basic-aggregations :nested-fields})
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :mbql->native                      (u/drop-first-arg qp/mbql->native)
           :process-query-in-context          (u/drop-first-arg process-query-in-context)

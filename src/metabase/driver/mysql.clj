@@ -234,49 +234,57 @@
 
 (u/strict-extend MySQLDriver
   driver/IDriver
-  (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval                     (u/drop-first-arg date-interval)
-          :details-fields                    (constantly (ssh/with-tunnel-config
-                                                           [{:name         "host"
-                                                             :display-name "Host"
-                                                             :default      "localhost"}
-                                                            {:name         "port"
-                                                             :display-name "Port"
-                                                             :type         :integer
-                                                             :default      3306}
-                                                            {:name         "dbname"
-                                                             :display-name "Database name"
-                                                             :placeholder  "birds_of_the_word"
-                                                             :required     true}
-                                                            {:name         "user"
-                                                             :display-name "Database username"
-                                                             :placeholder  "What username do you use to login to the database?"
-                                                             :required     true}
-                                                            {:name         "password"
-                                                             :display-name "Database password"
-                                                             :type         :password
-                                                             :placeholder  "*******"}
-                                                            {:name         "additional-options"
-                                                             :display-name "Additional JDBC connection string options"
-                                                             :placeholder  "tinyInt1isBit=false"}]))
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :current-db-time                   (driver/make-current-db-time-fn mysql-db-time-query mysql-date-formatters)})
+  (merge
+   (sql/IDriverSQLDefaultsMixin)
+   {:date-interval                     (u/drop-first-arg date-interval)
+    :details-fields                    (constantly (ssh/with-tunnel-config
+                                                     [{:name         "host"
+                                                       :display-name "Host"
+                                                       :default      "localhost"}
+                                                      {:name         "port"
+                                                       :display-name "Port"
+                                                       :type         :integer
+                                                       :default      3306}
+                                                      {:name         "dbname"
+                                                       :display-name "Database name"
+                                                       :placeholder  "birds_of_the_word"
+                                                       :required     true}
+                                                      {:name         "user"
+                                                       :display-name "Database username"
+                                                       :placeholder  "What username do you use to login to the database?"
+                                                       :required     true}
+                                                      {:name         "password"
+                                                       :display-name "Database password"
+                                                       :type         :password
+                                                       :placeholder  "*******"}
+                                                      {:name         "additional-options"
+                                                       :display-name "Additional JDBC connection string options"
+                                                       :placeholder  "tinyInt1isBit=false"}]))
+    :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
+    :current-db-time                   (driver/make-current-db-time-fn mysql-db-time-query mysql-date-formatters)
+    :features                          (fn [this]
+                                         ;; MySQL LIKE clauses are case-sensitive or not based on whether the
+                                         ;; collation of the server and the columns themselves. Since this isn't
+                                         ;; something we can really change in the query itself don't present the
+                                         ;; option to the users in the UI
+                                         (conj (sql/features this) :no-case-sensitivity-string-filter-options))})
 
   sql/ISQLDriver
-  (merge (sql/ISQLDriverDefaultsMixin)
-         {:active-tables             sql/post-filtered-active-tables
-          :column->base-type         (u/drop-first-arg column->base-type)
-          :connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :date                      (u/drop-first-arg date)
-          :excluded-schemas          (constantly #{"INFORMATION_SCHEMA"})
-          :quote-style               (constantly :mysql)
-          :string-length-fn          (u/drop-first-arg string-length-fn)
-          ;; If this fails you need to load the timezone definitions from your system into MySQL;
-          ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
-          ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
-          ;; TODO - This can also be set via `sessionVariables` in the connection string, if that's more useful (?)
-          :set-timezone-sql          (constantly "SET @@session.time_zone = %s;")
-          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
+  (merge
+   (sql/ISQLDriverDefaultsMixin)
+   {:active-tables             sql/post-filtered-active-tables
+    :column->base-type         (u/drop-first-arg column->base-type)
+    :connection-details->spec  (u/drop-first-arg connection-details->spec)
+    :date                      (u/drop-first-arg date)
+    :excluded-schemas          (constantly #{"INFORMATION_SCHEMA"})
+    :quote-style               (constantly :mysql)
+    :string-length-fn          (u/drop-first-arg string-length-fn)
+    ;; If this fails you need to load the timezone definitions from your system into MySQL; run the command
+    ;; `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql` See
+    ;; https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
+    ;; TODO - This can also be set via `sessionVariables` in the connection string, if that's more useful (?)
+    :set-timezone-sql          (constantly "SET @@session.time_zone = %s;")
+    :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (defn -init-driver
   "Register the MySQL driver"

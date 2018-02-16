@@ -3,7 +3,7 @@
 import React, {Component} from "react";
 import cx from "classnames";
 import { t } from 'c-3po';
-import DatePicker, {DATE_OPERATORS} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
+import DatePicker, { DATE_OPERATORS, getOperator } from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
 import FilterOptions from "metabase/query_builder/components/filters/FilterOptions.jsx";
 import {generateTimeFilterValuesDescriptions} from "metabase/lib/query_time";
 import { dateParameterValueToMBQL } from "metabase/meta/Parameter";
@@ -109,7 +109,11 @@ export default class DateAllOptionsWidget extends Component {
                 hideTimeSelectors
             />
             <div className="FilterPopover-footer border-top flex align-center p2">
-                <FilterOptions filter={filter} onFilterChange={this.setFilter} />
+                <FilterOptions
+                  filter={filter}
+                  onFilterChange={this.setFilter}
+                  operator={getOperator(filter)}
+                />
                 <button
                     className={cx("Button Button--purple ml-auto", {"disabled": !this.isValid()})}
                     onClick={this.commitAndClose}
