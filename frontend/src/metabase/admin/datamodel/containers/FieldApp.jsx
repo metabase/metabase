@@ -42,9 +42,9 @@ import {
 } from "../field";
 
 const HAS_FIELD_VALUES_OPTIONS = [
-  { name: "Allow searching for values", value: "search" },
-  { name: "List all values", value: "list" },
-  { name: "Disable search", value: "none" },
+  { name: "Search box", value: "search" },
+  { name: "A list of all values", value: "list" },
+  { name: "Plain input box", value: "none" },
 ]
 
 const SelectClasses = 'h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold'
@@ -206,8 +206,8 @@ export default class FieldApp extends Component {
 
                             <Section>
                               <SectionHeader
-                                title={t`Filters`}
-                                description={t`Choose whether you want to allow searching of this field's values in a filter, if you want to force filters to always display a list of all the values, or if you want to turn search off for this field entirely.`}
+                                title={t`Filtering on this field`}
+                                description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
                               />
                               <Select
                                 triggerClasses={SelectClasses}
