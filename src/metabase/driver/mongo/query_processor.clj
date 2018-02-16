@@ -217,15 +217,15 @@
 
 ;;; ### filter
 
-(defn- parse-filter-subclause [{:keys [filter-type field value] :as filter} & [negate?]]
+(defn- parse-filter-subclause [{:keys [filter-type field value case-sensitive?] :as filter} & [negate?]]
   (let [field (when field (->lvalue field))
         value (when value (->rvalue value))
         v     (case filter-type
                 :between     {$gte (->rvalue (:min-val filter))
                               $lte (->rvalue (:max-val filter))}
-                :contains    (re-pattern value)
-                :starts-with (re-pattern (str \^ value))
-                :ends-with   (re-pattern (str value \$))
+                :contains    (re-pattern (str (when-not case-sensitive? "(?i)")    value))
+                :starts-with (re-pattern (str (when-not case-sensitive? "(?i)") \^ value))
+                :ends-with   (re-pattern (str (when-not case-sensitive? "(?i)")    value \$))
                 :=           {"$eq" value}
                 :!=          {$ne  value}
                 :<           {$lt  value}

@@ -106,7 +106,7 @@
 ;;; ### order_by aggregate ["stddev" field-id]
 ;; SQRT calculations are always NOT EXACT (normal behavior) so round everything to the nearest int.
 ;; Databases might use different versions of SQRT implementations
-(datasets/expect-with-engines (engines-that-support :standard-deviation-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :standard-deviation-aggregations)
   {:columns     [(data/format-name "price")
                  "stddev"]
    :rows        [[3 (if (contains? #{:mysql :crate} *engine*) 25 26)]

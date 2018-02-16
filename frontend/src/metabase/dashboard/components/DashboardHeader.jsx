@@ -7,7 +7,6 @@ import ActionButton from "metabase/components/ActionButton.jsx";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.jsx";
 import ArchiveDashboardModal from "./ArchiveDashboardModal.jsx";
 import Header from "metabase/components/Header.jsx";
-import HistoryModal from "metabase/components/HistoryModal.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
@@ -22,18 +21,18 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 
-import type { LocationDescriptor, QueryParams, EntityType, EntityId } from "metabase/meta/types";
+import type { LocationDescriptor, QueryParams } from "metabase/meta/types";
 import type { Card, CardId } from "metabase/meta/types/Card";
 import type { Parameter, ParameterId, ParameterOption } from "metabase/meta/types/Parameter";
 import type { DashboardWithCards, DashboardId, DashCardId } from "metabase/meta/types/Dashboard";
-import type { Revision, RevisionId } from "metabase/meta/types/Revision";
+import type { RevisionId } from "metabase/meta/types/Revision";
+import { Link } from "react-router";
 
 type Props = {
     location:               LocationDescriptor,
 
     dashboard:              DashboardWithCards,
     cards:                  Card[],
-    revisions:              { [key: string]: Revision[] },
 
     isAdmin:                boolean,
     isEditable:             boolean,
@@ -79,7 +78,6 @@ export default class DashboardHeader extends Component {
 
     static propTypes = {
         dashboard: PropTypes.object.isRequired,
-        revisions: PropTypes.object.isRequired,
         isEditable: PropTypes.bool.isRequired,
         isEditing: PropTypes.bool.isRequired,
         isFullscreen: PropTypes.bool.isRequired,
@@ -135,22 +133,6 @@ export default class DashboardHeader extends Component {
         this.props.onChangeLocation("/dashboards");
     }
 
-    // 1. fetch revisions
-    onFetchRevisions({ entity, id }: { entity: EntityType, id: EntityId }) {
-        return this.props.fetchRevisions({ entity, id });
-    }
-
-    // 2. revert to a revision
-    onRevertToRevision({ entity, id, revision_id }: { entity: EntityType, id: EntityId, revision_id: RevisionId }) {
-        return this.props.revertToRevision({ entity, id, revision_id });
-    }
-
-    // 3. finished reverting to a revision
-    onRevertedRevision() {
-        this.refs.dashboardHistory.toggle();
-        this.props.fetchDashboard(this.props.dashboard.id, this.props.location.query);
-    }
-
     getEditingButtons() {
         return [
             <a data-metabase-event="Dashboard;Cancel Edits" key="cancel" className="Button Button--small" onClick={() => this.onCancel()}>
@@ -181,7 +163,7 @@ export default class DashboardHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { dashboard, parametersWidget, isEditing, isFullscreen, isEditable, isAdmin } = this.props;
+        const { dashboard, parametersWidget, isEditing, isFullscreen, isEditable, isAdmin, location } = this.props;
         const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
         const canEdit = isEditable && !!dashboard;
 
@@ -256,27 +238,11 @@ export default class DashboardHeader extends Component {
             );
 
             buttons.push(
-                <ModalWithTrigger
-                    key="history"
-                    ref="dashboardHistory"
-                    triggerElement={
-                        <Tooltip tooltip="Revision history">
-                            <span data-metabase-event={"Dashboard;Revisions"}>
-                                <Icon className="text-brand-hover" name="history" size={18} />
-                            </span>
-                        </Tooltip>
-                    }
-                >
-                    <HistoryModal
-                        entityType="dashboard"
-                        entityId={dashboard.id}
-                        revisions={this.props.revisions["dashboard-"+dashboard.id]}
-                        onFetchRevisions={this.onFetchRevisions.bind(this)}
-                        onRevertToRevision={this.onRevertToRevision.bind(this)}
-                        onClose={() => this.refs.dashboardHistory.toggle()}
-                        onReverted={() => this.onRevertedRevision()}
-                    />
-                </ModalWithTrigger>
+                <Tooltip tooltip="Revision history">
+                    <Link to={location.pathname + "/history"} data-metabase-event={"Dashboard;Revisions"}>
+                        <Icon className="text-brand-hover" name="history" size={18} />
+                    </Link>
+                </Tooltip>
             );
         }
 
