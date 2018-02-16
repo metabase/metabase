@@ -168,10 +168,8 @@ export function getDateTimeFieldTarget(
 ): LocalFieldReference | ForeignFieldReference | ExpressionReference {
   if (Query.isDatetimeField(field)) {
     // $FlowFixMe:
-    return (field[1]:
-      | LocalFieldReference
-      | ForeignFieldReference
-      | ExpressionReference);
+    return (field[1]: // $FlowFixMe:
+    LocalFieldReference | ForeignFieldReference | ExpressionReference);
   } else {
     // $FlowFixMe
     return field;
@@ -231,8 +229,8 @@ export const DATE_OPERATORS: Operator[] = [
       getUnit(filter),
       getOptions(filter),
     ],
-    // $FlowFixMe
     test: ([op, field, value]) =>
+      // $FlowFixMe
       (mbqlEq(op, "time-interval") && value < 0) || Object.is(value, -0),
     widget: PreviousPicker,
     options: { "include-current": true },
