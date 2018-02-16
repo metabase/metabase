@@ -10,7 +10,6 @@ import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { debounce } from "underscore";
-import { stripId } from "metabase/lib/formatting";
 
 const MAX_SEARCH_RESULTS = 100;
 

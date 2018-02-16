@@ -60,6 +60,9 @@ export default class TokenField extends Component {
         valueRenderer: PropTypes.func.isRequired, // TODO: default
         optionRenderer: PropTypes.func.isRequired, // TODO: default
         layoutRenderer: PropTypes.func,
+
+        onFocus: PropTypes.func,
+        onBlur: PropTypes.func,
     };
 
     static defaultProps = {

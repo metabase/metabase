@@ -1,7 +1,6 @@
 import _ from "underscore";
 import { t } from 'c-3po';
 import { isa, isFK as isTypeFK, isPK as isTypePK, TYPE } from "metabase/lib/types";
-import { getFieldValues } from "metabase/lib/query/field";
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
@@ -175,23 +174,6 @@ function equivalentArgument(field, table) {
             ]
         };
     }
-
-    // if (isCategory(field)) {
-    //     const values = getFieldValues(field)
-    //     if (values && values.length > 0) {
-    //         return {
-    //             type: "select",
-    //             values: values
-    //                 .filter(([value, displayValue]) => value != null)
-    //                 .map(([value, displayValue]) => ({
-    //                     key: value,
-    //                     // NOTE Atte Keinänen 8/7/17: Similar logic as in getHumanReadableValue of lib/query/field
-    //                     name: displayValue ? displayValue : String(value)
-    //                 }))
-    //                 .sort((a, b) => a.key === b.key ? 0 : (a.key < b.key ? -1 : 1))
-    //         };
-    //     }
-    // }
 
     if (isDate(field)) {
         return {
