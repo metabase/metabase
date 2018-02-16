@@ -110,6 +110,8 @@ export default class LoginApp extends Component {
 
         const { loginError } = this.props;
 
+        const ldapEnabled = Settings.ldapEnabled()
+
         return (
             <div className="full-height full bg-white flex flex-column flex-full md-layout-centered">
                 <div className="Login-wrapper wrapper Grid Grid--full md-Grid--1of2 relative z2">
@@ -117,7 +119,7 @@ export default class LoginApp extends Component {
                         <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />
                     </div>
                     <div className="Login-content Grid-cell">
-                        <form className="Form-new bg-white bordered rounded shadowed" name="form" onSubmit={(e) => this.formSubmitted(e)} noValidate>
+                        <form className="Form-new bg-white bordered rounded shadowed" name="form" onSubmit={(e) => this.formSubmitted(e)}>
                             <h3 className="Login-header Form-offset">{t`Sign in to Metabase`}</h3>
 
                             { Settings.ssoEnabled() &&
@@ -133,8 +135,26 @@ export default class LoginApp extends Component {
                             <FormMessage formError={loginError && loginError.data.message ? loginError : null} ></FormMessage>
 
                             <FormField key="username" fieldName="username" formError={loginError}>
-                                <FormLabel title={Settings.ldapEnabled() ? t`Username or email address` : t`Email address`} fieldName={"username"} formError={loginError} />
-                                <input className="Form-input Form-offset full py1" name="username" placeholder="youlooknicetoday@email.com" type="text" onChange={(e) => this.onChange("username", e.target.value)} autoFocus />
+                                <FormLabel
+                                    title={ldapEnabled ? t`Username or email address` : t`Email address`}
+                                    fieldName="username"
+                                    formError={loginError}
+                                />
+                                <input
+                                    className="Form-input Form-offset full py1"
+                                    name="username"
+                                    placeholder="youlooknicetoday@email.com"
+                                    type={
+                                        /*
+                                        if a user has ldap enabled, use a text input to allow for ldap username
+                                        schemes. if not and they're using built in auth, set the input type to
+                                        email so we get built in validation in modern browsers
+                                        */
+                                        ldapEnabled ? "text" : "email"
+                                    }
+                                    onChange={(e) => this.onChange("username", e.target.value)}
+                                    autoFocus
+                                />
                                 <span className="Form-charm"></span>
                             </FormField>
 
