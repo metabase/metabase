@@ -1,4 +1,3 @@
-
 import type { ISO8601Time } from ".";
 
 import type { Field } from "./Field";
@@ -13,31 +12,31 @@ type TableVisibilityType = string; // FIXME
 
 // TODO: incomplete
 export type Table = {
-    id:                      TableId,
-    db_id:                   DatabaseId,
+  id: TableId,
+  db_id: DatabaseId,
 
-    schema:                  ?SchemaName,
-    name:                    string,
-    display_name:            string,
+  schema: ?SchemaName,
+  name: string,
+  display_name: string,
 
-    description:             string,
-    active:                  boolean,
-    visibility_type:         TableVisibilityType,
+  description: string,
+  active: boolean,
+  visibility_type: TableVisibilityType,
 
-    // entity_name:          null // unused?
-    // entity_type:          null // unused?
-    // raw_table_id:         number, // unused?
+  // entity_name:          null // unused?
+  // entity_type:          null // unused?
+  // raw_table_id:         number, // unused?
 
-    fields:                  Field[],
-    segments:                Segment[],
-    metrics:                 Metric[],
+  fields: Field[],
+  segments: Segment[],
+  metrics: Metric[],
 
-    rows:                    number,
+  rows: number,
 
-    caveats:                 ?string,
-    points_of_interest:      ?string,
-    show_in_getting_started: boolean,
+  caveats: ?string,
+  points_of_interest: ?string,
+  show_in_getting_started: boolean,
 
-    updated_at:              ISO8601Time,
-    created_at:              ISO8601Time,
-}
+  updated_at: ISO8601Time,
+  created_at: ISO8601Time,
+};
