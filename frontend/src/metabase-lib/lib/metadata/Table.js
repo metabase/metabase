@@ -15,37 +15,37 @@ import type { FieldMetadata } from "metabase/meta/types/Metadata";
 
 /** This is the primary way people interact with tables */
 export default class Table extends Base {
-    displayName: string;
-    description: string;
+  displayName: string;
+  description: string;
 
-    schema: ?SchemaName;
-    db: Database;
+  schema: ?SchemaName;
+  db: Database;
 
-    fields: FieldMetadata[];
+  fields: FieldMetadata[];
 
-    // $FlowFixMe Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
-    get database() {
-        return this.db;
-    }
+  // $FlowFixMe Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
+  get database() {
+    return this.db;
+  }
 
-    newQuestion(): Question {
-        // $FlowFixMe
-        return new Question();
-    }
+  newQuestion(): Question {
+    // $FlowFixMe
+    return new Question();
+  }
 
-    dimensions(): Dimension[] {
-        return this.fields.map(field => field.dimension());
-    }
+  dimensions(): Dimension[] {
+    return this.fields.map(field => field.dimension());
+  }
 
-    dateFields(): Field[] {
-        return this.fields.filter(field => field.isDate());
-    }
+  dateFields(): Field[] {
+    return this.fields.filter(field => field.isDate());
+  }
 
-    aggregations() {
-        return this.aggregation_options || [];
-    }
+  aggregations() {
+    return this.aggregation_options || [];
+  }
 
-    aggregation(agg) {
-        return _.findWhere(this.aggregations(), { short: agg });
-    }
+  aggregation(agg) {
+    return _.findWhere(this.aggregations(), { short: agg });
+  }
 }

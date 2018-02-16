@@ -1,6 +1,6 @@
 :root {
-  --table-border-color: rgba(213, 213, 213, .3);
-  --table-alt-bg-color: rgba(0, 0, 0, .02);
+  --table-border-color: rgba(213, 213, 213, 0.3);
+  --table-alt-bg-color: rgba(0, 0, 0, 0.02);
 
   --entity-image-small-size: 24px;
   --entity-image-large-size: 64px;
@@ -11,7 +11,9 @@
   which follows the suggested rendering and defaults to center, whereas
   chrome and others do not
 */
-th { text-align: left; }
+th {
+  text-align: left;
+}
 
 .Table {
   /* standard table reset */
