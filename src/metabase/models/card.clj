@@ -114,28 +114,48 @@
                    (u/pprint-to-str (u/filtered-stacktrace e)))
          #{"/db/0/"})))                        ; DB 0 will never exist
 
-;; it takes a lot of DB calls and function calls to expand/resolve a query, and since they're pure functions we can
-;; save ourselves some a lot of DB calls by caching the results. Cache the permissions reqquired to run a given query
-;; dictionary for up to 6 hours
+;; Calculating Card read permissions is rather expensive, since we must parse and expand the Card's query in order to
+;; find the Tables it references. Since we read Cards relatively often, these permissions are cached in the
+;; `:read_permissions` column of Card. There should not be situtations where these permissions are not cached; but if
+;; for some strange reason they are we will go ahead and recalculate them.
+
 ;; TODO - what if the query uses a source query, and that query changes? Not sure if that will cause an issue or not.
-;; May need to revisit this
-(defn- query-perms-set* [{query-type :type, database :database, :as query} read-or-write]
+(defn query-perms-set
+  "Calculate the set of permissions required to `:read`/run or `:write` (update) a Card with `query`. In normal cases
+  for read permissions you should look at a Card's `:read_permissions`, which is precalculated. If you specifically
+  need to calculate permissions for a query directly, and ignore anything precomputed, use this function. Otherwise
+  you should rely on one of the optimized ones below."
+  [{query-type :type, database :database, :as query} read-or-write]
   (cond
-    (= query {})                     #{}
+    (empty? query)                   #{}
     (= (keyword query-type) :native) #{(native-permissions-path read-or-write database)}
     (= (keyword query-type) :query)  (mbql-permissions-path-set read-or-write query)
     :else                            (throw (Exception. (str "Invalid query type: " query-type)))))
 
-(def ^{:arglists '([query read-or-write])} query-perms-set
-  "Return a set of required permissions for *running* QUERY (if READ-OR-WRITE is `:read`) or *saving* it (if
-   READ-OR-WRITE is `:write`)."
-  (memoize/ttl query-perms-set* :ttl/threshold (* 6 60 60 1000))) ; memoize for 6 hours
 
-(defn- perms-objects-set
-  "Return a set of required permissions object paths for CARD.
-   Optionally specify whether you want `:read` or `:write` permissions; default is `:read`.
-   (`:write` permissions only affects native queries)."
-  [{query :dataset_query, collection-id :collection_id, public-uuid :public_uuid, in-public-dash? :in_public_dashboard}
+(defn- card-perms-set-for-query
+  "Return the permissions required to `read-or-write` `card` based on its query, disregarding the collection the Card is
+  in, whether it is publicly shared, etc. This will return precalculated `:read_permissions` if they are present."
+  [{read-perms :read_permissions, id :id, query :dataset_query} read-or-write]
+  (cond
+    ;; for WRITE permissions always recalculate since these will be determined relatively infrequently (hopefully)
+    ;; e.g. when updating a Card
+    (= :write read-or-write) (query-perms-set query :write)
+    ;; if the Card has populated `:read_permissions` and we're looking up read pems return those rather than calculating
+    ;; on-the-fly. Cast to `set` to be extra-double-sure it's a set like we'd expect when it gets deserialized from JSON
+    read-perms (set read-perms)
+    ;; otherwise if :read_permissions was NOT populated. This should not normally happen since the data migration
+    ;; should have pre-populated values for all the Cards. If it does it might mean something like we fetched the Card
+    ;; without its `read_permissions` column. Since that would be "doing something wrong" warn about it.
+    :else (do (log/warn "Card" id "is missing its read_permissions. Calculating them now...")
+              (query-perms-set query :read))))
+
+(defn- card-perms-set-for-current-user
+  "Calculate the permissions required to `read-or-write` `card` *for the current user*. This takes into account whether
+  the Card is publicly available, or in a collection the current user can view; it also attempts to use precalcuated
+  `read_permissions` when possible. This is the function that should be used for general permissions checking for a
+  Card."
+  [{collection-id :collection_id, public-uuid :public_uuid, in-public-dash? :in_public_dashboard, :as card}
    read-or-write]
   (cond
     ;; you don't need any permissions to READ a public card, which is PUBLIC by definition :D
@@ -148,7 +168,7 @@
     (collection/perms-objects-set collection-id read-or-write)
 
     :else
-    (query-perms-set query read-or-write)))
+    (card-perms-set-for-query card read-or-write)))
 
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
@@ -201,15 +221,16 @@
             :query_type  (keyword query-type)})
          card))
 
-(defn- pre-insert [{:keys [dataset_query], :as card}]
+(defn- pre-insert [{query :dataset_query, :as card}]
   ;; TODO - make sure if `collection_id` is specified that we have write permissions for that collection
-  (u/prog1 card
+  ;; Save the new Card with read permissions since calculating them dynamically is so expensive.
+  (u/prog1 (assoc card :read_permissions (query-perms-set query :read))
     ;; for native queries we need to make sure the user saving the card has native query permissions for the DB
     ;; because users can always see native Cards and we don't want someone getting around their lack of permissions
     ;; that way
     (when (and *current-user-id*
-               (= (keyword (:type dataset_query)) :native))
-      (let [database (db/select-one ['Database :id :name], :id (:database dataset_query))]
+               (= (keyword (:type query)) :native))
+      (let [database (db/select-one ['Database :id :name], :id (:database query))]
         (qp-perms/throw-if-cannot-run-new-native-query-referencing-db database)))))
 
 (defn- post-insert [card]
@@ -220,8 +241,9 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))))
 
-(defn- pre-update [{archived? :archived, :as card}]
-  (u/prog1 card
+(defn- pre-update [{archived? :archived, query :dataset_query, :as card}]
+  ;; save the updated Card with updated read permissions.
+  (u/prog1 (assoc card :read_permissions (query-perms-set query :read))
     ;; if the Card is archived, then remove it from any Dashboards
     (when archived?
       (db/delete! 'DashboardCard :card_id (u/get-id card)))
@@ -260,7 +282,8 @@
                                        :embedding_params       :json
                                        :query_type             :keyword
                                        :result_metadata        :json
-                                       :visualization_settings :json})
+                                       :visualization_settings :json
+                                       :read_permissions       :json-set})
           :properties     (constantly {:timestamped? true})
           :pre-update     (comp populate-query-fields pre-update)
           :pre-insert     (comp populate-query-fields pre-insert)
@@ -272,7 +295,7 @@
   (merge i/IObjectPermissionsDefaults
          {:can-read?         (partial i/current-user-has-full-permissions? :read)
           :can-write?        (partial i/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set})
+          :perms-objects-set card-perms-set-for-current-user})
 
   revision/IRevisioned
   (assoc revision/IRevisionedDefaults
