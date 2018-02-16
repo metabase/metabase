@@ -237,10 +237,12 @@ export function formatTimeWithUnit(
         .hour(value)
         .format("h A");
     case "day-of-week": // Sunday
-      // $FlowFixMe:
-      return moment()
-        .day(value - 1)
-        .format("dddd");
+      return (
+        moment()
+          // $FlowFixMe:
+          .day(value - 1)
+          .format("dddd")
+      );
     case "day-of-month":
       return moment()
         .date(value)
@@ -250,10 +252,12 @@ export function formatTimeWithUnit(
         .week(value)
         .format("wo");
     case "month-of-year": // January
-      // $FlowFixMe:
-      return moment()
-        .month(value - 1)
-        .format("MMMM");
+      return (
+        moment()
+          // $FlowFixMe:
+          .month(value - 1)
+          .format("MMMM")
+      );
     case "quarter-of-year": // January
       return moment()
         .quarter(value)

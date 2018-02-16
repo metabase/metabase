@@ -34,56 +34,57 @@ export default (
   // NOTE: ideally we would remove the current state from the history so the forward
   // button wouldn't be enabled, maybe using `replace`
 ) =>
-  @connect(mapStateToProps, mapDispatchToProps)
-  class extends Component {
-    static displayName = "Routeless[" +
-      (ComposedComponent.displayName || ComposedComponent.name) +
-      "]";
+  connect(mapStateToProps, mapDispatchToProps)(
+    class extends Component {
+      static displayName = "Routeless[" +
+        (ComposedComponent.displayName || ComposedComponent.name) +
+        "]";
 
-    _state: any;
-    _timeout: any;
+      _state: any;
+      _timeout: any;
 
-    componentWillMount() {
-      const push = this.props._routeless_push;
-      const location = this.props._routeless_location;
-      const { pathname, query, search, hash, state } = location;
-      this._state = typeof state === "object" ? Object.create(state) : {};
-      push({ pathname, query, search, hash, state: this._state });
-    }
-
-    componentWillReceiveProps(nextProps) {
-      const location = this.props._routeless_location;
-      const nextLocation = nextProps._routeless_location;
-      if (
-        location.state === this._state &&
-        nextLocation.state !== this._state
-      ) {
-        this._timeout = setTimeout(() => {
-          this.props.onClose();
-        }, 100);
-      }
-    }
-
-    componentWillUnmount() {
-      const location = this.props._routeless_location;
-      const goBack = this.props._routeless_goBack;
-
-      if (this._timeout != null) {
-        clearTimeout(this._timeout);
+      componentWillMount() {
+        const push = this.props._routeless_push;
+        const location = this.props._routeless_location;
+        const { pathname, query, search, hash, state } = location;
+        this._state = typeof state === "object" ? Object.create(state) : {};
+        push({ pathname, query, search, hash, state: this._state });
       }
 
-      if (location.state === this._state) {
-        goBack();
+      componentWillReceiveProps(nextProps) {
+        const location = this.props._routeless_location;
+        const nextLocation = nextProps._routeless_location;
+        if (
+          location.state === this._state &&
+          nextLocation.state !== this._state
+        ) {
+          this._timeout = setTimeout(() => {
+            this.props.onClose();
+          }, 100);
+        }
       }
-    }
 
-    render() {
-      const props = _.omit(
-        this.props,
-        "_routeless_location",
-        "_routeless_goBack",
-        "_routeless_push",
-      );
-      return <ComposedComponent {...props} />;
-    }
-  };
+      componentWillUnmount() {
+        const location = this.props._routeless_location;
+        const goBack = this.props._routeless_goBack;
+
+        if (this._timeout != null) {
+          clearTimeout(this._timeout);
+        }
+
+        if (location.state === this._state) {
+          goBack();
+        }
+      }
+
+      render() {
+        const props = _.omit(
+          this.props,
+          "_routeless_location",
+          "_routeless_goBack",
+          "_routeless_push",
+        );
+        return <ComposedComponent {...props} />;
+      }
+    },
+  );

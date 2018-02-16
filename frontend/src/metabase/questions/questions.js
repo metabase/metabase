@@ -117,9 +117,8 @@ function createUndo(type, actions, collection) {
   return {
     type: type,
     count: actions.length,
-    message: (
-      undo, // eslint-disable-line react/display-name
-    ) => (
+    // eslint-disable-next-line react/display-name
+    message: undo => (
       <div className="flex flex-column">
         <div>
           {inflect(

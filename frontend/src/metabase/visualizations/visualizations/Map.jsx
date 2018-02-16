@@ -149,8 +149,8 @@ export default class Map extends Component {
         return null;
       },
       getProps: () => ({
-        // $FlowFixMe:
         options: Object.entries(MetabaseSettings.get("custom_geojson", {})).map(
+          // $FlowFixMe:
           ([key, value]) => ({ name: value.name, value: key }),
         ),
       }),

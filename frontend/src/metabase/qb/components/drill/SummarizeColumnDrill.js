@@ -47,32 +47,19 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   }
   const { column } = clicked;
 
-  return (
-    Object.entries(AGGREGATIONS)
-      .map(([aggregationShort, action]) => [
-        getAggregator(aggregationShort),
-        action,
-      ])
-      .filter(([aggregator]) =>
-        isCompatibleAggregatorForField(aggregator, column),
-      )
+  return Object.entries(AGGREGATIONS)
+    .map(([aggregationShort, action]) => [
+      getAggregator(aggregationShort),
       // $FlowFixMe
-      .map(
-        ([aggregator, action]: [
-          any,
-          {
-            section: string,
-            title: string,
-          },
-        ]) => ({
-          name: action.title.toLowerCase(),
-          ...action,
-          question: () =>
-            question.summarize([
-              aggregator.short,
-              getFieldRefFromColumn(column),
-            ]),
-        }),
-      )
-  );
+      action,
+    ])
+    .filter(([aggregator]) =>
+      isCompatibleAggregatorForField(aggregator, column),
+    )
+    .map(([aggregator, action]: [any, { section: string, title: string }]) => ({
+      name: action.title.toLowerCase(),
+      ...action,
+      question: () =>
+        question.summarize([aggregator.short, getFieldRefFromColumn(column)]),
+    }));
 };
