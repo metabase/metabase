@@ -30,9 +30,9 @@ function getFilterValueSerializer(
 const serializersByOperatorName: {
   [id: OperatorName]: (FieldFilter) => UrlEncoded,
 } = {
-  // $FlowFixMe
   previous: getFilterValueSerializer(
     (value, unit, options = {}) =>
+      // $FlowFixMe
       `past${-value}${unit}s${options["include-current"] ? "~" : ""}`,
   ),
   next: getFilterValueSerializer(
@@ -89,11 +89,12 @@ export default class DateAllOptionsWidget extends Component {
     super(props);
 
     this.state = {
-      // $FlowFixMe
       filter:
         props.value != null
-          ? dateParameterValueToMBQL(props.value, noopRef) || []
-          : [],
+          ? // $FlowFixMe
+            dateParameterValueToMBQL(props.value, noopRef) || []
+          : // $FlowFixMe
+            [],
     };
   }
 

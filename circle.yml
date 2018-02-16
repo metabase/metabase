@@ -5,7 +5,7 @@ machine:
     version:
       openjdk7
   node:
-    version: 6.7.0
+    version: 8.9.0
   services:
     - docker
 dependencies:

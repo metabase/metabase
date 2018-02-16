@@ -78,8 +78,8 @@ describe("HomepageApp", () => {
       expect(activityItems.at(1).text()).toMatch(/Past 300 days/);
       expect(activityStories.at(1).text()).toMatch(/Past 300 days created at/);
 
-      // eslint-disable-next-line no-irregular-whitespace
       expect(activityItems.at(2).text()).toMatch(
+        // eslint-disable-next-line no-irregular-whitespace
         /You saved a question about Orders/,
       );
       expect(activityStories.at(2).text()).toMatch(
