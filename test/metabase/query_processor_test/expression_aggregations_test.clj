@@ -151,7 +151,7 @@
             (ql/breakout $price)))))
 
 ;; Sorting by an un-named aggregate expression
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1 2] [2 2] [12 2] [4 4] [7 4] [10 4] [11 4] [8 8]]
   (format-rows-by [int int]
     (rows (data/run-query users
