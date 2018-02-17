@@ -15,7 +15,7 @@
   "Schema for the expected output of `describe-database` for a Table."
   {:name          su/NonBlankString
    :schema        (s/maybe su/NonBlankString)
-   (s/optional-key :table-comment) (s/maybe s/Str)})
+   (s/optional-key :description) (s/maybe s/Str)})
 
 (def DatabaseMetadata
   "Schema for the expected output of `describe-database`."
@@ -38,7 +38,7 @@
   {:name   su/NonBlankString
    :schema (s/maybe su/NonBlankString)
    :fields #{TableMetadataField}
-   (s/optional-key :table-comment)   (s/maybe su/NonBlankString)})
+   (s/optional-key :description)   (s/maybe su/NonBlankString)})
 
 (def FKMetadataEntry
   "Schema for an individual entry in `FKMetadata`."
