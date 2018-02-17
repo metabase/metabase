@@ -88,7 +88,7 @@
   (log/info "Found new tables:"
             (for [table new-tables]
               (sync-util/name-for-logging (table/map->TableInstance table))))
-  (doseq [{schema :schema, table-name :name, table-comment :table-comment, :as table} new-tables]
+  (doseq [{schema :schema, table-name :name, :as table} new-tables]
     (if-let [existing-id (db/select-one-id Table
                            :db_id  (u/get-id database)
                            :schema schema
@@ -105,8 +105,7 @@
         :display_name    (humanization/name->human-readable-name table-name)
         :active          true
         :visibility_type (when (is-crufty-table? table)
-                           :cruft)
-        :description     table-comment))))
+                           :cruft)))))
 
 
 (s/defn ^:private retire-tables!
@@ -122,6 +121,26 @@
       :active false)))
 
 
+(s/defn ^:private update-table-description!
+  "Update description for any CHANGED-TABLES belonging to DATABASE."
+  [database :- i/DatabaseInstance, changed-tables :- #{i/DatabaseMetadataTable}]
+  (log/info "Updating description for tables:"
+            (for [table changed-tables]
+              (sync-util/name-for-logging (table/map->TableInstance table))))
+  (doseq [{schema :schema, table-name :name, description :description} changed-tables]
+    ;; TODO: seems there should be a way to do OR but I can't figure it out with this lib
+    (db/update-where! Table {:db_id       (u/get-id database)
+                             :schema      schema
+                             :name        table-name
+                             :description nil}
+                      :description description)
+    (db/update-where! Table {:db_id       (u/get-id database)
+                             :schema      schema
+                             :name        table-name
+                             :description ""}
+                      :description description)))
+
+
 (s/defn ^:private db-metadata :- #{i/DatabaseMetadataTable}
   "Return information about DATABASE by calling its driver's implementation of `describe-database`."
   [database :- i/DatabaseInstance]
@@ -133,7 +152,7 @@
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
   (set (map (partial into {})
-            (db/select [Table :name :schema]
+            (db/select [Table :name :schema :description]
               :db_id  (u/get-id database)
               :active true))))
 
@@ -144,7 +163,12 @@
   ;; determine what's changed between what info we have and what's in the DB
   (let [db-metadata             (db-metadata database)
         our-metadata            (our-metadata database)
-        [new-tables old-tables] (data/diff db-metadata our-metadata)]
+        strip-desc              (fn [metadata]
+                                  (set (map #(dissoc % :description) metadata)))
+        [new-tables old-tables] (data/diff
+                                  (strip-desc db-metadata)
+                                  (strip-desc our-metadata))
+        [changed-tables]        (data/diff db-metadata our-metadata)]
     ;; create new tables as needed or mark them as active again
     (when (seq new-tables)
       (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
@@ -153,4 +177,8 @@
     ;; mark old tables as inactive
     (when (seq old-tables)
       (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
-        (retire-tables! database old-tables)))))
+        (retire-tables! database old-tables)))
+    ;; update description for changed tables
+    (when (seq changed-tables)
+      (sync-util/with-error-handling (format "Error updating table description for %s" (sync-util/name-for-logging database))
+        (update-table-description! database changed-tables)))))

@@ -308,9 +308,9 @@
         schemas     (set/difference all-schemas (excluded-schemas driver))]
     (set (for [schema schemas
                table  (get-tables metadata schema)]
-           {:name           (:table_name table)
-            :schema         schema
-            :table-comment  (:remarks table)}))))
+           {:name        (:table_name table)
+            :schema      schema
+            :description (:remarks table)}))))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `ISQLDriver/active-tables` best suited for DBs with little or no support for schemas.
@@ -318,9 +318,9 @@
   [driver, ^DatabaseMetaData metadata]
   (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
                            (get-tables metadata nil))]
-         {:name           (:table_name table)
-          :schema         (:table_schem table)
-          :table-comment  (:remarks table)})))
+         {:name        (:table_name table)
+          :schema      (:table_schem table)
+          :description (:remarks table)})))
 
 (defn- database-type->base-type
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
