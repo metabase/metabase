@@ -22,10 +22,10 @@
 
 ;; test basic field comments sync
 (i/def-database-definition ^:const ^:private basic-field-comments
- ["basic_field_comments"
-  [{:field-name "with_comment", :base-type :type/Text, :field-comment "comment"}
-   {:field-name "no_comment", :base-type :type/Text}]
-  [["foo" "bar"]]])
+ [["basic_field_comments"
+   [{:field-name "with_comment", :base-type :type/Text, :field-comment "comment"}
+    {:field-name "no_comment", :base-type :type/Text}]
+   [["foo" "bar"]]]])
 
 (ds/expect-with-engines #{:h2 :postgres}
   #{{:name (data/format-name "id"), :description nil}
@@ -36,9 +36,9 @@
 
 ;; test changing the description in metabase db so we can check it is not overwritten by comment in source db when resyncing
 (i/def-database-definition ^:const ^:private update-desc
- ["update_desc"
-  [{:field-name "updated_desc", :base-type :type/Text, :field-comment "original comment"}]
-  [["foo"]]])
+ [["update_desc"
+   [{:field-name "updated_desc", :base-type :type/Text, :field-comment "original comment"}]
+   [["foo"]]]])
 
 (ds/expect-with-engines #{:h2 :postgres}
   #{{:name (data/format-name "id"), :description nil}
@@ -52,9 +52,9 @@
 
 ;; test adding a comment to the source data that was initially empty, so we can check that the resync picks it up
 (i/def-database-definition ^:const ^:private comment-after-sync
- ["comment_after_sync"
-  [{:field-name "comment_after_sync", :base-type :type/Text}]
-  [["foo"]]])
+ [["comment_after_sync"
+   [{:field-name "comment_after_sync", :base-type :type/Text}]
+   [["foo"]]]])
 
 (ds/expect-with-engines #{:h2 :postgres}
   #{{:name (data/format-name "id"), :description nil}
