@@ -160,6 +160,7 @@ export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params) => {
     return async (dispatch, getState) => {
 
+
         // do this immediately to ensure old state is cleared before the user sees it
         dispatch(resetQB());
         dispatch(cancelQuery());
@@ -315,7 +316,7 @@ export const initializeQB = (location, params) => {
 
             // clean up the url and make sure it reflects our card state
             const originalQuestion = originalCard && new Question(getMetadata(getState()), originalCard);
-            dispatch(updateUrl(card, {
+            if (!location.pathname.includes("_spaces")) dispatch(updateUrl(card, {
                 dirty: !originalQuestion || originalQuestion && question.isDirtyComparedTo(originalQuestion),
                 replaceState: true,
                 preserveParameters

@@ -145,6 +145,9 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
     };
 });
 
+/**
+ * Fetches databases, not including the saved questions virtual database
+ */
 export const FETCH_REAL_DATABASES = "metabase/metadata/FETCH_REAL_DATABASES";
 export const fetchRealDatabases = createThunkAction(FETCH_REAL_DATABASES, (reload = false) => {
     return async (dispatch, getState) => {
@@ -512,7 +515,8 @@ const databases = handleActions({
 }, {});
 
 const databasesList = handleActions({
-    [FETCH_DATABASES]: { next: (state, { payload }) => (payload && payload.result) || state }
+    [FETCH_DATABASES]: { next: (state, { payload }) => (payload && payload.result) || state },
+    [FETCH_REAL_DATABASES]: { next: (state, { payload }) => (payload && payload.result) || state }
 }, []);
 
 const tables = handleActions({
