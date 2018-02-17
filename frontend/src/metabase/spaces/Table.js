@@ -1,9 +1,11 @@
 import React from 'react'
 import { connect } from 'react-redux'
 import { Link } from "metabase/spaces/Link"
-import { Box, Button, ButtonOutline, Card, Flex, Heading, Input, Subhead } from 'rebass'
+import { Box, Button, ButtonOutline, Card, Flex, Heading, Input, Subhead, } from 'rebass'
 import faker from 'faker'
 import { FakeTable } from './FakeTable'
+
+import { Wrapper } from './layouts/shared'
 
 import Select from 'metabase/components/Select'
 import Modal from "metabase/components/Modal";
@@ -90,175 +92,122 @@ export class Table extends React.Component {
         console.log('segments')
         return (
             <Box>
-                <Flex mb={4} mt={2}>
-                    <Heading>
-                        { scalar && "Count of" }{ table.display_name} { time && "over time" }
-                    </Heading>
-                    <Flex ml='auto' align='center'>
-                        { (showQB || time || scalar) && (
-                            <Box mx={3}>
-                                <ButtonOutline onClick={() => this.setState({ showSave: true })}>Save</ButtonOutline>
-                            </Box>
-                        )}
-                        <Box mx={3}>
-                            <ShareMenu />
-                        </Box>
-                        <Box mx={3}>
-                            <Menu name='More'>
-                                <Box my={3}>
-                                    <Link to='Metadata' params={{ id: table.id }}>
-                                        Metadata
-                                    </Link>
-                                </Box>
-                            </Menu>
-                        </Box>
-                    </Flex>
-                </Flex>
-
-                {showQB && (
-                    <Flex>
-                        <img src={'app/assets/_spaces/query_builder_raw_data.png'} />
-                        <Link to='TTime' params={{ id: table.id, time: 't/time'}}>
-                            <Button>Done</Button>
-                        </Link>
-                    </Flex>
-                )}
-
-                <Flex mt={4}>
-                    <Box w={showQB ? 3/3 : 2/3}>
-                        <Card style={{ height: 600, overflow: 'scroll' }}>
-                            { this.renderViz() }
-                        </Card>
-                        { !showQB && (
-                            <Box>
-                                { segments.length > 0  && (
-                                    <ModifySection>
-                                        <ModifyHeader>
-                                            {
-                                                (!time && !scalar) ? 'Segments of this table' : 'Filter by a segment'
-                                            }
-                                        </ModifyHeader>
-                                        <Flex>
-                                            { segments.map(s => {
-                                                const space = spaces.filter(space => space.id === s.spaces[0])[0]
-                                                console.log(space)
-                                                return (
-                                                    space ? (
-                                                    <Token>
-                                                        <Link to='Segment' params={{ id: s.id, space: space.slug }}>
-                                                            {s.name}
-                                                        </Link>
-                                                    </Token>
-                                                    ) : (null)
-
-                                                )
-                                            })}
-                                        </Flex>
-                                    </ModifySection>
-                                )}
-                                { metrics.length > 0 &&  (
-                                    <ModifySection>
-                                        <ModifyHeader>
-                                            { (time || scalar) ? "Related metrics" : "Metrics based on this table" }</ModifyHeader>
-                                        <Flex>
-                                            { metrics.map(m => {
-                                                const space = spaces.filter(space => space.id === m.spaces[0])[0]
-                                                console.log(space)
-                                                return (
-                                                    <Token>
-                                                        <Link to='Metric' params={{ id: m.id, space: space.slug }}>
-                                                            {m.name}
-                                                        </Link>
-                                                    </Token>
-
-                                                )
-                                            })}
-                                        </Flex>
-                                    </ModifySection>
-                                )}
-                                { (!time && !scalar) && (
-                                    <Box>
+                <Box mt={4}>
+                    <Box>
+                        <Box background='' p={2}>
+                                    { segments.length > 0  && (
                                         <ModifySection>
-                                            <ModifyHeader>Potentially interesting questions</ModifyHeader>
+                                            <ModifyHeader>
+                                                {
+                                                    (!time && !scalar) ? 'Segments of this table' : 'Filter by a segment'
+                                                }
+                                            </ModifyHeader>
                                             <Flex>
-                                                <Box mx={3}>
-                                                    <Token>
-                                                        <Link to='TScalar' params={{ id: table.id, scalar: 'scalar' }}>
-                                                            Total
-                                                        </Link>
-                                                    </Token>
-                                                </Box>
-                                                <Box mx={3}>
-                                                    <Token>
-                                                        <Link to='TTime' params={{ id: table.id, time: 'time' }}>
-                                                            View count over time
-                                                        </Link>
-                                                    </Token>
-                                                </Box>
+                                                { segments.map(s => {
+                                                    const space = spaces.filter(space => space.id === s.spaces[0])[0]
+                                                    console.log(space)
+                                                    return (
+                                                        space ? (
+                                                        <Token>
+                                                            <Link to='Segment' params={{ id: s.id, space: space.slug }}>
+                                                                {s.name}
+                                                            </Link>
+                                                        </Token>
+                                                        ) : (null)
+
+                                                    )
+                                                })}
                                             </Flex>
                                         </ModifySection>
-                                        { connectedTables && (
-                                            <ModifySection>
-                                                <ModifyHeader>Connected tables</ModifyHeader>
-                                                <ModifyOptions
-                                                    options={connectedTables}
-                                                    itemType='Table'
-                                                />
-                                            </ModifySection>
-                                        )}
-                                    </Box>
-                                )}
-
-                            </Box>
-                        )}
-                    </Box>
-                    { !showQB && (
-                        <Box w={1/3} mx={4} px={4}>
-                            {!showQB && (
-                                <Link to='QB' params={{ id: table.id, qb: 'qb' }}>
-                                    <ButtonOutline>
-                                        { time || scalar ? 'Query builder' : 'Ask a question about this' }
-                                    </ButtonOutline>
-                                </Link>
-                            )}
-                            <Box mt={4}>
-                                <Subhead>Learn about this</Subhead>
-                                <p>Each row represents a time when a Metabase instance accessed one of our hosted static assets.</p>
-                            </Box>
-                            { (!time && !scalar) && (
+                                    )}
+                            <Card style={{ height: 600, overflow: 'scroll' }}>
+                                { this.renderViz() }
+                            </Card>
+                        </Box>
+                        <Wrapper>
+                            <Box w={2/3} mt={2}>
+                                <Heading my={4}>
+                                    { table.display_name }
+                                </Heading>
+                                <p>{ table.description }</p>
                                 <Box>
-                                    { diceRoll() && (
+                                    <Box mt={4}>
+                                        <Subhead>Learn about this</Subhead>
+                                        <InterestText>Each row represents a time when a Metabase instance accessed one of our hosted static assets.</InterestText>
+                                    </Box>
+                                    <Box>
                                         <Box mt={4} w={'80%'}>
                                             <h3>Why this table is interesting</h3>
                                             <InterestText>A lot of different metrics can be derived from this table: invite email views, count of instances phoning home (i.e., active instances), and downloads.</InterestText>
                                         </Box>
-                                    )}
-                                    { diceRoll() && (
                                         <Box mt={4} w={'80%'}>
                                             <h3>Things to be aware of</h3>
                                             <InterestText>There is some weirdness in how you have to filter this table in order to get the metric you want. Also note that instances check in twice per day, so if you do a count of rows to determine active instances, make sure to divide it by 2.</InterestText>
                                         </Box>
-                                    )}
-                                </Box>
-                            )}
-
-                            { (time || scalar) && (
-                                <Box>
-                                    <Box my={2}>
-                                        <h3>Table this is based on</h3>
                                     </Box>
-                                    <Flex>
-                                        <Token>
-                                            <Link to='Table' params={{ id: table.id }}>
-                                                { table.display_name }
-                                            </Link>
-                                        </Token>
-                                    </Flex>
+
+                                </Box>
+                            </Box>
+                            { !showQB && (
+                                <Box>
+                                    { metrics.length > 0 &&  (
+                                        <ModifySection>
+                                            <ModifyHeader>
+                                                { (time || scalar) ? "Related metrics" : "Metrics based on this table" }</ModifyHeader>
+                                            <Flex>
+                                                { metrics.map(m => {
+                                                    const space = spaces.filter(space => space.id === m.spaces[0])[0]
+                                                    console.log(space)
+                                                    return (
+                                                        <Token>
+                                                            <Link to='Metric' params={{ id: m.id, space: space.slug }}>
+                                                                {m.name}
+                                                            </Link>
+                                                        </Token>
+
+                                                    )
+                                                })}
+                                            </Flex>
+                                        </ModifySection>
+                                    )}
+                                    { (!time && !scalar) && (
+                                        <Box>
+                                            <ModifySection>
+                                                <ModifyHeader>Potentially interesting questions</ModifyHeader>
+                                                <Flex>
+                                                    <Box mx={3}>
+                                                        <Token>
+                                                            <Link to='TScalar' params={{ id: table.id, scalar: 'scalar' }}>
+                                                                Total
+                                                            </Link>
+                                                        </Token>
+                                                    </Box>
+                                                    <Box mx={3}>
+                                                        <Token>
+                                                            <Link to='TTime' params={{ id: table.id, time: 'time' }}>
+                                                                View count over time
+                                                            </Link>
+                                                        </Token>
+                                                    </Box>
+                                                </Flex>
+                                            </ModifySection>
+                                            { connectedTables && (
+                                                <ModifySection>
+                                                    <ModifyHeader>Connected tables</ModifyHeader>
+                                                    <ModifyOptions
+                                                        options={connectedTables}
+                                                        itemType='Table'
+                                                    />
+                                                </ModifySection>
+                                            )}
+                                        </Box>
+                                    )}
+
                                 </Box>
                             )}
-                        </Box>
-                    )}
-                </Flex>
+                        </Wrapper>
+                    </Box>
+                </Box>
                 <Modal isOpen={this.state.showSave} style={{ content: { width: 620, marginLeft: 'auto', marginRight: 'auto', height: 800}}}>
                     <Flex aling='center'>
                         <Heading>Save</Heading>

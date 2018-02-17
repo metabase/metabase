@@ -10,6 +10,17 @@ export const Wrapper = ({ children }) =>
         { children }
     </Box>
 
+export const Canvas = ({ children }) =>
+    <Box
+        bg='#FCFDFD'
+        p={2}
+        style={{
+            borderTop: '#F4F5F6',
+            borderBottom: '#F5F5F6'
+        }}
+    >
+        { children }
+    </Box>
 
 export const Section = ({ children }) =>
     <Box py={4}>
@@ -29,7 +40,6 @@ export const PageHeading = ({ icon, title }) =>
         {icon}
         <Heading ml={2}>{title}</Heading>
     </Flex>
-
 
 export const PageLayout = ({ children }) =>
     <Box w={2/3}>
@@ -54,5 +64,8 @@ export const Grid = ({ children, gl, columnWidth }) => {
         </Flex>
     )
 }
+
+const EntityHeader = ({ children }) =>
+    <Box my
 
 
