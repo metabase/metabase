@@ -150,17 +150,22 @@
 (def ^:private empty-field-values
   {:values []})
 
+(defn field->values
+  "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
+  use-cases."
+  [field]
+  (if-let [field-values (and (field-values/field-should-have-field-values? field)
+                             (field-values/create-field-values-if-needed! field))]
+    (-> field-values
+        (assoc :values (field-values/field-values->pairs field-values))
+        (dissoc :human_readable_values))
+    {:values []}))
+
 (api/defendpoint GET "/:id/values"
   "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return all distinct
   values of the field, and a map of human-readable values defined by the user."
   [id]
-  (let [field (api/read-check Field id)]
-    (if-let [field-values (and (field-values/field-should-have-field-values? field)
-                               (field-values/create-field-values-if-needed! field))]
-      (-> field-values
-          (assoc :values (field-values/field-values->pairs field-values))
-          (dissoc :human_readable_values))
-      {:values []})))
+  (field->values (api/read-check Field id)))
 
 ;; match things like GET /field-literal%2Ccreated_at%2Ctype%2FDatetime/values
 ;; (this is how things like [field-literal,created_at,type/Datetime] look when URL-encoded)
@@ -254,7 +259,7 @@
     field))
 
 
-(s/defn ^:private search-values
+(s/defn search-values
   "Search for values of `search-field` that start with `value` (up to `limit`, if specified), and return like
 
       [<value-of-field> <matching-value-of-search-field>].

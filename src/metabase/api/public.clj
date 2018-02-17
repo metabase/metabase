@@ -1,6 +1,7 @@
 (ns metabase.api.public
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require [cheshire.core :as json]
+            [clojure.walk :as walk]
             [compojure.core :refer [GET]]
             [metabase
              [query-processor :as qp]
@@ -9,14 +10,18 @@
              [card :as card-api]
              [common :as api]
              [dataset :as dataset-api]
-             [dashboard :as dashboard-api]]
+             [dashboard :as dashboard-api]
+             [field :as field-api]]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
+             [field :refer [Field]]
              [field-values :refer [FieldValues]]
              [params :as params]]
+            [metabase.query-processor :as qp]
+            metabase.query-processor.interface ; because we refer to Field
             [metabase.util
              [embed :as embed]
              [schema :as su]]
@@ -31,17 +36,18 @@
 
 ;;; -------------------------------------------------- Public Cards --------------------------------------------------
 
-(defn- remove-card-non-public-fields
+(defn- remove-card-non-public-columns
   "Remove everyting from public CARD that shouldn't be visible to the general public."
   [card]
   (u/select-nested-keys card [:id :name :description :display :visualization_settings [:dataset_query :type [:native :template_tags]]]))
 
 (defn public-card
-  "Return a public Card matching key-value CONDITIONS, removing all fields that should not be visible to the general
+  "Return a public Card matching key-value CONDITIONS, removing all columns that should not be visible to the general
    public. Throws a 404 if the Card doesn't exist."
   [& conditions]
-  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings], :archived false, conditions))
-      remove-card-non-public-fields
+  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
+                            :archived false, conditions))
+      remove-card-non-public-columns
       params/add-card-param-values))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
@@ -93,7 +99,7 @@
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
 (defn public-dashboard
-  "Return a public Dashboard matching key-value CONDITIONS, removing all fields that should not be visible to the
+  "Return a public Dashboard matching key-value CONDITIONS, removing all columns that should not be visible to the
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
   (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
@@ -104,10 +110,10 @@
                                (for [dashcard dashcards]
                                  (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :sizeX
                                                             :sizeY :parameter_mappings :visualization_settings])
-                                     (update :card remove-card-non-public-fields)
+                                     (update :card remove-card-non-public-columns)
                                      (update :series (fn [series]
                                                        (for [series series]
-                                                         (remove-card-non-public-fields series))))))))))
+                                                         (remove-card-non-public-columns series))))))))))
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
@@ -117,19 +123,25 @@
   (api/check-public-sharing-enabled)
   (dashboard-with-uuid uuid))
 
+(defn- check-card-is-in-dashboard
+  "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in a DashboardCard at the top level or
+  as a series, or throw an Exception. If not such relationship exists this will throw a 404 Exception."
+  [card-id dashboard-id]
+  (api/check-404
+   (or (db/exists? DashboardCard
+         :dashboard_id dashboard-id
+         :card_id      card-id)
+       (when-let [dashcard-ids (db/select-ids DashboardCard :dashboard_id dashboard-id)]
+         (db/exists? DashboardCardSeries
+           :card_id          card-id
+           :dashboardcard_id [:in dashcard-ids])))))
 
 (defn public-dashcard-results
   "Return the results of running a query with PARAMETERS for Card with CARD-ID belonging to Dashboard with
    DASHBOARD-ID. Throws a 404 if the Card isn't part of the Dashboard."
   [dashboard-id card-id parameters & {:keys [context]
                                       :or   {context :public-dashboard}}]
-  (api/check-404 (or (db/exists? DashboardCard
-                       :dashboard_id dashboard-id
-                       :card_id      card-id)
-                     (when-let [dashcard-ids (db/select-ids DashboardCard :dashboard_id dashboard-id)]
-                       (db/exists? DashboardCardSeries
-                         :card_id          card-id
-                         :dashboardcard_id [:in dashcard-ids]))))
+  (check-card-is-in-dashboard card-id dashboard-id)
   (run-query-for-card-with-id card-id parameters, :context context, :dashboard-id dashboard-id))
 
 (api/defendpoint GET "/dashboard/:uuid/card/:card-id"
@@ -138,7 +150,8 @@
   [uuid card-id parameters]
   {parameters (s/maybe su/JSONString)}
   (api/check-public-sharing-enabled)
-  (public-dashcard-results (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false)) card-id parameters))
+  (public-dashcard-results
+   (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false)) card-id parameters))
 
 
 (api/defendpoint GET "/oembed"
@@ -157,6 +170,95 @@
      :width   width
      :height  height
      :html    (embed/iframe url width height)}))
+
+
+;;; -------------------------------------------- Field Values & Searching --------------------------------------------
+
+;; TODO - this is a stupid, inefficient way of doing things. Figure out a better way to do it. :(
+(defn- query->referenced-field-ids
+  "Get the IDs of all Fields referenced by `query`."
+  [query]
+  (let [field-ids (atom #{})]
+    (walk/postwalk
+     (fn [x]
+       (if (instance? metabase.query_processor.interface.Field x)
+         (swap! field-ids conj (:field-id x))
+         x))
+     (qp/expand query))
+    @field-ids))
+
+(defn- check-field-is-referenced-by-card
+  "Check to make sure the query for Card with `card-id` references Field with `field-id`. Otherwise, or if the Card
+  cannot be found, throw an Exception."
+  [field-id card-id]
+  (let [query                 (api/check-404 (db/select-one-field :dataset_query Card :id card-id))
+        referenced-fields-ids (query->referenced-field-ids query)]
+    (api/check-404 (contains? referenced-fields-ids field-id))))
+
+(defn card-and-field-id->values
+  "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id`."
+  [card-id field-id]
+  (check-field-is-referenced-by-card field-id card-id)
+  (field-api/field->values (Field field-id)))
+
+(api/defendpoint GET "/card/:card-uuid/field/:field-id/values"
+  "Fetch FieldValues for a Field that is referenced by a public Card."
+  [card-uuid field-id]
+  (api/check-public-sharing-enabled)
+  (let [card-id (db/select-one-id Card :public_uuid card-uuid, :archived false)]
+    (card-and-field-id->values card-id field-id)))
+
+(defn dashboard-card-and-field-id->values
+  "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id` which itself is present
+  in Dashboard with `dashboard-id`."
+  [dashboard-id card-id field-id]
+  (check-card-is-in-dashboard card-id dashboard-id)
+  ;; TODO - actually I think only Fields in the filter clause should be elligible, right?
+  (check-field-is-referenced-by-card field-id card-id)
+  ;; TODO - do we need to check that the Field is marked `:list` as well, or will that not matter?
+  (field-api/field->values (Field field-id)))
+
+(api/defendpoint GET "/dashboard/:dashboard-uuid/card/:card-id/field/:field-id/values"
+  "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
+  [dashboard-uuid card-id field-id]
+  (api/check-public-sharing-enabled)
+  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid dashboard-uuid, :archived false))]
+    (dashboard-card-and-field-id->values dashboard-id card-id field-id)))
+
+
+(defn search-card-fields
+  "Wrapper for `metabase.api.field/search-values` for use with public/embedded Cards. See that functions
+  documentation for a more detailed explanation of exactly what this does."
+  [card-id field-id search-id value limit]
+  (check-field-is-referenced-by-card field-id card-id)
+  ;; TODO - is this check needed?
+  (check-field-is-referenced-by-card search-id card-id)
+  (field-api/search-values (Field field-id) (Field search-id) value limit))
+
+(defn search-dashboard-card-fields
+  "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
+  documentation for a more detailed explanation of exactly what this does."
+  [dashboard-id card-id field-id search-id value limit]
+  (check-card-is-in-dashboard card-id dashboard-id)
+  (search-card-fields card-id field-id search-id value limit))
+
+(api/defendpoint GET "/card/:card-uuid/field/:field-id/search/:search-field-id"
+  "Search for values of a Field that is referenced by a public Card."
+  [card-uuid field-id search-field-id value limit]
+  {value su/NonBlankString
+   limit (s/maybe su/IntStringGreaterThanZero)}
+  (api/check-public-sharing-enabled)
+  (let [card-id (db/select-one-id Card :public_uuid card-uuid, :archived false)]
+    (search-card-fields card-id field-id search-field-id value limit)))
+
+(api/defendpoint GET "/dashboard/:dashboard-uuid/card/:card-id/field/:field-id/search/:search-field-id"
+  "Search for values of a Field that is referenced by a Card in a public Dashboard."
+  [dashboard-uuid card-id field-id search-field-id value limit]
+  {value su/NonBlankString
+   limit (s/maybe su/IntStringGreaterThanZero)}
+  (api/check-public-sharing-enabled)
+  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid dashboard-uuid, :archived false))]
+    (search-dashboard-card-fields dashboard-id card-id field-id search-field-id value limit)))
 
 
 (api/define-routes)
