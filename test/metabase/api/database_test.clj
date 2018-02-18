@@ -149,7 +149,7 @@
 (def ^:private default-table-details
   {:description             nil
    :entity_name             nil
-   :entity_type             nil
+   :entity_type             "entity/GenericTable"
    :caveats                 nil
    :points_of_interest      nil
    :visibility_type         nil
@@ -157,22 +157,23 @@
    :show_in_getting_started false})
 
 (defn- table-details [table]
-  (merge default-table-details
-         (match-$ table
-           {:description     $
-            :entity_type     $
-            :visibility_type $
-            :schema          $
-            :name            $
-            :display_name    $
-            :rows            $
-            :updated_at      $
-            :entity_name     $
-            :active          $
-            :id              $
-            :db_id           $
-            :raw_table_id    $
-            :created_at      $})))
+  (-> default-table-details
+      (merge (match-$ table
+               {:description     $
+                :entity_type     $
+                :visibility_type $
+                :schema          $
+                :name            $
+                :display_name    $
+                :rows            $
+                :updated_at      $
+                :entity_name     $
+                :active          $
+                :id              $
+                :db_id           $
+                :raw_table_id    $
+                :created_at      $}))
+      (update :entity_type (comp (partial str "entity/") name))))
 
 
 ;; TODO - this is a test code smell, each test should clean up after itself and this step shouldn't be neccessary. One day we should be able to remove this!

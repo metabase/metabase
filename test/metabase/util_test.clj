@@ -252,3 +252,9 @@
    {:foo 2 :bar 3}]
   [(update-when {:foo 2} :bar inc)
    (update-when {:foo 2 :bar 2} :bar inc)])
+
+(expect
+  [{:foo 2}
+   {:foo {:bar 3}}]
+  [(update-in-when {:foo 2} [:foo :bar] inc)
+   (update-in-when {:foo {:bar 2}} [:foo :bar] inc)])
