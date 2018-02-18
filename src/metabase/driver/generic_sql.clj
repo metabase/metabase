@@ -306,21 +306,25 @@
   [driver, ^DatabaseMetaData metadata]
   (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas metadata))))
         schemas     (set/difference all-schemas (excluded-schemas driver))]
-    (set (for [schema schemas
-               table  (get-tables metadata schema)]
-           {:name        (:table_name table)
-            :schema      schema
-            :description (:remarks table)}))))
+    (set (for [schema  schemas
+               table   (get-tables metadata schema)]
+           (merge {:name   (:table_name table)
+                   :schema schema}
+                  (let [remarks (:remarks table)]
+                    (when (not (str/blank? remarks))
+                      {:description remarks})))))))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `ISQLDriver/active-tables` best suited for DBs with little or no support for schemas.
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata]
-  (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                           (get-tables metadata nil))]
-         {:name        (:table_name table)
-          :schema      (:table_schem table)
-          :description (:remarks table)})))
+  (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
+                             (get-tables metadata nil))]
+         (merge {:name   (:table_name  table)
+                 :schema (:table_schem table)}
+                (let [remarks (:remarks table)]
+                  (when (not (str/blank? remarks))
+                    {:description remarks}))))))
 
 (defn- database-type->base-type
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
