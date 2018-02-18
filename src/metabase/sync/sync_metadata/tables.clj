@@ -128,16 +128,10 @@
             (for [table changed-tables]
               (sync-util/name-for-logging (table/map->TableInstance table))))
   (doseq [{schema :schema, table-name :name, description :description} changed-tables]
-    ;; TODO: seems there should be a way to do OR but I can't figure it out with this lib
     (db/update-where! Table {:db_id       (u/get-id database)
                              :schema      schema
                              :name        table-name
                              :description nil}
-                      :description description)
-    (db/update-where! Table {:db_id       (u/get-id database)
-                             :schema      schema
-                             :name        table-name
-                             :description ""}
                       :description description)))
 
 
