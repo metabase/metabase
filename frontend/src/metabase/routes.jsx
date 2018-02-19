@@ -224,6 +224,13 @@ export const getRoutes = store => (
           <ModalRoute path="history" modal={DashboardHistoryModal} />
         </Route>
 
+        <Route
+          path="/auto/:type/:subtype/:id"
+          component={props => (
+            <DashboardApp {...props} dashboardId={props.location.pathname} />
+          )}
+        />
+
         {/* QUERY BUILDER */}
         <Route path="/question">
           <IndexRoute component={QueryBuilder} />
