@@ -115,6 +115,7 @@
     "glob": "^7.1.1",
     "html-webpack-harddisk-plugin": "^0.1.0",
     "html-webpack-plugin": "^2.30.1",
+    "husky": "^0.15.0-rc.8",
     "image-diff": "^1.6.3",
     "imports-loader": "^0.7.0",
     "insightful": "^1.1.0",
@@ -172,15 +173,14 @@
     "build-hot": "NODE_ENV=hot webpack-dev-server --progress",
     "build-stats": "webpack --json > stats.json",
     "start": "yarn run build && lein ring server",
-    "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write 'frontend/**/*.{js,jsx,css}'",
     "docs": "documentation build -f html -o frontend/docs frontend/src/metabase-lib/lib/**"
   },
   "lint-staged": {
     "frontend/**/*.{js,jsx,css}": [
-      "prettier --write",
-      "git add"
+      "prettier -l",
+      "eslint --max-warnings 0"
     ]
   }
 }
