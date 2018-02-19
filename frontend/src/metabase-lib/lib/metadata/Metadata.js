@@ -18,41 +18,41 @@ import type { SegmentId } from "metabase/meta/types/Segment";
  * Wrapper class for the entire metadata store
  */
 export default class Metadata extends Base {
-    databases: { [id: DatabaseId]: Database };
-    tables: { [id: TableId]: Table };
-    fields: { [id: FieldId]: Field };
-    metrics: { [id: MetricId]: Metric };
-    segments: { [id: SegmentId]: Segment };
+  databases: { [id: DatabaseId]: Database };
+  tables: { [id: TableId]: Table };
+  fields: { [id: FieldId]: Field };
+  metrics: { [id: MetricId]: Metric };
+  segments: { [id: SegmentId]: Segment };
 
-    databasesList(): Database[] {
-        // $FlowFixMe
-        return (Object.values(this.databases): Database[]);
-    }
+  databasesList(): Database[] {
+    // $FlowFixMe
+    return (Object.values(this.databases): Database[]);
+  }
 
-    tablesList(): Database[] {
-        // $FlowFixMe
-        return (Object.values(this.tables): Database[]);
-    }
+  tablesList(): Database[] {
+    // $FlowFixMe
+    return (Object.values(this.tables): Database[]);
+  }
 
-    metricsList(): Metric[] {
-        // $FlowFixMe
-        return (Object.values(this.metrics): Metric[]);
-    }
+  metricsList(): Metric[] {
+    // $FlowFixMe
+    return (Object.values(this.metrics): Metric[]);
+  }
 
-    segmentsList(): Metric[] {
-        // $FlowFixMe
-        return (Object.values(this.segments): Segment[]);
-    }
+  segmentsList(): Metric[] {
+    // $FlowFixMe
+    return (Object.values(this.segments): Segment[]);
+  }
 
-    database(databaseId): ?Database {
-        return (databaseId != null && this.databases[databaseId]) || null;
-    }
+  database(databaseId): ?Database {
+    return (databaseId != null && this.databases[databaseId]) || null;
+  }
 
-    table(tableId): ?Table {
-        return (tableId != null && this.tables[tableId]) || null;
-    }
+  table(tableId): ?Table {
+    return (tableId != null && this.tables[tableId]) || null;
+  }
 
-    field(fieldId): ?Field {
-        return (fieldId != null && this.fields[fieldId]) || null;
-    }
+  field(fieldId): ?Field {
+    return (fieldId != null && this.fields[fieldId]) || null;
+  }
 }

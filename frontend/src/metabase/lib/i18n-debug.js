@@ -22,8 +22,8 @@ const SPECIAL_STRINGS = new Set([
   "StandardDeviation",
   "Average",
   "Min",
-  "Max"
-])
+  "Max",
+]);
 
 export function enableTranslatedStringReplacement() {
   const c3po = require("c-3po");
@@ -37,16 +37,12 @@ export function enableTranslatedStringReplacement() {
       // divide by 2 because Unicode `FULL BLOCK` is quite wide
       return new Array(Math.ceil(string.length / 2) + 1).join("█");
     }
-  }
+  };
   // eslint-disable-next-line react/display-name
   c3po.jt = (...args) => {
     const elements = _jt(...args);
-    return (
-      <span style={{ backgroundColor: "currentcolor" }}>
-        {elements}
-      </span>
-    );
-  }
+    return <span style={{ backgroundColor: "currentcolor" }}>{elements}</span>;
+  };
 }
 
 if (window.localStorage && window.localStorage["metabase-i18n-debug"]) {
