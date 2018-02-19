@@ -27,6 +27,7 @@ export default class TokenField extends Component {
 
     this.state = {
       inputValue: "",
+      searchValue: "",
       filteredOptions: [],
       selectedOptionValue: null,
       focused: props.autoFocus,
@@ -93,21 +94,26 @@ export default class TokenField extends Component {
     setTimeout(this._updateFilteredValues, 0);
   }
 
-  setInputValue(inputValue) {
-    this.setState(
-      {
-        inputValue,
-      },
-      this._updateFilteredValues,
-    );
+  setInputValue(inputValue, setSearchValue = true) {
+    const newState = {
+      inputValue,
+    };
+    if (setSearchValue) {
+      newState.searchValue = inputValue;
+    }
+    this.setState(newState, this._updateFilteredValues);
   }
 
-  filterOption(option, inputValue) {
+  clearInputValue(clearSearchValue = true) {
+    this.setInputValue("", clearSearchValue);
+  }
+
+  filterOption(option, searchValue) {
     const { filterOption } = this.props;
     if (filterOption) {
-      return filterOption(option, inputValue);
+      return filterOption(option, searchValue);
     } else {
-      return String(this._label(option) || "").indexOf(inputValue) >= 0;
+      return String(this._label(option) || "").indexOf(searchValue) >= 0;
     }
   }
 
@@ -133,7 +139,7 @@ export default class TokenField extends Component {
 
   _updateFilteredValues = () => {
     const { options, value, removeSelected } = this.props;
-    let { inputValue, selectedOptionValue } = this.state;
+    let { searchValue, selectedOptionValue } = this.state;
     let selectedValues = new Set(value.map(v => JSON.stringify(v)));
 
     let filteredOptions = options.filter(
@@ -145,8 +151,8 @@ export default class TokenField extends Component {
           !selectedValues.has(JSON.stringify(this._value(option))) ||
           // or it's the current "freeform" value, which updates as we type
           (this._isLastFreeformValue(this._value(option)) &&
-            this._isLastFreeformValue(inputValue))) &&
-        this.filterOption(option, inputValue),
+            this._isLastFreeformValue(searchValue))) &&
+        this.filterOption(option, searchValue),
     );
 
     if (
@@ -256,7 +262,10 @@ export default class TokenField extends Component {
     if (this.props.onFocus) {
       this.props.onFocus();
     }
-    this.setState({ focused: true });
+    this.setState(
+      { focused: true, searchValue: this.state.inputValue },
+      this._updateFilteredValues,
+    );
   };
 
   onInputBlur = () => {
@@ -294,23 +303,22 @@ export default class TokenField extends Component {
     this.setState({ focused: false });
   };
 
-  clearInputValue() {
-    this.setInputValue("");
-    // setTimeout(() => this.setInputValue(""), 0);
-  }
-
   addSelectedOption(e) {
     const { multi } = this.props;
-    const { selectedOptionValue } = this.state;
+    const { filteredOptions, selectedOptionValue } = this.state;
     let input = findDOMNode(this.refs.input);
-    let option = _.find(this.state.filteredOptions, option =>
+    let option = _.find(filteredOptions, option =>
       this._valueIsEqual(selectedOptionValue, this._value(option)),
     );
     if (option) {
       this.addOption(option);
       // clear the input if the option is the same as the last value
       if (this._isLastFreeformValue(this._value(option))) {
-        this.clearInputValue();
+        // also clear the search
+        this.clearInputValue(true);
+      } else {
+        // only clear the search if this was the last option
+        this.clearInputValue(filteredOptions.length === 1);
       }
       return true;
     } else if (this.props.parseFreeformValue) {
@@ -483,7 +491,7 @@ export default class TokenField extends Component {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className="ml1 scroll-y scroll-show"
+          className="ml1 pb1 scroll-y scroll-show"
           style={{ maxHeight: 300 }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
@@ -510,6 +518,8 @@ export default class TokenField extends Component {
                 )}
                 onClick={e => {
                   this.addOption(option);
+                  // clear the input value, and search value if last option
+                  this.clearInputValue(filteredOptions.length === 1);
                   e.preventDefault();
                 }}
               >
