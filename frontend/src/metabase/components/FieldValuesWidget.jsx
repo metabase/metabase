@@ -10,6 +10,7 @@ import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { debounce } from "underscore";
+import { stripId } from "metabase/lib/formatting";
 
 const MAX_SEARCH_RESULTS = 100;
 
@@ -18,8 +19,7 @@ const mapDispatchToProps = {
   fetchFieldValues,
 };
 
-@connect(null, mapDispatchToProps)
-export default class FieldValuesWidget extends Component {
+export class FieldValuesWidget extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -154,8 +154,10 @@ export default class FieldValuesWidget extends Component {
       if (this.hasList()) {
         placeholder = t`Search the list`;
       } else if (this.isSearchable()) {
-        placeholder = t`Search by ${searchField.display_name}`;
-        if (field.isID()) {
+        const searchFieldName =
+          stripId(searchField.display_name) || searchField.display_name;
+        placeholder = t`Search by ${searchFieldName}`;
+        if (field.isID() && field !== searchField) {
           placeholder += t` or enter an ID`;
         }
       } else {
@@ -261,3 +263,5 @@ export default class FieldValuesWidget extends Component {
     );
   }
 }
+
+export default connect(null, mapDispatchToProps)(FieldValuesWidget);

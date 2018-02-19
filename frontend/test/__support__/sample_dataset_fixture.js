@@ -946,6 +946,7 @@ export const state = {
           human_readable_values: {},
           field_id: 21,
         },
+        has_field_values: "list",
       },
       "22": {
         description: "The date the product was added to our catalog.",

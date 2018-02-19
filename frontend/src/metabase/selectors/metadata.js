@@ -98,6 +98,7 @@ export const getMetadata = createSelector(
     );
     hydrate(meta.tables, "breakout_options", t => getBreakouts(t.fields));
 
+    hydrate(meta.fields, "values", f => getFieldValues(f));
     hydrate(meta.fields, "remapping", f => new Map(getRemappings(f)));
 
     hydrateLookup(meta.databases, "tables", "id");

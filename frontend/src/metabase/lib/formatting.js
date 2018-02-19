@@ -449,7 +449,7 @@ export function duration(milliseconds: number) {
 
 // Removes trailing "id" from field names
 export function stripId(name: string) {
-  return name && name.replace(/ id$/i, "");
+  return name && name.replace(/ id$/i, "").trim();
 }
 
 export function slugify(name: string) {
