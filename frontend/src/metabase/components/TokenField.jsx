@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { findDOMNode } from "react-dom";
 import _ from "underscore";
 import cx from "classnames";
+import cxs from "cxs";
 
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Icon from "metabase/components/Icon";
@@ -19,6 +20,11 @@ import {
   KEYCODE_BACKSPACE,
 } from "metabase/lib/keyboard";
 import { isObscured } from "metabase/lib/dom";
+
+const inputBoxClasses = cxs({
+  maxHeight: "130px",
+  overflow: "scroll",
+});
 
 // somewhat matches react-select's API: https://github.com/JedWatson/react-select
 export default class TokenField extends Component {
@@ -61,6 +67,9 @@ export default class TokenField extends Component {
     onChange: PropTypes.func.isRequired,
     onInputChange: PropTypes.func,
     onInputKeyDown: PropTypes.func,
+    onFocus: PropTypes.func,
+    onBlur: PropTypes.func,
+
     updateOnInputChange: PropTypes.bool,
     // if provided, parseFreeformValue parses the input string into a value,
     // or returns null to indicate an invalid value
@@ -69,9 +78,6 @@ export default class TokenField extends Component {
     valueRenderer: PropTypes.func.isRequired, // TODO: default
     optionRenderer: PropTypes.func.isRequired, // TODO: default
     layoutRenderer: PropTypes.func,
-
-    onFocus: PropTypes.func,
-    onBlur: PropTypes.func,
   };
 
   static defaultProps = {
@@ -446,20 +452,24 @@ export default class TokenField extends Component {
 
     const valuesList = (
       <ul
-        className={cx("m1 px1 pb1 bordered rounded flex flex-wrap bg-white", {
-          [`input--focus border-${color}`]: this.state.focused,
-        })}
+        className={cx(
+          "m1 p0 pb1 bordered rounded flex flex-wrap bg-white scroll-x scroll-y",
+          inputBoxClasses,
+          {
+            [`border-grey-2`]: this.state.focused,
+          },
+        )}
         style={this.props.style}
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {value.map((v, index) => (
           <li
             key={v}
-            className={`mr1 py1 pl1 mt1 rounded bg-${color} text-white`}
+            className={`mt1 ml1 py1 pl2 pr1 rounded bg-grey-5percent`}
           >
-            <span className="h4 text-bold">{valueRenderer(v)}</span>
+            <span className="text-bold">{valueRenderer(v)}</span>
             <a
-              className="text-grey-2 text-white-hover px1"
+              className="text-grey-3 text-default-hover px1"
               onClick={e => {
                 this.removeValue(v);
                 e.preventDefault();
@@ -491,7 +501,7 @@ export default class TokenField extends Component {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className="ml1 pb1 scroll-y scroll-show"
+          className="ml1 scroll-y scroll-show"
           style={{ maxHeight: 300 }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
@@ -505,10 +515,10 @@ export default class TokenField extends Component {
                     : null
                 }
                 className={cx(
-                  `py1 pl1 pr2 block rounded text-bold inline-block cursor-pointer`,
-                  `text-white-hover bg-${color}-hover`,
+                  `py1 pl1 pr2 block rounded text-bold text-${color}-hover inline-block full cursor-pointer`,
+                  `bg-grey-0-hover`,
                   {
-                    [`text-white bg-${color}`]:
+                    [`text-${color} bg-grey-0`]:
                       !this.state.listIsHovered &&
                       this._valueIsEqual(
                         selectedOptionValue,

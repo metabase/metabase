@@ -32,6 +32,7 @@ export class FieldValuesWidget extends Component {
     color: "purple",
     maxResults: MAX_SEARCH_RESULTS,
     alwaysShowOptions: true,
+    style: {},
   };
 
   componentWillMount() {
@@ -192,7 +193,10 @@ export class FieldValuesWidget extends Component {
           multi={multi}
           autoFocus={autoFocus}
           color={color}
-          style={this.props.style}
+          style={{
+            borderWidth: 2,
+            ...this.props.style,
+          }}
           updateOnInputChange
           options={options}
           valueKey={0}
@@ -251,14 +255,18 @@ export class FieldValuesWidget extends Component {
           onFocus={() => this.setState({ focused: true })}
           onBlur={() => this.setState({ focused: false })}
         />
-        {loadingState === "LOADING" && (
+        {loadingState === "LOADING" ? (
           <div
             className="flex layout-centered align-center"
             style={{ minHeight: 100 }}
           >
             <LoadingSpinner size={32} />
           </div>
-        )}
+        ) : loadingState === "LOADED" && options.length === 0 ? (
+          <div className="flex layout-centered p4">
+            {t`No matching results found`}
+          </div>
+        ) : null}
       </div>
     );
   }

@@ -53,6 +53,7 @@ export default class FilterPopover extends Component {
     this.state = {
       // $FlowFixMe
       filter: props.filter || [],
+      showOperator: false,
     };
   }
 
@@ -317,7 +318,7 @@ export default class FilterPopover extends Component {
             maxWidth: dimension.field().isDate() ? null : 500,
           }}
         >
-          <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
+          <div className="FilterPopover-header border-bottom text-grey-3 p1 mt1 flex align-center">
             <a
               className="cursor-pointer text-purple-hover transition-color flex align-center"
               onClick={this.clearField}
@@ -329,6 +330,15 @@ export default class FilterPopover extends Component {
             </a>
             <h3 className="mx1">-</h3>
             <h3 className="text-default">{formatField(field)}</h3>
+
+            <a
+              className="ml-auto text-purple"
+              onClick={() =>
+                this.setState({ showOperator: !this.state.showOperator })
+              }
+            >
+              {t`Options`}
+            </a>
           </div>
           {isTime(field) ? (
             <TimePicker
@@ -344,11 +354,13 @@ export default class FilterPopover extends Component {
             />
           ) : (
             <div>
-              <OperatorSelector
-                operator={filter[0]}
-                operators={field.operators}
-                onOperatorChange={this.setOperator}
-              />
+              {this.state.showOperator && (
+                <OperatorSelector
+                  operator={filter[0]}
+                  operators={field.operators}
+                  onOperatorChange={this.setOperator}
+                />
+              )}
               {this.renderPicker(filter, field)}
             </div>
           )}

@@ -116,16 +116,18 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
               minWidth: 182,
             }}
           />
-          <Button
-            primary
-            className="m1"
-            onClick={() => {
-              setValue(value.length > 0 ? value : null);
-              focusChanged(false);
-            }}
-          >
-            Done
-          </Button>
+          <div className="flex p1">
+            <Button
+              primary
+              className="ml-auto"
+              onClick={() => {
+                setValue(value.length > 0 ? value : null);
+                focusChanged(false);
+              }}
+            >
+              Done
+            </Button>
+          </div>
         </Popover>
       );
       // return (
