@@ -69,10 +69,61 @@ export const CollectionsApi = {
 };
 
 export const PublicApi = {
-  card: GET("/api/public/card/:uuid"),
+  card: GET("/api/public/card/:uuid", async card => {
+    card.param_fields = [
+      {
+        id: 9,
+        display_name: "User ID",
+        fk_target_field_id: 23,
+        special_type: "type/FK",
+        base_type: "type/Integer",
+        has_field_values: "search",
+        table_id: 2,
+        dimensions: {
+          human_readable_field_id: 24,
+        },
+        table: {
+          id: 2,
+          display_name: "Orders",
+          fields: [{ id: 9 }],
+        },
+      },
+      {
+        id: 23,
+        display_name: "ID",
+        special_type: "type/PK",
+        base_type: "type/Integer",
+        has_field_values: "none",
+        table_id: 3,
+        table: {
+          id: 3,
+          display_name: "People",
+          fields: [{ id: 23 }, { id: 24 }],
+        },
+      },
+      {
+        id: 24,
+        display_name: "Name",
+        base_type: "type/Text",
+        special_type: "type/Name",
+        has_field_values: "search",
+        table_id: 3,
+        table: {
+          id: 3,
+          display_name: "People",
+          fields: [{ id: 23 }, { id: 24 }],
+        },
+      },
+    ];
+    return card;
+  }),
   cardQuery: GET("/api/public/card/:uuid/query"),
   dashboard: GET("/api/public/dashboard/:uuid"),
   dashboardCardQuery: GET("/api/public/dashboard/:uuid/card/:cardId"),
+  field_values: GET("/api/public/card/:uuid/field/:fieldId/values"),
+  field_search: GET(
+    "/api/public/card/:uuid/field/:fieldId/search/:searchFieldId",
+  ),
 };
 
 export const EmbedApi = {
@@ -81,6 +132,10 @@ export const EmbedApi = {
   dashboard: GET(embedBase + "/dashboard/:token"),
   dashboardCardQuery: GET(
     embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
+  ),
+  field_values: GET(embedBase + "/card/:token/field/:fieldId/values"),
+  field_search: GET(
+    embedBase + "/card/:token/field/:fieldId/search/:searchFieldId",
   ),
 };
 
@@ -314,5 +369,19 @@ export const GeoJSONApi = {
 export const I18NApi = {
   locale: GET("/app/locales/:locale.json"),
 };
+
+export function enableEmbedEndpoints(token) {
+  MetabaseApi.field_values = (params, ...args) =>
+    EmbedApi.field_values({ token, ...params }, ...args);
+  MetabaseApi.field_search = (params, ...args) =>
+    EmbedApi.field_search({ token, ...params }, ...args);
+}
+
+export function enablePublicEndpoints(uuid) {
+  MetabaseApi.field_values = (params, ...args) =>
+    PublicApi.field_values({ uuid, ...params }, ...args);
+  MetabaseApi.field_search = (params, ...args) =>
+    PublicApi.field_search({ uuid, ...params }, ...args);
+}
 
 global.services = exports;

@@ -420,6 +420,11 @@ export const updateFieldValues = createThunkAction(
 export const ADD_PARAM_VALUES = "metabase/metadata/ADD_PARAM_VALUES";
 export const addParamValues = createAction(ADD_PARAM_VALUES);
 
+export const ADD_FIELDS = "metabase/metadata/ADD_FIELDS";
+export const addFields = createAction(ADD_FIELDS, fields => {
+  return normalize(fields, [FieldSchema]);
+});
+
 export const UPDATE_FIELD = "metabase/metadata/UPDATE_FIELD";
 export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
   return async function(dispatch, getState) {
