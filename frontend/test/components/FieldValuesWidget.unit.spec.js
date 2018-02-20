@@ -2,11 +2,9 @@ import React from "react";
 import { mount } from "enzyme";
 
 import {
-  StaticMetadataProvider,
   metadata,
   PRODUCT_CATEGORY_FIELD_ID,
 } from "../__support__/sample_dataset_fixture";
-import { delay } from "metabase/lib/promise";
 
 import { FieldValuesWidget } from "../../src/metabase/components/FieldValuesWidget";
 import TokenField from "../../src/metabase/components/TokenField";
@@ -33,7 +31,7 @@ describe("FieldValuesWidget", () => {
     };
     it("should not call fetchFieldValues", () => {
       const fetchFieldValues = jest.fn();
-      const component = mountFieldValuesWidget({ ...props, fetchFieldValues });
+      mountFieldValuesWidget({ ...props, fetchFieldValues });
       expect(fetchFieldValues).not.toHaveBeenCalled();
     });
     it("should have 'Enter some text' as the placeholder text", () => {
@@ -49,7 +47,7 @@ describe("FieldValuesWidget", () => {
     };
     it("should call fetchFieldValues", () => {
       const fetchFieldValues = jest.fn();
-      const component = mountFieldValuesWidget({ ...props, fetchFieldValues });
+      mountFieldValuesWidget({ ...props, fetchFieldValues });
       expect(fetchFieldValues).toHaveBeenCalledWith(PRODUCT_CATEGORY_FIELD_ID);
     });
     it("should have 'Search the list' as the placeholder text", () => {
@@ -70,7 +68,7 @@ describe("FieldValuesWidget", () => {
     };
     it("should not call fetchFieldValues", () => {
       const fetchFieldValues = jest.fn();
-      const component = mountFieldValuesWidget({ ...props, fetchFieldValues });
+      mountFieldValuesWidget({ ...props, fetchFieldValues });
       expect(fetchFieldValues).not.toHaveBeenCalled();
     });
     it("should have 'Search by Category' as the placeholder text", () => {

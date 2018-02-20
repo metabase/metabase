@@ -1,7 +1,5 @@
 import React from "react";
 
-console.log("POPOVER MOCK");
-
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import cx from "classnames";
 

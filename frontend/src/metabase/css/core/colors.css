@@ -200,7 +200,7 @@
 .bg-grey-0-hover:hover {
   background-color: var(--base-grey);
 }
-.bg-grey-5percent {
+.bg-grey-05 {
   background-color: var(--grey-5percent);
 }
 .bg-grey-1 {

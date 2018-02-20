@@ -463,10 +463,7 @@ export default class TokenField extends Component {
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {value.map((v, index) => (
-          <li
-            key={v}
-            className={`mt1 ml1 py1 pl2 pr1 rounded bg-grey-5percent`}
-          >
+          <li key={v} className={`mt1 ml1 py1 pl2 pr1 rounded bg-grey-05`}>
             <span className="text-bold">{valueRenderer(v)}</span>
             <a
               className="text-grey-3 text-default-hover px1"

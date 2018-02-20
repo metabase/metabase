@@ -122,9 +122,9 @@ export default ({
 
     render() {
       const { suggestions, selectedSuggestion } = this.state;
-      // if (suggestions.length === 0) {
-      //     return null;
-      // }
+      if (suggestions.length === 0) {
+        return null;
+      }
       return (
         <ComposedComponent
           {...this.props}
