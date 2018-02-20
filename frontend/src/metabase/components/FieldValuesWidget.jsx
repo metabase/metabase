@@ -42,6 +42,12 @@ export class FieldValuesWidget extends Component {
     }
   }
 
+  componentWillUnmount() {
+    if (this._cancel) {
+      this._cancel();
+    }
+  }
+
   hasList() {
     const { field } = this.props;
     return field.has_field_values === "list" && field.values;
@@ -103,6 +109,10 @@ export class FieldValuesWidget extends Component {
     this.setState({
       loadingState: "INIT",
     });
+
+    if (this._cancel) {
+      this._cancel();
+    }
 
     this._searchDebounced(value);
   };
@@ -173,12 +183,9 @@ export class FieldValuesWidget extends Component {
     }
 
     let options = [];
-    if (field.has_field_values === "list" && field.values) {
+    if (this.hasList()) {
       options = field.values;
-    } else if (
-      field.has_field_values === "search" &&
-      loadingState === "LOADED"
-    ) {
+    } else if (this.isSearchable() && loadingState === "LOADED") {
       options = this.state.options;
     } else {
       options = [];
@@ -220,7 +227,14 @@ export class FieldValuesWidget extends Component {
             <div>
               {valuesList}
               {this.props.alwaysShowOptions || this.state.focused
-                ? optionsList
+                ? optionsList ||
+                  (this.hasList() ? (
+                    <OptionsMessage
+                      message={t`Including every option in your filter probably won’t do much…`}
+                    />
+                  ) : this.isSearchable() && loadingState === "LOADED" ? (
+                    <OptionsMessage message={t`No matching results found`} />
+                  ) : null)
                 : null}
             </div>
           )}
@@ -262,14 +276,14 @@ export class FieldValuesWidget extends Component {
           >
             <LoadingSpinner size={32} />
           </div>
-        ) : loadingState === "LOADED" && options.length === 0 ? (
-          <div className="flex layout-centered p4">
-            {t`No matching results found`}
-          </div>
         ) : null}
       </div>
     );
   }
 }
+
+const OptionsMessage = ({ message }) => (
+  <div className="flex layout-centered p4">{message}</div>
+);
 
 export default connect(null, mapDispatchToProps)(FieldValuesWidget);

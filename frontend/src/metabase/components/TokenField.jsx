@@ -93,11 +93,11 @@ export default class TokenField extends Component {
   };
 
   componentWillMount() {
-    this._updateFilteredValues();
+    this._updateFilteredValues(this.props);
   }
 
-  componentWillReceiveProps(nextProps, nextState) {
-    setTimeout(this._updateFilteredValues, 0);
+  componentWillReceiveProps(nextProps) {
+    this._updateFilteredValues(nextProps);
   }
 
   setInputValue(inputValue, setSearchValue = true) {
@@ -107,20 +107,11 @@ export default class TokenField extends Component {
     if (setSearchValue) {
       newState.searchValue = inputValue;
     }
-    this.setState(newState, this._updateFilteredValues);
+    this.setState(newState, () => this._updateFilteredValues(this.props));
   }
 
   clearInputValue(clearSearchValue = true) {
     this.setInputValue("", clearSearchValue);
-  }
-
-  filterOption(option, searchValue) {
-    const { filterOption } = this.props;
-    if (filterOption) {
-      return filterOption(option, searchValue);
-    } else {
-      return String(this._label(option) || "").indexOf(searchValue) >= 0;
-    }
   }
 
   _value(option) {
@@ -143,10 +134,15 @@ export default class TokenField extends Component {
     }
   }
 
-  _updateFilteredValues = () => {
-    const { options, value, removeSelected } = this.props;
+  _updateFilteredValues = props => {
+    let { options, value, removeSelected, filterOption } = props;
     let { searchValue, selectedOptionValue } = this.state;
     let selectedValues = new Set(value.map(v => JSON.stringify(v)));
+
+    if (!filterOption) {
+      filterOption = (option, searchValue) =>
+        String(this._label(option) || "").indexOf(searchValue) >= 0;
+    }
 
     let filteredOptions = options.filter(
       option =>
@@ -158,7 +154,7 @@ export default class TokenField extends Component {
           // or it's the current "freeform" value, which updates as we type
           (this._isLastFreeformValue(this._value(option)) &&
             this._isLastFreeformValue(searchValue))) &&
-        this.filterOption(option, searchValue),
+        filterOption(option, searchValue),
     );
 
     if (
@@ -268,9 +264,8 @@ export default class TokenField extends Component {
     if (this.props.onFocus) {
       this.props.onFocus();
     }
-    this.setState(
-      { focused: true, searchValue: this.state.inputValue },
-      this._updateFilteredValues,
+    this.setState({ focused: true, searchValue: this.state.inputValue }, () =>
+      this._updateFilteredValues(this.props),
     );
   };
 
