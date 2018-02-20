@@ -201,11 +201,11 @@
   (check-field-is-referenced-by-card field-id card-id)
   (field-api/field->values (Field field-id)))
 
-(api/defendpoint GET "/card/:card-uuid/field/:field-id/values"
+(api/defendpoint GET "/card/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a public Card."
-  [card-uuid field-id]
+  [uuid field-id]
   (api/check-public-sharing-enabled)
-  (let [card-id (db/select-one-id Card :public_uuid card-uuid, :archived false)]
+  (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
     (card-and-field-id->values card-id field-id)))
 
 (defn dashboard-card-and-field-id->values
@@ -218,11 +218,11 @@
   ;; TODO - do we need to check that the Field is marked `:list` as well, or will that not matter?
   (field-api/field->values (Field field-id)))
 
-(api/defendpoint GET "/dashboard/:dashboard-uuid/card/:card-id/field/:field-id/values"
+(api/defendpoint GET "/dashboard/:uuid/card/:card-id/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
-  [dashboard-uuid card-id field-id]
+  [uuid card-id field-id]
   (api/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid dashboard-uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (dashboard-card-and-field-id->values dashboard-id card-id field-id)))
 
 
@@ -242,22 +242,22 @@
   (check-card-is-in-dashboard card-id dashboard-id)
   (search-card-fields card-id field-id search-id value limit))
 
-(api/defendpoint GET "/card/:card-uuid/field/:field-id/search/:search-field-id"
+(api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a public Card."
-  [card-uuid field-id search-field-id value limit]
+  [uuid field-id search-field-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
   (api/check-public-sharing-enabled)
-  (let [card-id (db/select-one-id Card :public_uuid card-uuid, :archived false)]
+  (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
     (search-card-fields card-id field-id search-field-id value limit)))
 
-(api/defendpoint GET "/dashboard/:dashboard-uuid/card/:card-id/field/:field-id/search/:search-field-id"
+(api/defendpoint GET "/dashboard/:uuid/card/:card-id/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in a public Dashboard."
-  [dashboard-uuid card-id field-id search-field-id value limit]
+  [uuid card-id field-id search-field-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
   (api/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid dashboard-uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (search-dashboard-card-fields dashboard-id card-id field-id search-field-id value limit)))
 
 
