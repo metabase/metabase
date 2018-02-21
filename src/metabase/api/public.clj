@@ -13,7 +13,7 @@
              [dashboard :as dashboard-api]
              [field :as field-api]]
             [metabase.models
-             [card :refer [Card]]
+             [card :refer [Card] :as card]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
@@ -39,7 +39,9 @@
 (defn- remove-card-non-public-columns
   "Remove everyting from public CARD that shouldn't be visible to the general public."
   [card]
-  (u/select-nested-keys card [:id :name :description :display :visualization_settings [:dataset_query :type [:native :template_tags]]]))
+  (card/map->CardInstance
+   (u/select-nested-keys card [:id :name :description :display :visualization_settings
+                               [:dataset_query :type [:native :template_tags]]])))
 
 (defn public-card
   "Return a public Card matching key-value CONDITIONS, removing all columns that should not be visible to the general
