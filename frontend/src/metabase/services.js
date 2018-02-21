@@ -334,15 +334,24 @@ export function setEmbedDashboardEndpoints(token) {
   }
 }
 
+function GET_with(url, params) {
+  return (data: Data, options?: Options) =>
+    GET(url)({ ...params, ...data }, options);
+}
+
 export function setFieldEndpoints(prefix, params) {
-  MetabaseApi.field_values = (data: Data, options?: Options) =>
-    GET(prefix + "/field/:fieldId/values")({ ...params, ...data }, options);
-  MetabaseApi.field_search = (data: Data, options?: Options) =>
-    GET(prefix + "/field/:fieldId/search/:searchFieldId")(
-      { ...params, ...data },
-      options,
-    );
-  MetabaseApi.field_remapping = () => null;
+  MetabaseApi.field_values = GET_with(
+    prefix + "/field/:fieldId/values",
+    params,
+  );
+  MetabaseApi.field_search = GET_with(
+    prefix + "/field/:fieldId/search/:searchFieldId",
+    params,
+  );
+  MetabaseApi.field_remapping = GET_with(
+    prefix + "/field/:fieldId/remapping/:remappedFieldId",
+    params,
+  );
 }
 
 global.services = exports;
