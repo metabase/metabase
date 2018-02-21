@@ -178,23 +178,29 @@
 
 ;; TODO - this is a stupid, inefficient way of doing things. Figure out a better way to do it. :(
 (defn- query->referenced-field-ids
-  "Get the IDs of all Fields referenced by `query`."
+  "Get the IDs of all Fields referenced by an MBQL `query` (not including any parameters)."
   [query]
-  (let [field-ids (atom #{})]
+  (let [field-ids (atom [])]
     (walk/postwalk
      (fn [x]
        (if (instance? metabase.query_processor.interface.Field x)
          (swap! field-ids conj (:field-id x))
          x))
-     (qp/expand query))
-    @field-ids))
+     (qp/expand query))))
+
+(defn- card->referenced-field-ids
+  "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template
+  tags')."
+  [card]
+  (set (concat (query->referenced-field-ids (:dataset_query card))
+               (params/card->template-tag-field-ids card))))
 
 (defn- check-field-is-referenced-by-card
   "Check to make sure the query for Card with `card-id` references Field with `field-id`. Otherwise, or if the Card
   cannot be found, throw an Exception."
   [field-id card-id]
-  (let [query                 (api/check-404 (db/select-one-field :dataset_query Card :id card-id))
-        referenced-fields-ids (query->referenced-field-ids query)]
+  (let [card                  (api/check-404 (db/select-one [Card :dataset_query] :id card-id))
+        referenced-fields-ids (card->referenced-field-ids card)]
     (api/check-404 (contains? referenced-fields-ids field-id))))
 
 (defn- check-field-is-dashboard-parameter
@@ -236,16 +242,16 @@
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Cards. See that functions
   documentation for a more detailed explanation of exactly what this does."
   [card-id field-id search-id value limit]
-  ; (check-field-is-referenced-by-card field-id card-id)
-  ; #_(check-field-is-referenced-by-card search-id card-id) ; TODO - do we need this check ?
+  (check-field-is-referenced-by-card field-id card-id)
+  #_(check-field-is-referenced-by-card search-id card-id) ; TODO - do we need this check ?
   (field-api/search-values (Field field-id) (Field search-id) value limit))
 
 (defn search-dashboard-fields
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
   documentation for a more detailed explanation of exactly what this does."
   [dashboard-id field-id search-id value limit]
-  ; (check-field-is-dashboard-parameter field-id dashboard-id)
-  ; #_(check-field-is-dashboard-parameter search-id dashboard-id) ; TODO - do we need this check ?
+  (check-field-is-dashboard-parameter field-id dashboard-id)
+  #_(check-field-is-dashboard-parameter search-id dashboard-id) ; TODO - do we need this check ?
   (field-api/search-values (Field field-id) (Field search-id) value limit))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
