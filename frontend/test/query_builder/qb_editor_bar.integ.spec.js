@@ -152,10 +152,11 @@ describe("QueryBuilder editor bar", () => {
     it("lets you see a correct number of operators in filter popover", () => {
       const filterPopover = qb.find(FilterPopover);
 
-      const operatorSelector = filterPopover.find(OperatorSelector);
-      const moreOptionsIcon = operatorSelector.find(".Icon-chevrondown");
-      click(moreOptionsIcon);
+      const optionsIcon = filterPopover.find(`a[children="Options"]`);
 
+      click(optionsIcon);
+
+      const operatorSelector = filterPopover.find(OperatorSelector);
       expect(operatorSelector.find("button").length).toBe(9);
     });
 
@@ -182,6 +183,7 @@ describe("QueryBuilder editor bar", () => {
       click(filterWidget.find(FieldName));
 
       const filterPopover = qb.find(FilterPopover);
+      click(filterPopover.find(`a[children="Options"]`));
       const operatorSelector = filterPopover.find(OperatorSelector);
       clickButton(operatorSelector.find('button[children="Between"]'));
 

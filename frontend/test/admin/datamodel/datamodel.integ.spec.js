@@ -122,6 +122,10 @@ describe("admin/datamodel", () => {
       const filterPopover = app.find(FilterPopover);
       click(filterPopover.find(FieldList).find('h4[children="Email"]'));
 
+      // click to aexpand options
+      click(filterPopover.find(`a[children="Options"]`));
+
+      // click "Is Not"
       const operatorSelector = filterPopover.find(OperatorSelector);
       clickButton(operatorSelector.find('button[children="Is not"]'));
 

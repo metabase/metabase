@@ -1,3 +1,4 @@
+/* @flow */
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
@@ -26,9 +27,65 @@ const inputBoxClasses = cxs({
   overflow: "scroll",
 });
 
+type Value = any;
+type Option = any;
+
+type Props = {
+  value: Value[],
+  onChange: (value: Value[]) => void,
+
+  options: Option[],
+
+  placeholder?: string,
+  autoFocus?: boolean,
+  multi?: boolean,
+
+  style: { [key: string]: string | number },
+  color: string,
+
+  valueKey: string | number | (() => any),
+  labelKey: string | number | (() => string),
+
+  removeSelected?: boolean,
+  filterOption: (option: Option, searchValue: string) => boolean,
+
+  onInputChange?: string => string,
+  onInputKeyDown?: (event: SyntheticKeyboardEvent) => void,
+  onFocus?: () => void,
+  onBlur?: () => void,
+
+  updateOnInputChange: boolean,
+  // if provided, parseFreeformValue parses the input string into a value,
+  // or returns null to indicate an invalid value
+  parseFreeformValue: (value: string) => ?Value,
+
+  valueRenderer: (value: Value) => React$Element<any>,
+  optionRenderer: (option: Option) => React$Element<any>,
+  layoutRenderer: ({
+    valuesList: React$Element<any>,
+    optionsList: ?React$Element<any>,
+    focused: boolean,
+    onClose: () => void,
+  }) => React$Element<any>,
+};
+
+type State = {
+  inputValue: string,
+  searchValue: string,
+  filteredOptions: Option[],
+  selectedOptionValue: ?Value,
+  focused: boolean,
+  listIsHovered: boolean,
+};
+
 // somewhat matches react-select's API: https://github.com/JedWatson/react-select
 export default class TokenField extends Component {
-  constructor(props) {
+  props: Props;
+  state: State;
+
+  scrollElement: ?HTMLDivElement = null;
+
+  constructor(props: Props) {
     super(props);
 
     this.state = {
@@ -36,7 +93,8 @@ export default class TokenField extends Component {
       searchValue: "",
       filteredOptions: [],
       selectedOptionValue: null,
-      focused: props.autoFocus,
+      focused: props.autoFocus || false,
+      listIsHovered: false,
     };
   }
 
@@ -82,12 +140,14 @@ export default class TokenField extends Component {
 
   static defaultProps = {
     removeSelected: true,
-    layoutRenderer: props => <DefaultTokenFieldLayout {...props} />,
+
+    // $FlowFixMe
     valueKey: "value",
     labelKey: "label",
 
     valueRenderer: value => <span>{value}</span>,
     optionRenderer: option => <span>{option}</span>,
+    layoutRenderer: props => <DefaultTokenFieldLayout {...props} />,
 
     color: "brand",
   };
@@ -96,12 +156,12 @@ export default class TokenField extends Component {
     this._updateFilteredValues(this.props);
   }
 
-  componentWillReceiveProps(nextProps) {
-    this._updateFilteredValues(nextProps);
+  componentWillReceiveProps(nextProps: Props) {
+    this._updateFilteredValues((nextProps: Props));
   }
 
-  setInputValue(inputValue, setSearchValue = true) {
-    const newState = {
+  setInputValue(inputValue: string, setSearchValue: boolean = true) {
+    const newState: { inputValue: string, searchValue?: string } = {
       inputValue,
     };
     if (setSearchValue) {
@@ -110,21 +170,21 @@ export default class TokenField extends Component {
     this.setState(newState, () => this._updateFilteredValues(this.props));
   }
 
-  clearInputValue(clearSearchValue = true) {
+  clearInputValue(clearSearchValue: boolean = true) {
     this.setInputValue("", clearSearchValue);
   }
 
-  _value(option) {
+  _value(option: Option) {
     const { valueKey } = this.props;
     return typeof valueKey === "function" ? valueKey(option) : option[valueKey];
   }
 
-  _label(option) {
+  _label(option: Option) {
     const { labelKey } = this.props;
     return typeof labelKey === "function" ? labelKey(option) : option[labelKey];
   }
 
-  _isLastFreeformValue(inputValue) {
+  _isLastFreeformValue(inputValue: string) {
     const { value, parseFreeformValue, updateOnInputChange } = this.props;
     if (parseFreeformValue && updateOnInputChange) {
       const freeformValue = parseFreeformValue(inputValue);
@@ -134,7 +194,7 @@ export default class TokenField extends Component {
     }
   }
 
-  _updateFilteredValues = props => {
+  _updateFilteredValues = (props: Props) => {
     let { options, value, removeSelected, filterOption } = props;
     let { searchValue, selectedOptionValue } = this.state;
     let selectedValues = new Set(value.map(v => JSON.stringify(v)));
@@ -178,7 +238,7 @@ export default class TokenField extends Component {
     });
   };
 
-  onInputChange = ({ target: { value } }) => {
+  onInputChange = ({ target: { value } }: SyntheticInputEvent) => {
     const {
       updateOnInputChange,
       onInputChange,
@@ -210,7 +270,7 @@ export default class TokenField extends Component {
   };
 
   // capture events on the input to allow for convenient keyboard shortcuts
-  onInputKeyDown = event => {
+  onInputKeyDown = (event: SyntheticKeyboardEvent) => {
     if (this.props.onInputKeyDown) {
       this.props.onInputKeyDown(event);
     }
@@ -278,7 +338,7 @@ export default class TokenField extends Component {
     }, 100);
   };
 
-  onInputPaste = e => {
+  onInputPaste = (e: SyntheticClipboardEvent) => {
     if (this.props.parseFreeformValue) {
       const string = e.clipboardData.getData("Text");
       const values = string
@@ -291,7 +351,7 @@ export default class TokenField extends Component {
     }
   };
 
-  onMouseDownCapture = e => {
+  onMouseDownCapture = (e: SyntheticMouseEvent) => {
     let input = findDOMNode(this.refs.input);
     input.focus();
     // prevents clicks from blurring input while still allowing text selection:
@@ -304,7 +364,7 @@ export default class TokenField extends Component {
     this.setState({ focused: false });
   };
 
-  addSelectedOption(e) {
+  addSelectedOption(e: SyntheticKeyboardEvent) {
     const { multi } = this.props;
     const { filteredOptions, selectedOptionValue } = this.state;
     let input = findDOMNode(this.refs.input);
@@ -345,13 +405,13 @@ export default class TokenField extends Component {
     }
   }
 
-  addOption = option => {
+  addOption = (option: Option) => {
     const replaceLast = this._isLastFreeformValue(this.state.inputValue);
     // add the option's value to the current value
     this.addValue(this._value(option), replaceLast);
   };
 
-  addValue(valueToAdd, replaceLast = false) {
+  addValue(valueToAdd: Value, replaceLast: boolean = false) {
     const { value, onChange, multi } = this.props;
     if (!Array.isArray(valueToAdd)) {
       valueToAdd = [valueToAdd];
@@ -371,7 +431,7 @@ export default class TokenField extends Component {
     // )
   }
 
-  removeValue(valueToRemove) {
+  removeValue(valueToRemove: Value) {
     const { value, onChange } = this.props;
     const values = value.filter(v => !this._valueIsEqual(v, valueToRemove));
     onChange(values);
@@ -379,14 +439,14 @@ export default class TokenField extends Component {
     // this.setInputValue("");
   }
 
-  _valueIsEqual(v1, v2) {
+  _valueIsEqual(v1: any, v2: any) {
     return JSON.stringify(v1) === JSON.stringify(v2);
   }
 
-  componentDidUpdate(prevProps, prevState) {
+  componentDidUpdate(prevProps: Props, prevState: State) {
     if (
       prevState.selectedOptionValue !== this.state.selectedOptionValue &&
-      this.scrollElement
+      this.scrollElement != null
     ) {
       const element = findDOMNode(this.scrollElement);
       if (element && isObscured(element)) {

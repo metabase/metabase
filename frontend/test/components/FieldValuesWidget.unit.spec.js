@@ -4,7 +4,7 @@ import { mount } from "enzyme";
 import {
   metadata,
   PRODUCT_CATEGORY_FIELD_ID,
-  ORDERS_PRODUCT_FK_FIELD_ID
+  ORDERS_PRODUCT_FK_FIELD_ID,
 } from "../__support__/sample_dataset_fixture";
 
 import { FieldValuesWidget } from "../../src/metabase/components/FieldValuesWidget";
@@ -66,7 +66,7 @@ describe("FieldValuesWidget", () => {
         field: mock(metadata.field(PRODUCT_CATEGORY_FIELD_ID), {
           has_field_values: "search",
         }),
-        searchField: metadata.field(PRODUCT_CATEGORY_FIELD_ID)
+        searchField: metadata.field(PRODUCT_CATEGORY_FIELD_ID),
       };
       it("should not call fetchFieldValues", () => {
         const fetchFieldValues = jest.fn();
@@ -99,8 +99,8 @@ describe("FieldValuesWidget", () => {
         const component = mountFieldValuesWidget({
           field: mock(metadata.field(ORDERS_PRODUCT_FK_FIELD_ID), {
             has_field_values: "list",
-            values: [[1234]]
-          })
+            values: [[1234]],
+          }),
         });
         expect(component.find(TokenField).props().placeholder).toEqual(
           "Search the list",
@@ -113,7 +113,7 @@ describe("FieldValuesWidget", () => {
           field: mock(metadata.field(ORDERS_PRODUCT_FK_FIELD_ID), {
             has_field_values: "search",
           }),
-          searchField: metadata.field(PRODUCT_CATEGORY_FIELD_ID)
+          searchField: metadata.field(PRODUCT_CATEGORY_FIELD_ID),
         });
         expect(component.find(TokenField).props().placeholder).toEqual(
           "Search by Category or enter an ID",
@@ -123,10 +123,10 @@ describe("FieldValuesWidget", () => {
         const field = mock(metadata.field(ORDERS_PRODUCT_FK_FIELD_ID), {
           base_type: "type/Text",
           has_field_values: "search",
-        })
+        });
         const component = mountFieldValuesWidget({
           field: field,
-          searchField: field
+          searchField: field,
         });
         expect(component.find(TokenField).props().placeholder).toEqual(
           "Search by Product",
