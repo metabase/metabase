@@ -195,6 +195,13 @@
         referenced-fields-ids (query->referenced-field-ids query)]
     (api/check-404 (contains? referenced-fields-ids field-id))))
 
+(defn- check-field-is-dashboard-parameter
+  "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
+  404 Exception."
+  [field-id dashboard-id]
+  (let [param-field-ids (params/dashboard->param-field-ids (api/check-404 (Dashboard dashboard-id)))]
+    (api/check-404 (contains? param-field-ids field-id))))
+
 (defn card-and-field-id->values
   "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id`."
   [card-id field-id]
@@ -208,22 +215,19 @@
   (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
     (card-and-field-id->values card-id field-id)))
 
-(defn dashboard-card-and-field-id->values
+(defn dashboard-and-field-id->values
   "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id` which itself is present
   in Dashboard with `dashboard-id`."
-  [dashboard-id card-id field-id]
-  (check-card-is-in-dashboard card-id dashboard-id)
-  ;; TODO - actually I think only Fields in the filter clause should be elligible, right?
-  (check-field-is-referenced-by-card field-id card-id)
-  ;; TODO - do we need to check that the Field is marked `:list` as well, or will that not matter?
+  [dashboard-id field-id]
+  (check-field-is-dashboard-parameter field-id dashboard-id)
   (field-api/field->values (Field field-id)))
 
-(api/defendpoint GET "/dashboard/:uuid/card/:card-id/field/:field-id/values"
+(api/defendpoint GET "/dashboard/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
-  [uuid card-id field-id]
+  [uuid field-id]
   (api/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
-    (dashboard-card-and-field-id->values dashboard-id card-id field-id)))
+    (dashboard-and-field-id->values dashboard-id field-id)))
 
 
 (defn search-card-fields
@@ -231,16 +235,16 @@
   documentation for a more detailed explanation of exactly what this does."
   [card-id field-id search-id value limit]
   (check-field-is-referenced-by-card field-id card-id)
-  ;; TODO - is this check needed?
-  (check-field-is-referenced-by-card search-id card-id)
+  #_(check-field-is-referenced-by-card search-id card-id) ; TODO - do we need this check ?
   (field-api/search-values (Field field-id) (Field search-id) value limit))
 
-(defn search-dashboard-card-fields
+(defn search-dashboard-fields
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
   documentation for a more detailed explanation of exactly what this does."
-  [dashboard-id card-id field-id search-id value limit]
-  (check-card-is-in-dashboard card-id dashboard-id)
-  (search-card-fields card-id field-id search-id value limit))
+  [dashboard-id field-id search-id value limit]
+  (check-field-is-dashboard-parameter field-id dashboard-id)
+  #_(check-field-is-dashboard-parameter search-id dashboard-id) ; TODO - do we need this check ?
+  (field-api/search-values (Field field-id) (Field search-id) value limit))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a public Card."
@@ -251,14 +255,14 @@
   (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
     (search-card-fields card-id field-id search-field-id value limit)))
 
-(api/defendpoint GET "/dashboard/:uuid/card/:card-id/field/:field-id/search/:search-field-id"
+(api/defendpoint GET "/dashboard/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in a public Dashboard."
-  [uuid card-id field-id search-field-id value limit]
+  [uuid field-id search-field-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
   (api/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
-    (search-dashboard-card-fields dashboard-id card-id field-id search-field-id value limit)))
+    (search-dashboard-fields dashboard-id field-id search-field-id value limit)))
 
 
 (api/define-routes)

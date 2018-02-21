@@ -352,14 +352,14 @@
         card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (public-api/card-and-field-id->values card-id field-id)))
 
-(api/defendpoint GET "/dashboard/:token/card/:card-id/field/:field-id/values"
-  "Fetch FieldValues for a Field that is referenced by a Card in an embedded Dashboard."
-  [token card-id field-id]
+(api/defendpoint GET "/dashboard/:token/field/:field-id/values"
+  "Fetch FieldValues for a Field that is used as a param in an embedded Dashboard."
+  [token field-id]
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     ;; TODO - look at other code in this namespace and make sure the logic we're using over in `public-api` is
     ;; appropriate here as well !
-    (public-api/dashboard-card-and-field-id->values dashboard-id card-id field-id)))
+    (public-api/dashboard-and-field-id->values dashboard-id field-id)))
 
 
 (api/defendpoint GET "/card/:token/field/:field-id/search/:search-field-id"
@@ -371,14 +371,14 @@
         card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (public-api/search-card-fields card-id field-id search-field-id value limit)))
 
-(api/defendpoint GET "/dashboard/:token/card/:card-id/field/:field-id/search/:search-field-id"
+(api/defendpoint GET "/dashboard/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in an embedded Dashboard."
-  [token card-id field-id search-field-id value limit]
+  [token field-id search-field-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
-    (public-api/search-dashboard-card-fields dashboard-id card-id field-id search-field-id value limit)))
+    (public-api/search-dashboard-fields dashboard-id field-id search-field-id value limit)))
 
 
 (api/define-routes)
