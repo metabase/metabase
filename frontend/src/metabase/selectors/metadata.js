@@ -228,7 +228,7 @@ export const makeGetMergedParameterFieldValues = () => {
 export function copyObjects(metadata, objects, Klass) {
   let copies = {};
   for (const object of Object.values(objects)) {
-    if (!object || object.id != null) {
+    if (object && object.id != null) {
       // $FlowFixMe
       copies[object.id] = new Klass(object);
       // $FlowFixMe
