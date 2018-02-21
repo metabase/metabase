@@ -255,7 +255,7 @@
    limit (s/maybe su/IntStringGreaterThanZero)}
   (api/check-public-sharing-enabled)
   (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
-    (search-card-fields card-id field-id search-field-id value limit)))
+    (search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in a public Dashboard."

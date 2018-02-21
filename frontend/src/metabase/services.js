@@ -75,10 +75,6 @@ export const PublicApi = {
   cardQuery: GET("/api/public/card/:uuid/query"),
   dashboard: GET("/api/public/dashboard/:uuid"),
   dashboardCardQuery: GET("/api/public/dashboard/:uuid/card/:cardId"),
-  field_values: GET("/api/public/card/:uuid/field/:fieldId/values"),
-  field_search: GET(
-    "/api/public/card/:uuid/field/:fieldId/search/:searchFieldId",
-  ),
 };
 
 export const EmbedApi = {
@@ -87,10 +83,6 @@ export const EmbedApi = {
   dashboard: GET(embedBase + "/dashboard/:token"),
   dashboardCardQuery: GET(
     embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
-  ),
-  field_values: GET(embedBase + "/card/:token/field/:fieldId/values"),
-  field_search: GET(
-    embedBase + "/card/:token/field/:fieldId/search/:searchFieldId",
   ),
 };
 
@@ -325,22 +317,31 @@ export const I18NApi = {
   locale: GET("/app/locales/:locale.json"),
 };
 
-export function enableEmbedEndpoints(token: string) {
-  // don't swap endpoints for embed preview, since the user is logged in
+export function setPublicQuestionEndpoints(uuid) {
+  setFieldEndpoints("/api/public/card/:uuid", { uuid });
+}
+export function setPublicDashboardEndpoints(uuid) {
+  setFieldEndpoints("/api/public/dashboard/:uuid", { uuid });
+}
+export function setEmbedQuestionEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
-    MetabaseApi.field_values = (data: Data, options?: Options) =>
-      EmbedApi.field_values({ token, ...data }, options);
-    MetabaseApi.field_search = (data: Data, options?: Options) =>
-      EmbedApi.field_search({ token, ...data }, options);
-    MetabaseApi.field_remapping = () => null;
+    setFieldEndpoints("/api/embed/card/:token", { token });
+  }
+}
+export function setEmbedDashboardEndpoints(token) {
+  if (!IS_EMBED_PREVIEW) {
+    setFieldEndpoints("/api/embed/dashboard/:token", { token });
   }
 }
 
-export function enablePublicEndpoints(uuid: string) {
+export function setFieldEndpoints(prefix, params) {
   MetabaseApi.field_values = (data: Data, options?: Options) =>
-    PublicApi.field_values({ uuid, ...data }, options);
+    GET(prefix + "/field/:fieldId/values")({ ...params, ...data }, options);
   MetabaseApi.field_search = (data: Data, options?: Options) =>
-    PublicApi.field_search({ uuid, ...data }, options);
+    GET(prefix + "/field/:fieldId/search/:searchFieldId")(
+      { ...params, ...data },
+      options,
+    );
   MetabaseApi.field_remapping = () => null;
 }
 

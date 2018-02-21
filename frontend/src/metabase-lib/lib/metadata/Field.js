@@ -27,8 +27,6 @@ import {
 
 import type { FieldValues } from "metabase/meta/types/Field";
 
-import _ from "underscore";
-
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.
  */

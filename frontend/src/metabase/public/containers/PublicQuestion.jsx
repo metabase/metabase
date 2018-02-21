@@ -23,8 +23,8 @@ import {
 import {
   PublicApi,
   EmbedApi,
-  enablePublicEndpoints,
-  enableEmbedEndpoints,
+  setPublicQuestionEndpoints,
+  setEmbedQuestionEndpoints,
 } from "metabase/services";
 
 import { setErrorPage } from "metabase/redux/app";
@@ -78,9 +78,9 @@ export default class PublicQuestion extends Component {
     } = this.props;
 
     if (uuid) {
-      enablePublicEndpoints(uuid);
+      setPublicQuestionEndpoints(uuid);
     } else if (token) {
-      enableEmbedEndpoints(token);
+      setEmbedQuestionEndpoints(token);
     }
 
     try {
