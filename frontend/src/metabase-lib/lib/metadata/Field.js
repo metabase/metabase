@@ -37,6 +37,7 @@ export default class Field extends Base {
   description: string;
 
   table: Table;
+  name_field: ?Field;
 
   fieldType() {
     return getFieldType(this);
@@ -147,11 +148,8 @@ export default class Field extends Base {
     }
     // this enables "implicit" remappings from type/PK to type/Name on the same table,
     // used in FieldValuesWidget, but not table/object detail listings
-    if (this.isPK()) {
-      const nameField = _.find(this.table.fields, f => f.isEntityName());
-      if (nameField) {
-        return nameField;
-      }
+    if (this.name_field) {
+      return this.name_field;
     }
     return null;
   }

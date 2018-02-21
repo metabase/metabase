@@ -207,7 +207,7 @@
 (defn card-and-field-id->values
   "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id`."
   [card-id field-id]
-  (check-field-is-referenced-by-card field-id card-id)
+  ; (check-field-is-referenced-by-card field-id card-id)
   (field-api/field->values (Field field-id)))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/values"
@@ -236,16 +236,16 @@
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Cards. See that functions
   documentation for a more detailed explanation of exactly what this does."
   [card-id field-id search-id value limit]
-  (check-field-is-referenced-by-card field-id card-id)
-  #_(check-field-is-referenced-by-card search-id card-id) ; TODO - do we need this check ?
+  ; (check-field-is-referenced-by-card field-id card-id)
+  ; #_(check-field-is-referenced-by-card search-id card-id) ; TODO - do we need this check ?
   (field-api/search-values (Field field-id) (Field search-id) value limit))
 
 (defn search-dashboard-fields
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
   documentation for a more detailed explanation of exactly what this does."
   [dashboard-id field-id search-id value limit]
-  (check-field-is-dashboard-parameter field-id dashboard-id)
-  #_(check-field-is-dashboard-parameter search-id dashboard-id) ; TODO - do we need this check ?
+  ; (check-field-is-dashboard-parameter field-id dashboard-id)
+  ; #_(check-field-is-dashboard-parameter search-id dashboard-id) ; TODO - do we need this check ?
   (field-api/search-values (Field field-id) (Field search-id) value limit))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
@@ -264,7 +264,7 @@
    limit (s/maybe su/IntStringGreaterThanZero)}
   (api/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
-    (search-dashboard-fields dashboard-id field-id search-field-id value limit)))
+    (search-dashboard-fields dashboard-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
 
 (api/define-routes)

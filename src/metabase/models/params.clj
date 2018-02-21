@@ -91,7 +91,7 @@
   (when (seq field-ids)
     (u/key-by :id (-> (db/select ['Field :id :table_id :display_name :base_type :special_type]
                         :id [:in field-ids])
-                      (hydrate :has_field_values :name_field)))))
+                      (hydrate :has_field_values :name_field :dimensions)))))
 
 (defmulti ^:private ^{:hydrate :param_values} param-values
   "Add a `:param_values` map (Field ID -> FieldValues) containing FieldValues for the Fields referenced by the

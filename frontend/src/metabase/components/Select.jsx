@@ -132,7 +132,7 @@ class BrowserSelect extends Component {
           )
         }
         triggerClasses={className}
-        verticalAttachments={["top"]}
+        verticalAttachments={["top", "bottom"]}
         isInitiallyOpen={isInitiallyOpen}
         {...extraProps}
       >
