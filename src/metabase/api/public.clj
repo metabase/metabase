@@ -48,7 +48,7 @@
   (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
                             :archived false, conditions))
       remove-card-non-public-columns
-      params/add-card-param-values))
+      (hydrate :param_values :param_fields)))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
@@ -96,6 +96,7 @@
   (dataset-api/as-format export-format
     (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
 
+
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
 (defn public-dashboard
@@ -103,8 +104,7 @@
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
   (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
-      (hydrate [:ordered_cards :card :series])
-      params/add-field-values-for-parameters
+      (hydrate [:ordered_cards :card :series] :param_values :param_fields)
       dashboard-api/add-query-average-durations
       (update :ordered_cards (fn [dashcards]
                                (for [dashcard dashcards]

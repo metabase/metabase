@@ -3,7 +3,9 @@
   (:require [metabase.query-processor.middleware.expand :as ql]
             metabase.query-processor.interface
             [metabase.util :as u]
-            [toucan.db :as db])
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]])
   (:import metabase.query_processor.interface.FieldPlaceholder))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -35,14 +37,36 @@
   (get-in dashcard [:card :dataset_query :native :template_tags (keyword tag) :dimension]))
 
 (defn- param-target->field-id
-  "Parse a Card parameter TARGET form, which looks something like `[:dimension [:field-id 100]]`, and return the Field ID
-   it references (if any)."
+  "Parse a Card parameter TARGET form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
+  ID it references (if any)."
   [target dashcard]
   (when (ql/is-clause? :dimension target)
     (let [[_ dimension] target]
       (field-form->id (if (ql/is-clause? :template-tag dimension)
                         (template-tag->field-form dimension dashcard)
                         dimension)))))
+
+(defn- param-field-ids->fields
+  "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
+  Dashboard. These only contain the minimal amount of information neccesary needed to power public or embedded
+  parameter widgets."
+  [field-ids]
+  (when (seq field-ids)
+    (u/key-by :id (-> (db/select ['Field :id :display_name :base_type :special_type]
+                        :id [:in field-ids])
+                      (hydrate :has_field_values)))))
+
+(def param-values nil) ; NOCOMMIT
+(defmulti ^:private ^{:hydrate :param_values} param-values
+  "Add a `:param_values` map (Field ID -> FieldValues) containing FieldValues for the Fields referenced by the
+  parameters of a Card or a Dashboard. Implementations are in respective sections below."
+  name)
+
+(def param-fields nil) ; NOCOMMIT
+(defmulti ^:private ^{:hydrate :param_fields} param-fields
+  "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
+  Dashboard. Implementations are below in respective sections."
+  name)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -65,10 +89,12 @@
   [dashboard]
   (field-ids->param-field-values (dashboard->param-field-ids dashboard)))
 
-(defn add-field-values-for-parameters
-  "Add a `:param_values` map containing FieldValues for the parameter Fields in the DASHBOARD."
-  [dashboard]
-  (assoc dashboard :param_values (dashboard->param-field-values dashboard)))
+(defmethod param-values "Dashboard" [dashboard]
+  (dashboard->param-field-values dashboard))
+
+(defmethod param-fields "Dashboard" [dashboard]
+  (-> dashboard dashboard->param-field-ids param-field-ids->fields))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |
@@ -83,7 +109,8 @@
              :when                      field-id]
          field-id)))
 
-(defn add-card-param-values
-  "Add FieldValues for any Fields referenced in CARD's `:template_tags`."
-  [card]
-  (assoc card :param_values (field-ids->param-field-values (card->template-tag-field-ids card))))
+(defmethod param-values "Card" [card]
+  (field-ids->param-field-values (card->template-tag-field-ids card)))
+
+(defmethod param-fields "Card" [card]
+  (-> card card->template-tag-field-ids param-field-ids->fields))
