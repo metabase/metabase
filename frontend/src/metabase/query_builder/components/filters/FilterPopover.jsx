@@ -41,6 +41,7 @@ type Props = {
 
 type State = {
   filter: FieldFilter,
+  showOperator: boolean,
 };
 
 export default class FilterPopover extends Component {

@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "c-3po";
@@ -12,6 +14,10 @@ import { defer } from "metabase/lib/promise";
 import { debounce } from "underscore";
 import { stripId } from "metabase/lib/formatting";
 
+import type Field from "metabase-lib/lib/metadata/Field";
+import type { FieldId } from "metabase/meta/types/Field";
+import type { Value } from "metabase/meta/types/Dataset";
+
 const MAX_SEARCH_RESULTS = 100;
 
 const mapDispatchToProps = {
@@ -19,12 +25,40 @@ const mapDispatchToProps = {
   fetchFieldValues,
 };
 
+type Props = {
+  value: Value[],
+  onChange: (value: Value[]) => void,
+  field: Field,
+  searchField?: Field,
+  multi?: boolean,
+  autoFocus?: boolean,
+  color?: string,
+  fetchFieldValues: (id: FieldId) => void,
+  maxResults: number,
+  style?: { [key: string]: string | number },
+  placeholder?: string,
+};
+
+type State = {
+  focused: boolean,
+  loadingState: "INIT" | "LOADING" | "LOADED",
+  options: [Value, ?string][],
+  lastValue: string,
+};
+
 export class FieldValuesWidget extends Component {
-  constructor(props) {
+  props: Props;
+  state: State;
+
+  _cancel: ?() => void;
+
+  constructor(props: Props) {
     super(props);
     this.state = {
+      focused: false,
       options: [],
       loadingState: "INIT",
+      lastValue: "",
     };
   }
 
@@ -58,7 +92,7 @@ export class FieldValuesWidget extends Component {
     return searchField && field.has_field_values === "search";
   }
 
-  onInputChange = value => {
+  onInputChange = (value: string) => {
     if (value && this.isSearchable()) {
       this._search(value);
     }
@@ -66,7 +100,7 @@ export class FieldValuesWidget extends Component {
     return value;
   };
 
-  search = async (value: String, cancelled: Promise<void>) => {
+  search = async (value: string, cancelled: Promise<void>) => {
     const { field, searchField, maxResults } = this.props;
 
     if (!field || !searchField || !value) {
@@ -92,7 +126,7 @@ export class FieldValuesWidget extends Component {
     return results;
   };
 
-  _search = value => {
+  _search = (value: string) => {
     const { lastValue, options } = this.state;
 
     // if this search is just an extension of the previous search, and the previous search
@@ -164,7 +198,7 @@ export class FieldValuesWidget extends Component {
     if (!placeholder) {
       if (this.hasList()) {
         placeholder = t`Search the list`;
-      } else if (this.isSearchable()) {
+      } else if (this.isSearchable() && searchField) {
         const searchFieldName =
           stripId(searchField.display_name) || searchField.display_name;
         placeholder = t`Search by ${searchFieldName}`;
