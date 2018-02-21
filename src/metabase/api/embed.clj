@@ -369,7 +369,7 @@
    limit (s/maybe su/IntStringGreaterThanZero)}
   (let [unsigned-token (eu/unsign token)
         card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (public-api/search-card-fields card-id field-id search-field-id value limit)))
+    (public-api/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
 (api/defendpoint GET "/dashboard/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in an embedded Dashboard."
@@ -378,7 +378,7 @@
    limit (s/maybe su/IntStringGreaterThanZero)}
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
-    (public-api/search-dashboard-fields dashboard-id field-id search-field-id value limit)))
+    (public-api/search-dashboard-fields dashboard-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
 
 (api/define-routes)

@@ -326,11 +326,14 @@ export const I18NApi = {
 };
 
 export function enableEmbedEndpoints(token: string) {
-  MetabaseApi.field_values = (data: Data, options?: Options) =>
-    EmbedApi.field_values({ token, ...data }, options);
-  MetabaseApi.field_search = (data: Data, options?: Options) =>
-    EmbedApi.field_search({ token, ...data }, options);
-  MetabaseApi.field_remapping = () => null;
+  // don't swap endpoints for embed preview, since the user is logged in
+  if (!IS_EMBED_PREVIEW) {
+    MetabaseApi.field_values = (data: Data, options?: Options) =>
+      EmbedApi.field_values({ token, ...data }, options);
+    MetabaseApi.field_search = (data: Data, options?: Options) =>
+      EmbedApi.field_search({ token, ...data }, options);
+    MetabaseApi.field_remapping = () => null;
+  }
 }
 
 export function enablePublicEndpoints(uuid: string) {
