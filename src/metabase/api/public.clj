@@ -4,6 +4,7 @@
             [clojure.walk :as walk]
             [compojure.core :refer [GET]]
             [metabase
+             [db :as mdb]
              [query-processor :as qp]
              [util :as u]]
             [metabase.api
@@ -17,6 +18,7 @@
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
+             [dimension :refer [Dimension]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
              [params :as params]]
@@ -203,6 +205,25 @@
         referenced-fields-ids (card->referenced-field-ids card)]
     (api/check-404 (contains? referenced-fields-ids field-id))))
 
+(defn- check-search-field-is-allowed
+  "Check whether a search Field is allowed to be used in conjunction with another Field. A search Field is allowed if
+  *any* of the following conditions is true:
+
+  *  `search-field-id` and `field-id` are both the same Field
+  *  `search-field-id` is equal to the other Field's Dimension's `human-readable-field-id`
+  *  field is a `:type/PK` Field and search field is a `:type/Name` Field belonging to the same Table.
+
+  If none of these conditions are met, you are not allowed to use the search field in combination with the other
+  field, and an 400 exception will be thrown."
+  [field-id search-field-id]
+  (api/check-400
+   (or (= field-id search-field-id)
+       (db/exists? Dimension :field_id field-id, :human_readable_field_id search-field-id)
+       ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
+       ;; and do this in one but the extra code complexity isn't worth it IMO
+       (when-let [table-id (db/select-one-field :table_id Field :id field-id, :special_type (mdb/isa :type/PK))]
+         (db/exists? Field :id search-field-id, :table_id table-id, :special_type (mdb/isa :type/Name))))))
+
 (defn- check-field-is-dashboard-parameter
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
   404 Exception."
@@ -243,7 +264,7 @@
   documentation for a more detailed explanation of exactly what this does."
   [card-id field-id search-id value limit]
   (check-field-is-referenced-by-card field-id card-id)
-  #_(check-field-is-referenced-by-card search-id card-id) ; TODO - do we need this check ?
+  (check-search-field-is-allowed field-id search-id)
   (field-api/search-values (Field field-id) (Field search-id) value limit))
 
 (defn search-dashboard-fields
@@ -251,7 +272,7 @@
   documentation for a more detailed explanation of exactly what this does."
   [dashboard-id field-id search-id value limit]
   (check-field-is-dashboard-parameter field-id dashboard-id)
-  #_(check-field-is-dashboard-parameter search-id dashboard-id) ; TODO - do we need this check ?
+  (check-search-field-is-allowed field-id search-id)
   (field-api/search-values (Field field-id) (Field search-id) value limit))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
