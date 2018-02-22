@@ -7,6 +7,7 @@
             [clojure
              [set :as set]
              [string :as str]]
+            [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
@@ -102,8 +103,8 @@
 
 (defn- execute-presto-query! [details query]
   (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (let [{{:keys [columns data nextUri error]} :body :as foo} (http/post (details->uri details-with-tunnel "/v1/statement")
-                                                                          (assoc (details->request details-with-tunnel) :body query, :as :json))]
+    (let [{{:keys [columns data nextUri error id]} :body :as foo} (http/post (details->uri details-with-tunnel "/v1/statement")
+                                                                             (assoc (details->request details-with-tunnel) :body query, :as :json))]
 
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
@@ -112,7 +113,25 @@
                      :rows    rows}]
         (if (nil? nextUri)
           results
-          (fetch-presto-results! details-with-tunnel results nextUri))))))
+          ;; When executing the query, it doesn't return the results, but is geared toward async queries. After
+          ;; issuing the query, the below will ask for the results. Asking in a future so that this thread can be
+          ;; interrupted if the client disconnects
+          (let [results-future (future (fetch-presto-results! details-with-tunnel results nextUri))]
+            (try
+              @results-future
+              (catch InterruptedException e
+                (if id
+                  ;; If we have a query id, we can cancel the query
+                  (try
+                    (http/delete (details->uri details-with-tunnel (str "/v1/query/" id))
+                                 (details->request details-with-tunnel))
+                    ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
+                    ;; covering it up with a failed cancel
+                    (catch Exception e
+                      (log/error e (str "Error cancelling query with id " id))))
+                  (log/warn "Client connection closed, no query-id found, can't cancel query"))
+                ;; Propogate the error so that any finalizers can still run
+                (throw e)))))))))
 
 
 ;;; Generic helpers

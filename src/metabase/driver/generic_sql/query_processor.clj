@@ -451,16 +451,46 @@
               (jdbc/set-parameter value stmt i)))
           (rest (range)) params)))
 
+(defmacro ^:private with-ensured-connection
+  "In many of the clojure.java.jdbc functions, it checks to see if there's already a connection open before opening a
+  new one. This macro checks to see if one is open, or will open a new one. Will bind the connection to `conn-sym`."
+  [conn-sym db & body]
+  `(let [db# ~db]
+     (if-let [~conn-sym (jdbc/db-find-connection db#)]
+       (do ~@body)
+       (with-open [~conn-sym (jdbc/get-connection db#)]
+         ~@body))))
+
+(defn- cancellable-run-query
+  "Runs `sql` in such a way that it can be interrupted via a `future-cancel`"
+  [db sql params opts]
+  (with-ensured-connection conn db
+    ;; This is normally done for us by java.jdbc as a result of our `jdbc/query` call
+    (with-open [^PreparedStatement stmt (jdbc/prepare-statement conn sql opts)]
+      ;; Need to run the query in another thread so that this thread can cancel it if need be
+      (try
+        (let [query-future (future (jdbc/query conn (into [stmt] params) opts))]
+          ;; This thread is interruptable because it's awaiting the other thread (the one actually running the
+          ;; query). Interrupting this thread means that the client has disconnected (or we're shutting down) and so
+          ;; we can give up on the query running in the future
+          @query-future)
+        (catch InterruptedException e
+          (log/warn e "Client closed connection, cancelling query")
+          ;; This is what does the real work of cancelling the query. We aren't checking the result of
+          ;; `query-future` but this will cause an exception to be thrown, saying the query has been cancelled.
+          (.cancel stmt)
+          (throw e))))))
+
 (defn- run-query
   "Run the query itself."
   [{sql :query, params :params, remark :remark} timezone connection]
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
-        [columns & rows] (jdbc/query connection statement {:identifiers    identity, :as-arrays? true
-                                                           :read-columns   (read-columns-with-date-handling timezone)
-                                                           :set-parameters (set-parameters-with-timezone timezone)})]
-    {:rows    (or rows [])
-     :columns columns}))
+        [columns & rows] (cancellable-run-query connection sql params {:identifiers    identity, :as-arrays? true
+                                                                       :read-columns   (read-columns-with-date-handling timezone)
+                                                                       :set-parameters (set-parameters-with-timezone timezone)})]
+       {:rows    (or rows [])
+        :columns columns}))
 
 (defn- exception->nice-error-message ^String [^SQLException e]
   (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
