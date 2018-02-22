@@ -1,0 +1,55 @@
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+
+<suite name="Full TestsAT in Nightlies" thread-count="1" preserve-order="true">
+
+        <test name="installationPostgres" preserve-order="true">
+            <groups>
+                <run>
+                    <include name="install_postgres"/>
+                </run>
+            </groups>
+
+            <packages>
+                <package name="com.stratio.*" />
+            </packages>
+        </test>
+
+        <test name="installationDiscovery" preserve-order="true">
+            <groups>
+                <run>
+                    <include name="install_discovery"/>
+                </run>
+            </groups>
+
+            <packages>
+                <package name="com.stratio.*" />
+            </packages>
+        </test>
+
+
+         <test name="uninstallationDiscovery" preserve-order="true">
+             <groups>
+                 <run>
+                     <include name="unInstall_discovery"/>
+                 </run>
+             </groups>
+
+             <packages>
+                 <package name="com.stratio.*" />
+             </packages>
+         </test>
+
+
+         <test name="uninstallationPostgres" preserve-order="true">
+             <groups>
+                 <run>
+                     <include name="unInstall_postgres"/>
+                 </run>
+             </groups>
+
+             <packages>
+                 <package name="com.stratio.*" />
+             </packages>
+         </test>
+
+</suite>

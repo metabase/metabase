@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
+<!--
+  ~ © 2017 Stratio Big Data Inc., Sucursal en España. All rights reserved
+  ~
+  ~ This software is a modification of the original software mesosphere/dcos-kafka-service licensed under the
+  ~ Apache 2.0 license, a copy of which is included in root folder. This software contains proprietary information of
+  ~ Stratio Big Data Inc., Sucursal en España and may not be revealed, sold, transferred, modified, distributed or
+  ~ otherwise made available, licensed or sublicensed to third parties; nor reverse engineered, disassembled or
+  ~ decompiled, without express written authorization from Stratio Big Data Inc., Sucursal en España.
+  -->
+
+<!--
+
+    © 2017 Stratio Big Data Inc., Sucursal en España. All rights reserved
+
+    This software is a modification of the original software mesosphere/dcos-kafka-service licensed under the
+    Apache 2.0 license, a copy of which is included in root folder. This software contains proprietary information of
+    Stratio Big Data Inc., Sucursal en España and may not be revealed, sold, transferred, modified, distributed or
+    otherwise made available, licensed or sublicensed to third parties; nor reverse engineered, disassembled or
+    decompiled, without express written authorization from Stratio Big Data Inc., Sucursal en España.
+
+-->
+<aspectj>
+    <aspects>
+        <aspect name="com.stratio.qa.aspects.RunOnTagAspect"/>
+        <aspect name="com.stratio.qa.aspects.LoopIncludeTagAspect"/>
+        <aspect name="com.stratio.qa.aspects.ReplacementAspect"/>
+        <aspect name="com.stratio.qa.aspects.IgnoreTagAspect"/>
+        <aspect name="com.stratio.qa.aspects.AssertJAspect"/>
+        <aspect name="com.stratio.qa.aspects.SeleniumAspect"/>
+        <aspect name="com.stratio.qa.aspects.BrowsersDataProviderAspect"/>
+    </aspects>
+    <weaver
+            options="-Xlint:ignore -Xset:weaveJavaPackages=true,weaveJavaxPackages=true">
+    </weaver>
+</aspectj>

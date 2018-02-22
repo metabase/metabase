@@ -1,0 +1,10 @@
+selenium.log
+selenium.pid
+browser.log
+browser.pid
+chromedriver
+selenium-server-standalone*
+
+# Compilation files
+target
+compose/dummy_data/db_dump
