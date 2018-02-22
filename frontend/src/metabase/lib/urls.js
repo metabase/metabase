@@ -96,3 +96,7 @@ export function publicDashboard(uuid) {
 export function embedCard(token, type = null) {
   return `/embed/question/${token}` + (type ? `.${type}` : ``);
 }
+
+export function embedDashboard(token) {
+  return `/embed/dashboard/${token}`;
+}

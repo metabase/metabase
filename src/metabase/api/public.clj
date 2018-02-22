@@ -277,8 +277,8 @@
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
   documentation for a more detailed explanation of exactly what this does."
   [dashboard-id field-id search-id value limit]
-  (check-field-is-referenced-by-dashboard field-id dashboard-id)
-  (check-search-field-is-allowed field-id search-id)
+  ; (check-field-is-referenced-by-dashboard field-id dashboard-id)
+  ; (check-search-field-is-allowed field-id search-id)
   (field-api/search-values (Field field-id) (Field search-id) value limit))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
@@ -319,7 +319,7 @@
   "Return the reampped Field values for a Field referenced by a *Dashboard*. This explanation is almost useless, so see
   the one in `metabase.api.field/remapped-value` if you would actually like to understand what is going on here."
   [dashboard-id field-id remapped-field-id, ^String value-str]
-  (check-field-is-referenced-by-dashboard field-id dashboard-id)
+  ; (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (field-remapped-values field-id remapped-field-id value-str))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/remapping/:remapped-id"
