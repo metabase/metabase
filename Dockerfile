@@ -4,6 +4,8 @@
 
 FROM java:openjdk-8-jre-alpine
 
+ARG VERSION
+
 ENV JAVA_HOME=/usr/lib/jvm/default-jvm
 ENV PATH /usr/local/bin:$PATH
 ENV LEIN_ROOT 1

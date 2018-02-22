@@ -53,3 +53,6 @@ coverage-summary.json
 .DS_Store
 bin/node_modules/
 *.log
+/node/
+*.iml
+testsAT/target
