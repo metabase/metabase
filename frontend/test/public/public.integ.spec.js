@@ -1,10 +1,12 @@
 import { mount } from "enzyme";
 
 import {
+  createSavedQuestion,
   createDashboard,
   createTestStore,
   useSharedAdminLogin,
-  createSavedQuestion,
+  logout,
+  waitForRequestToComplete,
 } from "__support__/integrated_tests";
 
 import { FETCH_DASHBOARD } from "metabase/dashboard/dashboard";
@@ -18,7 +20,6 @@ import TokenField from "metabase/components/TokenField";
 
 import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/lib/Question";
-import { delay } from "metabase/lib/promise";
 
 import {
   CardApi,
@@ -27,21 +28,25 @@ import {
   MetabaseApi,
 } from "metabase/services";
 
+const PRODUCT_USER_ID_FIELD_ID = 7;
+const PEOPLE_ID_FIELD_ID = 13;
+const PEOPLE_NAME_FIELD_ID = 16;
+const PEOPLE_SOURCE_FIELD_ID = 18;
+
 describe("public pages", () => {
   let store, metadata;
   beforeAll(async () => {
-    // needed to create the public dash
+    // needed to enable public sharing
     useSharedAdminLogin();
     // enable public sharing
     await SettingsApi.put({ key: "enable-public-sharing", value: true });
-  });
-  beforeEach(async () => {
-    store = await createTestStore();
   });
 
   describe("public dashboards", () => {
     let dashboard, publicDash;
     beforeAll(async () => {
+      useSharedAdminLogin();
+
       // create a dashboard
       dashboard = await createDashboard({
         name: "Test public dash",
@@ -49,9 +54,14 @@ describe("public pages", () => {
       });
       // create the public link for that dashboard
       publicDash = await DashboardApi.createPublicLink({ id: dashboard.id });
+
+      // shared store for all dashboard tests
+      store = await createTestStore();
     });
 
     it("should be possible to view a public dashboard", async () => {
+      logout();
+
       store.pushPath(Urls.publicDashboard(publicDash.uuid));
 
       const app = mount(store.getAppContainer());
@@ -64,6 +74,7 @@ describe("public pages", () => {
     });
 
     afterAll(async () => {
+      useSharedAdminLogin();
       // archive the dash so we don't impact other tests
       await DashboardApi.update({
         id: dashboard.id,
@@ -76,6 +87,15 @@ describe("public pages", () => {
     let question, publicQuestion;
 
     beforeAll(async () => {
+      useSharedAdminLogin();
+
+      await MetabaseApi.field_dimension_update({
+        fieldId: PRODUCT_USER_ID_FIELD_ID,
+        type: "external",
+        name: "User ID",
+        human_readable_field_id: PEOPLE_NAME_FIELD_ID,
+      });
+
       await store.dispatch(fetchTableMetadata(1));
       const metadata = getMetadata(store.getState());
 
@@ -95,7 +115,7 @@ describe("public pages", () => {
                 name: "id",
                 display_name: "ID",
                 type: "dimension",
-                dimension: ["field-id", 13],
+                dimension: ["field-id", PEOPLE_ID_FIELD_ID],
                 widget_type: "id",
               },
               name: {
@@ -103,7 +123,7 @@ describe("public pages", () => {
                 name: "name",
                 display_name: "Name",
                 type: "dimension",
-                dimension: ["field-id", 16],
+                dimension: ["field-id", PEOPLE_NAME_FIELD_ID],
                 widget_type: "category",
               },
               source: {
@@ -111,7 +131,7 @@ describe("public pages", () => {
                 name: "source",
                 display_name: "Source",
                 type: "dimension",
-                dimension: ["field-id", 18],
+                dimension: ["field-id", PEOPLE_SOURCE_FIELD_ID],
                 widget_type: "category",
               },
               user_id: {
@@ -119,7 +139,7 @@ describe("public pages", () => {
                 name: "user_id",
                 display_name: "User",
                 type: "dimension",
-                dimension: ["field-id", 7],
+                dimension: ["field-id", PRODUCT_USER_ID_FIELD_ID],
                 widget_type: "id",
               },
             },
@@ -132,24 +152,29 @@ describe("public pages", () => {
 
       // create the public link for that dashboard
       publicQuestion = await CardApi.createPublicLink({ id: question.id() });
+
+      // shared store for all dashboard tests
+      store = await createTestStore();
     });
 
     it("should be possible to view a public question", async () => {
+      logout();
+
       store.pushPath(Urls.publicQuestion(publicQuestion.uuid) + "?id=1");
 
       const app = mount(store.getAppContainer());
 
-      // await store.waitForActions([FETCH_DASHBOARD]);
-      await delay(1000);
+      // wait for the query to load
+      await waitForRequestToComplete("GET", /^\/api\/public\/card\/.*\/query/);
 
       const headerText = app.find(".EmbedFrame-header .h4").text();
-
       expect(headerText).toEqual("Just raw, untamed data");
 
       expect(app.find(".ScalarValue").text()).toEqual("1");
 
       expect(app.find(ParameterFieldWidget).length).toEqual(4);
 
+      // click each parameter to open the widget
       app.find(ParameterFieldWidget).map(widget => widget.simulate("click"));
 
       const widgets = app.find(FieldValuesWidget);
@@ -162,43 +187,53 @@ describe("public pages", () => {
             .at(0)
             .find("li")
             .map(li => li.text())
-            .slice(0, -1), // the last item is the input
+            .slice(0, -1), // the last item is the input, remove it
       );
       expect(values).toEqual([
-        ["1"], // FIXME: should be "Adelia Eichmann - 1" but we haven't implemented the /api/pubic/card/:uuid/field/:field-id/remapped/:remapped-id endpoint
+        ["Adelia Eichmann - 1"], // remapped value
         [],
         [],
         [],
       ]);
 
       const inputs = widgets.find("input");
-
-      expect(
-        widgets.map(widget => widget.find(TokenField).props().placeholder),
-      ).toEqual([
+      const placeholders = widgets.map(
+        widget => widget.find(TokenField).props().placeholder,
+      );
+      expect(placeholders).toEqual([
         "Search by Name or enter an ID",
         "Search by Name",
         "Search the list",
-        "Enter an ID", // FIXME: should be "Search by Name or enter an ID" but we aren't loading field for field.dimensions.human_readable_field_id
+        "Search by Name or enter an ID",
       ]);
 
       // tests `search` endpoint
       expect(widgets.at(0).find("li").length).toEqual(1 + 1);
+      inputs.at(0).simulate("change", { target: { value: "Aly" } });
+      await waitForRequestToComplete("GET", /\/field\/.*\/search/);
+      expect(widgets.at(0).find("li").length).toEqual(1 + 1 + 6);
+
+      // tests `search` endpoint
       expect(widgets.at(1).find("li").length).toEqual(1);
+      inputs.at(1).simulate("change", { target: { value: "Aly" } });
+      await waitForRequestToComplete("GET", /\/field\/.*\/search/);
+      expect(widgets.at(1).find("li").length).toEqual(1 + 6);
 
       // tests `values` endpoint
+      // NOTE: no need for waitForRequestToComplete because it was previously loaded?
+      // await waitForRequestToComplete("GET", /\/field\/.*\/values/);
       expect(widgets.at(2).find("li").length).toEqual(1 + 5); // 5 options + 1 for the input
 
-      inputs.at(0).simulate("change", { target: { value: "Aly" } });
-      inputs.at(1).simulate("change", { target: { value: "Aly" } });
-      await delay(1000);
-
-      expect(widgets.at(0).find("li").length).toEqual(1 + 1 + 6);
-      expect(widgets.at(1).find("li").length).toEqual(1 + 6);
+      // tests `search` endpoint
+      expect(widgets.at(3).find("li").length).toEqual(1);
+      inputs.at(3).simulate("change", { target: { value: "Aly" } });
+      await waitForRequestToComplete("GET", /\/field\/.*\/search/);
+      expect(widgets.at(3).find("li").length).toEqual(1 + 6);
     });
 
     afterAll(async () => {
-      // archive the dash so we don't impact other tests
+      useSharedAdminLogin();
+      // archive the card so we don't impact other tests
       await CardApi.update({
         id: question.id(),
         archived: true,

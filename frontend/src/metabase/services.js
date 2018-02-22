@@ -317,29 +317,29 @@ export const I18NApi = {
   locale: GET("/app/locales/:locale.json"),
 };
 
-export function setPublicQuestionEndpoints(uuid) {
+export function setPublicQuestionEndpoints(uuid: string) {
   setFieldEndpoints("/api/public/card/:uuid", { uuid });
 }
-export function setPublicDashboardEndpoints(uuid) {
+export function setPublicDashboardEndpoints(uuid: string) {
   setFieldEndpoints("/api/public/dashboard/:uuid", { uuid });
 }
-export function setEmbedQuestionEndpoints(token) {
+export function setEmbedQuestionEndpoints(token: string) {
   if (!IS_EMBED_PREVIEW) {
     setFieldEndpoints("/api/embed/card/:token", { token });
   }
 }
-export function setEmbedDashboardEndpoints(token) {
+export function setEmbedDashboardEndpoints(token: string) {
   if (!IS_EMBED_PREVIEW) {
     setFieldEndpoints("/api/embed/dashboard/:token", { token });
   }
 }
 
-function GET_with(url, params) {
+function GET_with(url: string, params: Data) {
   return (data: Data, options?: Options) =>
     GET(url)({ ...params, ...data }, options);
 }
 
-export function setFieldEndpoints(prefix, params) {
+export function setFieldEndpoints(prefix: string, params: Data) {
   MetabaseApi.field_values = GET_with(
     prefix + "/field/:fieldId/values",
     params,
