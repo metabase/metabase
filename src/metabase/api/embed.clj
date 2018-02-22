@@ -343,7 +343,11 @@
       :query-params     query-params)))
 
 
-;;; -------------------------------------------- Field Values & Searching --------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        FieldValues, Search, Remappings                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; -------------------------------------------------- Field Values --------------------------------------------------
 
 (api/defendpoint GET "/card/:token/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by an embedded Card."
@@ -362,6 +366,8 @@
     (public-api/dashboard-and-field-id->values dashboard-id field-id)))
 
 
+;;; --------------------------------------------------- Searching ----------------------------------------------------
+
 (api/defendpoint GET "/card/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by an embedded Card."
   [token field-id search-field-id value limit]
@@ -378,7 +384,25 @@
    limit (s/maybe su/IntStringGreaterThanZero)}
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
-    (public-api/search-dashboard-fields dashboard-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
+    (public-api/search-dashboard-fields dashboard-id field-id search-field-id value (when limit
+                                                                                      (Integer/parseInt limit)))))
+
+
+;;; --------------------------------------------------- Remappings ---------------------------------------------------
+
+(api/defendpoint GET "/card/:token/field/:field-id/remapping/:remapped-id"
+  [token field-id remapped-id value]
+  {value su/NonBlankString}
+  (let [unsigned-token (eu/unsign token)
+        card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (public-api/card-field-remapped-values card-id field-id remapped-id value)))
+
+(api/defendpoint GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
+  [token field-id remapped-id value]
+  {value su/NonBlankString}
+  (let [unsigned-token (eu/unsign token)
+        dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+    (public-api/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 
 (api/define-routes)

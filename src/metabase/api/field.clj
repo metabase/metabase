@@ -319,14 +319,20 @@
     ;; return first row if it exists
     (first (get-in results [:data :rows]))))
 
+(defn parse-query-param-value-for-field
+  "Parse a `value` passed as a URL query param in a way appropriate for the `field` it belongs to. E.g. for text Fields
+  the value doesn't need to be parsed; for numeric Fields we should parse it as a number."
+  [field, ^String value]
+  (if (isa? (:base_type field) :type/Number)
+    (.parse (NumberFormat/getInstance) value)
+    value))
+
 (api/defendpoint GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
   [id remapped-id, ^String value]
   (let [field          (api/read-check Field id)
         remapped-field (api/read-check Field remapped-id)
-        value          (if (isa? (:base_type field) :type/Number)
-                         (.parse (NumberFormat/getInstance) value)
-                         value)]
+        value          (parse-query-param-value-for-field field value)]
     (remapped-value field remapped-field value)))
 
 

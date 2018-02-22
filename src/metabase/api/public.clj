@@ -176,7 +176,11 @@
      :html    (embed/iframe url width height)}))
 
 
-;;; -------------------------------------------- Field Values & Searching --------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        FieldValues, Search, Remappings                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; -------------------------------------------------- Field Values --------------------------------------------------
 
 ;; TODO - this is a stupid, inefficient way of doing things. Figure out a better way to do it. :(
 (defn- query->referenced-field-ids
@@ -224,7 +228,7 @@
        (when-let [table-id (db/select-one-field :table_id Field :id field-id, :special_type (mdb/isa :type/PK))]
          (db/exists? Field :id search-field-id, :table_id table-id, :special_type (mdb/isa :type/Name))))))
 
-(defn- check-field-is-dashboard-parameter
+(defn- check-field-is-referenced-by-dashboard
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
   404 Exception."
   [field-id dashboard-id]
@@ -248,7 +252,7 @@
   "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id` which itself is present
   in Dashboard with `dashboard-id`."
   [dashboard-id field-id]
-  (check-field-is-dashboard-parameter field-id dashboard-id)
+  (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (field-api/field->values (Field field-id)))
 
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/values"
@@ -258,6 +262,8 @@
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (dashboard-and-field-id->values dashboard-id field-id)))
 
+
+;;; --------------------------------------------------- Searching ----------------------------------------------------
 
 (defn search-card-fields
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Cards. See that functions
@@ -271,7 +277,7 @@
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
   documentation for a more detailed explanation of exactly what this does."
   [dashboard-id field-id search-id value limit]
-  (check-field-is-dashboard-parameter field-id dashboard-id)
+  (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (check-search-field-is-allowed field-id search-id)
   (field-api/search-values (Field field-id) (Field search-id) value limit))
 
@@ -294,4 +300,49 @@
     (search-dashboard-fields dashboard-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
 
+;;; --------------------------------------------------- Remappings ---------------------------------------------------
+
+(defn- field-remapped-values [field-id remapped-field-id, ^String value-str]
+  ;; TODO - how do we check that `remapped-field` is allowed to be used here????????
+  (let [field          (api/check-404 (Field field-id))
+        remapped-field (api/check-404 (Field remapped-field-id))]
+    (field-api/remapped-value field remapped-field (field-api/parse-query-param-value-for-field field value-str))))
+
+(defn card-field-remapped-values
+  "Return the reampped Field values for a Field referenced by a *Card*. This explanation is almost useless, so see the
+  one in `metabase.api.field/remapped-value` if you would actually like to understand what is going on here."
+  [card-id field-id remapped-field-id, ^String value-str]
+  (check-field-is-referenced-by-card field-id card-id)
+  (field-remapped-values field-id remapped-field-id value-str))
+
+(defn dashboard-field-remapped-values
+  "Return the reampped Field values for a Field referenced by a *Dashboard*. This explanation is almost useless, so see
+  the one in `metabase.api.field/remapped-value` if you would actually like to understand what is going on here."
+  [dashboard-id field-id remapped-field-id, ^String value-str]
+  (check-field-is-referenced-by-dashboard field-id dashboard-id)
+  (field-remapped-values field-id remapped-field-id value-str))
+
+(api/defendpoint GET "/card/:uuid/field/:field-id/remapping/:remapped-id"
+  [uuid field-id remapped-id value]
+  {value su/NonBlankString}
+  (api/check-public-sharing-enabled)
+  (let [card-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+    (card-field-remapped-values card-id field-id remapped-id value)))
+
+(api/defendpoint GET "/dashboard/:uuid/field/:field-id/remapping/:remapped-id"
+  [uuid field-id remapped-id value]
+  {value su/NonBlankString}
+  (api/check-public-sharing-enabled)
+  (let [dashboard-id (db/select-one-id Card :public_uuid uuid, :archived false)]
+    (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
+
+
+;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
+
+;; TODO - why don't we just make these routes have a bit of middleware that includes the
+;; `api/check-public-sharing-enabled` check in each of them? That way we don't need to remember to include the line in
+;; every single endpoint definition here? Wouldn't that be 100x better?!
+;;
+;; TODO - also a smart person would probably just parse the UUIDs automatically in middleware as appropriate for
+;;`/dashboard` vs `/card`
 (api/define-routes)
