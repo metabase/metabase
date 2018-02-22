@@ -335,7 +335,8 @@
                                                                       :expressions
                                                                       :native-parameters
                                                                       :expression-aggregations
-                                                                      :binning}
+                                                                      :binning
+                                                                      :native-query-params}
                                                                     (when-not config/is-test?
                                                                       ;; during unit tests don't treat presto as having FK support
                                                                       #{:foreign-keys})))

@@ -13,6 +13,44 @@
              [generic-sql :as generic-sql]]
             [toucan.db :as db]))
 
+;;; ------------------------------------------ basic parser tests ------------------------------------------
+
+(expect
+  [:SQL "select * from foo where bar=1"]
+  (#'sql/sql-template-parser "select * from foo where bar=1"))
+
+(expect
+  [:SQL "select * from foo where bar=" [:PARAM "baz"]]
+  (#'sql/sql-template-parser "select * from foo where bar={{baz}}"))
+
+(expect
+  [:SQL "select * from foo " [:OPTIONAL "where bar = " [:PARAM "baz"] " "]]
+  (#'sql/sql-template-parser "select * from foo [[where bar = {{baz}} ]]"))
+
+(expect
+  [:SQL "select * from foobars "
+   [:OPTIONAL " where foobars.id in (string_to_array(" [:PARAM "foobar_id"] ", ',')::integer" "[" "]" ") "]]
+  (#'sql/sql-template-parser "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"))
+
+(expect
+  [:SQL
+   "SELECT " "[" "test_data.checkins.venue_id" "]" " AS " "[" "venue_id" "]"
+   ",        " "[" "test_data.checkins.user_id" "]" " AS " "[" "user_id" "]"
+   ",        " "[" "test_data.checkins.id" "]" " AS " "[" "checkins_id" "]"
+   " FROM " "[" "test_data.checkins" "]" " LIMIT 2"]
+  (-> (str "SELECT [test_data.checkins.venue_id] AS [venue_id], "
+             "       [test_data.checkins.user_id] AS [user_id], "
+             "       [test_data.checkins.id] AS [checkins_id] "
+             "FROM [test_data.checkins] "
+             "LIMIT 2")
+      (#'sql/sql-template-parser)
+      (update 1 #(apply str %))))
+
+;; Valid syntax in PG
+(expect
+  [:SQL "SELECT array_dims(1 || '" "[" "0:1" "]" "=" "{" "2,3" "}" "'::int" "[" "]" ")"]
+  (#'sql/sql-template-parser "SELECT array_dims(1 || '[0:1]={2,3}'::int[])"))
+
 ;;; ------------------------------------------ simple substitution -- {{x}} ------------------------------------------
 
 (defn- substitute {:style/indent 1} [sql params]
@@ -42,7 +80,6 @@
 (expect Exception
   (substitute "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
     {:toucans_are_cool true}))
-
 
 ;;; ---------------------------------- optional substitution -- [[ ... {{x}} ... ]] ----------------------------------
 
@@ -81,6 +118,13 @@
    :params []}
   (substitute "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = 'toucan']]"
     {:toucans_are_cool true}))
+
+;; Two parameters in an optional
+(expect
+  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
+   :params ["toucan"]}
+  (substitute "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}]]"
+    {:toucans_are_cool true, :bird_type "toucan"}))
 
 (expect
   {:query  "SELECT * FROM bird_facts"

@@ -277,7 +277,8 @@
             :expression-aggregations
             :native-parameters
             :nested-queries
-            :binning}
+            :binning
+            :native-query-params}
     (set-timezone-sql driver) (conj :set-timezone)))
 
 
