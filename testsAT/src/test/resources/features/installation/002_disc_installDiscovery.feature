@@ -17,7 +17,7 @@ Feature: Install Discovery
 
   Scenario: [Basic Installation Discovery][02] Install Discovery
     When I send a 'POST' request to '/marathon/v2/apps' based on 'schemas/discovery.json' as 'json' with:
-      | $.container.docker.image              | UPDATE | stratioclient/discovery-crossdata2:${STRATIO_DISCOVERY_VERSION:-0.28.8}        | n/a |
+      | $.container.docker.image              | UPDATE | stratioclient/discovery-crossdata2:${STRATIO_DISCOVERY_VERSION:-0.28.9}        | n/a |
       | $.env.VAULT_HOST                      | UPDATE | ${DISCOVERY_VAULT_HOST:-vault.service.paas.labs.stratio.com}                   | n/a |
       | $.env.MB-INIT-ADMIN-MAIL              | UPDATE | ${DISCOVERY_INIT_ADMIN_USER:-demo@stratio.com}                                 | n/a |
       | $.env.MB-INIT-ADMIN-PASSWORD          | UPDATE | ${DISCOVERY_INIT_ADMIN_PASS:-123456}                                           | n/a |
@@ -29,7 +29,7 @@ Feature: Install Discovery
       | $.env.MB_DB_HOST                      | UPDATE | !{postgresMD5_IP}                                                              | n/a |
       | $.env.MB_DB_PORT                      | UPDATE | !{postgresMD5_Port}                                                            | n/a |
       | $.env.MB_DB_DBNAME                    | UPDATE | ${DISCOVERY_NAME_DB:-postgres}                                                 | n/a |
-      | $.labels.HAPROXY_0_VHOST              | UPDATE | ${DISCOVERY_ENV_PUBLIC_AGENT:-ci-public.labs.stratio.com}                      | n/a |
+      | $.labels.HAPROXY_0_VHOST              | UPDATE | ${DISCOVERY_ENV_PUBLIC_AGENT:-nightlypublic.labs.stratio.com}                  | n/a |
       | $.labels.HAPROXY_0_PATH               | UPDATE | ${DISCOVERY_PATH:-/services/metabase}                                          | n/a |
     Then the service response status must be '201'
     And I run 'dcos marathon task list discovery | awk '{print $5}' | grep discovery' in the ssh connection and save the value in environment variable 'discoveryTaskId'
