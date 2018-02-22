@@ -55,7 +55,8 @@ hose {
             config.INSTALLPARAMETERS = "${config.INSTALLPARAMETERS}".replaceAll('-DGROUPS_DISCOVERY', '-Dgroups')
             doAT(conf: config)
         } else {
-            doAT(conf: config, groups: ['nightly'])
+            //doAT(conf: config, groups: ['nightly'])
+            doAT(conf: config)
         }
     }
 }
