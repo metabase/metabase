@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 
-import NumericInput from "./NumericInput.jsx";
+import NumericInput from "metabase/components/NumericInput.jsx";
 import DateUnitSelector from "../DateUnitSelector";
 
 import type {

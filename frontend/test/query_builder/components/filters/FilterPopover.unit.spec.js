@@ -1,5 +1,6 @@
 import "__support__/mocks";
 import React from "react";
+
 import { shallow, mount } from "enzyme";
 
 import Question from "metabase-lib/lib/Question";
@@ -16,6 +17,7 @@ import {
   ORDERS_PRODUCT_FK_FIELD_ID,
   PRODUCT_TILE_FIELD_ID,
   metadata,
+  StaticMetadataProvider,
 } from "__support__/sample_dataset_fixture";
 
 const RELATIVE_DAY_FILTER = [
@@ -60,7 +62,9 @@ describe("FilterPopover", () => {
     describe("filter options", () => {
       it("should not show a control to the user if the filter has no options", () => {
         const wrapper = mount(
-          <FilterPopover query={QUERY} filter={QUERY.filters()[1]} />,
+          <StaticMetadataProvider>
+            <FilterPopover query={QUERY} filter={QUERY.filters()[1]} />
+          </StaticMetadataProvider>,
         );
         expect(wrapper.find(CheckBox).length).toBe(0);
       });
@@ -72,7 +76,9 @@ describe("FilterPopover", () => {
       });
       it('should show "case-sensitive" option to the user for "contains" filters', () => {
         const wrapper = mount(
-          <FilterPopover query={QUERY} filter={STRING_CONTAINS_FILTER} />,
+          <StaticMetadataProvider>
+            <FilterPopover query={QUERY} filter={STRING_CONTAINS_FILTER} />
+          </StaticMetadataProvider>,
         );
         expect(wrapper.find(CheckBox).length).toBe(1);
       });

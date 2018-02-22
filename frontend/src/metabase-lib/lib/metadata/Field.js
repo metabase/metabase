@@ -19,12 +19,15 @@ import {
   isMetric,
   isPK,
   isFK,
+  isEntityName,
   isCoordinate,
   getIconForField,
   getFieldType,
 } from "metabase/lib/schema_metadata";
 
 import type { FieldValues } from "metabase/meta/types/Field";
+
+import _ from "underscore";
 
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.
@@ -91,6 +94,9 @@ export default class Field extends Base {
   isFK() {
     return isFK(this);
   }
+  isEntityName() {
+    return isEntityName(this);
+  }
 
   isCoordinate() {
     return isCoordinate(this);
@@ -129,4 +135,78 @@ export default class Field extends Base {
       return fieldIdDimension.mbql();
     }
   };
+
+  /**
+   * Returns the remapped field, if any
+   */
+  remappedField(): ?Field {
+    const displayFieldId =
+      this.dimensions && this.dimensions.human_readable_field_id;
+    if (displayFieldId != null) {
+      return this.metadata.fields[displayFieldId];
+    }
+    // this enables "implicit" remappings from type/PK to type/Name on the same table,
+    // used in FieldValuesWidget, but not table/object detail listings
+    if (this.isPK()) {
+      const nameField = _.find(this.table.fields, f => f.isEntityName());
+      if (nameField) {
+        return nameField;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Returns the human readable remapped value, if any
+   */
+  remappedValue(value): ?string {
+    // TODO: Ugh. Should this be handled further up by the parameter widget?
+    if (this.isNumeric() && typeof value !== "number") {
+      value = parseFloat(value);
+    }
+    return this.remapping && this.remapping.get(value);
+  }
+
+  /**
+   * Returns whether the field has a human readable remapped value for this value
+   */
+  hasRemappedValue(value): ?string {
+    // TODO: Ugh. Should this be handled further up by the parameter widget?
+    if (this.isNumeric() && typeof value !== "number") {
+      value = parseFloat(value);
+    }
+    return this.remapping && this.remapping.has(value);
+  }
+
+  /**
+   * Returns true if this field can be searched, e.x. in filter or parameter widgets
+   */
+  isSearchable(): boolean {
+    // TODO: ...?
+    return this.isString();
+  }
+
+  /**
+   * Returns the field to be searched for this field, either the remapped field or itself
+   */
+  parameterSearchField(): ?Field {
+    let remappedField = this.remappedField();
+    if (remappedField && remappedField.isSearchable()) {
+      return remappedField;
+    }
+    if (this.isSearchable()) {
+      return this;
+    }
+    return null;
+  }
+
+  filterSearchField(): ?Field {
+    if (this.isPK()) {
+      if (this.isSearchable()) {
+        return this;
+      }
+    } else {
+      return this.parameterSearchField();
+    }
+  }
 }

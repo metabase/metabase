@@ -43,6 +43,7 @@ import RunButton from "metabase/query_builder/components/RunButton";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import Parameters from "metabase/parameters/components/Parameters";
 import CategoryWidget from "metabase/parameters/components/widgets/CategoryWidget";
+import ParameterFieldWidget from "metabase/parameters/components/widgets/ParameterFieldWidget";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import { LOAD_COLLECTIONS } from "metabase/questions/collections";
 import SharingPane from "metabase/public/components/widgets/SharingPane";
@@ -189,14 +190,10 @@ describe("parameters", () => {
       expect(app.find(Scalar).text()).toBe(COUNT_ALL);
 
       // test the parameter
-      click(
-        app
-          .find(Parameters)
-          .find("a")
-          .first(),
-      );
-      click(app.find(CategoryWidget).find('li h4[children="Doohickey"]'));
-      clickButton(app.find(CategoryWidget).find(".Button"));
+      const parameter = app.find(ParameterFieldWidget).first();
+      click(parameter.find("div").first());
+      click(parameter.find('span[children="Doohickey"]'));
+      clickButton(parameter.find(".Button"));
       click(app.find(RunButton));
       await store.waitForActions([RUN_QUERY, QUERY_COMPLETED]);
       expect(app.find(Scalar).text()).toBe(COUNT_DOOHICKEY);

@@ -207,7 +207,7 @@ export type FilterOptions = StringFilterOptions | TimeIntervalFilterOptions;
 export type SegmentFilter = ["SEGMENT", SegmentId];
 
 export type OrderByClause = Array<OrderBy>;
-export type OrderBy = [Field, "ascending" | "descending" | "asc" | "desc"];
+export type OrderBy = [Field, "descending" | "ascending"];
 
 export type LimitClause = number;
 
@@ -271,4 +271,4 @@ export type Expression = [
 export type ExpressionOperator = "+" | "-" | "*" | "/";
 export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
 
-export type FieldsClause = FieldId[];
+export type FieldsClause = Field[];

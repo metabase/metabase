@@ -5,6 +5,7 @@ import {
 import {
   deleteFieldDimension,
   fetchTableMetadata,
+  fetchFieldValues,
   updateFieldDimension,
   updateFieldValues,
 } from "metabase/redux/metadata";
@@ -71,6 +72,7 @@ describe("makeGetMergedParameterFieldValues", () => {
   it("should return the original field values if a single field id", async () => {
     const store = await createTestStore();
     await store.dispatch(fetchTableMetadata(3));
+    await store.dispatch(fetchFieldValues(PRODUCT_CATEGORY_ID));
 
     const getMergedParameterFieldValues = makeGetMergedParameterFieldValues();
     expect(
@@ -84,6 +86,8 @@ describe("makeGetMergedParameterFieldValues", () => {
     const store = await createTestStore();
     await store.dispatch(fetchTableMetadata(3));
     await store.dispatch(fetchTableMetadata(4));
+    await store.dispatch(fetchFieldValues(PRODUCT_CATEGORY_ID));
+    await store.dispatch(fetchFieldValues(REVIEW_RATING_ID));
 
     const getMergedParameterFieldValues = makeGetMergedParameterFieldValues();
     expect(

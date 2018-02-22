@@ -21,18 +21,26 @@ import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
 
+import Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase/meta/types/Dataset";
-import type { Field } from "metabase/meta/types/Field";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
 
 export type FormattingOptions = {
-  column?: Column,
+  column?: Column | Field,
   majorWidth?: number,
   type?: "axis" | "cell" | "tooltip",
-  comma?: boolean,
   jsx?: boolean,
+  // number options:
+  comma?: boolean,
   compact?: boolean,
+  round?: boolean,
+};
+
+const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
+  comma: true,
+  compact: false,
+  round: true,
 };
 
 const PRECISION_NUMBER_FORMATTER = d3.format(".2r");
@@ -47,7 +55,7 @@ const BINNING_DEGREES_FORMATTER = (value, binWidth) => {
 const RANGE_SEPARATOR = ` – `;
 
 export function formatNumber(number: number, options: FormattingOptions = {}) {
-  options = { comma: true, ...options };
+  options = { ...DEFAULT_NUMBER_OPTIONS, ...options };
   if (options.compact) {
     if (number === 0) {
       // 0 => 0
@@ -67,11 +75,14 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
     // numbers between 1 and -1 round to 2 significant digits with extra 0s stripped off
     return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
   } else {
-    // anything else rounds to at most 2 decimal points
+    // anything else rounds to at most 2 decimal points, unless disabled
+    if (options.round) {
+      number = d3.round(number, 2);
+    }
     if (options.comma) {
-      return FIXED_NUMBER_FORMATTER(d3.round(number, 2));
+      return FIXED_NUMBER_FORMATTER(number);
     } else {
-      return FIXED_NUMBER_FORMATTER_NO_COMMA(d3.round(number, 2));
+      return FIXED_NUMBER_FORMATTER_NO_COMMA(number);
     }
   }
 }
@@ -318,32 +329,22 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
 
   options = {
     jsx: false,
+    remap: true,
     comma: isNumber(column),
     ...options,
   };
 
-  // "column" may also be a field object
-  // $FlowFixMe: remapping is a special field added by Visualization.jsx or getMetadata selector
-  if (column && column.remapping && column.remapping.size > 0) {
-    // $FlowFixMe
-    const remappedValueSample = column.remapping.values().next().value;
-
-    // Even if the column only has a list of analyzed values without remappings, those values
-    // are keys in `remapping` array with value `undefined`
-    const hasSetRemappings = remappedValueSample !== undefined;
-    if (hasSetRemappings) {
-      // $FlowFixMe
-      if (column.remapping.has(value)) {
-        // $FlowFixMe
-        return column.remapping.get(value);
-      }
-
-      const remappedValueIsString = typeof remappedValueSample;
-      if (remappedValueIsString) {
-        // A simple way to hide intermediate ticks for a numeral value that has been remapped to a string
-        return null;
-      }
+  if (options.remap && column) {
+    // $FlowFixMe: column could be Field or Column
+    if (column.hasRemappedValue && column.hasRemappedValue(value)) {
+      // $FlowFixMe: column could be Field or Column
+      return column.remappedValue(value);
     }
+    // or it may be a raw column object with a "remapping" object
+    if (column.remapping instanceof Map && column.remapping.has(value)) {
+      return column.remapping.get(value);
+    }
+    // TODO: get rid of one of these two code paths?
   }
 
   if (value == undefined) {
@@ -448,7 +449,7 @@ export function duration(milliseconds: number) {
 
 // Removes trailing "id" from field names
 export function stripId(name: string) {
-  return name && name.replace(/ id$/i, "");
+  return name && name.replace(/ id$/i, "").trim();
 }
 
 export function slugify(name: string) {

@@ -3,7 +3,8 @@
   --brand-light-color: #cde3f8;
   --brand-saturated-color: #2d86d4;
 
-  --base-grey: #f8f8f8;
+  --base-grey: #f8f9fa;
+  --grey-5percent: color(var(--base-grey) shade(5%));
   --grey-1: color(var(--base-grey) shade(10%));
   --grey-2: color(var(--base-grey) shade(20%));
   --grey-3: color(var(--base-grey) shade(30%));
@@ -150,9 +151,12 @@
 .bg-gold {
   background-color: var(--gold-color);
 }
-.bg-purple {
+
+.bg-purple,
+.bg-purple-hover:hover {
   background-color: var(--purple-color);
 }
+
 .bg-green {
   background-color: var(--green-color);
 }
@@ -195,6 +199,9 @@
 .bg-grey-0,
 .bg-grey-0-hover:hover {
   background-color: var(--base-grey);
+}
+.bg-grey-05 {
+  background-color: var(--grey-5percent);
 }
 .bg-grey-1 {
   background-color: var(--grey-1);

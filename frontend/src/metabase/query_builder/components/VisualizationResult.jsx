@@ -1,6 +1,8 @@
 /* eslint "react/prop-types": "warn" */
 
 import React from "react";
+import { t, jt } from "c-3po";
+
 import VisualizationErrorMessage from "./VisualizationErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { datasetContainsNoResults } from "metabase/lib/dataset";

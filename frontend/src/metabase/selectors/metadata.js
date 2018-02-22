@@ -15,7 +15,7 @@ import Segment from "metabase-lib/lib/metadata/Segment";
 
 import _ from "underscore";
 import { shallowEqual } from "recompose";
-import { getFieldValues } from "metabase/lib/query/field";
+import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 
 import {
   getOperators,
@@ -98,7 +98,8 @@ export const getMetadata = createSelector(
     );
     hydrate(meta.tables, "breakout_options", t => getBreakouts(t.fields));
 
-    hydrate(meta.fields, "remapping", f => new Map(getFieldValues(f)));
+    hydrate(meta.fields, "values", f => getFieldValues(f));
+    hydrate(meta.fields, "remapping", f => new Map(getRemappings(f)));
 
     hydrateLookup(meta.databases, "tables", "id");
     hydrateLookup(meta.tables, "fields", "id");

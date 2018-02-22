@@ -1,5 +1,10 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import { t, jt } from "c-3po";
+import _ from "underscore";
+import cx from "classnames";
+import cxs from "cxs";
+
 import { getQuestionAlerts } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 import { deleteAlert, unsubscribeFromAlert } from "metabase/alert/alert";
@@ -14,9 +19,6 @@ import {
   CreateAlertModalContent,
   UpdateAlertModalContent,
 } from "metabase/query_builder/components/AlertModals";
-import _ from "underscore";
-import cx from "classnames";
-import cxs from "cxs";
 
 const unsubscribedClasses = cxs({
   marginLeft: "10px",

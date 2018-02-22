@@ -38,7 +38,8 @@ export default class ComponentsApp extends Component {
                   {Object.keys(component.propTypes).map(prop => (
                     <div>
                       {prop}{" "}
-                      {component.defaultProps[prop] !== undefined
+                      {component.defaultProps &&
+                      component.defaultProps[prop] !== undefined
                         ? "(default: " +
                           JSON.stringify(component.defaultProps[prop]) +
                           ")"

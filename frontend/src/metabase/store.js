@@ -39,7 +39,7 @@ export function getStore(reducers, history, intialState, enhancer = a => a) {
     thunkWithDispatchAction,
     promise,
     ...(DEBUG ? [logger] : []),
-    routerMiddleware(history),
+    ...(history ? [routerMiddleware(history)] : []),
   ];
 
   return createStore(

@@ -6,7 +6,6 @@ import {
   isPK as isTypePK,
   TYPE,
 } from "metabase/lib/types";
-import { getFieldValues } from "metabase/lib/query/field";
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
@@ -125,6 +124,8 @@ export const isMetric = col =>
 
 export const isFK = field => field && isTypeFK(field.special_type);
 export const isPK = field => field && isTypePK(field.special_type);
+export const isEntityName = field =>
+  isa(field && field.special_type, TYPE.Name);
 
 export const isAny = col => true;
 
@@ -191,23 +192,6 @@ function equivalentArgument(field, table) {
       type: "select",
       values: [{ key: true, name: t`True` }, { key: false, name: t`False` }],
     };
-  }
-
-  if (isCategory(field)) {
-    const values = getFieldValues(field);
-    if (values && values.length > 0) {
-      return {
-        type: "select",
-        values: values
-          .filter(([value, displayValue]) => value != null)
-          .map(([value, displayValue]) => ({
-            key: value,
-            // NOTE Atte Keinänen 8/7/17: Similar logic as in getHumanReadableValue of lib/query/field
-            name: displayValue ? displayValue : String(value),
-          }))
-          .sort((a, b) => (a.key === b.key ? 0 : a.key < b.key ? -1 : 1)),
-      };
-    }
   }
 
   if (isDate(field)) {
@@ -358,7 +342,7 @@ const OPERATORS_BY_TYPE_ORDERED = {
   ],
   [COORDINATE]: [
     { name: "=", verboseName: t`Is` },
-    { name: "!=", verboseName: t`Is no` },
+    { name: "!=", verboseName: t`Is not` },
     { name: "INSIDE", verboseName: t`Inside` },
   ],
   [BOOLEAN]: [

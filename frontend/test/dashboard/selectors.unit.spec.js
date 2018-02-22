@@ -1,3 +1,4 @@
+// import { getMetadata } from "metabase/selectors/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
 
 import { chain } from "icepick";
@@ -25,7 +26,10 @@ const STATE = {
   metadata: {
     databases: {},
     tables: {},
-    fields: {},
+    fields: {
+      1: { id: 1 },
+      2: { id: 2 },
+    },
     metrics: {},
     segments: {},
   },
@@ -44,6 +48,7 @@ describe("dashboard/selectors", () => {
         {
           id: 1,
           field_ids: [],
+          field_id: null,
         },
       ]);
     });
@@ -60,6 +65,7 @@ describe("dashboard/selectors", () => {
         {
           id: 1,
           field_ids: [],
+          field_id: null,
         },
       ]);
     });
@@ -76,6 +82,7 @@ describe("dashboard/selectors", () => {
         {
           id: 1,
           field_ids: [1],
+          field_id: 1,
         },
       ]);
     });
@@ -97,6 +104,7 @@ describe("dashboard/selectors", () => {
         {
           id: 1,
           field_ids: [1],
+          field_id: 1,
         },
       ]);
     });
@@ -118,6 +126,7 @@ describe("dashboard/selectors", () => {
         {
           id: 1,
           field_ids: [1],
+          field_id: 1,
         },
       ]);
     });
@@ -139,6 +148,7 @@ describe("dashboard/selectors", () => {
         {
           id: 1,
           field_ids: [1, 2],
+          field_id: null,
         },
       ]);
     });

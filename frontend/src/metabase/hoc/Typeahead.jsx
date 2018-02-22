@@ -18,6 +18,8 @@ const DEFAULT_OPTION_IS_EQUAL = (a, b) => a === b;
 export default ({
   optionFilter = DEFAULT_FILTER_OPTIONS,
   optionIsEqual = DEFAULT_OPTION_IS_EQUAL,
+  defaultFirstSuggestion = false,
+  defaultSingleSuggestion = false,
 }) => ComposedComponent =>
   class extends Component {
     static displayName = "Typeahead[" +
@@ -53,17 +55,23 @@ export default ({
         e.preventDefault();
         this.onPressDown();
       } else if (e.keyCode === KEYCODE_ENTER) {
-        e.preventDefault();
-        this.onSuggestionAccepted(this.state.selectedSuggestion);
+        if (this.state.selectedSuggestion != null) {
+          e.preventDefault();
+          this.onSuggestionAccepted(this.state.selectedSuggestion);
+        }
       }
     };
 
     componentWillReceiveProps({ options, value }) {
-      let filtered = value
+      const filtered = value
         ? options.filter(optionFilter.bind(null, value))
         : [];
+      const selectFirstSuggestion =
+        (defaultFirstSuggestion && filtered.length > 0) ||
+        (defaultSingleSuggestion && filtered.length === 1);
       this.setState({
         suggestions: filtered,
+        selectedSuggestion: selectFirstSuggestion ? filtered[0] : null,
         isOpen: filtered.length > 0,
       });
     }

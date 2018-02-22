@@ -168,6 +168,8 @@ export const MetabaseApi = {
   field_dimension_delete: DELETE("/api/field/:fieldId/dimension"),
   field_rescan_values: POST("/api/field/:fieldId/rescan_values"),
   field_discard_values: POST("/api/field/:fieldId/discard_values"),
+  field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
+  field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
   dataset_duration: POST("/api/dataset/duration"),
 };

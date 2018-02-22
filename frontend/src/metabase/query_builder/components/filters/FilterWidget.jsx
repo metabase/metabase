@@ -6,9 +6,9 @@ import Icon from "metabase/components/Icon.jsx";
 import FieldName from "../FieldName.jsx";
 import Popover from "metabase/components/Popover.jsx";
 import FilterPopover from "./FilterPopover.jsx";
+import Value from "metabase/components/Value";
 
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
-import { formatValue } from "metabase/lib/formatting";
 import { hasFilterOptions } from "metabase/lib/query/filter";
 
 import cx from "classnames";
@@ -16,6 +16,7 @@ import _ from "underscore";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { Filter } from "metabase/meta/types/Query";
+import type { Value as ValueType } from "metabase/meta/types/Dataset";
 
 type Props = {
   query: StructuredQuery,
@@ -55,10 +56,11 @@ export default class FilterWidget extends Component {
 
   renderOperatorFilter() {
     const { query, filter, maxDisplayValues } = this.props;
-    let [op, field, ...values] = filter;
-    if (hasFilterOptions(filter)) {
-      values = values.slice(0, -1);
-    }
+    let [op, field] = filter;
+    // $FlowFixMe
+    let values: ValueType[] = hasFilterOptions(filter)
+      ? filter.slice(2, -1)
+      : filter.slice(2);
 
     const dimension = query.parseFieldReference(field);
     if (!dimension) {
@@ -74,10 +76,11 @@ export default class FilterWidget extends Component {
     } else if (dimension.field().isDate() && !dimension.field().isTime()) {
       formattedValues = generateTimeFilterValuesDescriptions(filter);
     } else {
-      // TODO Atte Keinänen 7/16/17: Move formatValue to metabase-lib
       formattedValues = values
         .filter(value => value !== undefined)
-        .map(value => formatValue(value, { column: dimension.field() }));
+        .map((value, index) => (
+          <Value key={index} value={value} column={dimension.field()} remap />
+        ));
     }
 
     return (

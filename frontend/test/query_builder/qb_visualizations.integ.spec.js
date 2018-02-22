@@ -24,7 +24,7 @@ import { LOAD_COLLECTIONS } from "metabase/questions/collections";
 import { CardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 import VisualizationSettings from "metabase/query_builder/components/VisualizationSettings";
-import { TestPopover } from "metabase/components/Popover";
+import Popover from "metabase/components/Popover";
 
 const timeBreakoutQuestion = Question.create({
   databaseId: 1,
@@ -100,7 +100,7 @@ describe("Query Builder visualization logic", () => {
     const vizSettingsTrigger = vizSettings.find("a").first();
     click(vizSettingsTrigger);
     const areaChartOption = vizSettings
-      .find(TestPopover)
+      .find(Popover)
       .find("span")
       .filterWhere(elem => /Area/.test(elem.text()));
     click(areaChartOption);

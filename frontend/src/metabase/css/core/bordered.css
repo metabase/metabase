@@ -66,6 +66,9 @@
 .border-grey-1 {
   border-color: var(--grey-1) !important;
 }
+.border-grey-2 {
+  border-color: var(--grey-2) !important;
+}
 
 .border-green {
   border-color: var(--green-color) !important;

@@ -1,7 +1,9 @@
 import React, { Component } from "react";
+import { connect } from "react-redux";
+import { t, jt } from "c-3po";
+
 import Button from "metabase/components/Button";
 import SchedulePicker from "metabase/components/SchedulePicker";
-import { connect } from "react-redux";
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
 import ModalContent from "metabase/components/ModalContent";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";

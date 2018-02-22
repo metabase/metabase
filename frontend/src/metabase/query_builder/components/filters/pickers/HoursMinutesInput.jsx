@@ -1,6 +1,6 @@
 import React from "react";
 
-import NumericInput from "./NumericInput";
+import NumericInput from "metabase/components/NumericInput.jsx";
 import Icon from "metabase/components/Icon";
 
 import cx from "classnames";

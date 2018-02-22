@@ -3,6 +3,7 @@ import {
   createTestStore,
 } from "__support__/integrated_tests";
 import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
+import { delay } from "metabase/lib/promise";
 
 import React from "react";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
@@ -15,14 +16,16 @@ import {
   setQuerySourceTable,
 } from "metabase/query_builder/actions";
 
-import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
+import {
+  FETCH_TABLE_METADATA,
+  FETCH_FIELD_VALUES,
+} from "metabase/redux/metadata";
 
 import FieldList, {
   DimensionPicker,
 } from "metabase/query_builder/components/FieldList";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 
-import CheckBox from "metabase/components/CheckBox";
 import FilterWidget from "metabase/query_builder/components/filters/FilterWidget";
 import FieldName from "metabase/query_builder/components/FieldName";
 import RunButton from "metabase/query_builder/components/RunButton";
@@ -82,26 +85,26 @@ describe("QueryBuilder editor bar", () => {
       click(ratingFieldButton);
     });
 
-    it("lets you see its field values in filter popover", () => {
+    it("lets you see its field values in filter popover", async () => {
+      await store.waitForActions([FETCH_FIELD_VALUES]);
+
+      // FIXME: TokenField asynchronously updates displayed options :(
+      await delay(10);
+
       // Same as before applies to FilterPopover too: individual list items could be in their own components
       const filterPopover = qb.find(FilterPopover);
       const fieldItems = filterPopover.find("li");
-      expect(fieldItems.length).toBe(5);
+      expect(fieldItems.length).toBe(5 + 1); // NOTE: bleh, one for the input
 
       // should be in alphabetical order
-      expect(fieldItems.first().text()).toBe("1");
+      expect(fieldItems.at(1).text()).toBe("1");
       expect(fieldItems.last().text()).toBe("5");
     });
 
     it("lets you set 'Rating is 5' filter", async () => {
       const filterPopover = qb.find(FilterPopover);
-      const fieldItems = filterPopover.find("li");
-      const widgetFieldItem = fieldItems.last();
-      const widgetCheckbox = widgetFieldItem.find(CheckBox);
 
-      expect(widgetCheckbox.props().checked).toBe(false);
-      click(widgetFieldItem.children().first());
-      expect(widgetCheckbox.props().checked).toBe(true);
+      setInputValue(filterPopover.find("input"), "5");
 
       const addFilterButton = filterPopover.find(
         'button[children="Add filter"]',
@@ -114,31 +117,6 @@ describe("QueryBuilder editor bar", () => {
       const filterWidget = qb.find(FilterWidget);
       expect(filterWidget.length).toBe(1);
       expect(filterWidget.text()).toBe("Rating is equal to5");
-    });
-
-    it("lets you set 'Rating is 5 or 4' filter", async () => {
-      // reopen the filter popover by clicking filter widget
-      const filterWidget = qb.find(FilterWidget);
-      click(filterWidget.find(FieldName));
-
-      const filterPopover = qb.find(FilterPopover);
-      const fieldItems = filterPopover.find("li");
-      const widgetFieldItem = fieldItems.at(3);
-      const gadgetCheckbox = widgetFieldItem.find(CheckBox);
-
-      expect(gadgetCheckbox.props().checked).toBe(false);
-      click(widgetFieldItem.children().first());
-      expect(gadgetCheckbox.props().checked).toBe(true);
-
-      const addFilterButton = filterPopover.find(
-        'button[children="Update filter"]',
-      );
-      clickButton(addFilterButton);
-
-      await store.waitForActions([SET_DATASET_QUERY]);
-
-      expect(qb.find(FilterPopover).length).toBe(0);
-      expect(filterWidget.text()).toBe("Rating is equal to2 selections");
     });
 
     it("lets you remove the added filter", async () => {
@@ -174,16 +152,17 @@ describe("QueryBuilder editor bar", () => {
     it("lets you see a correct number of operators in filter popover", () => {
       const filterPopover = qb.find(FilterPopover);
 
-      const operatorSelector = filterPopover.find(OperatorSelector);
-      const moreOptionsIcon = operatorSelector.find(".Icon-chevrondown");
-      click(moreOptionsIcon);
+      const optionsIcon = filterPopover.find(`a[children="Options"]`);
 
+      click(optionsIcon);
+
+      const operatorSelector = filterPopover.find(OperatorSelector);
       expect(operatorSelector.find("button").length).toBe(9);
     });
 
     it("lets you set 'ID is 10' filter", async () => {
       const filterPopover = qb.find(FilterPopover);
-      const filterInput = filterPopover.find("textarea");
+      const filterInput = filterPopover.find("input");
       setInputValue(filterInput, "10");
 
       const addFilterButton = filterPopover.find(
@@ -199,39 +178,17 @@ describe("QueryBuilder editor bar", () => {
       expect(filterWidget.text()).toBe("ID is equal to10");
     });
 
-    it("lets you update the filter to 'ID is 10 or 11'", async () => {
-      const filterWidget = qb.find(FilterWidget);
-      click(filterWidget.find(FieldName));
-
-      const filterPopover = qb.find(FilterPopover);
-      const filterInput = filterPopover.find("textarea");
-
-      // Intentionally use a value with lots of extra spaces
-      setInputValue(filterInput, "  10,      11");
-
-      const addFilterButton = filterPopover.find(
-        'button[children="Update filter"]',
-      );
-      clickButton(addFilterButton);
-
-      await store.waitForActions([SET_DATASET_QUERY]);
-
-      expect(qb.find(FilterPopover).length).toBe(0);
-      expect(filterWidget.text()).toBe("ID is equal to2 selections");
-    });
-
     it("lets you update the filter to 'ID is between 1 or 100'", async () => {
       const filterWidget = qb.find(FilterWidget);
       click(filterWidget.find(FieldName));
 
       const filterPopover = qb.find(FilterPopover);
+      click(filterPopover.find(`a[children="Options"]`));
       const operatorSelector = filterPopover.find(OperatorSelector);
       clickButton(operatorSelector.find('button[children="Between"]'));
 
-      const betweenInputs = filterPopover.find("textarea");
+      const betweenInputs = filterPopover.find("input");
       expect(betweenInputs.length).toBe(2);
-
-      expect(betweenInputs.at(0).props().value).toBe("10, 11");
 
       setInputValue(betweenInputs.at(1), "asdasd");
       const updateFilterButton = filterPopover.find(

@@ -38,14 +38,15 @@ modal.default = modal.TestModal;
 import * as tooltip from "metabase/components/Tooltip";
 tooltip.default = tooltip.TestTooltip;
 
-import * as popover from "metabase/components/Popover";
-popover.default = popover.TestPopover;
+jest.mock("metabase/components/Popover.jsx");
 
 import * as bodyComponent from "metabase/components/BodyComponent";
 bodyComponent.default = bodyComponent.TestBodyComponent;
 
 import * as table from "metabase/visualizations/visualizations/Table";
 table.default = table.TestTable;
+
+jest.mock("metabase/hoc/Remapped");
 
 // Replace addEventListener with a test implementation which collects all event listeners to `eventListeners` map
 export let eventListeners = {};

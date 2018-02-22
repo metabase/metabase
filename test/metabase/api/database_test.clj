@@ -273,7 +273,7 @@
 (defn- field-details [field]
   (merge
    default-field-details
-   (match-$ (hydrate/hydrate field :values)
+   (match-$ field
      {:updated_at          $
       :id                  $
       :raw_column_id       $
@@ -281,11 +281,9 @@
       :last_analyzed       $
       :fingerprint         $
       :fingerprint_version $
-      :fk_target_field_id  $
-      :values              $})))
+      :fk_target_field_id  $})))
 
-;; ## GET /api/meta/table/:id/query_metadata
-;; TODO - add in example with Field :values
+;; ## GET /api/database/:id/metadata
 (expect
   (merge default-db-details
          (match-$ (db)
@@ -302,21 +300,23 @@
                                    :name         "CATEGORIES"
                                    :display_name "Categories"
                                    :fields       [(assoc (field-details (Field (id :categories :id)))
-                                                    :table_id        (id :categories)
-                                                    :special_type    "type/PK"
-                                                    :name            "ID"
-                                                    :display_name    "ID"
-                                                    :database_type   "BIGINT"
-                                                    :base_type       "type/BigInteger"
-                                                    :visibility_type "normal")
+                                                    :table_id         (id :categories)
+                                                    :special_type     "type/PK"
+                                                    :name             "ID"
+                                                    :display_name     "ID"
+                                                    :database_type    "BIGINT"
+                                                    :base_type        "type/BigInteger"
+                                                    :visibility_type  "normal"
+                                                    :has_field_values "search")
                                                   (assoc (field-details (Field (id :categories :name)))
-                                                    :table_id           (id :categories)
-                                                    :special_type       "type/Name"
-                                                    :name               "NAME"
-                                                    :display_name       "Name"
-                                                    :database_type      "VARCHAR"
-                                                    :base_type          "type/Text"
-                                                    :visibility_type    "normal")]
+                                                    :table_id         (id :categories)
+                                                    :special_type     "type/Name"
+                                                    :name             "NAME"
+                                                    :display_name     "Name"
+                                                    :database_type    "VARCHAR"
+                                                    :base_type        "type/Text"
+                                                    :visibility_type  "normal"
+                                                    :has_field_values "list")]
                                    :segments     []
                                    :metrics      []
                                    :rows         75
