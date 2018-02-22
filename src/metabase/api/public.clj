@@ -326,14 +326,14 @@
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
   (api/check-public-sharing-enabled)
-  (let [card-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+  (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
     (card-field-remapped-values card-id field-id remapped-id value)))
 
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/remapping/:remapped-id"
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
   (api/check-public-sharing-enabled)
-  (let [dashboard-id (db/select-one-id Card :public_uuid uuid, :archived false)]
+  (let [dashboard-id (db/select-one-id Dashboard :public_uuid uuid, :archived false)]
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 
