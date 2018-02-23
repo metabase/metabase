@@ -7,6 +7,7 @@ import { t, jt } from "c-3po";
 import TokenField from "metabase/components/TokenField";
 import RemappedValue from "metabase/containers/RemappedValue";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import Icon from "metabase/components/Icon";
 
 import AutoExpanding from "metabase/hoc/AutoExpanding";
 
@@ -319,7 +320,14 @@ export class FieldValuesWidget extends Component {
           onFocus={() => this.setState({ focused: true })}
           onBlur={() => this.setState({ focused: false })}
         />
-        {loadingState === "LOADING" ? (
+        {this.isSearchable() && loadingState === "INIT" ? (
+          <div
+            className="flex layout-centered align-center"
+            style={{ minHeight: 100 }}
+          >
+            <Icon name="search" size={32} className="text-grey-1" />
+          </div>
+        ) : this.isSearchable() && loadingState === "LOADING" ? (
           <div
             className="flex layout-centered align-center"
             style={{ minHeight: 100 }}
