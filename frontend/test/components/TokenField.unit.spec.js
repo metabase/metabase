@@ -363,6 +363,27 @@ describe("TokenField", () => {
       });
       expect(preventDefault).toHaveBeenCalled();
     });
+    it('should paste "1,2,3" as multiple values', () => {
+      const preventDefault = jest.fn();
+      component = mount(
+        <TokenFieldWithStateAndDefaults
+          // return null for empty string since it's not a valid
+          parseFreeformValue={value => value || null}
+          updateOnInputChange
+          multi
+        />,
+      );
+      input = component.find("input");
+      input.simulate("paste", {
+        clipboardData: {
+          getData: () => "1,2,3",
+        },
+        preventDefault,
+      });
+      expect(values()).toEqual(["1", "2", "3"]);
+      // prevent pasting into <input>
+      expect(preventDefault).toHaveBeenCalled();
+    });
   });
   describe("with multi=false", () => {
     it("should not prevent blurring on tab", () => {
@@ -382,6 +403,26 @@ describe("TokenField", () => {
         preventDefault: preventDefault,
       });
       expect(preventDefault).not.toHaveBeenCalled();
+    });
+    it('should paste "1,2,3" as one value', () => {
+      const preventDefault = jest.fn();
+      component = mount(
+        <TokenFieldWithStateAndDefaults
+          // return null for empty string since it's not a valid
+          parseFreeformValue={value => value || null}
+          updateOnInputChange
+        />,
+      );
+      input = component.find("input");
+      input.simulate("paste", {
+        clipboardData: {
+          getData: () => "1,2,3",
+        },
+        preventDefault,
+      });
+      expect(values()).toEqual(["1,2,3"]);
+      // prevent pasting into <input>
+      expect(preventDefault).toHaveBeenCalled();
     });
   });
 });

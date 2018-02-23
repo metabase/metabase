@@ -340,11 +340,14 @@ export default class TokenField extends Component {
 
   onInputPaste = (e: SyntheticClipboardEvent) => {
     if (this.props.parseFreeformValue) {
+      e.preventDefault();
       const string = e.clipboardData.getData("Text");
-      const values = string
-        .split(/\n|,/g)
-        .map(this.props.parseFreeformValue)
-        .filter(s => s);
+      const values = this.props.multi
+        ? string
+            .split(/\n|,/g)
+            .map(this.props.parseFreeformValue)
+            .filter(s => s)
+        : [string];
       if (values.length > 0) {
         this.addValue(values);
       }
