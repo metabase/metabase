@@ -1,6 +1,7 @@
 (ns metabase.models.params
   "Utility functions for dealing with parameters for Dashboards and Cards."
-  (:require [metabase.query-processor.middleware.expand :as ql]
+  (:require [clojure.set :as set]
+            [metabase.query-processor.middleware.expand :as ql]
             metabase.query-processor.interface
             [metabase
              [db :as mdb]
@@ -146,8 +147,9 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn dashboard->param-field-ids
-  "Return a set of Field IDs referenced by parameters in Cards in this DASHBOARD, or `nil` if none are referenced."
+(defn- dashboard->parameter-mapping-field-ids
+  "Return the IDs of any Fields referenced directly by the Dashboard's `:parameters` (i.e., 'explicit' parameters) by
+  looking at the appropriate `:parameter_mappings` entries for its Dashcards."
   [dashboard]
   (when-let [ids (seq (for [dashcard (:ordered_cards dashboard)
                             param    (:parameter_mappings dashcard)
@@ -155,6 +157,26 @@
                             :when    field-id]
                         field-id))]
     (set ids)))
+
+(declare card->template-tag-field-ids)
+
+(defn- dashboard->card-param-field-ids
+  "Return the IDs of any Fields referenced in the 'implicit' template tag field filter parameters for native queries in
+  the Cards in `dashboard`."
+  [dashboard]
+  (reduce
+   set/union
+   (for [{card :card} (:ordered_cards dashboard)]
+     (card->template-tag-field-ids card))))
+
+(defn dashboard->param-field-ids
+  "Return a set of Field IDs referenced by parameters in Cards in this DASHBOARD, or `nil` if none are referenced. This
+  also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters."
+  [dashboard]
+  (let [dashboard (hydrate dashboard [:ordered_cards :card])]
+    (set/union
+     (dashboard->parameter-mapping-field-ids dashboard)
+     (dashboard->card-param-field-ids dashboard))))
 
 (defn- dashboard->param-field-values
   "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in DASHBOARD,

@@ -228,6 +228,8 @@
        (when-let [table-id (db/select-one-field :table_id Field :id field-id, :special_type (mdb/isa :type/PK))]
          (db/exists? Field :id search-field-id, :table_id table-id, :special_type (mdb/isa :type/Name))))))
 
+
+;; FIXME
 (defn- check-field-is-referenced-by-dashboard
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
   404 Exception."
@@ -238,7 +240,7 @@
 (defn card-and-field-id->values
   "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id`."
   [card-id field-id]
-  ; (check-field-is-referenced-by-card field-id card-id)
+  (check-field-is-referenced-by-card field-id card-id)
   (field-api/field->values (Field field-id)))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/values"
@@ -277,8 +279,8 @@
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
   documentation for a more detailed explanation of exactly what this does."
   [dashboard-id field-id search-id value limit]
-  ; (check-field-is-referenced-by-dashboard field-id dashboard-id)
-  ; (check-search-field-is-allowed field-id search-id)
+  (check-field-is-referenced-by-dashboard field-id dashboard-id)
+  (check-search-field-is-allowed field-id search-id)
   (field-api/search-values (Field field-id) (Field search-id) value limit))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
@@ -303,9 +305,9 @@
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
 (defn- field-remapped-values [field-id remapped-field-id, ^String value-str]
-  ;; TODO - how do we check that `remapped-field` is allowed to be used here????????
   (let [field          (api/check-404 (Field field-id))
         remapped-field (api/check-404 (Field remapped-field-id))]
+    (check-search-field-is-allowed field remapped-field)
     (field-api/remapped-value field remapped-field (field-api/parse-query-param-value-for-field field value-str))))
 
 (defn card-field-remapped-values
@@ -319,7 +321,7 @@
   "Return the reampped Field values for a Field referenced by a *Dashboard*. This explanation is almost useless, so see
   the one in `metabase.api.field/remapped-value` if you would actually like to understand what is going on here."
   [dashboard-id field-id remapped-field-id, ^String value-str]
-  ; (check-field-is-referenced-by-dashboard field-id dashboard-id)
+  (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (field-remapped-values field-id remapped-field-id value-str))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/remapping/:remapped-id"
