@@ -81,7 +81,10 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
 
     if (!isFocused) {
       return (
-        <div className="flex-full" onClick={() => focusChanged(true)}>
+        <div
+          className="flex-full cursor-pointer"
+          onClick={() => focusChanged(true)}
+        >
           {value.length > 0 ? (
             ParameterFieldWidget.format(value, field)
           ) : (
