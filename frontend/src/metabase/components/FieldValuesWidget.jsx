@@ -279,7 +279,9 @@ export class FieldValuesWidget extends Component {
                   ) : this.isSearchable() && loadingState === "LOADED" ? (
                     <OptionsMessage
                       message={jt`No matching ${(
-                        <strong>&nbsp;{searchField.display_name}&nbsp;</strong>
+                        <strong>
+                          &nbsp;{(searchField || field).display_name}&nbsp;
+                        </strong>
                       )} found.`}
                     />
                   ) : null)
