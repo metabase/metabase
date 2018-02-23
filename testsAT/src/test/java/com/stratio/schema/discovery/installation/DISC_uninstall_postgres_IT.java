@@ -10,7 +10,7 @@ public class DISC_uninstall_postgres_IT extends BaseTest {
 
     public DISC_uninstall_postgres_IT() {}
 
-    @Test(enabled = true, groups = {"unInstall_postgres"})
+    @Test(enabled = true, groups = {"purge_postgres"})
     public void DISC_uninstall_postgres() throws Exception{
         new CucumberRunner(this.getClass()).runCukes();
     }

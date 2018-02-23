@@ -13,11 +13,6 @@ import com.stratio.qa.specs.CommonG;
 import java.net.Socket;
 import java.nio.channels.ServerSocketChannel;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.util.Properties;
-import static com.stratio.qa.assertions.Assertions.assertThat;
-
 public class Common extends CommonG {
 
     public Common(){
@@ -26,7 +21,6 @@ public class Common extends CommonG {
 
     private ServerSocketChannel serverSocket;
     private Socket socket;
-    Connection myConnection = null;
 
     public ServerSocketChannel getServerSocket() {
         return serverSocket;
@@ -42,14 +36,6 @@ public class Common extends CommonG {
 
     public void setSocket(Socket socket) {
         this.socket = socket;
-    }
-
-    /*
-     * @return connection object
-     *
-     */
-    public Connection getConnection() {
-        return this.myConnection;
     }
 
 }

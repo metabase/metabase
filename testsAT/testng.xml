@@ -27,10 +27,10 @@
         </test>
 
 
-         <test name="uninstallationDiscovery" preserve-order="true">
+         <test name="purgeDiscovery" preserve-order="true">
              <groups>
                  <run>
-                     <include name="unInstall_discovery"/>
+                     <include name="purge_discovery"/>
                  </run>
              </groups>
 
@@ -40,10 +40,10 @@
          </test>
 
 
-         <test name="uninstallationPostgres" preserve-order="true">
+         <test name="purgePostgres" preserve-order="true">
              <groups>
                  <run>
-                     <include name="unInstall_postgres"/>
+                     <include name="purge_postgres"/>
                  </run>
              </groups>
 
