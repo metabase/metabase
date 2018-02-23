@@ -338,17 +338,23 @@ export default class FilterPopover extends Component {
             <h3 className="mx1">-</h3>
             <h3 className="text-default">{formatField(field)}</h3>
 
-            <a
-              className="ml-auto flex align-center text-grey-3 pl4"
-              onClick={() => this.setState({ showOperator: !showOperator })}
-            >
-              {!showOperator && <h3>{operator && operator.verboseName}</h3>}
-              <Icon
-                name={showOperator ? "chevronup" : "chevrondown"}
-                size={12}
-                className="mx1"
-              />
-            </a>
+            {!isTime(field) && !isDate(field) ? (
+              <a
+                className="ml-auto flex align-center pl4"
+                onClick={() => this.setState({ showOperator: !showOperator })}
+              >
+                {!showOperator && (
+                  <h3 className="text-default">
+                    {operator && operator.verboseName}
+                  </h3>
+                )}
+                <Icon
+                  name={showOperator ? "chevronup" : "chevrondown"}
+                  size={12}
+                  className="mx1 text-grey-3"
+                />
+              </a>
+            ) : null}
           </div>
           {isTime(field) ? (
             <TimePicker
