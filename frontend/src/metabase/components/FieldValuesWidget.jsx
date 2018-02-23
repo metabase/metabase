@@ -8,6 +8,8 @@ import TokenField from "metabase/components/TokenField";
 import RemappedValue from "metabase/containers/RemappedValue";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
+import AutoExpanding from "metabase/hoc/AutoExpanding";
+
 import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
@@ -37,6 +39,7 @@ type Props = {
   maxResults: number,
   style?: { [key: string]: string | number },
   placeholder?: string,
+  maxWidth?: number,
 };
 
 type State = {
@@ -46,6 +49,7 @@ type State = {
   lastValue: string,
 };
 
+@AutoExpanding
 export class FieldValuesWidget extends Component {
   props: Props;
   state: State;
@@ -67,6 +71,7 @@ export class FieldValuesWidget extends Component {
     maxResults: MAX_SEARCH_RESULTS,
     alwaysShowOptions: true,
     style: {},
+    maxWidth: 500,
   };
 
   componentWillMount() {
@@ -226,7 +231,12 @@ export class FieldValuesWidget extends Component {
     }
 
     return (
-      <div>
+      <div
+        style={{
+          width: this.props.expand ? this.props.maxWidth : null,
+          maxWidth: this.props.maxWidth,
+        }}
+      >
         <TokenField
           value={value.filter(v => v != null)}
           onChange={onChange}

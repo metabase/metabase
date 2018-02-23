@@ -115,6 +115,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
               borderWidth: 2,
               minWidth: 182,
             }}
+            maxWidth={400}
           />
           <div className="flex p1">
             <Button
