@@ -20,6 +20,7 @@ import { isDate, isTime } from "metabase/lib/schema_metadata";
 import { formatField, singularize } from "metabase/lib/formatting";
 
 import cx from "classnames";
+import _ from "underscore";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type {
@@ -107,7 +108,7 @@ export default class FilterPopover extends Component {
     let { filter } = this.state;
     if (filter[0] !== operator) {
       filter = this._updateOperator(filter, operator);
-      this.setState({ filter });
+      this.setState({ filter, showOperator: false });
     }
   };
 
@@ -198,6 +199,7 @@ export default class FilterPopover extends Component {
     // $FlowFixMe
     this.setState({
       filter: [...filter.slice(0, 1), null, ...filter.slice(2)],
+      showOperator: false,
     });
   };
 
@@ -290,10 +292,10 @@ export default class FilterPopover extends Component {
 
   render() {
     const { query } = this.props;
-    const { filter } = this.state;
-    const [operator, fieldRef] = filter;
+    const { filter, showOperator } = this.state;
+    const [operatorName, fieldRef] = filter;
 
-    if (operator === "SEGMENT" || fieldRef == undefined) {
+    if (operatorName === "SEGMENT" || fieldRef == undefined) {
       return (
         <div className="FilterPopover">
           <FieldList
@@ -311,6 +313,7 @@ export default class FilterPopover extends Component {
     } else {
       let { table, field } = query.table().fieldTarget(fieldRef);
       const dimension = query.parseFieldReference(fieldRef);
+      const operator = _.findWhere(field.operators, { name: operatorName });
       return (
         <div
           style={{
@@ -333,12 +336,15 @@ export default class FilterPopover extends Component {
             <h3 className="text-default">{formatField(field)}</h3>
 
             <a
-              className="ml-auto text-purple"
-              onClick={() =>
-                this.setState({ showOperator: !this.state.showOperator })
-              }
+              className="ml-auto flex align-center text-grey-3"
+              onClick={() => this.setState({ showOperator: !showOperator })}
             >
-              {t`Options`}
+              <h3>{operator && operator.verboseName}</h3>
+              <Icon
+                name={showOperator ? "chevronup" : "chevrondown"}
+                size={12}
+                className="mx1"
+              />
             </a>
           </div>
           {isTime(field) ? (
@@ -355,9 +361,9 @@ export default class FilterPopover extends Component {
             />
           ) : (
             <div>
-              {this.state.showOperator && (
+              {showOperator && (
                 <OperatorSelector
-                  operator={filter[0]}
+                  operator={operatorName}
                   operators={field.operators}
                   onOperatorChange={this.setOperator}
                 />
@@ -374,7 +380,7 @@ export default class FilterPopover extends Component {
                   ? // DatePicker uses a different set of operator objects
                     getOperator(filter)
                   : // Normal operators defined in schema_metadata
-                    field.operator && field.operator(operator)
+                    field.operator && field.operator(operatorName)
               }
             />
             <button
