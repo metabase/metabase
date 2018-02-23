@@ -518,17 +518,25 @@ export default class TokenField extends Component {
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {value.map((v, index) => (
-          <li key={v} className={`mt1 ml1 py1 pl2 pr1 rounded bg-grey-05`}>
+          <li
+            key={v}
+            className={cx(
+              `mt1 ml1 py1 pl2 rounded bg-grey-05`,
+              multi ? "pr1" : "pr2",
+            )}
+          >
             <span className="text-bold">{valueRenderer(v)}</span>
-            <a
-              className="text-grey-3 text-default-hover px1"
-              onClick={e => {
-                this.removeValue(v);
-                e.preventDefault();
-              }}
-            >
-              <Icon name="close" className="" size={12} />
-            </a>
+            {multi && (
+              <a
+                className="text-grey-3 text-default-hover px1"
+                onClick={e => {
+                  this.removeValue(v);
+                  e.preventDefault();
+                }}
+              >
+                <Icon name="close" className="" size={12} />
+              </a>
+            )}
           </li>
         ))}
         <li className="flex-full mr1 py1 pl1 mt1 bg-white">
