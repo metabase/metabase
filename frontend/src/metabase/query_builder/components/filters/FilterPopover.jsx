@@ -374,7 +374,7 @@ export default class FilterPopover extends Component {
               {this.renderPicker(filter, field)}
             </div>
           )}
-          <div className="FilterPopover-footer border-top flex align-center p2">
+          <div className="FilterPopover-footer border-top flex align-center p1 pl2">
             <FilterOptions
               filter={filter}
               onFilterChange={this.setFilter}
@@ -388,7 +388,7 @@ export default class FilterPopover extends Component {
             />
             <button
               data-ui-tag="add-filter"
-              className={cx("Button Button--purple ml-auto", {
+              className={cx("Button Button--purple Button--medium ml-auto", {
                 disabled: !this.isValid(),
               })}
               onClick={() => this.commitFilter(this.state.filter)}

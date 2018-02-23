@@ -123,6 +123,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
           <div className="flex p1">
             <Button
               primary
+              medium
               className="ml-auto"
               onClick={() => {
                 setValue(value.length > 0 ? value : null);
@@ -134,19 +135,6 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
           </div>
         </Popover>
       );
-      // return (
-      //     <FieldSearchInput
-      //         value={value}
-      //         onChange={setValue}
-      //         isFocused={isFocused}
-      //         onFocus={() => focusChanged(true)}
-      //         onBlur={() => focusChanged(false)}
-      //         autoFocus={this.state.isFocused}
-      //         placeholder={isEditing ? "Enter a default value..." : defaultPlaceholder}
-      //         field={field}
-      //         searchField={field && field.parameterSearchField()}
-      //     />
-      // )
     }
   }
 }
