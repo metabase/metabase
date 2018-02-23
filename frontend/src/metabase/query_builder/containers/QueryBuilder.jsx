@@ -8,6 +8,7 @@ import cx from "classnames";
 import _ from "underscore";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
+import { loadEntities } from "metabase/questions/questions";
 
 import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 
@@ -52,6 +53,7 @@ import {
 } from "../selectors";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
+import { getVisibleEntities } from "metabase/questions/selectors";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as actions from "../actions";
@@ -120,6 +122,10 @@ const mapStateToProps = (state, props) => {
     loadTableAndForeignKeysFn: loadTableAndForeignKeys,
     autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),
     instanceSettings: getSettings(state),
+
+    cards: getVisibleEntities(state, {
+        entityType: "cards",
+    }) || [],
   };
 };
 
@@ -127,6 +133,7 @@ const getURL = location => location.pathname + location.search + location.hash;
 
 const mapDispatchToProps = {
   ...actions,
+  loadEntities,
   onChangeLocation: push,
 };
 
@@ -143,6 +150,7 @@ export default class QueryBuilder extends Component {
   }
 
   componentWillMount() {
+    this.loadEntities();
     this.props.initializeQB(this.props.location, this.props.params);
   }
 
@@ -203,6 +211,11 @@ export default class QueryBuilder extends Component {
       viz.style.opacity = 0.2;
     }
   };
+
+  loadEntities() {
+    // TODO (je): only fetch if we're a special raw query using a stored question for the filter
+    this.props.loadEntities("cards");
+  }
 
   render() {
     return (

@@ -1,6 +1,7 @@
 /* @flow weak */
 
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon.jsx";
 import TagEditorParam from "./TagEditorParam.jsx";
@@ -10,6 +11,8 @@ import { t } from "c-3po";
 import cx from "classnames";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { loadEntities } from "metabase/questions/questions";
+import { getVisibleEntities } from "metabase/questions/selectors";
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { TableId } from "metabase/meta/types/Table";
 import type { Database } from "metabase/meta/types/Database";
@@ -32,6 +35,19 @@ type State = {
   section: "help" | "settings",
 };
 
+const mapStateToProps = (state, props) => {
+  return {
+    collections: getVisibleEntities(state, {
+        entityType: "collections",
+    }) || [],
+  };
+};
+
+const mapDispatchToProps = {
+  loadEntities
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class TagEditorSidebar extends Component {
   props: Props;
   state: State = {
@@ -43,9 +59,14 @@ export default class TagEditorSidebar extends Component {
     onClose: PropTypes.func.isRequired,
     updateTemplateTag: PropTypes.func.isRequired,
     databaseFields: PropTypes.array,
+    collections: PropTypes.array,
     setDatasetQuery: PropTypes.func.isRequired,
     sampleDatasetId: PropTypes.number,
   };
+
+  componentWillMount() {
+    this.props.loadEntities("collections");
+  }
 
   setSection(section) {
     this.setState({ section: section });
