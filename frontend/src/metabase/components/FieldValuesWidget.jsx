@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t, jt } from "c-3po";
 
 import TokenField from "metabase/components/TokenField";
 import RemappedValue from "metabase/containers/RemappedValue";
@@ -257,17 +257,21 @@ export class FieldValuesWidget extends Component {
               autoLoad={false}
             />
           )}
-          layoutRenderer={({ valuesList, optionsList, focused, onClose }) => (
+          layoutRenderer={({ valuesList, optionsList, isFiltered }) => (
             <div>
               {valuesList}
               {this.props.alwaysShowOptions || this.state.focused
                 ? optionsList ||
-                  (this.hasList() ? (
+                  (this.hasList() && !isFiltered ? (
                     <OptionsMessage
                       message={t`Including every option in your filter probably won’t do much…`}
                     />
                   ) : this.isSearchable() && loadingState === "LOADED" ? (
-                    <OptionsMessage message={t`No matching results found`} />
+                    <OptionsMessage
+                      message={jt`No matching ${(
+                        <strong>&nbsp;{searchField.display_name}&nbsp;</strong>
+                      )} found.`}
+                    />
                   ) : null)
                 : null}
             </div>

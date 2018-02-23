@@ -469,6 +469,7 @@ export default class TokenField extends Component {
     } = this.props;
     let {
       inputValue,
+      searchValue,
       filteredOptions,
       focused,
       selectedOptionValue,
@@ -604,6 +605,7 @@ export default class TokenField extends Component {
       valuesList,
       optionsList,
       focused,
+      isFiltered: !!searchValue,
       onClose: this.onClose,
     });
   }
