@@ -52,10 +52,11 @@ export default class FilterPopover extends Component {
   constructor(props: Props) {
     super(props);
 
+    const filter = props.filter || [];
     this.state = {
       // $FlowFixMe
-      filter: props.filter || [],
-      showOperator: false,
+      filter: filter,
+      showOperator: filter[0] == null,
     };
   }
 
@@ -108,8 +109,8 @@ export default class FilterPopover extends Component {
     let { filter } = this.state;
     if (filter[0] !== operator) {
       filter = this._updateOperator(filter, operator);
-      this.setState({ filter, showOperator: false });
     }
+    this.setState({ filter, showOperator: false });
   };
 
   setValue(index: number, value: any) {
@@ -247,6 +248,8 @@ export default class FilterPopover extends Component {
               searchField={field.filterSearchField()}
               autoFocus={index === 0}
               alwaysShowOptions={operator.fields.length === 1}
+              minWidth={440}
+              maxWidth={440}
             />
           );
         } else if (operatorField.type === "text") {
@@ -339,7 +342,7 @@ export default class FilterPopover extends Component {
               className="ml-auto flex align-center text-grey-3 pl4"
               onClick={() => this.setState({ showOperator: !showOperator })}
             >
-              <h3>{operator && operator.verboseName}</h3>
+              {!showOperator && <h3>{operator && operator.verboseName}</h3>}
               <Icon
                 name={showOperator ? "chevronup" : "chevrondown"}
                 size={12}
