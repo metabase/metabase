@@ -336,7 +336,7 @@ export default class FilterPopover extends Component {
             <h3 className="text-default">{formatField(field)}</h3>
 
             <a
-              className="ml-auto flex align-center text-grey-3"
+              className="ml-auto flex align-center text-grey-3 pl4"
               onClick={() => this.setState({ showOperator: !showOperator })}
             >
               <h3>{operator && operator.verboseName}</h3>
