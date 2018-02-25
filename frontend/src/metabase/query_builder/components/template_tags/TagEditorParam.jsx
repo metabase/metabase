@@ -7,10 +7,12 @@ import Toggle from "metabase/components/Toggle.jsx";
 import Input from "metabase/components/Input.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
+import CardPicker from "metabase/pulse/components/CardPicker.jsx";
 
 import { parameterOptionsForField } from "metabase/meta/Dashboard";
 import type { TemplateTag } from "metabase/meta/types/Query";
 import type { Database } from "metabase/meta/types/Database";
+import type { Card } from "metabase/meta/types/Card";
 
 import Field from "metabase-lib/lib/metadata/Field";
 import { fetchField } from "metabase/redux/metadata";
@@ -25,6 +27,7 @@ type Props = {
   databaseFields: Field[],
   database: Database,
   databases: Database[],
+  carList: Card[],
   metadata: Metadata,
   fetchField: FieldId => void,
 };
@@ -97,8 +100,12 @@ export default class TagEditorParam extends Component {
     }
   }
 
+  setCardAsFilter(cardIndex) {
+
+  }
+
   render() {
-    const { tag, database, databases, metadata } = this.props;
+    const { tag, database, databases, metadata, cardList } = this.props;
 
     let widgetOptions,
       table,
@@ -112,6 +119,9 @@ export default class TagEditorParam extends Component {
         fieldMetadataLoaded = true;
       }
     }
+
+    // we only allow cards with one column of results to be used as a filter
+    const cards = (cardList || []).filter(card => card.result_metadata.length === 1);
 
     const isDimension = tag.type === "dimension";
     const hasSelectedDimensionField =
@@ -193,6 +203,21 @@ export default class TagEditorParam extends Component {
               </Select>
             </div>
           )}
+
+        {(tag.type === "text" ||
+         tag.type === "number") &&
+         cards.length > 0 && (
+          <div className="pb1">
+            <h5 className="pb1 text-normal">{t`Populate filter options from a saved question (optional)`}</h5>
+            <div className="flex">
+              <CardPicker
+                cardList={cards}
+                onChange={cardIndex => this.setCardAsFilter(cardIndex)}
+                attachmentsEnabled={true}
+              />
+            </div>
+          </div>
+        )}
 
         {tag.type !== "dimension" && (
           <div className="flex align-center pb1">

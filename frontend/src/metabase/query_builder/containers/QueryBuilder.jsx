@@ -123,7 +123,7 @@ const mapStateToProps = (state, props) => {
     autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),
     instanceSettings: getSettings(state),
 
-    cards: getVisibleEntities(state, {
+    cardList: getVisibleEntities(state, {
         entityType: "cards",
     }) || [],
   };
@@ -150,7 +150,8 @@ export default class QueryBuilder extends Component {
   }
 
   componentWillMount() {
-    this.loadEntities();
+    // TODO (je): only fetch if we're a special raw query using a stored question for the filter
+    this.props.loadEntities("cards");
     this.props.initializeQB(this.props.location, this.props.params);
   }
 
@@ -211,11 +212,6 @@ export default class QueryBuilder extends Component {
       viz.style.opacity = 0.2;
     }
   };
-
-  loadEntities() {
-    // TODO (je): only fetch if we're a special raw query using a stored question for the filter
-    this.props.loadEntities("cards");
-  }
 
   render() {
     return (

@@ -11,8 +11,6 @@ import { t } from "c-3po";
 import cx from "classnames";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { loadEntities } from "metabase/questions/questions";
-import { getVisibleEntities } from "metabase/questions/selectors";
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { TableId } from "metabase/meta/types/Table";
 import type { Database } from "metabase/meta/types/Database";
@@ -35,19 +33,6 @@ type State = {
   section: "help" | "settings",
 };
 
-const mapStateToProps = (state, props) => {
-  return {
-    collections: getVisibleEntities(state, {
-        entityType: "collections",
-    }) || [],
-  };
-};
-
-const mapDispatchToProps = {
-  loadEntities
-};
-
-@connect(mapStateToProps, mapDispatchToProps)
 export default class TagEditorSidebar extends Component {
   props: Props;
   state: State = {
@@ -56,6 +41,7 @@ export default class TagEditorSidebar extends Component {
 
   static propTypes = {
     card: PropTypes.object.isRequired,
+    cardList: PropTypes.array.isRequired,
     onClose: PropTypes.func.isRequired,
     updateTemplateTag: PropTypes.func.isRequired,
     databaseFields: PropTypes.array,
@@ -63,10 +49,6 @@ export default class TagEditorSidebar extends Component {
     setDatasetQuery: PropTypes.func.isRequired,
     sampleDatasetId: PropTypes.number,
   };
-
-  componentWillMount() {
-    this.props.loadEntities("collections");
-  }
 
   setSection(section) {
     this.setState({ section: section });
@@ -79,6 +61,7 @@ export default class TagEditorSidebar extends Component {
 
   render() {
     const {
+      cardList,
       databases,
       databaseFields,
       sampleDatasetId,
@@ -132,6 +115,7 @@ export default class TagEditorSidebar extends Component {
               databaseFields={databaseFields}
               database={database}
               databases={databases}
+              cardList={cardList}
             />
           ) : (
             <TagEditorHelp
@@ -151,6 +135,7 @@ const SettingsPane = ({
   databaseFields,
   database,
   databases,
+  cardList,
 }) => (
   <div>
     {tags.map(tag => (
@@ -161,6 +146,7 @@ const SettingsPane = ({
           databaseFields={databaseFields}
           database={database}
           databases={databases}
+          cardList={cardList}
         />
       </div>
     ))}
