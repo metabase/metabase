@@ -42,7 +42,6 @@ type Props = {
 
 type State = {
   filter: FieldFilter,
-  showOperator: boolean,
 };
 
 export default class FilterPopover extends Component {
@@ -56,7 +55,6 @@ export default class FilterPopover extends Component {
     this.state = {
       // $FlowFixMe
       filter: filter,
-      showOperator: filter[0] == null,
     };
   }
 
@@ -110,7 +108,7 @@ export default class FilterPopover extends Component {
     if (filter[0] !== operator) {
       filter = this._updateOperator(filter, operator);
     }
-    this.setState({ filter, showOperator: false });
+    this.setState({ filter });
   };
 
   setValue(index: number, value: any) {
@@ -200,7 +198,6 @@ export default class FilterPopover extends Component {
     // $FlowFixMe
     this.setState({
       filter: [...filter.slice(0, 1), null, ...filter.slice(2)],
-      showOperator: false,
     });
   };
 
@@ -295,7 +292,7 @@ export default class FilterPopover extends Component {
 
   render() {
     const { query } = this.props;
-    const { filter, showOperator } = this.state;
+    const { filter } = this.state;
     const [operatorName, fieldRef] = filter;
 
     if (operatorName === "SEGMENT" || fieldRef == undefined) {
@@ -337,24 +334,6 @@ export default class FilterPopover extends Component {
             </a>
             <h3 className="mx1">-</h3>
             <h3 className="text-default">{formatField(field)}</h3>
-
-            {!isTime(field) && !isDate(field) ? (
-              <a
-                className="ml-auto flex align-center pl4"
-                onClick={() => this.setState({ showOperator: !showOperator })}
-              >
-                {!showOperator && (
-                  <h3 className="text-default">
-                    {operator && operator.verboseName}
-                  </h3>
-                )}
-                <Icon
-                  name={showOperator ? "chevronup" : "chevrondown"}
-                  size={12}
-                  className="mx1 text-grey-3"
-                />
-              </a>
-            ) : null}
           </div>
           {isTime(field) ? (
             <TimePicker
@@ -370,13 +349,13 @@ export default class FilterPopover extends Component {
             />
           ) : (
             <div>
-              {showOperator && (
+              <div className="inline-block px1 pt1">
                 <OperatorSelector
                   operator={operatorName}
                   operators={field.operators}
                   onOperatorChange={this.setOperator}
                 />
-              )}
+              </div>
               {this.renderPicker(filter, field)}
             </div>
           )}
