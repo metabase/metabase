@@ -326,7 +326,7 @@ export class FieldValuesWidget extends Component {
             className="flex layout-centered align-center"
             style={{ minHeight: 100 }}
           >
-            <Icon name="search" size={32} className="text-grey-1" />
+            <Icon name="search" size={35} className="text-grey-1" />
           </div>
         ) : this.isSearchable() && loadingState === "LOADING" ? (
           <div
