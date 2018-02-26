@@ -123,7 +123,6 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
           <div className="flex p1">
             <Button
               primary
-              medium
               className="ml-auto"
               onClick={() => {
                 setValue(value.length > 0 ? value : null);

@@ -394,7 +394,7 @@ export default class FilterPopover extends Component {
             />
             <button
               data-ui-tag="add-filter"
-              className={cx("Button Button--purple Button--medium ml-auto", {
+              className={cx("Button Button--purple ml-auto", {
                 disabled: !this.isValid(),
               })}
               onClick={() => this.commitFilter(this.state.filter)}
