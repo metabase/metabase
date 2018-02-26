@@ -131,7 +131,7 @@
     (goal-met? alert results)
 
     :else
-    (let [^String error-text (tru "Unrecognized alert with condition '{0}'" alert_condition)]
+    (let [^String error-text (tru "Unrecognized alert with condition ''{0}''" alert_condition)]
       (throw (IllegalArgumentException. error-text)))))
 
 (defmethod should-send-notification? :pulse
