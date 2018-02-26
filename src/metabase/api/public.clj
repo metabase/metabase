@@ -307,7 +307,7 @@
 (defn- field-remapped-values [field-id remapped-field-id, ^String value-str]
   (let [field          (api/check-404 (Field field-id))
         remapped-field (api/check-404 (Field remapped-field-id))]
-    (check-search-field-is-allowed field remapped-field)
+    (check-search-field-is-allowed field-id remapped-field-id)
     (field-api/remapped-value field remapped-field (field-api/parse-query-param-value-for-field field value-str))))
 
 (defn card-field-remapped-values
