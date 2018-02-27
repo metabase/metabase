@@ -86,7 +86,8 @@
 (def ^:private ^:const query-type->default-query
   (let [defaults {:intervals   ["1900-01-01/2100-01-01"]
                   :granularity :all
-                  :context     {:timeout 60000}}]
+                  :context     {:timeout 60000
+                                :queryId (str (java.util.UUID/randomUUID))}}]
     {::select             (merge defaults {:queryType  :select
                                            :pagingSpec {:threshold i/absolute-max-results}})
      ::total              (merge defaults {:queryType :timeseries})
@@ -519,14 +520,13 @@
   both. Defaults to being `inclusive` (e.g. `<=` instead of `<`) but specify option `inclusive?` to change this."
   [field & {:keys [lower upper inclusive?]
             :or   {inclusive? true}}]
-  (u/prog1 {:type        :bound
-            :ordering    :numeric
-            :dimension   (->rvalue field)
-            :lower       (num (->rvalue lower))
-            :upper       (num (->rvalue upper))
-            :lowerStrict (not inclusive?)
-            :upperStrict (not inclusive?)}
-    (println "inclusive?" inclusive? (u/pprint-to-str 'blue <>))))
+  {:type        :bound
+   :ordering    :numeric
+   :dimension   (->rvalue field)
+   :lower       (num (->rvalue lower))
+   :upper       (num (->rvalue upper))
+   :lowerStrict (not inclusive?)
+   :upperStrict (not inclusive?)})
 
 (defn- check-filter-fields [filter-type & fields]
   (doseq [field fields]
@@ -576,10 +576,10 @@
 
              :=  (filter:= field value)
              :!= (filter:not (filter:= field value))
-             :<  (filter:bound field, :lower value, :inclusive? false)
-             :>  (filter:bound field, :upper value, :inclusive? false)
-             :<= (filter:bound field, :lower value)
-             :>= (filter:bound field, :upper value)))
+             :<  (filter:bound field, :upper value, :inclusive? false)
+             :>  (filter:bound field, :lower value, :inclusive? false)
+             :<= (filter:bound field, :upper value)
+             :>= (filter:bound field, :lower value)))
          (catch Throwable e
            (log/warn (.getMessage e))))))
 
@@ -588,7 +588,7 @@
   (case compound-type
     :and {:type :and, :fields (filterv identity (map parse-filter-clause:filter subclauses))}
     :or  {:type :or,  :fields (filterv identity (map parse-filter-clause:filter subclauses))}
-    :not (when-let [subclause (parse-filter-subclause:filter subclause)]
+    :not (when-let [subclause (parse-filter-clause:filter subclause)]
            (filter:not subclause))
     nil  (parse-filter-subclause:filter clause)))
 

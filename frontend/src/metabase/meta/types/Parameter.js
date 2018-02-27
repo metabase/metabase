@@ -13,52 +13,55 @@ export type ParameterValue = string;
 export type ParameterValueOrArray = string | Array<string>;
 
 export type Parameter = {
-    id: ParameterId,
-    name: string,
-    type: ParameterType,
-    slug: string,
-    default?: string,
+  id: ParameterId,
+  name: string,
+  type: ParameterType,
+  slug: string,
+  default?: string,
 
-    target?: ParameterTarget
+  target?: ParameterTarget,
 };
 
 export type VariableTarget = ["template-tag", string];
-export type DimensionTarget = ["template-tag", string] | LocalFieldReference | ForeignFieldReference
+export type DimensionTarget =
+  | ["template-tag", string]
+  | LocalFieldReference
+  | ForeignFieldReference;
 
 export type ParameterTarget =
-    ["variable", VariableTarget] |
-    ["dimension", DimensionTarget];
+  | ["variable", VariableTarget]
+  | ["dimension", DimensionTarget];
 
 export type ParameterMappingOption = {
-    name: string,
-    target: ParameterTarget,
+  name: string,
+  target: ParameterTarget,
 };
 
 export type ParameterMapping = {
-    card_id: CardId,
-    parameter_id: ParameterId,
-    target: ParameterTarget
+  card_id: CardId,
+  parameter_id: ParameterId,
+  target: ParameterTarget,
 };
 
 export type ParameterOption = {
-    name: string,
-    description?: string,
-    type: ParameterType
+  name: string,
+  description?: string,
+  type: ParameterType,
 };
 
 export type ParameterInstance = {
-    type: ParameterType,
-    target: ParameterTarget,
-    value: ParameterValue
+  type: ParameterType,
+  target: ParameterTarget,
+  value: ParameterValue,
 };
 
 export type ParameterMappingUIOption = ParameterMappingOption & {
-    icon: ?string,
-    sectionName: string,
-    isFk?: boolean,
-    isVariable?: boolean,
+  icon: ?string,
+  sectionName: string,
+  isFk?: boolean,
+  isVariable?: boolean,
 };
 
 export type ParameterValues = {
-    [id: ParameterId]: ParameterValue
+  [id: ParameterId]: ParameterValue,
 };

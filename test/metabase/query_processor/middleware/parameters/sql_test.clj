@@ -5,13 +5,51 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :refer [engines-that-support first-row format-rows-by]]]
+             [query-processor-test :refer [non-timeseries-engines-with-feature first-row format-rows-by]]]
             [metabase.query-processor.middleware.parameters.sql :as sql :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
              [generic-sql :as generic-sql]]
             [toucan.db :as db]))
+
+;;; ------------------------------------------ basic parser tests ------------------------------------------
+
+(expect
+  [:SQL "select * from foo where bar=1"]
+  (#'sql/sql-template-parser "select * from foo where bar=1"))
+
+(expect
+  [:SQL "select * from foo where bar=" [:PARAM "baz"]]
+  (#'sql/sql-template-parser "select * from foo where bar={{baz}}"))
+
+(expect
+  [:SQL "select * from foo " [:OPTIONAL "where bar = " [:PARAM "baz"] " "]]
+  (#'sql/sql-template-parser "select * from foo [[where bar = {{baz}} ]]"))
+
+(expect
+  [:SQL "select * from foobars "
+   [:OPTIONAL " where foobars.id in (string_to_array(" [:PARAM "foobar_id"] ", ',')::integer" "[" "]" ") "]]
+  (#'sql/sql-template-parser "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"))
+
+(expect
+  [:SQL
+   "SELECT " "[" "test_data.checkins.venue_id" "]" " AS " "[" "venue_id" "]"
+   ",        " "[" "test_data.checkins.user_id" "]" " AS " "[" "user_id" "]"
+   ",        " "[" "test_data.checkins.id" "]" " AS " "[" "checkins_id" "]"
+   " FROM " "[" "test_data.checkins" "]" " LIMIT 2"]
+  (-> (str "SELECT [test_data.checkins.venue_id] AS [venue_id], "
+             "       [test_data.checkins.user_id] AS [user_id], "
+             "       [test_data.checkins.id] AS [checkins_id] "
+             "FROM [test_data.checkins] "
+             "LIMIT 2")
+      (#'sql/sql-template-parser)
+      (update 1 #(apply str %))))
+
+;; Valid syntax in PG
+(expect
+  [:SQL "SELECT array_dims(1 || '" "[" "0:1" "]" "=" "{" "2,3" "}" "'::int" "[" "]" ")"]
+  (#'sql/sql-template-parser "SELECT array_dims(1 || '[0:1]={2,3}'::int[])"))
 
 ;;; ------------------------------------------ simple substitution -- {{x}} ------------------------------------------
 
@@ -443,7 +481,7 @@
 
 ;; as with the MBQL parameters tests Redshift and Crate fail for unknown reasons; disable their tests for now
 (def ^:private ^:const sql-parameters-engines
-  (disj (engines-that-support :native-parameters) :redshift :crate))
+  (disj (non-timeseries-engines-with-feature :native-parameters) :redshift :crate))
 
 (defn- process-native {:style/indent 0} [& kvs]
   (qp/process-query

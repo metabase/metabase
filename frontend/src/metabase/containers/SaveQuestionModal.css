@@ -1,19 +1,19 @@
 .saveQuestionModalFields {
-    overflow: hidden;
+  overflow: hidden;
 }
 
 .saveQuestionModalFields-enter {
-    max-height: 0px;
+  max-height: 0px;
 }
 .saveQuestionModalFields-enter.saveQuestionModalFields-enter-active {
-    /* using 100% max-height breaks the transition */
-    max-height: 300px;
-    transition: max-height 500ms ease-out;
+  /* using 100% max-height breaks the transition */
+  max-height: 300px;
+  transition: max-height 500ms ease-out;
 }
 .saveQuestionModalFields-leave {
-    max-height: 300px;
+  max-height: 300px;
 }
 .saveQuestionModalFields-leave.saveQuestionModalFields-leave-active {
-    max-height: 0px;
-    transition: max-height 500ms ease-out;
+  max-height: 0px;
+  transition: max-height 500ms ease-out;
 }

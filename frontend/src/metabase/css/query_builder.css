@@ -1,34 +1,33 @@
 :root {
-    --selection-color: #ccdff6;
+  --selection-color: #ccdff6;
 }
 
 #react_qb_viz {
-    flex-grow: 1;
+  flex-grow: 1;
 }
 
 /* @layout */
 .QueryBuilder {
-    transition: margin-right 0.35s;
- }
+  transition: margin-right 0.35s;
+}
 
 .QueryBuilder--showSideDrawer {
-    margin-right: 300px;
+  margin-right: 300px;
 }
 
 .QueryHeader-details {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
 
-
 .QueryHeader-section {
-    padding-right: 1em;
-    margin-right: 1em;
-    border-right: 1px solid rgba(0,0,0,0.2);
+  padding-right: 1em;
+  margin-right: 1em;
+  border-right: 1px solid rgba(0, 0, 0, 0.2);
 }
 
 .QueryHeader-section:last-child {
-    border-right: none;
+  border-right: none;
 }
 
 /*
@@ -47,26 +46,26 @@
 
 /* a section of the graphical query itself */
 .Query-section {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
 
 .Query-section.Query-section--right {
-    justify-content: flex-end;
+  justify-content: flex-end;
 }
 
 .QueryName {
-    font-weight: 200;
-    margin-top: 0;
-    margin-bottom: 0;
-    font-size: 1.2rem;
+  font-weight: 200;
+  margin-top: 0;
+  margin-bottom: 0;
+  font-size: 1.2rem;
 }
 
 .Query-label {
-    text-transform: uppercase;
-    font-size: 10px;
-    font-weight: 700;
-    color: color(var(--base-grey) shade(30%));
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 700;
+  color: color(var(--base-grey) shade(30%));
 }
 
 .Query-filters {
@@ -74,37 +73,37 @@
 }
 
 .Query-filterList {
-    display: flex;
-    overflow-y: hidden;
-    white-space: nowrap;
-    min-height: 55px;
+  display: flex;
+  overflow-y: hidden;
+  white-space: nowrap;
+  min-height: 55px;
 }
 
 .Query-filter {
-    display: flex;
-    flex-shrink: 0;
-    font-size: 0.75em;
-    border: 2px solid transparent;
-    border-radius: var(--default-border-radius);
+  display: flex;
+  flex-shrink: 0;
+  font-size: 0.75em;
+  border: 2px solid transparent;
+  border-radius: var(--default-border-radius);
 }
 
 .Query-filter.selected {
-    border-color: var(--purple-color);
+  border-color: var(--purple-color);
 }
 
 .Filter-section {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .Query-filter .input {
-    border-radius: 0;
-    border: none;
-    font-size: inherit;
-    background-color: transparent;
-    width: 150px;
-    padding: 0;
+  border-radius: 0;
+  border: none;
+  font-size: inherit;
+  background-color: transparent;
+  width: 150px;
+  padding: 0;
 }
 
 .TooltipFilterList .Query-filter {
@@ -124,146 +123,146 @@
     @selectionmodule
 */
 .SelectionModule {
-    color: var(--brand-color);
+  color: var(--brand-color);
 }
 
 .SelectionList {
-    padding-top: 5px;
-    overflow-y: auto;
-    max-height: 340px;
+  padding-top: 5px;
+  overflow-y: auto;
+  max-height: 340px;
 }
 
 .SelectionItems {
-    max-width: 320px;
+  max-width: 320px;
 }
 
 .SelectionItems.SelectionItems--open {
-    opacity: 1;
-    transition: opacity .3s linear;
-    pointer-events: all;
+  opacity: 1;
+  transition: opacity 0.3s linear;
+  pointer-events: all;
 }
 
 .SelectionItems.SelectionItems--expanded {
-    max-height: inherit;
+  max-height: inherit;
 }
 
 .SelectionItem {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    padding: 0.75rem 1.5rem 0.75rem 0.75rem;
-    background-color: #fff;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.75rem 1.5rem 0.75rem 0.75rem;
+  background-color: #fff;
 }
 
 .SelectionItem:hover {
-    background-color: currentColor;
+  background-color: currentColor;
 }
 
 .SelectionItem .Icon {
-    margin-left: 0.5rem;
-    margin-right: 0.75rem;
-    color: currentcolor;
+  margin-left: 0.5rem;
+  margin-right: 0.75rem;
+  color: currentcolor;
 }
 
 .SelectionItem .Icon-check {
-    opacity: 0;
+  opacity: 0;
 }
 
 .SelectionItem .Icon-chevrondown {
-    opacity: 1;
- }
+  opacity: 1;
+}
 
 .SelectionItem:hover .Icon {
-    color: #fff !important;
+  color: #fff !important;
 }
 
 .SelectionItem:hover .SelectionModule-display {
-    color: #fff;
+  color: #fff;
 }
 
 .SelectionItem:hover .SelectionModule-description {
-    color: #fff;
+  color: #fff;
 }
 
 .SelectionItem.SelectionItem--selected .Icon-check {
-    opacity: 1;
+  opacity: 1;
 }
 
 .SelectionModule-display {
-    color: currentColor;
-    margin-bottom: 0.25em;
+  color: currentColor;
+  margin-bottom: 0.25em;
 }
 
 .SelectionModule-description {
-    color: color(var(--base-grey) shade(40%));
-    font-size: 0.8rem;
+  color: color(var(--base-grey) shade(40%));
+  font-size: 0.8rem;
 }
 
 .Visualization {
-    transition: background .3s linear;
+  transition: background 0.3s linear;
 }
 
 .Visualization.Visualization--loading {
-    transition: background .3s linear;
+  transition: background 0.3s linear;
 }
 
 .Visualization.Visualization--error {
-    justify-content: center;
+  justify-content: center;
 }
 
 .Visualization--scalar {
-    justify-content: center;
-    font-size: 8rem;
-    font-weight: 200;
+  justify-content: center;
+  font-size: 8rem;
+  font-weight: 200;
 }
 
 .Loading {
-    background-color: rgba(255, 255, 255, 0.82);
+  background-color: rgba(255, 255, 255, 0.82);
 }
 
 /* query errors */
 .QueryError {
-    flex-direction: column;
-    justify-content: center;
-    max-width: 500px;
-    margin-left: auto;
-    margin-right: auto;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .QueryError-iconWrapper {
-    padding: 2em;
-    margin-bottom: 2em;
-    border: 4px solid var(--error-color);
-    border-radius: 99px;
+  padding: 2em;
+  margin-bottom: 2em;
+  border: 4px solid var(--error-color);
+  border-radius: 99px;
 }
 
 .QueryError-image {
-    background-repeat: no-repeat;
-    margin-bottom: 1rem;
+  background-repeat: no-repeat;
+  margin-bottom: 1rem;
 }
 
 .QueryError-image--noRows {
   width: 120px;
   height: 120px;
-  background-image: url('../app/assets/img/no_results.svg');
+  background-image: url("../app/assets/img/no_results.svg");
 }
 
 .QueryError-image--queryError {
   width: 120px;
   height: 120px;
-  background-image: url('../app/assets/img/no_understand.svg');
+  background-image: url("../app/assets/img/no_understand.svg");
 }
 
 .QueryError-image--serverError {
   width: 120px;
   height: 148px;
-  background-image: url('../app/assets/img/blown_up.svg');
+  background-image: url("../app/assets/img/blown_up.svg");
 }
 
 .QueryError-image--timeout {
   width: 120px;
   height: 120px;
-  background-image: url('../app/assets/img/stopwatch.svg');
+  background-image: url("../app/assets/img/stopwatch.svg");
 }
 
 .QueryError-message {
@@ -301,152 +300,150 @@
 }
 
 .QueryError2 {
-    padding-top: 4rem;
-    margin-left: auto;
-    margin-right: auto;
+  padding-top: 4rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .QueryError2-details {
-    max-width: 500px;
+  max-width: 500px;
 }
 
 .QueryError2-detailBody {
-    background-color: #f8f8f8;
-    max-height: 15rem;
-    overflow: auto;
+  background-color: #f8f8f8;
+  max-height: 15rem;
+  overflow: auto;
 }
-
 
 /* GUI BUILDER */
 
 .GuiBuilder {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    font-size: 0.9em;
-    z-index: 2;
-    background-color: #fff;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9em;
+  z-index: 2;
+  background-color: #fff;
 
-    border: 1px solid #e0e0e0;
+  border: 1px solid #e0e0e0;
 }
 
 /* for medium breakpoint only expand if data reference is not shown */
 @media screen and (--breakpoint-min-md) {
-    .GuiBuilder {
-        font-size: 1.0em;
-    }
+  .GuiBuilder {
+    font-size: 1em;
+  }
 }
 
 /* un-expanded (default) */
 .GuiBuilder-row {
-    border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
 }
 .GuiBuilder-row:last-child {
-    border-bottom-color: transparent;
+  border-bottom-color: transparent;
 }
 .GuiBuilder-data {
-    border-right: 1px solid #e0e0e0;
+  border-right: 1px solid #e0e0e0;
 }
 .GuiBuilder-filtered-by {
-    border-right: 1px solid transparent;
+  border-right: 1px solid transparent;
 }
 .GuiBuilder-view {
-    border-right: 1px solid #e0e0e0;
+  border-right: 1px solid #e0e0e0;
 }
 .GuiBuilder-sort-limit {
-    border-left: 1px solid #e0e0e0;
+  border-left: 1px solid #e0e0e0;
 }
 
 /* expanded */
 .GuiBuilder.GuiBuilder--expand {
-    flex-direction: row;
+  flex-direction: row;
 }
 .GuiBuilder.GuiBuilder--expand .GuiBuilder-row:last-child {
-    border-right-color: transparent;
-    border-bottom-color: #e0e0e0;
+  border-right-color: transparent;
+  border-bottom-color: #e0e0e0;
 }
 .GuiBuilder.GuiBuilder--expand .GuiBuilder-filtered-by {
-    border-right-color: #e0e0e0;
+  border-right-color: #e0e0e0;
 }
 
-
 .GuiBuilder-section {
-    position: relative;
-    min-height: 55px;
-    min-width: 100px;
+  position: relative;
+  min-height: 55px;
+  min-width: 100px;
 }
 
 .GuiBuilder-section-label {
-    background-color: white;
-    position: absolute;
-    top: -7px;
-    left: 10px;
-    padding-left: 10px;
-    padding-right: 10px;
+  background-color: white;
+  position: absolute;
+  top: -7px;
+  left: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .QueryOption {
-    font-weight: 700;
+  font-weight: 700;
 }
 
 .QueryOption:hover {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 /* @transitions */
 
 .AddToDashSuccess {
-    max-width: 260px;
-    text-align: center;
+  max-width: 260px;
+  text-align: center;
 }
 
 /* DATA SECTION */
 
 .GuiBuilder-data {
-    z-index: 1; /* moved the arrow thingy above the filter outline */
+  z-index: 1; /* moved the arrow thingy above the filter outline */
 }
 
 /* FILTER BY SECTION */
 
 .Filter-section-field,
 .Filter-section-operator {
-    color: var(--purple-color);
+  color: var(--purple-color);
 }
 
 .Filter-section-field .QueryOption {
-    color: var(--purple-color);
+  color: var(--purple-color);
 }
 .Filter-section-operator .QueryOption {
-    color: var(--purple-color);
-    text-transform: lowercase;
+  color: var(--purple-color);
+  text-transform: lowercase;
 }
 .Filter-section-value .QueryOption {
-    color: white;
-    background-color: var(--purple-color);
-    border: 1px solid color(var(--purple-color) shade(30%));
-    border-radius: 6px;
-    padding: 0.5em;
-    padding-top: 0.3em;
-    padding-bottom: 0.3em;
-    margin-bottom: 0.2em;
+  color: white;
+  background-color: var(--purple-color);
+  border: 1px solid color(var(--purple-color) shade(30%));
+  border-radius: 6px;
+  padding: 0.5em;
+  padding-top: 0.3em;
+  padding-bottom: 0.3em;
+  margin-bottom: 0.2em;
 }
 
 .Filter-section-value {
-    padding-right: 0.5em;
-    padding-bottom: 0.25em;
+  padding-right: 0.5em;
+  padding-bottom: 0.25em;
 }
 
 .Filter-section-sort-field.selected .QueryOption,
 .Filter-section-sort-direction.selected .QueryOption {
-    color: inherit;
+  color: inherit;
 }
 
 .FilterPopover .ColumnarSelector-row--selected,
 .FilterPopover .PopoverHeader-item.selected {
-    color: var(--purple-color) !important;
+  color: var(--purple-color) !important;
 }
 .FilterPopover .ColumnarSelector-row:hover {
-    background-color: var(--purple-color) !important;
+  background-color: var(--purple-color) !important;
 }
 
 /* VIEW SECTION */
@@ -454,149 +451,151 @@
 .View-section-aggregation,
 .View-section-aggregation-target,
 .View-section-breakout {
-    color: var(--green-color);
+  color: var(--green-color);
 }
 
 .View-section-aggregation.selected .QueryOption,
 .View-section-aggregation-target.selected .QueryOption,
 .View-section-breakout.selected .QueryOption {
-    color: var(--green-color);
+  color: var(--green-color);
 }
 
 /* SORT/LIMIT SECTION */
 
 .GuiBuilder-sort-limit {
-    min-width: 0px;
+  min-width: 0px;
 }
 
 .EllipsisButton {
-    font-size: 3em;
-    position: relative;
-    top: -0.8rem;
+  font-size: 3em;
+  position: relative;
+  top: -0.8rem;
 }
 
 /* NATIVE */
 
 .NativeQueryEditor .GuiBuilder-data {
-    border-right: none;
+  border-right: none;
 }
 
 /* VISUALIZATION SETTINGS */
 
 .VisualizationSettings .GuiBuilder-section {
-    border-right: none !important;
+  border-right: none !important;
 }
 
 .ChartType-button {
-    width: 38px;
-    height: 38px;
-    border-radius: 38px;
-    background-color: white;
-    border: 1px solid #ccdff6;
+  width: 38px;
+  height: 38px;
+  border-radius: 38px;
+  background-color: white;
+  border: 1px solid #ccdff6;
 }
 
 .ChartType-popover {
-    min-width: 15em !important;
+  min-width: 15em !important;
 }
 
 .ChartType--selected {
-    color: white;
-    background-color: rgb(74, 144, 226);
+  color: white;
+  background-color: rgb(74, 144, 226);
 }
 
 .ChartType--notSensible {
-    opacity: 0.5;
+  opacity: 0.5;
 }
 
 .ColorWell {
-    width: 18px;
-    height: 18px;
-    margin: 3px;
-    margin-right: 0.3rem;
+  width: 18px;
+  height: 18px;
+  margin: 3px;
+  margin-right: 0.3rem;
 }
 
 .RunButton {
-    z-index: 1;
-    opacity: 1;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, .22);
-    transition: transform 0.5s, opacity 0.5s;
-    min-width: 8em;
-    position: relative;
+  z-index: 1;
+  opacity: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  transition: transform 0.5s, opacity 0.5s;
+  min-width: 8em;
+  position: relative;
 }
 
 .RunButton.RunButton--hidden {
-    transform: translateY(-65px);
-    opacity: 0;
+  transform: translateY(-65px);
+  opacity: 0;
 }
 
 /* DATA REFERENCE */
 
 .SideDrawer {
-    z-index: -1;
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 300px;
-    height: 100%;
-    background-color: var(--slate-extra-light-color);
-    overflow: hidden;
+  z-index: -1;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 300px;
+  height: 100%;
+  background-color: var(--slate-extra-light-color);
+  overflow: hidden;
 }
 
 .SideDrawer--show {
-    z-index: 0;
+  z-index: 0;
 }
 
 .DataReference-container {
-    width: 300px;
+  width: 300px;
 }
 
 .DataReference h1 {
-    font-size: 20pt;
+  font-size: 20pt;
 }
 
 .DataReference-paneCount {
-    padding-right: 0.6em;
+  padding-right: 0.6em;
 }
 
 /* object detail */
 .ObjectDetail {
-    width: 100%;
-    margin: 0 auto;
-    margin-bottom: 2rem;
-    border: 1px solid #DEDEDE;
+  width: 100%;
+  margin: 0 auto;
+  margin-bottom: 2rem;
+  border: 1px solid #dedede;
 }
 
 @media screen and (--breakpoint-min-xl) {
   /* prevent the object detail from getting too wide on large screens */
-  .ObjectDetail { max-width: 1140px; }
+  .ObjectDetail {
+    max-width: 1140px;
+  }
 }
 
 .ObjectDetail-headingGroup {
-    border-bottom: 1px solid #DEDEDE;
+  border-bottom: 1px solid #dedede;
 }
 
 .ObjectDetail-infoMain {
-    border-right: 1px solid #DEDEDE;
-    margin-left: 2.4rem;
-    font-size: 1rem;
+  border-right: 1px solid #dedede;
+  margin-left: 2.4rem;
+  font-size: 1rem;
 }
 
 .ObjectJSON {
-    max-height: 200px;
-    overflow: scroll;
-    padding: 1em;
-    background-color: #F8F8F8;
-    border: 1px solid #dedede;
-    border-radius: 2px;
+  max-height: 200px;
+  overflow: scroll;
+  padding: 1em;
+  background-color: #f8f8f8;
+  border: 1px solid #dedede;
+  border-radius: 2px;
 }
 
 .PopoverBody.AddToDashboard {
-    min-width: 25em;
+  min-width: 25em;
 }
 
 .FieldList-grouping-trigger {
-    display: flex;
-    visibility: hidden;
+  display: flex;
+  visibility: hidden;
 }
 
 .List-item--segment .Icon,
@@ -611,13 +610,13 @@
 
 .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
-    visibility: visible;
-    border-left: 2px solid rgba(0,0,0,0.1);
-    color: rgba(255,255,255,0.5);
+  visibility: visible;
+  border-left: 2px solid rgba(0, 0, 0, 0.1);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .QuestionTooltipTarget {
-  color: rgb(225,225,225);
+  color: rgb(225, 225, 225);
   display: inline-block;
   border: 2px solid currentColor;
   border-radius: 99px;
@@ -638,7 +637,6 @@
   font-weight: bold;
 }
 
-
 .FilterRemove-field {
   border-radius: 99px;
   opacity: 0;
@@ -649,7 +647,7 @@
   justify-content: center;
   background-color: var(--purple-color);
   border: 1px solid var(--purple-color);
-  transition: opacity .3s ease-out;
+  transition: opacity 0.3s ease-out;
 }
 
 .FilterInput:hover .FilterRemove-field {
@@ -669,27 +667,27 @@
   white-space: pre-wrap;
   white-space: -moz-pre-wrap;
   white-space: -o-pre-wrap;
-  background-color: #F9FBFC;
-  border: 1px solid #D5DBE3;
+  background-color: #f9fbfc;
+  border: 1px solid #d5dbe3;
   border-radius: 4px;
 }
 
 .ParameterValuePickerNoPopover input {
-    font-size: 16px;
-    color: var(--default-font-color);
-    border: none;
+  font-size: 16px;
+  color: var(--default-font-color);
+  border: none;
 }
 
 .ParameterValuePickerNoPopover--selected input {
-    font-weight: bold;
-    color: var(--brand-color);
+  font-weight: bold;
+  color: var(--brand-color);
 }
 
 .ParameterValuePickerNoPopover input:focus {
-    outline: none;
-    color: var(--default-font-color);
+  outline: none;
+  color: var(--default-font-color);
 }
 
 .ParameterValuePickerNoPopover input::-webkit-input-placeholder {
-    color: var(--grey-4);
+  color: var(--grey-4);
 }

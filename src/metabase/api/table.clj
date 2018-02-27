@@ -222,17 +222,16 @@
   (let [table (api/read-check Table id)
         driver (driver/database-id->driver (:db_id table))]
     (-> table
-        (hydrate :db [:fields :target :dimensions] :segments :metrics)
-        (update :fields with-normal-values)
+        (hydrate :db [:fields :target :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options driver)
         format-fields-for-response
-        (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
-                               ;; If someone passes include_sensitive_fields return hydrated :fields as-is
-                               identity
-                               ;; Otherwise filter out all :sensitive fields
-                               (partial filter (fn [{:keys [visibility_type]}]
-                                                 (not= (keyword visibility_type) :sensitive))))))))
+        (update :fields (if (Boolean/parseBoolean include_sensitive_fields)
+                          ;; If someone passes include_sensitive_fields return hydrated :fields as-is
+                          identity
+                          ;; Otherwise filter out all :sensitive fields
+                          (partial filter (fn [{:keys [visibility_type]}]
+                                            (not= (keyword visibility_type) :sensitive))))))))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'

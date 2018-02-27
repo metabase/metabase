@@ -7,9 +7,9 @@ import UnderlyingRecordsDrill from "./UnderlyingRecordsDrill";
 import ZoomDrill from "./ZoomDrill";
 
 export const DEFAULT_DRILLS = [
-    ZoomDrill,
-    SortAction,
-    ObjectDetailDrill,
-    QuickFilterDrill,
-    UnderlyingRecordsDrill
+  ZoomDrill,
+  SortAction,
+  ObjectDetailDrill,
+  QuickFilterDrill,
+  UnderlyingRecordsDrill,
 ];

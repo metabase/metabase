@@ -922,7 +922,7 @@
   "Parse `TIME-STR` and return a `java.sql.Time` instance. Returns nil
   if `TIME-STR` can't be parsed."
   ([^String date-str]
-   (str->date-time date-str nil))
+   (str->time date-str nil))
   ([^String date-str ^TimeZone tz]
    (some-> (str->date-time-with-formatters ordered-time-parsers date-str tz)
            coerce/to-long

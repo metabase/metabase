@@ -21,7 +21,7 @@
   padding-bottom: 0.5em;
 }
 :local .option:hover,
-:local .option:hover .valueLabel  {
+:local .option:hover .valueLabel {
   color: var(--brand-color) !important;
 }
 :local .option.on.selected,

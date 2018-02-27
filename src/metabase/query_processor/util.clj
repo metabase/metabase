@@ -127,3 +127,14 @@
   "Return a 256-bit SHA3 hash of QUERY as a key for the cache. (This is returned as a byte array.)"
   [query]
   (hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
+
+
+;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------
+
+(defn query->source-card-id
+  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`."
+  ^Integer [outer-query]
+  (let [source-table (get-in-normalized outer-query [:query :source-table])]
+    (when (string? source-table)
+      (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
+        (Integer/parseInt card-id-str)))))

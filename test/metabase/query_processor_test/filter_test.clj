@@ -2,7 +2,8 @@
   "Tests for the `:filter` clause."
   (:require [metabase.query-processor-test :refer :all]
             [metabase.query-processor.middleware.expand :as ql]
-            [metabase.test.data :as data]))
+            [metabase.test.data :as data]
+            [metabase.test.data.datasets :as datasets]))
 
 ;;; ------------------------------------------------ "FILTER" CLAUSE -------------------------------------------------
 
@@ -153,14 +154,14 @@
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-(expect-with-non-timeseries-dbs
+(datasets/expect-with-engines (non-timeseries-engines-without-feature :no-case-sensitivity-string-filter-options)
   []
   (-> (data/run-query venues
         (ql/filter (ql/starts-with $name "CHE"))
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-(expect-with-non-timeseries-dbs
+(datasets/expect-with-engines (non-timeseries-engines-without-feature :no-case-sensitivity-string-filter-options)
   [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
    [74 "Chez Jay"           2 34.0104 -118.493 2]]
   (-> (data/run-query venues
@@ -181,14 +182,14 @@
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-(expect-with-non-timeseries-dbs
+(datasets/expect-with-engines (non-timeseries-engines-without-feature :no-case-sensitivity-string-filter-options)
   []
   (-> (data/run-query venues
         (ql/filter (ql/ends-with $name "RESTAURANT"))
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-(expect-with-non-timeseries-dbs
+(datasets/expect-with-engines (non-timeseries-engines-without-feature :no-case-sensitivity-string-filter-options)
   [[ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
    [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
    [17 "Ruen Pair Thai Restaurant"    71 34.1021 -118.306 2]
@@ -210,7 +211,7 @@
       rows formatted-venues-rows))
 
 ;; case-insensitive
-(expect-with-non-timeseries-dbs
+(datasets/expect-with-engines (non-timeseries-engines-without-feature :no-case-sensitivity-string-filter-options)
   []
   (-> (data/run-query venues
         (ql/filter (ql/contains $name "bbq"))
@@ -218,7 +219,7 @@
       rows formatted-venues-rows))
 
 ;; case-insensitive
-(expect-with-non-timeseries-dbs
+(datasets/expect-with-engines (non-timeseries-engines-without-feature :no-case-sensitivity-string-filter-options)
   [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
    [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
    [39 "Baby Blues BBQ"           5 34.0003 -118.465 2]]
