@@ -265,11 +265,11 @@
    metadata_checksum      (s/maybe su/NonBlankString)}
   ;; check that we have permissions to run the query that we're trying to save
   (api/check-403 (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                                                          (card/query-perms-set dataset_query :write)))
+                   (card/query-perms-set dataset_query :write)))
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (when collection_id
     (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                                    (perms/collection-readwrite-path collection_id))))
+                     (perms/collection-readwrite-path collection_id))))
   ;; everything is g2g, now save the card
   (let [card (db/insert! Card
                :creator_id             api/*current-user-id*

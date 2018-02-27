@@ -40,15 +40,15 @@
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
 (defn- query->source-card-id
-  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`.
-   Used so `:card-id` context can be passed along with the query so Collections perms checking is done if appropriate."
+  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`. Used so
+  `:card-id` context can be passed along with the query so Collections perms checking is done if appropriate. This fn
+  is a wrapper for the function of the same name in the QP util namespace; it adds additional permissions checking as
+  well."
   [outer-query]
-  (let [source-table (qputil/get-in-normalized outer-query [:query :source-table])]
-    (when (string? source-table)
-      (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
-        (log/info (str "Source query for this query is Card " card-id-str))
-        (u/prog1 (Integer/parseInt card-id-str)
-          (api/read-check Card <>))))))
+  (when-let [source-card-id (qputil/query->source-card-id outer-query)]
+    (log/info (str "Source query for this query is Card " source-card-id))
+    (api/read-check Card source-card-id)
+    source-card-id))
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format."
