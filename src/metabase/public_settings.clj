@@ -52,7 +52,7 @@
 
 (defsetting site-locale
   (str  (tru "The default language for this Metabase instance.")
-        (tru "This only applies to emails, Pulses, etc. Users' browsers will specify the language used in the user interface."))
+        (tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
   :type    :string
   :setter  (fn [new-value]
              (setting/set-string! :site-locale new-value)
@@ -111,7 +111,7 @@
   :default 60)
 
 (defsetting query-caching-ttl-ratio
-  (str (tru "To determine how long each saved question's cached result should stick around, we take the query's average execution time and multiply that by whatever you input here.")
+  (str (tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
        (tru "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
   :type    :integer
   :default 10)

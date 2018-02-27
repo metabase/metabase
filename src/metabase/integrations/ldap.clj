@@ -49,15 +49,15 @@
   :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))")
 
 (defsetting ldap-attribute-email
-  (tru "Attribute to use for the user's email. (usually 'mail', 'email' or 'userPrincipalName')")
+  (tru "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
   :default "mail")
 
 (defsetting ldap-attribute-firstname
-  (tru "Attribute to use for the user's first name. (usually 'givenName')")
+  (tru "Attribute to use for the user''s first name. (usually ''givenName'')")
   :default "givenName")
 
 (defsetting ldap-attribute-lastname
-  (tru "Attribute to use for the user's last name. (usually 'sn')")
+  (tru "Attribute to use for the user''s last name. (usually ''sn'')")
   :default "sn")
 
 (defsetting ldap-group-sync
@@ -66,7 +66,7 @@
   :default false)
 
 (defsetting ldap-group-base
-  (tru "Search base for groups, not required if your LDAP directory provides a 'memberOf' overlay. (Will be searched recursively)"))
+  (tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
 
 (defsetting ldap-group-mappings
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP groups and values are lists of MB groups IDs

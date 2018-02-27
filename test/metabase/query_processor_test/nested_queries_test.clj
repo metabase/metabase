@@ -9,13 +9,19 @@
              [util :as u]]
             [metabase.driver.generic-sql :as generic-sql]
             [metabase.models
-             [card :refer [Card]]
-             [database :as database]
+             [card :as card :refer [Card]]
+             [database :as database :refer [Database]]
              [field :refer [Field]]
+             [permissions :as perms]
+             [permissions-group :as perms-group]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data
+             [datasets :as datasets]
+             [users :refer [user->client]]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -458,3 +464,62 @@
           :aggregation [:count])
         qp/process-query
         rows)))
+
+
+;; Make suer you're allowed to save a query that uses a SQL-based source query even if you don't have SQL *write*
+;; permissions (#6845)
+
+;; Check that write perms for a Card with a source query require that you are able to *read* (i.e., view) the source
+;; query rather than be able to write (i.e., save) it. For example you should be able to save a query that uses a
+;; native query as its source query if you have permissions to view that query, even if you aren't allowed to create
+;; new ad-hoc SQL queries yourself.
+(expect
+ #{(perms/native-read-path (data/id))}
+ (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                           :type     :native
+                                           :native   {:query "SELECT * FROM VENUES"}}}]
+   (card/query-perms-set (query-with-source-card card :aggregation [:count]) :write)))
+
+;; try this in an end-to-end fashion using the API and make sure we can save a Card if we have appropriate read
+;; permissions for the source query
+(defn- do-with-temp-copy-of-test-db
+  "Run `f` with a temporary Database that copies the details from the standard test database. `f` is invoked as `(f
+  db)`."
+  [f]
+  (tt/with-temp Database [db {:details (:details (data/db)), :engine "h2"}]
+    (f db)))
+
+(defn- save-card-via-API-with-native-source-query!
+  "Attempt to save a Card that uses a native source query for Database with `db-id` via the API using Rasta. Use this to
+  test how the API endpoint behaves based on certain permissions grants for the `All Users` group."
+  [expected-status-code db-id]
+  (tt/with-temp Card [card {:dataset_query {:database db-id
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM VENUES"}}}]
+    ((user->client :rasta) :post "card"
+     {:name                   (tu/random-name)
+      :display                "scalar"
+      :visualization_settings {}
+      :dataset_query          (query-with-source-card card
+                                :aggregation [:count])})))
+
+;; ok... grant native *read* permissions which means we should be able to view our source query generated with the
+;; function above. API should allow use to save here because write permissions for a query require read permissions
+;; for any source queries
+(expect
+  :ok
+  (do-with-temp-copy-of-test-db
+   (fn [db]
+     (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
+     (perms/grant-permissions! (perms-group/all-users) (perms/native-read-path (u/get-id db)))
+     (save-card-via-API-with-native-source-query! 200 (u/get-id db))
+     :ok)))
+
+;; however, if we do *not* have read permissions for the source query, we shouldn't be allowed to save the query. This
+;; API call should fail
+(expect
+  "You don't have permissions to do that."
+  (do-with-temp-copy-of-test-db
+   (fn [db]
+     (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
+     (save-card-via-API-with-native-source-query! 403 (u/get-id db)))))
