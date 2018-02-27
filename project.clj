@@ -75,7 +75,7 @@
                                com.sun.jmx/jmxri]]
                  [medley "0.8.4"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
-                 [mysql/mysql-connector-java "5.1.39"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
+                 [mysql/mysql-connector-java "5.1.45"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
                  [jdistlib "0.5.1"                                    ; Distribution statistic tests
                   :exclusions [com.github.wendykierp/JTransforms]]
                  [net.cgrand/xforms "0.13.0"                          ; Additional transducers
