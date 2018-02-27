@@ -93,10 +93,11 @@
    :visualization_settings {}
    :dataset_query          {:type "query"}
    :parameters             ()
-   :param_values           nil})
+   :param_values           nil
+   :param_fields           nil})
 
 (def successful-dashboard-info
-  {:description nil, :parameters (), :ordered_cards (), :param_values nil})
+  {:description nil, :parameters (), :ordered_cards (), :param_values nil, :param_fields nil})
 
 
 ;;; ------------------------------------------- GET /api/embed/card/:token -------------------------------------------

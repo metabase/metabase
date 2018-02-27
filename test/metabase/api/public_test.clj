@@ -88,7 +88,7 @@
 
 ;; Check that we can fetch a PublicCard
 (expect
-  #{:dataset_query :description :display :id :name :visualization_settings :param_values}
+  #{:dataset_query :description :display :id :name :visualization_settings :param_values :param_fields}
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (set (keys (http/client :get 200 (str "public/card/" uuid)))))))
