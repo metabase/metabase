@@ -47,7 +47,10 @@
 (defn export-to-csv-writer
   "Write a CSV to `FILE` with the header a and rows found in `RESULTS`"
   [^File file results]
-  (with-open [fw (java.io.FileWriter. file)]
+  (with-open [fw (java.io.PrintWriter. file "UTF-8")]
+    ;; This is a UTF-8 Byte Order Mark and should not be needed, though Excel requires it. Reading in the file via
+    ;; `slurp` appears to ignore the BOM and so does LibreOffice
+    (.print fw \uFEFF)
     (csv/write-csv fw (results->cells results))))
 
 (defn- export-to-json [columns rows]
