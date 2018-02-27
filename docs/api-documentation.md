@@ -1991,7 +1991,7 @@ Fetch the current `User`.
 
 ## `POST /api/user/`
 
-Create a new `User`, or or reäctivate an existing one.
+Create a new `User`, or reactivate an existing one.
 
 You must be a superuser to do this.
 
