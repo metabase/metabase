@@ -122,12 +122,11 @@ describe("admin/datamodel", () => {
       const filterPopover = app.find(FilterPopover);
       click(filterPopover.find(FieldList).find('h4[children="Email"]'));
 
-      // click to aexpand options
-      click(filterPopover.find(`a[children="Options"]`));
-
-      // click "Is Not"
+      // click to expand options
       const operatorSelector = filterPopover.find(OperatorSelector);
-      clickButton(operatorSelector.find('button[children="Is not"]'));
+      click(operatorSelector);
+      // click "Is Not"
+      clickButton(operatorSelector.find('[children="Is not"]'));
 
       const addFilterButton = filterPopover.find(".Button.disabled");
 

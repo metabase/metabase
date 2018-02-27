@@ -41,6 +41,7 @@ type Props = {
   style?: { [key: string]: string | number },
   placeholder?: string,
   maxWidth?: number,
+  minWidth?: number,
 };
 
 type State = {

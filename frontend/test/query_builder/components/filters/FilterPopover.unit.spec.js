@@ -61,13 +61,13 @@ describe("FilterPopover", () => {
       });
     });
     describe("filter operator selection", () => {
-      it("should not show operators by default", () => {
+      it("should have an operator selector", () => {
         const wrapper = mount(
           <StaticMetadataProvider>
             <FilterPopover query={QUERY} filter={NUMERIC_FILTER} />
           </StaticMetadataProvider>,
         );
-        expect(wrapper.find(OperatorSelector).length).toEqual(0);
+        expect(wrapper.find(OperatorSelector).length).toEqual(1);
       });
     });
     describe("filter options", () => {
