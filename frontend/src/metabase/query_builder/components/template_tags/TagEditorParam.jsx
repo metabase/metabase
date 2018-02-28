@@ -121,7 +121,7 @@ export default class TagEditorParam extends Component {
     }
 
     // we only allow cards with one column of results to be used as a filter
-    const cards = (cardList || []).filter(card => card.result_metadata.length === 1);
+    const cards = (cardList || []).filter(card => card.result_metadata && card.result_metadata.length === 1);
 
     const isDimension = tag.type === "dimension";
     const hasSelectedDimensionField =
