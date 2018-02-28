@@ -69,11 +69,11 @@
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (u/key-by :table_id (db/select (conj Field:params-columns-only :table_id)
+    (u/key-by :table_id (db/select Field:params-columns-only
                           :table_id     [:in table-ids]
                           :special_type (mdb/isa :type/Name)))))
 
-(defn add-name-fields
+(defn add-name-field
   "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each
   Field, if a matching name Field exists, add it under the `:name_field` key. This is so the Fields can be used in
   public/embedded field values search widgets. This only includes the information needed to power those widgets, and
@@ -123,7 +123,7 @@
   parameter widgets."
   [field-ids]
   (when (seq field-ids)
-    (u/key-by :id (-> (db/select (conj Field:params-columns-only :table_id) :id [:in field-ids])
+    (u/key-by :id (-> (db/select Field:params-columns-only :id [:in field-ids])
                       (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
                       remove-dimensions-nonpublic-columns))))
 

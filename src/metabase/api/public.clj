@@ -192,7 +192,8 @@
        (if (instance? metabase.query_processor.interface.Field x)
          (swap! field-ids conj (:field-id x))
          x))
-     (qp/expand query))))
+     (qp/expand query))
+    @field-ids))
 
 (defn- card->referenced-field-ids
   "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template
@@ -205,9 +206,9 @@
   "Check to make sure the query for Card with `card-id` references Field with `field-id`. Otherwise, or if the Card
   cannot be found, throw an Exception."
   [field-id card-id]
-  (let [card                  (api/check-404 (db/select-one [Card :dataset_query] :id card-id))
-        referenced-fields-ids (card->referenced-field-ids card)]
-    (api/check-404 (contains? referenced-fields-ids field-id))))
+  (let [card                 (api/check-404 (db/select-one [Card :dataset_query] :id card-id))
+        referenced-field-ids (card->referenced-field-ids card)]
+    (api/check-404 (contains? referenced-field-ids field-id))))
 
 (defn- check-search-field-is-allowed
   "Check whether a search Field is allowed to be used in conjunction with another Field. A search Field is allowed if
@@ -220,6 +221,7 @@
   If none of these conditions are met, you are not allowed to use the search field in combination with the other
   field, and an 400 exception will be thrown."
   [field-id search-field-id]
+  {:pre [(integer? field-id) (integer? search-field-id)]}
   (api/check-400
    (or (= field-id search-field-id)
        (db/exists? Dimension :field_id field-id, :human_readable_field_id search-field-id)
@@ -229,7 +231,6 @@
          (db/exists? Field :id search-field-id, :table_id table-id, :special_type (mdb/isa :type/Name))))))
 
 
-;; FIXME
 (defn- check-field-is-referenced-by-dashboard
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
   404 Exception."

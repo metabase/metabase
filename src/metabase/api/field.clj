@@ -154,11 +154,12 @@
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
   [field]
+  (api/check-404 field)
   (if-let [field-values (and (field-values/field-should-have-field-values? field)
                              (field-values/create-field-values-if-needed! field))]
     (-> field-values
         (assoc :values (field-values/field-values->pairs field-values))
-        (dissoc :human_readable_values))
+        (dissoc :human_readable_values :created_at :updated_at :id :field_id))
     {:values []}))
 
 (api/defendpoint GET "/:id/values"

@@ -354,6 +354,7 @@
   [token field-id]
   (let [unsigned-token (eu/unsign token)
         card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (check-embedding-enabled-for-card card-id)
     (public-api/card-and-field-id->values card-id field-id)))
 
 (api/defendpoint GET "/dashboard/:token/field/:field-id/values"
@@ -361,8 +362,7 @@
   [token field-id]
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
-    ;; TODO - look at other code in this namespace and make sure the logic we're using over in `public-api` is
-    ;; appropriate here as well !
+    (check-embedding-enabled-for-dashboard dashboard-id)
     (public-api/dashboard-and-field-id->values dashboard-id field-id)))
 
 
@@ -375,6 +375,7 @@
    limit (s/maybe su/IntStringGreaterThanZero)}
   (let [unsigned-token (eu/unsign token)
         card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (check-embedding-enabled-for-card card-id)
     (public-api/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
 (api/defendpoint GET "/dashboard/:token/field/:field-id/search/:search-field-id"
@@ -384,6 +385,7 @@
    limit (s/maybe su/IntStringGreaterThanZero)}
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+    (check-embedding-enabled-for-dashboard dashboard-id)
     (public-api/search-dashboard-fields dashboard-id field-id search-field-id value (when limit
                                                                                       (Integer/parseInt limit)))))
 
@@ -395,6 +397,7 @@
   {value su/NonBlankString}
   (let [unsigned-token (eu/unsign token)
         card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (check-embedding-enabled-for-card card-id)
     (public-api/card-field-remapped-values card-id field-id remapped-id value)))
 
 (api/defendpoint GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
@@ -402,6 +405,7 @@
   {value su/NonBlankString}
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+    (check-embedding-enabled-for-dashboard dashboard-id)
     (public-api/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 
