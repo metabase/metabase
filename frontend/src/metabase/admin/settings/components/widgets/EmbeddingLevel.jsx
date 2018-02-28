@@ -2,49 +2,49 @@ import React, { Component } from "react";
 import ReactRetinaImage from "react-retina-image";
 import { t } from "c-3po";
 import SettingsInput from "./SettingInput";
-import cx from 'classnames';
+import cx from "classnames";
 
 const PREMIUM_EMBEDDING_STORE_URL =
-    "https://store.metabase.com/product/embedding";
+  "https://store.metabase.com/product/embedding";
 const PREMIUM_EMBEDDING_SETTING_KEY = "premium-embedding-token";
 
 class PremiumTokenInput extends Component {
-    state = {
-        errorMessage: ''
+  state = {
+    errorMessage: "",
+  };
+  render() {
+    const { token, onChangeSetting } = this.props;
+    const { errorMessage } = this.state;
+
+    let message;
+
+    if (errorMessage) {
+      message = errorMessage;
+    } else if (token) {
+      message = t`Premium embedding enabled`;
+    } else {
+      message = t`Enter the token you bought from the Metabase Store`;
     }
-    render () {
-        const { token, onChangeSetting } = this.props
-        const { errorMessage } = this.state
 
-        let message
-
-        if(errorMessage) {
-            message = errorMessage
-        } else if (token) {
-            message = t`Premium embedding enabled`
-        } else {
-            message = t`Enter the token you bought from the Metabase Store`
-        }
-
-        return (
-            <div className="mb3">
-                <h3 className={cx("mb1", { "text-danger": errorMessage })}>
-                    { message }
-                </h3>
-                <SettingsInput
-                    onChange={async (value) => {
-                        try {
-                            await onChangeSetting(PREMIUM_EMBEDDING_SETTING_KEY, value)
-                        } catch (error) {
-                            this.setState({ errorMessage: error.data })
-                        }
-                    }}
-                    setting={{ value: token }}
-                    autoFocus={!token}
-                />
-            </div>
-        )
-    }
+    return (
+      <div className="mb3">
+        <h3 className={cx("mb1", { "text-danger": errorMessage })}>
+          {message}
+        </h3>
+        <SettingsInput
+          onChange={async value => {
+            try {
+              await onChangeSetting(PREMIUM_EMBEDDING_SETTING_KEY, value);
+            } catch (error) {
+              this.setState({ errorMessage: error.data });
+            }
+          }}
+          setting={{ value: token }}
+          autoFocus={!token}
+        />
+      </div>
+    );
+  }
 }
 
 const PremiumExplanation = ({ showEnterScreen }) => (
