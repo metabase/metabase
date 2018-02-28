@@ -20,6 +20,7 @@ import { stripId } from "metabase/lib/formatting";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type { FieldId } from "metabase/meta/types/Field";
 import type { Value } from "metabase/meta/types/Dataset";
+import type { LayoutRendererProps } from "metabase/components/TokenField";
 
 const MAX_SEARCH_RESULTS = 100;
 
@@ -42,10 +43,10 @@ type Props = {
   placeholder?: string,
   maxWidth?: number,
   minWidth?: number,
+  alwaysShowOptions?: boolean,
 };
 
 type State = {
-  focused: boolean,
   loadingState: "INIT" | "LOADING" | "LOADED",
   options: [Value, ?string][],
   lastValue: string,
@@ -61,7 +62,6 @@ export class FieldValuesWidget extends Component {
   constructor(props: Props) {
     super(props);
     this.state = {
-      focused: false,
       options: [],
       loadingState: "INIT",
       lastValue: "",
@@ -189,6 +189,36 @@ export class FieldValuesWidget extends Component {
     }
   }, 500);
 
+  renderOptions({
+    optionsList,
+    isFocused,
+    isAllSelected,
+  }: LayoutRendererProps) {
+    const { alwaysShowOptions, field, searchField } = this.props;
+    const { loadingState } = this.state;
+    if (alwaysShowOptions || isFocused) {
+      if (optionsList) {
+        return optionsList;
+      } else if (this.hasList()) {
+        if (isAllSelected) {
+          return <EveryOptionState />;
+        }
+      } else if (this.isSearchable()) {
+        if (loadingState === "INIT") {
+          return alwaysShowOptions && <SearchState />;
+        } else if (loadingState === "LOADING") {
+          return <LoadingState />;
+        } else if (loadingState === "LOADED") {
+          if (isAllSelected) {
+            return alwaysShowOptions && <SearchState />;
+          } else {
+            return <NoMatchState field={searchField || field} />;
+          }
+        }
+      }
+    }
+  }
+
   render() {
     const {
       value,
@@ -270,25 +300,10 @@ export class FieldValuesWidget extends Component {
               autoLoad={false}
             />
           )}
-          layoutRenderer={({ valuesList, optionsList, isFiltered }) => (
+          layoutRenderer={props => (
             <div>
-              {valuesList}
-              {this.props.alwaysShowOptions || this.state.focused
-                ? optionsList ||
-                  (this.hasList() && !isFiltered ? (
-                    <OptionsMessage
-                      message={t`Including every option in your filter probably won’t do much…`}
-                    />
-                  ) : this.isSearchable() && loadingState === "LOADED" ? (
-                    <OptionsMessage
-                      message={jt`No matching ${(
-                        <strong>
-                          &nbsp;{(searchField || field).display_name}&nbsp;
-                        </strong>
-                      )} found.`}
-                    />
-                  ) : null)
-                : null}
+              {props.valuesList}
+              {this.renderOptions(props)}
             </div>
           )}
           filterOption={(option, filterString) =>
@@ -319,28 +334,37 @@ export class FieldValuesWidget extends Component {
             }
             return v;
           }}
-          onFocus={() => this.setState({ focused: true })}
-          onBlur={() => this.setState({ focused: false })}
         />
-        {this.isSearchable() && loadingState === "INIT" ? (
-          <div
-            className="flex layout-centered align-center"
-            style={{ minHeight: 100 }}
-          >
-            <Icon name="search" size={35} className="text-grey-1" />
-          </div>
-        ) : this.isSearchable() && loadingState === "LOADING" ? (
-          <div
-            className="flex layout-centered align-center"
-            style={{ minHeight: 100 }}
-          >
-            <LoadingSpinner size={32} />
-          </div>
-        ) : null}
       </div>
     );
   }
 }
+
+const LoadingState = () => (
+  <div className="flex layout-centered align-center" style={{ minHeight: 100 }}>
+    <LoadingSpinner size={32} />
+  </div>
+);
+
+const SearchState = () => (
+  <div className="flex layout-centered align-center" style={{ minHeight: 100 }}>
+    <Icon name="search" size={35} className="text-grey-1" />
+  </div>
+);
+
+const NoMatchState = ({ field }) => (
+  <OptionsMessage
+    message={jt`No matching ${(
+      <strong>&nbsp;{field.display_name}&nbsp;</strong>
+    )} found.`}
+  />
+);
+
+const EveryOptionState = () => (
+  <OptionsMessage
+    message={t`Including every option in your filter probably won’t do much…`}
+  />
+);
 
 const OptionsMessage = ({ message }) => (
   <div className="flex layout-centered p4">{message}</div>

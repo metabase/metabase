@@ -202,7 +202,7 @@ export default class FilterPopover extends Component {
 
   renderPicker(filter: FieldFilter, field: Field) {
     let operator: ?Operator = field.operators_lookup[filter[0]];
-    return (
+    let fieldWidgets =
       operator &&
       operator.fields.map((operatorField, index) => {
         if (!operator) {
@@ -279,8 +279,12 @@ export default class FilterPopover extends Component {
             {operator.multi ? t`true` : t`false`}
           </span>
         );
-      })
-    );
+      });
+    if (fieldWidgets && fieldWidgets.filter(f => f).length > 0) {
+      return fieldWidgets;
+    } else {
+      return <div className="mb1" />;
+    }
   }
 
   onCommit = () => {

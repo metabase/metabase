@@ -1,6 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
+import ReactDOM from "react-dom";
 
 import { t } from "c-3po";
 
@@ -24,18 +25,24 @@ type Props = {
 type State = {
   value: any[],
   isFocused: boolean,
+  widgetWidth: ?number,
 };
+
+const BORDER_WIDTH = 2;
 
 // TODO: rename this something else since we're using it for more than searching and more than text
 export default class ParameterFieldWidget extends Component<*, Props, State> {
   props: Props;
   state: State;
 
+  _unfocusedElement: React$Component<any, any, any>;
+
   constructor(props: Props) {
     super(props);
     this.state = {
       isFocused: false,
       value: props.value,
+      widgetWidth: null,
     };
   }
 
@@ -55,6 +62,16 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   componentWillReceiveProps(nextProps: Props) {
     if (this.props.value !== nextProps.value) {
       this.setState({ value: nextProps.value });
+    }
+  }
+
+  componentDidUpdate() {
+    let element = ReactDOM.findDOMNode(this._unfocusedElement);
+    if (!this.state.isFocused && element) {
+      const parameterWidgetElement = element.parentNode.parentNode.parentNode;
+      if (parameterWidgetElement.clientWidth !== this.state.widgetWidth) {
+        this.setState({ widgetWidth: parameterWidgetElement.clientWidth });
+      }
     }
   }
 
@@ -82,6 +99,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     if (!isFocused) {
       return (
         <div
+          ref={_ => (this._unfocusedElement = _)}
           className="flex-full cursor-pointer"
           onClick={() => focusChanged(true)}
         >
@@ -115,8 +133,10 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
             autoFocus
             color="brand"
             style={{
-              borderWidth: 2,
-              minWidth: 182,
+              borderWidth: BORDER_WIDTH,
+              minWidth: this.state.widgetWidth
+                ? this.state.widgetWidth + BORDER_WIDTH * 2
+                : null,
             }}
             maxWidth={400}
           />
