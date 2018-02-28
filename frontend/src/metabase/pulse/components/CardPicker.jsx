@@ -51,6 +51,8 @@ export default class CardPicker extends Component {
   };
 
   onChange = id => {
+    const selectedCard = this.props.cardList.find(card => card.id === id);
+    this.setState({ inputValue: selectedCard.name });
     this.props.onChange(id);
     ReactDOM.findDOMNode(this.refs.input).blur();
   };
@@ -141,7 +143,7 @@ export default class CardPicker extends Component {
           ref="input"
           className="input no-focus full text-bold"
           placeholder={t`Type a question name to filter`}
-          value={this.inputValue}
+          value={inputValue}
           onFocus={this.onInputFocus}
           onBlur={this.onInputBlur}
           onChange={this.onInputChange}
@@ -159,15 +161,16 @@ export default class CardPicker extends Component {
             className="rounded bordered scroll-y scroll-show"
             style={{ width: inputWidth + "px", maxHeight: "400px" }}
           >
-            {visibleCardList &&
-              collectionIds.length > 1 && (
+            {collection && (
                 <div
                   className="flex align-center text-slate cursor-pointer border-bottom p2"
                   onClick={e => {
                     this.setState({
                       collectionId: undefined,
                       isClicking: true,
+                      inputValue: "",
                     });
+                    ReactDOM.findDOMNode(this.refs.input).focus();
                   }}
                 >
                   <Icon name="chevronleft" size={18} />
@@ -189,6 +192,7 @@ export default class CardPicker extends Component {
                         collectionId: collection.id,
                         isClicking: true,
                       });
+                      ReactDOM.findDOMNode(this.refs.input).focus();
                     }}
                   />
                 ))}
