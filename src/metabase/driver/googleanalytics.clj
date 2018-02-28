@@ -263,7 +263,8 @@
           :process-query-in-context          (u/drop-first-arg process-query-in-context)
           :mbql->native                      (u/drop-first-arg qp/mbql->native)
           :table-rows-seq                    (u/drop-first-arg table-rows-seq)
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)}))
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
+          :default-to-case-sensitive?        (constantly false)}))
 
 (defn -init-driver
   "Register the Google Analytics driver"

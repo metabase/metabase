@@ -1,14 +1,20 @@
 (ns metabase.query-processor.middleware.parameters.mbql-test
   "Tests for *MBQL* parameter substitution."
   (:require [expectations :refer :all]
+            [honeysql.core :as hsql]
             [metabase
              [query-processor :as qp]
-             [query-processor-test :refer [first-row rows format-rows-by non-timeseries-engines]]]
+             [query-processor-test :refer [first-row format-rows-by non-timeseries-engines rows]]
+             [util :as u]]
+            [metabase.driver.generic-sql :as sql]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.middleware.parameters.mbql :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
-            [metabase.util :as u]))
+            [metabase.util.honeysql-extensions :as hx]))
 
 (defn- expand-parameters [query]
   (expand (dissoc query :parameters) (:parameters query)))
@@ -203,8 +209,12 @@
       (rows (qp/process-query outer-query)))))
 
 ;; now let's make sure the correct query is actually being generated for the same thing above...
-(datasets/expect-with-engines params-test-engines
-  {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"VENUES\" "
+;; (NOTE: We're only testing this with H2 because the SQL generated is simply too different between various SQL drivers.
+;; we know the features are still working correctly because we're actually checking that we get the right result from
+;; running the query above these tests are more of a sanity check to make sure the SQL generated is sane.)
+(datasets/expect-with-engine :h2
+  {:query  (str "SELECT count(*) AS \"count\" "
+                "FROM \"PUBLIC\".\"VENUES\" "
                 "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
    :params nil}
   (let [inner-query (data/query venues
@@ -219,7 +229,7 @@
 
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
-(datasets/expect-with-engines params-test-engines
+(datasets/expect-with-engine :h2
   {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
                 "WHERE (CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date) "
                 "OR CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")

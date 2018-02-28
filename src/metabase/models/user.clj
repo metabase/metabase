@@ -14,12 +14,12 @@
              [models :as models]])
   (:import java.util.UUID))
 
-;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel User :core_user)
 
 (defn- pre-insert [{:keys [email password reset_token] :as user}]
-  (assert (u/is-email? email)
+  (assert (u/email? email)
     (format "Not a valid email: '%s'" email))
   (assert (and (string? password)
                (not (s/blank? password))))
@@ -69,7 +69,7 @@
                                          :group_id (:id (group/admin))               ; which leads to a stack overflow of calls between the two
                                          :user_id  id))))                            ; TODO - could we fix this issue by using `post-delete!`?
   (when email
-    (assert (u/is-email? email)))
+    (assert (u/email? email)))
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
     reset_token (assoc :reset_token (creds/hash-bcrypt reset_token))))
@@ -108,7 +108,7 @@
           :pre-delete     pre-delete}))
 
 
-;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
+;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (declare form-password-reset-url set-password-reset-token!)
 
@@ -121,7 +121,7 @@
 (defn invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."
   [first-name last-name email-address password invitor]
-  {:pre [(string? first-name) (string? last-name) (u/is-email? email-address) (u/maybe? string? password) (map? invitor)]}
+  {:pre [(string? first-name) (string? last-name) (u/email? email-address) (u/maybe? string? password) (map? invitor)]}
   ;; create the new user
   (u/prog1 (db/insert! User
              :email       email-address
@@ -131,9 +131,10 @@
     (send-welcome-email! <> invitor)))
 
 (defn create-new-google-auth-user!
-  "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active admins will recieve an email right away."
+  "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
+  admins will recieve an email right away."
   [first-name last-name email-address]
-  {:pre [(string? first-name) (string? last-name) (u/is-email? email-address)]}
+  {:pre [(string? first-name) (string? last-name) (u/email? email-address)]}
   (u/prog1 (db/insert! User
              :email       email-address
              :first_name  first-name
@@ -144,9 +145,10 @@
     (email/send-user-joined-admin-notification-email! <>, :google-auth? true)))
 
 (defn create-new-ldap-auth-user!
-  "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins will recieve an email right away."
+  "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
+  will recieve an email right away."
   [first-name last-name email-address password]
-  {:pre [(string? first-name) (string? last-name) (u/is-email? email-address)]}
+  {:pre [(string? first-name) (string? last-name) (u/email? email-address)]}
   (db/insert! User :email      email-address
                    :first_name first-name
                    :last_name  last-name
@@ -181,7 +183,7 @@
   (str (public-settings/site-url) "/auth/reset_password/" reset-token))
 
 
-;;; ------------------------------------------------------------ Permissions ------------------------------------------------------------
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn permissions-set
   "Return a set of all permissions object paths that USER-OR-ID has been granted access to."

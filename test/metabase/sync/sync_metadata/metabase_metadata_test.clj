@@ -3,6 +3,7 @@
   (:require [expectations :refer :all]
             [metabase.models
              [database :refer [Database]]
+             [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
             [metabase.test.util :as tu]
@@ -10,8 +11,7 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
-            [toucan.util.test :as tt]
-            [metabase.models.field :refer [Field]]))
+            [toucan.util.test :as tt]))
 
 ;; Test that the `_metabase_metadata` table can be used to populate values for things like descriptions
 (defn- get-table-and-fields-descriptions [table-or-id]

@@ -18,8 +18,7 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Sharing dashboards and questions with public links](12-public-links.md)
 * [Embedding Metabase in other Applications](13-embedding.md)
 * [Caching query results](14-caching.md)
-* [Enable performance monitoring](15-enable-jmx.md)
 
-First things first, you'll need to install Metabase. If you haven’t done that yet, our [Installation Guide](../operations-guide/start.md#installing-and-running-metabase) will help you through the process.
+First things first, you'll need to install Metabase. If you haven’t done that yet, our [Installation Guide](../operations-guide/start.html#installing-and-running-metabase) will help you through the process.
 
 Already done with that? Then let’s start with going over [connecting Metabase to your database](01-managing-databases.md).

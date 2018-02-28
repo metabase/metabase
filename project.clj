@@ -64,6 +64,7 @@
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
+                 [instaparse "1.4.0"]                                 ; Insaparse parser generator
                  [kixi/stats "0.3.10"                                 ; Various statistic measures implemented as transducers
                   :exclusions [org.clojure/test.check                 ; test.check and AVL trees are used in kixi.stats.random. Remove exlusion if using.
                                org.clojure/data.avl]]
@@ -74,7 +75,7 @@
                                com.sun.jmx/jmxri]]
                  [medley "0.8.4"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
-                 [mysql/mysql-connector-java "5.1.39"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
+                 [mysql/mysql-connector-java "5.1.45"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
                  [jdistlib "0.5.1"                                    ; Distribution statistic tests
                   :exclusions [com.github.wendykierp/JTransforms]]
                  [net.cgrand/xforms "0.13.0"                          ; Additional transducers
@@ -103,7 +104,7 @@
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
                  ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
-            [lein-ring "0.11.0"                                       ; start the HTTP server with 'lein ring server'
+            [lein-ring "0.12.3"                                       ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]                       ; TODO - should this be a dev dependency ?
             [puppetlabs/i18n "0.8.0"]]                                ; i18n helpers
   :main ^:skip-aot metabase.core
@@ -152,7 +153,8 @@
                    :aot [metabase.logger]}                            ; Log appender class needs to be compiled for log4j to use it
              :ci {:jvm-opts ["-Xmx3g"]}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
-             :expectations {:injections [(require 'metabase.test-setup)]
+             :expectations {:injections [(require 'metabase.test-setup  ; for test setup stuff
+                                                  'metabase.test.util)] ; for the toucan.util.test default values for temp models
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"
                                   :mb-run-mode "test"}

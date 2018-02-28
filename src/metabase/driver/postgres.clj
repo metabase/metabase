@@ -17,6 +17,7 @@
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
   (:import java.util.UUID
+           java.sql.Time
            metabase.query_processor.interface.Value))
 
 (defrecord PostgresDriver []
@@ -198,6 +199,10 @@
       (isa? base-type :type/IPAddress)    (hx/cast :inet value)
       (isa? base-type :type/PostgresEnum) (hx/quoted-cast database-type value)
       :else                               (sqlqp/->honeysql driver value))))
+
+(defmethod sqlqp/->honeysql [PostgresDriver Time]
+  [driver time-value]
+  (hx/->time time-value))
 
 (defn- string-length-fn [field-key]
   (hsql/call :char_length (hx/cast :VARCHAR field-key)))

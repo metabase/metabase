@@ -6,7 +6,6 @@
             [clojure.tools.logging :as log]
             [metabase
              [public-settings :as public-settings]
-             [query :as q]
              [query-processor :as qp]
              [util :as u]]
             [metabase.api.common :as api :refer [*current-user-id*]]
@@ -22,6 +21,7 @@
              [revision :as revision]]
             [metabase.query-processor.middleware.permissions :as qp-perms]
             [metabase.query-processor.util :as qputil]
+            [metabase.util.query :as q]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -64,7 +64,8 @@
                                          (map :id)
                                          set))]
     (for [card cards]
-      (assoc card :in_public_dashboard (contains? public-dashboard-card-ids (u/get-id card))))))
+      (when (some? card) ; card may be `nil` here if it comes from a text-only Dashcard
+        (assoc card :in_public_dashboard (contains? public-dashboard-card-ids (u/get-id card)))))))
 
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
@@ -100,18 +101,33 @@
                               (:schema table)
                               (or (:id table) (:table-id table)))))))
 
+(declare perms-objects-set)
+
+(defn- source-card-perms
+  "If `outer-query` is based on a source Card (if `:source-table` uses a psuedo-source-table like `card__<id>`) then
+  return the permissions needed to *read* that Card. Running or saving a Card that uses another Card as a source query
+  simply requires read permissions for that Card; e.g. if you are allowed to view a query you can save a new query
+  that uses it as a source. Thus the distinction between read and write permissions in not important here.
+
+  See issue #6845 for further discussion."
+  [outer-query]
+  (when-let [source-card-id (qputil/query->source-card-id outer-query)]
+    (perms-objects-set (Card source-card-id) :read)))
+
 (defn- mbql-permissions-path-set
   "Return the set of required permissions needed to run QUERY."
   [read-or-write query]
   {:pre [(map? query) (map? (:query query))]}
-  (try (let [{:keys [query database]} (qp/expand query)]
-         (tables->permissions-path-set read-or-write database (query->source-and-join-tables query)))
-       ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card)
-       ;; just return a set of permissions that means no one will ever get to see it
-       (catch Throwable e
-         (log/warn "Error getting permissions for card:" (.getMessage e) "\n"
-                   (u/pprint-to-str (u/filtered-stacktrace e)))
-         #{"/db/0/"})))                        ; DB 0 will never exist
+  (try
+    (or (source-card-perms query)
+        (let [{:keys [query database]} (qp/expand query)]
+          (tables->permissions-path-set read-or-write database (query->source-and-join-tables query))))
+    ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card)
+    ;; just return a set of permissions that means no one will ever get to see it
+    (catch Throwable e
+      (log/warn "Error getting permissions for card:" (.getMessage e) "\n"
+                (u/pprint-to-str (u/filtered-stacktrace e)))
+      #{"/db/0/"})))                    ; DB 0 will never exist
 
 ;; it takes a lot of DB calls and function calls to expand/resolve a query, and since they're pure functions we can
 ;; save ourselves some a lot of DB calls by caching the results. Cache the permissions reqquired to run a given query
@@ -153,12 +169,14 @@
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
 (defn card-dependencies
-  "Calculate any dependent objects for a given `Card`."
-  [this id {:keys [dataset_query]}]
-  (when (and dataset_query
-             (= :query (keyword (:type dataset_query))))
-    {:Metric  (q/extract-metric-ids (:query dataset_query))
-     :Segment (q/extract-segment-ids (:query dataset_query))}))
+  "Calculate any dependent objects for a given `card`."
+  ([_ _ card]
+   (card-dependencies card))
+  ([{:keys [dataset_query]}]
+   (when (and dataset_query
+              (= :query (keyword (:type dataset_query))))
+     {:Metric  (q/extract-metric-ids (:query dataset_query))
+      :Segment (q/extract-segment-ids (:query dataset_query))})))
 
 
 ;;; -------------------------------------------------- Revisions --------------------------------------------------

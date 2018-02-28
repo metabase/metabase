@@ -8,8 +8,8 @@ import Table from "./Table";
  * Wrapper class for a {@link Database} schema. Contains {@link Table}s.
  */
 export default class Schema extends Base {
-    displayName: string;
+  displayName: string;
 
-    database: Database;
-    tables: Table[];
+  database: Database;
+  tables: Table[];
 }

@@ -1,11 +1,13 @@
 (ns metabase.driver.presto
   (:require [clj-http.client :as http]
             [clj-time
+             [coerce :as tcoerce]
              [core :as time]
              [format :as tformat]]
             [clojure
              [set :as set]
              [string :as str]]
+            [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
@@ -20,12 +22,13 @@
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
-  (:import java.util.Date))
+  (:import java.sql.Time
+           java.util.Date
+           [metabase.query_processor.interface TimeValue]))
 
 (defrecord PrestoDriver []
   clojure.lang.Named
   (getName [_] "Presto"))
-
 
 ;;; Presto API helpers
 
@@ -56,10 +59,20 @@
 (def ^:private presto-date-time-formatter
   (u/->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
 
+(defn- parse-presto-time
+  "Parsing time from presto using a specific formatter rather than the
+  utility functions as this will be called on each row returned, so
+  performance is important"
+  [time-str]
+  (->> time-str
+       (u/parse-date :hour-minute-second-ms)
+       tcoerce/to-long
+       Time.))
+
 (defn- field-type->parser [report-timezone field-type]
   (condp re-matches field-type
     #"decimal.*"                bigdec
-    #"time"                     (partial u/parse-date :hour-minute-second-ms)
+    #"time"                     parse-presto-time
     #"time with time zone"      parse-time-with-tz
     #"timestamp"                (partial u/parse-date
                                          (if-let [report-tz (and report-timezone
@@ -90,8 +103,9 @@
 
 (defn- execute-presto-query! [details query]
   (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (let [{{:keys [columns data nextUri error]} :body} (http/post (details->uri details-with-tunnel "/v1/statement")
-                                                                  (assoc (details->request details-with-tunnel) :body query, :as :json))]
+    (let [{{:keys [columns data nextUri error id]} :body :as foo} (http/post (details->uri details-with-tunnel "/v1/statement")
+                                                                             (assoc (details->request details-with-tunnel) :body query, :as :json))]
+
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
       (let [rows    (parse-presto-results (:report-timezone details) (or columns []) (or data []))
@@ -99,7 +113,25 @@
                      :rows    rows}]
         (if (nil? nextUri)
           results
-          (fetch-presto-results! details-with-tunnel results nextUri))))))
+          ;; When executing the query, it doesn't return the results, but is geared toward async queries. After
+          ;; issuing the query, the below will ask for the results. Asking in a future so that this thread can be
+          ;; interrupted if the client disconnects
+          (let [results-future (future (fetch-presto-results! details-with-tunnel results nextUri))]
+            (try
+              @results-future
+              (catch InterruptedException e
+                (if id
+                  ;; If we have a query id, we can cancel the query
+                  (try
+                    (http/delete (details->uri details-with-tunnel (str "/v1/query/" id))
+                                 (details->request details-with-tunnel))
+                    ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
+                    ;; covering it up with a failed cancel
+                    (catch Exception e
+                      (log/error e (str "Error cancelling query with id " id))))
+                  (log/warn "Client connection closed, no query-id found, can't cancel query"))
+                ;; Propogate the error so that any finalizers can still run
+                (throw e)))))))))
 
 
 ;;; Generic helpers
@@ -156,7 +188,8 @@
     #"varbinary.*" :type/*
     #"json"        :type/Text       ; TODO - this should probably be Dictionary or something
     #"date"        :type/Date
-    #"time.*"      :type/DateTime
+    #"time"        :type/Time
+    #"time.+"      :type/DateTime
     #"array"       :type/Array
     #"map"         :type/Dictionary
     #"row.*"       :type/*          ; TODO - again, but this time we supposedly have a schema
@@ -184,9 +217,27 @@
   [_ date]
   (hsql/call :from_iso8601_timestamp (hx/literal (u/date->iso-8601 date))))
 
+(def ^:private time-format (tformat/formatter "HH:mm:SS.SSS"))
+
+(defn- time->str
+  ([t]
+   (time->str t nil))
+  ([t tz-id]
+   (let [tz (time/time-zone-for-id tz-id)]
+     (tformat/unparse (tformat/with-zone time-format tz) (tcoerce/to-date-time t)))))
+
+(defmethod sqlqp/->honeysql [PrestoDriver TimeValue]
+  [_ {:keys [value timezone-id]}]
+  (hx/cast :time (time->str value timezone-id)))
+
+(defmethod sqlqp/->honeysql [PrestoDriver Time]
+  [_ {:keys [value]}]
+  (hx/->time (time->str value)))
+
 (defn- execute-query [{:keys [database settings], {sql :query, params :params} :native, :as outer-query}]
-  (let [sql                    (str "-- " (qputil/query->remark outer-query) "\n"
-                                          (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp))
+  (let [sql                    (str "-- "
+                                    (qputil/query->remark outer-query) "\n"
+                                    (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp))
         details                (merge (:details database) settings)
         {:keys [columns rows]} (execute-presto-query! details sql)
         columns                (for [[col name] (map vector columns (rename-duplicates (map :name columns)))]
@@ -303,7 +354,8 @@
                                                                       :expressions
                                                                       :native-parameters
                                                                       :expression-aggregations
-                                                                      :binning}
+                                                                      :binning
+                                                                      :native-query-params}
                                                                     (when-not config/is-test?
                                                                       ;; during unit tests don't treat presto as having FK support
                                                                       #{:foreign-keys})))

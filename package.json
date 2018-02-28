@@ -87,6 +87,7 @@
     "babel-loader": "^7.1.2",
     "babel-plugin-add-react-displayname": "^0.0.4",
     "babel-plugin-c-3po": "^0.5.8",
+    "babel-plugin-syntax-trailing-function-commas": "^6.22.0",
     "babel-plugin-transform-builtin-extend": "^1.1.2",
     "babel-plugin-transform-decorators-legacy": "^1.3.4",
     "babel-plugin-transform-flow-strip-types": "^6.8.0",
@@ -136,7 +137,7 @@
     "postcss-import": "^9.0.0",
     "postcss-loader": "^2.0.8",
     "postcss-url": "^6.0.4",
-    "prettier": "^0.22.0",
+    "prettier": "^1.10.2",
     "promise-loader": "^1.0.0",
     "react-test-renderer": "^15.5.4",
     "sauce-connect-launcher": "^1.1.1",
@@ -153,12 +154,12 @@
     "dev": "yarn && concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn run build-hot'",
     "lint": "yarn run lint-eslint && yarn run lint-prettier",
     "lint-eslint": "eslint --ext .js --ext .jsx --max-warnings 0 frontend/src frontend/test",
-    "lint-prettier": "prettier --tab-width 4 -l 'frontend/src/metabase/{qb,new_question}/**/*.js*' 'frontend/src/metabase-lib/**/*.js' || (echo '\nThese files are not formatted correctly. Did you forget to run \"yarn run prettier\"?' && false)",
+    "lint-prettier": "prettier -l 'frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to run \"yarn run prettier\"?' && false)",
     "flow": "flow check",
-    "test": "yarn run test-integrated && yarn run test-unit && yarn run test-karma",
+    "test": "yarn run test-unit && yarn run test-integrated && yarn run test-karma",
     "test-integrated": "babel-node ./frontend/test/__runner__/run_integrated_tests.js",
     "test-integrated-watch": "babel-node ./frontend/test/__runner__/run_integrated_tests.js --watch",
-    "test-unit": "jest --maxWorkers=10 --config jest.unit.conf.json --coverage",
+    "test-unit": "jest --maxWorkers=8 --config jest.unit.conf.json --coverage",
     "test-unit-watch": "jest --maxWorkers=10 --config jest.unit.conf.json --watch",
     "test-unit-update-snapshot": "jest --maxWorkers=10 --config jest.unit.conf.json --updateSnapshot",
     "test-karma": "karma start frontend/test/karma.conf.js --single-run",
@@ -173,16 +174,12 @@
     "start": "yarn run build && lein ring server",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
-    "prettier": "prettier --tab-width 4 --write 'frontend/src/metabase/{qb,new_question}/**/*.js*' 'frontend/src/metabase-lib/**/*.js'",
+    "prettier": "prettier --write 'frontend/**/*.{js,jsx,css}'",
     "docs": "documentation build -f html -o frontend/docs frontend/src/metabase-lib/lib/**"
   },
   "lint-staged": {
-    "frontend/src/metabase/{qb,new_question}/**/*.js*": [
-      "prettier --tab-width 4 --write",
-      "git add"
-    ],
-    "frontend/src/metabase-lib/**/*.js*": [
-      "prettier --tab-width 4 --write",
+    "frontend/**/*.{js,jsx,css}": [
+      "prettier --write",
       "git add"
     ]
   }

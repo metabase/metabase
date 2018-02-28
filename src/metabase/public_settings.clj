@@ -11,8 +11,7 @@
             [metabase.util.password :as password]
             [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db])
-  (:import java.util.Locale
-           java.util.TimeZone))
+  (:import [java.util Locale TimeZone UUID]))
 
 (defsetting check-for-updates
   (tru "Identify when new versions of Metabase are available.")
@@ -28,6 +27,20 @@
   (tru "The name used for this instance of Metabase.")
   :default "Metabase")
 
+(defsetting site-uuid
+  ;; Don't i18n this docstring because it's not user-facing! :)
+  "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
+  its magic getter. Nice!"
+  :internal? true
+  :setter    (fn [& _]
+               (throw (UnsupportedOperationException. "site-uuid is automatically generated. Don't try to change it!")))
+  ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
+  :getter    (fn []
+               (or (setting/get-string :site-uuid)
+                   (let [value (str (UUID/randomUUID))]
+                     (setting/set-string! :site-uuid value)
+                     value))))
+
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's not protocol when it comes in
 (defsetting site-url
@@ -39,7 +52,7 @@
 
 (defsetting site-locale
   (str  (tru "The default language for this Metabase instance.")
-        (tru "This only applies to emails, Pulses, etc. Users' browsers will specify the language used in the user interface."))
+        (tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
   :type    :string
   :setter  (fn [new-value]
              (setting/set-string! :site-locale new-value)
@@ -98,7 +111,7 @@
   :default 60)
 
 (defsetting query-caching-ttl-ratio
-  (str (tru "To determine how long each saved question's cached result should stick around, we take the query's average execution time and multiply that by whatever you input here.")
+  (str (tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
        (tru "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
   :type    :integer
   :default 10)

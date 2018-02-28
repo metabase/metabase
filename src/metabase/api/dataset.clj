@@ -1,6 +1,7 @@
 (ns metabase.api.dataset
   "/api/dataset endpoints."
   (:require [cheshire.core :as json]
+            [clj-time.format :as tformat]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
@@ -39,15 +40,15 @@
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
 (defn- query->source-card-id
-  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`.
-   Used so `:card-id` context can be passed along with the query so Collections perms checking is done if appropriate."
+  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`. Used so
+  `:card-id` context can be passed along with the query so Collections perms checking is done if appropriate. This fn
+  is a wrapper for the function of the same name in the QP util namespace; it adds additional permissions checking as
+  well."
   [outer-query]
-  (let [source-table (qputil/get-in-normalized outer-query [:query :source-table])]
-    (when (string? source-table)
-      (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
-        (log/info (str "Source query for this query is Card " card-id-str))
-        (u/prog1 (Integer/parseInt card-id-str)
-          (api/read-check Card <>))))))
+  (when-let [source-card-id (qputil/query->source-card-id outer-query)]
+    (log/info (str "Source query for this query is Card " source-card-id))
+    (api/read-check Card source-card-id)
+    source-card-id))
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format."
@@ -58,8 +59,10 @@
     (api/read-check Database database))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)]
-    (qp/process-query-and-save-execution! (assoc query :constraints default-query-constraints)
-      {:executed-by api/*current-user-id*, :context :ad-hoc, :card-id source-card-id, :nested? (boolean source-card-id)})))
+    (api/cancellable-json-response
+     (fn []
+       (qp/process-query-and-save-execution! (assoc query :constraints default-query-constraints)
+         {:executed-by api/*current-user-id*, :context :ad-hoc, :card-id source-card-id, :nested? (boolean source-card-id)})))))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -77,15 +80,42 @@
   (or (get-in ex/export-formats [export-format :context])
       (throw (Exception. (str "Invalid export format: " export-format)))))
 
+(defn- datetime-str->date
+  "Dates are iso formatted, i.e. 2014-09-18T00:00:00.000-07:00. We can just drop the T and everything after it since
+  we don't want to change the timezone or alter the date part."
+  [^String date-str]
+  (when date-str
+    (subs date-str 0 (.indexOf date-str "T"))))
+
+(defn- swap-date-columns [date-col-indexes]
+  (fn [row]
+    (reduce (fn [acc idx]
+              (update acc idx datetime-str->date)) row date-col-indexes)))
+
+(defn- date-column-indexes
+  "Given `column-metadata` find the `:type/Date` columns"
+  [column-metadata]
+  (transduce (comp (map-indexed (fn [idx col-map] [idx (:base_type col-map)]))
+                   (filter (fn [[idx base-type]] (isa? base-type :type/Date)))
+                   (map first))
+             conj [] column-metadata))
+
+(defn- maybe-modify-date-values [column-metadata rows]
+  (let [date-indexes (date-column-indexes column-metadata)]
+    (if (seq date-indexes)
+      ;; Not sure why, but rows aren't vectors, they're lists which makes updating difficult
+      (map (comp (swap-date-columns date-indexes) vec) rows)
+      rows)))
+
 (defn as-format
   "Return a response containing the RESULTS of a query in the specified format."
   {:style/indent 1, :arglists '([export-format results])}
-  [export-format {{:keys [columns rows]} :data, :keys [status], :as response}]
+  [export-format {{:keys [columns rows cols]} :data, :keys [status], :as response}]
   (api/let-404 [export-conf (ex/export-formats export-format)]
     (if (= status :completed)
       ;; successful query, send file
       {:status  200
-       :body    ((:export-fn export-conf) columns rows)
+       :body    ((:export-fn export-conf) columns (maybe-modify-date-values cols rows))
        :headers {"Content-Type"        (str (:content-type export-conf) "; charset=utf-8")
                  "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) "." (:ext export-conf) "\"")}}
       ;; failed query, send error message
@@ -124,5 +154,4 @@
                 (query/average-execution-time-ms (qputil/query-hash (assoc query :constraints default-query-constraints)))
                 0)})
 
-(api/define-routes
-  (middleware/streaming-json-response (route-fn-name 'POST "/")))
+(api/define-routes)

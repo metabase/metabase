@@ -104,7 +104,7 @@
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   []
   (as-> (db/select [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
-          :result_metadata [:not= nil]
+          :result_metadata [:not= nil] :archived false
           {:order-by [[:%lower.name :asc]]}) <>
     (filter card-database-supports-nested-queries? <>)
     (remove card-uses-unnestable-aggregation? <>)
@@ -193,7 +193,7 @@
 
 (defn- db-metadata [id]
   (-> (api/read-check Database id)
-      (hydrate [:tables [:fields :target :values] :segments :metrics])
+      (hydrate [:tables [:fields :target :has_field_values] :segments :metrics])
       (update :tables (fn [tables]
                         (for [table tables
                               :when (mi/can-read? table)]

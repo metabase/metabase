@@ -143,12 +143,16 @@
       everything besides standard deviation is considered \"basic\"; only GA doesn't support this).
   *  `:standard-deviation-aggregations` - Does this driver support standard deviation aggregations?
   *  `:expressions` - Does this driver support expressions (e.g. adding the values of 2 columns together)?
-  *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
   *  `:native-parameters` - Does the driver support parameter substitution on native queries?
   *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like
       \"sum(x) + count(y)\" or \"avg(x + y)\"
   *  `:nested-queries` - Does the driver support using a query as the `:source-query` of another MBQL query? Examples
-      are CTEs or subselects in SQL queries.")
+      are CTEs or subselects in SQL queries.
+  *  `:no-case-sensitivity-string-filter-options` - An anti-feature: does this driver not let you specify whether or not
+      our string search filter clauses (`:contains`, `:starts-with`, and `:ends-with`, collectively the equivalent of
+      SQL `LIKE` are case-senstive or not? This informs whether we should present you with the 'Case Sensitive' checkbox
+      in the UI. At the time of this writing SQLite, SQLServer, and MySQL have this 'feature' -- `LIKE` clauses are
+      always case-insensitive.")
 
   (format-custom-field-name ^String [this, ^String custom-field-name]
     "*OPTIONAL*. Return the custom name passed via an MBQL `:named` clause so it matches the way it is returned in the
@@ -180,7 +184,7 @@
                  SELECT * FROM my_table\"}")
 
   (notify-database-updated [this, ^DatabaseInstance database]
-    "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in
+    "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed. This is specifically relevant in
      the event that the driver was doing some caching or connection pooling.")
 
   (process-query-in-context [this, ^clojure.lang.IFn qp]
@@ -212,7 +216,12 @@
      returned in any given order.")
 
   (current-db-time ^org.joda.time.DateTime [this ^DatabaseInstance database]
-    "Returns the current time and timezone from the perspective of `DATABASE`."))
+    "Returns the current time and timezone from the perspective of `DATABASE`.")
+
+  (default-to-case-sensitive? ^Boolean [this]
+    "Should this driver default to case-sensitive string search filter clauses (e.g. `starts-with` or `contains`)? The
+    default is `true` since that was the behavior of all drivers with the exception of GA before `0.29.0` when we
+    introduced case-insensitive string search filters as an option."))
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
@@ -228,7 +237,8 @@
                                         (throw
                                          (NoSuchMethodException.
                                           (str (name driver) " does not implement table-rows-seq."))))
-   :current-db-time                   (constantly nil)})
+   :current-db-time                   (constantly nil)
+   :default-to-case-sensitive?        (constantly true)})
 
 
 ;;; ## CONFIG
