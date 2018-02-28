@@ -99,12 +99,7 @@
   returning a map with a description of the error"
   {:style/indent 0}
   [& {:keys [subject recipients message-type message] :as msg-args}]
-  (try
-    (send-message-or-throw! msg-args)
-    (catch Throwable e
-      (log/warn e (trs "Failed to send email"))
-      {:error   :ERROR
-       :message (.getMessage e)})))
+  (send-message-or-throw! msg-args))
 
 (defn- run-smtp-test
   "tests an SMTP configuration by attempting to connect and authenticate
