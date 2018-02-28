@@ -400,7 +400,6 @@
 
     :else (str schema-name \. table-name \. field-name)))
 
-<<<<<<< HEAD
 ;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is currently only used for SQL params so it's not a huge deal at this point
 (defn- field->identifier
   [{table-id :table_id, :as field}]
