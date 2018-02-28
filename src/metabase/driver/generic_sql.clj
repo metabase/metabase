@@ -21,7 +21,6 @@
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
   (:import [clojure.lang Keyword PersistentVector]
-           com.mchange.v2.c3p0.ComboPooledDataSource
            [java.sql DatabaseMetaData ResultSet]
            java.util.Map
            metabase.models.field.FieldInstance
@@ -143,7 +142,7 @@
   (atom {}))
 
 (defn- create-connection-pool
-  "Create a new C3P0 `ComboPooledDataSource` for connecting to the given DATABASE."
+  "Create a new Hikari `HikariCP` for connecting to the given DATABASE."
   [{:keys [id engine details]}]
   (log/debug (u/format-color 'cyan "Creating new connection pool for database %d ..." id))
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
@@ -181,7 +180,7 @@
       (swap! database-id->connection-pool assoc id <>))))
 
 (defn db->jdbc-connection-spec
-  "Return a JDBC connection spec for DATABASE. This will have a C3P0 pool as its datasource."
+  "Return a JDBC connection spec for DATABASE. This will have a HikariCP pool as its datasource."
   [{:keys [engine details], :as database}]
   (db->pooled-connection-spec database))
 

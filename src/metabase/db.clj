@@ -13,7 +13,8 @@
             [metabase.db.spec :as dbspec]
             [ring.util.codec :as codec]
             [toucan.db :as db])
-  (:import com.mchange.v2.c3p0.ComboPooledDataSource
+  (:import com.zaxxer.hikari.HikariConfig
+           com.zaxxer.hikari.HikariDataSource
            java.io.StringWriter
            java.util.Properties
            [liquibase.database Database DatabaseFactory]
@@ -276,30 +277,24 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn connection-pool
-  "Create a C3P0 connection pool for the given database SPEC."
+  "Create a HikariCP connection pool for the given database SPEC."
   [{:keys [subprotocol subname classname minimum-pool-size idle-connection-test-period excess-timeout]
     :or   {minimum-pool-size           3
            idle-connection-test-period 0
            excess-timeout              (* 30 60)}
     :as   spec}]
-  {:datasource (doto (ComboPooledDataSource.)
-                 (.setDriverClass                  classname)
-                 (.setJdbcUrl                      (str "jdbc:" subprotocol ":" subname))
-                 (.setMaxIdleTimeExcessConnections excess-timeout)
-                 (.setMaxIdleTime                  (* 3 60 60))
-                 (.setInitialPoolSize              3)
-                 (.setMinPoolSize                  minimum-pool-size)
-                 (.setMaxPoolSize                  15)
-                 (.setIdleConnectionTestPeriod     idle-connection-test-period)
-                 (.setTestConnectionOnCheckin      false)
-                 (.setTestConnectionOnCheckout     false)
-                 (.setPreferredTestQuery           nil)
-                 (.setProperties                   (u/prog1 (Properties.)
-                                                     (doseq [[k v] (dissoc spec :classname :subprotocol :subname
-                                                                                :naming :delimiters :alias-delimiter
-                                                                                :excess-timeout :minimum-pool-size
-                                                                                :idle-connection-test-period)]
-                                                       (.setProperty <> (name k) (str v))))))})
+  {:datasource (HikariDataSource.
+                (doto (HikariConfig.)
+                  (.setDriverClassName              classname)
+                  (.setJdbcUrl                      (str "jdbc:" subprotocol ":" subname))
+                  (.setMaxLifetime                  (* 3 60 60))
+                  (.setMaximumPoolSize              15)
+                  (.setDataSourceProperties         (u/prog1 (Properties.)
+                                                             (doseq [[k v] (dissoc spec :classname :subprotocol :subname
+                                                                                   :naming :delimiters :alias-delimiter
+                                                                                   :excess-timeout :minimum-pool-size
+                                                                                   :idle-connection-test-period)]
+                                                               (.setProperty <> (name k) (str v)))))))})
 
 (defn- create-connection-pool! [spec]
   (db/set-default-quoting-style! (case (db-type)
