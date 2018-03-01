@@ -98,5 +98,5 @@
                                      (partial inject-segment right))
                                cards))]
     (add-col-title! dashboard (:name left)  0)
-    (add-col-title! dashboard (:name right) (/ populate/grid-width 2))        
+    (add-col-title! dashboard (:name right) (/ populate/grid-width 2))
     dashboard))
