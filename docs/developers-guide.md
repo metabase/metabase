@@ -4,6 +4,7 @@
 *  [How to set up a development environment](#development-environment)
 *  [How to run the Metabase Server](#development-server-quick-start)
 *  [How to contribute back to the Metabase project](#contributing)
+*  [How to add support in Metabase for other languages](#internationalization)
 
 
 # Contributing
