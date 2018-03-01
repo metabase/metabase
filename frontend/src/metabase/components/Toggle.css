@@ -1,40 +1,40 @@
 :local(.toggle) {
-    position: relative;
-    display: inline-block;
-    color: var(--brand-color);
-    box-sizing: border-box;
-    width: 48px;
-    height: 24px;
-    border-radius: 99px;
-    border: 1px solid #EAEAEA;
-    background-color: #F7F7F7;
-    transition: all 0.3s;
+  position: relative;
+  display: inline-block;
+  color: var(--brand-color);
+  box-sizing: border-box;
+  width: 48px;
+  height: 24px;
+  border-radius: 99px;
+  border: 1px solid #eaeaea;
+  background-color: #f7f7f7;
+  transition: all 0.3s;
 }
 
 :local(.toggle.selected) {
-    background-color: currentColor;
+  background-color: currentColor;
 }
 
 :local(.toggle):after {
-    content: "";
-    width: 20px;
-    height: 20px;
-    border-radius: 99px;
-    position: absolute;
-    top: 1px;
-    left: 1px;
-    background-color: #D9D9D9;
-    transition: all 0.3s;
+  content: "";
+  width: 20px;
+  height: 20px;
+  border-radius: 99px;
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  background-color: #d9d9d9;
+  transition: all 0.3s;
 }
 
 :local(.toggle.selected):after {
-    content: "";
-    width: 20px;
-    height: 20px;
-    border-radius: 99px;
-    position: absolute;
-    top: 1px;
-    left: 25px;
+  content: "";
+  width: 20px;
+  height: 20px;
+  border-radius: 99px;
+  position: absolute;
+  top: 1px;
+  left: 25px;
 
-    background-color: white;
+  background-color: white;
 }

@@ -355,12 +355,19 @@
                  (render-table (prep-for-html-rendering timezone cols rows nil nil cols-limit))
                  (render-truncation-warning cols-limit (count cols) rows-limit (count rows))]})
 
+(defn- graphing-columns [card {:keys [cols] :as data}]
+  [(or (ui-logic/x-axis-rowfn card data)
+       first)
+   (or (ui-logic/y-axis-rowfn card data)
+       second)])
+
 (s/defn ^:private render:bar :- RenderedPulseCard
   [timezone card {:keys [cols rows] :as data}]
-  (let [max-value (apply max (map second rows))]
+  (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
+        max-value (apply max (map y-axis-rowfn rows))]
     {:attachments nil
      :content     [:div
-                   (render-table (prep-for-html-rendering timezone cols rows second max-value 2))
+                   (render-table (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
                    (render-truncation-warning 2 (count cols) rows-limit (count rows))]}))
 
 (s/defn ^:private render:scalar :- RenderedPulseCard
@@ -496,12 +503,6 @@
   (case render-type
     :attachment {content-id image-url}
     :inline     nil))
-
-(defn- graphing-columns [card {:keys [cols] :as data}]
-  [(or (ui-logic/x-axis-rowfn card data)
-       first)
-   (or (ui-logic/y-axis-rowfn card data)
-       second)])
 
 (s/defn ^:private render:sparkline :- RenderedPulseCard
   [render-type timezone card {:keys [rows cols] :as data}]

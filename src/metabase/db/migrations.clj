@@ -359,4 +359,5 @@
                                               "advanced"
                                               "simple"))))
     ;; either way, delete the old value from the DB since we'll never be using it again.
-    (db/delete! Setting, :key "enable-advanced-humanization")))
+    ;; use `simple-delete!` because `Setting` doesn't have an `:id` column :(
+    (db/simple-delete! Setting {:key "enable-advanced-humanization"})))

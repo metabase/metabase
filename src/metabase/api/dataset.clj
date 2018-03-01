@@ -40,15 +40,15 @@
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
 (defn- query->source-card-id
-  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`.
-   Used so `:card-id` context can be passed along with the query so Collections perms checking is done if appropriate."
+  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`. Used so
+  `:card-id` context can be passed along with the query so Collections perms checking is done if appropriate. This fn
+  is a wrapper for the function of the same name in the QP util namespace; it adds additional permissions checking as
+  well."
   [outer-query]
-  (let [source-table (qputil/get-in-normalized outer-query [:query :source-table])]
-    (when (string? source-table)
-      (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
-        (log/info (str "Source query for this query is Card " card-id-str))
-        (u/prog1 (Integer/parseInt card-id-str)
-          (api/read-check Card <>))))))
+  (when-let [source-card-id (qputil/query->source-card-id outer-query)]
+    (log/info (str "Source query for this query is Card " source-card-id))
+    (api/read-check Card source-card-id)
+    source-card-id))
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format."
@@ -59,8 +59,10 @@
     (api/read-check Database database))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)]
-    (qp/process-query-and-save-execution! (assoc query :constraints default-query-constraints)
-      {:executed-by api/*current-user-id*, :context :ad-hoc, :card-id source-card-id, :nested? (boolean source-card-id)})))
+    (api/cancellable-json-response
+     (fn []
+       (qp/process-query-and-save-execution! (assoc query :constraints default-query-constraints)
+         {:executed-by api/*current-user-id*, :context :ad-hoc, :card-id source-card-id, :nested? (boolean source-card-id)})))))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -82,7 +84,8 @@
   "Dates are iso formatted, i.e. 2014-09-18T00:00:00.000-07:00. We can just drop the T and everything after it since
   we don't want to change the timezone or alter the date part."
   [^String date-str]
-  (subs date-str 0 (.indexOf date-str "T")))
+  (when date-str
+    (subs date-str 0 (.indexOf date-str "T"))))
 
 (defn- swap-date-columns [date-col-indexes]
   (fn [row]
@@ -151,5 +154,4 @@
                 (query/average-execution-time-ms (qputil/query-hash (assoc query :constraints default-query-constraints)))
                 0)})
 
-(api/define-routes
-  (middleware/streaming-json-response (route-fn-name 'POST "/")))
+(api/define-routes)

@@ -124,6 +124,7 @@
    :created_at          true
    :updated_at          true
    :last_analyzed       true
+   :has_field_values    nil
    :fingerprint         true
    :fingerprint_version true})
 

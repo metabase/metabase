@@ -1,6 +1,7 @@
 (ns metabase.api.common-test
-  (:require [expectations :refer :all]
-            [metabase.api.common :refer :all]
+  (:require [clojure.core.async :as async]
+            [expectations :refer :all]
+            [metabase.api.common :refer :all :as api]
             [metabase.api.common.internal :refer :all]
             [metabase.test.data :refer :all]
             [metabase.util.schema :as su]))
@@ -94,3 +95,86 @@
     (defendpoint GET "/:id" [id]
       {id su/IntGreaterThanZero}
       (select-one Card :id id))))
+
+(def ^:private long-timeout
+  ;; 2 minutes
+  (* 2 60000))
+
+(defn- take-with-timeout [response-chan]
+  (let [[response c] (async/alts!! [response-chan
+                                    ;; We should never reach this unless something is REALLY wrong
+                                    (async/timeout long-timeout)])]
+    (when (and (nil? response)
+               (not= c response-chan))
+      (throw (Exception. "Taking from streaming endpoint timed out!")))
+
+    response))
+
+(defn- wait-for-future-cancellation
+  "Once a client disconnects, the next heartbeat sent will result in an exception that should cancel the future. In
+  theory 1 keepalive-interval should be enough, but building in some wiggle room here for poor concurrency timing in
+  tests."
+  [fut]
+  (let [keepalive-interval (var-get #'api/streaming-response-keep-alive-interval-ms)
+        max-iterations     (long (/ long-timeout keepalive-interval))]
+    (loop [i 0]
+      (if (or (future-cancelled? fut) (> i max-iterations))
+        fut
+        (do
+          (Thread/sleep keepalive-interval)
+          (recur (inc i)))))))
+
+;; This simulates 2 keepalive-intervals followed by the query response
+(expect
+  [\newline \newline {:success true} false]
+  (let [send-response (promise)
+        {:keys [output-channel error-channel response-future]} (#'api/invoke-thunk-with-keepalive (fn [] @send-response))]
+    [(take-with-timeout output-channel)
+     (take-with-timeout output-channel)
+     (do
+       (deliver send-response {:success true})
+       (take-with-timeout output-channel))
+     (future-cancelled? response-future)]))
+
+;; This simulates an immediate query response
+(expect
+  [{:success true} false]
+  (let [{:keys [output-channel error-channel response-future]} (#'api/invoke-thunk-with-keepalive (fn [] {:success true}))]
+    [(take-with-timeout output-channel)
+     (future-cancelled? response-future)]))
+
+;; This simulates a closed connection from the client, should cancel the future
+(expect
+  [\newline \newline true]
+  (let [send-response (promise)
+        {:keys [output-channel error-channel response-future]} (#'api/invoke-thunk-with-keepalive (fn [] (Thread/sleep long-timeout)))]
+    [(take-with-timeout output-channel)
+     (take-with-timeout output-channel)
+     (do
+       (async/close! output-channel)
+       (future-cancelled? (wait-for-future-cancellation response-future)))]))
+
+;; When an immediate exception happens, we should know that via the error channel
+(expect
+  ;; Each channel should have the failure and then get closed
+  ["It failed" "It failed" nil nil]
+  (let [{:keys [output-channel error-channel response-future]} (#'api/invoke-thunk-with-keepalive (fn [] (throw (Exception. "It failed"))))]
+    [(.getMessage (take-with-timeout error-channel))
+     (.getMessage (take-with-timeout output-channel))
+     (async/<!! error-channel)
+     (async/<!! output-channel)]))
+
+;; This simulates a slow failure, we'll still get an exception, but the error channel is closed, so at this point
+;; we've assumed it would be a success, but it wasn't
+(expect
+  [\newline nil \newline "It failed" false]
+  (let [now-throw-exception (promise)
+        {:keys [output-channel error-channel response-future]} (#'api/invoke-thunk-with-keepalive
+                                                                (fn [] @now-throw-exception (throw (Exception. "It failed"))))]
+    [(take-with-timeout output-channel)
+     (take-with-timeout error-channel)
+     (take-with-timeout output-channel)
+     (do
+       (deliver now-throw-exception true)
+       (.getMessage (take-with-timeout output-channel)))
+     (future-cancelled? response-future)]))

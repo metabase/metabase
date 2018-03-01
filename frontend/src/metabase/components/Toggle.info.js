@@ -8,6 +8,6 @@ A standard toggle.
 `;
 
 export const examples = {
-    "off": <Toggle value={false} />,
-    "on": <Toggle value={true} />
+  off: <Toggle value={false} />,
+  on: <Toggle value={true} />,
 };

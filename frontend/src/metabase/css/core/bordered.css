@@ -2,14 +2,16 @@
   --border-size: 1px;
   --border-size-med: 2px;
   --border-style: solid;
-  --border-color: #F0F0F0;
+  --border-color: #f0f0f0;
 }
 
-.bordered, :local(.bordered) {
+.bordered,
+:local(.bordered) {
   border: var(--border-size) var(--border-style) var(--border-color);
 }
 
-.border-bottom, :local(.border-bottom) {
+.border-bottom,
+:local(.border-bottom) {
   border-bottom: var(--border-size) var(--border-style) var(--border-color);
 }
 
@@ -18,7 +20,8 @@
   border-bottom: none;
 }
 
-.border-top, :local(.border-top) {
+.border-top,
+:local(.border-top) {
   border-top: var(--border-size) var(--border-style) var(--border-color);
 }
 
@@ -52,44 +55,49 @@
 }
 
 .border-light {
-    border-color: rgba(255,255,255,0.2) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 .border-dark,
 .border-dark-hover:hover {
-    border-color: rgba(0,0,0,0.2) !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
 }
 
 .border-grey-1 {
-    border-color: var(--grey-1) !important;
+  border-color: var(--grey-1) !important;
+}
+.border-grey-2 {
+  border-color: var(--grey-2) !important;
 }
 
 .border-green {
-    border-color: var(--green-color) !important;
+  border-color: var(--green-color) !important;
 }
 
 .border-purple {
-    border-color: var(--purple-color) !important;
+  border-color: var(--purple-color) !important;
 }
 
-.border-error, :local(.border-error) {
-    border-color: var(--error-color) !important;
+.border-error,
+:local(.border-error) {
+  border-color: var(--error-color) !important;
 }
 
 .border-gold {
-    border-color: var(--gold-color) !important;
+  border-color: var(--gold-color) !important;
 }
 
 .border-success {
-    border-color: var(--success-color) !important;
+  border-color: var(--success-color) !important;
 }
 
-.border-brand, :local(.border-brand) {
-    border-color: var(--brand-color) !important;
+.border-brand,
+:local(.border-brand) {
+  border-color: var(--brand-color) !important;
 }
 
 .border-brand-hover:hover {
-    border-color: var(--brand-color);
+  border-color: var(--brand-color);
 }
 
 .border-hover:hover {
@@ -99,7 +107,8 @@
 /* BORDERLESS IS THE DEFAULT */
 /* ONLY USE IF needing to override an existing border! */
 /* ensure there is no border via important */
-.borderless, :local(.borderless) {
+.borderless,
+:local(.borderless) {
   border: none !important;
 }
 
@@ -108,5 +117,5 @@
 }
 
 .border-med {
-    border-width: var(--border-size-med);
+  border-width: var(--border-size-med);
 }

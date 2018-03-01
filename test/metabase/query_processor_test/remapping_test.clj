@@ -52,7 +52,7 @@
                    (fn [rows]
                      (map #(mapv % col-indexes) rows))))))
 
-(datasets/expect-with-engines (engines-that-support :foreign-keys)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
   {:rows   [["20th Century Cafe" 2 "Café"]
             ["25°" 2 "Burger"]
             ["33 Taps" 2 "Bar"]

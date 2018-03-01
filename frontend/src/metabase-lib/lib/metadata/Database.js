@@ -16,28 +16,28 @@ import type { SchemaName } from "metabase/meta/types/Table";
  * Backed by types/Database data structure which matches the backend API contract
  */
 export default class Database extends Base {
-    // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
+  // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
 
-    displayName: string;
-    description: ?string;
+  displayName: string;
+  description: ?string;
 
-    tables: Table[];
-    schemas: Schema[];
+  tables: Table[];
+  schemas: Schema[];
 
-    tablesInSchema(schemaName: ?SchemaName) {
-        return this.tables.filter(table => table.schema === schemaName);
-    }
+  tablesInSchema(schemaName: ?SchemaName) {
+    return this.tables.filter(table => table.schema === schemaName);
+  }
 
-    schemaNames(): Array<SchemaName> {
-        return _.uniq(
-            this.tables
-                .map(table => table.schema)
-                .filter(schemaName => schemaName != null)
-        );
-    }
+  schemaNames(): Array<SchemaName> {
+    return _.uniq(
+      this.tables
+        .map(table => table.schema)
+        .filter(schemaName => schemaName != null),
+    );
+  }
 
-    newQuestion(): Question {
-        // $FlowFixMe
-        return new Question();
-    }
+  newQuestion(): Question {
+    // $FlowFixMe
+    return new Question();
+  }
 }

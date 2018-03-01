@@ -100,24 +100,24 @@
   (host-port-up? "nosuchhost" 8005))
 
 
-;;; ## tests for IS-URL?
+;;; ## tests for URL?
 
-(expect true (is-url? "http://google.com"))
-(expect true (is-url? "https://google.com"))
-(expect true (is-url? "https://amazon.co.uk"))
-(expect true (is-url? "http://google.com?q=my-query&etc"))
-(expect true (is-url? "http://www.cool.com"))
-(expect true (is-url? "http://localhost/"))
-(expect true (is-url? "http://localhost:3000"))
-(expect true (is-url? "https://www.mapbox.com/help/data/stations.geojson"))
-(expect true (is-url? "http://www.cool.com:3000"))
-(expect true (is-url? "http://localhost:3000/auth/reset_password/144_f98987de-53ca-4335-81da-31bb0de8ea2b#new"))
-(expect false (is-url? "google.com"))                      ; missing protocol
-(expect false (is-url? "ftp://metabase.com"))              ; protocol isn't HTTP/HTTPS
-(expect false (is-url? "http://metabasecom"))              ; no period / TLD
-(expect false (is-url? "http://.com"))                     ; no domain
-(expect false (is-url? "http://google."))                  ; no TLD
-(expect false (is-url? "http:/"))                          ; nil .getAuthority needs to be handled or NullPointerException
+(expect true (url? "http://google.com"))
+(expect true (url? "https://google.com"))
+(expect true (url? "https://amazon.co.uk"))
+(expect true (url? "http://google.com?q=my-query&etc"))
+(expect true (url? "http://www.cool.com"))
+(expect true (url? "http://localhost/"))
+(expect true (url? "http://localhost:3000"))
+(expect true (url? "https://www.mapbox.com/help/data/stations.geojson"))
+(expect true (url? "http://www.cool.com:3000"))
+(expect true (url? "http://localhost:3000/auth/reset_password/144_f98987de-53ca-4335-81da-31bb0de8ea2b#new"))
+(expect false (url? "google.com"))                      ; missing protocol
+(expect false (url? "ftp://metabase.com"))              ; protocol isn't HTTP/HTTPS
+(expect false (url? "http://metabasecom"))              ; no period / TLD
+(expect false (url? "http://.com"))                     ; no domain
+(expect false (url? "http://google."))                  ; no TLD
+(expect false (url? "http:/"))                          ; nil .getAuthority needs to be handled or NullPointerException
 
 ;;; ## tests for RPARTIAL
 

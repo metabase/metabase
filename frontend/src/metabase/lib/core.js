@@ -1,5 +1,5 @@
 import { TYPE } from "metabase/lib/types";
-import { t } from 'c-3po';
+import { t } from "c-3po";
 
 export const field_special_types = [{
     'id': TYPE.PK,
@@ -162,19 +162,25 @@ export const field_special_types = [{
     'section': 'Common'
 }];
 
-export const field_special_types_map = field_special_types
-    .reduce((map, type) => Object.assign({}, map, {[type.id]: type}), {});
+export const field_special_types_map = field_special_types.reduce(
+  (map, type) => Object.assign({}, map, { [type.id]: type }),
+  {},
+);
 
-export const field_visibility_types = [{
-    'id': 'normal',
-    'name': t`Everywhere`,
-    'description': t`The default setting. This field will be displayed normally in tables and charts.`
-}, {
-    'id': 'details-only',
-    'name': t`Only in Detail Views`,
-    'description': t`This field will only be displayed when viewing the details of a single record. Use this for information that's lengthy or that isn't useful in a table or chart.`
-}, {
-    'id': 'sensitive',
-    'name': t`Do Not Include`,
-    'description': t`Metabase will never retrieve this field. Use this for sensitive or irrelevant information.`
-}];
+export const field_visibility_types = [
+  {
+    id: "normal",
+    name: t`Everywhere`,
+    description: t`The default setting. This field will be displayed normally in tables and charts.`,
+  },
+  {
+    id: "details-only",
+    name: t`Only in Detail Views`,
+    description: t`This field will only be displayed when viewing the details of a single record. Use this for information that's lengthy or that isn't useful in a table or chart.`,
+  },
+  {
+    id: "sensitive",
+    name: t`Do Not Include`,
+    description: t`Metabase will never retrieve this field. Use this for sensitive or irrelevant information.`,
+  },
+];

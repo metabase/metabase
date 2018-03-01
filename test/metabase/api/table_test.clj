@@ -58,6 +58,7 @@
      :features                    (mapv name (driver/features (driver/engine->driver :h2)))
      :cache_field_values_schedule "0 50 0 * * ? *"
      :metadata_sync_schedule      "0 50 * * * ? *"
+     :options                     nil
      :timezone                    $}))
 
 (defn- table-defaults []
@@ -86,8 +87,8 @@
    :special_type             nil
    :parent_id                nil
    :dimensions               []
-   :values                   []
    :dimension_options        []
+   :has_field_values         nil
    :default_dimension_option nil})
 
 (defn- field-details [field]
@@ -180,12 +181,13 @@
             :name         "CATEGORIES"
             :display_name "Categories"
             :fields       [(assoc (field-details (Field (data/id :categories :id)))
-                             :table_id     (data/id :categories)
-                             :special_type  "type/PK"
-                             :name          "ID"
-                             :display_name  "ID"
-                             :database_type "BIGINT"
-                             :base_type     "type/BigInteger")
+                             :table_id         (data/id :categories)
+                             :special_type     "type/PK"
+                             :name             "ID"
+                             :display_name     "ID"
+                             :database_type    "BIGINT"
+                             :base_type        "type/BigInteger"
+                             :has_field_values "search")
                            (assoc (field-details (Field (data/id :categories :name)))
                              :table_id                 (data/id :categories)
                              :special_type             "type/Name"
@@ -193,9 +195,9 @@
                              :display_name             "Name"
                              :database_type            "VARCHAR"
                              :base_type                "type/Text"
-                             :values                   data/venue-categories
                              :dimension_options        []
-                             :default_dimension_option nil)]
+                             :default_dimension_option nil
+                             :has_field_values         "list")]
             :rows         75
             :updated_at   $
             :id           (data/id :categories)
@@ -232,13 +234,14 @@
             :display_name "Users"
             :entity_type  "entity/UserTable"
             :fields       [(assoc (field-details (Field (data/id :users :id)))
-                             :special_type    "type/PK"
-                             :table_id        (data/id :users)
-                             :name            "ID"
-                             :display_name    "ID"
-                             :database_type   "BIGINT"
-                             :base_type       "type/BigInteger"
-                             :visibility_type "normal")
+                             :special_type     "type/PK"
+                             :table_id         (data/id :users)
+                             :name             "ID"
+                             :display_name     "ID"
+                             :database_type    "BIGINT"
+                             :base_type        "type/BigInteger"
+                             :visibility_type  "normal"
+                             :has_field_values "search")
                            (assoc (field-details (Field (data/id :users :last_login)))
                              :table_id                 (data/id :users)
                              :name                     "LAST_LOGIN"
@@ -247,7 +250,8 @@
                              :base_type                "type/DateTime"
                              :visibility_type          "normal"
                              :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
-                             :default_dimension_option (var-get #'table-api/date-default-index))
+                             :default_dimension_option (var-get #'table-api/date-default-index)
+                             :has_field_values         "search")
                            (assoc (field-details (Field (data/id :users :name)))
                              :special_type             "type/Name"
                              :table_id                 (data/id :users)
@@ -256,17 +260,18 @@
                              :database_type            "VARCHAR"
                              :base_type                "type/Text"
                              :visibility_type          "normal"
-                             :values                   (map vector (sort user-full-names))
                              :dimension_options        []
-                             :default_dimension_option nil)
+                             :default_dimension_option nil
+                             :has_field_values         "list")
                            (assoc (field-details (Field :table_id (data/id :users), :name "PASSWORD"))
-                             :special_type    "type/Category"
-                             :table_id        (data/id :users)
-                             :name            "PASSWORD"
-                             :display_name    "Password"
-                             :database_type   "VARCHAR"
-                             :base_type       "type/Text"
-                             :visibility_type "sensitive")]
+                             :special_type     "type/Category"
+                             :table_id         (data/id :users)
+                             :name             "PASSWORD"
+                             :display_name     "Password"
+                             :database_type    "VARCHAR"
+                             :base_type        "type/Text"
+                             :visibility_type  "sensitive"
+                             :has_field_values "list")]
             :rows         15
             :updated_at   $
             :id           (data/id :users)
@@ -284,12 +289,13 @@
             :display_name "Users"
             :entity_type  "entity/UserTable"
             :fields       [(assoc (field-details (Field (data/id :users :id)))
-                             :table_id      (data/id :users)
-                             :special_type  "type/PK"
-                             :name          "ID"
-                             :display_name  "ID"
-                             :database_type "BIGINT"
-                             :base_type     "type/BigInteger")
+                             :table_id         (data/id :users)
+                             :special_type     "type/PK"
+                             :name             "ID"
+                             :display_name     "ID"
+                             :database_type    "BIGINT"
+                             :base_type        "type/BigInteger"
+                             :has_field_values "search")
                            (assoc (field-details (Field (data/id :users :last_login)))
                              :table_id                 (data/id :users)
                              :name                     "LAST_LOGIN"
@@ -297,29 +303,16 @@
                              :database_type            "TIMESTAMP"
                              :base_type                "type/DateTime"
                              :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
-                             :default_dimension_option (var-get #'table-api/date-default-index))
+                             :default_dimension_option (var-get #'table-api/date-default-index)
+                             :has_field_values         "search")
                            (assoc (field-details (Field (data/id :users :name)))
-                             :table_id      (data/id :users)
-                             :special_type  "type/Name"
-                             :name          "NAME"
-                             :display_name  "Name"
-                             :database_type "VARCHAR"
-                             :base_type     "type/Text"
-                             :values        [["Broen Olujimi"]
-                                             ["Conchúr Tihomir"]
-                                             ["Dwight Gresham"]
-                                             ["Felipinho Asklepios"]
-                                             ["Frans Hevel"]
-                                             ["Kaneonuskatew Eiran"]
-                                             ["Kfir Caj"]
-                                             ["Nils Gotam"]
-                                             ["Plato Yeshua"]
-                                             ["Quentin Sören"]
-                                             ["Rüstem Hebel"]
-                                             ["Shad Ferdynand"]
-                                             ["Simcha Yan"]
-                                             ["Spiros Teofil"]
-                                             ["Szymon Theutrich"]])]
+                             :table_id         (data/id :users)
+                             :special_type     "type/Name"
+                             :name             "NAME"
+                             :display_name     "Name"
+                             :database_type    "VARCHAR"
+                             :base_type        "type/Text"
+                             :has_field_values "list")]
             :rows         15
             :updated_at   $
             :id           (data/id :users)
@@ -535,12 +528,10 @@
   [{:table_id   (data/id :venues)
     :id         (data/id :venues :category_id)
     :name       "CATEGORY_ID"
-    :values     (map-indexed (fn [idx [category]] [idx category]) data/venue-categories)
     :dimensions {:name "Foo", :field_id (data/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
    {:id         (data/id :venues :price)
     :table_id   (data/id :venues)
     :name       "PRICE"
-    :values     [[1] [2] [3] [4]]
     :dimensions []}]
   (data/with-data
     (data/create-venue-category-remapping "Foo")
@@ -556,12 +547,10 @@
   [{:table_id   (data/id :venues)
     :id         (data/id :venues :category_id)
     :name       "CATEGORY_ID"
-    :values     (map-indexed (fn [idx [category]] [idx category]) data/venue-categories)
     :dimensions {:name "Foo", :field_id (data/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
    {:id         (data/id :venues :price)
     :table_id   (data/id :venues)
     :name       "PRICE"
-    :values     [[1] [2] [3] [4]]
     :dimensions []}]
   (data/with-data
     (data/create-venue-category-remapping "Foo")
@@ -577,12 +566,10 @@
   [{:table_id   (data/id :venues)
     :id         (data/id :venues :category_id)
     :name       "CATEGORY_ID"
-    :values     []
     :dimensions {:name "Foo", :field_id (data/id :venues :category_id), :human_readable_field_id (data/id :categories :name), :type "external"}}
    {:id         (data/id :venues :price)
     :table_id   (data/id :venues)
     :name       "PRICE"
-    :values     [[1] [2] [3] [4]]
     :dimensions []}]
   (data/with-data
     (data/create-venue-category-fk-remapping "Foo")

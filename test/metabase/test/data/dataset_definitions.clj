@@ -66,6 +66,15 @@
                          (mapv (fn [[username last-login password-text]]
                                  [username (date-only last-login) (time-only last-login) password-text])
                                rows))
+                       (for [[table-name :as orig-def] (di/slurp-edn-table-def "test-data")
+                             :when (= table-name "users")]
+                         orig-def)))
+
+(di/def-database-definition test-data-with-null-date-checkins
+  (di/update-table-def "checkins"
+                       #(vec (concat % [{:field-name "null_only_date" :base-type :type/Date}]))
+                       (fn [rows]
+                         (mapv #(conj % nil) rows))
                        (di/slurp-edn-table-def "test-data")))
 
 (def test-data-map

@@ -25,7 +25,7 @@ If you’re ready to connect, here’s what you’ll need:
 * The **username** you use for the database
 * The **password** you use for the database
 
-If you’re using Heroku, here are [instructions on how to get this information](./administration-guide/01-managing-databases.md#heroku-databases). If you’re an Amazon RDS kind of person, you can follow [these instructions](./administration-guide/01-managing-databases.md#rds-databases).
+If you’re using Heroku, here are [instructions on how to get this information](./administration-guide/01-managing-databases.html#heroku-databases). If you’re an Amazon RDS kind of person, you can follow [these instructions](./administration-guide/01-managing-databases.html#rds-databases).
 
 If you don't have this information handy, the person responsible for administering the database should have it.
 
