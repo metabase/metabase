@@ -599,10 +599,11 @@ export const ICON_MAPPING = {
   [STRING_LIKE]: "string",
   [NUMBER]: "int",
   [BOOLEAN]: "io",
+  [FOREIGN_KEY]: "connections",
 };
 
 export function getIconForField(field) {
-  return ICON_MAPPING[getFieldType(field)];
+  return ICON_MAPPING[getFieldType(field)] || "unknown";
 }
 
 export function computeMetadataStrength(table) {
