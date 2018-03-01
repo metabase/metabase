@@ -406,6 +406,7 @@
    (matching-rules (rules/load-rules) root)))
 
 (defn automagic-analysis
+  "Create a transient dashboard analyzing metric `metric`."
   [metric]
   (let [rule      (-> "/special/metric.yaml"
                       rules/load-rule
