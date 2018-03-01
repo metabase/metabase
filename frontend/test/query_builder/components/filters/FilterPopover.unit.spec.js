@@ -7,6 +7,7 @@ import Question from "metabase-lib/lib/Question";
 
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker";
+import OperatorSelector from "metabase/query_builder/components/filters/OperatorSelector";
 import CheckBox from "metabase/components/CheckBox";
 
 import {
@@ -57,6 +58,16 @@ describe("FilterPopover", () => {
           <FilterPopover query={QUERY} filter={QUERY.filters()[0]} />,
         );
         expect(wrapper.find(DatePicker).length).toBe(1);
+      });
+    });
+    describe("filter operator selection", () => {
+      it("should have an operator selector", () => {
+        const wrapper = mount(
+          <StaticMetadataProvider>
+            <FilterPopover query={QUERY} filter={NUMERIC_FILTER} />
+          </StaticMetadataProvider>,
+        );
+        expect(wrapper.find(OperatorSelector).length).toEqual(1);
       });
     });
     describe("filter options", () => {

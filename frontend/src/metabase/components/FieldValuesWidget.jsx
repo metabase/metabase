@@ -2,11 +2,14 @@
 
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t, jt } from "c-3po";
 
 import TokenField from "metabase/components/TokenField";
 import RemappedValue from "metabase/containers/RemappedValue";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import Icon from "metabase/components/Icon";
+
+import AutoExpanding from "metabase/hoc/AutoExpanding";
 
 import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
@@ -17,6 +20,7 @@ import { stripId } from "metabase/lib/formatting";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type { FieldId } from "metabase/meta/types/Field";
 import type { Value } from "metabase/meta/types/Dataset";
+import type { LayoutRendererProps } from "metabase/components/TokenField";
 
 const MAX_SEARCH_RESULTS = 100;
 
@@ -37,15 +41,18 @@ type Props = {
   maxResults: number,
   style?: { [key: string]: string | number },
   placeholder?: string,
+  maxWidth?: number,
+  minWidth?: number,
+  alwaysShowOptions?: boolean,
 };
 
 type State = {
-  focused: boolean,
   loadingState: "INIT" | "LOADING" | "LOADED",
   options: [Value, ?string][],
   lastValue: string,
 };
 
+@AutoExpanding
 export class FieldValuesWidget extends Component {
   props: Props;
   state: State;
@@ -55,7 +62,6 @@ export class FieldValuesWidget extends Component {
   constructor(props: Props) {
     super(props);
     this.state = {
-      focused: false,
       options: [],
       loadingState: "INIT",
       lastValue: "",
@@ -67,6 +73,7 @@ export class FieldValuesWidget extends Component {
     maxResults: MAX_SEARCH_RESULTS,
     alwaysShowOptions: true,
     style: {},
+    maxWidth: 500,
   };
 
   componentWillMount() {
@@ -182,6 +189,36 @@ export class FieldValuesWidget extends Component {
     }
   }, 500);
 
+  renderOptions({
+    optionsList,
+    isFocused,
+    isAllSelected,
+  }: LayoutRendererProps) {
+    const { alwaysShowOptions, field, searchField } = this.props;
+    const { loadingState } = this.state;
+    if (alwaysShowOptions || isFocused) {
+      if (optionsList) {
+        return optionsList;
+      } else if (this.hasList()) {
+        if (isAllSelected) {
+          return <EveryOptionState />;
+        }
+      } else if (this.isSearchable()) {
+        if (loadingState === "INIT") {
+          return alwaysShowOptions && <SearchState />;
+        } else if (loadingState === "LOADING") {
+          return <LoadingState />;
+        } else if (loadingState === "LOADED") {
+          if (isAllSelected) {
+            return alwaysShowOptions && <SearchState />;
+          } else {
+            return <NoMatchState field={searchField || field} />;
+          }
+        }
+      }
+    }
+  }
+
   render() {
     const {
       value,
@@ -226,7 +263,13 @@ export class FieldValuesWidget extends Component {
     }
 
     return (
-      <div>
+      <div
+        style={{
+          width: this.props.expand ? this.props.maxWidth : null,
+          minWidth: this.props.minWidth,
+          maxWidth: this.props.maxWidth,
+        }}
+      >
         <TokenField
           value={value.filter(v => v != null)}
           onChange={onChange}
@@ -257,19 +300,10 @@ export class FieldValuesWidget extends Component {
               autoLoad={false}
             />
           )}
-          layoutRenderer={({ valuesList, optionsList, focused, onClose }) => (
+          layoutRenderer={props => (
             <div>
-              {valuesList}
-              {this.props.alwaysShowOptions || this.state.focused
-                ? optionsList ||
-                  (this.hasList() ? (
-                    <OptionsMessage
-                      message={t`Including every option in your filter probably won’t do much…`}
-                    />
-                  ) : this.isSearchable() && loadingState === "LOADED" ? (
-                    <OptionsMessage message={t`No matching results found`} />
-                  ) : null)
-                : null}
+              {props.valuesList}
+              {this.renderOptions(props)}
             </div>
           )}
           filterOption={(option, filterString) =>
@@ -300,21 +334,37 @@ export class FieldValuesWidget extends Component {
             }
             return v;
           }}
-          onFocus={() => this.setState({ focused: true })}
-          onBlur={() => this.setState({ focused: false })}
         />
-        {loadingState === "LOADING" ? (
-          <div
-            className="flex layout-centered align-center"
-            style={{ minHeight: 100 }}
-          >
-            <LoadingSpinner size={32} />
-          </div>
-        ) : null}
       </div>
     );
   }
 }
+
+const LoadingState = () => (
+  <div className="flex layout-centered align-center" style={{ minHeight: 100 }}>
+    <LoadingSpinner size={32} />
+  </div>
+);
+
+const SearchState = () => (
+  <div className="flex layout-centered align-center" style={{ minHeight: 100 }}>
+    <Icon name="search" size={35} className="text-grey-1" />
+  </div>
+);
+
+const NoMatchState = ({ field }) => (
+  <OptionsMessage
+    message={jt`No matching ${(
+      <strong>&nbsp;{field.display_name}&nbsp;</strong>
+    )} found.`}
+  />
+);
+
+const EveryOptionState = () => (
+  <OptionsMessage
+    message={t`Including every option in your filter probably won’t do much…`}
+  />
+);
 
 const OptionsMessage = ({ message }) => (
   <div className="flex layout-centered p4">{message}</div>

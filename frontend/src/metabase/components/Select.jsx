@@ -189,7 +189,8 @@ class BrowserSelect extends Component {
 export const SelectButton = ({ hasValue, children }) => (
   <div
     className={
-      "AdminSelect flex align-center " + (!hasValue ? " text-grey-3" : "")
+      "AdminSelect border-med flex align-center " +
+      (!hasValue ? " text-grey-3" : "")
     }
   >
     <span className="AdminSelect-content mr1">{children}</span>

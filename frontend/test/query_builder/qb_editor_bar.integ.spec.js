@@ -29,6 +29,7 @@ import FilterPopover from "metabase/query_builder/components/filters/FilterPopov
 import FilterWidget from "metabase/query_builder/components/filters/FilterWidget";
 import FieldName from "metabase/query_builder/components/FieldName";
 import RunButton from "metabase/query_builder/components/RunButton";
+import { Option } from "metabase/components/Select";
 
 import OperatorSelector from "metabase/query_builder/components/filters/OperatorSelector";
 import BreakoutWidget from "metabase/query_builder/components/BreakoutWidget";
@@ -152,12 +153,12 @@ describe("QueryBuilder editor bar", () => {
     it("lets you see a correct number of operators in filter popover", () => {
       const filterPopover = qb.find(FilterPopover);
 
-      const optionsIcon = filterPopover.find(`a[children="Options"]`);
-
-      click(optionsIcon);
-
+      // const optionsIcon = filterPopover.find(`a[children="Options"]`);
       const operatorSelector = filterPopover.find(OperatorSelector);
-      expect(operatorSelector.find("button").length).toBe(9);
+
+      click(operatorSelector);
+
+      expect(operatorSelector.find(Option).length).toBe(9);
     });
 
     it("lets you set 'ID is 10' filter", async () => {
@@ -183,9 +184,9 @@ describe("QueryBuilder editor bar", () => {
       click(filterWidget.find(FieldName));
 
       const filterPopover = qb.find(FilterPopover);
-      click(filterPopover.find(`a[children="Options"]`));
       const operatorSelector = filterPopover.find(OperatorSelector);
-      clickButton(operatorSelector.find('button[children="Between"]'));
+      click(operatorSelector);
+      clickButton(operatorSelector.find('[children="Between"]'));
 
       const betweenInputs = filterPopover.find("input");
       expect(betweenInputs.length).toBe(2);

@@ -23,12 +23,20 @@ import {
 import { isObscured } from "metabase/lib/dom";
 
 const inputBoxClasses = cxs({
-  maxHeight: "130px",
+  maxHeight: 130,
   overflow: "scroll",
 });
 
 type Value = any;
 type Option = any;
+
+export type LayoutRendererProps = {
+  valuesList: React$Element<any>,
+  optionsList: ?React$Element<any>,
+  isFocused: boolean,
+  isAllSelected: boolean,
+  onClose: () => void,
+};
 
 type Props = {
   value: Value[],
@@ -61,12 +69,7 @@ type Props = {
 
   valueRenderer: (value: Value) => React$Element<any>,
   optionRenderer: (option: Option) => React$Element<any>,
-  layoutRenderer: ({
-    valuesList: React$Element<any>,
-    optionsList: ?React$Element<any>,
-    focused: boolean,
-    onClose: () => void,
-  }) => React$Element<any>,
+  layoutRenderer: (props: LayoutRendererProps) => React$Element<any>,
 };
 
 type State = {
@@ -74,7 +77,8 @@ type State = {
   searchValue: string,
   filteredOptions: Option[],
   selectedOptionValue: ?Value,
-  focused: boolean,
+  isFocused: boolean,
+  isAllSelected: boolean,
   listIsHovered: boolean,
 };
 
@@ -93,7 +97,8 @@ export default class TokenField extends Component {
       searchValue: "",
       filteredOptions: [],
       selectedOptionValue: null,
-      focused: props.autoFocus || false,
+      isFocused: props.autoFocus || false,
+      isAllSelected: false,
       listIsHovered: false,
     };
   }
@@ -204,18 +209,30 @@ export default class TokenField extends Component {
         String(this._label(option) || "").indexOf(searchValue) >= 0;
     }
 
-    let filteredOptions = options.filter(
-      option =>
-        // filter out options who have already been selected, unless:
+    let selectedCount = 0;
+    let filteredOptions = options.filter(option => {
+      const isSelected = selectedValues.has(
+        JSON.stringify(this._value(option)),
+      );
+      const isLastFreeform =
+        this._isLastFreeformValue(this._value(option)) &&
+        this._isLastFreeformValue(searchValue);
+      const isMatching = filterOption(option, searchValue);
+      if (isSelected) {
+        selectedCount++;
+      }
+      // filter out options who have already been selected, unless:
+      return (
         // remove selected is disabled
         (!removeSelected ||
           // or it's not in the selectedValues
-          !selectedValues.has(JSON.stringify(this._value(option))) ||
+          !isSelected ||
           // or it's the current "freeform" value, which updates as we type
-          (this._isLastFreeformValue(this._value(option)) &&
-            this._isLastFreeformValue(searchValue))) &&
-        filterOption(option, searchValue),
-    );
+          isLastFreeform) &&
+        // and it's matching
+        isMatching
+      );
+    });
 
     if (
       selectedOptionValue == null ||
@@ -235,6 +252,7 @@ export default class TokenField extends Component {
     this.setState({
       filteredOptions,
       selectedOptionValue,
+      isAllSelected: options.length > 0 && selectedCount === options.length,
     });
   };
 
@@ -324,7 +342,7 @@ export default class TokenField extends Component {
     if (this.props.onFocus) {
       this.props.onFocus();
     }
-    this.setState({ focused: true, searchValue: this.state.inputValue }, () =>
+    this.setState({ isFocused: true, searchValue: this.state.inputValue }, () =>
       this._updateFilteredValues(this.props),
     );
   };
@@ -333,18 +351,19 @@ export default class TokenField extends Component {
     if (this.props.onBlur) {
       this.props.onBlur();
     }
-    setTimeout(() => {
-      this.setState({ focused: false });
-    }, 100);
+    this.setState({ isFocused: false });
   };
 
   onInputPaste = (e: SyntheticClipboardEvent) => {
     if (this.props.parseFreeformValue) {
+      e.preventDefault();
       const string = e.clipboardData.getData("Text");
-      const values = string
-        .split(/\n|,/g)
-        .map(this.props.parseFreeformValue)
-        .filter(s => s);
+      const values = this.props.multi
+        ? string
+            .split(/\n|,/g)
+            .map(this.props.parseFreeformValue)
+            .filter(s => s)
+        : [string];
       if (values.length > 0) {
         this.addValue(values);
       }
@@ -361,7 +380,7 @@ export default class TokenField extends Component {
   };
 
   onClose = () => {
-    this.setState({ focused: false });
+    this.setState({ isFocused: false });
   };
 
   addSelectedOption(e: SyntheticKeyboardEvent) {
@@ -453,6 +472,13 @@ export default class TokenField extends Component {
         element.scrollIntoView(element);
       }
     }
+    // if we added a valkue then scroll to the last item (the input)
+    if (this.props.value.length > prevProps.value.length) {
+      let input = findDOMNode(this.refs.input);
+      if (input && isObscured(input)) {
+        input.scrollIntoView(input);
+      }
+    }
   }
 
   render() {
@@ -469,12 +495,14 @@ export default class TokenField extends Component {
     } = this.props;
     let {
       inputValue,
+      searchValue,
       filteredOptions,
-      focused,
+      isFocused,
+      isAllSelected,
       selectedOptionValue,
     } = this.state;
 
-    if (!multi && focused) {
+    if (!multi && isFocused) {
       inputValue = inputValue || value[0];
       value = [];
     }
@@ -486,7 +514,7 @@ export default class TokenField extends Component {
       parseFreeformValue &&
       value[value.length - 1] === parseFreeformValue(inputValue)
     ) {
-      if (focused) {
+      if (isFocused) {
         // if focused, don't render the last value
         value = value.slice(0, -1);
       } else {
@@ -496,7 +524,7 @@ export default class TokenField extends Component {
     }
 
     // if not focused we won't get key events to accept the selected value, so don't render as selected
-    if (!focused) {
+    if (!isFocused) {
       selectedOptionValue = null;
     }
 
@@ -511,24 +539,33 @@ export default class TokenField extends Component {
           "m1 p0 pb1 bordered rounded flex flex-wrap bg-white scroll-x scroll-y",
           inputBoxClasses,
           {
-            [`border-grey-2`]: this.state.focused,
+            [`border-grey-2`]: this.state.isFocused,
           },
         )}
         style={this.props.style}
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {value.map((v, index) => (
-          <li key={v} className={`mt1 ml1 py1 pl2 pr1 rounded bg-grey-05`}>
+          <li
+            key={v}
+            className={cx(
+              `mt1 ml1 py1 pl2 rounded bg-grey-05`,
+              multi ? "pr1" : "pr2",
+            )}
+          >
             <span className="text-bold">{valueRenderer(v)}</span>
-            <a
-              className="text-grey-3 text-default-hover px1"
-              onClick={e => {
-                this.removeValue(v);
-                e.preventDefault();
-              }}
-            >
-              <Icon name="close" className="" size={12} />
-            </a>
+            {multi && (
+              <a
+                className="text-grey-3 text-default-hover px1"
+                onClick={e => {
+                  this.removeValue(v);
+                  e.preventDefault();
+                }}
+                onMouseDown={e => e.preventDefault()}
+              >
+                <Icon name="close" className="" size={12} />
+              </a>
+            )}
           </li>
         ))}
         <li className="flex-full mr1 py1 pl1 mt1 bg-white">
@@ -539,7 +576,7 @@ export default class TokenField extends Component {
             size={10}
             placeholder={placeholder}
             value={inputValue}
-            autoFocus={focused}
+            autoFocus={isFocused}
             onKeyDown={this.onInputKeyDown}
             onChange={this.onInputChange}
             onFocus={this.onInputFocus}
@@ -584,6 +621,7 @@ export default class TokenField extends Component {
                   this.clearInputValue(filteredOptions.length === 1);
                   e.preventDefault();
                 }}
+                onMouseDown={e => e.preventDefault()}
               >
                 {optionRenderer(option)}
               </div>
@@ -595,7 +633,9 @@ export default class TokenField extends Component {
     return layoutRenderer({
       valuesList,
       optionsList,
-      focused,
+      isFocused,
+      isAllSelected,
+      isFiltered: !!searchValue,
       onClose: this.onClose,
     });
   }
@@ -606,14 +646,14 @@ const dedup = array => Array.from(new Set(array));
 const DefaultTokenFieldLayout = ({
   valuesList,
   optionsList,
-  focused,
+  isFocused,
   onClose,
 }) => (
   <OnClickOutsideWrapper handleDismissal={onClose}>
     <div>
       {valuesList}
       <Popover
-        isOpen={focused && !!optionsList}
+        isOpen={isFocused && !!optionsList}
         hasArrow={false}
         tetherOptions={{
           attachment: "top left",
@@ -630,6 +670,6 @@ const DefaultTokenFieldLayout = ({
 DefaultTokenFieldLayout.propTypes = {
   valuesList: PropTypes.element.isRequired,
   optionsList: PropTypes.element,
-  focused: PropTypes.bool,
+  isFocused: PropTypes.bool,
   onClose: PropTypes.func,
 };

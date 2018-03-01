@@ -38,7 +38,7 @@ describe("recipient picker", () => {
         wrapper
           .find(TokenField)
           .dive()
-          .state().focused,
+          .state().isFocused,
       ).toBe(true);
     });
     it("should not be focused if there are existing recipients", () => {
@@ -55,7 +55,7 @@ describe("recipient picker", () => {
         wrapper
           .find(TokenField)
           .dive()
-          .state().focused,
+          .state().isFocused,
       ).toBe(false);
     });
   });
