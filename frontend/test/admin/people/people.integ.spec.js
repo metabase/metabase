@@ -22,15 +22,21 @@ import UserGroupSelect from "metabase/admin/people/components/UserGroupSelect";
 import { GroupOption } from "metabase/admin/people/components/GroupSelect";
 import { UserApi } from "metabase/services";
 import UserActionsSelect from "metabase/admin/people/components/UserActionsSelect";
+import MailDev from "maildev"
 
 describe("admin/people", () => {
   let createdUserId = null;
 
   beforeAll(async () => {
     useSharedAdminLogin();
+
   });
 
   describe("user management", () => {
+
+    let maildev = MailDev({smtp: 4025});
+    maildev.listen();
+
     it("should allow admin to create new users", async () => {
       const store = await createTestStore();
       store.pushPath("/admin/people");
