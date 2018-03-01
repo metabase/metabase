@@ -8,7 +8,9 @@ const _ = require("underscore");
 const gParser = require("gettext-parser");
 
 if (process.argv.length !== 4) {
-  console.log("USAGE: build-translation-frontend-resource input.po output.json");
+  console.log(
+    "USAGE: build-translation-frontend-resource input.po output.json",
+  );
   process.exit(1);
 }
 
@@ -18,19 +20,37 @@ const outputFile = process.argv[3];
 const translationObject = gParser.po.parse(fs.readFileSync(inputFile, "utf-8"));
 
 // NOTE: unsure why the headers are duplicated in a translation for "", but we don't need it
-delete translationObject.translations[""][""]
+delete translationObject.translations[""][""];
 
 for (const id in translationObject.translations[""]) {
   const translation = translationObject.translations[""][id];
-  if (!translation.comments.reference || _.any(translation.comments.reference.split("\n"), reference => reference.startsWith("frontend/"))) {
-    // remove comments:
-    delete translation.comments;
-    // NOTE: would be nice if we could remove the message id since it's redundant:
-    // delete translation.msgid;
+  if (
+    !translation.comments.reference ||
+    _.any(translation.comments.reference.split("\n"), reference =>
+      reference.startsWith("frontend/"),
+    )
+  ) {
+    // delete empty translations so that we fall back to untranslated string
+    if (
+      Array.isArray(translation.msgstr) &&
+      translation.msgstr.length === 1 &&
+      translation.msgstr[0] === ""
+    ) {
+      delete translationObject.translations[""][id];
+    } else {
+      // remove comments:
+      delete translation.comments;
+      // delete msgid since it's redundant, we have to add it back in on the frontend though
+      delete translation.msgid;
+    }
   } else {
     // remove strings that aren't in the frontend
     delete translationObject.translations[""][id];
   }
 }
 
-fs.writeFileSync(outputFile, JSON.stringify(translationObject, null, 2), "utf-8");
+fs.writeFileSync(
+  outputFile,
+  JSON.stringify(translationObject, null, 2),
+  "utf-8",
+);
