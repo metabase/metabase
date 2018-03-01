@@ -6,6 +6,7 @@
              [comparison :as magic.comparison]]
             [metabase.models
              [dashboard :refer [Dashboard]]
+             [metric :refer [Metric]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [toucan.db :as db]))
@@ -24,7 +25,6 @@
   "Create an automagic dashboard for table with id `ìd`."
   [id]
   [(magic/automagic-dashboard (Table id))])
-
 
 (api/defendpoint GET "/analize/metric/:id"
   "Create an automagic dashboard analyzing metric with id `id`."

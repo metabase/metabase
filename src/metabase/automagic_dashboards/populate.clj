@@ -56,6 +56,7 @@
     card))
 
 (defn- add-card!
+  "Add a card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard card [x y]]
   (dashboard/add-dashcard! dashboard (create-card! card)
     {:col   y
@@ -64,6 +65,7 @@
      :sizeY (:height card)}))
 
 (defn add-text-card!
+  "Add a text card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard {:keys [text width height]} [x y]]
   (dashboard/add-dashcard! dashboard nil
     {:creator_id             api/*current-user-id*
@@ -77,7 +79,7 @@
      :sizeX width
      :sizeY height}))
 
-(def ^:private ^Integer max-cards 9)
+(def ^:private ^Long max-cards 9)
 
 (defn- make-grid
   [width height]

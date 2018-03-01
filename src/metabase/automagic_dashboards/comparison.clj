@@ -2,8 +2,7 @@
   (:require [metabase.api
              [common :as api]
              [card :as card.api]]
-            [metabase.automagic-dashboards
-             [populate :as populate]]
+            [metabase.automagic-dashboards.populate :as populate]
             [metabase.models
              [card :refer [Card]]
              [dashboard :as dashboard :refer [Dashboard]]
@@ -78,6 +77,8 @@
     [card]))
 
 (defn comparison-dashboard
+  "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
+   the dataset defined by filter expressions `left` and `right`."
   [dashboard left right]
   (let [cards     (->> dashboard dashboard->cards (mapcat unroll-multiseries))
         dashboard (db/insert! Dashboard
@@ -86,15 +87,16 @@
                                          (:name right))
                     :description (format "Automatically generated comparison dashboard comparing segments %s and %s" (:name left) (:name right))
                     :creator_id  api/*current-user-id*
-                    :parameters  [])]
+                    :parameters  [])
+        ;; Binding return value to make linter happy
+        _         (reduce (fn [row [left right]]
+                            (place-row! dashboard row (:height left)
+                                        (clone-card! left)
+                                        (clone-card! right)))
+                          title-height
+                          (map (juxt (partial inject-segment left)
+                                     (partial inject-segment right))
+                               cards))]
     (add-col-title! dashboard (:name left)  0)
-    (add-col-title! dashboard (:name right) (/ populate/grid-width 2))
-    (reduce (fn [row [left right]]
-              (place-row! dashboard row (:height left)
-                          (clone-card! left)
-                          (clone-card! right)))
-            title-height
-            (map (juxt (partial inject-segment left)
-                       (partial inject-segment right))
-                 cards))
+    (add-col-title! dashboard (:name right) (/ populate/grid-width 2))        
     dashboard))
