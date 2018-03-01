@@ -161,6 +161,10 @@ export default class GuiQueryEditor extends Component {
       );
     }
 
+    if (!filterList && !addFilterButton) {
+      return;
+    }
+
     return (
       <div className={cx("Query-section", { disabled: !enabled })}>
         <div className="Query-filters">{filterList}</div>
@@ -200,12 +204,19 @@ export default class GuiQueryEditor extends Component {
       return;
     }
 
+    if (
+      query.aggregations().length === 0 &&
+      query.aggregationOptions().length === 0
+    ) {
+      return;
+    }
+
     // aggregation clause.  must have table details available
     if (query.isEditable()) {
       // $FlowFixMe
       let aggregations: (Aggregation | null)[] = query.aggregations();
 
-      if (aggregations.length === 0) {
+      if (aggregations.length === 0 && query.aggregationOptions().length > 0) {
         // add implicit rows aggregation
         aggregations.push(["rows"]);
       }
@@ -290,6 +301,10 @@ export default class GuiQueryEditor extends Component {
       }
     }
 
+    if (breakoutList.length === 0) {
+      return;
+    }
+
     return (
       <div
         className={cx("Query-section Query-section-breakout", {
@@ -342,13 +357,18 @@ export default class GuiQueryEditor extends Component {
       return;
     }
 
+    const filters = this.renderFilters();
+    if (!filters) {
+      return null;
+    }
+
     return (
       <div
         className="GuiBuilder-section GuiBuilder-filtered-by flex align-center"
         ref="filterSection"
       >
         <span className="GuiBuilder-section-label Query-label">{t`Filtered by`}</span>
-        {this.renderFilters()}
+        {filters}
       </div>
     );
   }
@@ -359,13 +379,18 @@ export default class GuiQueryEditor extends Component {
       return;
     }
 
+    const aggregation = this.renderAggregation();
+    if (!aggregation) {
+      return;
+    }
+
     return (
       <div
         className="GuiBuilder-section GuiBuilder-view flex align-center px1 pr2"
         ref="viewSection"
       >
         <span className="GuiBuilder-section-label Query-label">{t`View`}</span>
-        {this.renderAggregation()}
+        {aggregation}
       </div>
     );
   }
@@ -376,13 +401,18 @@ export default class GuiQueryEditor extends Component {
       return;
     }
 
+    const breakouts = this.renderBreakouts();
+    if (!breakouts) {
+      return;
+    }
+
     return (
       <div
         className="GuiBuilder-section GuiBuilder-groupedBy flex align-center px1"
         ref="viewSection"
       >
         <span className="GuiBuilder-section-label Query-label">{t`Grouped By`}</span>
-        {this.renderBreakouts()}
+        {breakouts}
       </div>
     );
   }
