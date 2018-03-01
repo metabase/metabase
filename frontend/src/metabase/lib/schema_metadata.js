@@ -15,6 +15,7 @@ export const BOOLEAN = "BOOLEAN";
 export const DATE_TIME = "DATE_TIME";
 export const LOCATION = "LOCATION";
 export const COORDINATE = "COORDINATE";
+export const FOREIGN_KEY = "FOREIGN_KEY";
 
 // other types used for various purporses
 export const ENTITY = "ENTITY";
@@ -53,6 +54,9 @@ const TYPES = {
   },
   [ENTITY]: {
     special: [TYPE.FK, TYPE.PK, TYPE.Name],
+  },
+  [FOREIGN_KEY]: {
+    special: [TYPE.FK],
   },
   [SUMMABLE]: {
     include: [NUMBER],
@@ -102,6 +106,7 @@ export function getFieldType(field) {
     DATE_TIME,
     LOCATION,
     COORDINATE,
+    FOREIGN_KEY,
     NUMBER,
     STRING,
     STRING_LIKE,
@@ -297,6 +302,13 @@ const OPERATORS = {
   },
 };
 
+const DEFAULT_OPERATORS = [
+  { name: "=", verboseName: t`Is` },
+  { name: "!=", verboseName: t`Is not` },
+  { name: "IS_NULL", verboseName: t`Is empty` },
+  { name: "NOT_NULL", verboseName: t`Not empty` },
+];
+
 // ordered list of operators and metadata per type
 const OPERATORS_BY_TYPE_ORDERED = {
   [NUMBER]: [
@@ -350,12 +362,8 @@ const OPERATORS_BY_TYPE_ORDERED = {
     { name: "IS_NULL", verboseName: t`Is empty` },
     { name: "NOT_NULL", verboseName: t`Not empty` },
   ],
-  [UNKNOWN]: [
-    { name: "=", verboseName: t`Is` },
-    { name: "!=", verboseName: t`Is not` },
-    { name: "IS_NULL", verboseName: t`Is empty`, advanced: true },
-    { name: "NOT_NULL", verboseName: t`Not empty`, advanced: true },
-  ],
+  [FOREIGN_KEY]: DEFAULT_OPERATORS,
+  [UNKNOWN]: DEFAULT_OPERATORS,
 };
 
 const MORE_VERBOSE_NAMES = {
