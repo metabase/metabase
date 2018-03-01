@@ -30,6 +30,9 @@ type State = {
 
 const BORDER_WIDTH = 2;
 
+const normalizeValue = value =>
+  Array.isArray(value) ? value : value != null ? [value] : [];
+
 // TODO: rename this something else since we're using it for more than searching and more than text
 export default class ParameterFieldWidget extends Component<*, Props, State> {
   props: Props;
@@ -49,9 +52,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   static noPopover = true;
 
   static format(value, field) {
-    if (!Array.isArray(value)) {
-      value = [value];
-    }
+    value = normalizeValue(value);
     if (value.length > 1) {
       return `${value.length} selections`;
     } else {
@@ -77,11 +78,10 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
 
   render() {
     let { setValue, isEditing, field, parentFocusChanged } = this.props;
-    let { value, isFocused } = this.state;
+    let { isFocused } = this.state;
 
-    if (!Array.isArray(value)) {
-      value = value != null ? [value] : [];
-    }
+    const savedValue = normalizeValue(this.props.value);
+    const unsavedValue = normalizeValue(this.state.value);
 
     const defaultPlaceholder = isFocused
       ? ""
@@ -103,8 +103,8 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
           className="flex-full cursor-pointer"
           onClick={() => focusChanged(true)}
         >
-          {value.length > 0 ? (
-            ParameterFieldWidget.format(value, field)
+          {savedValue.length > 0 ? (
+            ParameterFieldWidget.format(savedValue, field)
           ) : (
             <span>{placeholder}</span>
           )}
@@ -122,7 +122,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
           onClose={() => focusChanged(false)}
         >
           <FieldValuesWidget
-            value={value}
+            value={unsavedValue}
             onChange={value => {
               this.setState({ value });
             }}
@@ -145,7 +145,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
               primary
               className="ml-auto"
               onClick={() => {
-                setValue(value.length > 0 ? value : null);
+                setValue(unsavedValue.length > 0 ? unsavedValue : null);
                 focusChanged(false);
               }}
             >
