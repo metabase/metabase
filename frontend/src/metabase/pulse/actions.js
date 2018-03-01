@@ -4,6 +4,9 @@ import { createThunkAction } from "metabase/lib/redux";
 import { normalize, schema } from "normalizr";
 
 import { PulseApi, CardApi, UserApi } from "metabase/services";
+import { formInputSelector } from "./selectors";
+
+import { getDefaultChannel, createChannel } from "metabase/lib/pulse";
 
 const card = new schema.Entity('card');
 const pulse = new schema.Entity('pulse');
@@ -37,10 +40,16 @@ export const setEditingPulse = createThunkAction(SET_EDITING_PULSE, function(id)
             } catch (e) {
             }
         }
+        // HACK: need a way to wait for form_input to finish loading
+        const channels = formInputSelector(getState()).channels ||
+            (await PulseApi.form_input()).channels;
+        const defaultChannelSpec = getDefaultChannel(channels);
         return {
             name: null,
             cards: [],
-            channels: [],
+            channels: defaultChannelSpec ?
+              [createChannel(defaultChannelSpec)] :
+              [],
             skip_if_empty: false,
         }
     };
@@ -93,7 +102,7 @@ export const fetchUsers = createThunkAction(FETCH_USERS, function() {
     };
 });
 
-export const fetchPulseFormInput = createThunkAction(FETCH_PULSE_FORM_INPUT, function(id) {
+export const fetchPulseFormInput = createThunkAction(FETCH_PULSE_FORM_INPUT, function() {
     return async function(dispatch, getState) {
         return await PulseApi.form_input();
     };

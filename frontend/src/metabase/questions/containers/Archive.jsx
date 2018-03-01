@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import { t } from 'c-3po';
 
 import HeaderWithBack from "metabase/components/HeaderWithBack";
 import SearchHeader from "metabase/components/SearchHeader";
@@ -46,7 +47,7 @@ export default class Archive extends Component {
         return (
             <div className="px4 pt3">
                 <div className="flex align-center mb2">
-                    <HeaderWithBack name="Archive" />
+                    <HeaderWithBack name={t`Archive`} />
                 </div>
                 <SearchHeader searchText={this.props.searchText} setSearchText={this.props.setSearchText} />
                 <div>

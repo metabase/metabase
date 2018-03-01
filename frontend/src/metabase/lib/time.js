@@ -14,3 +14,13 @@ export function parseTimestamp(value, unit) {
         return moment.utc(value);
     }
 }
+
+export function parseTime(value) {
+    if (moment.isMoment(value)) {
+        return value;
+    } else if (typeof value === "string"){
+        return moment(value, ["HH:mm:SS.sssZZ", "HH:mm:SS.sss", "HH:mm:SS.sss", "HH:mm:SS", "HH:mm"])
+    } else {
+        return moment.utc(value);
+    }
+}

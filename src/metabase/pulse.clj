@@ -97,19 +97,19 @@
   (every? is-card-empty? results))
 
 (defn- goal-met? [{:keys [alert_above_goal] :as pulse} results]
-  (let [first-result    (first results)
-        goal-comparison (if alert_above_goal <= >=)
-        comparison-col-index (ui/goal-comparison-column first-result)
-        goal-val (ui/find-goal-value first-result)]
+  (let [first-result         (first results)
+        goal-comparison      (if alert_above_goal <= >=)
+        goal-val             (ui/find-goal-value first-result)
+        comparison-col-rowfn (ui/make-goal-comparison-rowfn (:card first-result)
+                                                            (get-in first-result [:result :data]))]
 
-    (when-not (and goal-val comparison-col-index)
+    (when-not (and goal-val comparison-col-rowfn)
       (throw (Exception. (str (tru "Unable to compare results to goal for alert.")
-                              (tru "Question ID is '{0}' with visualization settings '{1}'"
+                              (tru "Question ID is ''{0}'' with visualization settings ''{1}''"
                                    (get-in results [:card :id])
                                    (pr-str (get-in results [:card :visualization_settings])))))))
-
     (some (fn [row]
-            (goal-comparison goal-val (nth row comparison-col-index)))
+            (goal-comparison goal-val (comparison-col-rowfn row)))
           (get-in first-result [:result :data :rows]))))
 
 (defn- alert-or-pulse [pulse]
@@ -221,7 +221,7 @@
         channel-ids (or channel-ids (mapv :id (:channels pulse)))]
     (when (should-send-notification? pulse results)
 
-      (when  (:alert_first_only pulse)
+      (when (:alert_first_only pulse)
         (db/delete! Pulse :id (:id pulse)))
 
       (for [channel-id channel-ids

@@ -43,7 +43,7 @@ export const getActionText = ({ id }) =>
 export const CollectionEditorFormActions = ({ handleSubmit, invalid, onClose, fields}) =>
     <div>
         <Button className="mr1" onClick={onClose}>
-            Cancel
+            {t`Cancel`}
         </Button>
         <Button primary disabled={invalid} onClick={handleSubmit}>
             { getActionText(fields) }
