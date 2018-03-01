@@ -2,6 +2,7 @@ export function getEngineNativeType(engine) {
   switch (engine) {
     case "mongo":
     case "druid":
+    case "http":
     case "googleanalytics":
       return "json";
     default:
@@ -14,6 +15,7 @@ export function getEngineNativeAceMode(engine) {
     case "mongo":
     case "druid":
     case "googleanalytics":
+    case "http":
       return "ace/mode/json";
     case "mysql":
       return "ace/mode/mysql";
