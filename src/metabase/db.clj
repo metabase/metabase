@@ -287,7 +287,6 @@
                 (doto (HikariConfig.)
                   (.setDriverClassName              classname)
                   (.setJdbcUrl                      (str "jdbc:" subprotocol ":" subname))
-                  (.setMaxLifetime                  (* 3 60 60))
                   (.setMaximumPoolSize              15)
                   (.setDataSourceProperties         (u/prog1 (Properties.)
                                                              (doseq [[k v] (dissoc spec :classname :subprotocol :subname

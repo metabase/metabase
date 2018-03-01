@@ -21,6 +21,7 @@
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
   (:import [clojure.lang Keyword PersistentVector]
+           com.zaxxer.hikari.HikariDataSource
            [java.sql DatabaseMetaData ResultSet]
            java.util.Map
            metabase.models.field.FieldInstance
@@ -164,7 +165,7 @@
     ;; remove the cached reference to the pool so we don't try to use it anymore
     (swap! database-id->connection-pool dissoc id)
     ;; now actively shut down the pool so that any open connections are closed
-    (.close ^ComboPooledDataSource (:datasource pool))
+    (.close ^HikariDataSource (:datasource pool))
     (when-let [ssh-tunnel (:ssh-tunnel pool)]
       (.disconnect ^com.jcraft.jsch.Session ssh-tunnel))))
 
