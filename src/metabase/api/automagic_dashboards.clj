@@ -1,9 +1,12 @@
 (ns metabase.api.automagic-dashboards
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
-            [metabase.automagic-dashboards.core :as magic]
+            [metabase.automagic-dashboards
+             [core :as magic]
+             [comparison :as magic.comparison]]
             [metabase.models
-             [metric :refer [Metric]]
+             [dashboard :refer [Dashboard]]
+             [segment :refer [Segment]]
              [table :refer [Table]]]
             [toucan.db :as db]))
 
@@ -22,9 +25,18 @@
   [id]
   [(magic/automagic-dashboard (Table id))])
 
+
 (api/defendpoint GET "/analize/metric/:id"
   "Create an automagic dashboard analyzing metric with id `id`."
   [id]
   [(magic/automagic-analysis (Metric id))])
+
+(api/defendpoint GET "/compare/dashboard/:dashboard-id/segments/:left-id/:right-id"
+  "Create an automagic comparison dashboard based on dashboard with ID
+   `dashboard-id`, comparing segments with IDs `left-id` and `right-id`."
+  [dashboard-id left-id right-id]
+  [(:id (magic.comparison/comparison-dashboard (Dashboard dashboard-id)
+                                               (Segment left-id)
+                                               (Segment right-id)))])
 
 (api/define-routes)
