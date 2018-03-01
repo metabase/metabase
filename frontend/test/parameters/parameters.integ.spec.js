@@ -9,9 +9,9 @@ import {
   useSharedAdminLogin,
   logout,
   waitForRequestToComplete,
+  waitForAllRequestsToComplete,
 } from "__support__/integrated_tests";
 
-import { delay } from "metabase/lib/promise";
 import jwt from "jsonwebtoken";
 
 import { FETCH_DASHBOARD } from "metabase/dashboard/dashboard";
@@ -280,7 +280,6 @@ describe("parameters", () => {
 
       // wait for required field metadata to load
       await waitForRequestToComplete("GET", /^\/api\/field\/[^\/]+/);
-      await waitForRequestToComplete("GET", /^\/api\/field\/[^\/]+/);
     });
     sharedParametersTests(() => ({ app, store }));
   });
@@ -386,7 +385,8 @@ async function sharedParametersTests(getAppAndStore) {
   });
 
   it("should have 4 ParameterFieldWidgets", async () => {
-    await delay(500);
+    await waitForAllRequestsToComplete();
+
     expect(app.find(ParameterWidget).length).toEqual(4);
     expect(app.find(ParameterFieldWidget).length).toEqual(4);
   });

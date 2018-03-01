@@ -159,8 +159,8 @@
                              (field-values/create-field-values-if-needed! field))]
     (-> field-values
         (assoc :values (field-values/field-values->pairs field-values))
-        (dissoc :human_readable_values :created_at :updated_at :id :field_id))
-    {:values []}))
+        (dissoc :human_readable_values :created_at :updated_at :id))
+    {:values [], :field_id (:id field)}))
 
 (api/defendpoint GET "/:id/values"
   "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return all distinct

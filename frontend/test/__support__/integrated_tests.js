@@ -10,6 +10,7 @@ import "./mocks";
 
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
+import { defer } from "metabase/lib/promise";
 import { DashboardApi, SessionApi } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from "metabase/reducers-main";
@@ -438,6 +439,17 @@ export const waitForRequestToComplete = (
   });
 };
 
+export const waitForAllRequestsToComplete = () => {
+  if (pendingRequests > 0) {
+    if (!pendingRequestsDeferred) {
+      pendingRequestsDeferred = defer();
+    }
+    return pendingRequestsDeferred.promise;
+  } else {
+    return Promise.resolve();
+  }
+};
+
 /**
  * Lets you replace given API endpoints with mocked implementations for the lifetime of a test
  */
@@ -475,68 +487,82 @@ export async function withApiMocks(mocks, test) {
   }
 }
 
+let pendingRequests = 0;
+let pendingRequestsDeferred = null;
+
 // Patches the metabase/lib/api module so that all API queries contain the login credential cookie.
 // Needed because we are not in a real web browser environment.
 api._makeRequest = async (method, url, headers, requestBody, data, options) => {
-  const headersWithSessionCookie = {
-    ...headers,
-    ...(loginSession
-      ? { Cookie: `${METABASE_SESSION_COOKIE}=${loginSession.id}` }
-      : {}),
-  };
-
-  const fetchOptions = {
-    credentials: "include",
-    method,
-    headers: new Headers(headersWithSessionCookie),
-    ...(requestBody ? { body: requestBody } : {}),
-  };
-
-  let isCancelled = false;
-  if (options.cancelled) {
-    options.cancelled.then(() => {
-      isCancelled = true;
-    });
-  }
-  const result = simulateOfflineMode
-    ? { status: 0, responseText: "" }
-    : await fetch(api.basename + url, fetchOptions);
-
-  if (isCancelled) {
-    throw { status: 0, data: "", isCancelled: true };
-  }
-
-  let resultBody = null;
+  pendingRequests++;
   try {
-    resultBody = await result.text();
-    // Even if the result conversion to JSON fails, we still return the original text
-    // This is 1-to-1 with the real _makeRequest implementation
-    resultBody = JSON.parse(resultBody);
-  } catch (e) {}
-
-  apiRequestCompletedCallback &&
-    setTimeout(() => apiRequestCompletedCallback(method, url), 0);
-
-  if (result.status >= 200 && result.status <= 299) {
-    if (options.transformResponse) {
-      return options.transformResponse(resultBody, { data });
-    } else {
-      return resultBody;
-    }
-  } else {
-    const error = {
-      status: result.status,
-      data: resultBody,
-      isCancelled: false,
+    const headersWithSessionCookie = {
+      ...headers,
+      ...(loginSession
+        ? { Cookie: `${METABASE_SESSION_COOKIE}=${loginSession.id}` }
+        : {}),
     };
-    if (!simulateOfflineMode) {
-      console.log("A request made in a test failed with the following error:");
-      console.log(error, { depth: null });
-      console.log(`The original request: ${method} ${url}`);
-      if (requestBody) console.log(`Original payload: ${requestBody}`);
+
+    const fetchOptions = {
+      credentials: "include",
+      method,
+      headers: new Headers(headersWithSessionCookie),
+      ...(requestBody ? { body: requestBody } : {}),
+    };
+
+    let isCancelled = false;
+    if (options.cancelled) {
+      options.cancelled.then(() => {
+        isCancelled = true;
+      });
+    }
+    const result = simulateOfflineMode
+      ? { status: 0, responseText: "" }
+      : await fetch(api.basename + url, fetchOptions);
+
+    if (isCancelled) {
+      throw { status: 0, data: "", isCancelled: true };
     }
 
-    throw error;
+    let resultBody = null;
+    try {
+      resultBody = await result.text();
+      // Even if the result conversion to JSON fails, we still return the original text
+      // This is 1-to-1 with the real _makeRequest implementation
+      resultBody = JSON.parse(resultBody);
+    } catch (e) {}
+
+    apiRequestCompletedCallback &&
+      setTimeout(() => apiRequestCompletedCallback(method, url), 0);
+
+    if (result.status >= 200 && result.status <= 299) {
+      if (options.transformResponse) {
+        return options.transformResponse(resultBody, { data });
+      } else {
+        return resultBody;
+      }
+    } else {
+      const error = {
+        status: result.status,
+        data: resultBody,
+        isCancelled: false,
+      };
+      if (!simulateOfflineMode) {
+        console.log(
+          "A request made in a test failed with the following error:",
+        );
+        console.log(error, { depth: null });
+        console.log(`The original request: ${method} ${url}`);
+        if (requestBody) console.log(`Original payload: ${requestBody}`);
+      }
+
+      throw error;
+    }
+  } finally {
+    pendingRequests--;
+    if (pendingRequests === 0 && pendingRequestsDeferred) {
+      process.nextTick(pendingRequestsDeferred.resolve);
+      pendingRequestsDeferred = null;
+    }
   }
 };
 
