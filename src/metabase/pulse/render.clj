@@ -291,6 +291,14 @@
   [card]
   (h (urls/card-url (:id card))))
 
+(defn- write-image
+  [^BufferedImage image ^String format-name ^ByteArrayOutputStream output-stream]
+  (try
+    (ImageIO/write image format-name output-stream)
+    (catch javax.imageio.IIOException iioex
+      (log/error iioex "Error writing image to output stream")
+      (throw iioex))))
+
 ;; ported from https://github.com/radkovo/CSSBox/blob/cssbox-4.10/src/main/java/org/fit/cssbox/demo/ImageRenderer.java
 (defn- render-to-png
   [^String html, ^ByteArrayOutputStream os, width]
@@ -317,7 +325,7 @@
       (.setLoadImages true)
       (.setLoadBackgroundImages true))
     (.createLayout content-canvas window-size)
-    (ImageIO/write (.getImage content-canvas) "png" os)))
+    (write-image (.getImage content-canvas) "png" os)))
 
 (s/defn ^:private render-html-to-png :- bytes
   [{:keys [content]} :- RenderedPulseCard
