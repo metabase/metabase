@@ -44,14 +44,17 @@
 (def ^:private ^:const sparkline-pad 8)
 
 ;;; ## STYLES
-(def ^:private ^:const color-brand  "rgb(45,134,212)")
-(def ^:private ^:const color-purple "rgb(135,93,175)")
-(def ^:private ^:const color-gold   "#F9D45C")
-(def ^:private ^:const color-error  "#EF8C8C")
-(def ^:private ^:const color-gray-1 "rgb(248,248,248)")
-(def ^:private ^:const color-gray-2 "rgb(189,193,191)")
-(def ^:private ^:const color-gray-3 "rgb(124,131,129)")
+(def ^:private ^:const color-brand      "rgb(45,134,212)")
+(def ^:private ^:const color-purple     "rgb(135,93,175)")
+(def ^:private ^:const color-gold       "#F9D45C")
+(def ^:private ^:const color-error      "#EF8C8C")
+(def ^:private ^:const color-gray-1     "rgb(248,248,248)")
+(def ^:private ^:const color-gray-2     "rgb(189,193,191)")
+(def ^:private ^:const color-gray-3     "rgb(124,131,129)")
 (def ^:const color-gray-4 "A ~25% Gray color." "rgb(57,67,64)")
+(def ^:private ^:const color-dark-gray  "#616D75")
+(def ^:private ^:const color-row-border "#EDF0F1")
+
 
 (def ^:private ^:const font-style    {:font-family "Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif"})
 (def ^:const section-style
@@ -70,19 +73,47 @@
                      :color       color-brand}))
 
 (def ^:private ^:const bar-th-style
-  (merge font-style {:font-size      :10px
-                     :font-weight    400
-                     :color          color-gray-4
-                     :border-bottom  (str "4px solid " color-gray-1)
-                     :padding-top    :0px
-                     :padding-bottom :10px}))
+  (merge font-style {:font-size       :14.22px
+                     :font-weight     700
+                     :color           color-gray-4
+                     :border-bottom   (str "1px solid " color-row-border)
+                     :padding-top     :20px
+                     :padding-bottom  :5px}))
+
+;; TO-DO for @senior: apply this style to headings of numeric columns
+(def ^:private ^:const bar-th-numeric-style
+  (merge font-style {:text-align      :right
+                     :font-size       :14.22px
+                     :font-weight     700
+                     :color           color-gray-4
+                     :border-bottom   (str "1px solid " color-row-border)
+                     :padding-top     :20px
+                     :padding-bottom  :5px}))
 
 (def ^:private ^:const bar-td-style
-  (merge font-style {:font-size     :16px
-                     :font-weight   400
-                     :text-align    :left
-                     :padding-right :1em
-                     :padding-top   :8px}))
+  (merge font-style {:font-size      :14.22px
+                     :font-weight    400
+                     :color          color-dark-gray
+                     :text-align     :left
+                     :padding-right  :1em
+                     :padding-top    :2px
+                     :padding-bottom :1px
+                     :max-width      :500px
+                     :overflow       :hidden
+                     :text-overflow  :ellipsis
+                     :border-bottom  (str "1px solid " color-row-border)}))
+
+;; TO-DO for @senior: apply this style to numeric cells
+(def ^:private ^:const bar-td-style-numeric
+  (merge font-style {:font-size      :14.22px
+                     :font-weight    400
+                     :color          color-dark-gray
+                     :text-align     :right
+                     :padding-right  :1em
+                     :padding-top    :2px
+                     :padding-bottom :1px
+                     :font-family    "Courier, Monospace"
+                     :border-bottom  (str "1px solid " color-row-border)}))
 
 (def ^:private RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"
