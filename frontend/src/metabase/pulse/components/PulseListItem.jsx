@@ -16,7 +16,7 @@ export default class PulseListItem extends Component {
     formInput: PropTypes.object.isRequired,
     user: PropTypes.object.isRequired,
     scrollTo: PropTypes.bool.isRequired,
-    savePulse: PropTypes.func.isRequired
+    savePulse: PropTypes.func.isRequired,
   };
 
   componentDidMount() {
@@ -38,7 +38,7 @@ export default class PulseListItem extends Component {
       <div
         ref="pulseListItem"
         className={cx("PulseListItem bordered rounded mb2 pt3", {
-          "PulseListItem--focused": this.props.scrollTo
+          "PulseListItem--focused": this.props.scrollTo,
         })}
       >
         <div className="px4 mb2">
