@@ -13,7 +13,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#\n"
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-03-02 12:49+0700\n"
+"POT-Creation-Date: 2018-03-02 12:58+0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2450,36 +2450,36 @@ msgstr ""
 msgid "View the SQL"
 msgstr ""
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:200
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:237
 msgid "Search the list"
 msgstr ""
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:204
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:241
 msgid "Search by {0}"
 msgstr ""
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:206
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:243
 msgid " or enter an ID"
 msgstr ""
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:210
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:247
 msgid "Enter an ID"
 msgstr ""
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:212
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:249
 msgid "Enter a number"
 msgstr ""
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:214
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:251
 msgid "Enter some text"
 msgstr ""
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:267
-msgid "Including every option in your filter probably won’t do much…"
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:357
+msgid "No matching {0} found."
 msgstr ""
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:270
-msgid "No matching results found"
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:365
+msgid "Including every option in your filter probably won’t do much…"
 msgstr ""
 
 #: frontend/src/metabase/components/Header.jsx:93
@@ -2723,7 +2723,7 @@ msgstr ""
 msgid "Selected"
 msgstr ""
 
-#: frontend/src/metabase/components/Select.jsx:279
+#: frontend/src/metabase/components/Select.jsx:280
 msgid "Nothing to select"
 msgstr ""
 
@@ -3273,7 +3273,7 @@ msgid "What do you want to find out?"
 msgstr ""
 
 #: frontend/src/metabase/lib/query.js:607
-#: frontend/src/metabase/lib/schema_metadata.js:404
+#: frontend/src/metabase/lib/schema_metadata.js:412
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:244
 msgid "Raw data"
 msgstr ""
@@ -3326,216 +3326,216 @@ msgstr ""
 msgid "Background job result isn't available for an unknown reason"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:193
+#: frontend/src/metabase/lib/schema_metadata.js:198
 msgid "True"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:193
+#: frontend/src/metabase/lib/schema_metadata.js:198
 msgid "False"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:268
+#: frontend/src/metabase/lib/schema_metadata.js:273
 msgid "Select longitude field"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:269
+#: frontend/src/metabase/lib/schema_metadata.js:274
 msgid "Enter upper latitude"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:270
+#: frontend/src/metabase/lib/schema_metadata.js:275
 msgid "Enter left longitude"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:271
+#: frontend/src/metabase/lib/schema_metadata.js:276
 msgid "Enter lower latitude"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:272
+#: frontend/src/metabase/lib/schema_metadata.js:277
 msgid "Enter right longitude"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:303
-msgid "Equal"
-msgstr ""
-
-#: frontend/src/metabase/lib/schema_metadata.js:304
-msgid "Not equal"
-msgstr ""
-
-#: frontend/src/metabase/lib/schema_metadata.js:305
-msgid "Greater than"
-msgstr ""
-
 #: frontend/src/metabase/lib/schema_metadata.js:306
-msgid "Less than"
+#: frontend/src/metabase/lib/schema_metadata.js:326
+#: frontend/src/metabase/lib/schema_metadata.js:336
+#: frontend/src/metabase/lib/schema_metadata.js:342
+#: frontend/src/metabase/lib/schema_metadata.js:350
+#: frontend/src/metabase/lib/schema_metadata.js:356
+#: frontend/src/metabase/lib/schema_metadata.js:361
+msgid "Is"
 msgstr ""
 
 #: frontend/src/metabase/lib/schema_metadata.js:307
-#: frontend/src/metabase/lib/schema_metadata.js:333
+#: frontend/src/metabase/lib/schema_metadata.js:327
+#: frontend/src/metabase/lib/schema_metadata.js:337
+#: frontend/src/metabase/lib/schema_metadata.js:351
+#: frontend/src/metabase/lib/schema_metadata.js:357
+msgid "Is not"
+msgstr ""
+
+#: frontend/src/metabase/lib/schema_metadata.js:308
+#: frontend/src/metabase/lib/schema_metadata.js:322
+#: frontend/src/metabase/lib/schema_metadata.js:330
+#: frontend/src/metabase/lib/schema_metadata.js:338
+#: frontend/src/metabase/lib/schema_metadata.js:346
+#: frontend/src/metabase/lib/schema_metadata.js:352
+#: frontend/src/metabase/lib/schema_metadata.js:362
+msgid "Is empty"
+msgstr ""
+
+#: frontend/src/metabase/lib/schema_metadata.js:309
+#: frontend/src/metabase/lib/schema_metadata.js:323
+#: frontend/src/metabase/lib/schema_metadata.js:331
+#: frontend/src/metabase/lib/schema_metadata.js:339
+#: frontend/src/metabase/lib/schema_metadata.js:347
+#: frontend/src/metabase/lib/schema_metadata.js:353
+#: frontend/src/metabase/lib/schema_metadata.js:363
+msgid "Not empty"
+msgstr ""
+
+#: frontend/src/metabase/lib/schema_metadata.js:315
+msgid "Equal"
+msgstr ""
+
+#: frontend/src/metabase/lib/schema_metadata.js:316
+msgid "Not equal"
+msgstr ""
+
+#: frontend/src/metabase/lib/schema_metadata.js:317
+msgid "Greater than"
+msgstr ""
+
+#: frontend/src/metabase/lib/schema_metadata.js:318
+msgid "Less than"
+msgstr ""
+
+#: frontend/src/metabase/lib/schema_metadata.js:319
+#: frontend/src/metabase/lib/schema_metadata.js:345
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:289
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:96
 msgid "Between"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:308
+#: frontend/src/metabase/lib/schema_metadata.js:320
 msgid "Greater than or equal to"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:309
+#: frontend/src/metabase/lib/schema_metadata.js:321
 msgid "Less than or equal to"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:310
-#: frontend/src/metabase/lib/schema_metadata.js:318
-#: frontend/src/metabase/lib/schema_metadata.js:326
-#: frontend/src/metabase/lib/schema_metadata.js:334
-#: frontend/src/metabase/lib/schema_metadata.js:340
-#: frontend/src/metabase/lib/schema_metadata.js:350
-#: frontend/src/metabase/lib/schema_metadata.js:356
-msgid "Is empty"
-msgstr ""
-
-#: frontend/src/metabase/lib/schema_metadata.js:311
-#: frontend/src/metabase/lib/schema_metadata.js:319
-#: frontend/src/metabase/lib/schema_metadata.js:327
-#: frontend/src/metabase/lib/schema_metadata.js:335
-#: frontend/src/metabase/lib/schema_metadata.js:341
-#: frontend/src/metabase/lib/schema_metadata.js:351
-#: frontend/src/metabase/lib/schema_metadata.js:357
-msgid "Not empty"
-msgstr ""
-
-#: frontend/src/metabase/lib/schema_metadata.js:314
-#: frontend/src/metabase/lib/schema_metadata.js:324
-#: frontend/src/metabase/lib/schema_metadata.js:330
-#: frontend/src/metabase/lib/schema_metadata.js:338
-#: frontend/src/metabase/lib/schema_metadata.js:344
-#: frontend/src/metabase/lib/schema_metadata.js:349
-#: frontend/src/metabase/lib/schema_metadata.js:354
-msgid "Is"
-msgstr ""
-
-#: frontend/src/metabase/lib/schema_metadata.js:315
-#: frontend/src/metabase/lib/schema_metadata.js:325
-#: frontend/src/metabase/lib/schema_metadata.js:339
-#: frontend/src/metabase/lib/schema_metadata.js:345
-#: frontend/src/metabase/lib/schema_metadata.js:355
-msgid "Is not"
-msgstr ""
-
-#: frontend/src/metabase/lib/schema_metadata.js:316
+#: frontend/src/metabase/lib/schema_metadata.js:328
 msgid "Contains"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:317
+#: frontend/src/metabase/lib/schema_metadata.js:329
 msgid "Does not contain"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:320
+#: frontend/src/metabase/lib/schema_metadata.js:332
 msgid "Starts with"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:321
+#: frontend/src/metabase/lib/schema_metadata.js:333
 msgid "Ends with"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:331
+#: frontend/src/metabase/lib/schema_metadata.js:343
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:268
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:74
 msgid "Before"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:332
+#: frontend/src/metabase/lib/schema_metadata.js:344
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:275
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:85
 msgid "After"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:346
+#: frontend/src/metabase/lib/schema_metadata.js:358
 msgid "Inside"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:406
+#: frontend/src/metabase/lib/schema_metadata.js:414
 msgid "Just a table with the rows in the answer, no additional operations."
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:412
+#: frontend/src/metabase/lib/schema_metadata.js:420
 msgid "Count of rows"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:414
+#: frontend/src/metabase/lib/schema_metadata.js:422
 msgid "Total number of rows in the answer."
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:420
+#: frontend/src/metabase/lib/schema_metadata.js:428
 msgid "Sum of ..."
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:422
+#: frontend/src/metabase/lib/schema_metadata.js:430
 msgid "Sum of all the values of a column."
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:428
+#: frontend/src/metabase/lib/schema_metadata.js:436
 msgid "Average of ..."
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:430
+#: frontend/src/metabase/lib/schema_metadata.js:438
 msgid "Average of all the values of a column"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:436
+#: frontend/src/metabase/lib/schema_metadata.js:444
 msgid "Number of distinct values of ..."
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:438
+#: frontend/src/metabase/lib/schema_metadata.js:446
 msgid "Number of unique values of a column among all the rows in the answer."
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:444
-msgid "Cumulative sum of ..."
-msgstr ""
-
-#: frontend/src/metabase/lib/schema_metadata.js:446
-msgid ""
-"Additive sum of all the values of a column.\\ne.x. total revenue over time."
-msgstr ""
-
 #: frontend/src/metabase/lib/schema_metadata.js:452
-msgid "Cumulative count of rows"
+msgid "Cumulative sum of ..."
 msgstr ""
 
 #: frontend/src/metabase/lib/schema_metadata.js:454
 msgid ""
-"Additive count of the number of rows.\\ne.x. total number of sales over time."
+"Additive sum of all the values of a column.\\ne.x. total revenue over time."
 msgstr ""
 
 #: frontend/src/metabase/lib/schema_metadata.js:460
-msgid "Standard deviation of ..."
+msgid "Cumulative count of rows"
 msgstr ""
 
 #: frontend/src/metabase/lib/schema_metadata.js:462
+msgid ""
+"Additive count of the number of rows.\\ne.x. total number of sales over time."
+msgstr ""
+
+#: frontend/src/metabase/lib/schema_metadata.js:468
+msgid "Standard deviation of ..."
+msgstr ""
+
+#: frontend/src/metabase/lib/schema_metadata.js:470
 msgid ""
 "Number which expresses how much the values of a column vary among all rows "
 "in the answer."
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:468
+#: frontend/src/metabase/lib/schema_metadata.js:476
 msgid "Minimum of ..."
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:470
+#: frontend/src/metabase/lib/schema_metadata.js:478
 msgid "Minimum value of a column"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:476
+#: frontend/src/metabase/lib/schema_metadata.js:484
 msgid "Maximum of ..."
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:478
+#: frontend/src/metabase/lib/schema_metadata.js:486
 msgid "Maximum value of a column"
 msgstr ""
 
-#: frontend/src/metabase/lib/schema_metadata.js:486
+#: frontend/src/metabase/lib/schema_metadata.js:494
 msgid "Break out by dimension"
 msgstr ""
 
@@ -3834,7 +3834,7 @@ msgid "Select a default value…"
 msgstr ""
 
 #: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.jsx:147
-#: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:387
+#: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:383
 msgid "Update filter"
 msgstr ""
 
@@ -3903,7 +3903,7 @@ msgstr ""
 msgid "This Year"
 msgstr ""
 
-#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:71
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:88
 #: frontend/src/metabase/parameters/components/widgets/TextWidget.jsx:54
 msgid "Enter a value..."
 msgstr ""
@@ -5094,23 +5094,19 @@ msgstr ""
 msgid "this hour"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:277
+#: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:278
 msgid "not implemented {0}"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:278
+#: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:279
 msgid "true"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:278
+#: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:279
 msgid "false"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:341
-msgid "Options"
-msgstr ""
-
-#: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:387
+#: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:383
 msgid "Add filter"
 msgstr ""
 
