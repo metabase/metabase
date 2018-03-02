@@ -261,7 +261,7 @@
   (tt/with-temp* [Database [db {:engine :sync-test}]]
     (sync-database! db)
     (let [table-id (db/select-one-id Table, :schema "default", :name "movie")
-          field-id (db/select-one-id Field, :table_id table-id, :name "title")]
+          field-id (db/select-one-id Field, :table_id table-id, :name "studio")]
       (tt/with-temp FieldValues [_ {:field_id field-id
                                     :values   "[1,2,3]"}]
         (let [initial-field-values (db/select-one-field :values FieldValues, :field_id field-id)]
