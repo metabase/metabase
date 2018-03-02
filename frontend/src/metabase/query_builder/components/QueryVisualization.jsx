@@ -142,12 +142,13 @@ export default class QueryVisualization extends Component {
         message: (
           // class name is included for the sake of making targeting the element in tests easier
           <div className="ShownRowCount">
-            {jt`${
-              result.data.rows_truncated != null ? t`Showing first` : t`Showing`
-            } ${<strong>{formatNumber(result.row_count)}</strong>} ${inflect(
-              "row",
-              result.data.rows.length,
-            )}`}
+            {result.data.rows_truncated != null
+              ? jt`Showing first ${(
+                  <strong>{formatNumber(result.row_count)}</strong>
+                )} ${inflect("row", result.data.rows.length)}`
+              : jt`Showing ${(
+                  <strong>{formatNumber(result.row_count)}</strong>
+                )} ${inflect("row", result.data.rows.length)}`}
           </div>
         ),
       });
