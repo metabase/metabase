@@ -68,7 +68,7 @@ const PermissionsConfirm = ({ diff }) => (
             <div>
               <GroupName group={group} />
               {database.native === "none"
-                ? t` will no longer able to `
+                ? t` will no longer be able to `
                 : t` will now be able to `}
               {database.native === "read" ? (
                 <span className="text-gold">read</span>

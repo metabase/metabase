@@ -25,7 +25,7 @@ const PremiumTokenInput = ({ token, onChangeSetting }) => (
 const PremiumExplanation = ({ showEnterScreen }) => (
   <div>
     <h2>Premium embedding</h2>
-    <p className="mt1">{t`Premium embedding lets you disable "Powered by Metabase" on your embeded dashboards and questions.`}</p>
+    <p className="mt1">{t`Premium embedding lets you disable "Powered by Metabase" on your embedded dashboards and questions.`}</p>
     <div className="mt2 mb3">
       <a
         className="link mx1"

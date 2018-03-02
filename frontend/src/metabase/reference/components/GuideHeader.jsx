@@ -11,7 +11,7 @@ const GuideHeader = ({ startEditing, isSuperuser }) => (
         <h1
           className="text-dark"
           style={{ fontWeight: 700 }}
-        >{t`Start here.`}</h1>
+        >{t`Start here`}.</h1>
         {isSuperuser && (
           <span className="ml-auto">
             <EditButton startEditing={startEditing} />

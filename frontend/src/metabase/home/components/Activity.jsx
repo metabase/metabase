@@ -89,7 +89,7 @@ export default class Activity extends Component {
     // this is a base to start with
     const description = {
       userName: this.userName(item.user, user),
-      summary: t`did some super awesome stuff thats hard to describe`,
+      summary: t`did some super awesome stuff that's hard to describe`,
       timeSince: item.timestamp.fromNow(),
     };
 
@@ -138,7 +138,7 @@ export default class Activity extends Component {
         } else {
           description.summary = (
             <span>
-              {t`deleted an alert about- `}
+              {t`deleted an alert about - `}
               <span className="text-dark">{item.details.name}</span>
             </span>
           );
@@ -345,7 +345,7 @@ export default class Activity extends Component {
         if (item.model_exists) {
           description.summary = (
             <span>
-              {t`added the filter `}
+              {t`added the filter`}{" "}
               <Link
                 to={Urls.tableRowsQuery(
                   item.database_id,
@@ -386,7 +386,7 @@ export default class Activity extends Component {
         if (item.model_exists) {
           description.summary = (
             <span>
-              {t`made changes to the filter `}
+              {t`made changes to the filter`}{" "}
               <Link
                 to={Urls.tableRowsQuery(
                   item.database_id,
