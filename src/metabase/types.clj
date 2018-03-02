@@ -123,6 +123,9 @@
 
 (derive :type/Category :type/Special)
 
+(derive :type/Name :type/Category)
+(derive :type/Title :type/Category)
+
 (derive :type/City :type/Category)
 (derive :type/State :type/Category)
 (derive :type/Country :type/Category)
