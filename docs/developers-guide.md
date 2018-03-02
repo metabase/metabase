@@ -4,6 +4,7 @@
 *  [How to set up a development environment](#development-environment)
 *  [How to run the Metabase Server](#development-server-quick-start)
 *  [How to contribute back to the Metabase project](#contributing)
+*  [How to add support in Metabase for other languages](#internationalization)
 
 
 # Contributing
@@ -262,6 +263,31 @@ You'll probably want to tell Emacs to store customizations in a different file. 
 Start up an instant cheatsheet for the project + dependencies by running
 
     lein instant-cheatsheet
+
+## Internationalization
+We are an application with lots of users all over the world. To help them use Metabase in their own language, we mark all of our strings as i18n. The general workflow is:
+
+1. Tag strings in the frontend using `t` and `jt` ES6 template literals (see more details in https://c-3po.js.org/):
+
+```javascript
+const someString = t`Hello ${name}!`;
+const someJSX = <div>{ jt`Hello ${name}` }</div>
+```
+
+and in the backend using `trs` and related macros (see more details in https://github.com/puppetlabs/clj-i18n):
+
+```clojure
+(trs "Hello {0}!" name)
+```
+
+2. When you have added/edited tagged strings in the code, run `./bin/i18n/update-translations` to update the base `locales/metabase.pot` template and each existing `locales/LOCALE.po`
+3. To add a new translaction run `./bin/i18n/update-translation LOCALE`
+4. Edit translation in `locales/LOCALE.po`
+5. Run `./bin/i18n/build-translation-resources` to compile translations for frontend and backend
+6. Restart or rebuild Metabase
+
+To try it out, change your browser's language (e.x. chrome://settings/?search=language) to one of the locales to see it working. Run metabase with the `JAVA_TOOL_OPTIONS=-Duser.language=LOCALE` environment variable set to set the locale on the backend, e.x. for pulses and emails (eventually we'll also add a setting in the app)
+
 
 ## License
 

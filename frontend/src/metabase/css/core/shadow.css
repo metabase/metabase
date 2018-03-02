@@ -1,8 +1,9 @@
 :root {
-    --shadow-color: rgba(0, 0, 0, .08);
-    --shadow-hover-color: rgba(0, 0, 0, .12);
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  --shadow-hover-color: rgba(0, 0, 0, 0.12);
 }
-.shadowed, :local(.shadowed) {
+.shadowed,
+:local(.shadowed) {
   box-shadow: 0 2px 2px var(--shadow-color);
 }
 

@@ -8,7 +8,7 @@
 
 .LineAreaBarChart .dc-chart .grid-line.horizontal {
   stroke: rgba(151, 151, 151, 0.2);
-  stroke-dasharray: 5,5;
+  stroke-dasharray: 5, 5;
 }
 
 .LineAreaBarChart .dc-chart .axis {
@@ -23,15 +23,15 @@
 
 .LineAreaBarChart .dc-chart .axis .domain,
 .LineAreaBarChart .dc-chart .axis .tick line {
-  stroke: #DCE1E4;
+  stroke: #dce1e4;
 }
 
 .LineAreaBarChart .dc-chart .axis .tick text {
-  fill: #93A1AB;
+  fill: #93a1ab;
 }
 
 .LineAreaBarChart .dc-chart g.row text.outside {
-  fill: #C5C6C8;
+  fill: #c5c6c8;
 }
 .LineAreaBarChart .dc-chart g.row text.inside {
   fill: white;
@@ -97,9 +97,9 @@
 }
 
 .LineAreaBarChart .dc-chart circle.bubble {
-    fill-opacity: 0.80;
-    stroke-width: 1;
-    stroke: white;
+  fill-opacity: 0.8;
+  stroke-width: 1;
+  stroke: white;
 }
 
 .LineAreaBarChart .dc-chart .enable-dots .dc-tooltip .dot:hover,
@@ -168,6 +168,6 @@
 
 /* brush handles */
 .LineAreaBarChart .dc-chart .brush .resize path {
-  fill: #F9FBFC;
-  stroke: #9BA5B1;
+  fill: #f9fbfc;
+  stroke: #9ba5b1;
 }

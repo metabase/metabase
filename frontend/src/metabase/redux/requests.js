@@ -11,41 +11,45 @@ export const setRequestState = createAction(SET_REQUEST_STATE);
 export const clearRequestState = createAction(CLEAR_REQUEST_STATE);
 
 // For a given state path, returns the current request state ("LOADING", "LOADED" or a request error)
-export const states = handleActions({
+export const states = handleActions(
+  {
     [SET_REQUEST_STATE]: {
-        next: (state, { payload }) => assocIn(
-            state,
-            payload.statePath,
-            { state: payload.state, error: payload.error }
-        )
+      next: (state, { payload }) =>
+        assocIn(state, payload.statePath, {
+          state: payload.state,
+          error: payload.error,
+        }),
     },
     [CLEAR_REQUEST_STATE]: {
-        next: (state, { payload }) => assocIn(
-            state,
-            payload.statePath,
-            undefined
-        )
-    }
-}, {});
+      next: (state, { payload }) =>
+        assocIn(state, payload.statePath, undefined),
+    },
+  },
+  {},
+);
 
 // For given state path, returns true if the data has been successfully fetched at least once
-export const fetched = handleActions({
+export const fetched = handleActions(
+  {
     [SET_REQUEST_STATE]: {
-        next: (state, {payload}) => {
-            const isFetch = payload.statePath[payload.statePath.length - 1] === "fetch"
+      next: (state, { payload }) => {
+        const isFetch =
+          payload.statePath[payload.statePath.length - 1] === "fetch";
 
-            if (isFetch) {
-                const statePathWithoutFetch = payload.statePath.slice(0, -1)
-                return assocIn(
-                    state,
-                    statePathWithoutFetch,
-                    getIn(state, statePathWithoutFetch) || payload.state === "LOADED"
-                )
-            } else {
-                return state
-            }
+        if (isFetch) {
+          const statePathWithoutFetch = payload.statePath.slice(0, -1);
+          return assocIn(
+            state,
+            statePathWithoutFetch,
+            getIn(state, statePathWithoutFetch) || payload.state === "LOADED",
+          );
+        } else {
+          return state;
         }
-    }
-}, {})
+      },
+    },
+  },
+  {},
+);
 
-export default combineReducers({ states, fetched })
+export default combineReducers({ states, fetched });

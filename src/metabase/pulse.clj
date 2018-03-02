@@ -34,9 +34,10 @@
     (let [{:keys [creator_id dataset_query]} card]
       (try
         {:card   card
-         :result (qp/process-query-and-save-execution! dataset_query
-                   (merge {:executed-by creator_id, :context :pulse, :card-id card-id}
-                          options))}
+         :result (qp/process-query-and-save-with-max! dataset_query (merge {:executed-by creator_id,
+                                                                            :context     :pulse,
+                                                                            :card-id     card-id}
+                                                                           options))}
         (catch Throwable t
           (log/warn (format "Error running card query (%n)" card-id) t))))))
 
@@ -131,7 +132,7 @@
     (goal-met? alert results)
 
     :else
-    (let [^String error-text (tru "Unrecognized alert with condition '{0}'" alert_condition)]
+    (let [^String error-text (tru "Unrecognized alert with condition ''{0}''" alert_condition)]
       (throw (IllegalArgumentException. error-text)))))
 
 (defmethod should-send-notification? :pulse
@@ -150,7 +151,7 @@
   [{:keys [id name] :as pulse} results {:keys [recipients] :as channel}]
   (log/debug (format "Sending Pulse (%d: %s) via Channel :email" id name))
   (let [email-subject    (str "Pulse: " name)
-        email-recipients (filterv u/is-email? (map :email recipients))
+        email-recipients (filterv u/email? (map :email recipients))
         timezone         (-> results first :card defaulted-timezone)]
     {:subject      email-subject
      :recipients   email-recipients
@@ -171,7 +172,7 @@
         email-subject    (format "Metabase alert: %s has %s"
                                  (first-question-name pulse)
                                  (get alert-notification-condition-text condition-kwd))
-        email-recipients (filterv u/is-email? (map :email recipients))
+        email-recipients (filterv u/email? (map :email recipients))
         first-result     (first results)
         timezone         (-> first-result :card defaulted-timezone)]
     {:subject      email-subject

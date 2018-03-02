@@ -11,31 +11,36 @@ import { getLabels } from "../selectors";
 
 const mapStateToProps = (state, props) => {
   return {
-      labels: props.labels || getLabels(state, props)
-  }
-}
+    labels: props.labels || getLabels(state, props),
+  };
+};
 
 const mapDispatchToProps = {
-    setLabeled
-}
+  setLabeled,
+};
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class LabelPopover extends Component {
-    static propTypes = {
-        labels:     PropTypes.array.isRequired,
-        item:       PropTypes.object,
-        count:      PropTypes.number,
-        setLabeled: PropTypes.func.isRequired,
-    };
+  static propTypes = {
+    labels: PropTypes.array.isRequired,
+    item: PropTypes.object,
+    count: PropTypes.number,
+    setLabeled: PropTypes.func.isRequired,
+  };
 
-    render() {
-        const { labels, setLabeled, item, count } = this.props;
-        return (
-            <PopoverWithTrigger {...this.props}>
-                { () =>
-                    <LabelPicker labels={labels} setLabeled={setLabeled} item={item} count={count} />
-                }
-            </PopoverWithTrigger>
-        );
-    }
+  render() {
+    const { labels, setLabeled, item, count } = this.props;
+    return (
+      <PopoverWithTrigger {...this.props}>
+        {() => (
+          <LabelPicker
+            labels={labels}
+            setLabeled={setLabeled}
+            item={item}
+            count={count}
+          />
+        )}
+      </PopoverWithTrigger>
+    );
+  }
 }

@@ -1,14 +1,18 @@
 (ns metabase.driver.presto-test
-  (:require [expectations :refer [expect]]
+  (:require [clj-http.client :as http]
+            [expectations :refer [expect]]
             [metabase.driver :as driver]
             [metabase.driver.presto :as presto]
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :as datasets :refer [expect-with-engine]]]
             [toucan.db :as db])
   (:import metabase.driver.presto.PrestoDriver))
 
@@ -152,3 +156,20 @@
 (datasets/expect-with-engine :presto
   "UTC"
   (tu/db-timezone-id))
+
+;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
+;; everything works correctly together
+(datasets/expect-with-engine :presto
+  [false ;; Ensure the query promise hasn't fired yet
+   false ;; Ensure the cancellation promise hasn't fired yet
+   true  ;; Was query called?
+   false ;; Cancel should not have been called yet
+   true  ;; Cancel should have been called now
+   true  ;; The paused query can proceed now
+   ]
+  (tu/call-with-paused-query
+   (fn [query-thunk called-query? called-cancel? pause-query]
+     (future
+       (with-redefs [presto/fetch-presto-results! (fn [_ _ _] (deliver called-query? true) @pause-query)
+                     http/delete                  (fn [_ _] (deliver called-cancel? true))]
+         (query-thunk))))))

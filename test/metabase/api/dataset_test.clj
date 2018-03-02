@@ -8,10 +8,10 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [medley.core :as m]
-            [metabase.api.dataset :refer [default-query-constraints]]
             [metabase.models
              [database :refer [Database]]
              [query-execution :refer [QueryExecution]]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.sync :as sync]
             [metabase.test
@@ -76,7 +76,7 @@
                                     (ql/aggregation (ql/count))))
                                 (assoc :type "query")
                                 (assoc-in [:query :aggregation] [{:aggregation-type "count", :custom-name nil}])
-                                (assoc :constraints default-query-constraints))
+                                (assoc :constraints qp/default-query-constraints))
     :started_at             true
     :running_time           true
     :average_execution_time nil}
@@ -114,7 +114,7 @@
     :json_query   {:database    (id)
                    :type        "native"
                    :native      {:query "foobar"}
-                   :constraints default-query-constraints}
+                   :constraints qp/default-query-constraints}
     :started_at   true
     :running_time true}
    ;; QueryExecution entry in the DB
@@ -190,21 +190,11 @@
    ["3" "2014-09-15" "" "8" "56"]
    ["4" "2014-03-11" "" "5" "4"]
    ["5" "2013-05-05" "" "3" "49"]]
-  (with-db (get-or-create-database! defs/test-data)
-    (let [db (Database :name "test-data")]
-      (jdbc/with-db-connection [conn {:classname "org.h2.Driver", :subprotocol "h2", :subname "mem:test-data"}]
-        ;; test-data doesn't include any null date values, add a date column to ensure we can handle null dates on export
-        (jdbc/execute! conn "ALTER TABLE CHECKINS ADD COLUMN MYDATECOL DATE")
-        (sync/sync-database! db)
-        (try
-          (let [result ((user->client :rasta) :post 200 "dataset/csv" :query
-                        (json/generate-string (wrap-inner-query
-                                                (query checkins))))]
-            (take 5 (parse-and-sort-csv result)))
-          (finally
-            ;; ensure we remove the column when we're done otherwise subsequent tests will break
-            (jdbc/execute! conn "ALTER TABLE CHECKINS DROP COLUMN MYDATECOL")
-            (sync/sync-database! db)))))))
+  (with-db (get-or-create-database! defs/test-data-with-null-date-checkins)
+    (let [result ((user->client :rasta) :post 200 "dataset/csv" :query
+                  (json/generate-string (wrap-inner-query
+                                          (query checkins))))]
+      (take 5 (parse-and-sort-csv result)))))
 
 ;; SQLite doesn't return proper date objects but strings, they just pass through the qp untouched
 (expect-with-engine :sqlite

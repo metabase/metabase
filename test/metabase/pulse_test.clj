@@ -1,17 +1,20 @@
 (ns metabase.pulse-test
-  (:require [clojure.walk :as walk]
+  (:require [clojure.string :as str]
+            [clojure.walk :as walk]
             [expectations :refer :all]
             [medley.core :as m]
             [metabase.integrations.slack :as slack]
             [metabase
              [email-test :as et]
-             [pulse :refer :all]]
+             [pulse :refer :all]
+             [query-processor :as qp]]
             [metabase.models
              [card :refer [Card]]
              [pulse :refer [Pulse retrieve-pulse retrieve-pulse-or-alert]]
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
+            [metabase.pulse.render :as render]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -73,6 +76,15 @@
                                       png-attachment]}
                              email)))
 
+(def ^:private csv-attachment
+  {:type :attachment, :content-type "text/csv", :file-name "Test card.csv",
+   :content java.net.URL, :description "More results for 'Test card'", :content-id false})
+
+(def ^:private xls-attachment
+  {:type :attachment, :file-name "Test card.xlsx",
+   :content-type "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   :content java.net.URL, :description "More results for 'Test card'", :content-id false})
+
 ;; Basic test, 1 card, 1 recipient
 (expect
   (rasta-pulse-email)
@@ -88,6 +100,72 @@
     (email-test-setup
      (send-pulse! (retrieve-pulse pulse-id))
      (et/summarize-multipart-email #"Pulse Name"))))
+
+;; Basic test, 1 card, 1 recipient, 21 results results in a CSV being attached and a table being sent
+(expect
+  (rasta-pulse-email {:body [{"Pulse Name"                      true
+                              "More results have been included" true
+                              "ID</th>"                         true},
+                             csv-attachment]})
+  (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:aggregation nil
+                                                                        :limit       21})]
+                  Pulse                [{pulse-id :id} {:name          "Pulse Name"
+                                                        :skip_if_empty false}]
+                  PulseCard             [_             {:pulse_id pulse-id
+                                                        :card_id  card-id
+                                                        :position 0}]
+                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                  PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                        :pulse_channel_id pc-id}]]
+    (email-test-setup
+     (send-pulse! (retrieve-pulse pulse-id))
+     (et/summarize-multipart-email #"Pulse Name"  #"More results have been included" #"ID</th>"))))
+
+;; Validate pulse queries are limited by qp/default-query-constraints
+(expect
+  31 ;; Should return 30 results (the redef'd limit) plus the header row
+  (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:aggregation nil})]
+                  Pulse                [{pulse-id :id} {:name          "Pulse Name"
+                                                        :skip_if_empty false}]
+                  PulseCard             [_             {:pulse_id pulse-id
+                                                        :card_id  card-id
+                                                        :position 0}]
+                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                  PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                        :pulse_channel_id pc-id}]]
+    (email-test-setup
+     (with-redefs [qp/default-query-constraints {:max-results           10000
+                                                 :max-results-bare-rows 30}]
+       (send-pulse! (retrieve-pulse pulse-id))
+       ;; Slurp in the generated CSV and count the lines found in the file
+       (-> @et/inbox
+           vals
+           ffirst
+           :body
+           last
+           :content
+           slurp
+           str/split-lines
+           count)))))
+
+;; Basic test, 1 card, 1 recipient, 19 results, so no attachment
+(expect
+  (rasta-pulse-email {:body [{"Pulse Name"                      true
+                              "More results have been included" false
+                              "ID</th>"                         true}]})
+  (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:aggregation nil
+                                                                        :limit       19})]
+                  Pulse                [{pulse-id :id} {:name          "Pulse Name"
+                                                        :skip_if_empty false}]
+                  PulseCard             [_             {:pulse_id pulse-id
+                                                        :card_id  card-id
+                                                        :position 0}]
+                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                  PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                        :pulse_channel_id pc-id}]]
+    (email-test-setup
+     (send-pulse! (retrieve-pulse pulse-id))
+     (et/summarize-multipart-email #"Pulse Name"  #"More results have been included" #"ID</th>"))))
 
 ;; Pulse should be sent to two recipients
 (expect
@@ -193,7 +271,8 @@
 ;; Rows alert with data
 (expect
   (rasta-alert-email "Metabase alert: Test card has results"
-                     [{"Test card.*has results for you to see" true}, png-attachment])
+                     [{"Test card.*has results for you to see" true
+                       "More results have been included"       false}, png-attachment])
   (tt/with-temp* [Card                  [{card-id :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})]
                   Pulse                 [{pulse-id :id} {:alert_condition  "rows"
                                                          :alert_first_only false}]
@@ -205,7 +284,28 @@
                                                         :pulse_channel_id pc-id}]]
     (email-test-setup
      (send-pulse! (retrieve-pulse-or-alert pulse-id))
-     (et/summarize-multipart-email #"Test card.*has results for you to see"))))
+     (et/summarize-multipart-email #"Test card.*has results for you to see" #"More results have been included"))))
+
+;; Rows alert with too much data will attach as CSV and include a table
+(expect
+  (rasta-alert-email "Metabase alert: Test card has results"
+                     [{"Test card.*has results for you to see" true
+                       "More results have been included"       true
+                       "ID</th>"                               true},
+                      csv-attachment])
+  (tt/with-temp* [Card                  [{card-id :id}  (checkins-query {:limit 21
+                                                                         :aggregation nil})]
+                  Pulse                 [{pulse-id :id} {:alert_condition  "rows"
+                                                         :alert_first_only false}]
+                  PulseCard             [_             {:pulse_id pulse-id
+                                                        :card_id  card-id
+                                                        :position 0}]
+                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                  PulseChannelRecipient [_             {:user_id (rasta-id)
+                                                        :pulse_channel_id pc-id}]]
+    (email-test-setup
+     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (et/summarize-multipart-email #"Test card.*has results for you to see" #"More results have been included" #"ID</th>"))))
 
 ;; Above goal alert with data
 (expect
@@ -322,6 +422,42 @@
   (assoc result :attachments (for [attachment-info attachments]
                                (update attachment-info :attachment-bytes-thunk fn?))))
 
+(defprotocol WrappedFunction
+  (input [_])
+  (output [_]))
+
+(defn- invoke-with-wrapping
+  "Apply `args` to `func`, capturing the arguments of the invocation and the result of the invocation. Store the arguments in
+  `input-atom` and the result in `output-atom`."
+  [input-atom output-atom func args]
+  (swap! input-atom conj args)
+  (let [result (apply func args)]
+    (swap! output-atom conj result)
+    result))
+
+(defn- wrap-function
+  "Return a function that wraps `func`, not interfering with it but recording it's input and output, which is
+  available via the `input` function and `output`function that can be used directly on this object"
+  [func]
+  (let [input (atom nil)
+        output (atom nil)]
+    (reify WrappedFunction
+      (input [_] @input)
+      (output [_] @output)
+      clojure.lang.IFn
+      (invoke [_ x1]
+        (invoke-with-wrapping input output func [x1]))
+      (invoke [_ x1 x2]
+        (invoke-with-wrapping input output func [x1 x2]))
+      (invoke [_ x1 x2 x3]
+        (invoke-with-wrapping input output func [x1 x2 x3]))
+      (invoke [_ x1 x2 x3 x4]
+        (invoke-with-wrapping input output func [x1 x2 x3 x4]))
+      (invoke [_ x1 x2 x3 x4 x5]
+        (invoke-with-wrapping input output func [x1 x2 x3 x4 x5]))
+      (invoke [_ x1 x2 x3 x4 x5 x6]
+        (invoke-with-wrapping input output func [x1 x2 x3 x4 x5 x6])))))
+
 ;; Basic slack test, 1 card, 1 recipient channel
 (tt/expect-with-temp [Card         [{card-id :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})]
                       Pulse        [{pulse-id :id} {:name "Pulse Name"
@@ -345,6 +481,47 @@
    (-> (send-pulse! (retrieve-pulse pulse-id))
        first
        thunk->boolean)))
+
+(defn- force-bytes-thunk
+  "Grabs the thunk that produces the image byte array and invokes it"
+  [results]
+  ((-> results
+       :attachments
+       first
+       :attachment-bytes-thunk)))
+
+;; Basic slack test, 1 card, 1 recipient channel, verifies that "more results in attachment" text is not present for
+;; slack pulses
+(tt/expect-with-temp [Card         [{card-id :id}  (checkins-query {:aggregation nil
+                                                                    :limit       25})]
+                      Pulse        [{pulse-id :id} {:name          "Pulse Name"
+                                                    :skip_if_empty false}]
+                      PulseCard    [_              {:pulse_id pulse-id
+                                                    :card_id  card-id
+                                                    :position 0}]
+                      PulseChannel [{pc-id :id}    {:pulse_id     pulse-id
+                                                    :channel_type "slack"
+                                                    :details      {:channel "#general"}}]]
+  [{:channel-id "#general",
+     :message    "Pulse: Pulse Name",
+     :attachments
+     [{:title                  "Test card",
+       :attachment-bytes-thunk true
+       :title_link             (str "https://metabase.com/testmb/question/" card-id),
+       :attachment-name        "image.png",
+       :channel-id             "FOO",
+       :fallback               "Test card"}]}
+   1     ;; -> attached-results-text should be invoked exactly once
+   [nil] ;; -> attached-results-text should return nil since it's a slack message
+   ]
+  (slack-test-setup
+   (with-redefs [render/attached-results-text (wrap-function (var-get #'render/attached-results-text))]
+     (let [[pulse-results] (send-pulse! (retrieve-pulse pulse-id))]
+       ;; If we don't force the thunk, the rendering code will never execute and attached-results-text won't be called
+       (force-bytes-thunk pulse-results)
+       [(thunk->boolean pulse-results)
+        (count (input (var-get #'render/attached-results-text)))
+        (output (var-get #'render/attached-results-text))]))))
 
 (defn- produces-bytes? [{:keys [attachment-bytes-thunk]}]
   (< 0 (alength (attachment-bytes-thunk))))
@@ -541,15 +718,6 @@
      (send-pulse! (retrieve-pulse-or-alert pulse-id))
      [@et/inbox
       (db/exists? Pulse :id pulse-id)])))
-
-(def ^:private csv-attachment
-  {:type :attachment, :content-type "text/csv", :file-name "Test card.csv",
-   :content java.net.URL, :description "Full results for 'Test card'", :content-id false})
-
-(def ^:private xls-attachment
-  {:type :attachment, :file-name "Test card.xlsx",
-   :content-type "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-   :content java.net.URL, :description "Full results for 'Test card'", :content-id false})
 
 (defn- add-rasta-attachment
   "Append `ATTACHMENT` to the first email found for Rasta"

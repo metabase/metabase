@@ -157,6 +157,27 @@
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))
 
+(defn with-has-field-values
+  "Infer what the value of the `has_field_values` should be for Fields where it's not set. Admins can set this to one
+  of the values below, but if it's `nil` in the DB we'll infer it automatically.
+
+  *  `list`   = has an associated FieldValues object
+  *  `search` = does not have FieldValues
+  *  `none`   = admin has explicitly disabled search behavior for this Field"
+  {:batched-hydrate :has_field_values}
+  [fields]
+  (let [fields-without-has-field-values-ids (set (for [field fields
+                                                       :when (nil? (:has_field_values field))]
+                                                   (:id field)))
+        fields-with-fieldvalues-ids         (when (seq fields-without-has-field-values-ids)
+                                              (db/select-field :field_id FieldValues
+                                                :field_id [:in fields-without-has-field-values-ids]))]
+    (for [field fields]
+      (assoc field :has_field_values (or (:has_field_values field)
+                                         (if (contains? fields-with-fieldvalues-ids (u/get-id field))
+                                           :list
+                                           :search))))))
+
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"
   [fields]
