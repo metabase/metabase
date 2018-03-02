@@ -34,7 +34,7 @@ WHERE {% raw %}{{created_at}}{% endraw %}
 ```
 
 ##### Creating SQL question filters using field filter variables
-First, insert a variable tag in your SQL, like `{{my_var}}`. Then, in the side panel, select the `Field Filter` variable type, and choose which field to map your variable to. In order to display a filter widget, you'll have to choose a field whose Type in the Data Model section of the Admin Panel is one of the following:
+First, insert a variable tag in your SQL, like `{% raw %}{{my_var}}{% endraw %}`. Then, in the side panel, select the `Field Filter` variable type, and choose which field to map your variable to. In order to display a filter widget, you'll have to choose a field whose Type in the Data Model section of the Admin Panel is one of the following:
 - Category
 - City
 - Entity Key
@@ -44,6 +44,7 @@ First, insert a variable tag in your SQL, like `{{my_var}}`. Then, in the side p
 - UNIX Timestamp (Seconds)
 - UNIX Timestamp (Milliseconds)
 - ZIP or Postal Code
+
 The field can also be a datetime one (which can be left as `No special type` in the Data Model).
 
 You'll then see a dropdown labeled `Widget`, which will let you choose the kind of filter widget you want on your question, which is especially useful for datetime fields (you can select `None` if you don't want a widget at all). **Note:** If you're not seeing the option to display a filter widget, make sure the mapped field is set to one of the above types, and then try manually syncing your database from the Databases section of the Admin Panel to force Metabase to scan and cache the field's values.
@@ -64,7 +65,7 @@ Filter widgets **can't** be displayed if the variable is mapped to a field marke
 If you input a default value for your field filter, this value will be selected in the filter whenever you come back to this question. If you clear out the filter, though, no value will be passed (i.e., not even the default value). The default value has no effect on the behavior of your SQL question when viewed in a dashboard.
 
 ##### Connecting a SQL question to a dashboard filter
-In order for a saved SQL question to be usable with a dashboard filter, it must contain at least one field filter. The kind of dashboard filter that can be used with the SQL question depends on the field that you map to the question's field filter(s). For example, if you have a field filter called `{{var}}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard or go to an existing one, click the Edit button, and the SQL question that contains your State field filter, add a new dashboard filter or edit an existing Location filter, then click the dropdown on the SQL question card to see the State field filter. [Learn more about dashboard filters here](08-dashboard-filters.md).
+In order for a saved SQL question to be usable with a dashboard filter, it must contain at least one field filter. The kind of dashboard filter that can be used with the SQL question depends on the field that you map to the question's field filter(s). For example, if you have a field filter called `{% raw %}{{var}}{% endraw %}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard or go to an existing one, click the Edit button, and the SQL question that contains your State field filter, add a new dashboard filter or edit an existing Location filter, then click the dropdown on the SQL question card to see the State field filter. [Learn more about dashboard filters here](08-dashboard-filters.md).
 
 ![Field filter](images/sql-parameters/state-field-filter.png)
 

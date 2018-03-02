@@ -44,7 +44,7 @@
 
 
 (api/defendpoint POST "/"
-  "Create a new `User`, or or reäctivate an existing one."
+  "Create a new `User`, or reactivate an existing one."
   [:as {{:keys [first_name last_name email password]} :body}]
   {first_name su/NonBlankString
    last_name  su/NonBlankString

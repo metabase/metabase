@@ -7,7 +7,7 @@ import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import GroupSelect from "../components/GroupSelect.jsx";
 import GroupSummary from "../components/GroupSummary.jsx";
-import { t } from 'c-3po';
+import { t } from "c-3po";
 import MetabaseUtils from "metabase/lib/utils";
 import SelectButton from "metabase/components/SelectButton.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
@@ -20,174 +20,224 @@ import _ from "underscore";
 import { isAdminGroup, canEditMembership } from "metabase/lib/groups";
 
 export default class EditUserForm extends Component {
+  constructor(props, context) {
+    super(props, context);
 
-    constructor(props, context) {
-        super(props, context);
+    const user = props.user;
 
-        const user = props.user
-
-        this.state = {
-            formError: null,
-            valid: false,
-            selectedGroups: {},
-            firstName: user ? user.first_name : null,
-            lastName: user ? user.last_name : null,
-            email: user? user.email : null
-        }
-    }
-
-    static propTypes = {
-        buttonText: PropTypes.string,
-        submitFn: PropTypes.func.isRequired,
-        user: PropTypes.object,
-        groups: PropTypes.array
+    this.state = {
+      formError: null,
+      valid: false,
+      selectedGroups: {},
+      firstName: user ? user.first_name : null,
+      lastName: user ? user.last_name : null,
+      email: user ? user.email : null,
     };
+  }
 
-    validateForm() {
-        let { valid } = this.state;
-        let isValid = true;
+  static propTypes = {
+    buttonText: PropTypes.string,
+    submitFn: PropTypes.func.isRequired,
+    user: PropTypes.object,
+    groups: PropTypes.array,
+  };
 
-        ["firstName", "lastName", "email"].forEach((fieldName) => {
-            if (MetabaseUtils.isEmpty(this.state[fieldName])) isValid = false;
-        });
+  validateForm() {
+    let { valid } = this.state;
+    let isValid = true;
 
-        if(isValid !== valid) {
-            this.setState({
-                'valid': isValid
-            });
-        }
+    ["firstName", "lastName", "email"].forEach(fieldName => {
+      if (MetabaseUtils.isEmpty(this.state[fieldName])) isValid = false;
+    });
+
+    if (isValid !== valid) {
+      this.setState({
+        valid: isValid,
+      });
+    }
+  }
+
+  onChange = e => {
+    this.validateForm();
+  };
+
+  formSubmitted(e) {
+    e.preventDefault();
+
+    this.setState({
+      formError: null,
+    });
+
+    let formErrors = { data: { errors: {} } };
+
+    // validate email address
+    let email = ReactDOM.findDOMNode(this.refs.email).value
+      ? ReactDOM.findDOMNode(this.refs.email).value.trim()
+      : null;
+    if (!MetabaseUtils.validEmail(email)) {
+      formErrors.data.errors.email = t`Not a valid formatted email address`;
     }
 
-    onChange = (e) => {
-        this.validateForm();
+    if (_.keys(formErrors.data.errors).length > 0) {
+      this.setState({
+        formError: formErrors,
+      });
+      return;
     }
 
-    formSubmitted(e) {
-        e.preventDefault();
+    this.props.submitFn({
+      ...(this.props.user || {}),
+      first_name: ReactDOM.findDOMNode(this.refs.firstName).value,
+      last_name: ReactDOM.findDOMNode(this.refs.lastName).value,
+      email: email,
+      groups:
+        this.props.groups && this.state.selectedGroups
+          ? Object.entries(this.state.selectedGroups)
+              .filter(([key, value]) => value)
+              .map(([key, value]) => parseInt(key, 10))
+          : null,
+    });
+  }
 
-        this.setState({
-            formError: null
-        });
+  cancel() {
+    this.props.submitFn(null);
+  }
 
-        let formErrors = {data:{errors:{}}};
+  render() {
+    const { buttonText, groups } = this.props;
+    const {
+      formError,
+      valid,
+      selectedGroups,
+      firstName,
+      lastName,
+      email,
+    } = this.state;
 
-        // validate email address
-        let email = ReactDOM.findDOMNode(this.refs.email).value ? ReactDOM.findDOMNode(this.refs.email).value.trim() : null;
-        if (!MetabaseUtils.validEmail(email)) {
-            formErrors.data.errors.email = t`Not a valid formatted email address`;
-        }
+    const adminGroup = _.find(groups, isAdminGroup);
 
-        if (_.keys(formErrors.data.errors).length > 0) {
-            this.setState({
-                formError: formErrors
-            });
-            return;
-        }
+    return (
+      <form onSubmit={this.formSubmitted.bind(this)} noValidate>
+        <div className="px4 pb2">
+          <FormField fieldName="first_name" formError={formError}>
+            <FormLabel
+              title={t`First name`}
+              fieldName="first_name"
+              formError={formError}
+              offset={false}
+            />
+            <input
+              ref="firstName"
+              className="Form-input full"
+              name="firstName"
+              placeholder="Johnny"
+              value={firstName}
+              onChange={e => {
+                this.setState({ firstName: e.target.value }, () =>
+                  this.onChange(e),
+                );
+              }}
+            />
+          </FormField>
 
-        this.props.submitFn({
-            ...(this.props.user || {}),
-            first_name: ReactDOM.findDOMNode(this.refs.firstName).value,
-            last_name: ReactDOM.findDOMNode(this.refs.lastName).value,
-            email: email,
-            groups: this.props.groups && this.state.selectedGroups ?
-                Object.entries(this.state.selectedGroups).filter(([key, value]) => value).map(([key, value]) => parseInt(key, 10)) :
-                null
-        });
-    }
+          <FormField fieldName="last_name" formError={formError}>
+            <FormLabel
+              title={t`Last name`}
+              fieldName="last_name"
+              formError={formError}
+              offset={false}
+            />
+            <input
+              ref="lastName"
+              className="Form-input full"
+              name="lastName"
+              placeholder="Appleseed"
+              required
+              value={lastName}
+              onChange={e => {
+                this.setState({ lastName: e.target.value }, () =>
+                  this.onChange(e),
+                );
+              }}
+            />
+          </FormField>
 
-    cancel() {
-        this.props.submitFn(null);
-    }
+          <FormField fieldName="email" formError={formError}>
+            <FormLabel
+              title={t`Email address`}
+              fieldName="email"
+              formError={formError}
+              offset={false}
+            />
+            <input
+              ref="email"
+              className="Form-input full"
+              name="email"
+              placeholder="youlooknicetoday@email.com"
+              required
+              value={email}
+              onChange={e => {
+                this.setState({ email: e.target.value }, () =>
+                  this.onChange(e),
+                );
+              }}
+            />
+          </FormField>
 
-    render() {
-        const { buttonText, groups } = this.props;
-        const { formError, valid, selectedGroups, firstName, lastName, email } = this.state;
+          {groups &&
+          groups.filter(g => canEditMembership(g) && !isAdminGroup(g)).length >
+            0 ? (
+            <FormField>
+              <FormLabel title={t`Permission Groups`} offset={false} />
+              <PopoverWithTrigger
+                sizeToFit
+                triggerElement={
+                  <SelectButton>
+                    <GroupSummary
+                      groups={groups}
+                      selectedGroups={selectedGroups}
+                    />
+                  </SelectButton>
+                }
+              >
+                <GroupSelect
+                  groups={groups}
+                  selectedGroups={selectedGroups}
+                  onGroupChange={(group, selected) => {
+                    this.setState({
+                      selectedGroups: {
+                        ...selectedGroups,
+                        [group.id]: selected,
+                      },
+                    });
+                  }}
+                />
+              </PopoverWithTrigger>
+            </FormField>
+          ) : adminGroup ? (
+            <div className="flex align-center">
+              <Toggle
+                value={selectedGroups[adminGroup.id]}
+                onChange={isAdmin => {
+                  this.setState({
+                    selectedGroups: isAdmin ? { [adminGroup.id]: true } : {},
+                  });
+                }}
+              />
+              <span className="ml2">{t`Make this user an admin`}</span>
+            </div>
+          ) : null}
+        </div>
 
-        const adminGroup = _.find(groups, isAdminGroup);
-
-        return (
-            <form onSubmit={this.formSubmitted.bind(this)} noValidate>
-                <div className="px4 pb2">
-                    <FormField fieldName="first_name" formError={formError}>
-                        <FormLabel title={t`First name`} fieldName="first_name" formError={formError} offset={false}></FormLabel>
-                        <input
-                            ref="firstName"
-                            className="Form-input full"
-                            name="firstName"
-                            placeholder="Johnny"
-                            value={firstName}
-                            onChange={(e) => { this.setState({ firstName: e.target.value }, () => this.onChange(e)) }}
-                        />
-                    </FormField>
-
-                    <FormField fieldName="last_name" formError={formError}>
-                        <FormLabel title={t`Last name`} fieldName="last_name" formError={formError} offset={false}></FormLabel>
-                        <input
-                            ref="lastName"
-                            className="Form-input full"
-                            name="lastName"
-                            placeholder="Appleseed"
-                            required
-                            value={lastName}
-                            onChange={(e) => { this.setState({ lastName: e.target.value }, () => this.onChange(e)) }}
-                        />
-                    </FormField>
-
-                    <FormField fieldName="email" formError={formError}>
-                        <FormLabel title={t`Email address`} fieldName="email" formError={formError} offset={false}></FormLabel>
-                        <input
-                            ref="email"
-                            className="Form-input full"
-                            name="email"
-                            placeholder="youlooknicetoday@email.com"
-                            required
-                            value={email}
-                            onChange={(e) => { this.setState({ email: e.target.value }, () => this.onChange(e)) }}
-                        />
-                    </FormField>
-
-                    { groups && groups.filter(g => canEditMembership(g) && !isAdminGroup(g)).length > 0 ?
-                        <FormField>
-                            <FormLabel title={t`Permission Groups`} offset={false}></FormLabel>
-                            <PopoverWithTrigger
-                                sizeToFit
-                                triggerElement={
-                                    <SelectButton>
-                                        <GroupSummary groups={groups} selectedGroups={selectedGroups}/>
-                                    </SelectButton>
-                                }
-                            >
-                                <GroupSelect
-                                    groups={groups}
-                                    selectedGroups={selectedGroups}
-                                    onGroupChange={(group, selected) => {
-                                        this.setState({ selectedGroups: { ...selectedGroups, [group.id]: selected }})
-                                    }}
-                                />
-                            </PopoverWithTrigger>
-                        </FormField>
-                    : adminGroup ?
-                        <div className="flex align-center">
-                            <Toggle
-                                value={selectedGroups[adminGroup.id]}
-                                onChange={(isAdmin) => {
-                                    this.setState({ selectedGroups: isAdmin ? { [adminGroup.id]: true } : {} })
-                                }}
-                            />
-                            <span className="ml2">{t`Make this user an admin`}</span>
-                        </div>
-                    : null }
-                </div>
-
-                <ModalFooter>
-                    <Button type="button" onClick={this.cancel.bind(this)}>
-                        {t`Cancel`}
-                    </Button>
-                    <Button primary disabled={!valid}>
-                        { buttonText ? buttonText : t`Save changes` }
-                    </Button>
-                </ModalFooter>
-            </form>
-        );
-    }
+        <ModalFooter>
+          <Button type="button" onClick={this.cancel.bind(this)}>
+            {t`Cancel`}
+          </Button>
+          <Button primary disabled={!valid}>
+            {buttonText ? buttonText : t`Save changes`}
+          </Button>
+        </ModalFooter>
+      </form>
+    );
+  }
 }

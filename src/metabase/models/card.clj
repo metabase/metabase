@@ -101,18 +101,33 @@
                               (:schema table)
                               (or (:id table) (:table-id table)))))))
 
+(declare perms-objects-set)
+
+(defn- source-card-perms
+  "If `outer-query` is based on a source Card (if `:source-table` uses a psuedo-source-table like `card__<id>`) then
+  return the permissions needed to *read* that Card. Running or saving a Card that uses another Card as a source query
+  simply requires read permissions for that Card; e.g. if you are allowed to view a query you can save a new query
+  that uses it as a source. Thus the distinction between read and write permissions in not important here.
+
+  See issue #6845 for further discussion."
+  [outer-query]
+  (when-let [source-card-id (qputil/query->source-card-id outer-query)]
+    (perms-objects-set (Card source-card-id) :read)))
+
 (defn- mbql-permissions-path-set
   "Return the set of required permissions needed to run QUERY."
   [read-or-write query]
   {:pre [(map? query) (map? (:query query))]}
-  (try (let [{:keys [query database]} (qp/expand query)]
-         (tables->permissions-path-set read-or-write database (query->source-and-join-tables query)))
-       ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card)
-       ;; just return a set of permissions that means no one will ever get to see it
-       (catch Throwable e
-         (log/warn "Error getting permissions for card:" (.getMessage e) "\n"
-                   (u/pprint-to-str (u/filtered-stacktrace e)))
-         #{"/db/0/"})))                        ; DB 0 will never exist
+  (try
+    (or (source-card-perms query)
+        (let [{:keys [query database]} (qp/expand query)]
+          (tables->permissions-path-set read-or-write database (query->source-and-join-tables query))))
+    ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card)
+    ;; just return a set of permissions that means no one will ever get to see it
+    (catch Throwable e
+      (log/warn "Error getting permissions for card:" (.getMessage e) "\n"
+                (u/pprint-to-str (u/filtered-stacktrace e)))
+      #{"/db/0/"})))                    ; DB 0 will never exist
 
 ;; Calculating Card read permissions is rather expensive, since we must parse and expand the Card's query in order to
 ;; find the Tables it references. Since we read Cards relatively often, these permissions are cached in the
@@ -174,12 +189,14 @@
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
 (defn card-dependencies
-  "Calculate any dependent objects for a given `Card`."
-  [this id {:keys [dataset_query]}]
-  (when (and dataset_query
-             (= :query (keyword (:type dataset_query))))
-    {:Metric  (q/extract-metric-ids (:query dataset_query))
-     :Segment (q/extract-segment-ids (:query dataset_query))}))
+  "Calculate any dependent objects for a given `card`."
+  ([_ _ card]
+   (card-dependencies card))
+  ([{:keys [dataset_query]}]
+   (when (and dataset_query
+              (= :query (keyword (:type dataset_query))))
+     {:Metric  (q/extract-metric-ids (:query dataset_query))
+      :Segment (q/extract-segment-ids (:query dataset_query))})))
 
 
 ;;; -------------------------------------------------- Revisions --------------------------------------------------

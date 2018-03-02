@@ -1,7 +1,10 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require [cheshire.core :as json]
-            [clojure.string :as s]
+            [clojure.core.async :as async]
+            [clojure.core.async.impl.protocols :as async-proto]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes]]
             [medley.core :as m]
@@ -13,6 +16,9 @@
             [ring.util
              [io :as rui]
              [response :as rr]]
+            [ring.core.protocols :as protocols]
+            [ring.util.response :as response]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
            [java.nio.charset Charset StandardCharsets]))
@@ -293,8 +299,8 @@
                      symb)]
     `(defroutes ~(vary-meta 'routes assoc :doc (format "Ring routes for %s:\n%s"
                                                        (-> (ns-name *ns*)
-                                                           (s/replace #"^metabase\." "")
-                                                           (s/replace #"\." "/"))
+                                                           (str/replace #"^metabase\." "")
+                                                           (str/replace #"\." "/"))
                                                        (u/pprint-to-str (concat api-routes additional-routes))))
        ~@additional-routes ~@api-routes)))
 
@@ -329,6 +335,113 @@
   ([entity id & other-conditions]
    (write-check (apply db/select-one entity :id id other-conditions))))
 
+;;; --------------------------------------------------- STREAMING ----------------------------------------------------
+
+(def ^:private ^:const streaming-response-keep-alive-interval-ms
+  "Interval between sending newline characters to keep Heroku from terminating requests like queries that take a long
+  time to complete."
+  (* 1 1000))
+
+;; Handle ring response maps that contain a core.async chan in the :body key:
+;;
+;; {:status 200
+;;  :body (async/chan)}
+;;
+;; and send strings (presumibly \n) as heartbeats to the client until the real results (a seq) is received, then
+;; stream that to the client
+(extend-protocol protocols/StreamableResponseBody
+  clojure.core.async.impl.channels.ManyToManyChannel
+  (write-body-to-stream [output-queue _ ^OutputStream output-stream]
+    (log/debug (u/format-color 'green "starting streaming request"))
+    (with-open [out (io/writer output-stream)]
+      (loop [chunk (async/<!! output-queue)]
+        (cond
+          (char? chunk)
+          (do
+            (try
+              (.write out (str chunk))
+              (.flush out)
+              (catch org.eclipse.jetty.io.EofException e
+                (log/info e (u/format-color 'yellow "connection closed, canceling request"))
+                (async/close! output-queue)
+                (throw e)))
+            (recur (async/<!! output-queue)))
+
+          ;; An error has occurred, let the user know
+          (instance? Exception chunk)
+          (json/generate-stream {:error (.getMessage ^Exception chunk)} out)
+
+          ;; We've recevied the response, write it to the output stream and we're done
+          (seq chunk)
+          (json/generate-stream chunk out)
+
+          ;;chunk is nil meaning the output channel has been closed
+          :else
+          out)))))
+
+(def ^:private InvokeWithKeepAliveSchema
+  {;; Channel that contains any number of newlines followed by the results of the invoked query thunk
+   :output-channel  (s/protocol async-proto/Channel)
+   ;; This channel will have an exception if that error condition is hit before the first heartbeat time, if a
+   ;; heartbeat has been sent, this channel is closed and its no longer useful
+   :error-channel   (s/protocol async-proto/Channel)
+   ;; Future that is invoking the query thunk. This is mainly useful for testing metadata to see if the future has been
+   ;; cancelled or was completed successfully
+   :response-future java.util.concurrent.Future})
+
+(s/defn ^:private invoke-thunk-with-keepalive :- InvokeWithKeepAliveSchema
+  "This function does the heavy lifting of invoking `query-thunk` on a background thread and returning it's results
+  along with a heartbeat while waiting for the results. This function returns a map that includes the relevate
+  execution information, see `InvokeWithKeepAliveSchema` for more information"
+  [query-thunk]
+  (let [response-chan (async/chan 1)
+        output-chan   (async/chan 1)
+        error-chan    (async/chan 1)
+        response-fut  (future
+                        (try
+                          (async/>!! response-chan (query-thunk))
+                          (catch Exception e
+                            (async/>!! error-chan e)
+                            (async/>!! response-chan e))
+                          (finally
+                            (async/close! error-chan))))]
+    (async/go-loop []
+      (let [[response-or-timeout c] (async/alts!! [response-chan (async/timeout streaming-response-keep-alive-interval-ms)])]
+        (if response-or-timeout
+          ;; We have a response since it's non-nil, write the results and close, we're done
+          (do
+            ;; If output-chan is closed, it's already too late, nothing else we need to do
+            (async/>!! output-chan response-or-timeout)
+            (async/close! output-chan))
+          (do
+            ;; We don't have a result yet, but enough time has passed, let's assume it's not an error
+            (async/close! error-chan)
+            ;; a newline padding character as it's harmless and will allow us to check if the client is connected. If
+            ;; sending this character fails because the connection is closed, the chan will then close.  Newlines are
+            ;; no-ops when reading JSON which this depends upon.
+            (log/debug (u/format-color 'blue "Response not ready, writing one byte & sleeping..."))
+            (if (async/>!! output-chan \newline)
+              ;; Success put the channel, wait and see if we get the response next time
+              (recur)
+              ;; The channel is closed, client has given up, we should give up too
+              (future-cancel response-fut))))))
+    {:output-channel  output-chan
+     :error-channel   error-chan
+     :response-future response-fut}))
+
+(defn cancellable-json-response
+  "Invokes `cancellable-thunk` in a future. If there's an immediate exception, throw it. If there's not an immediate
+  exception, return a ring response with a channel. The channel will potentially include newline characters before the
+  full response is delivered as a keepalive to the client. Eventually the results of `cancellable-thunk` will be put
+  to the channel"
+  [cancellable-thunk]
+  (let [{:keys [output-channel error-channel]} (invoke-thunk-with-keepalive cancellable-thunk)]
+    ;; If there's an immediate exception, it will be in `error-chan`, if not, `error-chan` will close and we'll assume
+    ;; the response is a success
+    (if-let [ex (async/<!! error-channel)]
+      (throw ex)
+      (assoc (response/response output-channel)
+        :content-type "applicaton/json"))))
 
 ;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
 

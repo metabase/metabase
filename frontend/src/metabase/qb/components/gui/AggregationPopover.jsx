@@ -8,17 +8,17 @@ import type { Aggregation, ExpressionName } from "metabase/meta/types/Query";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
 type Props = {
-    aggregation?: Aggregation,
-    tableMetadata: TableMetadata,
-    customFields: { [key: ExpressionName]: any },
-    onCommitAggregation: (aggregation: Aggregation) => void,
-    onClose?: () => void,
-    availableAggregations: [Aggregation],
-    showOnlyProvidedAggregations: boolean
+  aggregation?: Aggregation,
+  tableMetadata: TableMetadata,
+  customFields: { [key: ExpressionName]: any },
+  onCommitAggregation: (aggregation: Aggregation) => void,
+  onClose?: () => void,
+  availableAggregations: [Aggregation],
+  showOnlyProvidedAggregations: boolean,
 };
 
 const AggregationPopover = (props: Props) => (
-    <AggPopover {...props} aggregation={props.aggregation || []} />
+  <AggPopover {...props} aggregation={props.aggregation || []} />
 );
 
 export default AggregationPopover;
