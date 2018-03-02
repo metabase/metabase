@@ -13,7 +13,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#\n"
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-03-01 17:40+0700\n"
+"POT-Creation-Date: 2018-03-02 12:49+0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -29,8 +29,8 @@ msgstr ""
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:22
 msgid ""
 "We're analyzing its schema now to make some educated guesses about its\n"
-"metadata. ${ 0 } in the Data Model section to see what we've found and to\n"
-"make edits, or ${ 1 } about\n"
+"metadata. {0} in the Data Model section to see what we've found and to\n"
+"make edits, or {1} about\n"
 "this database."
 msgstr ""
 
@@ -379,25 +379,25 @@ msgid "Revision History"
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:33
-msgid "Retire this ${ 0 }?"
+msgid "Retire this {0}?"
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:38
 msgid ""
-"Saved questions and other things that depend on this ${ 0 } will continue to "
-"work, but this ${ 1 } will no longer be selectable from the query builder."
+"Saved questions and other things that depend on this {0} will continue to "
+"work, but this {1} will no longer be selectable from the query builder."
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:39
 msgid ""
-"If you're sure you want to retire this ${ 0 }, please write a quick "
-"explanation of why it's being retired:"
+"If you're sure you want to retire this {0}, please write a quick explanation "
+"of why it's being retired:"
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:43
 msgid ""
 "This will show up in the activity feed and in an email that will be sent to "
-"anyone on your team who created something that uses this ${ 0 }."
+"anyone on your team who created something that uses this {0}."
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:58
@@ -606,7 +606,7 @@ msgid "Revision History for"
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:188
-msgid "${ 0 } – Field Settings"
+msgid "{0} – Field Settings"
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:207
@@ -833,7 +833,7 @@ msgid "Make changes to your segment and leave an explanatory note."
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:122
-msgid "Select and add filters to create your new segment for the ${ 0 } table"
+msgid "Select and add filters to create your new segment for the {0} table"
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:161
@@ -925,12 +925,12 @@ msgstr ""
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:31
 msgid ""
-"All users belong to the {group.name} group and can't be removed from it. "
-"Setting permissions for this group is a great way to\n"
+"All users belong to the {0} group and can't be removed from it. Setting "
+"permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr ""
 
-#: frontend/src/metabase/admin/people/components/GroupDetail.jsx:38
+#: frontend/src/metabase/admin/people/components/GroupDetail.jsx:40
 msgid ""
 "This is a special group whose members can see everything in the Metabase "
 "instance, and who can access and make changes to the\n"
@@ -938,18 +938,18 @@ msgid ""
 "to this group with care."
 msgstr ""
 
-#: frontend/src/metabase/admin/people/components/GroupDetail.jsx:42
+#: frontend/src/metabase/admin/people/components/GroupDetail.jsx:44
 msgid ""
 "To make sure you don't get locked out of Metabase, there always has to be at "
 "least one user in this group."
 msgstr ""
 
-#: frontend/src/metabase/admin/people/components/GroupDetail.jsx:174
+#: frontend/src/metabase/admin/people/components/GroupDetail.jsx:176
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:212
 msgid "Members"
 msgstr ""
 
-#: frontend/src/metabase/admin/people/components/GroupDetail.jsx:174
+#: frontend/src/metabase/admin/people/components/GroupDetail.jsx:176
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:423
 #: frontend/src/metabase/admin/settings/selectors.js:104
 #: frontend/src/metabase/lib/core.js:50
@@ -957,7 +957,7 @@ msgstr ""
 msgid "Email"
 msgstr ""
 
-#: frontend/src/metabase/admin/people/components/GroupDetail.jsx:200
+#: frontend/src/metabase/admin/people/components/GroupDetail.jsx:202
 msgid "A group is only as good as its members."
 msgstr ""
 
@@ -1053,12 +1053,12 @@ msgid "Who do you want to add?"
 msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:203
-msgid "Edit ${ 0 }'s details"
+msgid "Edit {0}'s details"
 msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:217
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:254
-msgid "${ 0 } has been added"
+msgid "{0} has been added"
 msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:221
@@ -1069,21 +1069,20 @@ msgstr ""
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:227
 msgid ""
 "We couldn’t send them an email invitation,\n"
-"so make sure to tell them to log in using ${ 0 }\n"
+"so make sure to tell them to log in using {0}\n"
 "and this password we’ve generated for them:"
 msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:238
-msgid ""
-"If you want to be able to send email invites, just go to the ${ 0 } page."
+msgid "If you want to be able to send email invites, just go to the {0} page."
 msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:266
-msgid "We’ve sent an invite to ${ 0 } with instructions to set their password."
+msgid "We’ve sent an invite to {0} with instructions to set their password."
 msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:280
-msgid "We've re-sent ${ 0 }'s invite"
+msgid "We've re-sent {0}'s invite"
 msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:282
@@ -1097,15 +1096,15 @@ msgid "Any previous email invites they have will no longer work."
 msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:297
-msgid "Remove ${ 0 }?"
+msgid "Remove {0}?"
 msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:308
-msgid "${ 0 } won't be able to log in anymore. This can't be undone."
+msgid "{0} won't be able to log in anymore. This can't be undone."
 msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:322
-msgid "Reset ${ 0 }'s password?"
+msgid "Reset {0}'s password?"
 msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:328
@@ -1119,7 +1118,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:343
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:367
-msgid "${ 0 }'s password has been reset"
+msgid "{0}'s password has been reset"
 msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:353
@@ -1243,19 +1242,19 @@ msgstr ""
 
 #: frontend/src/metabase/admin/permissions/selectors.js:111
 msgid ""
-"The \"${ 0 }\" group may have access to a different set of ${ 1 } than this "
-"group, which may give this group additional access to some ${ 2 }."
+"The \"{0}\" group may have access to a different set of {1} than this group, "
+"which may give this group additional access to some {2}."
 msgstr ""
 
 #: frontend/src/metabase/admin/permissions/selectors.js:116
 msgid ""
-"The \"${ 0 }\" group has a higher level of access than this, which will "
-"override this setting. You should limit or revoke the \"${ 1 }\" group's "
-"access to this item."
+"The \"{0}\" group has a higher level of access than this, which will "
+"override this setting. You should limit or revoke the \"{1}\" group's access "
+"to this item."
 msgstr ""
 
 #: frontend/src/metabase/admin/permissions/selectors.js:145
-msgid "${ 0 } access even though \"${ 1 }\" has greater access?"
+msgid "{0} access even though \"{1}\" has greater access?"
 msgstr ""
 
 #: frontend/src/metabase/admin/permissions/selectors.js:150
@@ -1489,7 +1488,7 @@ msgstr ""
 msgid ""
 "To allow users to sign in with Google you'll need to give Metabase a Google "
 "Developers console application client ID. It only takes a few steps and "
-"instructions on how to create a key can be found ${ 0 }"
+"instructions on how to create a key can be found {0}"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:133
@@ -1512,17 +1511,17 @@ msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:257
 msgid ""
-"Once you're there, give it a name and click ${ 0 }. Then copy and paste the "
-"Bot API Token into the field below. Once you are done, create a "
-"\"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
+"Once you're there, give it a name and click {0}. Then copy and paste the Bot "
+"API Token into the field below. Once you are done, create a \"metabase_files"
+"\" channel in Slack. Metabase needs this to upload graphs."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:88
-msgid "You're running Metabase ${ 0 } which is the latest and greatest!"
+msgid "You're running Metabase {0} which is the latest and greatest!"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:97
-msgid "Metabase ${ 0 } is available.  You're running ${ 1 }"
+msgid "Metabase {0} is available.  You're running {1}"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:110
@@ -1550,7 +1549,7 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsXrayForm.jsx:45
-msgid "${ 0 } \"Extended\" is required for viewing time series x-rays."
+msgid "{0} \"Extended\" is required for viewing time series x-rays."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:131
@@ -1781,7 +1780,7 @@ msgid "Disabled"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:116
-msgid "Unknown setting ${ 0 }"
+msgid "Unknown setting {0}"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/selectors.js:22
@@ -2071,7 +2070,7 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/auth/components/SSOLoginButton.jsx:18
-msgid "Sign in with ${ 0 }"
+msgid "Sign in with {0}"
 msgstr ""
 
 #: frontend/src/metabase/auth/containers/ForgotPasswordApp.jsx:56
@@ -2132,7 +2131,7 @@ msgid "New password"
 msgstr ""
 
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:141
-msgid "To keep your data secure, passwords ${ 0 }"
+msgid "To keep your data secure, passwords {0}"
 msgstr ""
 
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:155
@@ -2182,7 +2181,7 @@ msgid "Ok"
 msgstr ""
 
 #: frontend/src/metabase/components/Archived.jsx:10
-msgid "This ${ 0 } has been archived"
+msgid "This {0} has been archived"
 msgstr ""
 
 #: frontend/src/metabase/components/Archived.jsx:15
@@ -2196,7 +2195,7 @@ msgid "Unarchive this question"
 msgstr ""
 
 #: frontend/src/metabase/components/ArchivedItem.jsx:25
-msgid "Unarchive this ${ 0 }"
+msgid "Unarchive this {0}"
 msgstr ""
 
 #: frontend/src/metabase/components/Button.info.js:11
@@ -2246,7 +2245,7 @@ msgid "Your admin's email address"
 msgstr ""
 
 #: frontend/src/metabase/components/ChannelSetupModal.jsx:37
-msgid "To send ${ 0 }, you'll need to set up ${ 1 } integration."
+msgid "To send {0}, you'll need to set up {1} integration."
 msgstr ""
 
 #: frontend/src/metabase/components/ChannelSetupModal.jsx:38
@@ -2255,7 +2254,7 @@ msgid " or "
 msgstr ""
 
 #: frontend/src/metabase/components/ChannelSetupModal.jsx:40
-msgid "To send ${ 0 }, an admin needs to set up ${ 1 } integration."
+msgid "To send {0}, an admin needs to set up {1} integration."
 msgstr ""
 
 #: frontend/src/metabase/components/CopyButton.jsx:35
@@ -2322,7 +2321,7 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:261
-msgid "${ 0 } to generate a Client ID and Client Secret for your project."
+msgid "{0} to generate a Client ID and Client Secret for your project."
 msgstr ""
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:266
@@ -2330,7 +2329,7 @@ msgid "Choose \"Other\" as the application type. Name it whatever you'd like."
 msgstr ""
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:288
-msgid "${ 0 } to get an auth code"
+msgid "{0} to get an auth code"
 msgstr ""
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:300
@@ -2344,7 +2343,7 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:323
-msgid "${ 0 } to go to the console if you haven't already done so."
+msgid "{0} to go to the console if you haven't already done so."
 msgstr ""
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:372
@@ -2361,7 +2360,7 @@ msgid "Next"
 msgstr ""
 
 #: frontend/src/metabase/components/DeleteModalWithConfirm.jsx:79
-msgid "Delete this ${ 0 }"
+msgid "Delete this {0}"
 msgstr ""
 
 #: frontend/src/metabase/components/EntityMenu.info.js:24
@@ -2456,7 +2455,7 @@ msgid "Search the list"
 msgstr ""
 
 #: frontend/src/metabase/components/FieldValuesWidget.jsx:204
-msgid "Search by ${ 0 }"
+msgid "Search by {0}"
 msgstr ""
 
 #: frontend/src/metabase/components/FieldValuesWidget.jsx:206
@@ -2499,11 +2498,11 @@ msgid "No description yet"
 msgstr ""
 
 #: frontend/src/metabase/components/Header.jsx:108
-msgid "New ${ 0 }"
+msgid "New {0}"
 msgstr ""
 
 #: frontend/src/metabase/components/Header.jsx:119
-msgid "Asked by ${ 0 }"
+msgid "Asked by {0}"
 msgstr ""
 
 #: frontend/src/metabase/components/HistoryModal.jsx:13
@@ -2519,7 +2518,7 @@ msgid "First revision."
 msgstr ""
 
 #: frontend/src/metabase/components/HistoryModal.jsx:70
-msgid "Reverted to an earlier revision and ${ 0 }"
+msgid "Reverted to an earlier revision and {0}"
 msgstr ""
 
 #: frontend/src/metabase/components/HistoryModal.jsx:80
@@ -2786,7 +2785,7 @@ msgid "Replace or save as new?"
 msgstr ""
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:171
-msgid "Replace original question, \"${ 0 }\""
+msgid "Replace original question, \"{0}\""
 msgstr ""
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:176
@@ -2863,8 +2862,7 @@ msgstr ""
 
 #: frontend/src/metabase/dashboards/containers/Dashboards.jsx:190
 msgid ""
-"Put the charts and graphs you look at ${ 0 }frequently in a single, handy "
-"place."
+"Put the charts and graphs you look at {0}frequently in a single, handy place."
 msgstr ""
 
 #: frontend/src/metabase/dashboards/containers/Dashboards.jsx:195
@@ -2879,7 +2877,7 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/dashboards/containers/DashboardsArchive.jsx:96
-msgid "No dashboards have been ${ 0 } archived yet"
+msgid "No dashboards have been {0} archived yet"
 msgstr ""
 
 #: frontend/src/metabase/home/components/Activity.jsx:92
@@ -3003,7 +3001,7 @@ msgid "made changes to the filter"
 msgstr ""
 
 #: frontend/src/metabase/home/components/Activity.jsx:427
-msgid "removed the filter ${ 0 }"
+msgid "removed the filter {0}"
 msgstr ""
 
 #: frontend/src/metabase/home/components/Activity.jsx:430
@@ -3930,7 +3928,7 @@ msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/AdvancedEmbedPane.jsx:83
 msgid ""
-"You will need to publish this ${ 0 } before you can embed it in another "
+"You will need to publish this {0} before you can embed it in another "
 "application."
 msgstr ""
 
@@ -3972,7 +3970,7 @@ msgid "Which parameters can users of this embed use?"
 msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:84
-msgid "This ${ 0 } doesn't have any parameters to configure yet."
+msgid "This {0} doesn't have any parameters to configure yet."
 msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:105
@@ -3999,7 +3997,7 @@ msgid "Danger zone"
 msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:128
-msgid "This will disable embedding for this ${ 0 }."
+msgid "This will disable embedding for this {0}."
 msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:129
@@ -4024,7 +4022,7 @@ msgid "Title"
 msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/EmbedCodePane.jsx:62
-msgid "To embed this ${ 0 } in your application:"
+msgid "To embed this {0} in your application:"
 msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/EmbedCodePane.jsx:64
@@ -4042,7 +4040,7 @@ msgid "Embed code snippet for your HTML or Frontend Application"
 msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/EmbedCodePane.jsx:101
-msgid "More ${ 0 }"
+msgid "More {0}"
 msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:72
@@ -4065,8 +4063,8 @@ msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:118
 msgid ""
-"Share this ${ 0 } with people who don't have a Metabase account using the "
-"URL below:"
+"Share this {0} with people who don't have a Metabase account using the URL "
+"below:"
 msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:158
@@ -4075,18 +4073,18 @@ msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:159
 msgid ""
-"Embed this ${ 0 } in blog posts or web pages by copying and pasting this "
+"Embed this {0} in blog posts or web pages by copying and pasting this "
 "snippet:"
 msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:176
-msgid "Embed this ${ 0 } in an application"
+msgid "Embed this {0} in an application"
 msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:177
 msgid ""
 "By integrating with your application server code, you can provide a secure "
-"stats ${ 0 } limited to a specific user, customer, organization, etc."
+"stats {0} limited to a specific user, customer, organization, etc."
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/CardPicker.jsx:63
@@ -4123,15 +4121,15 @@ msgid "This question won't be included in your Pulse"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:89
-msgid "This pulse will no longer be emailed to ${ 0 } ${ 1 }"
+msgid "This pulse will no longer be emailed to {0} {1}"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:97
-msgid "Slack channel ${ 0 } will no longer get this pulse ${ 1 }"
+msgid "Slack channel {0} will no longer get this pulse {1}"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:105
-msgid "Channel ${ 0 } will no longer receive this pulse ${ 1 }"
+msgid "Channel {0} will no longer receive this pulse {1}"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:122
@@ -4218,7 +4216,7 @@ msgid "Sent"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:222
-msgid "${ 0 } will be sent at"
+msgid "{0} will be sent at"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:224
@@ -4230,7 +4228,7 @@ msgid "Send email now"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:236
-msgid "Send to ${ 0 } now"
+msgid "Send to {0} now"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:238
@@ -4250,7 +4248,7 @@ msgid "Pulse sent"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:282
-msgid "${ 0 } needs to be set up by an administrator."
+msgid "{0} needs to be set up by an administrator."
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:297
@@ -4304,15 +4302,15 @@ msgid "to"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseListChannel.jsx:105
-msgid "You get this ${ 0 }"
+msgid "You get this {0}"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseListChannel.jsx:121
-msgid "Get this ${ 0 }"
+msgid "Get this {0}"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseListItem.jsx:47
-msgid "Pulse by ${ 0 }"
+msgid "Pulse by {0}"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/RecipientPicker.jsx:61
@@ -4330,11 +4328,11 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/qb/components/TimeseriesFilterWidget.jsx:100
-msgid "After ${ 0 }"
+msgid "After {0}"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/TimeseriesFilterWidget.jsx:102
-msgid "Before ${ 0 }"
+msgid "Before {0}"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/TimeseriesFilterWidget.jsx:104
@@ -4353,7 +4351,7 @@ msgid "All Time"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/actions/CommonMetricsAction.jsx:21
-msgid "View ${ 0 }"
+msgid "View {0}"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/actions/CompoundQueryAction.jsx:14
@@ -4365,7 +4363,7 @@ msgid "Count of rows by time"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/actions/PivotByAction.jsx:55
-msgid "Break out by ${ 0 }"
+msgid "Break out by {0}"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/actions/SummarizeBySegmentMetricAction.jsx:34
@@ -4377,7 +4375,7 @@ msgid "View this as a table"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/actions/UnderlyingRecordsAction.jsx:22
-msgid "View the underlying ${ 0 } records"
+msgid "View the underlying {0} records"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/actions/XRayCard.jsx:19
@@ -4385,7 +4383,7 @@ msgid "X-ray this question"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/actions/XRaySegment.jsx:23
-msgid "X-ray ${ 0 }"
+msgid "X-ray {0}"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/drill/CountByColumnDrill.js:29
@@ -4398,7 +4396,7 @@ msgid "View details"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/drill/QuickFilterDrill.jsx:54
-msgid "View this ${ 0 }'s ${ 1 }"
+msgid "View this {0}'s {1}"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/drill/SortAction.jsx:45
@@ -4422,7 +4420,7 @@ msgid "Distincts"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/drill/UnderlyingRecordsDrill.jsx:30
-msgid "View ${ 0 } ${ 1 }"
+msgid "View {0} {1}"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/drill/UnderlyingRecordsDrill.jsx:30
@@ -4478,11 +4476,11 @@ msgid "Okay, you're unsubscribed"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertListPopoverContent.jsx:342
-msgid "You're receiving ${ 0 }'s alerts"
+msgid "You're receiving {0}'s alerts"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertListPopoverContent.jsx:343
-msgid "${ 0 } set up an alert"
+msgid "{0} set up an alert"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:149
@@ -4502,15 +4500,15 @@ msgid "There are a few different kinds of alerts you can get"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:217
-msgid "When a raw data question ${ 0 }"
+msgid "When a raw data question {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:228
-msgid "When a line or bar ${ 0 }"
+msgid "When a line or bar {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:239
-msgid "When a progress bar ${ 0 }"
+msgid "When a progress bar {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:246
@@ -4526,15 +4524,15 @@ msgid "Edit alert"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:352
-msgid "This alert will no longer be emailed to ${ 0 }."
+msgid "This alert will no longer be emailed to {0}."
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:358
-msgid "Slack channel ${ 0 } will no longer get this alert."
+msgid "Slack channel {0} will no longer get this alert."
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:362
-msgid "Channel ${ 0 } will no longer receive this alert."
+msgid "Channel {0} will no longer receive this alert."
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:379
@@ -4599,14 +4597,14 @@ msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:648
 msgid ""
-"${ 0 } Goal-based alerts aren't yet supported for charts with more than one "
-"line, so this alert will be sent whenever the chart has ${ 1 }."
+"{0} Goal-based alerts aren't yet supported for charts with more than one "
+"line, so this alert will be sent whenever the chart has {1}."
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:655
 msgid ""
-"${ 0 } This kind of alert is most useful when your saved question doesn’t "
-"${ 1 } return any results, but you want to know when it does."
+"{0} This kind of alert is most useful when your saved question doesn’t {1} "
+"return any results, but you want to know when it does."
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/DataSelector.jsx:57
@@ -4714,7 +4712,7 @@ msgid "Grouped By"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor.jsx:332
-msgid "This question is written in ${ 0 }."
+msgid "This question is written in {0}."
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor.jsx:340
@@ -4806,11 +4804,11 @@ msgid "Not Supported"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/QueryModeButton.jsx:58
-msgid "View the ${ 0 }"
+msgid "View the {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/QueryModeButton.jsx:59
-msgid "Switch to ${ 0 }"
+msgid "Switch to {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/QueryModeButton.jsx:62
@@ -4818,27 +4816,27 @@ msgid "Switch to Builder"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/QueryModeButton.jsx:87
-msgid "${ 0 } for this question"
+msgid "{0} for this question"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/QueryModeButton.jsx:111
-msgid "Convert this question to ${ 0 }"
+msgid "Convert this question to {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:122
-msgid "This question will take approximately ${ 0 } to refresh"
+msgid "This question will take approximately {0} to refresh"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:131
-msgid "Updated ${ 0 }"
+msgid "Updated {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:146
-msgid "Showing first ${ 0 } ${ 1 }"
+msgid "Showing first {0} {1}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:149
-msgid "Showing ${ 0 } ${ 1 }"
+msgid "Showing {0} {1}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:281
@@ -4929,7 +4927,7 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:67
-msgid "You can also ${ 0 } when there are any results."
+msgid "You can also {0} when there are any results."
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:78
@@ -4955,24 +4953,24 @@ msgid "Potentially useful questions"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/FieldPane.jsx:156
-msgid "Group by ${ 0 }"
+msgid "Group by {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/FieldPane.jsx:165
-msgid "Sum of all values of ${ 0 }"
+msgid "Sum of all values of {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/FieldPane.jsx:173
 #: frontend/src/metabase/reference/databases/FieldDetail.jsx:63
 #: frontend/src/metabase/reference/segments/SegmentFieldDetail.jsx:51
-msgid "All distinct values of ${ 0 }"
+msgid "All distinct values of {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/FieldPane.jsx:177
 #: frontend/src/metabase/reference/databases/FieldDetail.jsx:39
 #: frontend/src/metabase/reference/databases/FieldDetail.jsx:51
 #: frontend/src/metabase/reference/segments/SegmentFieldDetail.jsx:39
-msgid "Number of ${ 0 } grouped by ${ 1 }"
+msgid "Number of {0} grouped by {1}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/MainPane.jsx:14
@@ -4985,7 +4983,7 @@ msgid "Could not find the table metadata prior to creating a new question"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/MetricPane.jsx:80
-msgid "See ${ 0 }"
+msgid "See {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/MetricPane.jsx:94
@@ -4993,17 +4991,17 @@ msgid "Metric Definition"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/SegmentPane.jsx:118
-msgid "Filter by ${ 0 }"
+msgid "Filter by {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/SegmentPane.jsx:127
 #: frontend/src/metabase/reference/segments/SegmentDetail.jsx:36
-msgid "Number of ${ 0 }"
+msgid "Number of {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/SegmentPane.jsx:134
 #: frontend/src/metabase/reference/segments/SegmentDetail.jsx:46
-msgid "See all ${ 0 }"
+msgid "See all {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/SegmentPane.jsx:148
@@ -5015,7 +5013,7 @@ msgid "An error occurred loading the table"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/TablePane.jsx:71
-msgid "See the raw data for ${ 0 }"
+msgid "See the raw data for {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/dataref/TablePane.jsx:199
@@ -5065,7 +5063,7 @@ msgid "Item"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/filters/FilterOptions.jsx:17
-msgid "Include ${ 0 }"
+msgid "Include {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/filters/FilterOptions.jsx:19
@@ -5097,7 +5095,7 @@ msgid "this hour"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:277
-msgid "not implemented ${ 0 }"
+msgid "not implemented {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:278
@@ -5177,7 +5175,7 @@ msgstr ""
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:112
 msgid ""
-"${ 0 } creates a variable in this SQL template called \"variable_name\". "
+"{0} creates a variable in this SQL template called \"variable_name\". "
 "Variables can be given types in the side panel, which changes their "
 "behavior. All variable types other than \"Field Filter\" will automatically "
 "cause a filter widget to be placed on this question; with Field Filters, "
@@ -5212,7 +5210,7 @@ msgstr ""
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:132
 msgid ""
-"brackets around a ${ 0 } create an optional clause in the template. If "
+"brackets around a {0} create an optional clause in the template. If "
 "\"variable\" is set, then the entire clause is placed into the template. If "
 "not, then the entire clause is ignored."
 msgstr ""
@@ -5276,11 +5274,11 @@ msgid "Question"
 msgstr ""
 
 #: frontend/src/metabase/questions/components/ActionHeader.jsx:25
-msgid "Select all ${ 0 }"
+msgid "Select all {0}"
 msgstr ""
 
 #: frontend/src/metabase/questions/components/ActionHeader.jsx:37
-msgid "${ 0 } selected"
+msgid "{0} selected"
 msgstr ""
 
 #: frontend/src/metabase/questions/components/ActionHeader.jsx:44
@@ -5309,7 +5307,7 @@ msgid "Created"
 msgstr ""
 
 #: frontend/src/metabase/questions/components/Item.jsx:209
-msgid " by ${ 0 }"
+msgid " by {0}"
 msgstr ""
 
 #: frontend/src/metabase/questions/components/LabelIconPicker.jsx:47
@@ -5317,7 +5315,7 @@ msgid "Colors"
 msgstr ""
 
 #: frontend/src/metabase/questions/components/LabelPicker.jsx:17
-msgid "Apply labels to ${ 0 } questions"
+msgid "Apply labels to {0} questions"
 msgstr ""
 
 #: frontend/src/metabase/questions/components/LabelPicker.jsx:17
@@ -5400,7 +5398,7 @@ msgid "Update Label"
 msgstr ""
 
 #: frontend/src/metabase/questions/containers/EditLabels.jsx:121
-msgid "Delete label \"${ 0 }\""
+msgid "Delete label \"{0}\""
 msgstr ""
 
 #: frontend/src/metabase/questions/containers/EditLabels.jsx:140
@@ -5496,11 +5494,11 @@ msgid "No matching questions found"
 msgstr ""
 
 #: frontend/src/metabase/questions/questions.js:127
-msgid "${ 0 } question was ${ 1 }"
+msgid "{0} question was {1}"
 msgstr ""
 
 #: frontend/src/metabase/questions/questions.js:128
-msgid "${ 0 } questions were ${ 1 }"
+msgid "{0} questions were {1}"
 msgstr ""
 
 #: frontend/src/metabase/questions/questions.js:134
@@ -5517,7 +5515,7 @@ msgstr ""
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:96
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:59
-msgid "See this ${ 0 }"
+msgid "See this {0}"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:115
@@ -5553,15 +5551,15 @@ msgid "Select a Foreign Key"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/Formula.jsx:53
-msgid "View the ${ 0 } formula"
+msgid "View the {0} formula"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/GuideDetail.jsx:80
-msgid "Why this ${ 0 } is important"
+msgid "Why this {0} is important"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/GuideDetail.jsx:81
-msgid "Why this ${ 0 } is interesting"
+msgid "Why this {0} is interesting"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/GuideDetail.jsx:87
@@ -5579,7 +5577,7 @@ msgid "Nothing interesting yet"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/GuideDetail.jsx:93
-msgid "Things to be aware of about this ${ 0 }"
+msgid "Things to be aware of about this {0}"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/GuideDetail.jsx:97
@@ -5601,7 +5599,7 @@ msgid "View this metric"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/GuideDetail.jsx:112
-msgid "By ${ 0 }"
+msgid "By {0}"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/GuideDetailEditor.jsx:146
@@ -5613,7 +5611,7 @@ msgid "Why is this dashboard the most important?"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/GuideDetailEditor.jsx:156
-msgid "What is useful or interesting about this ${ 0 }?"
+msgid "What is useful or interesting about this {0}?"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/GuideDetailEditor.jsx:160
@@ -5626,7 +5624,7 @@ msgid "Is there anything users of this dashboard should be aware of?"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/GuideDetailEditor.jsx:170
-msgid "Anything users should be aware of about this ${ 0 }?"
+msgid "Anything users should be aware of about this {0}?"
 msgstr ""
 
 #: frontend/src/metabase/reference/components/GuideDetailEditor.jsx:182
@@ -5685,7 +5683,7 @@ msgstr ""
 
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:33
 #: frontend/src/metabase/reference/databases/TableList.jsx:111
-msgid "Tables in ${ 0 }"
+msgid "Tables in {0}"
 msgstr ""
 
 #: frontend/src/metabase/reference/databases/FieldDetail.jsx:222
@@ -5718,7 +5716,7 @@ msgstr ""
 
 #: frontend/src/metabase/reference/databases/FieldList.jsx:134
 #: frontend/src/metabase/reference/segments/SegmentFieldList.jsx:135
-msgid "Fields in ${ 0 }"
+msgid "Fields in {0}"
 msgstr ""
 
 #: frontend/src/metabase/reference/databases/FieldList.jsx:149
@@ -5747,11 +5745,11 @@ msgid "Connect a database"
 msgstr ""
 
 #: frontend/src/metabase/reference/databases/TableDetail.jsx:38
-msgid "Count of ${ 0 }"
+msgid "Count of {0}"
 msgstr ""
 
 #: frontend/src/metabase/reference/databases/TableDetail.jsx:47
-msgid "See raw data for ${ 0 }"
+msgid "See raw data for {0}"
 msgstr ""
 
 #: frontend/src/metabase/reference/databases/TableDetail.jsx:209
@@ -5774,13 +5772,13 @@ msgstr ""
 #: frontend/src/metabase/reference/metrics/MetricQuestions.jsx:75
 #: frontend/src/metabase/reference/metrics/MetricSidebar.jsx:33
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:74
-msgid "Questions about ${ 0 }"
+msgid "Questions about {0}"
 msgstr ""
 
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:95
 #: frontend/src/metabase/reference/metrics/MetricQuestions.jsx:99
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:98
-msgid "Created ${ 0 } by ${ 1 }"
+msgid "Created {0} by {1}"
 msgstr ""
 
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:37
@@ -5843,7 +5841,7 @@ msgstr ""
 msgid ""
 "Segments and tables are the building blocks of your company's data. Tables "
 "are collections of the raw information while segments are specific slices "
-"with specific meanings, like ${ 0 }"
+"with specific meanings, like {0}"
 msgstr ""
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:270
@@ -5882,7 +5880,7 @@ msgid "Have questions?"
 msgstr ""
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:329
-msgid "Contact ${ 0 }"
+msgid "Contact {0}"
 msgstr ""
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:250
@@ -6021,7 +6019,7 @@ msgstr ""
 #: frontend/src/metabase/reference/metrics/MetricRevisions.jsx:88
 #: frontend/src/metabase/reference/metrics/MetricSidebar.jsx:41
 #: frontend/src/metabase/reference/segments/SegmentRevisions.jsx:88
-msgid "Revision history for ${ 0 }"
+msgid "Revision history for {0}"
 msgstr ""
 
 #: frontend/src/metabase/reference/segments/SegmentDetail.jsx:217
@@ -6100,7 +6098,7 @@ msgid "I'll add my own data later"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:146
-msgid "Connecting to ${ 0 }"
+msgid "Connecting to {0}"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:165
@@ -6145,7 +6143,7 @@ msgid "Allow Metabase to anonymously collect usage events"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:105
-msgid "Metabase ${ 0 } collects anything about your data or question results."
+msgid "Metabase {0} collects anything about your data or question results."
 msgstr ""
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:108
@@ -6195,7 +6193,7 @@ msgid "What should we call you?"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/UserStep.jsx:153
-msgid "Hi, ${ 0 }. nice to meet you!"
+msgid "Hi, {0}. nice to meet you!"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/UserStep.jsx:238
@@ -6373,7 +6371,7 @@ msgid "User Details"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:150
-msgid "Customize this ${ 0 }"
+msgid "Customize this {0}"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:192
@@ -6422,11 +6420,11 @@ msgid "Unset"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/components/TableSimple.jsx:214
-msgid "Rows ${ 0 }-${ 1 } of ${ 2 }"
+msgid "Rows {0}-{1} of {2}"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:175
-msgid "Data truncated to ${ 0 } rows."
+msgid "Data truncated to {0} rows."
 msgstr ""
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:338
@@ -6446,7 +6444,7 @@ msgid "Still Waiting..."
 msgstr ""
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:466
-msgid "This usually takes an average of ${ 0 }."
+msgid "This usually takes an average of {0}."
 msgstr ""
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:472
@@ -6478,13 +6476,13 @@ msgid "Visualization with that identifier is already registered: "
 msgstr ""
 
 #: frontend/src/metabase/visualizations/index.js:66
-msgid "No visualization for ${ 0 }"
+msgid "No visualization for {0}"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:72
 msgid ""
-"\"${ 0 }\" is an unaggregated field: if it has more than one value at a "
-"point on the x-axis, the values will be summed."
+"\"{0}\" is an unaggregated field: if it has more than one value at a point "
+"on the x-axis, the values will be summed."
 msgstr ""
 
 #: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:88
@@ -6492,7 +6490,7 @@ msgid "This chart type requires at least 2 columns."
 msgstr ""
 
 #: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:93
-msgid "This chart type doesn't support more than ${ 0 } series of data."
+msgid "This chart type doesn't support more than {0} series of data."
 msgstr ""
 
 #: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:499
@@ -6503,12 +6501,12 @@ msgstr ""
 #: frontend/src/metabase/visualizations/lib/errors.js:10
 msgid ""
 "Doh! The data from your query doesn't fit the chosen display choice. This "
-"visualization requires at least ${ 0 } ${ 1 } of data."
+"visualization requires at least {0} {1} of data."
 msgstr ""
 
 #: frontend/src/metabase/visualizations/lib/errors.js:21
 msgid ""
-"No dice. We have ${ 0 } data ${ 1 } to show and that's not enough for this "
+"No dice. We have {0} data {1} to show and that's not enough for this "
 "visualization."
 msgstr ""
 
@@ -6802,11 +6800,11 @@ msgid "No relationships found."
 msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:207
-msgid "via ${ 0 }"
+msgid "via {0}"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:284
-msgid "This ${ 0 } is connected to:"
+msgid "This {0} is connected to:"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:47
@@ -6854,7 +6852,7 @@ msgid "Goal exceeded"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:207
-msgid "Goal ${ 0 }"
+msgid "Goal {0}"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:35
@@ -6924,7 +6922,7 @@ msgid "Was this helpful?"
 msgstr ""
 
 #: frontend/src/metabase/xray/components/InsightCard.jsx:42
-msgid "Most of the values for ${ 0 } are between ${ 1 } and ${ 2 }."
+msgid "Most of the values for {0} are between {1} and {2}."
 msgstr ""
 
 #: frontend/src/metabase/xray/components/InsightCard.jsx:35
@@ -6932,7 +6930,7 @@ msgid "Normal range of values"
 msgstr ""
 
 #: frontend/src/metabase/xray/components/InsightCard.jsx:70
-msgid "You have ${ 0 } missing (null) values in your data"
+msgid "You have {0} missing (null) values in your data"
 msgstr ""
 
 #: frontend/src/metabase/xray/components/InsightCard.jsx:51
@@ -6941,8 +6939,8 @@ msgstr ""
 
 #: frontend/src/metabase/xray/components/InsightCard.jsx:103
 msgid ""
-"You have ${ 0 } zeros in your data. They may be stand-ins for missing data, "
-"or might indicate some other abnormality."
+"You have {0} zeros in your data. They may be stand-ins for missing data, or "
+"might indicate some other abnormality."
 msgstr ""
 
 #: frontend/src/metabase/xray/components/InsightCard.jsx:84
@@ -6976,7 +6974,7 @@ msgid "Trending variation"
 msgstr ""
 
 #: frontend/src/metabase/xray/components/InsightCard.jsx:204
-msgid "Your data has a ${ 0 } seasonal component."
+msgid "Your data has a {0} seasonal component."
 msgstr ""
 
 #: frontend/src/metabase/xray/components/InsightCard.jsx:196
@@ -7008,7 +7006,7 @@ msgid "Stationary data"
 msgstr ""
 
 #: frontend/src/metabase/xray/components/InsightCard.jsx:333
-msgid "Your data seems to be ${ 0 } ${ 1 }."
+msgid "Your data seems to be {0} {1}."
 msgstr ""
 
 #: frontend/src/metabase/xray/components/InsightCard.jsx:326
@@ -7018,7 +7016,7 @@ msgid "Trend"
 msgstr ""
 
 #: frontend/src/metabase/xray/components/PreviewBanner.jsx:15
-msgid "Welcome to the x-ray preview! We'd love ${ 0 }"
+msgid "Welcome to the x-ray preview! We'd love {0}"
 msgstr ""
 
 #: frontend/src/metabase/xray/components/XRayComparison.jsx:191

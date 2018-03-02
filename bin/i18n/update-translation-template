@@ -25,6 +25,10 @@ mkdir -p "locales"
 BABEL_ENV=extract ./node_modules/.bin/babel -q -x .js,.jsx -o /dev/null frontend/src
 # BABEL_ENV=extract BABEL_DISABLE_CACHE=1 yarn run build
 
+# NOTE: replace c-3po's "${ 0 }" style references with xgettext "{0}" style references for consistency
+sed -i".bak" -E 's/\$\{ *([0-9]+) *\}/{\1}/g' "$POT_FRONTEND_NAME"
+rm "$POT_FRONTEND_NAME.bak"
+
 # update backend pot
 
 # xgettext before 0.19 does not understand --add-location=file. Even CentOS
@@ -48,7 +52,8 @@ find src -name "*.clj" | xgettext                   \
   --add-comments --sort-by-file                     \
   -o $POT_BACKEND_NAME -f -
 
-sed -i "" -e 's/charset=CHARSET/charset=UTF-8/' "$POT_BACKEND_NAME"
+sed -i".bak" 's/charset=CHARSET/charset=UTF-8/' "$POT_BACKEND_NAME"
+rm "$POT_BACKEND_NAME.bak"
 
 # merge frontend and backend pots
 msgcat "$POT_FRONTEND_NAME" "$POT_BACKEND_NAME" > "$POT_NAME"
