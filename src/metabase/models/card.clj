@@ -28,7 +28,6 @@
 
 (models/defmodel Card :report_card)
 
-
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
 (defn dashboard-count
@@ -101,29 +100,28 @@
                               (:schema table)
                               (or (:id table) (:table-id table)))))))
 
-(declare perms-objects-set)
-
-(defn- source-card-perms
-  "If `outer-query` is based on a source Card (if `:source-table` uses a psuedo-source-table like `card__<id>`) then
-  return the permissions needed to *read* that Card. Running or saving a Card that uses another Card as a source query
-  simply requires read permissions for that Card; e.g. if you are allowed to view a query you can save a new query
-  that uses it as a source. Thus the distinction between read and write permissions in not important here.
-
-  See issue #6845 for further discussion."
-  [outer-query]
-  (when-let [source-card-id (qputil/query->source-card-id outer-query)]
-    (perms-objects-set (Card source-card-id) :read)))
+(declare query-perms-set)
 
 (defn- mbql-permissions-path-set
   "Return the set of required permissions needed to run QUERY."
   [read-or-write query]
   {:pre [(map? query) (map? (:query query))]}
   (try
-    (or (source-card-perms query)
-        (let [{:keys [query database]} (qp/expand query)]
-          (tables->permissions-path-set read-or-write database (query->source-and-join-tables query))))
-    ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card)
-    ;; just return a set of permissions that means no one will ever get to see it
+    (or
+     ;; If `query` is based on a source Card (if `:source-table` uses a psuedo-source-table like `card__<id>`) then
+     ;; return the permissions needed to *read* that Card. Running or saving a Card that uses another Card as a source
+     ;; query simply requires read permissions for that Card; e.g. if you are allowed to view a query you can save a
+     ;; new query that uses it as a source. Thus the distinction between read and write permissions in not important
+     ;; here.
+     ;;
+     ;; See issue #6845 for further discussion.
+     (when-let [source-card-id (qputil/query->source-card-id query)]
+       (query-perms-set (db/select-one-field :dataset_query Card :id source-card-id) :read))
+     ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
+     (let [{:keys [query database]} (qp/expand query)]
+       (tables->permissions-path-set read-or-write database (query->source-and-join-tables query))))
+    ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
+    ;; that means no one will ever get to see it (except for superusers who get to see everything)
     (catch Throwable e
       (log/warn "Error getting permissions for card:" (.getMessage e) "\n"
                 (u/pprint-to-str (u/filtered-stacktrace e)))
@@ -170,20 +168,28 @@
   the Card is publicly available, or in a collection the current user can view; it also attempts to use precalcuated
   `read_permissions` when possible. This is the function that should be used for general permissions checking for a
   Card."
-  [{collection-id :collection_id, public-uuid :public_uuid, in-public-dash? :in_public_dashboard, :as card}
+  [{collection-id :collection_id, public-uuid :public_uuid, in-public-dash? :in_public_dashboard,
+    outer-query :dataset_query, :as card}
    read-or-write]
-  (cond
-    ;; you don't need any permissions to READ a public card, which is PUBLIC by definition :D
-    (and (public-settings/enable-public-sharing)
-         (= :read read-or-write)
-         (or public-uuid in-public-dash?))
-    #{}
+  (let [source-card-id (qputil/query->source-card-id outer-query)]
+    (cond
+      ;; you don't need any permissions to READ a public card, which is PUBLIC by definition :D
+      (and (public-settings/enable-public-sharing)
+           (= :read read-or-write)
+           (or public-uuid in-public-dash?))
+      #{}
 
-    collection-id
-    (collection/perms-objects-set collection-id read-or-write)
+      collection-id
+      (collection/perms-objects-set collection-id read-or-write)
 
-    :else
-    (card-perms-set-for-query card read-or-write)))
+      ;; if this is based on a source card then our permissions are based on that; recurse. You can always save a new
+      ;; Card based on a source card you can read, thus read/write permissions for this new Card will be the same as
+      ;; read permissions for its source. This is dicussed in further detail above in `mbql-permissions-path-set`
+      source-card-id
+      (card-perms-set-for-current-user (Card source-card-id) :read)
+
+      :else
+      (card-perms-set-for-query card read-or-write))))
 
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
