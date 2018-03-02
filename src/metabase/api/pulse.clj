@@ -133,7 +133,8 @@
      :pulse_card_html card-html
      :pulse_card_name (:name card)
      :pulse_card_url  (urls/card-url (:id card))
-     :row_count       (:row_count result)}))
+     :row_count       (:row_count result)
+     :col_count       (count (:cols (:data result)))}))
 
 (api/defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a `Card` with ID."

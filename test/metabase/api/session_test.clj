@@ -2,6 +2,7 @@
   "Tests for /api/session"
   (:require [expectations :refer :all]
             [metabase
+             [email-test :as et]
              [http-client :refer :all]
              [public-settings :as public-settings]
              [util :as u]]
@@ -68,16 +69,17 @@
 ;; ## POST /api/session/forgot_password
 ;; Test that we can initiate password reset
 (expect
-  (let [reset-fields-set? (fn []
-                            (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered], :id (user->id :rasta))]
-                              (boolean (and reset_token reset_triggered))))]
-    ;; make sure user is starting with no values
-    (db/update! User (user->id :rasta), :reset_token nil, :reset_triggered nil)
-    (assert (not (reset-fields-set?)))
-    ;; issue reset request (token & timestamp should be saved)
-    ((user->client :rasta) :post 200 "session/forgot_password" {:email (:username (user->credentials :rasta))})
-    ;; TODO - how can we test email sent here?
-    (reset-fields-set?)))
+  (et/with-fake-inbox
+    (let [reset-fields-set? (fn []
+                              (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered], :id (user->id :rasta))]
+                                (boolean (and reset_token reset_triggered))))]
+      ;; make sure user is starting with no values
+      (db/update! User (user->id :rasta), :reset_token nil, :reset_triggered nil)
+      (assert (not (reset-fields-set?)))
+      ;; issue reset request (token & timestamp should be saved)
+      ((user->client :rasta) :post 200 "session/forgot_password" {:email (:username (user->credentials :rasta))})
+      ;; TODO - how can we test email sent here?
+      (reset-fields-set?))))
 
 ;; Test that email is required
 (expect {:errors {:email "value must be a valid email address."}}
@@ -94,39 +96,41 @@
 (expect
   {:reset_token     nil
    :reset_triggered nil}
-  (let [password {:old "password"
-                  :new "whateverUP12!!"}]
-    (tt/with-temp User [{:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
-      (let [token (u/prog1 (str id "_" (java.util.UUID/randomUUID))
-                    (db/update! User id, :reset_token <>))
-            creds {:old {:password (:old password)
-                         :username email}
-                   :new {:password (:new password)
-                         :username email}}]
-        ;; Check that creds work
-        (client :post 200 "session" (:old creds))
+  (et/with-fake-inbox
+    (let [password {:old "password"
+                    :new "whateverUP12!!"}]
+      (tt/with-temp User [{:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
+        (let [token (u/prog1 (str id "_" (java.util.UUID/randomUUID))
+                      (db/update! User id, :reset_token <>))
+              creds {:old {:password (:old password)
+                           :username email}
+                     :new {:password (:new password)
+                           :username email}}]
+          ;; Check that creds work
+          (client :post 200 "session" (:old creds))
 
-        ;; Call reset password endpoint to change the PW
-        (client :post 200 "session/reset_password" {:token    token
-                                                    :password (:new password)})
-        ;; Old creds should no longer work
-        (assert (= (client :post 400 "session" (:old creds))
-                   {:errors {:password "did not match stored password"}}))
-        ;; New creds *should* work
-        (client :post 200 "session" (:new creds))
-        ;; Double check that reset token was cleared
-        (db/select-one [User :reset_token :reset_triggered], :id id)))))
+          ;; Call reset password endpoint to change the PW
+          (client :post 200 "session/reset_password" {:token    token
+                                                      :password (:new password)})
+          ;; Old creds should no longer work
+          (assert (= (client :post 400 "session" (:old creds))
+                     {:errors {:password "did not match stored password"}}))
+          ;; New creds *should* work
+          (client :post 200 "session" (:new creds))
+          ;; Double check that reset token was cleared
+          (db/select-one [User :reset_token :reset_triggered], :id id))))))
 
 ;; Check that password reset returns a valid session token
 (expect
   {:success    true
    :session_id true}
-  (tt/with-temp User [{:keys [id]} {:reset_triggered (System/currentTimeMillis)}]
-    (let [token (u/prog1 (str id "_" (java.util.UUID/randomUUID))
-                  (db/update! User id, :reset_token <>))]
-      (-> (client :post 200 "session/reset_password" {:token    token
-                                                      :password "whateverUP12!!"})
-          (update :session_id tu/is-uuid-string?)))))
+  (et/with-fake-inbox
+    (tt/with-temp User [{:keys [id]} {:reset_triggered (System/currentTimeMillis)}]
+      (let [token (u/prog1 (str id "_" (java.util.UUID/randomUUID))
+                    (db/update! User id, :reset_token <>))]
+        (-> (client :post 200 "session/reset_password" {:token    token
+                                                        :password "whateverUP12!!"})
+            (update :session_id tu/is-uuid-string?))))))
 
 ;; Test that token and password are required
 (expect {:errors {:token "value must be a non-blank string."}}
@@ -217,11 +221,12 @@
 ;; should totally work if the email domains match up
 (expect
   {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
-  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
-                                     admin-email                             "rasta@toucans.com"]
-    (select-keys (u/prog1 (#'session-api/google-auth-create-new-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
-                   (db/delete! User :id (:id <>))) ; make sure we clean up after ourselves !
-                 [:first_name :last_name :email])))
+  (et/with-fake-inbox
+    (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
+                                       admin-email                             "rasta@toucans.com"]
+      (select-keys (u/prog1 (#'session-api/google-auth-create-new-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
+                     (db/delete! User :id (:id <>))) ; make sure we clean up after ourselves !
+                   [:first_name :last_name :email]))))
 
 
 ;;; tests for google-auth-fetch-or-create-user!
@@ -248,10 +253,11 @@
 ;; test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets
 ;; created
 (expect
-  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
-                                     admin-email                             "rasta@toucans.com"]
-    (u/prog1 (is-session? (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com"))
-      (db/delete! User :email "rasta@sf-toucannery.com")))) ; clean up after ourselves
+  (et/with-fake-inbox
+    (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
+                                       admin-email                             "rasta@toucans.com"]
+      (u/prog1 (is-session? (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com"))
+        (db/delete! User :email "rasta@sf-toucannery.com"))))) ; clean up after ourselves
 
 
 ;;; ------------------------------------------- TESTS FOR LDAP AUTH STUFF --------------------------------------------

@@ -204,19 +204,21 @@
      :content-type content-type
      :file-name    (format "%s.%s" card-name ext)
      :content      (-> attachment-file .toURI .toURL)
-     :description  (format "Full results for '%s'" card-name)}))
+     :description  (format "More results for '%s'" card-name)}))
 
 (defn- result-attachments [results]
   (remove nil?
           (apply concat
-                 (for [{{card-name :name, csv? :include_csv, xls? :include_xls} :card :as result} results
-                       :when (and (or csv? xls?)
-                                  (seq (get-in result [:result :data :rows])))]
-                   [(when-let [temp-file (and csv? (create-temp-file "csv"))]
+                 (for [{{card-name :name, :as card} :card :as result} results
+                       :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
+                       :when (seq rows)]
+                   [(when-let [temp-file (and (render/include-csv-attachment? card result-data)
+                                              (create-temp-file "csv"))]
                       (export/export-to-csv-writer temp-file result)
                       (create-result-attachment-map "csv" card-name temp-file))
 
-                    (when-let [temp-file (and xls? (create-temp-file "xlsx"))]
+                    (when-let [temp-file (and (render/include-xls-attachment? card result-data)
+                                              (create-temp-file "xlsx"))]
                       (export/export-to-xlsx-file temp-file result)
                       (create-result-attachment-map "xlsx" card-name temp-file))]))))
 

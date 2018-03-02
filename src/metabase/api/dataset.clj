@@ -21,22 +21,6 @@
              [schema :as su]]
             [schema.core :as s]))
 
-;;; --------------------------------------------------- Constants ----------------------------------------------------
-
-(def ^:private ^:const max-results-bare-rows
-  "Maximum number of rows to return specifically on :rows type queries via the API."
-  2000)
-
-(def ^:private ^:const max-results
-  "General maximum number of rows to return from an API query."
-  10000)
-
-(def ^:const default-query-constraints
-  "Default map of constraints that we apply on dataset queries executed by the api."
-  {:max-results           max-results
-   :max-results-bare-rows max-results-bare-rows})
-
-
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
 (defn- query->source-card-id
@@ -61,8 +45,8 @@
   (let [source-card-id (query->source-card-id query)]
     (api/cancellable-json-response
      (fn []
-       (qp/process-query-and-save-execution! (assoc query :constraints default-query-constraints)
-         {:executed-by api/*current-user-id*, :context :ad-hoc, :card-id source-card-id, :nested? (boolean source-card-id)})))))
+       (qp/process-query-and-save-with-max! query {:executed-by api/*current-user-id*, :context :ad-hoc,
+                                                   :card-id     source-card-id,        :nested? (boolean source-card-id)})))))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -151,7 +135,7 @@
   ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if
   ;; there's no data there. If we still can't find relevant info, just default to 0
   {:average (or (query/average-execution-time-ms (qputil/query-hash query))
-                (query/average-execution-time-ms (qputil/query-hash (assoc query :constraints default-query-constraints)))
+                (query/average-execution-time-ms (qputil/query-hash (assoc query :constraints qp/default-query-constraints)))
                 0)})
 
 (api/define-routes)
