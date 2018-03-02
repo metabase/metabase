@@ -62,20 +62,25 @@ class TokenFieldWithStateAndDefaults extends React.Component {
 }
 
 describe("TokenField", () => {
-  let component, input;
+  let component;
+  const input = () => component.find("input");
   const value = () => component.state().value;
   const options = () => component.find(MockOption).map(o => o.text());
   const values = () => component.find(MockValue).map(v => v.text());
-  const blur = () => input.simulate("blur");
-  const focus = () => input.simulate("focus");
-  const type = str => input.simulate("change", { target: { value: str } });
+  const blur = () => input().simulate("blur");
+  const focus = () => input().simulate("focus");
+  const type = str => input().simulate("change", { target: { value: str } });
   const focusAndType = str => focus() && type(str);
-  const keyDown = keyCode => input.simulate("keydown", { keyCode });
+  const keyDown = keyCode => input().simulate("keydown", { keyCode });
   const clickOption = (n = 0) =>
     component
       .find(MockOption)
       .at(n)
       .simulate("click");
+
+  afterEach(() => {
+    component = null;
+  });
 
   it("should render with no options or values", () => {
     component = mount(<TokenFieldWithStateAndDefaults />);
@@ -112,8 +117,6 @@ describe("TokenField", () => {
         options={["bar", "baz"]}
       />,
     );
-    input = component.find("input");
-
     focusAndType("nope");
     expect(options()).toEqual([]);
     type("bar");
@@ -128,7 +131,6 @@ describe("TokenField", () => {
         parseFreeformValue={value => value}
       />,
     );
-    input = component.find("input");
     focusAndType("yep");
     expect(value()).toEqual([]);
     keyDown(KEYCODE_ENTER);
@@ -140,10 +142,7 @@ describe("TokenField", () => {
       <TokenFieldWithStateAndDefaults value={[]} options={["bar", "baz"]} />,
     );
     expect(value()).toEqual([]);
-    component
-      .find(MockOption)
-      .first()
-      .simulate("click");
+    clickOption(0);
     expect(value()).toEqual(["bar"]);
   });
 
@@ -152,10 +151,7 @@ describe("TokenField", () => {
       <TokenFieldWithStateAndDefaults value={[]} options={["bar", "baz"]} />,
     );
     expect(options()).toEqual(["bar", "baz"]);
-    component
-      .find(MockOption)
-      .first()
-      .simulate("click");
+    clickOption(0);
     await delay(100);
     expect(options()).toEqual(["baz"]);
   });
@@ -164,15 +160,11 @@ describe("TokenField", () => {
     component = mount(
       <TokenFieldWithStateAndDefaults value={[]} options={["foo", "bar"]} />,
     );
-    input = component.find("input");
 
     focus();
     expect(value()).toEqual([]);
     type("ba");
-    component
-      .find(MockOption)
-      .first()
-      .simulate("click");
+    clickOption(0);
     expect(value()).toEqual(["bar"]);
   });
 
@@ -187,7 +179,6 @@ describe("TokenField", () => {
           updateOnInputChange
         />,
       );
-      input = component.find("input");
     });
 
     it("should add freeform value immediately if updateOnInputChange is provided", () => {
@@ -200,13 +191,9 @@ describe("TokenField", () => {
       focusAndType("Do");
       expect(value()).toEqual(["Do"]);
 
-      // click the first option
-      component
-        .find(MockOption)
-        .first()
-        .simulate("click");
+      clickOption(0);
       expect(value()).toEqual(["Doohickey"]);
-      expect(input.props().value).toEqual("");
+      expect(input().props().value).toEqual("");
     });
 
     it("should only add one option when filtered and enter is pressed", async () => {
@@ -217,7 +204,7 @@ describe("TokenField", () => {
       // press enter
       keyDown(KEYCODE_ENTER);
       expect(value()).toEqual(["Doohickey"]);
-      expect(input.props().value).toEqual("");
+      expect(input().props().value).toEqual("");
     });
 
     it("shouldn't hide option matching input freeform value", () => {
@@ -250,7 +237,7 @@ describe("TokenField", () => {
       expect(options()).toEqual(["Gadget", "Gizmo"]);
       keyDown(KEYCODE_ENTER);
       expect(options()).toEqual(["Gizmo"]);
-      expect(component.find("input").props().value).toEqual("");
+      expect(input().props().value).toEqual("");
     });
 
     it("should reset the search when focusing", () => {
@@ -316,7 +303,6 @@ describe("TokenField", () => {
             onChange={spy}
           />,
         );
-        input = component.find("input");
 
         // limit our options by typing
         focusAndType("G");
@@ -324,7 +310,7 @@ describe("TokenField", () => {
         // the initially selected option should be the first option
         expect(component.state().selectedOptionValue).toBe(DEFAULT_OPTIONS[1]);
 
-        input.simulate("keydown", {
+        input().simulate("keydown", {
           keyCode: KEYCODE_DOWN,
           preventDefault: jest.fn(),
         });
@@ -332,7 +318,7 @@ describe("TokenField", () => {
         // the next possible option should be selected now
         expect(component.state().selectedOptionValue).toBe(DEFAULT_OPTIONS[2]);
 
-        input.simulate("keydown", {
+        input().simulate("keydown", {
           keyCode: key,
           preventDefalut: jest.fn(),
         });
@@ -355,12 +341,31 @@ describe("TokenField", () => {
           multi
         />,
       );
-      input = component.find("input");
       focusAndType("asdf");
-      input.simulate("keydown", {
+      input().simulate("keydown", {
         keyCode: KEYCODE_TAB,
         preventDefault: preventDefault,
       });
+      expect(preventDefault).toHaveBeenCalled();
+    });
+    it('should paste "1,2,3" as multiple values', () => {
+      const preventDefault = jest.fn();
+      component = mount(
+        <TokenFieldWithStateAndDefaults
+          // return null for empty string since it's not a valid
+          parseFreeformValue={value => value || null}
+          updateOnInputChange
+          multi
+        />,
+      );
+      input().simulate("paste", {
+        clipboardData: {
+          getData: () => "1,2,3",
+        },
+        preventDefault,
+      });
+      expect(values()).toEqual(["1", "2", "3"]);
+      // prevent pasting into <input>
       expect(preventDefault).toHaveBeenCalled();
     });
   });
@@ -375,13 +380,73 @@ describe("TokenField", () => {
           updateOnInputChange
         />,
       );
-      input = component.find("input");
       focusAndType("asdf");
-      input.simulate("keydown", {
+      input().simulate("keydown", {
         keyCode: KEYCODE_TAB,
         preventDefault: preventDefault,
       });
       expect(preventDefault).not.toHaveBeenCalled();
+    });
+    it('should paste "1,2,3" as one value', () => {
+      const preventDefault = jest.fn();
+      component = mount(
+        <TokenFieldWithStateAndDefaults
+          // return null for empty string since it's not a valid
+          parseFreeformValue={value => value || null}
+          updateOnInputChange
+        />,
+      );
+      input().simulate("paste", {
+        clipboardData: {
+          getData: () => "1,2,3",
+        },
+        preventDefault,
+      });
+      expect(values()).toEqual(["1,2,3"]);
+      // prevent pasting into <input>
+      expect(preventDefault).toHaveBeenCalled();
+    });
+  });
+
+  describe("custom layoutRenderer", () => {
+    let layoutRenderer;
+    beforeEach(() => {
+      layoutRenderer = jest
+        .fn()
+        .mockImplementation(({ valuesList, optionsList }) => (
+          <div>
+            {valuesList}
+            {optionsList}
+          </div>
+        ));
+      component = mount(
+        <TokenFieldWithStateAndDefaults
+          options={["hello"]}
+          layoutRenderer={layoutRenderer}
+        />,
+      );
+    });
+    it("should be called with isFiltered=true when filtered", () => {
+      let call = layoutRenderer.mock.calls.pop();
+      expect(call[0].isFiltered).toEqual(false);
+      expect(call[0].isAllSelected).toEqual(false);
+      focus();
+      type("blah");
+      call = layoutRenderer.mock.calls.pop();
+      expect(call[0].optionList).toEqual(undefined);
+      expect(call[0].isFiltered).toEqual(true);
+      expect(call[0].isAllSelected).toEqual(false);
+    });
+    it("should be called with isAllSelected=true when all options are selected", () => {
+      let call = layoutRenderer.mock.calls.pop();
+      expect(call[0].isFiltered).toEqual(false);
+      expect(call[0].isAllSelected).toEqual(false);
+      focus();
+      keyDown(KEYCODE_ENTER);
+      call = layoutRenderer.mock.calls.pop();
+      expect(call[0].optionList).toEqual(undefined);
+      expect(call[0].isFiltered).toEqual(false);
+      expect(call[0].isAllSelected).toEqual(true);
     });
   });
 });

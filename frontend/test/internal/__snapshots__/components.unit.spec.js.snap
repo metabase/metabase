@@ -444,7 +444,7 @@ exports[`Select should render "Default" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="AdminSelect flex align-center  text-grey-3"
+    className="AdminSelect border-med flex align-center  text-grey-3"
   >
     <span
       className="AdminSelect-content mr1"
@@ -479,7 +479,7 @@ exports[`Select should render "With search" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="AdminSelect flex align-center  text-grey-3"
+    className="AdminSelect border-med flex align-center  text-grey-3"
   >
     <span
       className="AdminSelect-content mr1"
@@ -794,6 +794,7 @@ exports[`TokenField should render "" correctly 1`] = `
       <div
         className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-grey-0-hover"
         onClick={[Function]}
+        onMouseDown={[Function]}
       >
         <span>
           Doohickey
@@ -804,6 +805,7 @@ exports[`TokenField should render "" correctly 1`] = `
       <div
         className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-grey-0-hover"
         onClick={[Function]}
+        onMouseDown={[Function]}
       >
         <span>
           Gadget
@@ -814,6 +816,7 @@ exports[`TokenField should render "" correctly 1`] = `
       <div
         className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-grey-0-hover"
         onClick={[Function]}
+        onMouseDown={[Function]}
       >
         <span>
           Gizmo
@@ -824,6 +827,7 @@ exports[`TokenField should render "" correctly 1`] = `
       <div
         className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-grey-0-hover"
         onClick={[Function]}
+        onMouseDown={[Function]}
       >
         <span>
           Widget
@@ -872,6 +876,7 @@ exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
       <div
         className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-grey-0-hover"
         onClick={[Function]}
+        onMouseDown={[Function]}
       >
         <span>
           Doohickey
@@ -882,6 +887,7 @@ exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
       <div
         className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-grey-0-hover"
         onClick={[Function]}
+        onMouseDown={[Function]}
       >
         <span>
           Gadget
@@ -892,6 +898,7 @@ exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
       <div
         className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-grey-0-hover"
         onClick={[Function]}
+        onMouseDown={[Function]}
       >
         <span>
           Gizmo
@@ -902,6 +909,7 @@ exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
       <div
         className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-grey-0-hover"
         onClick={[Function]}
+        onMouseDown={[Function]}
       >
         <span>
           Widget

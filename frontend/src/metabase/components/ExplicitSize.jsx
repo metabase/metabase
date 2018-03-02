@@ -19,8 +19,10 @@ export default ComposedComponent =>
 
     componentDidMount() {
       // media query listener, ensure re-layout when printing
-      this._mql = window.matchMedia("print");
-      this._mql.addListener(this._updateSize);
+      if (window.matchMedia) {
+        this._mql = window.matchMedia("print");
+        this._mql.addListener(this._updateSize);
+      }
 
       // resize observer, ensure re-layout when container element changes size
       this._ro = new ResizeObserver((entries, observer) => {
@@ -42,8 +44,12 @@ export default ComposedComponent =>
     }
 
     componentWillUnmount() {
-      this._ro.disconnect();
-      this._mql.removeListener(this._updateSize);
+      if (this._ro) {
+        this._ro.disconnect();
+      }
+      if (this._mql) {
+        this._mql.removeListener(this._updateSize);
+      }
     }
 
     _updateSize = () => {
