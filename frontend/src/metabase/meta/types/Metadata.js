@@ -63,7 +63,6 @@ export type Operator = {
   moreVerboseName: string,
   fields: OperatorField[],
   multi: boolean,
-  advanced: boolean,
   placeholders?: string[],
   validArgumentsFilters: ValidArgumentsFilter[],
 };
