@@ -118,7 +118,7 @@ const PublicQueryButton = ({
   <DownloadButton
     className={className}
     method="GET"
-    url={Urls.publicCard(uuid, type)}
+    url={Urls.publicQuestion(uuid, type)}
     params={{ parameters: JSON.stringify(json_query.parameters) }}
     extensions={[type]}
   >

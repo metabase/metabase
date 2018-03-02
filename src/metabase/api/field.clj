@@ -32,7 +32,7 @@
   "Get `Field` with ID."
   [id]
   (-> (api/read-check Field id)
-      (hydrate [:table :db] :has_field_values)))
+      (hydrate [:table :db] :has_field_values :dimensions :name_field)))
 
 (defn- clear-dimension-on-fk-change! [{{dimension-id :id dimension-type :type} :dimensions :as field}]
   (when (and dimension-id (= :external dimension-type))
@@ -150,17 +150,23 @@
 (def ^:private empty-field-values
   {:values []})
 
+(defn field->values
+  "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
+  use-cases."
+  [field]
+  (api/check-404 field)
+  (if-let [field-values (and (field-values/field-should-have-field-values? field)
+                             (field-values/create-field-values-if-needed! field))]
+    (-> field-values
+        (assoc :values (field-values/field-values->pairs field-values))
+        (dissoc :human_readable_values :created_at :updated_at :id))
+    {:values [], :field_id (:id field)}))
+
 (api/defendpoint GET "/:id/values"
   "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return all distinct
   values of the field, and a map of human-readable values defined by the user."
   [id]
-  (let [field (api/read-check Field id)]
-    (if-let [field-values (and (field-values/field-should-have-field-values? field)
-                               (field-values/create-field-values-if-needed! field))]
-      (-> field-values
-          (assoc :values (field-values/field-values->pairs field-values))
-          (dissoc :human_readable_values))
-      {:values []})))
+  (field->values (api/read-check Field id)))
 
 ;; match things like GET /field-literal%2Ccreated_at%2Ctype%2FDatetime/values
 ;; (this is how things like [field-literal,created_at,type/Datetime] look when URL-encoded)
@@ -254,7 +260,7 @@
     field))
 
 
-(s/defn ^:private search-values
+(s/defn search-values
   "Search for values of `search-field` that start with `value` (up to `limit`, if specified), and return like
 
       [<value-of-field> <matching-value-of-search-field>].
@@ -314,14 +320,20 @@
     ;; return first row if it exists
     (first (get-in results [:data :rows]))))
 
+(defn parse-query-param-value-for-field
+  "Parse a `value` passed as a URL query param in a way appropriate for the `field` it belongs to. E.g. for text Fields
+  the value doesn't need to be parsed; for numeric Fields we should parse it as a number."
+  [field, ^String value]
+  (if (isa? (:base_type field) :type/Number)
+    (.parse (NumberFormat/getInstance) value)
+    value))
+
 (api/defendpoint GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
   [id remapped-id, ^String value]
   (let [field          (api/read-check Field id)
         remapped-field (api/read-check Field remapped-id)
-        value          (if (isa? (:base_type field) :type/Number)
-                         (.parse (NumberFormat/getInstance) value)
-                         value)]
+        value          (parse-query-param-value-for-field field value)]
     (remapped-value field remapped-field value)))
 
 

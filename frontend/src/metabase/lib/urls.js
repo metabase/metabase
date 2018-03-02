@@ -83,7 +83,7 @@ export function label(label) {
   return `/questions/search?label=${encodeURIComponent(label.slug)}`;
 }
 
-export function publicCard(uuid, type = null) {
+export function publicQuestion(uuid, type = null) {
   const siteUrl = MetabaseSettings.get("site_url");
   return `${siteUrl}/public/question/${uuid}` + (type ? `.${type}` : ``);
 }
@@ -95,4 +95,8 @@ export function publicDashboard(uuid) {
 
 export function embedCard(token, type = null) {
   return `/embed/question/${token}` + (type ? `.${type}` : ``);
+}
+
+export function embedDashboard(token) {
+  return `/embed/dashboard/${token}`;
 }

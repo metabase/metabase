@@ -11,6 +11,8 @@ const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 // $FlowFixMe: Flow doesn't understand webpack loader syntax
 import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
+import type { Data, Options } from "metabase/lib/api";
+
 export const ActivityApi = {
   list: GET("/api/activity"),
   recent_views: GET("/api/activity/recent_views"),
@@ -314,5 +316,42 @@ export const GeoJSONApi = {
 export const I18NApi = {
   locale: GET("/app/locales/:locale.json"),
 };
+
+export function setPublicQuestionEndpoints(uuid: string) {
+  setFieldEndpoints("/api/public/card/:uuid", { uuid });
+}
+export function setPublicDashboardEndpoints(uuid: string) {
+  setFieldEndpoints("/api/public/dashboard/:uuid", { uuid });
+}
+export function setEmbedQuestionEndpoints(token: string) {
+  if (!IS_EMBED_PREVIEW) {
+    setFieldEndpoints("/api/embed/card/:token", { token });
+  }
+}
+export function setEmbedDashboardEndpoints(token: string) {
+  if (!IS_EMBED_PREVIEW) {
+    setFieldEndpoints("/api/embed/dashboard/:token", { token });
+  }
+}
+
+function GET_with(url: string, params: Data) {
+  return (data: Data, options?: Options) =>
+    GET(url)({ ...params, ...data }, options);
+}
+
+export function setFieldEndpoints(prefix: string, params: Data) {
+  MetabaseApi.field_values = GET_with(
+    prefix + "/field/:fieldId/values",
+    params,
+  );
+  MetabaseApi.field_search = GET_with(
+    prefix + "/field/:fieldId/search/:searchFieldId",
+    params,
+  );
+  MetabaseApi.field_remapping = GET_with(
+    prefix + "/field/:fieldId/remapping/:remappedFieldId",
+    params,
+  );
+}
 
 global.services = exports;

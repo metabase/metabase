@@ -6,12 +6,12 @@ import EventEmitter from "events";
 
 type TransformFn = (o: any) => any;
 
-type Options = {
+export type Options = {
   noEvent?: boolean,
   transformResponse?: TransformFn,
   cancelled?: Promise<any>,
 };
-type Data = {
+export type Data = {
   [key: string]: any,
 };
 
