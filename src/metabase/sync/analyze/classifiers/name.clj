@@ -65,7 +65,7 @@
    [#"income"             number-type      :type/Income]
    [#"amount"             number-type      :type/Income]
    [#"^total"             number-type      :type/Income]
-   [#"total$"             number-type      :type/Income]
+   [#"_total$"            number-type      :type/Income]
    [#"quantity"           int-type         :type/Quantity]
    [#"count$"             int-type         :type/Quantity]
    [#"number"             int-type         :type/Quantity]

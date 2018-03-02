@@ -71,6 +71,9 @@
     (isa? special_type :type/Category) "category"))
 
 (defn add-filters!
+  "Add filters to dashboard `dashboard`. Takes an optional argument `dimensions`
+   which is a list of fields for which to create filters, else it tries to infer
+   by which fields it would be useful to filter."
   ([dashboard]
    (add-filters! (->> (db/select-field :card_id DashboardCard
                                        :dashboard_id (:id dashboard))
