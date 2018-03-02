@@ -516,20 +516,21 @@
 
 ;; should be able to fetch values for a Field referenced by a public Card
 (expect
- {:values [["20th Century Cafe"]
-           ["25°"]
-           ["33 Taps"]
-           ["800 Degrees Neapolitan Pizzeria"]
-           ["BCD Tofu House"]]}
- (with-embedding-enabled-and-temp-card-referencing :venues :name [card]
-   (-> (http/client :get 200 (field-values-url card (data/id :venues :name)))
-       (update :values (partial take 5)))))
+  {:values   [["20th Century Cafe"]
+              ["25°"]
+              ["33 Taps"]
+              ["800 Degrees Neapolitan Pizzeria"]
+              ["BCD Tofu House"]]
+   :field_id (data/id :venues :name)}
+  (with-embedding-enabled-and-temp-card-referencing :venues :name [card]
+    (-> (http/client :get 200 (field-values-url card (data/id :venues :name)))
+        (update :values (partial take 5)))))
 
 ;; but for Fields that are not referenced we should get an Exception
 (expect
- "Not found."
- (with-embedding-enabled-and-temp-card-referencing :venues :name [card]
-   (http/client :get 400 (field-values-url card (data/id :venues :price)))))
+  "Not found."
+  (with-embedding-enabled-and-temp-card-referencing :venues :name [card]
+    (http/client :get 400 (field-values-url card (data/id :venues :price)))))
 
 ;; Endpoint should fail if embedding is disabled
 (expect
@@ -569,11 +570,12 @@
 
 ;; should be able to use it when everything is g2g
 (expect
-  {:values [["20th Century Cafe"]
-            ["25°"]
-            ["33 Taps"]
-            ["800 Degrees Neapolitan Pizzeria"]
-            ["BCD Tofu House"]]}
+  {:values   [["20th Century Cafe"]
+              ["25°"]
+              ["33 Taps"]
+              ["800 Degrees Neapolitan Pizzeria"]
+              ["BCD Tofu House"]]
+   :field_id (data/id :venues :name)}
   (with-embedding-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
     (-> (http/client :get 200 (field-values-url dashboard (data/id :venues :name)))
         (update :values (partial take 5)))))

@@ -504,22 +504,24 @@
 
 ;; We should be able to get values for a Field referenced by a Card
 (expect
-  {:values [["20th Century Cafe"]
-            ["25°"]
-            ["33 Taps"]
-            ["800 Degrees Neapolitan Pizzeria"]
-            ["BCD Tofu House"]]}
+  {:values   [["20th Century Cafe"]
+              ["25°"]
+              ["33 Taps"]
+              ["800 Degrees Neapolitan Pizzeria"]
+              ["BCD Tofu House"]]
+   :field_id (data/id :venues :name)}
   (tt/with-temp Card [card (mbql-card-referencing :venues :name)]
     (-> (public-api/card-and-field-id->values (u/get-id card) (data/id :venues :name))
         (update :values (partial take 5)))))
 
 ;; SQL param field references should work just as well as MBQL field referenced
 (expect
-  {:values [["20th Century Cafe"]
-            ["25°"]
-            ["33 Taps"]
-            ["800 Degrees Neapolitan Pizzeria"]
-            ["BCD Tofu House"]]}
+  {:values   [["20th Century Cafe"]
+              ["25°"]
+              ["33 Taps"]
+              ["800 Degrees Neapolitan Pizzeria"]
+              ["BCD Tofu House"]]
+   :field_id (data/id :venues :name)}
   (tt/with-temp Card [card (sql-card-referencing-venue-name)]
     (-> (public-api/card-and-field-id->values (u/get-id card) (data/id :venues :name))
         (update :values (partial take 5)))))
@@ -557,14 +559,15 @@
 
 ;; should be able to fetch values for a Field referenced by a public Card
 (expect
- {:values [["20th Century Cafe"]
-           ["25°"]
-           ["33 Taps"]
-           ["800 Degrees Neapolitan Pizzeria"]
-           ["BCD Tofu House"]]}
- (with-sharing-enabled-and-temp-card-referencing :venues :name [card]
-   (-> (http/client :get 200 (field-values-url card (data/id :venues :name)))
-       (update :values (partial take 5)))))
+  {:values   [["20th Century Cafe"]
+              ["25°"]
+              ["33 Taps"]
+              ["800 Degrees Neapolitan Pizzeria"]
+              ["BCD Tofu House"]]
+   :field_id (data/id :venues :name)}
+  (with-sharing-enabled-and-temp-card-referencing :venues :name [card]
+    (-> (http/client :get 200 (field-values-url card (data/id :venues :name)))
+        (update :values (partial take 5)))))
 
 ;; but for Fields that are not referenced we should get an Exception
 (expect
@@ -603,11 +606,12 @@
 
 ;; should be able to use it when everything is g2g
 (expect
-  {:values [["20th Century Cafe"]
-            ["25°"]
-            ["33 Taps"]
-            ["800 Degrees Neapolitan Pizzeria"]
-            ["BCD Tofu House"]]}
+  {:values   [["20th Century Cafe"]
+              ["25°"]
+              ["33 Taps"]
+              ["800 Degrees Neapolitan Pizzeria"]
+              ["BCD Tofu House"]]
+   :field_id (data/id :venues :name)}
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
     (-> (http/client :get 200 (field-values-url dashboard (data/id :venues :name)))
         (update :values (partial take 5)))))
