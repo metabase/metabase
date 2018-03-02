@@ -93,11 +93,12 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
-          :types          (constantly {:base_type       :keyword
-                                       :special_type    :keyword
-                                       :visibility_type :keyword
-                                       :description     :clob
-                                       :fingerprint     :json})
+          :types          (constantly {:base_type        :keyword
+                                       :special_type     :keyword
+                                       :visibility_type  :keyword
+                                       :description      :clob
+                                       :has_field_values :clob
+                                       :fingerprint      :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-update     pre-update
@@ -181,10 +182,11 @@
                                               (db/select-field :field_id FieldValues
                                                 :field_id [:in fields-without-has-field-values-ids]))]
     (for [field fields]
-      (assoc field :has_field_values (or (:has_field_values field)
-                                         (if (contains? fields-with-fieldvalues-ids (u/get-id field))
-                                           :list
-                                           :search))))))
+      (do
+        (assoc field :has_field_values (or (:has_field_values field)
+                                           (if (contains? fields-with-fieldvalues-ids (u/get-id field))
+                                             :list
+                                             :search)))))))
 
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"

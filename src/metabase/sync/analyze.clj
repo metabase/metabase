@@ -11,7 +11,7 @@
             [metabase.sync.analyze
              [classify :as classify]
              [fingerprint :as fingerprint]
-             [table-row-count :as table-row-count]]
+             #_[table-row-count :as table-row-count]]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -68,7 +68,8 @@
 (s/defn analyze-table!
   "Perform in-depth analysis for a TABLE."
   [table :- i/TableInstance]
-  (table-row-count/update-row-count! table)
+  ;; Table row count disabled for now because of performance issues
+  #_(table-row-count/update-row-count! table)
   (fingerprint/fingerprint-fields! table)
   (classify/classify-fields! table)
   (update-fields-last-analyzed! table))

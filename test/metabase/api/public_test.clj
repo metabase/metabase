@@ -55,7 +55,9 @@
 (defn- add-card-to-dashboard! [card dashboard]
   (db/insert! DashboardCard :dashboard_id (u/get-id dashboard), :card_id (u/get-id card)))
 
-(defmacro with-temp-public-dashboard-and-card {:style/indent 1} [[dashboard-binding card-binding & [dashcard-binding]] & body]
+(defmacro with-temp-public-dashboard-and-card
+  {:style/indent 1}
+  [[dashboard-binding card-binding & [dashcard-binding]] & body]
   `(with-temp-public-dashboard [dash#]
      (with-temp-public-card [card#]
        (let [~dashboard-binding        dash#
@@ -100,18 +102,19 @@
   {(data/id :categories :name) {:values                75
                                 :human_readable_values {}
                                 :field_id              (data/id :categories :name)}}
-  (tt/with-temp Card [card {:dataset_query {:type   :native
-                                            :native {:query         (str "SELECT COUNT(*) "
-                                                                         "FROM venues "
-                                                                         "LEFT JOIN categories ON venues.category_id = categories.id "
-                                                                         "WHERE {{category}}")
-                                                     :collection    "CATEGORIES"
-                                                     :template_tags {:category {:name         "category"
-                                                                                :display_name "Category"
-                                                                                :type         "dimension"
-                                                                                :dimension    ["field-id" (data/id :categories :name)]
-                                                                                :widget_type  "category"
-                                                                                :required     true}}}}}]
+  (tt/with-temp Card [card {:dataset_query
+                            {:type   :native
+                             :native {:query         (str "SELECT COUNT(*) "
+                                                          "FROM venues "
+                                                          "LEFT JOIN categories ON venues.category_id = categories.id "
+                                                          "WHERE {{category}}")
+                                      :collection    "CATEGORIES"
+                                      :template_tags {:category {:name         "category"
+                                                                 :display_name "Category"
+                                                                 :type         "dimension"
+                                                                 :dimension    ["field-id" (data/id :categories :name)]
+                                                                 :widget_type  "category"
+                                                                 :required     true}}}}}]
     (-> (:param_values (#'public-api/public-card :id (u/get-id card)))
         (update-in [(data/id :categories :name) :values] count))))
 

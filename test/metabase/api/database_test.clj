@@ -15,7 +15,7 @@
              [field-values :as field-values]
              [sync-metadata :as sync-metadata]]
             [metabase.test
-             [data :as data :refer :all]
+             [data :as data]
              [util :as tu :refer [match-$]]]
             [metabase.test.data
              [datasets :as datasets]
@@ -72,9 +72,9 @@
    :timezone                    nil})
 
 (defn- db-details
-  "Return default column values for a database (either the test database, via `(db)`, or optionally passed in)."
+  "Return default column values for a database (either the test database, via `(data/db)`, or optionally passed in)."
   ([]
-   (db-details (db)))
+   (db-details (data/db)))
   ([db]
    (merge default-db-details
           (match-$ db
@@ -102,12 +102,12 @@
 ;; regular users *should not* see DB details
 (expect
   (add-schedules (dissoc (db-details) :details))
-  ((user->client :rasta) :get 200 (format "database/%d" (id))))
+  ((user->client :rasta) :get 200 (format "database/%d" (data/id))))
 
 ;; superusers *should* see DB details
 (expect
   (add-schedules (db-details))
-  ((user->client :crowberto) :get 200 (format "database/%d" (id))))
+  ((user->client :crowberto) :get 200 (format "database/%d" (data/id))))
 
 ;; ## POST /api/database
 ;; Check that we can create a Database
@@ -184,7 +184,7 @@
   (let [ids-to-skip (into (set skip)
                           (for [engine datasets/all-valid-engines
                                 :let   [id (datasets/when-testing-engine engine
-                                             (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]
+                                             (:id (data/get-or-create-test-data-db! (driver/engine->driver engine))))]
                                 :when  id]
                             id))]
     (when-let [dbs (seq (db/select [Database :name :engine :id] :id [:not-in ids-to-skip]))]
@@ -203,7 +203,7 @@
   (set (filter identity (conj (for [engine datasets/all-valid-engines]
                                 (datasets/when-testing-engine engine
                                   (merge default-db-details
-                                         (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
+                                         (match-$ (data/get-or-create-test-data-db! (driver/engine->driver engine))
                                            {:created_at         $
                                             :engine             (name $engine)
                                             :id                 $
@@ -243,7 +243,7 @@
                        :features           (map name (driver/features (driver/engine->driver :postgres)))}))
              (filter identity (for [engine datasets/all-valid-engines]
                                 (datasets/when-testing-engine engine
-                                  (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
+                                  (let [database (data/get-or-create-test-data-db! (driver/engine->driver engine))]
                                     (merge default-db-details
                                            (match-$ database
                                              {:created_at         $
@@ -286,7 +286,7 @@
 ;; ## GET /api/database/:id/metadata
 (expect
   (merge default-db-details
-         (match-$ (db)
+         (match-$ (data/db)
            {:created_at $
             :engine     "h2"
             :id         $
@@ -295,12 +295,12 @@
             :timezone   $
             :features   (mapv name (driver/features (driver/engine->driver :h2)))
             :tables     [(merge default-table-details
-                                (match-$ (Table (id :categories))
+                                (match-$ (Table (data/id :categories))
                                   {:schema       "PUBLIC"
                                    :name         "CATEGORIES"
                                    :display_name "Categories"
-                                   :fields       [(assoc (field-details (Field (id :categories :id)))
-                                                    :table_id         (id :categories)
+                                   :fields       [(assoc (field-details (Field (data/id :categories :id)))
+                                                    :table_id         (data/id :categories)
                                                     :special_type     "type/PK"
                                                     :name             "ID"
                                                     :display_name     "ID"
@@ -308,8 +308,8 @@
                                                     :base_type        "type/BigInteger"
                                                     :visibility_type  "normal"
                                                     :has_field_values "search")
-                                                  (assoc (field-details (Field (id :categories :name)))
-                                                    :table_id         (id :categories)
+                                                  (assoc (field-details (Field (data/id :categories :name)))
+                                                    :table_id         (data/id :categories)
                                                     :special_type     "type/Name"
                                                     :name             "NAME"
                                                     :display_name     "Name"
@@ -319,13 +319,13 @@
                                                     :has_field_values "list")]
                                    :segments     []
                                    :metrics      []
-                                   :rows         75
+                                   :rows         nil
                                    :updated_at   $
-                                   :id           (id :categories)
+                                   :id           (data/id :categories)
                                    :raw_table_id $
-                                   :db_id        (id)
+                                   :db_id        (data/id)
                                    :created_at   $}))]}))
-  (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (id)))]
+  (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (data/id)))]
     (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
 
 
@@ -334,18 +334,18 @@
 (expect
   [["USERS" "Table"]
    ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
-  ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (id)) :prefix "u"))
+  ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (data/id)) :prefix "u"))
 
 (expect
   [["CATEGORIES" "Table"]
    ["CHECKINS" "Table"]
    ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
-  ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (id)) :prefix "c"))
+  ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (data/id)) :prefix "c"))
 
 (expect
   [["CATEGORIES" "Table"]
    ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
-  ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (id)) :prefix "cat"))
+  ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (data/id)) :prefix "cat"))
 
 
 ;;; GET /api/database?include_cards=true
