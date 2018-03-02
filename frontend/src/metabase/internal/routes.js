@@ -16,7 +16,9 @@ const WelcomeApp = () => {
     <div className="wrapper flex flex-column justify-center">
       <div className="my4">
         <h1>Metabase Style Guide</h1>
-        <p>Reference and samples for how to make things the Metabase way.</p>
+        <p className="text-paragraph">
+          Reference and samples for how to make things the Metabase way.
+        </p>
       </div>
     </div>
   );
@@ -39,7 +41,7 @@ const InternalLayout = ({ children }) => {
           ))}
         </ul>
       </nav>
-      <div className="flex-full">{children}</div>
+      <div className="flex flex-full">{children}</div>
     </div>
   );
 };

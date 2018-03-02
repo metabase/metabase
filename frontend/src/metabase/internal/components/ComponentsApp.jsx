@@ -17,8 +17,11 @@ export default class ComponentsApp extends Component {
     const componentName = slugify(this.props.params.componentName);
     const exampleName = slugify(this.props.params.exampleName);
     return (
-      <div className="flex">
-        <nav className="full-height border-right p2" style={{ flex: "33.33%" }}>
+      <div className="flex full">
+        <nav
+          className="full-height border-right p2 pl4"
+          style={{ flex: "0 0 33.33%" }}
+        >
           <h2 className="my2">Components</h2>
           <ul className="py2">
             {COMPONENTS.filter(
