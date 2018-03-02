@@ -399,9 +399,12 @@
      (let [context   (make-context root rule)
            dashboard (->> (select-keys rule [:title :description :groups])
                           (instantiate-metadata context {}))
+           filters   (->> rule
+                          :dashboard_filters
+                          (mapcat (comp :matches (:dimensions context))))
            cards     (make-cards context rule)]
        (if cards
-         (->> cards (populate/create-dashboard! dashboard) :id)
+         (->> cards (populate/create-dashboard! dashboard filters) :id)
          (log/info "Skipping: no cards fully match the topology."))))
    (matching-rules (rules/load-rules) root)))
 
@@ -413,9 +416,10 @@
                       (update :metrics conj {"Metric" {:metric ["METRIC" (:id metric)]
                                                        :score  100}}))
         context   (make-context (Table (:table_id metric)) rule)
-        cards     (->> rule
-                       (make-cards context)
-                       not-empty)
+        cards     (make-cards context rule)
+        filters   (->> rule
+                       :dashboard_filters
+                       (mapcat (comp :matches (:dimensions context))))
         dashboard {:title  (format "Analysis of %s" (:name metric))
                    :groups (:groups rule)}]
-    (some->> cards (populate/create-dashboard! dashboard (count cards)) :id)))
+    (some->> cards (populate/create-dashboard! dashboard (count cards) filters) :id)))

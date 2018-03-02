@@ -44,6 +44,14 @@ dimensions:
 - ProductCategory:
     field_type: ProductTable.Category
     named: category
+dashboard_filters:
+- Timestamp
+- Source
+- Country
+- State
+- SourceSmall
+- Product
+- ProductCategory
 cards:
 - Rowcount:
     title: Total number of transactions

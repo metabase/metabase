@@ -5,6 +5,7 @@
             [metabase.api
              [common :as api]
              [card :as card.api]]
+            [metabase.automagic-dashboards.filters :as magic.filters]
             [metabase.events :as events]
             [metabase.models.dashboard :as dashboard]
             [toucan
@@ -189,8 +190,8 @@
 
 (defn create-dashboard!
   "Create dashboard and populate it with cards."
-  ([dashboard cards] (create-dashboard! dashboard max-cards cards))
-  ([{:keys [title description groups]} n cards]
+  ([dashboard filters cards] (create-dashboard! dashboard max-cards filters cards))
+  ([{:keys [title description groups]} n filters cards]
    (let [dashboard (db/insert! 'Dashboard
                      :name        title
                      :description description
@@ -211,4 +212,6 @@
                        (count cards)
                        (:id dashboard)
                        (str/join "; " (map :title cards))))
+     (when (not-empty filters)
+       (magic.filters/add-filters! dashboard filters))
      dashboard)))

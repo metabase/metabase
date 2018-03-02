@@ -3,7 +3,8 @@
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [core :as magic]
-             [comparison :as magic.comparison]]
+             [comparison :as magic.comparison]
+             [filters :as magic.filters]]
             [metabase.models
              [dashboard :refer [Dashboard]]
              [metric :refer [Metric]]
@@ -38,5 +39,11 @@
   [(:id (magic.comparison/comparison-dashboard (Dashboard dashboard-id)
                                                (Segment left-id)
                                                (Segment right-id)))])
+
+(api/defendpoint GET "/filters/:dashboard-id"
+  "Add filters to dashboard."
+  [dashboard-id]
+  (magic.filters/add-filters! (Dashboard dashboard-id))
+  "Done")
 
 (api/define-routes)

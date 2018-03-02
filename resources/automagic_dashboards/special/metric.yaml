@@ -63,6 +63,13 @@ groups:
       title: Distribution over numbers
   - LargeCategories:
       title: Distribution over high-cardinality categories
+dashboard_filters:
+  - Timestamp
+  - State
+  - Country
+  - GenericCategorySmall
+  - GenericCategoryMedium
+  - GenericCategoryLarge
 cards:
   - ByTime:
       group: Periodicity

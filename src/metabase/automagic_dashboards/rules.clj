@@ -73,7 +73,7 @@
 
 (def ^:private OrderByPair {Identifier (s/enum "descending" "ascending")})
 
-(def  ^:private Visualization [(s/one s/Str "visualization") su/Map])
+(def ^:private Visualization [(s/one s/Str "visualization") su/Map])
 
 (def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
                                      (format "1 <= width <= %s"
@@ -134,7 +134,7 @@
 (defn- valid-references?
   "Check if all references to metrics, dimensions, and filters are valid (ie.
    have a corresponding definition)."
-  [{:keys [metrics dimensions filters cards groups] :as rule}]
+  [{:keys [metrics dimensions filters cards groups dashboard_filters] :as rule}]
   (let [defined-dimensions (identifiers dimensions)
         defined-metrics    (identifiers metrics)
         defined-filters    (identifiers filters)]
@@ -145,18 +145,20 @@
          (every? (comp (into defined-dimensions defined-metrics) key first)
                  (all-references :order_by cards))
          (every? (some-fn defined-dimensions (comp table-type? ->entity))
-                 (collect-dimensions rule)))))
+                 (collect-dimensions rule))
+         (every? defined-dimensions dashboard_filters))))
 
 (def ^:private Rules
   (s/constrained
-   {(s/required-key :title)       s/Str
-    (s/required-key :dimensions)  [Dimension]
-    (s/required-key :cards)       [Card]
-    (s/optional-key :table_type)  TableType
-    (s/optional-key :description) s/Str
-    (s/optional-key :metrics)     [Metric]
-    (s/optional-key :filters)     [Filter]
-    (s/optional-key :groups)      Groups}
+   {(s/required-key :title)             s/Str
+    (s/required-key :dimensions)        [Dimension]
+    (s/required-key :cards)             [Card]
+    (s/optional-key :table_type)        TableType
+    (s/optional-key :description)       s/Str
+    (s/optional-key :metrics)           [Metric]
+    (s/optional-key :filters)           [Filter]
+    (s/optional-key :groups)            Groups
+    (s/optional-key :dashboard_filters) [s/Str]}
    valid-references? "Valid references"))
 
 (defn- with-defaults
