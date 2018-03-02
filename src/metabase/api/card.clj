@@ -594,7 +594,7 @@
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
   {:style/indent 1}
   [card-id & {:keys [parameters constraints context dashboard-id]
-              :or   {constraints dataset-api/default-query-constraints
+              :or   {constraints qp/default-query-constraints
                      context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (api/read-check (hydrate (Card card-id) :in_public_dashboard))

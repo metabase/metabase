@@ -8,10 +8,10 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [medley.core :as m]
-            [metabase.api.dataset :refer [default-query-constraints]]
             [metabase.models
              [database :refer [Database]]
              [query-execution :refer [QueryExecution]]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.sync :as sync]
             [metabase.test
@@ -75,7 +75,7 @@
                                     (ql/aggregation (ql/count))))
                                 (assoc :type "query")
                                 (assoc-in [:query :aggregation] [{:aggregation-type "count", :custom-name nil}])
-                                (assoc :constraints default-query-constraints))
+                                (assoc :constraints qp/default-query-constraints))
     :started_at             true
     :running_time           true
     :average_execution_time nil}
@@ -113,7 +113,7 @@
     :json_query   {:database    (id)
                    :type        "native"
                    :native      {:query "foobar"}
-                   :constraints default-query-constraints}
+                   :constraints qp/default-query-constraints}
     :started_at   true
     :running_time true}
    ;; QueryExecution entry in the DB
