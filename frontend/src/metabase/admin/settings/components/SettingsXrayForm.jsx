@@ -43,7 +43,7 @@ const SettingsXrayForm = ({ settings, elements, updateSetting }) => {
         </p>
         <p className="text-paragraph">
           <em>{jt`${(
-            <strong>Note:</strong>
+            <strong>{t`Note`}:</strong>
           )} "Extended" is required for viewing time series x-rays.`}</em>
         </p>
 
