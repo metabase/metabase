@@ -401,7 +401,7 @@ describe("FieldApp", () => {
         e: { target: document.documentElement },
       });
       await delay(300); // delay needed because of setState in FieldApp; app.update() does not work for whatever reason
-      expect(section.find(".text-danger").length).toBe(1); // warning that you should choose a column
+      expect(section.find(".text-error").length).toBe(1); // warning that you should choose a column
     });
 
     it("doesn't let you enter custom remappings for a field with string values", async () => {
