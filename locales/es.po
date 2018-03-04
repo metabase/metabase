@@ -1233,7 +1233,7 @@ msgstr "dado el acceso a"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:54
 msgid " and "
-msgstr "y"
+msgstr " y "
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:57
 msgid "denied access to"
@@ -2369,7 +2369,7 @@ msgstr "Para enviar {0}, tendrás que configurar la integración con {1}."
 #: frontend/src/metabase/components/ChannelSetupModal.jsx:38
 #: frontend/src/metabase/components/ChannelSetupModal.jsx:41
 msgid " or "
-msgstr "o"
+msgstr " o "
 
 #: frontend/src/metabase/components/ChannelSetupModal.jsx:40
 msgid "To send {0}, an admin needs to set up {1} integration."
@@ -2481,7 +2481,7 @@ msgstr "{0} para ir a la consola si aún no lo has hecho."
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:372
 msgid "How would you like to refer to this database?"
-msgstr "¿Cómo te gustaría consultar esta base de datos?"
+msgstr "¿Cómo te gustaría llamar esta base de datos?"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:399
 #: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:96
@@ -3005,7 +3005,7 @@ msgstr "Coloca los gráficos que utilizas con {0}frecuencia en un lugar único y
 #: frontend/src/metabase/dashboards/containers/Dashboards.jsx:195
 #: frontend/src/metabase/dashboards/containers/Dashboards.jsx:228
 msgid "Create a dashboard"
-msgstr "Creado un Cuadro de Mando"
+msgstr "Crea un Cuadro de Mando"
 
 #: frontend/src/metabase/dashboards/containers/Dashboards.jsx:222
 msgid ""
@@ -3015,7 +3015,7 @@ msgstr "Intenta ajustar tu filtro para encontrar lo que estás buscando."
 
 #: frontend/src/metabase/dashboards/containers/DashboardsArchive.jsx:96
 msgid "No dashboards have been {0} archived yet"
-msgstr "Todavía no se han archivado {0} ninguno cuadro de mando"
+msgstr "Todavía no se ha archivado {0} ninguno cuadro de mando"
 
 #: frontend/src/metabase/home/components/Activity.jsx:92
 msgid "did some super awesome stuff thats hard to describe"
@@ -3159,7 +3159,7 @@ msgid ""
 "Click on charts or tables to explore, or ask a new question using the easy "
 "interface or the powerful SQL editor."
 msgstr "Haz clic en cuadros o tablas para explorar, o haz una nueva pregunta usando "
-"el interfaz fácil o el potente editor SQL."
+"el interfaz sencillo o el potente editor SQL."
 
 #: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:29
 msgid "Make your own charts"
@@ -3167,7 +3167,7 @@ msgstr "Crea tus propios gráficos"
 
 #: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:30
 msgid "Create line charts, scatter plots, maps, and more."
-msgstr "Cree gráficos de líneas, gráficos de dispersión, mapas y más."
+msgstr "Crea gráficos de líneas, gráficos de dispersión, mapas y más."
 
 #: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:40
 msgid "Share what you find"
@@ -3716,7 +3716,7 @@ msgstr "Debe ser"
 
 #: frontend/src/metabase/lib/settings.js:116
 msgid "and include"
-msgstr "e incluye"
+msgstr "e incluir"
 
 #: frontend/src/metabase/lib/utils.js:54
 msgid "zero"
@@ -3888,7 +3888,7 @@ msgstr "Estás en la versión"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:208
 msgid "Built on"
-msgstr "Construida sobre"
+msgstr "Construida el"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:227
 msgid "is a Trademark of"
@@ -6055,7 +6055,7 @@ msgstr "Ayude a tu equipo a empezar con tus datos."
 msgid ""
 "Show your team what’s most important by choosing your top dashboard, "
 "metrics, and segments."
-msgstr "Muestre a tu equipo lo que es más importante al elegir tu cuadro de mando, "
+msgstr "Muestra a tu equipo lo que es más importante al elegir tu cuadro de mando, "
 "tus métricas y tus segmentos principales."
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:168
@@ -6376,7 +6376,7 @@ msgid ""
 "you can get started with."
 msgstr "Necesitarás información sobre tu base de datos, como el nombre de usuario y "
 "la contraseña.Si no tienes eso ahora mismo, Metabase también viene con un "
-"conjunto de datos de muestra con los que puede empezar."
+"conjunto de datos de muestra con los que puedes empezar."
 
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:196
 msgid "I'll add my data later"
@@ -6488,7 +6488,7 @@ msgstr "Confirma la contraseña"
 
 #: frontend/src/metabase/setup/components/UserStep.jsx:273
 msgid "Shhh... but one more time so we get it right"
-msgstr "Shhh... pero una vez más, para asegurarnos que lo hacemos bien"
+msgstr "Shhh... otra vez, para asegurarnos que lo hacemos bien"
 
 #: frontend/src/metabase/setup/components/UserStep.jsx:282
 msgid "Your company or team name"
@@ -7692,7 +7692,7 @@ msgstr "El nombre usado para esta instancia de Metabase."
 msgid ""
 "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com"
 "\"."
-msgstr "La URL base de esta instancia de Metabase, p. \"http://metabase.my-company."
+msgstr "La URL base de esta instancia de Metabase, p.e. \"http://metabase.my-company."
 "com\"."
 
 msgid "The default language for this Metabase instance."
