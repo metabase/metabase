@@ -218,7 +218,7 @@ export function getTableDimensions(
   return _.chain(table.fields)
     .map(field => {
       let targetField = field.target;
-      if (targetField && depth > 0) {
+      if (targetField && depth > 0 && targetField.table) {
         let targetTable = targetField.table;
         return getTableDimensions(targetTable, depth - 1, filter).map(
           (dimension: Dimension) => ({
