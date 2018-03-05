@@ -51,16 +51,16 @@
                   :collection_id          (-> automagic-collection deref :id)}
                  card/populate-query-fields)]
     (update dashboard :ordered_cards conj
-            {:col   y
-             :row   x
-             :sizeX width
-             :sizeY height
-             :card  card})))
+            {:col        y
+             :row        x
+             :sizeX      width
+             :sizeY      height
+             :card       card})))
 
 (defn add-text-card
   "Add a text card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard {:keys [text width height]} [x y]]
-  (update dashboard :odered_cards conj
+  (update dashboard :ordered_cards conj
           {:creator_id             api/*current-user-id*
            :visualization_settings {:text         text
                                     :virtual_card {:name                   nil
@@ -189,8 +189,7 @@
    (let [dashboard {:name          title
                     :description   description
                     :creator_id    api/*current-user-id*
-                    :parameters    []
-                    :ordered_cards []}
+                    :parameters    []}
          cards     (->> cards (shown-cards n) (sort-by :position))
          [dashboard _] (->> cards
                             (partition-by :group)

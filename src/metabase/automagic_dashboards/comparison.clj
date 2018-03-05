@@ -34,7 +34,7 @@
                                            :sizeX  populate/grid-width
                                            :sizeY  height
                                            :series [right]})
-     (let [width (/ populate/grid-width 2)]       
+     (let [width (/ populate/grid-width 2)]
        (-> dashboard
            (update :ordered_cards conj {:col   0
                                         :row   row

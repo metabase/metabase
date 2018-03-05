@@ -17,15 +17,15 @@
        :query
        ((juxt :breakout :fields))
        (tree-seq sequential? identity)
-       (remove (s/checker FieldIdForm))))
+       (remove (s/checker FieldIdForm))
+       (map last)))
 
 (defn- candidates-for-filtering
   [cards]
   (->> cards
        (mapcat collect-field-references)
        distinct
-       (map (comp Field last))
-       distinct
+       (map Field)
        (filter (fn [{:keys [base_type special_type]}]
                  (or (isa? base_type :type/DateTime)
                      (isa? special_type :type/Category))))))
@@ -40,21 +40,20 @@
 
 (defn- filter-for-card
   [card field]
-  (when-let [field-reference (if (= (:table_id card) (:table_id field))
-                               [:field-id (:id field)]
-                               (let [fk (find-fk (:table_id card) field)]
-                                 ;; Bail out if there are multiple FKs from the
-                                 ;; same table.
-                                 (when (= (count fk) 1)
-                                   [:fk-> (first fk) (:id field)])))]
-    [:dimension field-reference]))
+  (some->> (if (= (:table_id card) (:table_id field))
+             [:field-id (:id field)]
+             (let [fk (find-fk (:table_id card) field)]
+               ;; Bail out if there are multiple FKs from the same table.
+               (when (= (count fk) 1)
+                 [:fk-> (first fk) (:id field)])))
+           (vector :dimension)))
 
 (defn- add-filter
   [dashcard filter-id field]
   (if-let [target (filter-for-card (:card dashcard) field)]
-    (update-in dashcard [:card :parameter_mappings] conj
-               {:parameter_id filter-id
-                :target       target})
+    (update dashcard :parameter_mappings conj
+            {:parameter_id filter-id
+             :target       target})
     dashcard))
 
 (defn- filter-type
@@ -76,10 +75,10 @@
     (fn [dashboard candidate]
       (let [filter-id     (-> candidate hash str)
             dashcards     (:ordered_cards dashboard)
-            dashcards-new (map #(add-filter % filter-id candidate) dashcards)]        
+            dashcards-new (map #(add-filter % filter-id candidate) dashcards)]
         (cond-> dashboard
           (not= dashcards dashcards-new)
-          (-> (assoc :orderd_cards dashcards-new)
+          (-> (assoc :ordered_cards dashcards-new)
               (update :parameters conj {:id   filter-id
                                         :type (filter-type candidate)
                                         :name (:display_name candidate)

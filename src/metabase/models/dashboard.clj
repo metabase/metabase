@@ -4,6 +4,7 @@
              [set :as set]]
             [clojure.tools.logging :as log]
             [metabase
+             [events :as events]
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.models
@@ -226,3 +227,19 @@
         (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))))
     (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
       (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids))))
+
+(defn save-transient-dashboard!
+  "Save a denormalized description of dashboard."
+  [dashboard]
+  (let [dashcards (:ordered_cards dashboard)
+        dashboard (db/insert! Dashboard (dissoc dashboard :ordered_cards))]
+    (doseq [dashcard dashcards]
+      (let [card     (db/insert! 'Card (:card dashcard))
+            dashcard (-> dashcard
+                         (dissoc :card)
+                         (update :parameter_mappings
+                                 (partial map #(assoc % :card_id (:id card)))))]
+        (events/publish-event! :card-create card)
+        (hydrate card :creator :dashboard_count :labels :can_write :collection)
+        (add-dashcard! dashboard card dashcard)))
+    dashboard))
