@@ -9,7 +9,9 @@
              [metric :refer [Metric]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [toucan.db :as db]))
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 ; Should be POST, GET for testing convinience
 (api/defendpoint GET "/database/:id"
@@ -39,9 +41,10 @@
   "Create an automagic comparison dashboard based on dashboard with ID
    `dashboard-id`, comparing segments with IDs `left-id` and `right-id`."
   [dashboard-id left-id right-id]
-  [(-> (magic.comparison/comparison-dashboard (Dashboard dashboard-id)
-                                              (Segment left-id)
-                                              (Segment right-id))
+  [(-> (Dashboard dashboard-id)
+       api/check-404
+       (hydrate [:ordered_cards [:card :in_public_dashboard] :series])
+       (magic.comparison/comparison-dashboard (Segment left-id) (Segment right-id))
        dashboard/save-transient-dashboard!
        :id)])
 
