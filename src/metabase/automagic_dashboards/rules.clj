@@ -251,7 +251,8 @@
   (->> rules-dir
        clojure.java.io/file
        .listFiles
-       (map load-rule)))
+       (filter (memfn ^java.io.File isFile))
+       (keep load-rule)))
 
 (defn -main
   "Entry point for lein task `validate-automagic-dashboards`"

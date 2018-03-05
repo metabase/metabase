@@ -348,7 +348,7 @@
                           [:or [:not-in :special_type ["type/FK" "type/PK"]]
                            [:= :special_type nil]]]})))
 
-(defn single-field-table?
+(defn list-like-table?
   "Is the table comprised of only primary key and single field?"
   [table]
   (= 1 (db/count Field
