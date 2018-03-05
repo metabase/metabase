@@ -171,19 +171,31 @@
            (number-field? col-2))                                  :bar
       :else                                                        :table)))
 
+(defn- show-in-table? [{:keys [special_type visibility_type] :as column}]
+  (and (not (isa? special_type :type/Description))
+       (not (contains? #{:details-only :retired :sensitive} visibility_type))))
+
 (defn include-csv-attachment?
   "Returns true if this card and resultset should include a CSV attachment"
   [{:keys [include_csv] :as card} {:keys [cols rows] :as result-data}]
   (or (:include_csv card)
       (and (= :table (detect-pulse-card-type card result-data))
-           (or (< cols-limit (count cols))
-               (< rows-limit (count rows))))))
+           (or
+            ;; If some columns are not shown, include an attachment
+            (some (complement show-in-table?) cols)
+            ;; If there are too many rows or columns, include an attachment
+            (< cols-limit (count cols))
+            (< rows-limit (count rows))))))
 
 (defn include-xls-attachment?
   "Returns true if this card and resultset should include an XLS attachment"
   [{:keys [include_csv] :as card} result-data]
   (:include_xls card))
 
+(defn count-displayed-columns
+  "Return a count of the number of columns to be included in a table display"
+  [cols]
+  (count (filter show-in-table? cols)))
 
 ;;; # ------------------------------------------------------------ FORMATTING ------------------------------------------------------------
 
@@ -389,10 +401,6 @@
               :when remapped_from]
           [remapped_from col-idx])))
 
-(defn- show-in-table? [{:keys [special_type visibility_type] :as column}]
-  (and (not (isa? special_type :type/Description))
-       (not (contains? #{:details-only :retired :sensitive} visibility_type))))
-
 (defn- query-results->header-row
   "Returns a row structure with header info from `COLS`. These values
   are strings that are ready to be rendered as HTML"
@@ -476,7 +484,7 @@
   "Returns hiccup structures to indicate truncated results are available as an attachment"
   [render-type cols cols-limit rows rows-limit]
   (when (and (not= :inline render-type)
-             (or (< cols-limit (count cols))
+             (or (< cols-limit (count-displayed-columns cols))
                  (< rows-limit (count rows))))
     [:div {:style (style {:color color-gray-2})}
      "More results have been included as a file attachment"]))
@@ -485,7 +493,7 @@
   [render-type timezone card {:keys [cols rows] :as data}]
   (let [table-body [:div
                     (render-table (prep-for-html-rendering timezone cols rows nil nil cols-limit))
-                    (render-truncation-warning cols-limit (count cols) rows-limit (count rows))]]
+                    (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
     {:attachments nil
      :content     (if-let [results-attached (attached-results-text render-type cols cols-limit rows rows-limit)]
                     (list results-attached table-body)
@@ -498,7 +506,7 @@
     {:attachments nil
      :content     [:div
                    (render-table (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
-                   (render-truncation-warning 2 (count cols) rows-limit (count rows))]}))
+                   (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
 (s/defn ^:private render:scalar :- RenderedPulseCard
   [timezone card {:keys [cols rows]}]
