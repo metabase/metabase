@@ -149,7 +149,7 @@
                      card {:text   (format "# %s" (:title group))
                            :width  default-card-width
                            :height 2}]
-                 (add-text-card! dashboard card xy)
+                 (add-text-card dashboard card xy)
                  (fill-grid grid xy card))
                grid)]
             cards)))
