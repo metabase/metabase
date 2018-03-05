@@ -283,17 +283,18 @@
            idle-connection-test-period 0
            excess-timeout              (* 30 60)}
     :as   spec}]
-  {:datasource (HikariDataSource.
-                (doto (HikariConfig.)
-                  (.setDriverClassName              classname)
-                  (.setJdbcUrl                      (str "jdbc:" subprotocol ":" subname))
-                  (.setMaximumPoolSize              15)
-                  (.setDataSourceProperties         (u/prog1 (Properties.)
-                                                             (doseq [[k v] (dissoc spec :classname :subprotocol :subname
-                                                                                   :naming :delimiters :alias-delimiter
-                                                                                   :excess-timeout :minimum-pool-size
-                                                                                   :idle-connection-test-period)]
-                                                               (.setProperty <> (name k) (str v)))))))})
+  (let [hikari-config (doto (HikariConfig.)
+                        (.setJdbcUrl                      (str "jdbc:" subprotocol ":" subname))
+                        (.setMaximumPoolSize              15)
+                        (.setDataSourceProperties         (u/prog1 (Properties.)
+                                                            (doseq [[k v] (dissoc spec :classname :subprotocol :subname
+                                                                                  :naming :delimiters :alias-delimiter
+                                                                                  :excess-timeout :minimum-pool-size
+                                                                                  :idle-connection-test-period)]
+                                                              (.setProperty <> (name k) (str v))))))]
+    (when classname
+      (.setDriverClassName hikari-config classname))
+    {:datasource (HikariDataSource. hikari-config)}))
 
 (defn- create-connection-pool! [spec]
   (db/set-default-quoting-style! (case (db-type)
