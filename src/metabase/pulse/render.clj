@@ -201,7 +201,9 @@
 
 (defrecord NumericWrapper [num-str]
   hutil/ToString
-  (to-str [_] num-str))
+  (to-str [_] num-str)
+  java.lang.Object
+  (toString [_] num-str))
 
 (defn- format-number
   [n]
