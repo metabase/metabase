@@ -1,10 +1,6 @@
 (ns metabase.automagic-dashboards.filters
   (:require [clojure.string :as str]
-            [metabase.models
-             [card :refer [Card]]
-             [dashboard :as dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [field :refer [Field]]]
+            [metabase.models.field :refer [Field]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -55,11 +51,10 @@
 
 (defn- add-filter
   [dashcard filter-id field]
-  (if-let [target (-> dashcard :card_id Card (filter-for-card field))]
-    (update dashcard :parameter_mappings conj
-            {:parameter_id filter-id
-             :card_id      (:card_id dashcard)
-             :target       target})
+  (if-let [target (filter-for-card (:card dashcard) field)]
+    (update-in dashcard [:card :parameter_mappings] conj
+               {:parameter_id filter-id
+                :target       target})
     dashcard))
 
 (defn- filter-type
@@ -70,32 +65,24 @@
     (isa? special_type :type/Country)  "location/country"
     (isa? special_type :type/Category) "category"))
 
-(defn add-filters!
+(defn add-filters
   "Add filters to dashboard `dashboard`. Takes an optional argument `dimensions`
    which is a list of fields for which to create filters, else it tries to infer
    by which fields it would be useful to filter."
   ([dashboard]
-   (add-filters! (->> (db/select-field :card_id DashboardCard
-                                       :dashboard_id (:id dashboard))
-                      (keep Card)
-                      candidates-for-filtering)
-                 dashboard))
+   (add-filters dashboard (-> dashboard :orderd_cards candidates-for-filtering)))
   ([dashboard dimensions]
-   (let [[parameters dashcards]
-         (->> dimensions
-              (reduce
-               (fn [[parameters dashcards] candidate]
-                 (let [filter-id     (-> candidate hash str)
-                       dashcards-new (keep #(add-filter % filter-id candidate)
-                                           dashcards)]
-                   [(cond-> parameters
-                      (not= dashcards dashcards-new)
-                      (conj {:id   filter-id
-                             :type (filter-type candidate)
-                             :name (:display_name candidate)
-                             :slug (:name candidate)}))
-                    dashcards-new]))
-               [(:parameters dashboard)
-                (db/select DashboardCard :dashboard_id (:id dashboard))]))]
-     (dashboard/update-dashcards! dashboard dashcards)
-     (db/update! Dashboard (:id dashboard) :parameters parameters))))
+   (reduce
+    (fn [dashboard candidate]
+      (let [filter-id     (-> candidate hash str)
+            dashcards     (:ordered_cards dashboard)
+            dashcards-new (map #(add-filter % filter-id candidate) dashcards)]        
+        (cond-> dashboard
+          (not= dashcards dashcards-new)
+          (-> (assoc :orderd_cards dashcards-new)
+              (update :parameters conj {:id   filter-id
+                                        :type (filter-type candidate)
+                                        :name (:display_name candidate)
+                                        :slug (:name candidate)})))))
+    dashboard
+    dimensions)))

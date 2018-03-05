@@ -404,7 +404,7 @@
                           (mapcat (comp :matches (:dimensions context))))
            cards     (make-cards context rule)]
        (if cards
-         (->> cards (populate/create-dashboard! dashboard filters) :id)
+         (populate/create-dashboard dashboard filters cards)
          (log/info "Skipping: no cards fully match the topology."))))
    (matching-rules (rules/load-rules) root)))
 
@@ -422,4 +422,4 @@
                        (mapcat (comp :matches (:dimensions context))))
         dashboard {:title  (format "Analysis of %s" (:name metric))
                    :groups (:groups rule)}]
-    (some->> cards (populate/create-dashboard! dashboard (count cards) filters) :id)))
+    (some->> cards (populate/create-dashboard dashboard (count cards) filters))))

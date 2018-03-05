@@ -3,8 +3,7 @@
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [core :as magic]
-             [comparison :as magic.comparison]
-             [filters :as magic.filters]]
+             [comparison :as magic.comparison]]
             [metabase.models
              [dashboard :refer [Dashboard]]
              [metric :refer [Metric]]
@@ -25,25 +24,19 @@
 (api/defendpoint GET "/table/:id"
   "Create an automagic dashboard for table with id `ìd`."
   [id]
-  [(magic/automagic-dashboard (Table id))])
+  (magic/automagic-dashboard (Table id)))
 
 (api/defendpoint GET "/analize/metric/:id"
   "Create an automagic dashboard analyzing metric with id `id`."
   [id]
-  [(magic/automagic-analysis (Metric id))])
+  (magic/automagic-analysis (Metric id)))
 
 (api/defendpoint GET "/compare/dashboard/:dashboard-id/segments/:left-id/:right-id"
   "Create an automagic comparison dashboard based on dashboard with ID
    `dashboard-id`, comparing segments with IDs `left-id` and `right-id`."
   [dashboard-id left-id right-id]
-  [(:id (magic.comparison/comparison-dashboard (Dashboard dashboard-id)
-                                               (Segment left-id)
-                                               (Segment right-id)))])
-
-(api/defendpoint GET "/filters/:dashboard-id"
-  "Add filters to dashboard."
-  [dashboard-id]
-  (magic.filters/add-filters! (Dashboard dashboard-id))
-  "Done")
+  (magic.comparison/comparison-dashboard (Dashboard dashboard-id)
+                                         (Segment left-id)
+                                         (Segment right-id)))
 
 (api/define-routes)

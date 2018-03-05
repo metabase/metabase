@@ -6,11 +6,8 @@
              [common :as api]
              [card :as card.api]]
             [metabase.automagic-dashboards.filters :as magic.filters]
-            [metabase.events :as events]
-            [metabase.models.dashboard :as dashboard]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [metabase.models.card :as card]
+            [toucan.db :as db]))
 
 (def ^Long grid-width
   "Total grid width."
@@ -40,45 +37,41 @@
                            "#000000"
                            "Cards used in automatically generated dashboards."))))
 
-(defn- create-card!
-  [{:keys [visualization title description query]}]
-  (let [[display visualization-settings] visualization
-        card (db/insert! 'Card
-               :creator_id             api/*current-user-id*
-               :dataset_query          query
-               :description            description
-               :display                display
-               :name                   title
-               :visualization_settings visualization-settings
-               :result_metadata        (card.api/result-metadata-for-query query)
-               :collection_id          (-> automagic-collection deref :id))]
-    (events/publish-event! :card-create card)
-    (hydrate card :creator :dashboard_count :labels :can_write :collection)
-    card))
-
-(defn- add-card!
+(defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard card [x y]]
-  (dashboard/add-dashcard! dashboard (create-card! card)
-    {:col   y
-     :row   x
-     :sizeX (:width card)
-     :sizeY (:height card)}))
+  [dashboard {:keys [visualization title description query width height]} [x y]]
+  (let [[display visualization-settings] visualization
+        card (-> {:creator_id             api/*current-user-id*
+                  :dataset_query          query
+                  :description            description
+                  :display                display
+                  :name                   title
+                  :visualization_settings visualization-settings
+                  :result_metadata        (card.api/result-metadata-for-query query)
+                  :collection_id          (-> automagic-collection deref :id)}
+                 card/populate-query-fields)]
+    (update dashboard :ordered_cards conj
+            {:col   y
+             :row   x
+             :sizeX width
+             :sizeY height
+             :card  card})))
 
-(defn add-text-card!
+(defn add-text-card
   "Add a text card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard {:keys [text width height]} [x y]]
-  (dashboard/add-dashcard! dashboard nil
-    {:creator_id             api/*current-user-id*
-     :visualization_settings {:text text
-                              :virtual_card {:name                   nil
-                                             :display                :text
-                                             :dataset_query          nil
-                                             :visualization_settings {}}}
-     :col   y
-     :row   x
-     :sizeX width
-     :sizeY height}))
+  (update dashboard :odered_cards conj
+          {:creator_id             api/*current-user-id*
+           :visualization_settings {:text         text
+                                    :virtual_card {:name                   nil
+                                                   :display                :text
+                                                   :dataset_query          nil
+                                                   :visualization_settings {}}}
+           :col                    y
+           :row                    x
+           :sizeX                  width
+           :sizeY                  height
+           :card                   nil}))
 
 (def ^:private ^Long max-cards 9)
 
@@ -137,27 +130,28 @@
 (def ^:private ^{:arglists '([card])} text-card?
   :text)
 
-(defn- add-group!
+(defn- add-group
   [dashboard grid group cards]
   (let [start-row (bottom-row grid)
         start-row (cond-> start-row
                     ;; First row doesn't need empty space above
                     (pos? start-row) inc
                     group            (+ 2))]
-    (reduce (fn [grid card]
+    (reduce (fn [[dashboard grid] card]
               (let [xy (card-position grid start-row card)]
-                (if (text-card? card)
-                  (add-text-card! dashboard card xy)
-                  (add-card! dashboard card xy))
-                (fill-grid grid xy card)))
-            (if group
-              (let [xy   [(- start-row 2) 0]
-                    card {:text   (format "# %s" (:title group))
-                          :width  default-card-width
-                          :height 2}]
-                (add-text-card! dashboard card xy)
-                (fill-grid grid xy card))
-              grid)
+                [(if (text-card? card)
+                   (add-text-card dashboard card xy)
+                   (add-card dashboard card xy))
+                 (fill-grid grid xy card)]))
+            [dashboard
+             (if group
+               (let [xy   [(- start-row 2) 0]
+                     card {:text   (format "# %s" (:title group))
+                           :width  default-card-width
+                           :height 2}]
+                 (add-text-card! dashboard card xy)
+                 (fill-grid grid xy card))
+               grid)]
             cards)))
 
 (defn- shown-cards
@@ -188,30 +182,28 @@
        (mapcat :cards)
        (take n)))
 
-(defn create-dashboard!
+(defn create-dashboard
   "Create dashboard and populate it with cards."
-  ([dashboard filters cards] (create-dashboard! dashboard max-cards filters cards))
+  ([dashboard filters cards] (create-dashboard dashboard max-cards filters cards))
   ([{:keys [title description groups]} n filters cards]
-   (let [dashboard (db/insert! 'Dashboard
-                     :name        title
-                     :description description
-                     :creator_id  api/*current-user-id*
-                     :parameters  [])
+   (let [dashboard {:name          title
+                    :description   description
+                    :creator_id    api/*current-user-id*
+                    :parameters    []
+                    :ordered_cards []}
          cards     (->> cards (shown-cards n) (sort-by :position))
-         ;; Binding return value to make linter happy
-         _         (->> cards
-                        (partition-by :group)
-                        (reduce (fn [grid cards]
-                                  (let [group (some-> cards first :group groups)]
-                                    (add-group! dashboard grid group cards)))
-                                ;; Height doesn't need to be precise, just some
-                                ;; safe upper bound.
-                                (make-grid grid-width (* n grid-width))))]
-     (events/publish-event! :dashboard-create dashboard)
+         [dashboard _] (->> cards
+                            (partition-by :group)
+                            (reduce (fn [[dashboard grid] cards]
+                                      (let [group (some-> cards first :group groups)]
+                                        (add-group dashboard grid group cards)))
+                                    [dashboard
+                                     ;; Height doesn't need to be precise, just some
+                                     ;; safe upper bound.
+                                     (make-grid grid-width (* n grid-width))]))]
      (log/info (format "Adding %s cards to dashboard %s:\n%s"
                        (count cards)
-                       (:id dashboard)
+                       title
                        (str/join "; " (map :title cards))))
-     (when (not-empty filters)
-       (magic.filters/add-filters! dashboard filters))
-     dashboard)))
+     (cond-> dashboard
+       (not-empty filters) (magic.filters/add-filters filters)))))
