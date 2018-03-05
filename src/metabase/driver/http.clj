@@ -12,6 +12,19 @@
   clojure.lang.Named
   (getName [_] "HTTP API"))
 
+
+(defn- database->definitions
+  [database]
+  (json/parse-string (:definitions (:details database)) keyword))
+
+(defn- database->table-defs
+  [database]
+  (or (:tables (database->definitions database)) []))
+
+(defn- database->table-def
+  [database name]
+  (first (filter #(= (:name %) name) (database->table-defs database))))
+
 (defn json-path
   [body query]
   (JsonPath/read body query (into-array Predicate [])))
@@ -37,18 +50,6 @@
         table-def (database->table-def (:database query) (:name table))]
     {:query (dissoc table-def :name)
      :mbql? true}))
-
-(defn- database->definitions
-  [database]
-  (json/parse-string (:definitions (:details database)) keyword))
-
-(defn- database->table-defs
-  [database]
-  (or (:tables (database->definitions database)) []))
-
-(defn- database->table-def
-  [database name]
-  (first (filter #(= (:name %) name) (database->table-defs database))))
 
 (defn- describe-database
   [database]
