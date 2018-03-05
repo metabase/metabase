@@ -6,6 +6,7 @@
              [activity :as activity]
              [alert    :as alert]
              [async :as async]
+             [auto :as auto]
              [card :as card]
              [collection :as collection]
              [dashboard :as dashboard]
@@ -59,6 +60,7 @@
   (context "/activity"        [] (+auth activity/routes))
   (context "/alert"           [] (+auth alert/routes))
   (context "/async"           [] (+auth async/routes))
+  (context "/auto"            [] (+auth auto/routes))
   (context "/card"            [] (+auth card/routes))
   (context "/collection"      [] (+auth collection/routes))
   (context "/dashboard"       [] (+auth dashboard/routes))

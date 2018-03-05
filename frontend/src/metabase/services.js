@@ -86,6 +86,10 @@ export const EmbedApi = {
   ),
 };
 
+export const AutoApi = {
+  dashboard: GET("/api/auto/dashboard/:type/:id"),
+};
+
 export const EmailApi = {
   updateSettings: PUT("/api/email"),
   sendTest: POST("/api/email/test"),

@@ -46,6 +46,7 @@ import {
   RevisionApi,
   PublicApi,
   EmbedApi,
+  AutoApi,
 } from "metabase/services";
 
 import { getDashboard, getDashboardComplete } from "./selectors";
@@ -112,6 +113,8 @@ function getDashboardType(id) {
     return "public";
   } else if (Utils.isJWT(id)) {
     return "embed";
+  } else if (/\/auto\/dashboard/.test(id)) {
+    return "auto";
   } else {
     return "normal";
   }
@@ -509,6 +512,17 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
       };
     } else if (dashboardType === "embed") {
       result = await EmbedApi.dashboard({ token: dashId });
+      result = {
+        ...result,
+        id: dashId,
+        ordered_cards: result.ordered_cards.map(dc => ({
+          ...dc,
+          dashboard_id: dashId,
+        })),
+      };
+    } else if (dashboardType === "auto") {
+      const [type, id] = dashId.split("/").slice(3);
+      result = await AutoApi.dashboard({ type, id });
       result = {
         ...result,
         id: dashId,
