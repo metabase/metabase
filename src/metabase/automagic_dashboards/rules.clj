@@ -250,8 +250,7 @@
   []
   (->> rules-dir
        clojure.java.io/file
-       file-seq
-       (filter (memfn ^java.io.File isFile))
+       .listFiles
        (map load-rule)))
 
 (defn -main
