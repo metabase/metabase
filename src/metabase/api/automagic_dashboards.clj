@@ -20,12 +20,13 @@
          :db_id id
          :visibility_type nil)
        (remove (some-fn magic/link-table? magic/list-like-table?))
-       (keep magic/automagic-dashboard)))
+       (keep magic/automagic-dashboard)
+       first))
 
 (api/defendpoint GET "/table/:id"
   "Return an automagic dashboard for table with id `ìd`."
   [id]
-  (magic/automagic-dashboard (Table id)))
+  (first (magic/automagic-dashboard (Table id))))
 
 (api/defendpoint GET "/analize/metric/:id"
   "Return an automagic dashboard analyzing metric with id `id`."

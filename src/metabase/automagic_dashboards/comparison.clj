@@ -22,30 +22,34 @@
 (defn- clone-card
   [card]
   (-> card
+      (dissoc :height :position :id)
       (assoc :creator_id    api/*current-user-id*
-             :collection_id (-> populate/automagic-collection deref :id))
-      (dissoc :height :position :id)))
+             :collection_id (-> populate/automagic-collection deref :id))))
 
 (defn- place-row
   [dashboard row height left right]
   [(if (-> left :display (#{:bar :line}))
-     (update dashboard :orderd_cards conj {:col    0
-                                           :row    row
-                                           :sizeX  populate/grid-width
-                                           :sizeY  height
-                                           :series [right]})
+     (update dashboard :orderd_cards conj {:col                    0
+                                           :row                    row
+                                           :sizeX                  populate/grid-width
+                                           :sizeY                  height
+                                           :card                   left
+                                           :series                 [right]
+                                           :visualization_settings {}})
      (let [width (/ populate/grid-width 2)]
        (-> dashboard
-           (update :ordered_cards conj {:col   0
-                                        :row   row
-                                        :sizeX width
-                                        :sizeY height
-                                        :card  left})
-           (update :ordered_cards conj {:col   width
-                                        :row   row
-                                        :sizeX width
-                                        :sizeY height
-                                        :card  right}))))
+           (update :ordered_cards conj {:col                    0
+                                        :row                    row
+                                        :sizeX                  width
+                                        :sizeY                  height
+                                        :card                   left
+                                        :visualization_settings {}})
+           (update :ordered_cards conj {:col                    width
+                                        :row                    row
+                                        :sizeX                  width
+                                        :sizeY                  height
+                                        :card                   right
+                                        :visualization_settings {}}))))
    (+ row height)])
 
 (def ^:private ^Long title-height 2)

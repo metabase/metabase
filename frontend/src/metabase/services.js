@@ -84,6 +84,10 @@ export const EmbedApi = {
   ),
 };
 
+export const AutoApi = {
+  dashboard: GET("/api/automagic-dashboards/:type/:id"),
+};
+
 export const EmailApi = {
   updateSettings: PUT("/api/email"),
   sendTest: POST("/api/email/test"),

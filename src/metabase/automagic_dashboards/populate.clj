@@ -50,12 +50,12 @@
                   :result_metadata        (card.api/result-metadata-for-query query)
                   :collection_id          (-> automagic-collection deref :id)}
                  card/populate-query-fields)]
-    (update dashboard :ordered_cards conj
-            {:col        y
-             :row        x
-             :sizeX      width
-             :sizeY      height
-             :card       card})))
+    (update dashboard :ordered_cards conj {:col     y
+                                           :row     x
+                                           :sizeX   width
+                                           :sizeY   height
+                                           :card    card
+                                           :visualization_settings {}})))
 
 (defn add-text-card
   "Add a text card to dashboard `dashboard` at position [`x`, `y`]."
