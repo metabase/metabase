@@ -431,4 +431,4 @@
   (->> (db/select Table
          :db_id database-id
          :visibility_type nil)
-       (remove (some-fn magic/link-table? magic/list-like-table?))))
+       (remove (some-fn link-table? list-like-table?))))
