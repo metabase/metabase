@@ -17,7 +17,6 @@
 
   --success-color: #9cc177;
   --headsup-color: #f5a623;
-  --warning-color: #e35050;
 
   --gold-color: #f9d45c;
   --orange-color: #f9a354;
@@ -25,11 +24,12 @@
   --green-color: #9cc177;
   --green-saturated-color: #84bb4c;
   --dark-color: #4c545b;
-  --error-color: #ef8c8c;
   --slate-color: #9ba5b1;
   --slate-light-color: #dfe8ea;
   --slate-almost-extra-light-color: #edf2f5;
   --slate-extra-light-color: #f9fbfc;
+
+  --error-color: #e35050;
 }
 
 .text-default,
@@ -39,10 +39,6 @@
 
 .text-default-hover:hover {
   color: var(--default-font-color);
-}
-
-.text-danger {
-  color: #eea5a5;
 }
 
 /* brand */
@@ -100,16 +96,6 @@
 }
 .bg-error-input {
   background-color: #fce8e8;
-}
-
-/* warning */
-
-.text-warning {
-  color: var(--warning-color) !important;
-}
-
-.bg-warning {
-  background-color: var(--warning-color);
 }
 
 /* favorite */

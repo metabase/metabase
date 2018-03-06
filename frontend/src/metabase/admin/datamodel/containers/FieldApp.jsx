@@ -743,7 +743,7 @@ export class FieldRemapping extends Component {
             />
           </PopoverWithTrigger>,
           dismissedInitialFkTargetPopover && (
-            <div className="text-danger my2">{t`Please select a column to use for display.`}</div>
+            <div className="text-error my2">{t`Please select a column to use for display.`}</div>
           ),
           hasChanged && hasFKMappingValue && <RemappingNamingTip />,
         ]}
