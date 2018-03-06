@@ -38,10 +38,7 @@
 (api/defendpoint GET "/database/:id/save"
   "Create automagic dashboards for all visible tables in database with id `ìd`."
   [id]
-  (->> (db/select Table
-         :db_id id
-         :visibility_type nil)
-       (remove (some-fn magic/link-table? magic/list-like-table?))
+  (->> (magic/candidate-tables id)
        (mapcat magic/automagic-dashboard)
        (map (comp :id dashboard/save-transient-dashboard!))))
 
