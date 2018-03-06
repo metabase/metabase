@@ -111,7 +111,7 @@ function getDashboardType(id) {
   } else if (Utils.isJWT(id)) {
     return "embed";
   } else if (/\/auto\/dashboard/.test(id)) {
-    return "auto";
+    return "transient";
   } else {
     return "normal";
   }
@@ -468,7 +468,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
           ...getParametersBySlug(dashboard.parameters, parameterValues),
         }),
       );
-    } else if (dashboardType === "auto") {
+    } else if (dashboardType === "transient") {
       result = await fetchDataOrError(MetabaseApi.dataset(card.dataset_query));
     } else {
       result = await fetchDataOrError(
@@ -519,7 +519,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
           dashboard_id: dashId,
         })),
       };
-    } else if (dashboardType === "auto") {
+    } else if (dashboardType === "transient") {
       const [type, id] = dashId.split("/").slice(3);
       result = await AutoApi.dashboard({ type, id });
       result = {
