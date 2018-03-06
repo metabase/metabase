@@ -6,7 +6,7 @@ import { t } from "c-3po";
 import StepTitle from "./StepTitle.jsx";
 import CollapsedStep from "./CollapsedStep.jsx";
 
-const DEMO_URL = "/dash/example";
+const DEMO_URL = "/onboard/dash";
 
 const ExploreStep = ({ options, activeStep, stepNumber, stepText }) => {
   if (activeStep === stepNumber) {
@@ -27,7 +27,7 @@ const ExploreStep = ({ options, activeStep, stepNumber, stepText }) => {
       <div className="mb3">
         <h2>{t`Hi, Metabot here`}</h2>
         <p>
-          {t`I started looking at the data you just connected, and I have some explorations for you to look at. I call these x-rays. Hope you like them!I started looking at the data you just connected, and I have some explorations for you to look at. I call these x-rays. Hope you like them!`}
+          {t`I started looking at the data you just connected, and I have some explorations for you to look at. I call these x-rays. Hope you like them!`}
         </p>
       </div>
       <ol className="Grid Grid--1of2 Grid--gutters">

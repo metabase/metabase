@@ -25,6 +25,7 @@ import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
 import Dashboards from "metabase/dashboards/containers/Dashboards.jsx";
 import DashboardsArchive from "metabase/dashboards/containers/DashboardsArchive.jsx";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
+import OnboardDashApp from "metabase/dashboard/containers/OnboardDashApp.jsx";
 
 import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
@@ -223,6 +224,13 @@ export const getRoutes = store => (
         >
           <ModalRoute path="history" modal={DashboardHistoryModal} />
         </Route>
+
+        {/* ONBOARDING DASHBOARDS */}
+        <Route
+          path="/onboard/dash"
+          title={t`Explore your data`}
+          component={OnboardDashApp}
+        />
 
         {/* QUERY BUILDER */}
         <Route path="/question">
