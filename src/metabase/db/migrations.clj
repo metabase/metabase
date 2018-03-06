@@ -363,6 +363,19 @@
     ;; use `simple-delete!` because `Setting` doesn't have an `:id` column :(
     (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
 
+;; for every Card in the DB, pre-calculate the read permissions required to read the Card/run its query and save them
+;; under the new `read_permissions` column. Calculating read permissions is too expensive to do on the fly for Cards,
+;; since it requires parsing their queries and expanding things like FKs or Segment/Metric macros. Simply calling
+;; `update!` on each Card will cause it to be saved with updated `read_permissions` as a side effect of Card's
+;; `pre-update` implementation.
+;;
+;; Caching these permissions will prevent 1000+ DB call API calls. See https://github.com/metabase/metabase/issues/6889
+(defmigration ^{:author "camsaul", :added "0.29.0"} populate-card-read-permissions
+  (run!
+   (fn [card]
+     (db/update! Card (u/get-id card) {}))
+   (db/select-reducible Card :archived false, :read_permissions nil)))
+
 ;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
 ;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
 ;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to

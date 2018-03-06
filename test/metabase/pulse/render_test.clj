@@ -51,7 +51,28 @@
     [(first results)
      (col-counts results)]))
 
+(def ^:private description-col {:name         "desc_col"
+                                :display_name "Description Column"
+                                :base_type    :type/Text
+                                :special_type :type/Description
+                                :visibility_type :normal})
+(def ^:private detail-col      {:name            "detail_col"
+                                :display_name    "Details Column"
+                                :base_type       :type/Text
+                                :special_type    nil
+                                :visibility_type :details-only})
 
+(def ^:private sensitive-col   {:name            "sensitive_col"
+                                :display_name    "Sensitive Column"
+                                :base_type       :type/Text
+                                :special_type    nil
+                                :visibility_type :sensitive})
+
+(def ^:private retired-col     {:name            "retired_col"
+                                :display_name    "Retired Column"
+                                :base_type       :type/Text
+                                :special_type    nil
+                                :visibility_type :retired})
 
 ;; Testing the format of headers
 (expect
@@ -60,41 +81,25 @@
 
 (expect
   default-header-result
-  (let [cols-with-desc (conj test-columns {:name         "desc_col"
-                                                   :display_name "Description Column"
-                                                   :base_type    :type/Text
-                                                   :special_type :type/Description
-                                                   :visibility_type :normal})
+  (let [cols-with-desc (conj test-columns description-col)
         data-with-desc (mapv #(conj % "Desc") test-data)]
     (prep-for-html-rendering' cols-with-desc data-with-desc nil nil)))
 
 (expect
   default-header-result
-  (let [cols-with-details (conj test-columns {:name            "detail_col"
-                                              :display_name    "Details Column"
-                                              :base_type       :type/Text
-                                              :special_type    nil
-                                              :visibility_type :details-only})
+  (let [cols-with-details (conj test-columns detail-col)
         data-with-details (mapv #(conj % "Details") test-data)]
     (prep-for-html-rendering' cols-with-details data-with-details nil nil)))
 
 (expect
   default-header-result
-  (let [cols-with-sensitive (conj test-columns {:name            "sensitive_col"
-                                                :display_name    "Sensitive Column"
-                                                :base_type       :type/Text
-                                                :special_type    nil
-                                                :visibility_type :sensitive})
+  (let [cols-with-sensitive (conj test-columns sensitive-col)
         data-with-sensitive (mapv #(conj % "Sensitive") test-data)]
     (prep-for-html-rendering' cols-with-sensitive data-with-sensitive nil nil)))
 
 (expect
   default-header-result
-  (let [columns-with-retired (conj test-columns {:name            "retired_col"
-                                                 :display_name    "Retired Column"
-                                                 :base_type       :type/Text
-                                                 :special_type    nil
-                                                 :visibility_type :retired})
+  (let [columns-with-retired (conj test-columns retired-col)
         data-with-retired    (mapv #(conj % "Retired") test-data)]
     (prep-for-html-rendering' columns-with-retired data-with-retired nil nil)))
 
@@ -274,3 +279,12 @@
     [:strong :style-map "11"]
     " columns."]]
   (render-truncation-warning' 10 11 20 21))
+
+(expect
+  4
+  (count-displayed-columns test-columns))
+
+(expect
+  4
+  (count-displayed-columns
+   (concat test-columns [description-col detail-col sensitive-col retired-col])))

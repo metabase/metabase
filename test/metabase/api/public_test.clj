@@ -55,7 +55,7 @@
 (defn- add-card-to-dashboard! [card dashboard]
   (db/insert! DashboardCard :dashboard_id (u/get-id dashboard), :card_id (u/get-id card)))
 
-(defmacro with-temp-public-dashboard-and-card
+(defmacro ^:private with-temp-public-dashboard-and-card
   {:style/indent 1}
   [[dashboard-binding card-binding & [dashcard-binding]] & body]
   `(with-temp-public-dashboard [dash#]
@@ -103,18 +103,19 @@
                                 :human_readable_values {}
                                 :field_id              (data/id :categories :name)}}
   (tt/with-temp Card [card {:dataset_query
-                            {:type   :native
-                             :native {:query         (str "SELECT COUNT(*) "
-                                                          "FROM venues "
-                                                          "LEFT JOIN categories ON venues.category_id = categories.id "
-                                                          "WHERE {{category}}")
-                                      :collection    "CATEGORIES"
-                                      :template_tags {:category {:name         "category"
-                                                                 :display_name "Category"
-                                                                 :type         "dimension"
-                                                                 :dimension    ["field-id" (data/id :categories :name)]
-                                                                 :widget_type  "category"
-                                                                 :required     true}}}}}]
+                            {:database (data/id)
+                             :type     :native
+                             :native   {:query         (str "SELECT COUNT(*) "
+                                                            "FROM venues "
+                                                            "LEFT JOIN categories ON venues.category_id = categories.id "
+                                                            "WHERE {{category}}")
+                                        :collection    "CATEGORIES"
+                                        :template_tags {:category {:name         "category"
+                                                                   :display_name "Category"
+                                                                   :type         "dimension"
+                                                                   :dimension    ["field-id" (data/id :categories :name)]
+                                                                   :widget_type  "category"
+                                                                   :required     true}}}}}]
     (-> (:param_values (#'public-api/public-card :id (u/get-id card)))
         (update-in [(data/id :categories :name) :values] count))))
 
@@ -318,7 +319,9 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash card]
       (with-temp-public-card [card-2]
-        (tt/with-temp DashboardCardSeries [_ {:dashboardcard_id (db/select-one-id DashboardCard :card_id (u/get-id card), :dashboard_id (u/get-id dash))
+        (tt/with-temp DashboardCardSeries [_ {:dashboardcard_id (db/select-one-id DashboardCard
+                                                                  :card_id      (u/get-id card)
+                                                                  :dashboard_id (u/get-id dash))
                                               :card_id          (u/get-id card-2)}]
           (qp-test/rows (http/client :get 200 (dashcard-url-path dash card-2))))))))
 
@@ -339,7 +342,8 @@
   (db/update! Dashboard (u/get-id dashboard) :parameters [{:name "Price", :type "category", :slug "price"}]))
 
 (defn- add-dimension-param-mapping-to-dashcard! [dashcard card dimension]
-  (db/update! DashboardCard (u/get-id dashcard) :parameter_mappings [{:card_id (u/get-id card), :target ["dimension" dimension]}]))
+  (db/update! DashboardCard (u/get-id dashcard) :parameter_mappings [{:card_id (u/get-id card)
+                                                                      :target  ["dimension" dimension]}]))
 
 (defn- GET-param-values [dashboard]
   (tu/with-temporary-setting-values [enable-public-sharing true]
@@ -349,7 +353,13 @@
 (expect
   (price-param-values)
   (with-temp-public-dashboard-and-card [dash card dashcard]
-    (db/update! Card (u/get-id card) :dataset_query {:native {:template_tags {:price {:name "price", :display_name "Price", :type "dimension", :dimension ["field-id" (data/id :venues :price)]}}}})
+    (db/update! Card (u/get-id card)
+      :dataset_query {:database (data/id)
+                      :type     :native
+                      :native   {:template_tags {:price {:name         "price"
+                                                         :display_name "Price"
+                                                         :type         "dimension"
+                                                         :dimension    ["field-id" (data/id :venues :price)]}}}})
     (add-price-param-to-dashboard! dash)
     (add-dimension-param-mapping-to-dashcard! dashcard card ["template-tag" "price"])
     (GET-param-values dash)))
@@ -376,7 +386,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- mbql-card-referencing-nothing []
-  {:dataset_query {:database (data/id)}})
+  {:dataset_query {:database (data/id)
+                   :type     :query
+                   :query    {:source-table (data/id :venues)}}})
 
 (defn mbql-card-referencing [table-kw field-kw]
   {:dataset_query
@@ -397,6 +409,7 @@
                                    :display_name "X"
                                    :type         :dimension
                                    :dimension    [:field-id (data/id :venues :name)]}}}}})
+
 
 ;;; ------------------------------------------- card->referenced-field-ids -------------------------------------------
 

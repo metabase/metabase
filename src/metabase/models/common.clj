@@ -1,6 +1,6 @@
 (ns metabase.models.common)
 
-(def ^:const timezones
+(def timezones
   "The different timezones supported by Metabase.
    Presented as options for the `report-timezone` Setting in the admin panel."
   ["Africa/Algiers"
