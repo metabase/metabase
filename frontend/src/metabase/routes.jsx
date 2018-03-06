@@ -168,9 +168,11 @@ export const getRoutes = store => (
       path="/setup"
       component={SetupApp}
       onEnter={(nextState, replace) => {
+        /*
         if (!MetabaseSettings.hasSetupToken()) {
           replace("/");
         }
+        */
       }}
     />
 
