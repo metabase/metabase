@@ -386,7 +386,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- mbql-card-referencing-nothing []
-  {:dataset_query {:database (data/id)}})
+  {:dataset_query {:database (data/id)
+                   :type     :query
+                   :query    {:source-table (data/id :venues)}}})
 
 (defn mbql-card-referencing [table-kw field-kw]
   {:dataset_query
