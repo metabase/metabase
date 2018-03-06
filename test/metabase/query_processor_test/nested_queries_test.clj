@@ -21,7 +21,7 @@
              [util :as tu]]
             [metabase.test.data
              [datasets :as datasets]
-             [users :refer [user->client]]]
+             [users :refer [create-users-if-needed! user->client]]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -487,6 +487,7 @@
   db)`."
   [f]
   (tt/with-temp Database [db {:details (:details (data/db)), :engine "h2"}]
+    (create-users-if-needed!)
     (f db)))
 
 (defn- save-card-via-API-with-native-source-query!
