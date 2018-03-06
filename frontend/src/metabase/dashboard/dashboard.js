@@ -43,6 +43,7 @@ import {
   PublicApi,
   EmbedApi,
   AutoApi,
+  MetabaseApi,
 } from "metabase/services";
 
 import { getDashboard, getDashboardComplete } from "./selectors";
@@ -467,6 +468,10 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
           ...getParametersBySlug(dashboard.parameters, parameterValues),
         }),
       );
+    } else if (dashboardType === "auto") {
+	result = await fetchDataOrError(
+          MetabaseApi.dataset(card.dataset_query),
+        );
     } else {
       result = await fetchDataOrError(
         CardApi.query({ cardId: card.id, parameters: datasetQuery.parameters }),

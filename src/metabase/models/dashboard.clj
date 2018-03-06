@@ -236,7 +236,7 @@
     (doseq [dashcard dashcards]
       (let [card     (db/insert! 'Card (:card dashcard))
             dashcard (-> dashcard
-                         (dissoc :card)
+                         (dissoc :card :id)
                          (update :parameter_mappings
                                  (partial map #(assoc % :card_id (:id card)))))]
         (events/publish-event! :card-create card)

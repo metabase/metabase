@@ -35,7 +35,8 @@
                                            :sizeY                  height
                                            :card                   left
                                            :series                 [right]
-                                           :visualization_settings {}})
+                                           :visualization_settings {}
+                                           :id                     (gensym)})
      (let [width (/ populate/grid-width 2)]
        (-> dashboard
            (update :ordered_cards conj {:col                    0
@@ -43,13 +44,15 @@
                                         :sizeX                  width
                                         :sizeY                  height
                                         :card                   left
-                                        :visualization_settings {}})
+                                        :visualization_settings {}
+                                        :id                     (gensym)})
            (update :ordered_cards conj {:col                    width
                                         :row                    row
                                         :sizeX                  width
                                         :sizeY                  height
                                         :card                   right
-                                        :visualization_settings {}}))))
+                                        :visualization_settings {}
+                                        :id                     (gensym)}))))
    (+ row height)])
 
 (def ^:private ^Long title-height 2)
