@@ -361,3 +361,16 @@
     ;; either way, delete the old value from the DB since we'll never be using it again.
     ;; use `simple-delete!` because `Setting` doesn't have an `:id` column :(
     (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
+
+;; for every Card in the DB, pre-calculate the read permissions required to read the Card/run its query and save them
+;; under the new `read_permissions` column. Calculating read permissions is too expensive to do on the fly for Cards,
+;; since it requires parsing their queries and expanding things like FKs or Segment/Metric macros. Simply calling
+;; `update!` on each Card will cause it to be saved with updated `read_permissions` as a side effect of Card's
+;; `pre-update` implementation.
+;;
+;; Caching these permissions will prevent 1000+ DB call API calls. See https://github.com/metabase/metabase/issues/6889
+(defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
+  (run!
+   (fn [card]
+     (db/update! Card (u/get-id card) {}))
+   (db/select-reducible Card :archived false, :read_permissions nil)))
