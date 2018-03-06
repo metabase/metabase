@@ -5,24 +5,30 @@ import Icon from "metabase/components/Icon";
 
 const SuggestionsSidebar = ({ suggestions }) => (
   <div className="flex flex-column full-height">
-    <div className="py2 text-centered mb2">
+    <div className="py2 text-centered my3">
       <h3>More X-rays</h3>
     </div>
     <ol className="px2">
       {suggestions.map((s, i) => (
         <li className="bordered rounded bg-white shadowed mb2 p2 flex" key={i}>
-          <div style={{ width: 48, height: 48 }}>
-            <Icon name="bolt" />
+          <div
+            className="bg-slate-light rounded flex align-center justify-center text-slate mr1"
+            style={{ width: 48, height: 48 }}
+          >
+            <Icon name="bolt" size={22} />
           </div>
           <div>
-            <h3 className="m0">{s.name}</h3>
-            <p className="text-paragraph">{s.description}</p>
+            <h3 className="m0 mb1">{s.name}</h3>
+            <p className="text-paragraph mt0">{s.description}</p>
           </div>
         </li>
       ))}
     </ol>
-    <div className="mt-auto border-top p2 text-align-center">
-      See something else
+    <div className="mt-auto border-top px2 py4">
+      <div className="flex align-center justify-center ml-auto mr-auto text-brand-hover">
+        <Icon name="refresh" className="mr1" />
+        <span className="text-bold">See something else</span>
+      </div>
     </div>
   </div>
 );
