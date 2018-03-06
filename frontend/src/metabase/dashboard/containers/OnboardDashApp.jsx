@@ -42,9 +42,15 @@ class OnboardDashApp extends React.Component {
       <div className="flex full-height">
         <div className="flex flex-column" style={{ flex: 1 }}>
           <div className="bg-white border-bottom py2">
-            <div className="wrapper">
-              <h2>Test</h2>
-              <Button green>Save</Button>
+            <div className="wrapper flex align-center">
+              <Icon name="bolt" className="text-gold mr1" size={24} />
+              <h2>
+                Here are some things we thought were interesting in your Orders
+                table.
+              </h2>
+              <Button className="ml-auto bg-green text-white" borderless>
+                Save this
+              </Button>
             </div>
           </div>
           <div className="bg-slate-extra-light flex align-center justify-center flex-full">
