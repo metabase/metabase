@@ -169,6 +169,13 @@ export const getRoutes = store => (
       component={SetupApp}
       onEnter={(nextState, replace) => {
         /*
+        Hack this in the interim to allow click from setup to dash to test the autmatic
+        dash flow
+
+
+        CHANGE THIS TO WORK RIGHT BEFORE MERGING
+
+
         if (!MetabaseSettings.hasSetupToken()) {
           replace("/");
         }
