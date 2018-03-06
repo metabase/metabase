@@ -137,7 +137,7 @@ export default class Setup extends Component {
                 stepNumber={PREFERENCES_STEP_NUMBER}
               />
 
-              <ExploreStep stepNumber={EXPLORE_STEP_NUMBER} />
+              <ExploreStep {...this.props} stepNumber={EXPLORE_STEP_NUMBER} />
 
               {setupComplete ? (
                 <section className="SetupStep rounded SetupStep--active flex flex-column layout-centered p4">
