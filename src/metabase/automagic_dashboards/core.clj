@@ -339,7 +339,7 @@
          :table_id (:id table)
          :fk_target_field_id [:not= nil])))
 
-(defn link-table?
+(defn- link-table?
   "Is the table comprised only of foregin keys and maybe a primary key?"
   [table]
   (empty? (db/select Field
@@ -348,7 +348,7 @@
                           [:or [:not-in :special_type ["type/FK" "type/PK"]]
                            [:= :special_type nil]]]})))
 
-(defn list-like-table?
+(defn- list-like-table?
   "Is the table comprised of only primary key and single field?"
   [table]
   (= 1 (db/count Field
@@ -423,3 +423,12 @@
         dashboard {:title  (format "Analysis of %s" (:name metric))
                    :groups (:groups rule)}]
     (some->> cards (populate/create-dashboard dashboard (count cards) filters))))
+
+(defn candidate-tables
+  "Return a list of tables in database with ID `database-id` for which it makes sense
+   to generate an automagic dashboard."
+  [database-id]
+  (->> (db/select Table
+         :db_id database-id
+         :visibility_type nil)
+       (remove (some-fn magic/link-table? magic/list-like-table?))))

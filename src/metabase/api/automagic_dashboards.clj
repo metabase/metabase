@@ -13,16 +13,6 @@
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
-(api/defendpoint GET "/database/:id"
-  "Return automagic dashboards for all visible tables in database with id `ìd`."
-  [id]
-  (->> (db/select Table
-         :db_id id
-         :visibility_type nil)
-       (remove (some-fn magic/link-table? magic/list-like-table?))
-       (keep magic/automagic-dashboard)
-       first))
-
 (api/defendpoint GET "/table/:id"
   "Return an automagic dashboard for table with id `ìd`."
   [id]
