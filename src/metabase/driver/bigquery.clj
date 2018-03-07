@@ -29,6 +29,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
+           [com.google.api.client.http HttpRequestInitializer HttpRequest]
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
            [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema
             TableList TableList$Tables TableReference TableRow TableSchema]
@@ -44,7 +45,14 @@
 ;;; ----------------------------------------------------- Client -----------------------------------------------------
 
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
-  (.build (doto (Bigquery$Builder. google/http-transport google/json-factory credential)
+  (.build (doto (Bigquery$Builder.
+                 google/http-transport
+                 google/json-factory
+                 (reify HttpRequestInitializer
+                   (initialize [this httpRequest]
+                     (.initialize credential httpRequest)
+                     (.setConnectTimeout httpRequest 0)
+                     (.setReadTimeout httpRequest 0))))
             (.setApplicationName google/application-name))))
 
 (def ^:private ^{:arglists '([database])} ^GoogleCredential database->credential
