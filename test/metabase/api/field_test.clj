@@ -1,6 +1,9 @@
 (ns metabase.api.field-test
   (:require [expectations :refer :all]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [query-processor-test :as qpt]]
+            [metabase.api.field :as field-api]
             [metabase.models
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
@@ -8,7 +11,8 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.users :refer :all]
+            [metabase.test.data.users :refer [user->client]]
+            [metabase.timeseries-query-processor-test.util :as tqpt]
             [ring.util.codec :as codec]
             [toucan
              [db :as db]
@@ -272,20 +276,20 @@
 ;; test that we can do basic field update work, including unsetting some fields such as special-type
 (expect
   [[]
-   {:id true
-    :created_at true
-    :updated_at true
-    :type :internal
-    :name "some dimension name"
+   {:id                      true
+    :created_at              true
+    :updated_at              true
+    :type                    :internal
+    :name                    "some dimension name"
     :human_readable_field_id false
-    :field_id true}
-   {:id true
-    :created_at true
-    :updated_at true
-    :type :internal
-    :name "different dimension name"
+    :field_id                true}
+   {:id                      true
+    :created_at              true
+    :updated_at              true
+    :type                    :internal
+    :name                    "different dimension name"
     :human_readable_field_id false
-    :field_id true}
+    :field_id                true}
    true]
   (tt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
     (let [before-creation (dimension-for-field field-id)
@@ -335,13 +339,13 @@
 
 ;; Ensure we can delete a dimension
 (expect
-  [{:id true
-    :created_at true
-    :updated_at true
-    :type :internal
-    :name "some dimension name"
+  [{:id                      true
+    :created_at              true
+    :updated_at              true
+    :type                    :internal
+    :name                    "some dimension name"
     :human_readable_field_id false
-    :field_id true}
+    :field_id                true}
    []]
   (tt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
 
@@ -360,15 +364,15 @@
 
 ;; When an FK field gets it's special_type removed, we should clear the external dimension
 (expect
-  [{:id true
-    :created_at true
-    :updated_at true
-    :type :external
-    :name "fk-remove-dimension"
+  [{:id                      true
+    :created_at              true
+    :updated_at              true
+    :type                    :external
+    :name                    "fk-remove-dimension"
     :human_readable_field_id true
-    :field_id true}
+    :field_id                true}
    []]
-  (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"
+  (tt/with-temp* [Field [{field-id-1 :id} {:name         "Field Test 1"
                                            :special_type :type/FK}]
                   Field [{field-id-2 :id} {:name "Field Test 2"}]]
 
@@ -382,14 +386,14 @@
 
 ;; The dimension should stay as long as the FK didn't change
 (expect
-  (repeat 2 {:id true
-             :created_at true
-             :updated_at true
-             :type :external
-             :name "fk-remove-dimension"
+  (repeat 2 {:id                      true
+             :created_at              true
+             :updated_at              true
+             :type                    :external
+             :name                    "fk-remove-dimension"
              :human_readable_field_id true
-             :field_id true})
-  (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"
+             :field_id                true})
+  (tt/with-temp* [Field [{field-id-1 :id} {:name         "Field Test 1"
                                            :special_type :type/FK}]
                   Field [{field-id-2 :id} {:name "Field Test 2"}]]
 
@@ -403,17 +407,17 @@
 
 ;; When removing the FK special type, the fk_target_field_id should be cleared as well
 (expect
-  [{:name               "Field Test 2",
-    :display_name       "Field Test 2",
-    :description        nil,
-    :visibility_type    :normal,
-    :special_type       :type/FK,
+  [{:name               "Field Test 2"
+    :display_name       "Field Test 2"
+    :description        nil
+    :visibility_type    :normal
+    :special_type       :type/FK
     :fk_target_field_id true}
-   {:name               "Field Test 2",
-    :display_name       "Field Test 2",
-    :description        nil,
-    :visibility_type    :normal,
-    :special_type       nil,
+   {:name               "Field Test 2"
+    :display_name       "Field Test 2"
+    :description        nil
+    :visibility_type    :normal
+    :special_type       nil
     :fk_target_field_id false}]
   (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
                   Field [{field-id-2 :id} {:name               "Field Test 2"
@@ -428,17 +432,17 @@
 
 ;; Checking update of the fk_target_field_id
 (expect
-  [{:name               "Field Test 3",
-    :display_name       "Field Test 3",
-    :description        nil,
-    :visibility_type    :normal,
-    :special_type       :type/FK,
+  [{:name               "Field Test 3"
+    :display_name       "Field Test 3"
+    :description        nil
+    :visibility_type    :normal
+    :special_type       :type/FK
     :fk_target_field_id true}
-   {:name               "Field Test 3",
-    :display_name       "Field Test 3",
-    :description        nil,
-    :visibility_type    :normal,
-    :special_type       :type/FK,
+   {:name               "Field Test 3"
+    :display_name       "Field Test 3"
+    :description        nil
+    :visibility_type    :normal
+    :special_type       :type/FK
     :fk_target_field_id true}
    true]
   (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
@@ -457,23 +461,23 @@
 
 ;; Checking update of the fk_target_field_id along with an FK change
 (expect
-  [{:name               "Field Test 2",
-    :display_name       "Field Test 2",
-    :description        nil,
-    :visibility_type    :normal,
+  [{:name               "Field Test 2"
+    :display_name       "Field Test 2"
+    :description        nil
+    :visibility_type    :normal
     :special_type       nil
     :fk_target_field_id false}
-   {:name               "Field Test 2",
-    :display_name       "Field Test 2",
-    :description        nil,
-    :visibility_type    :normal,
-    :special_type       :type/FK,
+   {:name               "Field Test 2"
+    :display_name       "Field Test 2"
+    :description        nil
+    :visibility_type    :normal
+    :special_type       :type/FK
     :fk_target_field_id true}]
   (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
                   Field [{field-id-2 :id} {:name "Field Test 2"}]]
 
     (let [before-change (simple-field-details (Field field-id-2))
-          _             ((user->client :crowberto) :put 200 (format "field/%d" field-id-2) {:special_type :type/FK
+          _             ((user->client :crowberto) :put 200 (format "field/%d" field-id-2) {:special_type       :type/FK
                                                                                             :fk_target_field_id field-id-1})
           after-change  (simple-field-details (Field field-id-2))]
       [(tu/boolean-ids-and-timestamps before-change)
@@ -481,17 +485,17 @@
 
 ;; Checking update of the fk_target_field_id and FK remain unchanged on updates of other fields
 (expect
-  [{:name               "Field Test 2",
-    :display_name       "Field Test 2",
-    :description        nil,
-    :visibility_type    :normal,
+  [{:name               "Field Test 2"
+    :display_name       "Field Test 2"
+    :description        nil
+    :visibility_type    :normal
     :special_type       :type/FK
     :fk_target_field_id true}
-   {:name               "Field Test 2",
-    :display_name       "Field Test 2",
-    :description        "foo",
-    :visibility_type    :normal,
-    :special_type       :type/FK,
+   {:name               "Field Test 2"
+    :display_name       "Field Test 2"
+    :description        "foo"
+    :visibility_type    :normal
+    :special_type       :type/FK
     :fk_target_field_id true}]
   (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
                   Field [{field-id-2 :id} {:name               "Field Test 2"
@@ -506,15 +510,15 @@
 
 ;; Changing a remapped field's type to something that can't be remapped will clear the dimension
 (expect
-  [{:id true
-    :created_at true
-    :updated_at true
-    :type :internal
-    :name "some dimension name"
+  [{:id                      true
+    :created_at              true
+    :updated_at              true
+    :type                    :internal
+    :name                    "some dimension name"
     :human_readable_field_id false
-    :field_id true}
+    :field_id                true}
    []]
-  (tt/with-temp* [Field [{field-id :id} {:name "Field Test"
+  (tt/with-temp* [Field [{field-id :id} {:name      "Field Test"
                                          :base_type "type/Integer"}]]
     (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
     (let [new-dim (dimension-for-field field-id)]
@@ -524,17 +528,50 @@
 
 ;; Change from supported type to supported type will leave the dimension
 (expect
-  (repeat 2 {:id true
-             :created_at true
-             :updated_at true
-             :type :internal
-             :name "some dimension name"
+  (repeat 2 {:id                      true
+             :created_at              true
+             :updated_at              true
+             :type                    :internal
+             :name                    "some dimension name"
              :human_readable_field_id false
-             :field_id true})
-  (tt/with-temp* [Field [{field-id :id} {:name "Field Test"
+             :field_id                true})
+  (tt/with-temp* [Field [{field-id :id} {:name      "Field Test"
                                          :base_type "type/Integer"}]]
     (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
     (let [new-dim (dimension-for-field field-id)]
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type "type/Category"})
       [(tu/boolean-ids-and-timestamps new-dim)
        (tu/boolean-ids-and-timestamps (dimension-for-field field-id))])))
+
+
+;; make sure `search-values` works on with our various drivers
+(qpt/expect-with-non-timeseries-dbs
+  [[1 "Red Medicine"]]
+  (qpt/format-rows-by [int str]
+    (field-api/search-values (Field (data/id :venues :id))
+                             (Field (data/id :venues :name))
+                             "Red")))
+
+(tqpt/expect-with-timeseries-dbs
+  [["139" "Red Medicine"]
+   ["375" "Red Medicine"]
+   ["72"  "Red Medicine"]]
+  (field-api/search-values (Field (data/id :checkins :id))
+                           (Field (data/id :checkins :venue_name))
+                           "Red"))
+
+;; make sure it also works if you use the same Field twice
+(qpt/expect-with-non-timeseries-dbs
+  [["Red Medicine" "Red Medicine"]]
+  (field-api/search-values (Field (data/id :venues :name))
+                           (Field (data/id :venues :name))
+                           "Red"))
+
+;; disabled for now because for some reason Druid itself is failing to run this query with an “Invalid type marker
+;; byte 0x3c” error message. The query itself is fine so I suspect this might be an issue with Druid itself. Either
+;; way, I can find very little information about it online. Try reenabling this test next time we upgrade Druid.
+#_(tqpt/expect-with-timeseries-dbs
+  [["Red Medicine" "Red Medicine"]]
+  (field-api/search-values (Field (data/id :checkins :venue_name))
+                           (Field (data/id :checkins :venue_name))
+                           "Red"))
