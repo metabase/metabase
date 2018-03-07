@@ -234,12 +234,15 @@
   (let [dashcards (:ordered_cards dashboard)
         dashboard (db/insert! Dashboard (dissoc dashboard :ordered_cards))]
     (doseq [dashcard dashcards]
-      (let [card     (db/insert! 'Card (:card dashcard))
+      (let [card     (some->> dashcard :card (db/insert! 'Card))
+            series   (some->> dashcard :series (map (partial db/insert! 'Card)))
             dashcard (-> dashcard
                          (dissoc :card :id)
                          (update :parameter_mappings
-                                 (partial map #(assoc % :card_id (:id card)))))]
-        (events/publish-event! :card-create card)
-        (hydrate card :creator :dashboard_count :labels :can_write :collection)
+                                 (partial map #(assoc % :card_id (:id card))))
+                         (assoc :series series))]
+        (doseq [card (concat series (some-> card vector))]
+          (events/publish-event! :card-create card)
+          (hydrate card :creator :dashboard_count :labels :can_write :collection))
         (add-dashcard! dashboard card dashcard)))
     dashboard))
