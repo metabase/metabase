@@ -8,7 +8,8 @@
              [dashboard :refer [Dashboard] :as dashboard]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
-             [table :refer [Table]]]
+             [table :refer [Table]]
+             [field :refer [Field]]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -18,10 +19,21 @@
   [id]
   (first (magic/automagic-dashboard (Table id))))
 
-(api/defendpoint GET "/analize/metric/:id"
+(api/defendpoint GET "/metric/:id"
   "Return an automagic dashboard analyzing metric with id `id`."
   [id]
   (magic/automagic-analysis (Metric id)))
+
+(api/defendpoint GET "/segment/:id"
+  "Return an automagic dashboard analyzing segment with id `id`."
+  [id]
+  (magic/automagic-analysis (Metric id)))
+
+(api/defendpoint GET "/field/:id"
+  "Return an automagic dashboard analyzing field with id `id`."
+  [id]
+  (magic/automagic-analysis (Field id)))
+
 
 (def ^:private valid-comparison-pair?
   #{["segment" "segment"]
@@ -84,12 +96,28 @@
   (->> (magic/automagic-dashboard (Table id))
        (map (comp :id dashboard/save-transient-dashboard!))))
 
-(api/defendpoint GET "/analize/metric/:id/save"
+(api/defendpoint GET "/metric/:id/save"
   "Create an automagic dashboard analyzing metric with id `id`."
   [id]
   [(-> (magic/automagic-analysis (Metric id))
        dashboard/save-transient-dashboard!
        :id)])
+
+
+(api/defendpoint GET "/segment/:id/save"
+  "TODO: Code me"
+  [id]
+  [(-> (magic/automagic-analysis (Segment id))
+       dashboard/save-transient-dashboard!
+       :id)])
+
+(api/defendpoint GET "/field/:id/save"
+  "TODO: Code me"
+  [id]
+  [(-> (magic/automagic-analysis (Field id))
+       dashboard/save-transient-dashboard!
+       :id)])
+
 
 (api/defendpoint GET "/compare/dashboard/:dashboard-id/segments/:left-id/:right-id/save"
   "Create an automagic comparison dashboard based on dashboard with ID
