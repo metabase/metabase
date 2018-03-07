@@ -20,6 +20,7 @@
    :ldap-attribute-email     :attribute-email
    :ldap-attribute-firstname :attribute-firstname
    :ldap-attribute-lastname  :attribute-lastname
+   :ldap-attribute-uid       :attribute-uid
    :ldap-group-sync          :group-sync
    :ldap-group-base          :group-base})
 

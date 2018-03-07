@@ -36,6 +36,7 @@ export default class SettingsLdapForm extends Component {
               "ldap-attribute-email",
               "ldap-attribute-firstname",
               "ldap-attribute-lastname",
+              "ldap-attribute-uid",
             ],
           },
           {
