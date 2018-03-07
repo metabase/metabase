@@ -29,7 +29,7 @@ const devToolsExtension = window.devToolsExtension
   ? window.devToolsExtension()
   : f => f;
 
-// Look for redux action names that take the form `metabase/<app_section>/<action_name>
+// Look for redux action names that take the form `metabase/<app_section>/<ACTION_NAME>
 const METABASE_TRACKABLE_ACTION_REGEX = /^metabase\/(.+)\/([^\/]+)$/;
 
 /**
@@ -43,7 +43,7 @@ const METABASE_TRACKABLE_ACTION_REGEX = /^metabase\/(.+)\/([^\/]+)$/;
  * Any actions with a name takes the form `metabase/.../...` will be automatially captured
  *
  * Ignoring actions:
- * Any actions we want to ignore can me bypassed by including a meta object with ignore: true
+ * Any actions we want to ignore can be bypassed by including a meta object with ignore: true
  * {
  *   type: "...",
  *   meta: {
@@ -67,7 +67,7 @@ const METABASE_TRACKABLE_ACTION_REGEX = /^metabase\/(.+)\/([^\/]+)$/;
  *   }
  *}
  */
-const trackEvent = ({ dispatch, getState }) => next => action => {
+export const trackEvent = ({ dispatch, getState }) => next => action => {
   // look for the meta analytics object if it exists, this gets used to
   // do customization of the event identifiers sent to GA
   const analytics = action.meta && action.meta.analytics;
@@ -85,11 +85,13 @@ const trackEvent = ({ dispatch, getState }) => next => action => {
     // if there is no analytics metadata on the action, look to see if it's
     // an action name we want to track based on the format of the aciton name
 
-    const [_, category, action] = action.type.match(
-      // eslint-disable-line no-unused-vars - the
+    // eslint doesn't like the _ to ignore the first bit
+    // eslint-disable-next-line
+    const [_, categoryName, actionName] = action.type.match(
       METABASE_TRACKABLE_ACTION_REGEX,
     );
-    MetabaseAnalytics.trackEvent(category, action);
+
+    MetabaseAnalytics.trackEvent(categoryName, actionName);
   }
   return next(action);
 };
