@@ -147,22 +147,20 @@
                                   :base_type          :type/Text
                                   :fk_target_field_id true})
                           (merge field-defaults
-                                 {:special_type     nil
-                                  :name             "title"
-                                  :display_name     "Title"
-                                  :database_type    "VARCHAR"
-                                  :base_type        :type/Text
-                                  :has_field_values "list"})]})
+                                 {:special_type  nil
+                                  :name          "title"
+                                  :display_name  "Title"
+                                  :database_type "VARCHAR"
+                                  :base_type     :type/Text})]})
    (merge table-defaults
           {:name         "studio"
            :display_name "Studio"
            :fields       [(merge field-defaults
-                                 {:special_type     :type/Name
-                                  :name             "name"
-                                  :display_name     "Name"
-                                  :database_type    "VARCHAR"
-                                  :base_type        :type/Text
-                                  :has_field_values "list"})
+                                 {:special_type  :type/Name
+                                  :name          "name"
+                                  :display_name  "Name"
+                                  :database_type "VARCHAR"
+                                  :base_type     :type/Text})
                           (merge field-defaults
                                  {:special_type  :type/PK
                                   :name          "studio"
@@ -191,19 +189,17 @@
                                  :database_type "SERIAL"
                                  :base_type     :type/Integer})
                          (merge field-defaults
-                                {:special_type     nil
-                                 :name             "studio"
-                                 :display_name     "Studio"
-                                 :database_type    "VARCHAR"
-                                 :base_type        :type/Text
-                                 :has_field_values "list"})
+                                {:special_type  nil
+                                 :name          "studio"
+                                 :display_name  "Studio"
+                                 :database_type "VARCHAR"
+                                 :base_type     :type/Text})
                          (merge field-defaults
-                                {:special_type     nil
-                                 :name             "title"
-                                 :display_name     "Title"
-                                 :database_type    "VARCHAR"
-                                 :base_type        :type/Text
-                                 :has_field_values "list"})]})
+                                {:special_type  nil
+                                 :name          "title"
+                                 :display_name  "Title"
+                                 :database_type "VARCHAR"
+                                 :base_type     :type/Text})]})
   (tt/with-temp* [Database [db    {:engine :sync-test}]
                   Table    [table {:name   "movie"
                                    :schema "default"

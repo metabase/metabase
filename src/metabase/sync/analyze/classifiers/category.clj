@@ -31,7 +31,7 @@
 (defn- field-should-be-category? [distinct-count field]
   ;; only mark a Field as a Category if it doesn't already have a special type
   (when-not (:special_type field)
-    (when (< distinct-count field-values/category-cardinality-threshold)
+    (when (<= distinct-count field-values/category-cardinality-threshold)
       (log/debug (format "%s has %d distinct values. Since that is less than %d, we're marking it as a category."
                          (sync-util/name-for-logging field)
                          distinct-count
@@ -43,12 +43,12 @@
   ;; only update has_field_values if it hasn't been set yet. If it's already been set then it was probably done so
   ;; manually by an admin, and we don't want to stomp over their choices.
   (when (nil? (:has_field_values field))
-    (when (< distinct-count field-values/list-cardinality-threshold)
+    (when (<= distinct-count field-values/list-cardinality-threshold)
       (log/debug (format "%s has %d distinct values. Since that is less than %d, it should have cached FieldValues."
                          (sync-util/name-for-logging field)
                          distinct-count
-                         field-values/list-cardinality-threshold)))
-    true))
+                         field-values/list-cardinality-threshold))
+      true)))
 
 
 (s/defn infer-is-category-or-list :- (s/maybe i/FieldInstance)
