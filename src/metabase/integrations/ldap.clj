@@ -85,6 +85,14 @@
                  (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
              (setting/set-json! :ldap-group-mappings new-value)))
 
+(defsetting ldap-group-schema
+  (deferred-tru "Schema used for group membership.")
+  :default "rfc2307bis"
+  :setter  (fn [new-value]
+             (when-not (nil? new-value)
+               (assert (contains? #{"rfc2307" "rfc2307bis"} new-value)))
+             (setting/set-string! :ldap-group-schema new-value)))
+
 (defn ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
   []
@@ -126,14 +134,24 @@
       flatten
       set))
 
-(defn- get-user-groups
-  "Retrieve groups for a supplied DN."
-  ([^String dn]
-    (with-connection get-user-groups dn))
-  ([conn ^String dn]
+(defn get-user-groups-rfc2307
+   "Retrieve groups for a supplied UID based on the memberUid attribute"
+  ([uid]
+    (with-connection get-user-groups-rfc2307 uid))
+  ([conn uid]
     (when (ldap-group-base)
-      (let [results (ldap/search conn (ldap-group-base) {:scope  :sub
-                                                         :filter (Filter/createEqualityFilter "member" dn)})]
+      (let [results (ldap/search conn (ldap-group-base) {:scope      :sub
+                                                         :filter     (Filter/createEqualityFilter "memberUid" uid)})]
+        (map :dn results)))))
+
+(defn- get-user-groups-rfc2307bis
+   "Retrieve groups for a supplied DN based on the member attribute"
+  ([dn]
+    (with-connection get-user-groups-rfc2307bis dn))
+  ([conn dn]
+    (when (ldap-group-base)
+      (let [results (ldap/search conn (ldap-group-base) {:scope      :sub
+                                                         :filter     (Filter/createEqualityFilter "member" dn)})]
         (map :dn results)))))
 
 (def ^:private user-base-error  {:status :ERROR, :message "User search base does not exist or is unreadable"})
@@ -190,17 +208,22 @@
    (when-let [{:keys [dn], :as result} (search conn username)]
      (let [{fname (keyword (ldap-attribute-firstname))
             lname (keyword (ldap-attribute-lastname))
-            email (keyword (ldap-attribute-email))}    result]
+            email (keyword (ldap-attribute-email))
+            uid   (keyword (ldap-attribute-uid))}      result]
        ;; Make sure we got everything as these are all required for new accounts
        (when-not (some empty? [dn fname lname email])
+         ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
+         ;; Otherwise we have to make the inverse query to get them
+         (let [group-schema (keyword (ldap-group-schema))
+               groups (when (ldap-group-sync)
+                        (or (:memberOf result) (case group-schema
+                          :rfc2307 (get-user-groups-rfc2307 uid)
+                          :rfc2307bis (get-user-groups-rfc2307bis dn)) []))]
          {:dn         dn
           :first-name fname
           :last-name  lname
           :email      email
-          :groups     (when (ldap-group-sync)
-                        ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
-                        ;; Otherwise we have to make the inverse query to get them
-                        (or (:memberOf result) (get-user-groups dn) []))})))))
+          :groups     groups}))))))
 
 (defn verify-password
   "Verifies if the supplied password is valid for the `user-info` (from `find-user`) or DN."
