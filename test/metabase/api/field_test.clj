@@ -1,7 +1,10 @@
 (ns metabase.api.field-test
   "Tests for `/api/field` endpoints."
   (:require [expectations :refer :all]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [query-processor-test :as qpt]]
+            [metabase.api.field :as field-api]
             [metabase.models
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
@@ -9,7 +12,8 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.users :refer :all]
+            [metabase.test.data.users :refer [user->client]]
+            [metabase.timeseries-query-processor-test.util :as tqpt]
             [ring.util.codec :as codec]
             [toucan
              [db :as db]
@@ -544,3 +548,36 @@
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:has_field_values "list"})
       [(tu/boolean-ids-and-timestamps new-dim)
        (tu/boolean-ids-and-timestamps (dimension-for-field field-id))])))
+
+
+;; make sure `search-values` works on with our various drivers
+(qpt/expect-with-non-timeseries-dbs
+  [[1 "Red Medicine"]]
+  (qpt/format-rows-by [int str]
+    (field-api/search-values (Field (data/id :venues :id))
+                             (Field (data/id :venues :name))
+                             "Red")))
+
+(tqpt/expect-with-timeseries-dbs
+  [["139" "Red Medicine"]
+   ["375" "Red Medicine"]
+   ["72"  "Red Medicine"]]
+  (field-api/search-values (Field (data/id :checkins :id))
+                           (Field (data/id :checkins :venue_name))
+                           "Red"))
+
+;; make sure it also works if you use the same Field twice
+(qpt/expect-with-non-timeseries-dbs
+  [["Red Medicine" "Red Medicine"]]
+  (field-api/search-values (Field (data/id :venues :name))
+                           (Field (data/id :venues :name))
+                           "Red"))
+
+;; disabled for now because for some reason Druid itself is failing to run this query with an “Invalid type marker
+;; byte 0x3c” error message. The query itself is fine so I suspect this might be an issue with Druid itself. Either
+;; way, I can find very little information about it online. Try reenabling this test next time we upgrade Druid.
+#_(tqpt/expect-with-timeseries-dbs
+  [["Red Medicine" "Red Medicine"]]
+  (field-api/search-values (Field (data/id :checkins :venue_name))
+                           (Field (data/id :checkins :venue_name))
+                           "Red"))

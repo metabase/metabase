@@ -9,7 +9,6 @@
              [middleware :as middleware]
              [query-processor-test :as qpt]
              [sync :as sync]
-             [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
             [metabase.api.table :as table-api]
             [metabase.models
@@ -19,7 +18,6 @@
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :as table :refer [Table]]]
-            [metabase.query-processor-test :as qpt]
             [metabase.test
              [data :as data]
              [util :as tu :refer [match-$]]]
@@ -27,6 +25,7 @@
              [dataset-definitions :as defs]
              [datasets :as datasets]
              [users :refer [user->client]]]
+            [metabase.timeseries-query-processor-test.util :as tqpt]
             [toucan
              [db :as db]
              [hydrate :as hydrate]]
@@ -638,7 +637,7 @@
 ;; Datetime binning options should showup whether the backend supports binning of numeric values or not
 (datasets/expect-with-engines #{:druid}
   (var-get #'table-api/datetime-dimension-indexes)
-  (timeseries-qp-test/with-flattened-dbdef
+  (tqpt/with-flattened-dbdef
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
       (dimension-options-for-field response "timestamp"))))
 

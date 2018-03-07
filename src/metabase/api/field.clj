@@ -259,6 +259,22 @@
     (db/select-one Field :id fk-target-field-id)
     field))
 
+(defn- search-values-query
+  "Generate the MBQL query used to power FieldValues search in `search-values` below. The actual query generated differs
+  slightly based on whether the two Fields are the same Field."
+  [field search-field value limit]
+  {:database (db-id field)
+   :type     :query
+   :query    {:source-table (table-id field)
+              :filter       [:starts-with [:field-id (u/get-id search-field)] value {:case-sensitive false}]
+              ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
+              ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
+              ;; identifiers/aliases
+              :breakout     (if (= (u/get-id field) (u/get-id search-field))
+                              [[:field-id (u/get-id field)]]
+                              [[:field-id (u/get-id field)]
+                               [:field-id (u/get-id search-field)]])
+              :limit        limit}})
 
 (s/defn search-values
   "Search for values of `search-field` that start with `value` (up to `limit`, if specified), and return like
@@ -274,17 +290,16 @@
              (48 \"Maryam Douglas\"))"
   [field search-field value & [limit]]
   (let [field   (follow-fks field)
-        results (qp/process-query
-                  {:database (db-id field)
-                   :type     :query
-                   :query    {:source-table (table-id field)
-                              :filter       [:starts-with [:field-id (u/get-id search-field)] value {:case-sensitive false}]
-                              :breakout     [[:field-id (u/get-id field)]]
-                              :fields       [[:field-id (u/get-id field)]
-                                             [:field-id (u/get-id search-field)]]
-                              :limit        limit}})]
-    ;; return rows if they exist
-    (get-in results [:data :rows])))
+        results (qp/process-query (search-values-query field search-field value limit))
+        rows    (get-in results [:data :rows])]
+    ;; if the two Fields are different, we'll get results like [[v1 v2] [v1 v2]]. That is the expected format and we can
+    ;; return them as-is
+    (if-not (= (u/get-id field) (u/get-id search-field))
+      rows
+      ;; However if the Fields are both the same results will be in the format [[v1] [v1]] so we need to double the
+      ;; value to get the format the frontend expects
+      (for [[result] rows]
+        [result result]))))
 
 (api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field that match values of another Field when breaking out by the "
