@@ -51,7 +51,7 @@ const PermissionsConfirm = ({ diff }) => (
                   tables={database.grantedTables}
                 />
               )}
-              {database.grantedTables && database.revokedTables && t` and `}}
+              {database.grantedTables && database.revokedTables && t` and `}
               {database.revokedTables && (
                 <TableAccessChange
                   verb={t`denied access to`}
