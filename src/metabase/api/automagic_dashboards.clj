@@ -31,7 +31,7 @@
 (api/defendpoint GET "/metric/:id"
   "Return an automagic dashboard analyzing metric with id `id`."
   [id]
-  (magic/automagic-analysis (Metxric id)))
+  (magic/automagic-analysis (Metric id)))
 
 (api/defendpoint GET "/segment/:id"
   "Return an automagic dashboard analyzing segment with id `id`."
