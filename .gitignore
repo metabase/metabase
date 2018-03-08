@@ -53,3 +53,5 @@ coverage-summary.json
 .DS_Store
 bin/node_modules/
 *.log
+/resources/locales.clj
+/dev-resources/i18n/bin
