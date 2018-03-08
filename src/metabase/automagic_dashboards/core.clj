@@ -406,7 +406,7 @@
           (populate/create-dashboard filters cards)
           (assoc :rule (:rule rule))))))
 
-(def ^:private public-endpoint "/xray/")
+(def ^:private public-endpoint "/auto/")
 
 (defn candidate-tables
   "Return a list of tables in database with ID `database-id` for which it makes sense
