@@ -3,6 +3,8 @@ import React from "react";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 
+import Dashboard from "./Dashboard";
+
 const SuggestionsSidebar = ({ suggestions }) => (
   <div className="flex flex-column full-height">
     <div className="py2 text-centered my3">
@@ -42,8 +44,10 @@ SuggestionsSidebar.defaultProps = {
   ],
 };
 
-class OnboardDashApp extends React.Component {
+class AutomaticDashboardApp extends React.Component {
   render() {
+    const { params: { type, subtype, id } } = this.props;
+    const dashboardId = `/auto/${type}/${subtype}/${id}`;
     return (
       <div className="flex full-height">
         <div className="flex flex-column" style={{ flex: 1 }}>
@@ -51,16 +55,20 @@ class OnboardDashApp extends React.Component {
             <div className="wrapper flex align-center">
               <Icon name="bolt" className="text-gold mr1" size={24} />
               <h2>
-                Here are some things we thought were interesting in your Orders
+                Here are some things we thought were interesting in your FIXME
                 table.
               </h2>
-              <Button className="ml-auto bg-green text-white" borderless>
+              <Button
+                className="ml-auto bg-green text-white"
+                borderless
+                onClick={() => alert("FIXME")}
+              >
                 Save this
               </Button>
             </div>
           </div>
-          <div className="bg-slate-extra-light flex align-center justify-center flex-full">
-            <h4>Dash here</h4>
+          <div className="px3 pb4 bg-slate-extra-light">
+            <Dashboard dashboardId={dashboardId} />
           </div>
         </div>
         <div className="bg-slate-light full-height" style={{ width: 300 }}>
@@ -71,4 +79,4 @@ class OnboardDashApp extends React.Component {
   }
 }
 
-export default OnboardDashApp;
+export default AutomaticDashboardApp;

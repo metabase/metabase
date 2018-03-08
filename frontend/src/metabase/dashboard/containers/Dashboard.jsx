@@ -1,0 +1,59 @@
+/* @flow */
+
+import React, { Component } from "react";
+import cx from "classnames";
+
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
+import DashboardData from "metabase/dashboard/hoc/DashboardData";
+
+import type { Dashboard } from "metabase/meta/types/Dashboard";
+import type { Parameter } from "metabase/meta/types/Parameter";
+
+type Props = {
+  location?: { query: { [key: string]: string } },
+  dashboardId: string,
+
+  dashboard?: Dashboard,
+  parameters: Parameter[],
+  parameterValues: { [key: string]: string },
+
+  initialize: () => void,
+  isFullscreen: boolean,
+  isNightMode: boolean,
+  fetchDashboard: (
+    dashId: string,
+    query?: { [key: string]: string },
+  ) => Promise<void>,
+  fetchDashboardCardData: (options: {
+    reload: boolean,
+    clear: boolean,
+  }) => Promise<void>,
+  setParameterValue: (id: string, value: string) => void,
+  setErrorPage: (error: { status: number }) => void,
+};
+
+@DashboardData
+export default class DashboardContainer extends Component {
+  props: Props;
+
+  render() {
+    const { dashboard } = this.props;
+
+    return (
+      <LoadingAndErrorWrapper
+        className={cx("Dashboard p1 flex-full")}
+        loading={!dashboard}
+      >
+        {() => (
+          <DashboardGrid
+            {...this.props}
+            className={"spread"}
+            // Don't allow clicking titles on public dashboards
+            navigateToNewCardFromDashboard={null}
+          />
+        )}
+      </LoadingAndErrorWrapper>
+    );
+  }
+}

@@ -25,6 +25,7 @@ import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
 import Dashboards from "metabase/dashboards/containers/Dashboards.jsx";
 import DashboardsArchive from "metabase/dashboards/containers/DashboardsArchive.jsx";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
+import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashboardApp.jsx";
 
 import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
@@ -226,9 +227,7 @@ export const getRoutes = store => (
 
         <Route
           path="/auto/:type/:subtype/:id"
-          component={props => (
-            <DashboardApp {...props} dashboardId={props.location.pathname} />
-          )}
+          component={AutomaticDashboardApp}
         />
 
         {/* QUERY BUILDER */}
