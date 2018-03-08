@@ -21,6 +21,7 @@
              [util :as tu]]
             [metabase.test.data
              [datasets :as datasets]
+             [dataset-definitions :as defs]
              [users :refer [create-users-if-needed! user->client]]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -486,9 +487,10 @@
   "Run `f` with a temporary Database that copies the details from the standard test database. `f` is invoked as `(f
   db)`."
   [f]
-  (tt/with-temp Database [db {:details (:details (data/db)), :engine "h2"}]
+  (data/with-db (data/get-or-create-database! defs/test-data)
     (create-users-if-needed!)
-    (f db)))
+    (tt/with-temp Database [db {:details (:details (data/db)), :engine "h2"}]
+      (f db))))
 
 (defn- save-card-via-API-with-native-source-query!
   "Attempt to save a Card that uses a native source query for Database with `db-id` via the API using Rasta. Use this to
