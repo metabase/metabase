@@ -6,6 +6,17 @@ import { t } from "c-3po";
 import visualizations from "metabase/visualizations";
 import { caseInsensitiveSearch } from "metabase/lib/string";
 
+import Question from "metabase-lib/lib/Question";
+import { getMetadata } from "metabase/selectors/metadata";
+
+/*
+ * Get a question for
+ */
+export const getQuestion = createSelector(
+  [getMetadata, state => state.questions.currentQuestion],
+  (metadata, question) => new Question(metadata, question),
+);
+
 export const getEntityType = (state, props) =>
   props && props.entityType ? props.entityType : state.questions.lastEntityType;
 export const getEntityQuery = (state, props) =>

@@ -98,7 +98,7 @@
     "banner-webpack-plugin": "^0.2.3",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
-    "documentation": "^4.0.0-rc.1",
+    "documentation": "^6.0.0",
     "enzyme": "^2.7.0",
     "eslint": "^3.5.0",
     "eslint-import-resolver-webpack": "^0.8.3",
@@ -151,6 +151,7 @@
     "webpack-postcss-tools": "^1.1.2"
   },
   "scripts": {
+    "docs": "documentation build frontend/src/metabase-lib -f md -o frontend/docs",
     "dev": "yarn && concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn run build-hot'",
     "lint": "yarn run lint-eslint && yarn run lint-prettier",
     "lint-eslint": "eslint --ext .js --ext .jsx --max-warnings 0 frontend/src frontend/test",
@@ -175,7 +176,7 @@
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write 'frontend/**/*.{js,jsx,css}'",
-    "docs": "documentation build -f html -o frontend/docs frontend/src/metabase-lib/lib/**"
+    "docs": "documentation build -f html -o frontend/docs frontend/src/**"
   },
   "lint-staged": {
     "frontend/**/*.{js,jsx,css}": [

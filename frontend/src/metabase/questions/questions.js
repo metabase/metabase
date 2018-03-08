@@ -1,3 +1,4 @@
+/* @flow weak */
 import {
   createAction,
   createThunkAction,
@@ -21,6 +22,9 @@ import { getVisibleEntities, getSelectedEntities } from "./selectors";
 
 import { SET_COLLECTION_ARCHIVED } from "./collections";
 
+import { Card } from "metabase/meta/types/Card";
+import { loadMetadataForCard } from "metabase/query_builder/actions";
+
 const label = new schema.Entity("labels");
 const collection = new schema.Entity("collections");
 const card = new schema.Entity("cards", {
@@ -38,6 +42,40 @@ const SET_FAVORITED = "metabase/questions/SET_FAVORITED";
 const SET_ARCHIVED = "metabase/questions/SET_ARCHIVED";
 const SET_LABELED = "metabase/questions/SET_LABELED";
 const SET_COLLECTION = "metabase/collections/SET_COLLECTION";
+
+export const FETCH_QUESTION = "metabase/question/FETCH_QUESTION";
+
+/*
+ * Get the details of a question and also load any required metadata
+ *
+ * This gets details back from the API for the given question and then
+ * dispatches loadMetadataForCard which will subsequently ask the api
+ * for any necessary metadata based on the query dictionary and then add that
+ * to the store under metadata
+ *
+ * @example
+ * // example use in a connected react component
+ * componentDidMount () {
+    fetchQuestion(this.props.params.cardId)
+ * }
+ *
+ * This returns the card object, but it won't be a properly hydrated Question yet
+ * so in order to use Question methods you'll need to instantiate a new Question object
+ * off of the returned card
+ *
+ */
+export const fetchQuestion = createThunkAction(
+  FETCH_QUESTION,
+  (cardId: number): Card => {
+    return async (dispatch, getState) => {
+      const question = await CardApi.get({ cardId });
+
+      // load the metadata for the question so we get
+      await dispatch(loadMetadataForCard(question));
+      return question;
+    };
+  },
+);
 
 export const loadEntities = createThunkAction(
   LOAD_ENTITIES,
@@ -363,6 +401,8 @@ export default function(state = initialState, { type, payload, error }) {
       return { ...state, selectedIds: { ...state.selectedIds, ...payload } };
     case SET_ALL_SELECTED:
       return { ...state, selectedIds: payload };
+    case FETCH_QUESTION:
+      return { ...state, currentQuestion: payload };
     case LOAD_ENTITIES:
       if (error) {
         return assocIn(
