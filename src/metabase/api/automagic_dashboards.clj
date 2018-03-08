@@ -14,6 +14,9 @@
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
+
+;; ----------------------------------------- API Endpoints for viewing a transient dashboard ----------------
+
 (api/defendpoint GET "/table/:id"
   "Return an automagic dashboard for table with id `ìd`."
   [id]
@@ -43,7 +46,6 @@
   "Return an automagic dashboard analyzing ad hoc query`id`."
   [querystring]
   querystring)
-
 
 (def ^:private valid-comparison-pair?
   #{["segment" "segment"]
@@ -91,7 +93,7 @@
                                          (->segment left)
                                          (->segment right)))
 
-;; ----------------------------------------- for testing convinience ----------------
+;; ----------------------------------------- API Endpoints for saving a transient dashboard ----------------
 
 (api/defendpoint POST "/database/:id/save"
   "Create automagic dashboards for all visible tables in database with id `ìd`."
@@ -113,7 +115,6 @@
        dashboard/save-transient-dashboard!
        :id)])
 
-
 (api/defendpoint POST "/segment/:id/save"
   "TODO: Code me"
   [id]
@@ -127,8 +128,6 @@
   [(-> (magic/automagic-analysis (Field id))
        dashboard/save-transient-dashboard!
        :id)])
-
-
 
 (api/defendpoint POST "/question/:id/save"
   "TODO: Code me."
