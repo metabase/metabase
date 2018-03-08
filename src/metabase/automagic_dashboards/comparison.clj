@@ -5,7 +5,7 @@
 (defn- dashboard->cards
   [dashboard]
   (->> dashboard
-       :orderd_cards
+       :ordered_cards
        (map (fn [{:keys [sizeY card col row]}]
               (assoc card
                 :height   sizeY
@@ -16,20 +16,25 @@
   [segment card]
   (update-in card [:dataset_query :query :filter]
              (fn [filter-clause]
-               (cond->> (-> segment :definition :filter)
-                 (not-empty filter-clause) (vector :and filter-clause)))))
+               (let [segment-definition (-> segment :definition :filter)]
+                 (cond
+                   (empty? segment-definition) filter-clause
+                   (empty? filter-clause)      segment-definition
+                   :else                       [:and filter-clause
+                                                     segment-definition])))))
 
 (defn- clone-card
   [card]
   (-> card
-      (dissoc :height :position :id)
+      (select-keys [:dataset_query :description :display :name :result_metadata
+                    :visualization_settings])
       (assoc :creator_id    api/*current-user-id*
              :collection_id (-> populate/automagic-collection deref :id))))
 
 (defn- place-row
   [dashboard row height left right]
-  [(if (-> left :display (#{:bar :line}))
-     (update dashboard :orderd_cards conj {:col                    0
+  (if (-> left :display (#{:bar :line}))
+    (update dashboard :ordered_cards conj {:col                    0
                                            :row                    row
                                            :sizeX                  populate/grid-width
                                            :sizeY                  height
@@ -37,23 +42,22 @@
                                            :series                 [right]
                                            :visualization_settings {}
                                            :id                     (gensym)})
-     (let [width (/ populate/grid-width 2)]
-       (-> dashboard
-           (update :ordered_cards conj {:col                    0
-                                        :row                    row
-                                        :sizeX                  width
-                                        :sizeY                  height
-                                        :card                   left
-                                        :visualization_settings {}
-                                        :id                     (gensym)})
-           (update :ordered_cards conj {:col                    width
-                                        :row                    row
-                                        :sizeX                  width
-                                        :sizeY                  height
-                                        :card                   right
-                                        :visualization_settings {}
-                                        :id                     (gensym)}))))
-   (+ row height)])
+    (let [width (/ populate/grid-width 2)]
+      (-> dashboard
+          (update :ordered_cards conj {:col                    0
+                                       :row                    row
+                                       :sizeX                  width
+                                       :sizeY                  height
+                                       :card                   left
+                                       :visualization_settings {}
+                                       :id                     (gensym)})
+          (update :ordered_cards conj {:col                    width
+                                       :row                    row
+                                       :sizeX                  width
+                                       :sizeY                  height
+                                       :card                   right
+                                       :visualization_settings {}
+                                       :id                     (gensym)})))))
 
 (def ^:private ^Long title-height 2)
 
@@ -74,26 +78,28 @@
 
 (defn comparison-dashboard
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
-   the dataset defined by filter expressions `left` and `right`."
+   the dataset defined by segments `left` and `right`."
   [dashboard left right]
-  (let [dashboard {:name        (format "Comparison of %s and %s"
-                                        (:name left)
-                                        (:name right))
-                   :description (format "Automatically generated comparison dashboard comparing segments %s and %s"
-                                        (:name left)
-                                        (:name right))
-                   :creator_id  api/*current-user-id*
-                   :parameters  []}]
-    (->> dashboard
-         dashboard->cards
-         (mapcat unroll-multiseries)
-         (map (juxt (partial inject-segment left)
-                    (partial inject-segment right)))
-         (reduce (fn [[dashboard row] [left right]]
-                   (place-row dashboard row (:height left)
-                              (clone-card left)
-                              (clone-card right)))
-                 [(-> dashboard
-                      (add-col-title (:name left)  0)
-                      (add-col-title (:name right) (/ populate/grid-width 2)))
-                  title-height]))))
+  (->> dashboard
+       dashboard->cards
+       (mapcat unroll-multiseries)
+       (map (juxt (partial inject-segment left)
+                  (partial inject-segment right)))
+       (reduce (fn [[dashboard row] [left right]]
+                 (let [height (:height left)]
+                   [(place-row dashboard row height
+                               (clone-card left)
+                               (clone-card right))
+                    (+ row height)]))
+               [(-> {:name        (format "Comparison of %s and %s"
+                                          (:name left)
+                                          (:name right))
+                     :description (format "Automatically generated comparison dashboard comparing %s and %s"
+                                          (:name left)
+                                          (:name right))
+                     :creator_id  api/*current-user-id*
+                     :parameters  []}
+                    (add-col-title (:name left) 0)
+                    (add-col-title (:name right) (/ populate/grid-width 2)))
+                title-height])
+       first))

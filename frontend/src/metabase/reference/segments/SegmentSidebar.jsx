@@ -39,6 +39,13 @@ const SegmentSidebar = ({ segment, user, style, className }) => (
         name={t`Questions about this segment`}
       />
       <SidebarItem
+        key={`/auto/dashboard/segment/${segment.id}`}
+        href={`/auto/dashboard/segment/${segment.id}`}
+        icon="beaker"
+        name={t`Create a dashboard based on this segment`}
+      />
+
+      <SidebarItem
         key={`/xray/segment/${segment.id}/approximate`}
         href={`/xray/segment/${segment.id}/approximate`}
         icon="all"
