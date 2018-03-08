@@ -34,8 +34,11 @@
   (let [query         (if (string? (:query (:native query)))
                         (json/parse-string (:query (:native query)) keyword)
                         (:query (:native query)))
-        url           (:url query)
-        result        (client/get url {:accept :json, :as :json})
+        result        (client/request {:method  (or (:method query) :get)
+                                       :url     (:url query)
+                                       :headers (:headers query)
+                                       :accept  :json
+                                       :as      :json})
         items-path    (or (:path (:result query)) "$")
         items         (json-path (walk/stringify-keys (:body result)) items-path)
         fields-paths  (or (:fields (:result query)) (keys (first items)))]
