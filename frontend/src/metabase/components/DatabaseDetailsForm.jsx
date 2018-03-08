@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { findDOMNode } from "react-dom";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t, jt } from "c-3po";
@@ -171,6 +172,25 @@ export default class DatabaseDetailsForm extends Component {
             >
               No
             </div>
+          </div>
+        );
+      case "json":
+        return (
+          <div className="Form-input Form-offset full">
+            <textarea
+              className="text-code borderless full"
+              ref={field.name}
+              name={field.name}
+              value={value}
+              placeholder={field.default || field.placeholder}
+              onChange={e => {
+                this.onChange(field.name, e.target.value);
+                findDOMNode(e.target).style.height =
+                  findDOMNode(e.target).scrollHeight + "px";
+              }}
+              required={field.required}
+              autoFocus={fieldIndex === 0}
+            />
           </div>
         );
       default:

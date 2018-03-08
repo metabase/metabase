@@ -10,7 +10,7 @@
 
 (defrecord HTTPAPIDriver []
   clojure.lang.Named
-  (getName [_] "HTTP API"))
+  (getName [_] "HTTP"))
 
 
 (defn- database->definitions
@@ -72,11 +72,13 @@
            :describe-database     (fn [_ database]       (describe-database database))
            :describe-table        (fn [_ database table] (describe-table    database table))
            :details-fields        (constantly [{:name         "definitions"
-                                                :display-name "Table Definitions"}])
+                                                :display-name "Table Definitions"
+                                                :type         :json
+                                                :default      "{\n  \"tables\": [\n  ]\n}"}])
            :mbql->native          (fn [_ query] (mbql->native query))
            :execute-query         (fn [_ query] (execute-query query))}))
 
 (defn -init-driver
-  "Register the BigQuery driver"
+  "Register the HTTP driver"
   []
   (driver/register-driver! :http (HTTPAPIDriver.)))
