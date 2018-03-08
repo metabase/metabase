@@ -424,7 +424,7 @@
                                                  (vector rule))))
                                  first)]
                    {:url         (str "/api/automagic-dashboards/table/" (:id table))
-                    :title       (:title dashboard)
+                    :title       (:name dashboard)
                     :score       (rule-specificity rule)
                     :description (:description dashboard)
                     :table       table})))
@@ -448,7 +448,7 @@
                           rules/indepth
                           (keep (fn [rule]
                                   (when-let [dashboard (apply-rule root rule)]
-                                    {:title       (:title dashboard)
+                                    {:title       (:name dashboard)
                                      :description (:description dashboard)
                                      :table       root
                                      :url         (format "/api/automagic-dashboards/table/%s/%s"
