@@ -100,19 +100,28 @@
                 (extract-fields rows fields)
                 (aggregate rows aggregations breakouts))}))
 
-(defn mbql-breakout->breakout
-  [table-def mbql-breakout]
-  (let [field (table-def->field table-def (:field-name mbql-breakout))]
+(defn mbql-field->expression
+  [table-def expr]
+  (let [field (table-def->field table-def (:field-name expr))]
     (or (:expression field) (:name field))))
+
+(defn mbql-aggregation->aggregation
+  [table-def mbql-aggregation]
+  (if (:field mbql-aggregation)
+    [(:aggregation-type mbql-aggregation)
+     (mbql-field->expression table-def (:field mbql-aggregation))]
+    [(:aggregation-type mbql-aggregation)]))
 
 (defn- mbql->native
   [query]
-  (let [table     (:source-table (:query query))
-        table-def (database->table-def (:database query) (:name table))
-        breakouts (map (partial mbql-breakout->breakout table-def) (:breakout (:query query)))]
+  (let [table       (:source-table (:query query))
+        table-def   (database->table-def (:database query) (:name table))
+        breakout    (map (partial mbql-field->expression table-def) (:breakout (:query query)))
+        aggregation (map (partial mbql-aggregation->aggregation table-def) (:aggregation (:query query)))]
     {:query (merge (select-keys table-def [:method :url :headers])
                    {:result (merge (:result table-def)
-                                   {:breakout breakouts})})
+                                   {:breakout     breakout
+                                    :aggregation  aggregation})})
      :mbql? true}))
 
 (defn- describe-database
@@ -148,6 +157,7 @@
                                                 :display-name "Table Definitions"
                                                 :type         :json
                                                 :default      "{\n  \"tables\": [\n  ]\n}"}])
+           :features              (constantly #{:basic-aggregations :expression-aggregations})
            :mbql->native          (fn [_ query] (mbql->native query))
            :execute-query         (fn [_ query] (execute-query query))}))
 
