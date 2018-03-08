@@ -14,6 +14,10 @@
 
 (declare compile-expression compile-function)
 
+(defn find-first
+  [f coll]
+  (first (filter f coll)))
+
 (defn- database->definitions
   [database]
   (json/parse-string (:definitions (:details database)) keyword))
@@ -25,6 +29,10 @@
 (defn- database->table-def
   [database name]
   (first (filter #(= (:name %) name) (database->table-defs database))))
+
+(defn table-def->field
+  [table-def name]
+  (find-first #(= (:name %) name) (:fields table-def)))
 
 (defn json-path
   [query body]
@@ -65,7 +73,9 @@
 (defn field-names
   [fields]
   (for [field fields]
-    (keyword (json/generate-string field))))
+    (keyword (if (string? field)
+               field
+               (json/generate-string field)))))
 
 (defn execute-query
   [query]
@@ -90,11 +100,19 @@
                 (extract-fields rows fields)
                 (aggregate rows aggregations breakouts))}))
 
+(defn mbql-breakout->breakout
+  [table-def mbql-breakout]
+  (let [field (table-def->field table-def (:field-name mbql-breakout))]
+    (or (:expression field) (:name field))))
+
 (defn- mbql->native
   [query]
   (let [table     (:source-table (:query query))
-        table-def (database->table-def (:database query) (:name table))]
-    {:query (dissoc table-def :name)
+        table-def (database->table-def (:database query) (:name table))
+        breakouts (map (partial mbql-breakout->breakout table-def) (:breakout (:query query)))]
+    {:query (merge (select-keys table-def [:method :url :headers])
+                   {:result (merge (:result table-def)
+                                   {:breakout breakouts})})
      :mbql? true}))
 
 (defn- describe-database
@@ -104,12 +122,21 @@
                     {:name   (:name table-def)
                      :schema (:schema table-def)}))}))
 
+(def json-type->base-type
+  {:string  :type/Text
+   :number  :type/Float
+   :boolean :type/Boolean})
+
 (defn- describe-table
   [database table]
   (let [table-def  (database->table-def database (:name table))]
     {:name   (:name table-def)
      :schema (:schema table-def)
-     :fields (set [])})) ; {:name "height", :base-type :type/Integer, :database-type "number"}
+     :fields (set (for [field (:fields table-def)]
+                    {:name          (:name field)
+                     :database-type (:type field)
+                     :base-type     (or (:base_type field)
+                                        (json-type->base-type (keyword (:type field))))}))}))
 
 (u/strict-extend HTTPAPIDriver
   driver/IDriver
