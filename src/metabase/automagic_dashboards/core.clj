@@ -406,6 +406,8 @@
           (populate/create-dashboard filters cards)
           (assoc :rule (:rule rule))))))
 
+(def ^:private public-endpoint "/xray/")
+
 (defn candidate-tables
   "Return a list of tables in database with ID `database-id` for which it makes sense
    to generate an automagic dashboard."
@@ -423,7 +425,7 @@
                                          (some-> (apply-rule table rule)
                                                  (vector rule))))
                                  first)]
-                   {:url         (str "/api/automagic-dashboards/table/" (:id table))
+                   {:url         (str public-endpoint "table/" (:id table))
                     :title       (:name dashboard)
                     :score       (rule-specificity rule)
                     :description (:description dashboard)
@@ -451,7 +453,8 @@
                                     {:title       (:name dashboard)
                                      :description (:description dashboard)
                                      :table       root
-                                     :url         (format "/api/automagic-dashboards/table/%s/%s"
+                                     :url         (format "%stable/%s/%s"
+                                                          public-endpoint
                                                           (:id root)
                                                           (:rule rule))}))))})
     (log/info (format "Skipping %s: no cards fully match the topology."
