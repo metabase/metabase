@@ -30,9 +30,9 @@
                                                             :pulse_channel_id pc-id}]]
   (et/email-to :rasta
                {:subject "Metabase alert: My Question Name has results",
-                :body    {"My Question Name.*has results" true}})
+                :body    {"My Question Name" true}})
   (et/with-fake-inbox
     (data/with-db (data/get-or-create-database! defs/test-data)
       (et/with-expected-messages 1
         (#'metabase.task.send-pulses/send-pulses! 0 "fri" :first :first))
-      (et/regex-email-bodies #"My Question Name.*has results"))))
+      (et/regex-email-bodies #"My Question Name"))))
