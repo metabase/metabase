@@ -14,17 +14,18 @@
                 :position (+ (* row populate/grid-width) col))))
        (sort-by :position)))
 
+(defn- merge-filters
+  [a b]
+  (cond
+    (empty? a) b
+    (empty? b) a
+    :else      [:and a b]))
+
 (defn- inject-segment
   [segment card]
   (-> card
       (update-in [:dataset_query :query :filter]
-                 (fn [filter-clause]
-                   (let [segment-definition (-> segment :definition :filter)]
-                     (cond
-                       (empty? segment-definition) filter-clause
-                       (empty? filter-clause)      segment-definition
-                       :else                       [:and filter-clause
-                                                    segment-definition]))))
+                 (partial merge-filters (-> segment :definition :filter)))
       (update :series (partial map (partial inject-segment segment)))))
 
 (defn- clone-card

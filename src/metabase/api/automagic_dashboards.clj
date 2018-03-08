@@ -5,11 +5,12 @@
              [core :as magic]
              [comparison :as magic.comparison]]
             [metabase.models
+             [card :refer [Card]]
              [dashboard :refer [Dashboard] :as dashboard]
+             [field :refer [Field]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
-             [table :refer [Table]]
-             [field :refer [Field]]]
+             [table :refer [Table]]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -36,30 +37,37 @@
        api/check-404
        (magic/automagic-dashboard (str prefix "/" rule ".yaml"))))
 
-(api/defendpoint GET "/metric/:id"
-  "Return an automagic dashboard analyzing metric with id `id`."
-  [id]
-  (magic/automagic-analysis (Metric id)))
-
 (api/defendpoint GET "/segment/:id"
   "Return an automagic dashboard analyzing segment with id `id`."
   [id]
-  (magic/automagic-analysis (Metric id)))
+  (-> id Segment api/check-404 :table_id Table magic/automagic-dashboard))
+
+(api/defendpoint GET "/question/:id/:cell-query"
+  "Return an automagic dashboard analyzing cell in question  with id `id` defined by
+   query `cell-querry`."
+  [id cell-query]
+  (-> id Card api/check-404 :table_id Table magic/automagic-dashboard))
+
+(api/defendpoint GET "/metric/:id"
+  "Return an automagic dashboard analyzing metric with id `id`."
+  [id]
+  (-> id Metric api/check-404 magic/automagic-analysis))
 
 (api/defendpoint GET "/field/:id"
   "Return an automagic dashboard analyzing field with id `id`."
   [id]
-  (magic/automagic-analysis (Field id)))
+  (-> id Field api/check-404 :table_id Table magic/automagic-dashboard))
 
 (api/defendpoint GET "/question/:id"
   "Return an automagic dashboard analyzing question with id `id`."
   [id]
-  id)
+  (-> id Card api/check-404 :table_id Table magic/automagic-dashboard))
 
-(api/defendpoint GET "/adhoc/:querystring"
-  "Return an automagic dashboard analyzing ad hoc query`id`."
-  [querystring]
-  querystring)
+
+;; (api/defendpoint GET "/adhoc/:query"
+;;   "Return an automagic dashboard analyzing ad hoc query."
+;;   [query]
+;;   )
 
 (def ^:private valid-comparison-pair?
   #{["segment" "segment"]
