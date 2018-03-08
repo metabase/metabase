@@ -34,6 +34,16 @@
   [id]
   (magic/automagic-analysis (Field id)))
 
+(api/defendpoint GET "/question/:id"
+  "Return an automagic dashboard analyzing question with id `id`."
+  [id]
+  id)
+
+(api/defendpoint GET "/adhoc/:querystring"
+  "Return an automagic dashboard analyzing ad hoc query`id`."
+  [querystring]
+  querystring)
+
 
 (def ^:private valid-comparison-pair?
   #{["segment" "segment"]
@@ -118,6 +128,17 @@
        dashboard/save-transient-dashboard!
        :id)])
 
+
+
+(api/defendpoint GET "/question/:id"
+  "TODO: Code me."
+  [id]
+  id)
+
+(api/defendpoint GET "/adhoc/:querystring"
+  "TODO: Code me."
+  [querystring]
+  querystring)
 
 (api/defendpoint GET "/compare/dashboard/:dashboard-id/segments/:left-id/:right-id/save"
   "Create an automagic comparison dashboard based on dashboard with ID
