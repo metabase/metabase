@@ -7,14 +7,14 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 
-import type { Dashboard } from "metabase/meta/types/Dashboard";
+import type { Dashboard as _Dashboard } from "metabase/meta/types/Dashboard";
 import type { Parameter } from "metabase/meta/types/Parameter";
 
 type Props = {
   location?: { query: { [key: string]: string } },
   dashboardId: string,
 
-  dashboard?: Dashboard,
+  dashboard?: _Dashboard,
   parameters: Parameter[],
   parameterValues: { [key: string]: string },
 
@@ -33,8 +33,7 @@ type Props = {
   setErrorPage: (error: { status: number }) => void,
 };
 
-@DashboardData
-export default class DashboardContainer extends Component {
+export class Dashboard extends Component {
   props: Props;
 
   render() {
@@ -57,3 +56,5 @@ export default class DashboardContainer extends Component {
     );
   }
 }
+
+export default DashboardData(Dashboard);

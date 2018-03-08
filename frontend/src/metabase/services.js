@@ -44,7 +44,10 @@ export const CardApi = {
 
 export const DashboardApi = {
   list: GET("/api/dashboard"),
+  // creates a new empty dashboard
   create: POST("/api/dashboard"),
+  // saves a complete transient dashboard
+  save: POST("/api/dashboard/save"),
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),

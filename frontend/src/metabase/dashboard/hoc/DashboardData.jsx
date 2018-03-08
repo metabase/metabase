@@ -68,7 +68,7 @@ export default (ComposedComponent: ReactClass<any>) =>
       props: Props;
 
       // $FlowFixMe
-      async componentWillMount() {
+      async load(props) {
         const {
           initialize,
           fetchDashboard,
@@ -76,7 +76,7 @@ export default (ComposedComponent: ReactClass<any>) =>
           setErrorPage,
           location,
           dashboardId,
-        } = this.props;
+        } = props;
 
         initialize();
         try {
@@ -88,8 +88,16 @@ export default (ComposedComponent: ReactClass<any>) =>
         }
       }
 
+      componentWillMount() {
+        this.load(this.props);
+      }
+
       componentWillReceiveProps(nextProps: Props) {
-        if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues)) {
+        if (nextProps.dashboardId !== this.props.dashboardId) {
+          this.load(nextProps);
+        } else if (
+          !_.isEqual(this.props.parameterValues, nextProps.parameterValues)
+        ) {
           this.props.fetchDashboardCardData({ reload: false, clear: true });
         }
       }

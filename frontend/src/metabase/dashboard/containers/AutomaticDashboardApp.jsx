@@ -2,33 +2,52 @@ import React from "react";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { Link } from "react-router";
 
-import Button from "metabase/components/Button";
+import ActionButton from "metabase/components/ActionButton";
 import Icon from "metabase/components/Icon";
 
-import Dashboard from "./Dashboard";
+import { Dashboard } from "./Dashboard";
+import DashboardData from "metabase/dashboard/hoc/DashboardData";
 
-import { AutoApi } from "metabase/services";
+import { DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 
-const SuggestionsSidebar = ({ suggestions }) => (
+import { dissoc } from "icepick";
+
+const getDashboardTitle = dashboard => dashboard && dashboard.description;
+
+const getRelatedTableTitle = object =>
+  object.title || (object.table && object.table.display_name);
+const getRelatedTableDescription = object => object.table && object.description;
+const getRelatedTableUrl = object =>
+  object.table && `/auto/dashboard/table/${object.table.id}`;
+
+const SuggestionsSidebar = ({ related }) => (
   <div className="flex flex-column full-height">
     <div className="py2 text-centered my3">
       <h3>More X-rays</h3>
     </div>
     <ol className="px2">
-      {suggestions.map((s, i) => (
-        <li className="bordered rounded bg-white shadowed mb2 p2 flex" key={i}>
-          <div
-            className="bg-slate-light rounded flex align-center justify-center text-slate mr1"
-            style={{ width: 48, height: 48 }}
+      {related.tables.map((s, i) => (
+        <li key={i}>
+          <Link
+            to={getRelatedTableUrl(s)}
+            className="bordered rounded bg-white shadowed mb2 p2 flex no-decoration"
           >
-            <Icon name="bolt" size={22} />
-          </div>
-          <div>
-            <h3 className="m0 mb1">{s.name}</h3>
-            <p className="text-paragraph mt0">{s.description}</p>
-          </div>
+            <div
+              className="bg-slate-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
+              style={{ width: 48, height: 48 }}
+            >
+              <Icon name="bolt" size={22} />
+            </div>
+            <div>
+              <h3 className="m0 mb1">{getRelatedTableTitle(s)}</h3>
+              <p className="text-paragraph mt0">
+                {getRelatedTableDescription(s)}
+              </p>
+            </div>
+          </Link>
         </li>
       ))}
     </ol>
@@ -41,53 +60,47 @@ const SuggestionsSidebar = ({ suggestions }) => (
   </div>
 );
 
-SuggestionsSidebar.defaultProps = {
-  suggestions: [
-    { name: "Test", description: "test" },
-    { name: "Test", description: "test" },
-    { name: "Test", description: "test" },
-    { name: "Test", description: "test" },
-  ],
-};
+const getDashboardId = (state, { params: { type, subtype, id } }) =>
+  `/auto/${type}/${subtype}/${id}`;
 
-@connect(null, { push })
+const mapStateToProps = (state, props) => ({
+  dashboardId: getDashboardId(state, props),
+});
+
+@connect(mapStateToProps, { push })
+@DashboardData
 class AutomaticDashboardApp extends React.Component {
   save = async () => {
-    const { params: { subtype, id }, push } = this.props;
-    const result = await AutoApi.saveDashboard({ type: subtype, id });
-    // FIXME: the endpoint should only be saving one dashboard and returning one ID
-    const dashId = Array.isArray(result) ? result[0] : result;
-    push(Urls.dashboard(dashId));
+    const { dashboard, push } = this.props;
+    // remove the transient id before trying to save
+    const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
+    push(Urls.dashboard(newDashboard.id));
   };
 
   render() {
-    const { params: { type, subtype, id } } = this.props;
-    const dashboardId = `/auto/${type}/${subtype}/${id}`;
+    const { dashboard } = this.props;
     return (
       <div className="flex full-height">
         <div className="flex flex-column" style={{ flex: 1 }}>
           <div className="bg-white border-bottom py2">
             <div className="wrapper flex align-center">
               <Icon name="bolt" className="text-gold mr1" size={24} />
-              <h2>
-                Here are some things we thought were interesting in your FIXME
-                table.
-              </h2>
-              <Button
+              <h2>{getDashboardTitle(dashboard)}</h2>
+              <ActionButton
                 className="ml-auto bg-green text-white"
                 borderless
-                onClick={this.save}
+                actionFn={this.save}
               >
                 Save this
-              </Button>
+              </ActionButton>
             </div>
           </div>
           <div className="px3 pb4 bg-slate-extra-light">
-            <Dashboard dashboardId={dashboardId} />
+            <Dashboard {...this.props} />
           </div>
         </div>
         <div className="bg-slate-light full-height" style={{ width: 300 }}>
-          <SuggestionsSidebar />
+          {dashboard && <SuggestionsSidebar related={dashboard.related} />}
         </div>
       </div>
     );
