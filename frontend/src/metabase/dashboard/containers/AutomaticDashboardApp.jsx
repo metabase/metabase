@@ -1,9 +1,15 @@
 import React from "react";
 
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
+
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 
 import Dashboard from "./Dashboard";
+
+import { AutoApi } from "metabase/services";
+import * as Urls from "metabase/lib/urls";
 
 const SuggestionsSidebar = ({ suggestions }) => (
   <div className="flex flex-column full-height">
@@ -44,7 +50,16 @@ SuggestionsSidebar.defaultProps = {
   ],
 };
 
+@connect(null, { push })
 class AutomaticDashboardApp extends React.Component {
+  save = async () => {
+    const { params: { subtype, id }, push } = this.props;
+    const result = await AutoApi.saveDashboard({ type: subtype, id });
+    // FIXME: the endpoint should only be saving one dashboard and returning one ID
+    const dashId = Array.isArray(result) ? result[0] : result;
+    push(Urls.dashboard(dashId));
+  };
+
   render() {
     const { params: { type, subtype, id } } = this.props;
     const dashboardId = `/auto/${type}/${subtype}/${id}`;
@@ -61,7 +76,7 @@ class AutomaticDashboardApp extends React.Component {
               <Button
                 className="ml-auto bg-green text-white"
                 borderless
-                onClick={() => alert("FIXME")}
+                onClick={this.save}
               >
                 Save this
               </Button>
