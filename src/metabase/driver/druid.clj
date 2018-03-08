@@ -63,7 +63,10 @@
       (catch Throwable e
         ;; try to extract the error
         (let [message (or (u/ignore-exceptions
-                            (:error (json/parse-string (:body (:object (ex-data e))) keyword)))
+                            (when-let [body (json/parse-string (:body (:object (ex-data e))) keyword)]
+                              (str (:error body) "\n"
+                                   (:errorMessage body) "\n"
+                                   "Error class:" (:errorClass body))))
                           (.getMessage e))]
           (log/error (u/format-color 'red "Error running query:\n%s" message))
           ;; Re-throw a new exception with `message` set to the extracted message

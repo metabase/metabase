@@ -7,7 +7,6 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :refer [rows rows+column-names]]
-             [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
             [metabase.driver.druid :as druid]
             [metabase.models
@@ -15,15 +14,12 @@
              [metric :refer [Metric]]
              [table :refer [Table]]]
             [metabase.query-processor.middleware.expand :as ql]
-            [metabase.query-processor-test.query-cancellation-test :as cancel-test]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [datasets :as datasets :refer [expect-with-engine]]]
-            [toucan.util.test :as tt])
-  (:import metabase.driver.druid.DruidDriver))
+            [metabase.test.data.datasets :as datasets :refer [expect-with-engine]]
+            [metabase.timeseries-query-processor-test.util :as tqpt]
+            [toucan.util.test :as tt]))
 
 ;;; table-rows-sample
 (datasets/expect-with-engine :druid
@@ -82,7 +78,7 @@
 
 (defn- process-native-query [query]
   (datasets/with-engine :druid
-    (timeseries-qp-test/with-flattened-dbdef
+    (tqpt/with-flattened-dbdef
       (-> (qp/process-query {:native   {:query query}
                              :type     :native
                              :database (data/id)})
@@ -131,7 +127,7 @@
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
 (defmacro ^:private druid-query {:style/indent 0} [& body]
-  `(timeseries-qp-test/with-flattened-dbdef
+  `(tqpt/with-flattened-dbdef
      (qp/process-query {:database (data/id)
                         :type     :query
                         :query    (data/query ~'checkins
@@ -308,7 +304,7 @@
   [["2" 1231.0]
    ["3"  346.0]
    ["4" 197.0]]
-  (timeseries-qp-test/with-flattened-dbdef
+  (tqpt/with-flattened-dbdef
     (tt/with-temp Metric [metric {:definition {:aggregation [:sum [:field-id (data/id :checkins :venue_price)]]
                                                :filter      [:> [:field-id (data/id :checkins :venue_price)] 1]}}]
       (rows (qp/process-query
