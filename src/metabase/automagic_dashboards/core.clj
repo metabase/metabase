@@ -434,36 +434,40 @@
 
 (defn automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [root]
-  (if-let [dashboard (->> root
-                          (matching-rules (rules/load-rules))
-                          (keep (partial apply-rule root))
-                          first)]
-    (assoc dashboard :related
-           {:tables  (->> root
-                          :db_id
-                          Database
-                          candidate-tables
-                          (remove (comp #{root} :table)))
-            :indepth (->> dashboard
-                          :rule
-                          rules/indepth
-                          (keep (fn [rule]
-                                  (when-let [dashboard (apply-rule root rule)]
-                                    {:title       (:name dashboard)
-                                     :description (:description dashboard)
-                                     :table       root
-                                     :url         (format "%stable/%s/%s"
-                                                          public-endpoint
-                                                          (:id root)
-                                                          (:rule rule))}))))})
-    (log/info (format "Skipping %s: no cards fully match the topology."
-                      (:name root)))))
+  ([root] (automagic-dashboard nil root))
+  ([rule root]
+   (if-let [dashboard (if rule
+                        (apply-rule root (rules/load-rule rule))
+                        (->> root
+                             (matching-rules (rules/load-rules))
+                             (keep (partial apply-rule root))
+                             first))]
+     (assoc dashboard :related
+            {:tables  (->> root
+                           :db_id
+                           Database
+                           candidate-tables
+                           (remove (comp #{root} :table)))
+             :indepth (->> dashboard
+                           :rule
+                           rules/indepth
+                           (keep (fn [rule]
+                                   (when-let [indepth-dashboard (apply-rule root rule)]
+                                     {:title       (:name indepth-dashboard)
+                                      :description (:description indepth-dashboard)
+                                      :table       root
+                                      :url         (format "%stable/%s/%s/%s"
+                                                           public-endpoint
+                                                           (:id root)
+                                                           (:rule dashboard)
+                                                           (:rule rule))}))))})
+     (log/info (format "Skipping %s: no cards fully match the topology."
+                       (:name root))))))
 
 (defn automagic-analysis
   "Create a transient dashboard analyzing metric `metric`."
   [metric]
-  (let [rule      (-> "/special/metric.yaml"
+  (let [rule      (-> "special/metric.yaml"
                       rules/load-rule
                       (update :metrics conj {"Metric" {:metric ["METRIC" (:id metric)]
                                                        :score  100}}))

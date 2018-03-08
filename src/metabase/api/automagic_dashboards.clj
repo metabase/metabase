@@ -26,7 +26,15 @@
 (api/defendpoint GET "/table/:id"
   "Return an automagic dashboard for table with id `ìd`."
   [id]
-  (magic/automagic-dashboard (Table id)))
+  (-> id Table api/check-404 magic/automagic-dashboard))
+
+(api/defendpoint GET "/table/:id/:prefix/:rule"
+  "Return an automagic dashboard for table with id `ìd` using rule `rule`."
+  [id prefix rule]
+  (->> id
+       Table
+       api/check-404
+       (magic/automagic-dashboard (str prefix "/" rule ".yaml"))))
 
 (api/defendpoint GET "/metric/:id"
   "Return an automagic dashboard analyzing metric with id `id`."

@@ -219,7 +219,7 @@
                       x))
     Groups        (partial apply merge)}))
 
-(def ^:private rules-dir "resources/automagic_dashboards")
+(def ^:private rules-dir "resources/automagic_dashboards/")
 
 (def ^:private ^{:arglists '([f])} file-name->table-type
   (comp (partial re-find #".+(?=\.yaml)") (memfn ^java.io.File getName)))
