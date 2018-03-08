@@ -232,7 +232,8 @@
   "Save a denormalized description of dashboard."
   [dashboard]
   (let [dashcards (:ordered_cards dashboard)
-        dashboard (db/insert! Dashboard (dissoc dashboard :ordered_cards))]
+        dashboard (db/insert! Dashboard
+                    (dissoc dashboard :ordered_cards :rule :related))]
     (doseq [dashcard dashcards]
       (let [card     (some->> dashcard :card (db/insert! 'Card))
             series   (some->> dashcard :series (map (partial db/insert! 'Card)))

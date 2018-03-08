@@ -14,18 +14,24 @@
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
+(api/defendpoint GET "/database/:id/candidates"
+  "Return a list of candidates for automagic dashboards orderd by interestingness."
+  [id]
+  (-> (Dashboard id)
+      api/check-404
+      magic/candidate-tables))
 
 ;; ----------------------------------------- API Endpoints for viewing a transient dashboard ----------------
 
 (api/defendpoint GET "/table/:id"
   "Return an automagic dashboard for table with id `ìd`."
   [id]
-  (first (magic/automagic-dashboard (Table id))))
+  (magic/automagic-dashboard (Table id)))
 
 (api/defendpoint GET "/metric/:id"
   "Return an automagic dashboard analyzing metric with id `id`."
   [id]
-  (magic/automagic-analysis (Metric id)))
+  (magic/automagic-analysis (Metxric id)))
 
 (api/defendpoint GET "/segment/:id"
   "Return an automagic dashboard analyzing segment with id `id`."
@@ -92,62 +98,5 @@
                                            dashboard)
                                          (->segment left)
                                          (->segment right)))
-
-;; ----------------------------------------- API Endpoints for saving a transient dashboard ----------------
-
-(api/defendpoint POST "/database/:id/save"
-  "Create automagic dashboards for all visible tables in database with id `ìd`."
-  [id]
-  (->> (magic/candidate-tables id)
-       (mapcat magic/automagic-dashboard)
-       (map (comp :id dashboard/save-transient-dashboard!))))
-
-(api/defendpoint POST "/table/:id/save"
-  "Create an automagic dashboard for table with id `ìd`."
-  [id]
-  (->> (magic/automagic-dashboard (Table id))
-       (map (comp :id dashboard/save-transient-dashboard!))))
-
-(api/defendpoint POST "/metric/:id/save"
-  "Create an automagic dashboard analyzing metric with id `id`."
-  [id]
-  [(-> (magic/automagic-analysis (Metric id))
-       dashboard/save-transient-dashboard!
-       :id)])
-
-(api/defendpoint POST "/segment/:id/save"
-  "TODO: Code me"
-  [id]
-  [(-> (magic/automagic-analysis (Segment id))
-       dashboard/save-transient-dashboard!
-       :id)])
-
-(api/defendpoint POST "/field/:id/save"
-  "TODO: Code me"
-  [id]
-  [(-> (magic/automagic-analysis (Field id))
-       dashboard/save-transient-dashboard!
-       :id)])
-
-(api/defendpoint POST "/question/:id/save"
-  "TODO: Code me."
-  [id]
-  id)
-
-(api/defendpoint POST "/adhoc/:querystring/save"
-  "TODO: Code me."
-  [querystring]
-  querystring)
-
-(api/defendpoint POST "/compare/dashboard/:dashboard-id/segments/:left-id/:right-id/save"
-  "Create an automagic comparison dashboard based on dashboard with ID
-   `dashboard-id`, comparing segments with IDs `left-id` and `right-id`."
-  [dashboard-id left-id right-id]
-  [(-> (Dashboard dashboard-id)
-       api/check-404
-       (hydrate [:ordered_cards [:card :in_public_dashboard] :series])
-       (magic.comparison/comparison-dashboard (Segment left-id) (Segment right-id))
-       dashboard/save-transient-dashboard!
-       :id)])
 
 (api/define-routes)

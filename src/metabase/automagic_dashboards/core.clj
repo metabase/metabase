@@ -12,6 +12,7 @@
              [rules :as rules]]
             [metabase.models
              [card :as card]
+             [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [table :refer [Table]]]
@@ -316,17 +317,17 @@
                       (assoc :score score
                              :query query))))))))
 
+(def ^:private ^{:arglists '([ruke])} rule-specificity
+  (comp count ancestors :table_type))
+
 (defn- matching-rules
-  "Pick the most specific among applicable rules.
+  "Return matching rules orderd by specificity.
    Most specific is defined as entity type specification the longest ancestor
    chain."
   [rules table]
-  (some->> rules
-           (filter (comp (partial isa? (:entity_type table)) :table_type))
-           not-empty
-           (group-by (comp count ancestors :table_type))
-           (apply max-key key)
-           val))
+  (->> rules
+       (filter (comp (partial isa? (:entity_type table)) :table_type))
+       (sort-by rule-specificity >)))
 
 (defn- linked-tables
   "Return all tables accessable from a given table with the paths to get there.
@@ -388,25 +389,73 @@
            vals
            (apply concat)))
 
+(defn- apply-rule
+  [root rule]
+  (let [context   (make-context root rule)
+        dashboard (->> (select-keys rule [:title :description :groups])
+                                    (instantiate-metadata context {}))
+        filters   (->> rule
+                       :dashboard_filters
+                       (mapcat (comp :matches (:dimensions context))))
+        cards     (make-cards context rule)]
+    (when cards
+      (log/info (format "Applying heuristic %s to table %s."
+                        (:table_type rule)
+                        (:name root)))
+      (-> dashboard
+          (populate/create-dashboard filters cards)
+          (assoc :rule (:rule rule))))))
+
+(defn candidate-tables
+  "Return a list of tables in database with ID `database-id` for which it makes sense
+   to generate an automagic dashboard."
+  [database]
+  (let [rules (rules/load-rules)]
+    (->> (db/select Table
+           :db_id (:id database)
+           :visibility_type nil)
+         (remove (some-fn link-table? list-like-table?))
+         (keep (fn [table]
+                 (when-let [[dashboard rule]
+                            (->> table
+                                 (matching-rules rules)
+                                 (keep (fn [rule]
+                                         (some-> (apply-rule table rule)
+                                                 (vector rule))))
+                                 first)]
+                   {:url         (str "/api/automagic-dashboards/table/" (:id table))
+                    :title       (:title dashboard)
+                    :score       (rule-specificity rule)
+                    :description (:description dashboard)
+                    :table       table})))
+         (sort-by :score >))))
+
 (defn automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
   [root]
-  (keep
-   (fn [rule]
-     (log/info (format "Applying heuristic %s to table %s."
-                       (:table_type rule)
-                       (:name root)))
-     (let [context   (make-context root rule)
-           dashboard (->> (select-keys rule [:title :description :groups])
-                          (instantiate-metadata context {}))
-           filters   (->> rule
-                          :dashboard_filters
-                          (mapcat (comp :matches (:dimensions context))))
-           cards     (make-cards context rule)]
-       (if cards
-         (populate/create-dashboard dashboard filters cards)
-         (log/info "Skipping: no cards fully match the topology."))))
-   (matching-rules (rules/load-rules) root)))
+  (if-let [dashboard (->> root
+                          (matching-rules (rules/load-rules))
+                          (keep (partial apply-rule root))
+                          first)]
+    (assoc dashboard :related
+           {:tables  (->> root
+                          :db_id
+                          Database
+                          candidate-tables
+                          (remove (comp #{root} :table)))
+            :indepth (->> dashboard
+                          :rule
+                          rules/indepth
+                          (keep (fn [rule]
+                                  (when-let [dashboard (apply-rule root rule)]
+                                    {:title       (:title dashboard)
+                                     :description (:description dashboard)
+                                     :table       root
+                                     :url         (format "/api/automagic-dashboards/table/%s/%s"
+                                                          (:id root)
+                                                          (:rule rule))}))))})
+    (log/info (format "Skipping %s: no cards fully match the topology."
+                      (:name root)))))
 
 (defn automagic-analysis
   "Create a transient dashboard analyzing metric `metric`."
@@ -423,12 +472,3 @@
         dashboard {:title  (format "Analysis of %s" (:name metric))
                    :groups (:groups rule)}]
     (some->> cards (populate/create-dashboard dashboard (count cards) filters))))
-
-(defn candidate-tables
-  "Return a list of tables in database with ID `database-id` for which it makes sense
-   to generate an automagic dashboard."
-  [database-id]
-  (->> (db/select Table
-         :db_id database-id
-         :visibility_type nil)
-       (remove (some-fn link-table? list-like-table?))))

@@ -153,6 +153,7 @@
    {(s/required-key :title)             s/Str
     (s/required-key :dimensions)        [Dimension]
     (s/required-key :cards)             [Card]
+    (s/required-key :rule)              s/Str
     (s/optional-key :table_type)        TableType
     (s/optional-key :description)       s/Str
     (s/optional-key :metrics)           [Metric]
@@ -225,14 +226,15 @@
 
 (defn load-rule
   "Load and validate rule from file `f`."
-  [^java.io.File f]
-  (let [f (if (string? f)
-            (java.io.File. (str rules-dir f))
-            f)]
+  [f]
+  (let [^java.io.File f (if (string? f)
+                          (java.io.File. (str rules-dir f))
+                          f)]
     (try
       (-> f
           slurp
           yaml/parse-string
+          (assoc :rule (file-name->table-type f))
           (update :table_type #(or % (file-name->table-type f)))
           rules-validator)
       (catch Exception e
@@ -246,13 +248,18 @@
         nil))))
 
 (defn load-rules
-  "Load and validate all rules in `rules-dir`."
-  []
-  (->> rules-dir
-       clojure.java.io/file
-       .listFiles
-       (filter (memfn ^java.io.File isFile))
-       (keep load-rule)))
+  "Load and validate all rules in dir."
+  ([] (load-rules rules-dir))
+  ([dir]
+   (->> dir
+        clojure.java.io/file
+        .listFiles
+        (filter (memfn ^java.io.File isFile))
+        (keep load-rule))))
+
+(def ^{:arglists '([rule])} indepth
+  "Load and validate indepth refinement for given rule."
+  (comp load-rules (partial str rules-dir "/") name))
 
 (defn -main
   "Entry point for lein task `validate-automagic-dashboards`"

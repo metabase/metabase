@@ -1,27 +1,31 @@
 (ns metabase.automagic-dashboards.comparison
-  (:require [metabase.api.common :as api]
+  (:require [clojure.string :as str]
+            [metabase.api.common :as api]
             [metabase.automagic-dashboards.populate :as populate]))
 
 (defn- dashboard->cards
   [dashboard]
   (->> dashboard
        :ordered_cards
-       (map (fn [{:keys [sizeY card col row]}]
+       (map (fn [{:keys [sizeY card col row series]}]
               (assoc card
+                :series   series
                 :height   sizeY
                 :position (+ (* row populate/grid-width) col))))
        (sort-by :position)))
 
 (defn- inject-segment
   [segment card]
-  (update-in card [:dataset_query :query :filter]
-             (fn [filter-clause]
-               (let [segment-definition (-> segment :definition :filter)]
-                 (cond
-                   (empty? segment-definition) filter-clause
-                   (empty? filter-clause)      segment-definition
-                   :else                       [:and filter-clause
-                                                     segment-definition])))))
+  (-> card
+      (update-in [:dataset_query :query :filter]
+                 (fn [filter-clause]
+                   (let [segment-definition (-> segment :definition :filter)]
+                     (cond
+                       (empty? segment-definition) filter-clause
+                       (empty? filter-clause)      segment-definition
+                       :else                       [:and filter-clause
+                                                    segment-definition]))))
+      (update :series (partial map (partial inject-segment segment)))))
 
 (defn- clone-card
   [card]
@@ -31,33 +35,45 @@
       (assoc :creator_id    api/*current-user-id*
              :collection_id (-> populate/automagic-collection deref :id))))
 
+(defn- overlay-comparison?
+  [card]
+  (and (-> card :display name (#{"bar" "line"}))
+       (-> card :series empty?)))
+
 (defn- place-row
-  [dashboard row height left right]
-  (if (-> left :display (#{:bar :line}))
-    (update dashboard :ordered_cards conj {:col                    0
-                                           :row                    row
-                                           :sizeX                  populate/grid-width
-                                           :sizeY                  height
-                                           :card                   left
-                                           :series                 [right]
-                                           :visualization_settings {}
-                                           :id                     (gensym)})
-    (let [width (/ populate/grid-width 2)]
-      (-> dashboard
-          (update :ordered_cards conj {:col                    0
-                                       :row                    row
-                                       :sizeX                  width
-                                       :sizeY                  height
-                                       :card                   left
-                                       :visualization_settings {}
-                                       :id                     (gensym)})
-          (update :ordered_cards conj {:col                    width
-                                       :row                    row
-                                       :sizeX                  width
-                                       :sizeY                  height
-                                       :card                   right
-                                       :visualization_settings {}
-                                       :id                     (gensym)})))))
+  [dashboard row left right]
+  (let [height       (:height left)
+        card-left    (clone-card left)
+        card-right   (clone-card right)]
+    (if (overlay-comparison? left)
+      (update dashboard :ordered_cards conj {:col                    0
+                                             :row                    row
+                                             :sizeX                  populate/grid-width
+                                             :sizeY                  height
+                                             :card                   card-left
+                                             :series                 [card-right]
+                                             :visualization_settings {}
+                                             :id                     (gensym)})
+      (let [width (/ populate/grid-width 2)
+            series-left  (map clone-card (:series left))
+            series-right (map clone-card (:series right))]
+        (-> dashboard
+            (update :ordered_cards conj {:col                    0
+                                         :row                    row
+                                         :sizeX                  width
+                                         :sizeY                  height
+                                         :card                   card-left
+                                         :series                 series-left
+                                         :visualization_settings {}
+                                         :id                     (gensym)})
+            (update :ordered_cards conj {:col                    width
+                                         :row                    row
+                                         :sizeX                  width
+                                         :sizeY                  height
+                                         :card                   card-right
+                                         :series                 series-right
+                                         :visualization_settings {}
+                                         :id                     (gensym)}))))))
 
 (def ^:private ^Long title-height 2)
 
@@ -70,7 +86,7 @@
 
 (defn- unroll-multiseries
   [card]
-  (if (and (-> card :display (= :line))
+  (if (and (-> card :display name (= "line"))
            (-> card :dataset_query :query :aggregation count (> 1)))
     (for [aggregation (-> card :dataset_query :query :aggregation)]
       (assoc-in card [:dataset_query :query :aggregation] [aggregation]))
@@ -86,11 +102,8 @@
        (map (juxt (partial inject-segment left)
                   (partial inject-segment right)))
        (reduce (fn [[dashboard row] [left right]]
-                 (let [height (:height left)]
-                   [(place-row dashboard row height
-                               (clone-card left)
-                               (clone-card right))
-                    (+ row height)]))
+                 [(place-row dashboard row left right)
+                  (+ row (:height left))])
                [(-> {:name        (format "Comparison of %s and %s"
                                           (:name left)
                                           (:name right))
@@ -99,7 +112,8 @@
                                           (:name right))
                      :creator_id  api/*current-user-id*
                      :parameters  []}
-                    (add-col-title (:name left) 0)
-                    (add-col-title (:name right) (/ populate/grid-width 2)))
+                    (add-col-title (-> left :name str/capitalize) 0)
+                    (add-col-title (-> right :name str/capitalize)
+                                   (/ populate/grid-width 2)))
                 title-height])
        first))
