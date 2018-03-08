@@ -159,7 +159,7 @@ export const PublicLinksQuestionListing = () => (
     revoke={CardApi.deletePublicLink}
     type={t`Public Card Listing`}
     getUrl={({ id }) => Urls.question(id)}
-    getPublicUrl={({ public_uuid }) => Urls.publicCard(public_uuid)}
+    getPublicUrl={({ public_uuid }) => Urls.publicQuestion(public_uuid)}
     noLinksMessage={t`No questions have been publicly shared yet.`}
   />
 );

@@ -67,7 +67,12 @@ export default class PulseCardPreview extends Component {
       cardPreview &&
       cardPreview.pulse_card_type == null;
     return (
-      <div className="flex relative flex-full">
+      <div
+        className="flex relative flex-full"
+        style={{
+          maxWidth: 379,
+        }}
+      >
         <div
           className="absolute p2 text-grey-2"
           style={{

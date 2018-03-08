@@ -33,7 +33,11 @@ import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { createCard } from "metabase/lib/card";
 
-import { addParamValues, fetchDatabaseMetadata } from "metabase/redux/metadata";
+import {
+  addParamValues,
+  addFields,
+  fetchDatabaseMetadata,
+} from "metabase/redux/metadata";
 import { push } from "react-router-redux";
 
 import {
@@ -567,6 +571,9 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
 
     if (result.param_values) {
       dispatch(addParamValues(result.param_values));
+    }
+    if (result.param_fields) {
+      dispatch(addFields(result.param_fields));
     }
 
     return {

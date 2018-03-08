@@ -20,10 +20,15 @@ import {
   applyParameters,
 } from "metabase/meta/Card";
 
-import { PublicApi, EmbedApi } from "metabase/services";
+import {
+  PublicApi,
+  EmbedApi,
+  setPublicQuestionEndpoints,
+  setEmbedQuestionEndpoints,
+} from "metabase/services";
 
 import { setErrorPage } from "metabase/redux/app";
-import { addParamValues } from "metabase/redux/metadata";
+import { addParamValues, addFields } from "metabase/redux/metadata";
 
 import { updateIn } from "icepick";
 
@@ -34,6 +39,7 @@ type Props = {
   height: number,
   setErrorPage: (error: { status: number }) => void,
   addParamValues: any => void,
+  addFields: any => void,
 };
 
 type State = {
@@ -45,6 +51,7 @@ type State = {
 const mapDispatchToProps = {
   setErrorPage,
   addParamValues,
+  addFields,
 };
 
 @connect(null, mapDispatchToProps)
@@ -69,6 +76,13 @@ export default class PublicQuestion extends Component {
       params: { uuid, token },
       location: { query },
     } = this.props;
+
+    if (uuid) {
+      setPublicQuestionEndpoints(uuid);
+    } else if (token) {
+      setEmbedQuestionEndpoints(token);
+    }
+
     try {
       let card;
       if (token) {
@@ -81,6 +95,9 @@ export default class PublicQuestion extends Component {
 
       if (card.param_values) {
         this.props.addParamValues(card.param_values);
+      }
+      if (card.param_fields) {
+        this.props.addFields(card.param_fields);
       }
 
       let parameterValues: ParameterValues = {};

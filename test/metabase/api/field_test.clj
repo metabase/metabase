@@ -6,7 +6,7 @@
              [field-values :refer [FieldValues]]
              [table :refer [Table]]]
             [metabase.test
-             [data :refer :all]
+             [data :as data]
              [util :as tu]]
             [metabase.test.data.users :refer :all]
             [ring.util.codec :as codec]
@@ -17,11 +17,8 @@
 
 ;; Helper Fns
 
-(def ^:private default-field-values
-  {:id true, :created_at true, :updated_at true, :field_id true})
-
 (defn- db-details []
-  (tu/match-$ (db)
+  (tu/match-$ (data/db)
     {:created_at                  $
      :engine                      "h2"
      :caveats                     nil
@@ -41,13 +38,13 @@
 
 ;; ## GET /api/field/:id
 (expect
-  (tu/match-$ (Field (id :users :name))
+  (tu/match-$ (Field (data/id :users :name))
     {:description         nil
-     :table_id            (id :users)
+     :table_id            (data/id :users)
      :raw_column_id       $
      :fingerprint         $
      :fingerprint_version $
-     :table               (tu/match-$ (Table (id :users))
+     :table               (tu/match-$ (Table (data/id :users))
                             {:description             nil
                              :entity_type             "entity/UserTable"
                              :visibility_type         nil
@@ -59,8 +56,8 @@
                              :updated_at              $
                              :entity_name             nil
                              :active                  true
-                             :id                      (id :users)
-                             :db_id                   (id)
+                             :id                      (data/id :users)
+                             :db_id                   (data/id)
                              :caveats                 nil
                              :points_of_interest      nil
                              :show_in_getting_started false
@@ -74,7 +71,7 @@
      :updated_at          $
      :last_analyzed       $
      :active              true
-     :id                  (id :users :name)
+     :id                  (data/id :users :name)
      :visibility_type     "normal"
      :position            0
      :preview_display     true
@@ -83,14 +80,16 @@
      :base_type           "type/Text"
      :has_field_values    "list"
      :fk_target_field_id  nil
-     :parent_id           nil})
-  ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
+     :parent_id           nil
+     :dimensions          []
+     :name_field          nil})
+  ((user->client :rasta) :get 200 (format "field/%d" (data/id :users :name))))
 
 
 ;; ## GET /api/field/:id/summary
 (expect [["count" 75]      ; why doesn't this come back as a dictionary ?
          ["distincts" 75]]
-  ((user->client :rasta) :get 200 (format "field/%d/summary" (id :categories :name))))
+  ((user->client :rasta) :get 200 (format "field/%d/summary" (data/id :categories :name))))
 
 
 ;; ## PUT /api/field/:id
@@ -158,7 +157,7 @@
 (defn- field->field-values
   "Fetch the `FieldValues` object that corresponds to a given `Field`."
   [table-kw field-kw]
-  (FieldValues :field_id (id table-kw field-kw)))
+  (FieldValues :field_id (data/id table-kw field-kw)))
 
 (defn- field-values-id [table-key field-key]
   (:id (field->field-values table-key field-key)))
@@ -166,38 +165,33 @@
 ;; ## GET /api/field/:id/values
 ;; Should return something useful for a field that has special_type :type/Category
 (expect
-  (merge default-field-values {:values (mapv vector [1 2 3 4])})
+  {:values [[1] [2] [3] [4]], :field_id (data/id :venues :price)}
   (do
     ;; clear out existing human_readable_values in case they're set
     (db/update! FieldValues (field-values-id :venues :price)
       :human_readable_values nil)
     ;; now update the values via the API
-    (tu/boolean-ids-and-timestamps ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price))))))
+    ((user->client :rasta) :get 200 (format "field/%d/values" (data/id :venues :price)))))
 
 ;; Should return nothing for a field whose special_type is *not* :type/Category
 (expect
-  {:values []}
-  ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :id))))
+  {:values [], :field_id (data/id :venues :id)}
+  ((user->client :rasta) :get 200 (format "field/%d/values" (data/id :venues :id))))
 
 ;; Sensisitive fields do not have field values and should return empty
 (expect
-  {:values []}
-  ((user->client :rasta) :get 200 (format "field/%d/values" (id :users :password))))
+  {:values [], :field_id (data/id :users :password)}
+  ((user->client :rasta) :get 200 (format "field/%d/values" (data/id :users :password))))
 
-(defn- num->$ [num-seq]
-  (mapv (fn [idx]
-          (vector idx (apply str (repeat idx \$))))
-        num-seq))
-
-(def category-field {:name "Field Test" :base_type :type/Integer :special_type :type/Category})
+(def ^:private category-field {:name "Field Test" :base_type :type/Integer :special_type :type/Category})
 
 ;; ## POST /api/field/:id/values
 
 ;; Human readable values are optional
 (expect
-  [(merge default-field-values {:values (map vector (range 5 10))})
+  [{:values [[5] [6] [7] [8] [9]], :field_id true}
    {:status "success"}
-   (merge default-field-values {:values (map vector (range 1 5))})]
+   {:values [[1] [2] [3] [4]], :field_id true}]
   (tt/with-temp* [Field [{field-id :id} category-field]
                   FieldValues [{field-value-id :id} {:values (range 5 10), :field_id field-id}]]
     (mapv tu/boolean-ids-and-timestamps
@@ -208,54 +202,54 @@
 
 ;; Existing field values can be updated (with their human readable values)
 (expect
-  [(merge default-field-values {:values (map vector (range 1 5))})
+  [{:values [[1] [2] [3] [4]], :field_id true}
    {:status "success"}
-   (merge default-field-values {:values (num->$ (range 1 5))})]
+   {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}]
   (tt/with-temp* [Field [{field-id :id} category-field]
                   FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id}]]
     (mapv tu/boolean-ids-and-timestamps
           [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
            ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-            {:values (num->$ (range 1 5))})
+            {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})
            ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
 ;; Field values are created when not present
 (expect
-  [(merge default-field-values {:values []})
+  [{:values [], :field_id true}
    {:status "success"}
-   (merge default-field-values {:values (num->$ (range 1 5))})]
+   {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}]
   (tt/with-temp* [Field [{field-id :id} category-field]]
     (mapv tu/boolean-ids-and-timestamps
           [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
            ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-            {:values (num->$ (range 1 5))})
+            {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})
            ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
 ;; Can unset values
 (expect
-  [(merge default-field-values {:values (mapv vector (range 1 5))})
+  [{:values [[1] [2] [3] [4]], :field_id true}
    {:status "success"}
-   (merge default-field-values {:values []})]
+   {:values [], :field_id true}]
   (tt/with-temp* [Field [{field-id :id} category-field]
                   FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id}]]
     (mapv tu/boolean-ids-and-timestamps
           [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
            ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-            {:values []})
+            {:values [], :field_id true})
            ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
 ;; Can unset just human readable values
 (expect
-  [(merge default-field-values {:values (num->$ (range 1 5))})
+  [{:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
    {:status "success"}
-   (merge default-field-values {:values (mapv vector (range 1 5))})]
+   {:values [[1] [2] [3] [4]], :field_id true}]
   (tt/with-temp* [Field [{field-id :id} category-field]
                   FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id
                                                      :human_readable_values ["$" "$$" "$$$" "$$$$"]}]]
     (mapv tu/boolean-ids-and-timestamps
           [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
            ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-            {:values (mapv vector (range 1 5))})
+            {:values [[1] [2] [3] [4]]})
            ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
 ;; Should throw when human readable values are present but not for every value
@@ -264,15 +258,15 @@
   (tt/with-temp* [Field [{field-id :id} {:name "Field Test" :base_type :type/Integer :special_type :type/Category}]]
     ((user->client :crowberto) :post 400 (format "field/%d/values" field-id)
      {:values [[1 "$"] [2 "$$"] [3] [4]]})))
-
-;; ## PUT /api/field/:id/dimension
+, :field_id true
+;; ## PUT /api/field/:id/dimensio, :field_id truen
 
 (defn- dimension-for-field [field-id]
   (-> (Field :id field-id)
       (hydrate :dimensions)
       :dimensions))
 
-(defn dimension-post [field-id map-to-post]
+(defn- create-dimension-via-API! [field-id map-to-post]
   ((user->client :crowberto) :post 200 (format "field/%d/dimension" field-id) map-to-post))
 
 ;; test that we can do basic field update work, including unsetting some fields such as special-type
@@ -295,9 +289,9 @@
    true]
   (tt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
     (let [before-creation (dimension-for-field field-id)
-          _               (dimension-post field-id {:name "some dimension name", :type "internal"})
+          _               (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
           new-dim         (dimension-for-field field-id)
-          _               (dimension-post field-id {:name "different dimension name", :type "internal"})
+          _               (create-dimension-via-API! field-id {:name "different dimension name", :type "internal"})
           updated-dim     (dimension-for-field field-id)]
       [before-creation
        (tu/boolean-ids-and-timestamps new-dim)
@@ -312,17 +306,17 @@
 ;; test that we can do basic field update work, including unsetting some fields such as special-type
 (expect
   [[]
-   {:id true
-    :created_at true
-    :updated_at true
-    :type :external
-    :name "some dimension name"
+   {:id                      true
+    :created_at              true
+    :updated_at              true
+    :type                    :external
+    :name                    "some dimension name"
     :human_readable_field_id true
-    :field_id true}]
+    :field_id                true}]
   (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
                   Field [{field-id-2 :id} {:name "Field Test 2"}]]
     (let [before-creation (dimension-for-field field-id-1)
-          _               (dimension-post field-id-1 {:name "some dimension name", :type "external" :human_readable_field_id field-id-2})
+          _               (create-dimension-via-API! field-id-1 {:name "some dimension name", :type "external" :human_readable_field_id field-id-2})
           new-dim         (dimension-for-field field-id-1)]
       [before-creation
        (tu/boolean-ids-and-timestamps new-dim)])))
@@ -331,9 +325,9 @@
 (expect
   clojure.lang.ExceptionInfo
   (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]]
-    (dimension-post field-id-1 {:name "some dimension name", :type "external"})))
-
-;; Non-admin users can't update dimensions
+    (create-dimension-via-API! field-id-1 {:name "some dimension name", :type "external"})))
+, :field_id true
+;; Non-admin users can't update dimension, :field_id trues
 (expect
   "You don't have permissions to do that."
   (tt/with-temp* [Field [{field-id :id} {:name "Field Test 1"}]]
@@ -351,7 +345,7 @@
    []]
   (tt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
 
-    (dimension-post field-id {:name "some dimension name", :type "internal"})
+    (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
 
     (let [new-dim (dimension-for-field field-id)]
       ((user->client :crowberto) :delete 204 (format "field/%d/dimension" field-id))
@@ -378,7 +372,7 @@
                                            :special_type :type/FK}]
                   Field [{field-id-2 :id} {:name "Field Test 2"}]]
 
-    (dimension-post field-id-1 {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
+    (create-dimension-via-API! field-id-1 {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
 
     (let [new-dim          (dimension-for-field field-id-1)
           _                ((user->client :crowberto) :put 200 (format "field/%d" field-id-1) {:special_type nil})
@@ -399,7 +393,7 @@
                                            :special_type :type/FK}]
                   Field [{field-id-2 :id} {:name "Field Test 2"}]]
 
-    (dimension-post field-id-1 {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
+    (create-dimension-via-API! field-id-1 {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
 
     (let [new-dim          (dimension-for-field field-id-1)
           _                ((user->client :crowberto) :put 200 (format "field/%d" field-id-1) {:description "something diffrent"})
@@ -522,7 +516,7 @@
    []]
   (tt/with-temp* [Field [{field-id :id} {:name "Field Test"
                                          :base_type "type/Integer"}]]
-    (dimension-post field-id {:name "some dimension name", :type "internal"})
+    (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
     (let [new-dim (dimension-for-field field-id)]
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type "type/Text"})
       [(tu/boolean-ids-and-timestamps new-dim)
@@ -539,7 +533,7 @@
              :field_id true})
   (tt/with-temp* [Field [{field-id :id} {:name "Field Test"
                                          :base_type "type/Integer"}]]
-    (dimension-post field-id {:name "some dimension name", :type "internal"})
+    (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
     (let [new-dim (dimension-for-field field-id)]
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type "type/Category"})
       [(tu/boolean-ids-and-timestamps new-dim)

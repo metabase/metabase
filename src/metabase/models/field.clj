@@ -92,7 +92,7 @@
 (u/strict-extend (class Field)
   models/IModel
   (merge models/IModelDefaults
-         {:hydration-keys (constantly [:destination :field :origin])
+         {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
           :types          (constantly {:base_type       :keyword
                                        :special_type    :keyword
                                        :visibility_type :keyword
@@ -124,9 +124,12 @@
   [{:keys [id]}]
   (db/select [FieldValues :field_id :values], :field_id id))
 
-(defn- keyed-by-field-ids
-  "Queries for `MODEL` instances related by `FIELDS`, returns a map
-  keyed by :field_id"
+(defn- select-field-id->instance
+  "Select instances of `model` related by `field_id` FK to a Field in `fields`, and return a map of Field ID -> model
+  instance. This only returns a single instance for each Field! Duplicates are discarded!
+
+    (select-field-id->instance [(Field 1) (Field 2)] FieldValues)
+    ;; -> {1 #FieldValues{...}, 2 #FieldValues{...}}"
   [fields model]
   (let [field-ids (set (map :id fields))]
     (u/key-by :field_id (when (seq field-ids)
@@ -136,7 +139,7 @@
   "Efficiently hydrate the `FieldValues` for a collection of FIELDS."
   {:batched-hydrate :values}
   [fields]
-  (let [id->field-values (keyed-by-field-ids fields FieldValues)]
+  (let [id->field-values (select-field-id->instance fields FieldValues)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -144,7 +147,7 @@
   "Efficiently hydrate the `FieldValues` for visibility_type normal FIELDS."
   {:batched-hydrate :normal_values}
   [fields]
-  (let [id->field-values (keyed-by-field-ids (filter fv/field-should-have-field-values? fields)
+  (let [id->field-values (select-field-id->instance (filter fv/field-should-have-field-values? fields)
                                              [FieldValues :id :human_readable_values :values :field_id])]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
@@ -153,7 +156,12 @@
   "Efficiently hydrate the `Dimension` for a collection of FIELDS."
   {:batched-hydrate :dimensions}
   [fields]
-  (let [id->dimensions (keyed-by-field-ids fields Dimension)]
+  ;; TODO - it looks like we obviously thought this code would return *all* of the Dimensions for a Field, not just
+  ;; one! This code is obviously wrong! It will either assoc a single Dimension or an empty vector under the
+  ;; `:dimensions` key!!!!
+  ;; TODO - consult with tom and see if fixing this will break any hacks that surely must exist in the frontend to deal
+  ;; with this
+  (let [id->dimensions (select-field-id->instance fields Dimension)]
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))
 

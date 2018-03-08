@@ -355,7 +355,8 @@ export const fetchField = createThunkAction(FETCH_FIELD, function(
   return async function(dispatch, getState) {
     const requestStatePath = ["metadata", "fields", fieldId];
     const existingStatePath = requestStatePath;
-    const getData = () => MetabaseApi.field_get({ fieldId });
+    const getData = async () =>
+      normalize(await MetabaseApi.field_get({ fieldId }), FieldSchema);
 
     return await fetchData({
       dispatch,
@@ -419,6 +420,11 @@ export const updateFieldValues = createThunkAction(
 
 export const ADD_PARAM_VALUES = "metabase/metadata/ADD_PARAM_VALUES";
 export const addParamValues = createAction(ADD_PARAM_VALUES);
+
+export const ADD_FIELDS = "metabase/metadata/ADD_FIELDS";
+export const addFields = createAction(ADD_FIELDS, fields => {
+  return normalize(fields, [FieldSchema]);
+});
 
 export const UPDATE_FIELD = "metabase/metadata/UPDATE_FIELD";
 export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
@@ -689,15 +695,6 @@ const tables = handleActions({}, {});
 
 const fields = handleActions(
   {
-    [FETCH_FIELD]: {
-      next: (state, { payload: field }) => ({
-        ...state,
-        [field.id]: {
-          ...(state[field.id] || {}),
-          ...field,
-        },
-      }),
-    },
     [FETCH_FIELD_VALUES]: {
       next: (state, { payload: fieldValues }) =>
         fieldValues
