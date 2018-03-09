@@ -9,6 +9,7 @@ import Icon from "metabase/components/Icon";
 
 import { Dashboard } from "./Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
+import Parameters from "metabase/parameters/components/Parameters";
 
 import { DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
@@ -74,7 +75,13 @@ class AutomaticDashboardApp extends React.Component {
   };
 
   render() {
-    const { dashboard } = this.props;
+    const {
+      dashboard,
+      parameters,
+      parameterValues,
+      setParameterValue,
+      location,
+    } = this.props;
     return (
       <div className="flex full-height">
         <div className="flex flex-column" style={{ flex: 1 }}>
@@ -92,6 +99,21 @@ class AutomaticDashboardApp extends React.Component {
             </div>
           </div>
           <div className="px3 pb4 bg-slate-extra-light">
+            {parameters &&
+              parameters.length > 0 && (
+                <div className="px1 pt1">
+                  <Parameters
+                    parameters={parameters.map(p => ({
+                      ...p,
+                      value: parameterValues && parameterValues[p.id],
+                    }))}
+                    query={location.query}
+                    setParameterValue={setParameterValue}
+                    syncQueryString
+                    isQB
+                  />
+                </div>
+              )}
             <Dashboard {...this.props} />
           </div>
         </div>
