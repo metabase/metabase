@@ -56,8 +56,8 @@ const SuggestionsSidebar = ({ related }) => (
   </div>
 );
 
-const getDashboardId = (state, { params: { type, subtype, id } }) =>
-  `/auto/${type}/${subtype}/${id}`;
+const getDashboardId = (state, { params: { splat } }) =>
+  `/auto/dashboard/${splat}`;
 
 const mapStateToProps = (state, props) => ({
   dashboardId: getDashboardId(state, props),

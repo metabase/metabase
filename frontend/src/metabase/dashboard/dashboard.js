@@ -524,8 +524,11 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
         })),
       };
     } else if (dashboardType === "transient") {
-      const [type, id] = dashId.split("/").slice(3);
-      result = await AutoApi.dashboard({ type, id });
+      const subPath = dashId
+        .split("/")
+        .slice(3)
+        .join("/");
+      result = await AutoApi.dashboard({ subPath });
       result = {
         ...result,
         id: dashId,
