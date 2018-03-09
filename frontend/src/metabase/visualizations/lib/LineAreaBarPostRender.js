@@ -252,6 +252,28 @@ function onRenderSetClassName(chart, isStacked) {
   chart.svg().classed("stacked", isStacked);
 }
 
+function getXAxisRotation(settings) {
+  let match = (settings["graph.x_axis.labels_style"] || "").match(
+    /^rotate-(\d+)$/,
+  );
+  if (match) {
+    return -parseInt(match[1], 10);
+  } else {
+    return 0;
+  }
+}
+
+function onRenderRotateAxis(chart, settings) {
+  let degrees = getXAxisRotation(settings);
+  if (degrees !== 0) {
+    chart.selectAll("g.x text").attr("transform", function() {
+      const { width, height } = this.getBBox();
+      return `translate(-${width /
+        2},${-height / 2}) rotate(${degrees}, ${width / 2}, ${height})`;
+    });
+  }
+}
+
 // the various steps that get called
 function onRender(chart, settings, onGoalHover, isSplitAxis, isStacked) {
   onRenderRemoveClipPath(chart);
@@ -266,6 +288,7 @@ function onRender(chart, settings, onGoalHover, isSplitAxis, isStacked) {
   onRenderDisableClickFiltering(chart);
   onRenderFixStackZIndex(chart);
   onRenderSetClassName(chart, isStacked);
+  onRenderRotateAxis(chart, settings);
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+
@@ -321,16 +344,31 @@ function computeMinHorizontalMargins(chart) {
   return min;
 }
 
+function computeXAxisMargin(chart, settings) {
+  const rotation = getXAxisRotation(settings);
+
+  let maxWidth = 0;
+  let maxHeight = 0;
+  chart.selectAll("g.x text").each(function() {
+    const { width, height } = this.getBBox();
+    maxWidth = Math.max(maxWidth, width);
+    maxHeight = Math.max(maxHeight, height);
+  });
+  const rotatedMaxHeight = Math.sin(Math.radians(rotation + 180)) * maxWidth;
+  return rotatedMaxHeight - maxHeight; // subtract the existing height
+}
+
 function beforeRenderFixMargins(chart, settings) {
   // run before adjusting margins
   const mins = computeMinHorizontalMargins(chart);
+  const xAxisMargin = computeXAxisMargin(chart, settings);
 
   // adjust the margins to fit the X and Y axis tick and label sizes, if enabled
   adjustMargin(
     chart,
     "bottom",
     "height",
-    X_AXIS_PADDING,
+    X_AXIS_PADDING + xAxisMargin,
     ".axis.x",
     ".x-axis-label",
     settings["graph.x_axis.labels_enabled"],
