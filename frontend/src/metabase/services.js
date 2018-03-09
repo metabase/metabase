@@ -90,8 +90,9 @@ export const EmbedApi = {
 };
 
 export const AutoApi = {
-  dashboard: GET("/api/automagic-dashboards/:type/:id"),
-  saveDashboard: POST("/api/automagic-dashboards/:type/:id/save"),
+  dashboard: GET("/api/automagic-dashboards/:subPath", {
+    raw: { subPath: true },
+  }),
 };
 
 export const EmailApi = {
