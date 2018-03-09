@@ -405,9 +405,10 @@
       (log/info (format "Applying heuristic %s to table %s."
                         (:rule rule)
                         (:name root)))
-      (-> dashboard
-          (populate/create-dashboard filters cards)
-          (assoc :rule (:rule rule))))))
+      (assoc dashboard
+        :rule    (:rule rule)
+        :filters filters
+        :cards   cards))))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
@@ -445,25 +446,27 @@
                              (matching-rules (rules/load-rules))
                              (keep (partial apply-rule root))
                              first))]
-     (assoc dashboard :related
-            {:tables  (->> root
-                           :db_id
-                           Database
-                           candidate-tables
-                           (remove (comp #{root} :table)))
-             :indepth (->> dashboard
-                           :rule
-                           rules/indepth
-                           (keep (fn [rule]
-                                   (when-let [indepth-dashboard (apply-rule root rule)]
-                                     {:title       (:name indepth-dashboard)
-                                      :description (:description indepth-dashboard)
-                                      :table       root
-                                      :url         (format "%stable/%s/%s/%s"
-                                                           public-endpoint
-                                                           (:id root)
-                                                           (:rule dashboard)
-                                                           (:rule rule))}))))})
+     (-> dashboard
+         populate/create-dashboard
+         (assoc :related
+           {:tables  (->> root
+                          :db_id
+                          Database
+                          candidate-tables
+                          (remove (comp #{root} :table)))
+            :indepth (->> dashboard
+                          :rule
+                          rules/indepth
+                          (keep (fn [rule]
+                                  (when-let [indepth-dashboard (apply-rule root rule)]
+                                    {:title       (:title indepth-dashboard)
+                                     :description (:description indepth-dashboard)
+                                     :table       root
+                                     :url         (format "%stable/%s/%s/%s"
+                                                          public-endpoint
+                                                          (:id root)
+                                                          (:rule dashboard)
+                                                          (:rule rule))}))))}))
      (log/info (format "Skipping %s: no cards fully match the topology."
                        (:name root))))))
 

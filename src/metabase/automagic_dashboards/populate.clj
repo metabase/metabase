@@ -183,8 +183,8 @@
 
 (defn create-dashboard
   "Create dashboard and populate it with cards."
-  ([dashboard filters cards] (create-dashboard dashboard max-cards filters cards))
-  ([{:keys [title description groups]} n filters cards]
+  ([dashboard] (create-dashboard dashboard max-cards))
+  ([{:keys [title description groups filters cards]} n]
    (let [dashboard {:name          title
                     :description   description
                     :creator_id    api/*current-user-id*
