@@ -108,17 +108,17 @@
 (defn- filter-fields
   "Find all fields belonging to table `table` for which all predicates in
    `preds` are true."
-  [preds table]
+  [preds fields]
   (filter (->> preds
                (keep (fn [[k v]]
                        (when-let [pred (field-filters k)]
                          (some-> v pred))))
                (apply every-pred))
-          (db/select Field :table_id (:id table))))
+          fields))
 
 (defn- filter-tables
-  [tablespec context]
-  (filter #(-> % :entity_type (isa? tablespec)) (:tables context)))
+  [tablespec tables]
+  (filter #(-> % :entity_type (isa? tablespec)) tables))
 
 (defn- fill-template
   [template-type context bindings template]
@@ -127,32 +127,32 @@
                  (->reference template-type (or (bindings identifier)
                                                 (-> identifier
                                                     rules/->entity
-                                                    (filter-tables context)
+                                                    (filter-tables (:tables context))
                                                     first)
                                                 identifier)))))
 
 (defn- field-candidates
   [context {:keys [field_type links_to named max_cardinality] :as constraints}]
   (if links_to
-    (filter (comp (->> (filter-tables links_to context)
+    (filter (comp (->> (filter-tables links_to (:tables context))
                        (keep :link)
                        set)
                   :id)
             (field-candidates context (dissoc constraints :links_to)))
     (let [[tablespec fieldspec] field_type]
       (if fieldspec
-        (let [[table] (filter-tables tablespec context)]
-          (mapcat (fn [table]
-                    (some->> table
-                             (filter-fields {:fieldspec       fieldspec
-                                             :named           named
-                                             :max-cardinality max_cardinality})
-                             (map #(assoc % :link (:link table)))))
-                  (filter-tables tablespec context)))
+        (mapcat (fn [table]
+                  (some->> table
+                           :fields
+                           (filter-fields {:fieldspec       fieldspec
+                                           :named           named
+                                           :max-cardinality max_cardinality})
+                           (map #(assoc % :link (:link table)))))
+                (filter-tables tablespec (:tables context)))
         (filter-fields {:fieldspec       tablespec
                         :named           named
                         :max-cardinality max_cardinality}
-                       (:root-table context))))))
+                       (-> context :root-table :fields))))))
 
 (defn- make-binding
   [context [identifier definition]]
@@ -301,7 +301,7 @@
         used-dimensions (rules/collect-dimensions [dimensions metrics filters query])]
     (->> used-dimensions
          (map (some-fn #(get-in (:dimensions context) [% :matches])
-                       (comp #(filter-tables % context) rules/->entity)))
+                       (comp #(filter-tables % (:tables context)) rules/->entity)))
          (apply combo/cartesian-product)
          (map (fn [instantiations]
                 (let [bindings (zipmap used-dimensions instantiations)
@@ -343,11 +343,11 @@
 (defn- link-table?
   "Is the table comprised only of foregin keys and maybe a primary key?"
   [table]
-  (empty? (db/select Field
-            ;; :not-in returns false if field is nil, hence the workaround.
-            {:where [:and [:= :table_id (:id table)]
-                          [:or [:not-in :special_type ["type/FK" "type/PK"]]
-                           [:= :special_type nil]]]})))
+  (zero? (db/count Field
+           ;; :not-in returns false if field is nil, hence the workaround.
+           {:where [:and [:= :table_id (:id table)]
+                         [:or [:not-in :special_type ["type/FK" "type/PK"]]
+                              [:= :special_type nil]]]})))
 
 (defn- list-like-table?
   "Is the table comprised of only primary key and single field?"
@@ -359,9 +359,12 @@
 
 (defn- make-context
   [root rule]
-  (let [context (as-> {:root-table root
+  (let [tables  (concat [root] (linked-tables root))
+        fields  (->> (db/select Field :table_id [:in (map :id tables)])
+                     (group-by :table_id))
+        context (as-> {:root-table (assoc root :fields (fields (:id root)))
                        :rule       (:table_type rule)
-                       :tables     (concat [root] (linked-tables root))
+                       :tables     (map #(assoc % :fields (fields (:id %))) tables)
                        :database   (:db_id root)} <>
                   (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
                   (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
@@ -400,7 +403,7 @@
         cards     (make-cards context rule)]
     (when cards
       (log/info (format "Applying heuristic %s to table %s."
-                        (:table_type rule)
+                        (:rule rule)
                         (:name root)))
       (-> dashboard
           (populate/create-dashboard filters cards)

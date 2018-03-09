@@ -7,6 +7,7 @@
              [events :as events]
              [public-settings :as public-settings]
              [util :as u]]
+            [metabase.api.card :as card.api]
             [metabase.models
              [card :as card :refer [Card]]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
@@ -228,6 +229,12 @@
     (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
       (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids))))
 
+(defn- save-card!
+  [card]
+  (db/insert! 'Card
+    (update card :result_metadata
+            #(or % (-> card :dataset_query card.api/result-metadata-for-query)))))
+
 (defn save-transient-dashboard!
   "Save a denormalized description of dashboard."
   [dashboard]
@@ -235,8 +242,8 @@
         dashboard (db/insert! Dashboard
                     (dissoc dashboard :ordered_cards :rule :related))]
     (doseq [dashcard dashcards]
-      (let [card     (some->> dashcard :card (db/insert! 'Card))
-            series   (some->> dashcard :series (map (partial db/insert! 'Card)))
+      (let [card     (some->> dashcard :card save-card!)
+            series   (some->> dashcard :series (map save-card!))
             dashcard (-> dashcard
                          (dissoc :card :id)
                          (update :parameter_mappings

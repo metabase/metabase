@@ -2,9 +2,7 @@
   "Create and save models that make up automagic dashboards."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.api
-             [common :as api]
-             [card :as card.api]]
+            [metabase.api.common :as api]
             [metabase.automagic-dashboards.filters :as magic.filters]
             [metabase.models.card :as card]
             [toucan.db :as db]))
@@ -47,7 +45,6 @@
                   :display                display
                   :name                   title
                   :visualization_settings visualization-settings
-                  :result_metadata        (card.api/result-metadata-for-query query)
                   :collection_id          (-> automagic-collection deref :id)}
                  card/populate-query-fields)]
     (update dashboard :ordered_cards conj {:col                    y
