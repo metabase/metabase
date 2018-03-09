@@ -130,7 +130,7 @@
 }
 
 :local(.removeButton:hover) {
-  color: var(--warning-color);
+  color: var(--error-color);
 }
 
 :local(.editNameIconContainer) {
