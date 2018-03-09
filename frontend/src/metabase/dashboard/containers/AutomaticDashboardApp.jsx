@@ -15,42 +15,38 @@ import * as Urls from "metabase/lib/urls";
 
 import { dissoc } from "icepick";
 
-const getDashboardTitle = dashboard => dashboard && dashboard.description;
-
-const getRelatedTableTitle = object =>
-  object.title || (object.table && object.table.display_name);
-const getRelatedTableDescription = object => object.table && object.description;
-const getRelatedTableUrl = object =>
-  object.table && `/auto/dashboard/table/${object.table.id}`;
+const SuggestionsList = ({ suggestions }) => (
+  <ol className="px2">
+    {suggestions.map((s, i) => (
+      <li key={i}>
+        <Link
+          to={s.url}
+          className="bordered rounded bg-white shadowed mb2 p2 flex no-decoration"
+        >
+          <div
+            className="bg-slate-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
+            style={{ width: 48, height: 48 }}
+          >
+            <Icon name="bolt" size={22} />
+          </div>
+          <div>
+            <h3 className="m0 mb1">{s.title}</h3>
+            <p className="text-paragraph mt0">{s.description}</p>
+          </div>
+        </Link>
+      </li>
+    ))}
+  </ol>
+);
 
 const SuggestionsSidebar = ({ related }) => (
   <div className="flex flex-column full-height">
     <div className="py2 text-centered my3">
       <h3>More X-rays</h3>
     </div>
-    <ol className="px2">
-      {related.tables.map((s, i) => (
-        <li key={i}>
-          <Link
-            to={getRelatedTableUrl(s)}
-            className="bordered rounded bg-white shadowed mb2 p2 flex no-decoration"
-          >
-            <div
-              className="bg-slate-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
-              style={{ width: 48, height: 48 }}
-            >
-              <Icon name="bolt" size={22} />
-            </div>
-            <div>
-              <h3 className="m0 mb1">{getRelatedTableTitle(s)}</h3>
-              <p className="text-paragraph mt0">
-                {getRelatedTableDescription(s)}
-              </p>
-            </div>
-          </Link>
-        </li>
-      ))}
-    </ol>
+    {Object.values(related).map(suggestions => (
+      <SuggestionsList suggestions={suggestions} />
+    ))}
     <div className="mt-auto border-top px2 py4">
       <div className="flex align-center justify-center ml-auto mr-auto text-brand-hover">
         <Icon name="refresh" className="mr1" />
@@ -85,7 +81,7 @@ class AutomaticDashboardApp extends React.Component {
           <div className="bg-white border-bottom py2">
             <div className="wrapper flex align-center">
               <Icon name="bolt" className="text-gold mr1" size={24} />
-              <h2>{getDashboardTitle(dashboard)}</h2>
+              <h2>{dashboard && dashboard.name}</h2>
               <ActionButton
                 className="ml-auto bg-green text-white"
                 borderless
@@ -99,9 +95,12 @@ class AutomaticDashboardApp extends React.Component {
             <Dashboard {...this.props} />
           </div>
         </div>
-        <div className="bg-slate-light full-height" style={{ width: 300 }}>
-          {dashboard && <SuggestionsSidebar related={dashboard.related} />}
-        </div>
+        {dashboard &&
+          dashboard.related && (
+            <div className="bg-slate-light full-height" style={{ width: 300 }}>
+              <SuggestionsSidebar related={dashboard.related} />
+            </div>
+          )}
       </div>
     );
   }
