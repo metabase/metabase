@@ -381,6 +381,20 @@ export const GRAPH_AXIS_SETTINGS = {
     widget: "toggle",
     default: true,
   },
+  "graph.x_axis.labels_style": {
+    section: "Labels",
+    title: t`X-axis label style`,
+    widget: "select",
+    props: {
+      options: [
+        { name: t`Default`, value: null },
+        { name: t`Compact`, value: "compact" },
+        { name: t`45°`, value: "rotate-45" },
+        { name: t`90°`, value: "rotate-90" },
+      ],
+    },
+    default: null
+  },
   "graph.x_axis.title_text": {
     section: "Labels",
     title: t`X-axis label`,

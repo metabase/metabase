@@ -138,6 +138,7 @@ export function applyChartTimeseriesXAxis(
       return formatValue(timestampFixed, {
         column: dimensionColumn,
         type: "axis",
+        compact: settings["graph.x_axis.labels_style"] === "compact",
       });
     });
 
@@ -197,7 +198,13 @@ export function applyChartQuantitativeXAxis(
     chart.renderVerticalGridLines(settings["graph.x_axis.gridLine_enabled"]);
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    chart.xAxis().tickFormat(d => formatValue(d, { column: dimensionColumn }));
+    chart.xAxis().tickFormat(d =>
+      formatValue(d, {
+        column: dimensionColumn,
+        type: "axis",
+        compact: settings["graph.x_axis.labels_style"] === "compact",
+      }),
+    );
   } else {
     chart.xAxis().ticks(0);
     chart.xAxis().tickFormat("");
@@ -255,7 +262,13 @@ export function applyChartOrdinalXAxis(chart, settings, series, { xValues }) {
       let visibleKeys = xValues.filter((v, i) => i % keyInterval === 0);
       chart.xAxis().tickValues(visibleKeys);
     }
-    chart.xAxis().tickFormat(d => formatValue(d, { column: dimensionColumn }));
+    chart.xAxis().tickFormat(d =>
+      formatValue(d, {
+        column: dimensionColumn,
+        type: "axis",
+        compact: settings["graph.x_axis.labels_style"] === "compact",
+      }),
+    );
   } else {
     chart.xAxis().ticks(0);
     chart.xAxis().tickFormat("");
