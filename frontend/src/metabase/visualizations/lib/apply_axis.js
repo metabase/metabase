@@ -254,13 +254,15 @@ export function applyChartOrdinalXAxis(chart, settings, series, { xValues }) {
     chart.xAxis().ticks(xValues.length);
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    // unfortunately with ordinal axis you can't rely on xAxis.ticks(num) to control the display of labels
-    // so instead if we want to display fewer ticks than our full set we need to calculate visibleTicks()
-    const numTicks = getNumTicks(chart.xAxis());
-    if (numTicks < xValues.length) {
-      let keyInterval = Math.round(xValues.length / numTicks);
-      let visibleKeys = xValues.filter((v, i) => i % keyInterval === 0);
-      chart.xAxis().tickValues(visibleKeys);
+    if (settings["graph.x_axis.labels_style"] == null) {
+      // unfortunately with ordinal axis you can't rely on xAxis.ticks(num) to control the display of labels
+      // so instead if we want to display fewer ticks than our full set we need to calculate visibleTicks()
+      const numTicks = getNumTicks(chart.xAxis());
+      if (numTicks < xValues.length) {
+        let keyInterval = Math.round(xValues.length / numTicks);
+        let visibleKeys = xValues.filter((v, i) => i % keyInterval === 0);
+        chart.xAxis().tickValues(visibleKeys);
+      }
     }
     chart.xAxis().tickFormat(d =>
       formatValue(d, {
