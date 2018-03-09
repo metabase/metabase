@@ -63,7 +63,7 @@
                          :display_name     "ID"
                          :base_type        :type/BigInteger
                          :special_type     :type/PK
-                         :has_field_values :search
+                         :has_field_values :none
                          :name_field       {:id           (data/id :venues :name)
                                             :table_id     (data/id :venues)
                                             :display_name "Name"
@@ -88,7 +88,7 @@
                           :display_name     "ID"
                           :base_type        :type/BigInteger
                           :special_type     :type/PK
-                          :has_field_values :search
+                          :has_field_values :none
                           :name_field       {:id           (data/id :venues :name)
                                              :table_id     (data/id :venues)
                                              :display_name "Name"

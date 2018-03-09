@@ -182,7 +182,7 @@
                              :display_name     "ID"
                              :database_type    "BIGINT"
                              :base_type        "type/BigInteger"
-                             :has_field_values "search")
+                             :has_field_values "none")
                            (assoc (field-details (Field (data/id :categories :name)))
                              :table_id                 (data/id :categories)
                              :special_type             "type/Name"
@@ -235,7 +235,7 @@
                              :database_type    "BIGINT"
                              :base_type        "type/BigInteger"
                              :visibility_type  "normal"
-                             :has_field_values "search")
+                             :has_field_values "none")
                            (assoc (field-details (Field (data/id :users :last_login)))
                              :table_id                 (data/id :users)
                              :name                     "LAST_LOGIN"
@@ -245,7 +245,7 @@
                              :visibility_type          "normal"
                              :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                              :default_dimension_option (var-get #'table-api/date-default-index)
-                             :has_field_values         "search")
+                             :has_field_values         "none")
                            (assoc (field-details (Field (data/id :users :name)))
                              :special_type             "type/Name"
                              :table_id                 (data/id :users)
@@ -288,7 +288,7 @@
                              :display_name     "ID"
                              :database_type    "BIGINT"
                              :base_type        "type/BigInteger"
-                             :has_field_values "search")
+                             :has_field_values "none")
                            (assoc (field-details (Field (data/id :users :last_login)))
                              :table_id                 (data/id :users)
                              :name                     "LAST_LOGIN"
@@ -297,7 +297,7 @@
                              :base_type                "type/DateTime"
                              :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                              :default_dimension_option (var-get #'table-api/date-default-index)
-                             :has_field_values         "search")
+                             :has_field_values         "none")
                            (assoc (field-details (Field (data/id :users :name)))
                              :table_id         (data/id :users)
                              :special_type     "type/Name"

@@ -307,7 +307,7 @@
                                                     :database_type    "BIGINT"
                                                     :base_type        "type/BigInteger"
                                                     :visibility_type  "normal"
-                                                    :has_field_values "search")
+                                                    :has_field_values "none")
                                                   (assoc (field-details (Field (data/id :categories :name)))
                                                     :table_id         (data/id :categories)
                                                     :special_type     "type/Name"
