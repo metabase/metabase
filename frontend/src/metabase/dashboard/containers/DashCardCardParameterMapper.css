@@ -15,8 +15,8 @@
 }
 
 :local(.warn) {
-  border-color: var(--warning-color) !important;
-  color: var(--warning-color) !important;
+  border-color: var(--error-color) !important;
+  color: var(--error-color) !important;
 }
 
 :local(.disabled) {
