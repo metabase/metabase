@@ -473,7 +473,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
         }),
       );
     } else if (dashboardType === "transient") {
-      result = await fetchDataOrError(MetabaseApi.dataset(card.dataset_query));
+      result = await fetchDataOrError(MetabaseApi.dataset(datasetQuery));
     } else {
       result = await fetchDataOrError(
         CardApi.query({ cardId: card.id, parameters: datasetQuery.parameters }),
