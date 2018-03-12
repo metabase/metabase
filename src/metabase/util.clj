@@ -941,3 +941,10 @@
    (some-> (str->date-time-with-formatters ordered-time-parsers date-str tz)
            coerce/to-long
            Time.)))
+
+(defn index-of
+  "Return index of the first element in `coll` for which `pred` reutrns true."
+  [pred coll]
+  (first (keep-indexed (fn [i x]
+                         (when (pred x) i))
+                       coll)))

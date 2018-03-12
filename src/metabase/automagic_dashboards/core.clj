@@ -81,7 +81,7 @@
                         (fn [{:keys [base_type special_type fk_target_field_id]
                               :as field}]
                           (cond
-                            ; This case is mostly relevant for native queries
+                            ;; This case is mostly relevant for native queries
                             (#{:type/PK :type/FK} fieldspec)
                             (isa? special_type fieldspec)
 
@@ -197,13 +197,6 @@
                              -1 b))
               {})))
 
-(defn- index-of
-  [pred coll]
-  (first (keep-indexed (fn [idx x]
-                         (when (pred x)
-                           idx))
-                       coll)))
-
 (defn- build-order-by
   [dimensions metrics order-by]
   (let [dimensions (set dimensions)]
@@ -213,7 +206,7 @@
          :desc)
        (if (dimensions identifier)
          [:dimension identifier]
-         [:aggregate-field (index-of #{identifier} metrics)])])))
+         [:aggregate-field (u/index-of #{identifier} metrics)])])))
 
 (defn- build-query
   ([context bindings filters metrics dimensions limit order_by]
@@ -445,6 +438,8 @@
                         (->> root
                              (matching-rules (rules/load-rules))
                              (keep (partial apply-rule root))
+                             ;; matching-rules returns an ArraySeq so first realises
+                             ;; just one element at a time (no chunking)
                              first))]
      (-> dashboard
          populate/create-dashboard
@@ -482,6 +477,9 @@
         filters   (->> rule
                        :dashboard_filters
                        (mapcat (comp :matches (:dimensions context))))
-        dashboard {:title  (format "Analysis of %s" (:name metric))
-                   :groups (:groups rule)}]
-    (some->> cards (populate/create-dashboard dashboard (count cards) filters))))
+        dashboard {:title   (format "Analysis of %s" (:name metric))
+                   :groups  (:groups rule)
+                   :filters filters
+                   :cards   cards}]
+    (when cards
+      (populate/create-dashboard dashboard (count cards)))))

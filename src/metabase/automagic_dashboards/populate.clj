@@ -185,11 +185,11 @@
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard max-cards))
   ([{:keys [title description groups filters cards]} n]
-   (let [dashboard {:name          title
-                    :description   description
-                    :creator_id    api/*current-user-id*
-                    :parameters    []}
-         cards     (->> cards (shown-cards n) (sort-by :position))
+   (let [dashboard     {:name          title
+                        :description   description
+                        :creator_id    api/*current-user-id*
+                        :parameters    []}
+         cards         (->> cards (shown-cards n) (sort-by :position))
          [dashboard _] (->> cards
                             (partition-by :group)
                             (reduce (fn [[dashboard grid] cards]
