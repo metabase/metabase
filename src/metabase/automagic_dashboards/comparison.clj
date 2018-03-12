@@ -1,7 +1,9 @@
 (ns metabase.automagic-dashboards.comparison
   (:require [clojure.string :as str]
             [metabase.api.common :as api]
-            [metabase.automagic-dashboards.populate :as populate]))
+            [metabase.automagic-dashboards
+             [core :refer [inject-segment full-name]]
+             [populate :as populate]]))
 
 (defn- dashboard->cards
   [dashboard]
@@ -13,20 +15,6 @@
                 :height   sizeY
                 :position (+ (* row populate/grid-width) col))))
        (sort-by :position)))
-
-(defn- merge-filters
-  [a b]
-  (cond
-    (empty? a) b
-    (empty? b) a
-    :else      [:and a b]))
-
-(defn- inject-segment
-  [segment card]
-  (-> card
-      (update-in [:dataset_query :query :filter]
-                 (partial merge-filters (-> segment :definition :filter)))
-      (update :series (partial map (partial inject-segment segment)))))
 
 (defn- clone-card
   [card]
@@ -106,15 +94,15 @@
                  [(place-row dashboard row left right)
                   (+ row (:height left))])
                [(-> {:name        (format "Comparison of %s and %s"
-                                          (:name left)
-                                          (:name right))
+                                          (full-name left)
+                                          (full-name right))
                      :description (format "Automatically generated comparison dashboard comparing %s and %s"
-                                          (:name left)
-                                          (:name right))
+                                          (full-name left)
+                                          (full-name right))
                      :creator_id  api/*current-user-id*
                      :parameters  []}
-                    (add-col-title (-> left :name str/capitalize) 0)
-                    (add-col-title (-> right :name str/capitalize)
+                    (add-col-title (-> left full-name str/capitalize) 0)
+                    (add-col-title (-> right full-name str/capitalize)
                                    (/ populate/grid-width 2)))
                 title-height])
        first))

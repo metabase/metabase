@@ -37,10 +37,10 @@
 
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [visualization title description query width height]} [x y]]
+  [dashboard {:keys [visualization title description dataset_query width height]} [x y]]
   (let [[display visualization-settings] visualization
         card (-> {:creator_id             api/*current-user-id*
-                  :dataset_query          query
+                  :dataset_query          dataset_query
                   :description            description
                   :display                display
                   :name                   title

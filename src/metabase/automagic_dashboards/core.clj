@@ -1,7 +1,8 @@
 (ns metabase.automagic-dashboards.core
   "Automatically generate questions and dashboards based on predefined
    heuristics."
-  (:require [clojure.math.combinatorics :as combo]
+  (:require [cheshire.core :as json]
+            [clojure.math.combinatorics :as combo]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
@@ -11,13 +12,48 @@
              [populate :as populate]
              [rules :as rules]]
             [metabase.models
-             [card :as card]
+             [card :as card :refer [Card]]
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [table :refer [Table]]]
             [metabase.util :as u]
+            [ring.util.codec :as codec]
             [toucan.db :as db]))
+
+(def ^:private public-endpoint "/auto/dashboard/")
+
+(defprotocol IRootEntity
+  "Unified access to all entity types."
+  (table [this])
+  (database [this])
+  (query-filter [this])
+  (full-name [this])
+  (url [this]))
+
+(extend-protocol IRootEntity
+  metabase.models.table.TableInstance
+  (table [table] table)
+  (database [table] (-> table :db_id Database))
+  (query-filter [table] nil)
+  (full-name [table] (str "table " (:name table)))
+  (url [table] (format "%stable/%s" public-endpoint (:id table)))
+
+  metabase.models.segment.SegmentInstance
+  (table [segment] (-> segment :table_id Table))
+  (database [segment] (-> segment table database))
+  (query-filter [segment] (-> segment :definition :filter))
+  (full-name [segment] (str "segment " (:name segment)))
+  (url [segment] (format "%ssegment/%s" public-endpoint (:id segment)))
+
+  metabase.models.query.QueryInstance
+  (table [query] (-> query :table_id Table))
+  (database [query] (-> query :database_id database))
+  (query-filter [query] (-> query :dataset_query :query :filter))
+  (full-name [query] (str "ad-hoc question " (:name query)))
+  (url [query] (format "%sadhoc/%s" public-endpoint (-> query
+                                                        json/encode
+                                                        codec/base64-encode))))
 
 (defmulti
   ^{:doc "Get a reference for a given model to be injected into a template
@@ -307,8 +343,8 @@
                                               limit
                                               order_by))]
                   (-> (instantiate-metadata context bindings card)
-                      (assoc :score score
-                             :query query))))))))
+                      (assoc :score         score
+                             :dataset_query query))))))))
 
 (def ^:private ^{:arglists '([ruke])} rule-specificity
   (comp count ancestors :table_type))
@@ -317,9 +353,9 @@
   "Return matching rules orderd by specificity.
    Most specific is defined as entity type specification the longest ancestor
    chain."
-  [rules table]
+  [rules root]
   (->> rules
-       (filter (comp (partial isa? (:entity_type table)) :table_type))
+       (filter (comp (partial isa? (-> root table :entity_type)) :table_type))
        (sort-by rule-specificity >)))
 
 (defn- linked-tables
@@ -352,7 +388,8 @@
 
 (defn- make-context
   [root rule]
-  (let [tables  (concat [root] (linked-tables root))
+  (let [root    (table root)
+        tables  (concat [root] (linked-tables root))
         fields  (->> (db/select Field :table_id [:in (map :id tables)])
                      (group-by :table_id))
         context (as-> {:root-table (assoc root :fields (fields (:id root)))
@@ -384,6 +421,20 @@
            vals
            (apply concat)))
 
+(defn- merge-filters
+  [a b]
+  (cond
+    (empty? a) b
+    (empty? b) a
+    :else      [:and a b]))
+
+(defn inject-segment
+  "Inject filter clause into card."
+  [entity card]
+  (-> card
+      (update-in [:dataset_query :query :filter] merge-filters (query-filter entity))
+      (update :series (partial map (partial inject-segment entity)))))
+
 (defn- apply-rule
   [root rule]
   (let [context   (make-context root rule)
@@ -392,17 +443,16 @@
         filters   (->> rule
                        :dashboard_filters
                        (mapcat (comp :matches (:dimensions context))))
-        cards     (make-cards context rule)]
+        cards     (cond->> (make-cards context rule)
+                    (query-filter root) (map (partial inject-segment root)))]
     (when cards
-      (log/info (format "Applying heuristic %s to table %s."
+      (log/info (format "Applying heuristic %s to %s."
                         (:rule rule)
-                        (:name root)))
+                        (full-name root)))
       [(assoc dashboard
          :filters filters
          :cards   cards)
        rule])))
-
-(def ^:private public-endpoint "/auto/dashboard/")
 
 (defn candidate-tables
   "Return a list of tables in database with ID `database-id` for which it makes sense
@@ -442,8 +492,7 @@
          populate/create-dashboard
          (assoc :related
            {:tables  (->> root
-                          :db_id
-                          Database
+                          database
                           candidate-tables
                           (remove (comp #{root} :table)))
             :indepth (->> rule
@@ -453,17 +502,23 @@
                                   (when-let [[dashboard _] (apply-rule root indepth)]
                                     {:title       (:title dashboard)
                                      :description (:description dashboard)
-                                     :table       root
-                                     :url         (format "%stable/%s/%s/%s"
-                                                          public-endpoint
-                                                          (:id root)
+                                     :table       (table root)
+                                     :url         (format "/%s/%s"
+                                                          (url root)
                                                           (:rule rule)
                                                           (:rule indepth))}))))}))
      (log/info (format "Skipping %s: no cards fully match the topology."
-                       (:name root))))))
+                       (full-name root))))))
 
-(defn automagic-analysis
-  "Create a transient dashboard analyzing metric `metric`."
+(def ^:private ^{:arglists '([card])} table-like?
+  (comp empty? :aggregation :query :dataset_query))
+
+(defmulti
+  ^{:doc "Create a transient dashboard analyzing given entity."
+   :arglists '([entity])}
+  automagic-analysis type)
+
+(defmethod automagic-analysis (type Metric)
   [metric]
   (let [rule      (-> "special/metric.yaml"
                       rules/load-rule
@@ -480,3 +535,15 @@
                    :cards   cards}]
     (when cards
       (populate/create-dashboard dashboard (count cards)))))
+
+(defmethod automagic-analysis (type Card)
+  [card]
+  )
+
+(defmethod automagic-analysis (type Query)
+  [query]
+  )
+
+(defmethod automagic-analysis (type Field)
+  [field]
+  )

@@ -669,4 +669,11 @@
   (api/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
+(defn adhoc-query
+  "Wrap query map into a Query object (mostly to fascilitate type dispatch)."
+  [query]
+  (->> {:dataset_query query}
+       (merge (card/query->database-and-table-ids query))
+       query/map->QueryInstance))
+
 (api/define-routes)

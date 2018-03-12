@@ -1,6 +1,8 @@
 (ns metabase.api.automagic-dashboards
   (:require [compojure.core :refer [GET POST]]
-            [metabase.api.common :as api]
+            [metabase.api
+             [card :as card.api]
+             [common :as api]]
             [metabase.automagic-dashboards
              [core :as magic]
              [comparison :as magic.comparison]]
@@ -11,6 +13,7 @@
              [metric :refer [Metric]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [ring.util.codec :as codec]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -40,7 +43,7 @@
 (api/defendpoint GET "/segment/:id"
   "Return an automagic dashboard analyzing segment with id `id`."
   [id]
-  (-> id Segment api/check-404 :table_id Table magic/automagic-dashboard))
+  (-> id Segment api/check-404 magic/automagic-dashboard))
 
 (api/defendpoint GET "/question/:id/:cell-query"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
@@ -86,20 +89,18 @@
   ->segment (comp keyword :type))
 
 (defmethod ->segment :table
-  [_]
-  {:name "entire dataset"})
+  [{:keys [id]}]
+  (-> id Table api/check-404))
 
 (defmethod ->segment :segment
   [{:keys [id]}]
-  (-> id
-      Segment
-      api/check-404
-      (update :name (partial str "segment "))))
+  (-> id Segment api/check-404))
 
 (defmethod ->segment :adhoc
-  [{:keys [filter name]}]
-  {:definition {:filter filter}
-   :name       (or name "adhoc segment")})
+  [{:keys [query name]}]
+  (-> query
+      card.api/adhoc-query
+      (assoc :name name)))
 
 (api/defendpoint POST "/compare"
   "Return an automagic comparison dashboard based on given dashboard."
