@@ -1,24 +1,25 @@
 (ns metabase.query-processor.middleware.cache
-  "Middleware that returns cached results for queries when applicable.
+    "Middleware that returns cached results for queries when applicable.
 
-   If caching is enabled (`enable-query-caching` is `true`) cached results will be returned for Cards if possible. There's
-   a global default TTL defined by the setting `query-caching-default-ttl`, but individual Cards can override this value
-   with custom TTLs with a value for `:cache_ttl`.
+     If caching is enabled (`enable-query-caching` is `true`) cached results will be returned for Cards if possible. There's
+     a global default TTL defined by the setting `query-caching-default-ttl`, but individual Cards can override this value
+     with custom TTLs with a value for `:cache_ttl`.
 
-   For all other queries, caching is skipped.
+     For all other queries, caching is skipped.
 
-   Various caching backends are defined in `metabase.query-processor.middleware.cache-backend` namespaces.
-   The default backend is `db`, which uses the application database; this value can be changed by setting the env var
-   `MB_QP_CACHE_BACKEND`.
+     Various caching backends are defined in `metabase.query-processor.middleware.cache-backend` namespaces.
+     The default backend is `db`, which uses the application database; this value can be changed by setting the env var
+     `MB_QP_CACHE_BACKEND`.
 
-    Refer to `metabase.query-processor.middleware.cache-backend.interface` for more details about how the cache backends themselves."
-  (:require [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [metabase.query-processor.util :as qputil]))
+      Refer to `metabase.query-processor.middleware.cache-backend.interface` for more details about how the cache backends themselves."
+    (:import [com.stratio.metabase.executionfactory QueryExecutionFactory])
+    (:require [clojure.tools.logging :as log]
+              [metabase
+               [config :as config]
+               [public-settings :as public-settings]
+               [util :as u]]
+              [metabase.query-processor.middleware.cache-backend.interface :as i]
+              [metabase.query-processor.util :as qputil]))
 
 (def ^:dynamic ^Boolean *ignore-cached-results*
   "Should we force the query to run, ignoring cached results even if they're available?
@@ -44,11 +45,11 @@
   ([backend-ns-symb allow-reload?]
    (let [varr (ns-resolve backend-ns-symb 'instance)]
      (cond
-       (not varr)             (throw (Exception. (str "No var named 'instance' found in namespace " backend-ns-symb)))
-       (valid-backend? @varr) @varr
-       allow-reload?          (do (require backend-ns-symb :reload)
-                                  (get-backend-instance-in-namespace backend-ns-symb false))
-       :else                  (throw (Exception. (format "%s/instance doesn't satisfy IQueryProcessorCacheBackend" backend-ns-symb)))))))
+      (not varr)             (throw (Exception. (str "No var named 'instance' found in namespace " backend-ns-symb)))
+      (valid-backend? @varr) @varr
+      allow-reload?          (do (require backend-ns-symb :reload)
+                               (get-backend-instance-in-namespace backend-ns-symb false))
+      :else                  (throw (Exception. (format "%s/instance doesn't satisfy IQueryProcessorCacheBackend" backend-ns-symb)))))))
 
 (defn- set-backend!
   "Set the cache backend to the cache defined by the keyword BACKEND.
@@ -68,12 +69,12 @@
 ;;; ------------------------------------------------------------ Cache Operations ------------------------------------------------------------
 
 (defn- cached-results [query-hash max-age-seconds]
-  (when-not *ignore-cached-results*
-    (when-let [results (i/cached-results @backend-instance query-hash max-age-seconds)]
-      (assert (u/is-temporal? (:updated_at results))
-        "cached-results should include an `:updated_at` field containing the date when the query was last ran.")
-      (log/info "Returning cached results for query" (u/emoji "💾"))
-      (assoc results :cached true))))
+  (when-not false
+            (when-let [results (i/cached-results @backend-instance query-hash max-age-seconds)]
+              (assert (u/is-temporal? (:updated_at results))
+                      "cached-results should include an `:updated_at` field containing the date when the query was last ran.")
+              (log/info "Returning cached results for query" (u/emoji "💾"))
+              (assoc results :cached true))))
 
 (defn- save-results!  [query-hash results]
   (log/info "Caching results for next time for query" (u/emoji "💾"))
@@ -97,16 +98,16 @@
     ;; threshold, we'll fail right away.
     (loop [total-bytes 0, [row & more] rows]
       (cond
-        (> total-bytes max-bytes) false
-        (not row)                 true
-        :else                     (recur (+ total-bytes (count (str row)))
-                                         more)))))
+       (> total-bytes max-bytes) false
+       (not row)                 true
+       :else                     (recur (+ total-bytes (count (str row)))
+                                   more)))))
 
 (defn- save-results-if-successful! [query-hash results]
   (when (and (= (:status results) :completed)
              (or (results-are-below-max-byte-threshold? results)
                  (log/info "Results are too large to cache." (u/emoji "😫"))))
-    (save-results! query-hash results)))
+        (save-results! query-hash results)))
 
 (defn- run-query-and-save-results-if-successful! [query-hash qp query]
   (let [start-time-ms (System/currentTimeMillis)
@@ -115,13 +116,31 @@
         min-ttl-ms    (* (public-settings/query-caching-min-ttl) 1000)]
     (log/info (format "Query took %d ms to run; miminum for cache eligibility is %d ms" total-time-ms min-ttl-ms))
     (when (>= total-time-ms min-ttl-ms)
-      (save-results-if-successful! query-hash results))
+          (save-results-if-successful! query-hash results))
     results))
 
 (defn- run-query-with-cache [qp {cache-ttl :cache_ttl, :as query}]
   (let [query-hash (qputil/query-hash query)]
-    (or (cached-results query-hash cache-ttl)
-        (run-query-and-save-results-if-successful! query-hash qp query))))
+    (QueryExecutionFactory/executeSequentialQuery  query-hash)
+    (try
+      (let [query_result (or
+                          (cached-results query-hash cache-ttl)
+                          (run-query-and-save-results-if-successful! query-hash qp query))]
+        (QueryExecutionFactory/queryExecuted query-hash)
+        query_result)
+      (catch Throwable e
+        (QueryExecutionFactory/queryExecuted query-hash)
+        (throw e)))))
+"(try
+
+     (QueryExecutionFactory/executeSequentialQuery  query-hash)"
+
+" (let [query-result (run-query-and-save-results-if-successful! query-hash qp query)]
+  (QueryExecutionFactory/queryExecuted query-hash)
+  query-result)))
+(catch Throwable e
+(QueryExecutionFactory/queryExecuted query-hash)
+(throw e)))))"
 
 
 (defn maybe-return-cached-results
@@ -139,9 +158,15 @@
   [qp]
   ;; choose the caching backend if needed
   (when-not @backend-instance
-    (set-backend!))
+            (set-backend!))
   ;; ok, now do the normal middleware thing
   (fn [query]
     (if-not (is-cacheable? query)
-      (qp query)
-      (run-query-with-cache qp query))))
+            (qp query)
+            (run-query-with-cache qp query))))
+
+
+"romartin-- para poder cachear desde la primera vez..."
+(defn- first-query-and-save-results-if-successful! [qp query]
+  (let [query-hash (qputil/query-hash query)]
+    (run-query-and-save-results-if-successful! query-hash qp query)))

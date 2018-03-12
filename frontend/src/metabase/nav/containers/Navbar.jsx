@@ -15,6 +15,8 @@ import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
 import { getPath, getContext, getUser } from "../selectors";
 
+import RetinaImage from "react-retina-image";
+
 const mapStateToProps = (state, props) => ({
     path:       getPath(state, props),
     context:    getContext(state, props),
@@ -105,7 +107,12 @@ export default class Navbar extends Component {
                 <ul className="wrapper flex align-center">
                     <li>
                         <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer flex align-center">
-                            <LogoIcon className="text-brand my2"></LogoIcon>
+                            <RetinaImage
+                                    className="mx1"
+                                    src="app/img/stratio-logo.png"
+                                    width={79}
+                                    forceOriginalDimensions={false /* broken in React v0.13 */}
+                                />
                         </Link>
                     </li>
                 </ul>
@@ -124,7 +131,12 @@ export default class Navbar extends Component {
                             className="LogoNavItem NavItem cursor-pointer text-white flex align-center transition-background justify-center"
                             activeClassName="NavItem--selected"
                         >
-                            <LogoIcon dark={true}></LogoIcon>
+                            <RetinaImage
+                                className="mx1"
+                                src="app/img/stratio-logo.png"
+                                width={79}
+                                forceOriginalDimensions={false /* broken in React v0.13 */}
+                            />
                         </Link>
                     </li>
                     <li className="md-pl3 hide xs-show">

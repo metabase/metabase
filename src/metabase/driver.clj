@@ -1,38 +1,39 @@
 (ns metabase.driver
-  "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
-  introspecting their schemas and processing and running MBQL queries. Each Metabase driver lives in a namespace like
-  `metabase.driver.<driver>`, e.g. `metabase.driver.postgres`. Each driver must implement the `IDriver` protocol
-  below.
+    "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
+    introspecting their schemas and processing and running MBQL queries. Each Metabase driver lives in a namespace like
+    `metabase.driver.<driver>`, e.g. `metabase.driver.postgres`. Each driver must implement the `IDriver` protocol
+    below.
 
-  JDBC-based drivers for SQL databases can use the 'Generic SQL' driver which acts as a sort of base class and
-  implements most of this protocol. Instead, those drivers should implement the `ISQLDriver` protocol which can be
-  found in `metabase.driver.generic-sql`.
+    JDBC-based drivers for SQL databases can use the 'Generic SQL' driver which acts as a sort of base class and
+    implements most of this protocol. Instead, those drivers should implement the `ISQLDriver` protocol which can be
+    found in `metabase.driver.generic-sql`.
 
-  This namespace also contains various other functions for fetching drivers, testing database connections, and the
-  like."
-  (:require [clj-time
-             [coerce :as tcoerce]
-             [core :as time]
-             [format :as tformat]]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.models
-             [database :refer [Database]]
-             field
-             [setting :refer [defsetting]]
-             table]
-            [metabase.sync.interface :as si]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import clojure.lang.Keyword
-           java.text.SimpleDateFormat
-           metabase.models.database.DatabaseInstance
-           metabase.models.field.FieldInstance
-           metabase.models.table.TableInstance
-           org.joda.time.DateTime
-           org.joda.time.format.DateTimeFormatter))
+    This namespace also contains various other functions for fetching drivers, testing database connections, and the
+    like."
+    (:require [clj-time
+               [coerce :as tcoerce]
+               [core :as time]
+               [format :as tformat]]
+              [clojure.tools.logging :as log]
+              [medley.core :as m]
+              [toucan.db :as db]
+              [metabase.config :as config]
+              [metabase.models
+               [database :refer [Database]]
+               field
+               [setting :refer [defsetting]]
+               table]
+              [metabase.sync.interface :as si]
+              [metabase.util :as u]
+              [schema.core :as s]
+              [toucan.db :as db])
+    (:import clojure.lang.Keyword
+             java.text.SimpleDateFormat
+             metabase.models.database.DatabaseInstance
+             metabase.models.field.FieldInstance
+             metabase.models.table.TableInstance
+             org.joda.time.DateTime
+             org.joda.time.format.DateTimeFormatter))
 
 ;;; ## INTERFACE + CONSTANTS
 
@@ -226,8 +227,8 @@
    :sync-in-context                   (fn [_ _ f] (f))
    :table-rows-seq                    (fn [driver & _]
                                         (throw
-                                         (NoSuchMethodException.
-                                          (str (name driver) " does not implement table-rows-seq."))))
+                                          (NoSuchMethodException.
+                                            (str (name driver) " does not implement table-rows-seq."))))
    :current-db-time                   (constantly nil)})
 
 
@@ -285,17 +286,17 @@
   timezone and a report-timezone has been specified by the user"
   [driver]
   (when (driver-supports? driver :set-timezone)
-    (let [report-tz (report-timezone)]
-      (when-not (empty? report-tz)
-        report-tz))))
+        (let [report-tz (report-timezone)]
+          (when-not (empty? report-tz)
+                    report-tz))))
 
 (defprotocol ^:private ParseDateTimeString
   (^:private parse [this date-time-str] "Parse the `date-time-str` and return a `DateTime` instance"))
 
 (extend-protocol ParseDateTimeString
-  DateTimeFormatter
-  (parse [formatter date-time-str]
-    (tformat/parse formatter date-time-str)))
+                 DateTimeFormatter
+                 (parse [formatter date-time-str]
+                        (tformat/parse formatter date-time-str)))
 
 ;; Java's SimpleDateFormat is more flexible on what it accepts for a time zone identifier. As an example, CEST is not
 ;; recognized by Joda's DateTimeFormatter but is recognized by Java's SimpleDateFormat. This defrecord is used to
@@ -305,10 +306,10 @@
 (defrecord ^:private ThreadSafeSimpleDateFormat [format-str]
   ParseDateTimeString
   (parse [_ date-time-str]
-    (let [sdf         (SimpleDateFormat. format-str)
-          parsed-date (.parse sdf date-time-str)
-          joda-tz     (-> sdf .getTimeZone .getID time/time-zone-for-id)]
-      (time/to-time-zone (tcoerce/from-date parsed-date) joda-tz))))
+         (let [sdf         (SimpleDateFormat. format-str)
+               parsed-date (.parse sdf date-time-str)
+               joda-tz     (-> sdf .getTimeZone .getID time/time-zone-for-id)]
+           (time/to-time-zone (tcoerce/from-date parsed-date) joda-tz))))
 
 (defn create-db-time-formatters
   "Creates date formatters from `DATE-FORMAT-STR` that will preserve the offset/timezone information. Will return a
@@ -340,16 +341,16 @@
                           ffirst)
                      (catch Exception e
                        (throw
-                        (Exception.
-                         (format "Error querying database '%s' for current time" (:name database)) e))))]
+                         (Exception.
+                           (format "Error querying database '%s' for current time" (:name database)) e))))]
       (try
         (when time-str
-          (first-successful-parse date-formatters time-str))
+              (first-successful-parse date-formatters time-str))
         (catch Exception e
           (throw
-           (Exception.
-            (format "Unable to parse date string '%s' for database engine '%s'"
-                    time-str (-> database :engine name)) e)))))))
+            (Exception.
+              (format "Unable to parse date string '%s' for database engine '%s'"
+                      time-str (-> database :engine name)) e)))))))
 
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB.
@@ -357,7 +358,7 @@
   [klass]
   (or (some (fn [[mapped-class mapped-type]]
               (when (isa? klass mapped-class)
-                mapped-type))
+                    mapped-type))
             [[Boolean                        :type/Boolean]
              [Double                         :type/Float]
              [Float                          :type/Float]
@@ -448,11 +449,11 @@
   (let [driver (engine->driver engine)]
     (try
       (u/with-timeout can-connect-timeout-ms
-        (can-connect? driver details-map))
+                      (can-connect? driver details-map))
       (catch Throwable e
         (log/error "Failed to connect to database:" (.getMessage e))
         (when rethrow-exceptions
-          (throw (Exception. (humanize-connection-error-message driver (.getMessage e)))))
+              (throw (Exception. (humanize-connection-error-message driver (.getMessage e)))))
         false))))
 
 
@@ -467,10 +468,10 @@
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   [table :- si/TableInstance, fields :- [si/FieldInstance]]
   (let [results ((resolve 'metabase.query-processor/process-query)
-                 {:database (:db_id table)
-                  :type     :query
-                  :query    {:source-table (u/get-id table)
-                             :fields       (vec (for [field fields]
-                                                  [:field-id (u/get-id field)]))
-                             :limit        max-sample-rows}})]
+                  {:database (:db_id table)
+                   :type     :query
+                   :query    {:source-table (u/get-id table)
+                              :fields       (vec (for [field fields]
+                                                   [:field-id (u/get-id field)]))
+                              :limit        max-sample-rows}})]
     (get-in results [:data :rows])))

@@ -1,18 +1,18 @@
 (ns metabase.public-settings
-  (:require [clojure.string :as s]
-            [metabase
-             [config :as config]
-             [types :as types]]
-            [metabase.models
-             [common :as common]
-             [setting :as setting :refer [defsetting]]]
-            [metabase.public-settings.metastore :as metastore]
-            [metabase.util.i18n :refer [available-locales-with-names set-locale]]
-            [metabase.util.password :as password]
-            [puppetlabs.i18n.core :refer [tru]]
-            [toucan.db :as db])
-  (:import java.util.Locale
-           java.util.TimeZone))
+    (:require [clojure.string :as s]
+              [metabase
+               [config :as config]
+               [types :as types]]
+              [metabase.models
+               [common :as common]
+               [setting :as setting :refer [defsetting]]]
+              [metabase.public-settings.metastore :as metastore]
+              [metabase.util.i18n :refer [available-locales-with-names set-locale]]
+              [metabase.util.password :as password]
+              [puppetlabs.i18n.core :refer [tru]]
+              [toucan.db :as db])
+    (:import java.util.Locale
+             java.util.TimeZone))
 
 (defsetting check-for-updates
   (tru "Identify when new versions of Metabase are available.")
@@ -28,14 +28,30 @@
   (tru "The name used for this instance of Metabase.")
   :default "Metabase")
 
+(defsetting user-header
+  "The header with the user to direct authentication."
+  :default "")
+
+(defsetting init-admin-user
+  "The init admin user created when the instance is initiated"
+  :default "")
+
+(defsetting init-admin-mail
+  "The init admin user mail created when the instance is initiated"
+  :default "")
+
+(defsetting init-admin-password
+  "The init admin user password created when the instance is initiated"
+  :default "")
+
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's not protocol when it comes in
 (defsetting site-url
   (tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
   :setter (fn [new-value]
             (setting/set-string! :site-url (when new-value
-                                             (cond->> (s/replace new-value #"/$" "")
-                                               (not (s/starts-with? new-value "http")) (str "http://"))))))
+                                                 (cond->> (s/replace new-value #"/$" "")
+                                                          (not (s/starts-with? new-value "http")) (str "http://"))))))
 
 (defsetting site-locale
   (str  (tru "The default language for this Metabase instance.")
@@ -127,7 +143,7 @@
   "Get a short display name (e.g. `PST`) for `report-timezone`, or fall back to the System default if it's not set."
   [^String timezone-name]
   (let [^TimeZone timezone (or (when (seq timezone-name)
-                                 (TimeZone/getTimeZone timezone-name))
+                                     (TimeZone/getTimeZone timezone-name))
                                (TimeZone/getDefault))]
     (.getDisplayName timezone (.inDaylightTime timezone (java.util.Date.)) TimeZone/SHORT)))
 

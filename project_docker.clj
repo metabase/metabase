@@ -17,7 +17,7 @@
                  [org.clojure/core.memoize "0.5.9"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
                  [org.clojure/java.classpath "0.2.3"]                 ; examine the Java classpath from Clojure programs
-                 [org.clojure/java.jdbc "0.7.5"]                      ; basic JDBC access from Clojure
+                 [org.clojure/java.jdbc "0.7.0"]                      ; basic JDBC access from Clojure
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
@@ -25,7 +25,7 @@
                   :exclusions [org.clojure/clojure
                                org.clojure/clojurescript]]            ; fixed length queue implementation, used in log buffering
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
-                 [aleph "0.4.5-alpha2"]                               ; Async HTTP library; WebSockets
+                 [aleph "0.4.3"]                                      ; Async HTTP library; WebSockets
                  [bigml/histogram "4.1.3"]                            ; Streaming one-pass Histogram data structure
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
@@ -37,8 +37,7 @@
                  [clj-time "0.13.0"]                                  ; library for dealing with date/time
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
-                 [com.amazon.redshift/redshift-jdbc41-no-awssdk       ; Redshift JDBC driver without embedded Amazon SDK
-                  "1.2.8.1005"]
+                 [com.amazon.redshift/redshift-jdbc41 "1.2.8.1005"]   ; Redshift JDBC driver
                  [com.cemerick/friend "0.2.3"                         ; auth library
                   :exclusions [commons-codec
                                org.apache.httpcomponents/httpclient
@@ -47,9 +46,9 @@
                  [com.draines/postal "2.0.2"]                         ; SMTP library
                  [com.github.brandtg/stl-java "0.1.1"]                ; STL decomposition
                  [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
-                  "v3-rev142-1.23.0"]
+                  "v3-rev139-1.22.0"]
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
-                  "v2-rev368-1.23.0"]
+                  "v2-rev342-1.22.0"]
                  [com.jcraft/jsch "0.1.54"]                           ; SSH client for tunnels
                  [com.h2database/h2 "1.4.194"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
@@ -89,17 +88,15 @@
                  [org.postgresql/postgresql "42.1.4.jre7"]            ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
-                 [org.xerial/sqlite-jdbc "3.21.0.1"]                  ; SQLite driver
+                 [org.xerial/sqlite-jdbc "3.16.1"]                    ; SQLite driver
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.16.1"]                    ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
-                 [com.stratio.jdbc/stratio-crossdata-jdbc4       "2.11.1"
-                  :exclusions [org.bouncycastle/crypto,
-                               bouncycastle/bcprov-jdk14,
-                               org.bouncycastle.crypto.digests,
-                               org.bouncycastle.crypto/digests,
+                 [com.stratio.crossdata/stratio-crossdata-jdbc4       "#-version-#"
+                  :exclusions [org.bouncycastle/bcprov-jdk15on,
+                               org.bouncycastle/crypto,
                                org.bouncycastle/bcpkix-jdk15on]]                       ; Crossdata driver
-                 [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
+				 [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
                  [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
                  [puppetlabs/i18n "0.8.0"]                            ; Internationalization library
                  [redux "0.1.4"]                                      ; Utility functions for building and composing transducers
@@ -107,12 +104,11 @@
                  [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
-                 [toucan "1.1.4"                                      ; Model layer, hydration, and DB utilities
+                 [toucan "1.0.3"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]
                  [com.stratio.metabase/local-query-execution-factory "0.2"]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
-                 ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]
-                 ]
+                 ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.11.0"                                       ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]                       ; TODO - should this be a dev dependency ?
@@ -141,8 +137,8 @@
                            ;; and https://github.com/jonase/eastwood/issues/193
                            ;; It's still useful to re-enable them and run them every once in a while because they catch a lot of actual errors too. Keep an eye on the issues above
                            ;; and re-enable them if they ever get resolved
-                            #_:unused-locals
-                            #_:unused-namespaces]
+                           #_:unused-locals
+                           #_:unused-namespaces]
              :exclude-linters [:constant-test                         ; gives us false positives with forms like (when config/is-test? ...)
                                :deprecations]}                        ; Turn this off temporarily until we finish removing self-deprecated DB functions & macros like `upd`, `del`, and `sel`
   :docstring-checker {:include [#"^metabase"]

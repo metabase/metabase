@@ -1,7 +1,7 @@
 (ns metabase.db.spec
-  "Functions for creating JDBC DB specs for a given engine.
-   Only databases that are supported as application DBs should have functions in this namespace;
-   otherwise, similar functions are only needed by drivers, and belong in those namespaces.")
+    "Functions for creating JDBC DB specs for a given engine.
+     Only databases that are supported as application DBs should have functions in this namespace;
+     otherwise, similar functions are only needed by drivers, and belong in those namespaces.")
 
 (defn h2
   "Create a database specification for a h2 database. Opts should include a key
@@ -21,10 +21,60 @@
   [{:keys [host port db]
     :or {host "localhost", port 5432, db ""}
     :as opts}]
-  (merge {:classname "org.postgresql.Driver" ; must be in classpath
-          :subprotocol "postgresql"
-          :subname (str "//" host ":" port "/" db "?OpenSourceSubProtocolOverride=true")}
-         (dissoc opts :host :port :db)))
+  (if (get opts :sslcert)
+    (merge {:classname "org.postgresql.Driver" ; must be in classpath
+            :subprotocol "postgresql"
+            :subname (str "//" host ":" port "/" db "?OpenSourceSubProtocolOverride=true&user=" (get opts :user) "&ssl=true&sslmode=verify-full&sslcert=" (get opts :sslcert) "&sslkey=" (get opts :sslkey) "&sslrootcert="(get opts :sslrootcert))
+            :sslmode "verify-full"
+            :ssl "true"}
+           (dissoc opts :host :port :db)
+           )
+    (merge {:classname "org.postgresql.Driver" ; must be in classpath
+           :subprotocol "postgresql"
+           :subname (str "//" host ":" port "/" db "?OpenSourceSubProtocolOverride=true")}
+          (dissoc opts :host :port :db)))
+
+)
+
+
+(defn crossdata
+  "Create a database specification for a postgres database. Opts should include
+  keys for :db, :user, and :password. You can also optionally set host and
+  port."
+  [{:keys [host port db user]
+    :or {host "localhost", port 13422, db ""}
+    :as opts}]
+
+
+  (if db
+    (merge {:classname "com.stratio.jdbc.core.jdbc4.StratioDriver" ; must be in classpath
+            :subprotocol "crossdata"
+            :subname (str "//Server=" host ":" port ";UID=" user ";SSL=true;LogLevel=3;LogPath=/tmp/crossdata-jdbc-logs")}
+           (dissoc opts :host :port :db))
+    (merge {:classname "com.stratio.jdbc.core.jdbc4.StratioDriver" ; must be in classpath
+            :subprotocol "crossdata"
+            :subname (str "//Server=" host ":" port ";UID=" user ";LogLevel=3;LogPath=/tmp/crossdata-jdbc-logs")}
+           (dissoc opts :host :port :db))))
+
+(defn crossdata2
+  "Create a database specification for a postgres database. Opts should include
+  keys for :db, :user, and :password. You can also optionally set host and
+  port."
+  [{:keys [host port db user]
+    :or {host "localhost", port 13422, db ""}
+    :as opts}]
+
+
+  (if db
+    (merge {:classname "com.stratio.jdbc.core.jdbc4.StratioDriver" ; must be in classpath
+            :subprotocol "crossdata"
+            :subname (str "//Server=" host ":" port ";UID=" user ";SSL=true;LogLevel=3;LogPath=/tmp/crossdata-jdbc-logs")}
+           (dissoc opts :host :port :db))
+    (merge {:classname "com.stratio.jdbc.core.jdbc4.StratioDriver" ; must be in classpath
+            :subprotocol "crossdata"
+            :subname (str "//Server=" host ":" port ";UID=" user ";LogLevel=3;LogPath=/tmp/crossdata-jdbc-logs")}
+           (dissoc opts :host :port :db))))
+
 
 (defn mysql
   "Create a database specification for a mysql database. Opts should include keys

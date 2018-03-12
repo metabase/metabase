@@ -7,9 +7,24 @@ set -e
 
 # Translate various Heroku environment variables to Metabase equivalents
 
-if [ "$PORT" ]; then
-    export MB_JETTY_PORT="$PORT"
+if [ "$PORT0" ]; then
+    export MB_JETTY_PORT="$PORT0"
 fi
+
+source /root/kms/secrets.sh
+
+
+export VAR_SSL_Keystore_Password=`cat /root/.crossdata/keyStore`
+export VAR_SSL_Truststore_Password=`cat /root/.crossdata/trustStore`
+
+export MB_JETTY_SSL="true"
+export MB_JETTY_SSL_Port="$PORT1"
+export MB_JETTY_SSL_Keystore="/root/.crossdata/keyStore.jks"
+export MB_JETTY_SSL_Keystore_Password="$VAR_SSL_Keystore_Password"
+export MB_JETTY_SSL_Truststore="/root/.crossdata/trustStore.jks"
+export MB_JETTY_SSL_Truststore_Password="$VAR_SSL_Truststore_Password"
+
+export HTTP_CLIENT="curl --insecure -f -L -o"
 
 # Heroku Postgres
 if [ "$DATABASE_URL" ]; then
