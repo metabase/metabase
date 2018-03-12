@@ -356,7 +356,6 @@
         fields  (->> (db/select Field :table_id [:in (map :id tables)])
                      (group-by :table_id))
         context (as-> {:root-table (assoc root :fields (fields (:id root)))
-                       :rule       (:table_type rule)
                        :tables     (map #(assoc % :fields (fields (:id %))) tables)
                        :database   (:db_id root)} <>
                   (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
@@ -398,10 +397,10 @@
       (log/info (format "Applying heuristic %s to table %s."
                         (:rule rule)
                         (:name root)))
-      (assoc dashboard
-        :rule    (:rule rule)
-        :filters filters
-        :cards   cards))))
+      [(assoc dashboard
+         :filters filters
+         :cards   cards)
+       rule])))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
@@ -418,12 +417,10 @@
                  (when-let [[dashboard rule]
                             (->> table
                                  (matching-rules rules)
-                                 (keep (fn [rule]
-                                         (some-> (apply-rule table rule)
-                                                 (vector rule))))
+                                 (keep (partial apply-rule table))
                                  first)]
                    {:url         (str public-endpoint "table/" (:id table))
-                    :title       (:name dashboard)
+                    :title       (:title dashboard)
                     :score       (rule-specificity rule)
                     :description (:description dashboard)
                     :table       table})))
@@ -433,14 +430,14 @@
   "Create dashboards for table `root` using the best matching heuristics."
   ([root] (automagic-dashboard nil root))
   ([rule root]
-   (if-let [dashboard (if rule
-                        (apply-rule root (rules/load-rule rule))
-                        (->> root
-                             (matching-rules (rules/load-rules))
-                             (keep (partial apply-rule root))
-                             ;; matching-rules returns an ArraySeq so first realises
-                             ;; just one element at a time (no chunking)
-                             first))]
+   (if-let [[dashboard rule] (if rule
+                               (apply-rule root (rules/load-rule rule))
+                               (->> root
+                                    (matching-rules (rules/load-rules))
+                                    (keep (partial apply-rule root))
+                                    ;; matching-rules returns an ArraySeq so first
+                                    ;; realises one element at a time (no chunking).
+                                    first))]
      (-> dashboard
          populate/create-dashboard
          (assoc :related
@@ -449,19 +446,19 @@
                           Database
                           candidate-tables
                           (remove (comp #{root} :table)))
-            :indepth (->> dashboard
+            :indepth (->> rule
                           :rule
                           rules/indepth
-                          (keep (fn [rule]
-                                  (when-let [indepth-dashboard (apply-rule root rule)]
-                                    {:title       (:title indepth-dashboard)
-                                     :description (:description indepth-dashboard)
+                          (keep (fn [indepth]
+                                  (when-let [[dashboard _] (apply-rule root indepth)]
+                                    {:title       (:title dashboard)
+                                     :description (:description dashboard)
                                      :table       root
                                      :url         (format "%stable/%s/%s/%s"
                                                           public-endpoint
                                                           (:id root)
-                                                          (:rule dashboard)
-                                                          (:rule rule))}))))}))
+                                                          (:rule rule)
+                                                          (:rule indepth))}))))}))
      (log/info (format "Skipping %s: no cards fully match the topology."
                        (:name root))))))
 
