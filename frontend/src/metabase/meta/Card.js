@@ -179,10 +179,21 @@ export function applyParameters(
       continue;
     }
 
-    const mapping = _.findWhere(parameterMappings, {
-      card_id: card.id || card.original_card_id,
-      parameter_id: parameter.id,
-    });
+    const cardId = card.id || card.original_card_id;
+    const mapping = _.findWhere(
+      parameterMappings,
+      cardId != null
+        ? {
+            card_id: cardId,
+            parameter_id: parameter.id,
+          }
+        : // NOTE: this supports transient dashboards where cards don't have ids
+          // BUT will not work correctly with multiseries dashcards since
+          // there's no way to identify which card the mapping applies to.
+          {
+            parameter_id: parameter.id,
+          },
+    );
     if (mapping) {
       // mapped target, e.x. on a dashboard
       datasetQuery.parameters.push({
