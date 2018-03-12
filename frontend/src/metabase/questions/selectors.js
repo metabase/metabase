@@ -14,7 +14,7 @@ import { getMetadata } from "metabase/selectors/metadata";
  */
 export const getQuestion = createSelector(
   [getMetadata, state => state.questions.currentQuestion],
-  (metadata, question) => new Question(metadata, question),
+  (metadata, question) => question && new Question(metadata, question),
 );
 
 export const getEntityType = (state, props) =>
