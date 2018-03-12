@@ -9,6 +9,7 @@
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard] :as dashboard]
+             [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
@@ -21,7 +22,7 @@
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
   [id]
-  (-> (Dashboard id)
+  (-> (Database id)
       api/check-404
       magic/candidate-tables))
 
