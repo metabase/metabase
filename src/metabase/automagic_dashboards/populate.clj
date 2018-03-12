@@ -45,13 +45,15 @@
                   :display                display
                   :name                   title
                   :visualization_settings visualization-settings
-                  :collection_id          (-> automagic-collection deref :id)}
+                  :collection_id          (-> automagic-collection deref :id)
+                  :id                     (gensym)}
                  card/populate-query-fields)]
     (update dashboard :ordered_cards conj {:col                    y
                                            :row                    x
                                            :sizeX                  width
                                            :sizeY                  height
                                            :card                   card
+                                           :card_id                (:id card)
                                            :visualization_settings {}
                                            :id                     (gensym)})))
 

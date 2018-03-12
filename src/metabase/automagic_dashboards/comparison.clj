@@ -22,7 +22,8 @@
       (select-keys [:dataset_query :description :display :name :result_metadata
                     :visualization_settings])
       (assoc :creator_id    api/*current-user-id*
-             :collection_id (-> populate/automagic-collection deref :id))))
+             :collection_id (-> populate/automagic-collection deref :id)
+             :id            (gensym))))
 
 (defn- overlay-comparison?
   [card]
@@ -40,6 +41,7 @@
                                              :sizeX                  populate/grid-width
                                              :sizeY                  height
                                              :card                   card-left
+                                             :card_id                (:id card-left)
                                              :series                 [card-right]
                                              :visualization_settings {}
                                              :id                     (gensym)})
@@ -52,6 +54,7 @@
                                          :sizeX                  width
                                          :sizeY                  height
                                          :card                   card-left
+                                         :card_id                (:id card-left)
                                          :series                 series-left
                                          :visualization_settings {}
                                          :id                     (gensym)})
@@ -60,6 +63,7 @@
                                          :sizeX                  width
                                          :sizeY                  height
                                          :card                   card-right
+                                         :card_id                (:id card-right)
                                          :series                 series-right
                                          :visualization_settings {}
                                          :id                     (gensym)}))))))
