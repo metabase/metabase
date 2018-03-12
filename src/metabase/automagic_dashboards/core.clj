@@ -16,6 +16,7 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
+             [query :refer [Query]]
              [table :refer [Table]]]
             [metabase.util :as u]
             [ring.util.codec :as codec]
