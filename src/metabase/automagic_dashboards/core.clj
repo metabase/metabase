@@ -485,6 +485,8 @@
                     :table       table})))
          (sort-by :score >))))
 
+(def ^:private ^Long max-related 6)
+
 (defn automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
   ([root] (automagic-dashboard nil root))
@@ -497,25 +499,28 @@
                                     ;; matching-rules returns an ArraySeq so first
                                     ;; realises one element at a time (no chunking).
                                     first))]
-     (-> dashboard
-         populate/create-dashboard
-         (assoc :related
-           {:tables  (->> root
-                          database
-                          candidate-tables
-                          (remove (comp #{root} :table)))
-            :indepth (->> rule
-                          :rule
-                          rules/indepth
-                          (keep (fn [indepth]
-                                  (when-let [[dashboard _] (apply-rule root indepth)]
-                                    {:title       (:title dashboard)
-                                     :description (:description dashboard)
-                                     :table       (table root)
-                                     :url         (format "/%s/%s"
-                                                          (url root)
-                                                          (:rule rule)
-                                                          (:rule indepth))}))))}))
+     (let [indepth (->> rule
+                        :rule
+                        rules/indepth
+                        (keep (fn [indepth]
+                                (when-let [[dashboard _] (apply-rule root indepth)]
+                                  {:title       (:title dashboard)
+                                   :description (:description dashboard)
+                                   :table       (table root)
+                                   :url         (format "/%s/%s"
+                                                        (url root)
+                                                        (:rule rule)
+                                                        (:rule indepth))})))
+                        (take max-related))]
+       (-> dashboard
+           populate/create-dashboard
+           (assoc :related
+             {:tables  (->> root
+                            database
+                            candidate-tables
+                            (remove (comp #{root} :table))
+                            (take (- max-related (count indepth))))
+              :indepth indepth})))
      (log/info (format "Skipping %s: no cards fully match the topology."
                        (full-name root))))))
 
