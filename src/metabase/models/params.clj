@@ -62,7 +62,7 @@
   just the column identifiers, perhaps for use with something like `select-keys`. Clutch!
 
     (db/select Field:params-columns-only)"
-  ['Field :id :table_id :display_name :base_type :special_type])
+  ['Field :id :table_id :display_name :base_type :special_type :has_field_values])
 
 (defn- fields->table-id->name-field
   "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
