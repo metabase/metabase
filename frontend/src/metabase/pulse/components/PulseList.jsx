@@ -40,8 +40,8 @@ export default class PulseList extends Component {
   render() {
     let { pulses, user } = this.props;
     return (
-      <div className="PulseList pt3">
-        <div className="border-bottom mb2">
+      <div className="PulseList px3">
+        <div className="border-bottom mb2 mt3">
           <div className="wrapper wrapper--trim flex align-center mb2">
             <h1>{t`Pulses`}</h1>
             <a
