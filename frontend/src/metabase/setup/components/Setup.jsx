@@ -13,14 +13,12 @@ import UserStep from "./UserStep.jsx";
 import DatabaseConnectionStep from "./DatabaseConnectionStep.jsx";
 import PreferencesStep from "./PreferencesStep.jsx";
 import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
-import ExploreStep from "metabase/setup/components/ExploreStep.jsx";
 
 const WELCOME_STEP_NUMBER = 0;
 const USER_STEP_NUMBER = 1;
 const DATABASE_CONNECTION_STEP_NUMBER = 2;
 const DATABASE_SCHEDULING_STEP_NUMBER = 3;
 const PREFERENCES_STEP_NUMBER = 4;
-const EXPLORE_STEP_NUMBER = 5;
 
 export default class Setup extends Component {
   static propTypes = {
@@ -136,8 +134,6 @@ export default class Setup extends Component {
                 {...this.props}
                 stepNumber={PREFERENCES_STEP_NUMBER}
               />
-
-              <ExploreStep {...this.props} stepNumber={EXPLORE_STEP_NUMBER} />
 
               {setupComplete ? (
                 <section className="SetupStep rounded SetupStep--active flex flex-column layout-centered p4">
