@@ -1,3 +1,5 @@
+/* @flow */
+
 import React from "react";
 import { Link } from "react-router";
 
@@ -6,26 +8,41 @@ import MetabotLogo from "metabase/components/MetabotLogo";
 
 import { t } from "c-3po";
 
-export const ExplorePane = ({ options, isSample }) => (
+import type { Candidate } from "metabase/meta/types/Auto";
+
+const DEFAULT_TITLE = t`Hi, Metabot here.`;
+const DEFAULT_DESCRIPTION = "";
+
+export const ExplorePane = ({
+  options,
+  // $FlowFixMe
+  title = DEFAULT_TITLE,
+  // $FlowFixMe
+  description = DEFAULT_DESCRIPTION,
+}: {
+  options?: ?(Candidate[]),
+  title?: ?string,
+  description?: ?string,
+}) => (
   <div>
-    <div className="flex align-center">
-      <MetabotLogo className="mr2" />
-      <h3>
-        <span>{t`Hi, Metabot here.`}</span>
-      </h3>
-    </div>
-    <div className="mt2 mb4">
-      <span>
-        {isSample
-          ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples from the sample dataset.`
-          : `I took a look at the data you just connected, and I have some explorations for you to look at. I call these x-rays. Hope you like them!`}
-      </span>
-    </div>
-    <ExploreList options={options} />
+    {title && (
+      <div className="flex align-center mb2">
+        <MetabotLogo className="mr2" />
+        <h3>
+          <span>{title}</span>
+        </h3>
+      </div>
+    )}
+    {description && (
+      <div className="mb4">
+        <span>{description}</span>
+      </div>
+    )}
+    {options && <ExploreList options={options} />}
   </div>
 );
 
-export const ExploreList = ({ options }) => (
+export const ExploreList = ({ options }: { options: Candidate[] }) => (
   <ol className="Grid Grid--1of2 Grid--gutters">
     {options &&
       options.map((option, index) => (
@@ -36,7 +53,7 @@ export const ExploreList = ({ options }) => (
   </ol>
 );
 
-export const ExploreOption = ({ option }) => (
+export const ExploreOption = ({ option }: { option: Candidate }) => (
   <Link to={option.url} className="link flex align-center text-bold">
     <div
       className="bg-slate-almost-extra-light p2 flex align-center rounded mr1 justify-center text-gold"
