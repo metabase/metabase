@@ -41,6 +41,7 @@ import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 import SetupApp from "metabase/setup/containers/SetupApp.jsx";
+import PostSetupApp from "metabase/setup/containers/PostSetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
 
 // new question
@@ -203,6 +204,7 @@ export const getRoutes = store => (
       <Route component={IsAuthenticated}>
         {/* HOME */}
         <Route path="/" component={HomepageApp} />
+        <Route path="/ready" component={PostSetupApp} />
 
         {/* DASHBOARD LIST */}
         <Route

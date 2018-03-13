@@ -91,8 +91,10 @@ export const EmbedApi = {
 
 export const AutoApi = {
   dashboard: GET("/api/automagic-dashboards/:subPath", {
+    // this prevents the `subPath` parameter from being URL encoded
     raw: { subPath: true },
   }),
+  db_candidates: GET("/api/automagic-dashboards/database/:id/candidates"),
 };
 
 export const EmailApi = {

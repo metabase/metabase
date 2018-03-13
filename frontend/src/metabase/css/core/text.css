@@ -190,3 +190,9 @@
 .text-measure {
   max-width: 620px;
 }
+
+span.text-redacted,
+.text-redacted span {
+  opacity: 0.5;
+  background-color: currentColor;
+}
