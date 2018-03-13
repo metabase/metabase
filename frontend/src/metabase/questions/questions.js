@@ -1,9 +1,14 @@
+/* @flow weak */
 import {
   createAction,
   createThunkAction,
   mergeEntities,
   momentifyArraysTimestamps,
 } from "metabase/lib/redux";
+
+import {
+  deserializeCardFromUrl,
+} from "metabase/lib/card";
 
 import { normalize, schema } from "normalizr";
 import { getIn, assocIn, updateIn, chain } from "icepick";
@@ -19,7 +24,15 @@ import { addUndo } from "metabase/redux/undo";
 
 import { getVisibleEntities, getSelectedEntities } from "./selectors";
 
+import Question from "metabase-lib/lib/Question";
+import { getMetadata } from "metabase/selectors/metadata";
+
 import { SET_COLLECTION_ARCHIVED } from "./collections";
+
+import { Card } from "metabase/meta/types/Card";
+import { loadMetadataForCard } from "metabase/query_builder/actions";
+
+import { defer } from "metabase/lib/promise";
 
 const label = new schema.Entity("labels");
 const collection = new schema.Entity("collections");
@@ -38,6 +51,90 @@ const SET_FAVORITED = "metabase/questions/SET_FAVORITED";
 const SET_ARCHIVED = "metabase/questions/SET_ARCHIVED";
 const SET_LABELED = "metabase/questions/SET_LABELED";
 const SET_COLLECTION = "metabase/collections/SET_COLLECTION";
+
+export const FETCH_QUESTION = "metabase/question/FETCH_QUESTION";
+
+/*
+ * Get the details of a question and also load any required metadata
+ *
+ * This gets details back from the API for the given question and then
+ * dispatches loadMetadataForCard which will subsequently ask the api
+ * for any necessary metadata based on the query dictionary and then add that
+ * to the store under metadata
+ *
+ * @example
+ * // example use in a connected react component
+ * componentDidMount () {
+    fetchQuestion(this.props.params.cardId)
+ * }
+ *
+ * This returns the card object, but it won't be a properly hydrated Question yet
+ * so in order to use Question methods you'll need to instantiate a new Question object
+ * off of the returned card
+ *
+ */
+export const fetchQuestion = createThunkAction(
+  FETCH_QUESTION,
+  (cardId: number, fetchResults: boolean): Card => {
+    return async (dispatch, getState) => {
+      const card = await CardApi.get({ cardId });
+
+      // load the metadata for the question so we get
+      await dispatch(loadMetadataForCard(card));
+
+      const question = new Question(getMetadata(getState()), card)
+
+      if(fetchResults) {
+        dispatch(fetchQuestionResults(question))
+      }
+      return question;
+    };
+  },
+);
+
+export const GEN_URL_BASED_QUESTION = "metabase/question/GEN_URL_BASED_QUESTION";
+
+/*
+ * Questions can also be serialized to JSON to pass the question around via
+ * urls. If we encounter one of these we need to deserialize it in order to
+ *
+ *
+ */
+
+export const genUrlBasedQuestion = createThunkAction(
+  GEN_URL_BASED_QUESTION,
+  (questionHash: string, fetchResults: boolean) => {
+    return async (dispatch, getState) => {
+      const card = deserializeCardFromUrl(questionHash)
+      await dispatch(loadMetadataForCard(card));
+
+      const question = new Question(getMetadata(getState()), card)
+
+      if(fetchResults) {
+        dispatch(fetchQuestionResults(question))
+      }
+      return question
+    }
+  }
+)
+
+export const FETCH_QUESTION_RESULTS = "metabase/question/FETCH_QUESTION_RESULTS";
+
+export const fetchQuestionResults = createThunkAction(
+  FETCH_QUESTION_RESULTS,
+  (question) => {
+    return async (dispatch, getState) => {
+      const cancelQueryDeferred = defer();
+
+      const result = await question.apiGetResults({
+        cancelDeferred: cancelQueryDeferred,
+      })
+
+      return result[0]
+
+    }
+  }
+)
 
 export const loadEntities = createThunkAction(
   LOAD_ENTITIES,
@@ -363,6 +460,11 @@ export default function(state = initialState, { type, payload, error }) {
       return { ...state, selectedIds: { ...state.selectedIds, ...payload } };
     case SET_ALL_SELECTED:
       return { ...state, selectedIds: payload };
+    case FETCH_QUESTION:
+    case GEN_URL_BASED_QUESTION:
+      return { ...state, currentQuestion: payload };
+    case FETCH_QUESTION_RESULTS:
+      return { ...state, currentQuestionResults: payload }
     case LOAD_ENTITIES:
       if (error) {
         return assocIn(
