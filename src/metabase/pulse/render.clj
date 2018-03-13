@@ -488,7 +488,8 @@
   (when (and (not= :inline render-type)
              (or (< cols-limit (count-displayed-columns cols))
                  (< rows-limit (count rows))))
-    [:div {:style (style {:color color-gray-2})}
+    [:div {:style (style {:color         color-gray-2
+                          :margin-bottom :16px})}
      "More results have been included as a file attachment"]))
 
 (s/defn ^:private render:table :- RenderedPulseCard
@@ -746,11 +747,14 @@
                          (external-link-image-bundle render-type))]
       {:attachments (when image-bundle
                       (image-bundle->attachment image-bundle))
-       :content     [:table {:style (style {:margin-bottom :8px
-                                            :width         :100%})}
+       :content     [:table {:style (style {:margin-bottom   :8px
+                                            :border-collapse :collapse
+                                            :width           :100%})}
                      [:tbody
                       [:tr
-                       [:td [:span {:style (style header-style)}
+                       [:td {:style (style {:padding :0
+                                            :margin  :0})}
+                        [:span {:style (style header-style)}
                              (-> card :name h)]]
                        [:td {:style (style {:text-align :right})}
                         (when *include-buttons*
