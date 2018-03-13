@@ -50,10 +50,16 @@
 
 (defn- add-filter
   [dashcard filter-id field]
-  (if-let [target (filter-for-card (:card dashcard) field)]
-    (update dashcard :parameter_mappings conj
-            {:parameter_id filter-id
-             :target       target})
+  (if-let [targets (->> (conj (:series dashcard) (:card dashcard))
+                        (keep (fn [card]
+                                (some-> card
+                                        (filter-for-card field)
+                                        (vector card))))
+                        not-empty)]
+    (update dashcard :parameter_mappings concat (for [[target card] targets]
+                                                  {:parameter_id filter-id
+                                                   :target       target
+                                                   :card_id      (:id card)}))
     dashcard))
 
 (defn- filter-type
