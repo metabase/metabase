@@ -264,7 +264,8 @@
      :query    (cond-> {:source_table (-> context :root-table :id)}
                  (not-empty filters)
                  (assoc :filter (cond->> (map :filter filters)
-                                  (> (count filters) 1) (apply vector :and)))
+                                  (> (count filters) 1) (apply vector :and)
+                                  :else                 first))
 
                  (not-empty dimensions)
                  (assoc :breakout dimensions)
