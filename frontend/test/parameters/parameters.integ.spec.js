@@ -439,10 +439,10 @@ async function sharedParametersTests(getAppAndStore) {
       widget => widget.find(TokenField).props().placeholder,
     );
     expect(placeholders).toEqual([
-      "Search by Name or enter an ID",
+      "Enter an ID",
       "Search by Name",
       "Search the list",
-      "Search by Name or enter an ID",
+      "Enter an ID",
     ]);
   });
 

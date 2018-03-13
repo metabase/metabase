@@ -20,7 +20,9 @@ function stripKeys(object) {
   // handles both arrays and objects
   if (object && typeof object === "object") {
     for (const key in object) {
-      if (/^((updated|created)_at|last_analyzed)$/.test(key)) {
+      if (
+        /^((updated|created)_at|last_analyzed|timezone|is_on_demand)$/.test(key)
+      ) {
         delete object[key];
       } else {
         stripKeys(object[key]);
