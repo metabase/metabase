@@ -1,5 +1,6 @@
 (ns metabase.api.automagic-dashboards
-  (:require [compojure.core :refer [GET POST]]
+  (:require [cheshire.core :as json]
+            [compojure.core :refer [GET POST]]
             [metabase.api
              [card :as card.api]
              [common :as api]]
@@ -12,6 +13,7 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
+             [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [ring.util.codec :as codec]
@@ -46,11 +48,33 @@
   [id]
   (-> id Segment api/check-404 magic/automagic-dashboard))
 
+(api/defendpoint GET "/segment/:id/:prefix/:rule"
+  "Return an automagic dashboard analyzing segment with id `id`. using rule `rule`."
+  [id prefix rule]
+  (-> id
+      Segment
+      api/check-404
+      (magic/automagic-dashboard (str prefix "/" rule ".yaml"))))
+
 (api/defendpoint GET "/question/:id/:cell-query"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry`."
   [id cell-query]
-  (-> id Card api/check-404 :table_id Table magic/automagic-dashboard))
+  (-> (card.api/adhoc-query {:query {:filter (-> cell-query
+                                                 codec/base64-decode
+                                                 json/decode)}})
+      (magic/inject-segment (-> id Card api/check-404))
+      magic/automagic-dashboard))
+
+(api/defendpoint GET "/question/:id/:cell-query/:prefix/:rule"
+  "Return an automagic dashboard analyzing cell in question  with id `id` defined by
+   query `cell-querry` using rule `rule`."
+  [id cell-query prefix rule]
+  (-> (card.api/adhoc-query {:query {:filter (-> cell-query
+                                                 codec/base64-decode
+                                                 json/decode)}})
+      (magic/inject-segment (-> id Card api/check-404))
+      (magic/automagic-dashboard (str prefix "/" rule ".yaml"))))
 
 (api/defendpoint GET "/metric/:id"
   "Return an automagic dashboard analyzing metric with id `id`."

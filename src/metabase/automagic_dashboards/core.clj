@@ -49,12 +49,19 @@
 
   metabase.models.query.QueryInstance
   (table [query] (-> query :table_id Table))
-  (database [query] (-> query :database_id database))
+  (database [query] (-> query :database_id Database))
   (query-filter [query] (-> query :dataset_query :query :filter))
   (full-name [query] (str "ad-hoc question " (:name query)))
   (url [query] (format "%sadhoc/%s" public-endpoint (-> query
                                                         json/encode
-                                                        codec/base64-encode))))
+                                                        codec/base64-encode)))
+
+  metabase.models.card.CardInstance
+  (table [card] (-> card :table_id Table))
+  (database [card] (-> card :database_id Database))
+  (query-filter [card] (-> card :dataset_query :query :filter))
+  (full-name [card] (str "question " (:name card)))
+  (url [card] (format "%squestion/%s" public-endpoint (:id card))))
 
 (defmulti
   ^{:doc "Get a reference for a given model to be injected into a template
@@ -470,7 +477,7 @@
                                  (matching-rules rules)
                                  (keep (partial apply-rule table))
                                  first)]
-                   {:url         (str public-endpoint "table/" (:id table))
+                   {:url         (url table)
                     :title       (:title dashboard)
                     :score       (rule-specificity rule)
                     :description (:description dashboard)
