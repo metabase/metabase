@@ -546,11 +546,11 @@
 
 (defmethod automagic-analysis (type Card)
   [card]
-  )
+  (automagic-dashboard card))
 
 (defmethod automagic-analysis (type Query)
   [query]
-  )
+  (automagic-dashboard query))
 
 (defmethod automagic-analysis (type Field)
   [field]
