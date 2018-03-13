@@ -127,12 +127,10 @@ export default class Scalar extends Component {
 
     // TODO: some or all of these options should be part of formatValue
     if (typeof scalarValue === "number" && isNumber(column)) {
-      let number = scalarValue;
-
       // scale
       const scale = parseFloat(settings["scalar.scale"]);
       if (!isNaN(scale)) {
-        number *= scale;
+        scalarValue *= scale;
       }
 
       const localeStringOptions = {};
@@ -140,9 +138,11 @@ export default class Scalar extends Component {
       // decimals
       let decimals = parseFloat(settings["scalar.decimals"]);
       if (!isNaN(decimals)) {
-        number = d3.round(number, decimals);
+        scalarValue = d3.round(scalarValue, decimals);
         localeStringOptions.minimumFractionDigits = decimals;
       }
+
+      let number = scalarValue;
 
       // currency
       if (settings["scalar.currency"] != null) {
