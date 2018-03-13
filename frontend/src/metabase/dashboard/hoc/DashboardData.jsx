@@ -67,7 +67,6 @@ export default (ComposedComponent: ReactClass<any>) =>
     class DashboardContainer extends Component {
       props: Props;
 
-      // $FlowFixMe
       async load(props) {
         const {
           initialize,

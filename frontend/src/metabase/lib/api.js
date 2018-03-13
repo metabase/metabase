@@ -71,7 +71,7 @@ class Api extends EventEmitter {
             console.warn("Warning: calling", method, "without", tag);
             value = "";
           }
-          if (!options.raw[paramName]) {
+          if (!options.raw || !options.raw[paramName]) {
             value = encodeURIComponent(value);
           }
           url = url.replace(tag, value);
