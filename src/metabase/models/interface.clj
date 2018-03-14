@@ -32,6 +32,12 @@
   :in  json-in
   :out json-out)
 
+;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
+;; permissions set
+(models/add-type! :json-set
+  :in  json-in
+  :out #(when % (set (json-out %))))
+
 (models/add-type! :clob
   :in  identity
   :out u/jdbc-clob->str)

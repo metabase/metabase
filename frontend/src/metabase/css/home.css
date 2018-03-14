@@ -6,6 +6,10 @@
   background-color: rgba(0, 0, 0, 0.2);
 }
 
+.NavItem {
+  justify-content: center;
+}
+
 .NavItem > .Icon {
   padding-left: 1em;
   padding-right: 1em;
