@@ -17,13 +17,13 @@ import * as Urls from "metabase/lib/urls";
 
 import { dissoc } from "icepick";
 
-const suggestionClasses = cxs ({
+const suggestionClasses = cxs({
   ":hover h3": {
     color: "#509ee3",
   },
   ":hover .Icon": {
     color: "#F9D45C",
-  }
+  },
 });
 
 const SuggestionsList = ({ suggestions }) => (
