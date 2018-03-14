@@ -37,7 +37,7 @@
   (table [table] table)
   (database [table] (-> table :db_id Database))
   (query-filter [table] nil)
-  (full-name [table] (str "table " (:name table)))
+  (full-name [table] (str "table " (:display_name table)))
   (url [table] (format "%stable/%s" public-endpoint (:id table)))
 
   metabase.models.segment.SegmentInstance
@@ -46,6 +46,20 @@
   (query-filter [segment] (-> segment :definition :filter))
   (full-name [segment] (str "segment " (:name segment)))
   (url [segment] (format "%ssegment/%s" public-endpoint (:id segment)))
+
+  metabase.models.metric.MetricInstance
+  (table [metric] (-> metric :table_id Table))
+  (database [metric] (-> metric table database))
+  (query-filter [metric] nil)
+  (full-name [metric] (str "metric " (:name metric)))
+  (url [metric] (format "%smetric/%s" public-endpoint (:id metric)))
+
+  metabase.models.field.FieldInstance
+  (table [field] (-> field :table_id Table))
+  (database [field] (-> field table database))
+  (query-filter [field] nil)
+  (full-name [field] (str "field " (:display_name field)))
+  (url [field] (format "%field/%s" public-endpoint (:id field)))
 
   metabase.models.query.QueryInstance
   (table [query] (-> query :table_id Table))
@@ -97,6 +111,10 @@
 (defmethod ->reference [:string (type Table)]
   [_ {:keys [display_name]}]
   display_name)
+
+(defmethod ->reference [:string (type Metric)]
+  [_ {:keys [name]}]
+  name)
 
 (defmethod ->reference [:native (type Field)]
   [_ {:keys [name table_id]}]
@@ -439,7 +457,7 @@
   [root rule]
   (let [context   (make-context root rule)
         dashboard (->> (select-keys rule [:title :description :groups])
-                                    (instantiate-metadata context {}))
+                                    (instantiate-metadata context {"this" root}))
         filters   (->> rule
                        :dashboard_filters
                        (mapcat (comp :matches (:dimensions context))))
@@ -481,7 +499,7 @@
   ([root] (automagic-dashboard nil root))
   ([rule root]
    (if-let [[dashboard rule] (if rule
-                               (apply-rule root (rules/load-rule rule))
+                               (apply-rule root rule)
                                (->> root
                                     (matching-rules (rules/load-rules))
                                     (keep (partial apply-rule root))
@@ -535,21 +553,11 @@
 
 (defmethod automagic-analysis (type Metric)
   [metric]
-  (let [rule      (-> "special/metric.yaml"
-                      rules/load-rule
-                      (update :metrics conj {"Metric" {:metric ["METRIC" (:id metric)]
-                                                       :score  100}}))
-        context   (make-context (Table (:table_id metric)) rule)
-        cards     (make-cards context rule)
-        filters   (->> rule
-                       :dashboard_filters
-                       (mapcat (comp :matches (:dimensions context))))
-        dashboard {:title   (format "Analysis of %s" (:name metric))
-                   :groups  (:groups rule)
-                   :filters filters
-                   :cards   cards}]
-    (when cards
-      (populate/create-dashboard dashboard (count cards)))))
+  (-> "special/metric.yaml"
+      rules/load-rule
+      (update :metrics conj {"Metric" {:metric ["METRIC" (:id metric)]
+                                       :score  100}})
+      (automagic-dashboard metric)))
 
 (defmethod automagic-analysis (type Card)
   [card]
@@ -565,4 +573,4 @@
 
 (defmethod automagic-analysis (type Field)
   [field]
-  )
+  nil)

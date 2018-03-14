@@ -6,7 +6,8 @@
              [common :as api]]
             [metabase.automagic-dashboards
              [core :as magic]
-             [comparison :as magic.comparison]]
+             [comparison :as magic.comparison]
+             [rules :as rules]]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard] :as dashboard]
@@ -41,7 +42,7 @@
   (->> id
        Table
        api/check-404
-       (magic/automagic-dashboard (str prefix "/" rule ".yaml"))))
+       (magic/automagic-dashboard (rules/load-rule (str prefix "/" rule ".yaml")))))
 
 (api/defendpoint GET "/segment/:id"
   "Return an automagic dashboard analyzing segment with id `id`."
@@ -54,7 +55,7 @@
   (-> id
       Segment
       api/check-404
-      (magic/automagic-dashboard (str prefix "/" rule ".yaml"))))
+      (magic/automagic-dashboard (rules/load-rule (str prefix "/" rule ".yaml")))))
 
 (api/defendpoint GET "/question/:id/:cell-query"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
@@ -74,7 +75,7 @@
                                                  codec/base64-decode
                                                  json/decode)}})
       (magic/inject-segment (-> id Card api/check-404))
-      (magic/automagic-dashboard (str prefix "/" rule ".yaml"))))
+      (magic/automagic-dashboard (rules/load-rule (str prefix "/" rule ".yaml")))))
 
 (api/defendpoint GET "/metric/:id"
   "Return an automagic dashboard analyzing metric with id `id`."

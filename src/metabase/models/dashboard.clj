@@ -231,12 +231,13 @@
 
 (defn- save-card!
   [card]
-  (db/insert! 'Card
-    (-> card
-        (dissoc :id)
-        (update :result_metadata #(or % (-> card
-                                            :dataset_query
-                                            card.api/result-metadata-for-query))))))
+  (when (:dataset_query card)
+    (db/insert! 'Card
+      (-> card
+          (update :result_metadata #(or % (-> card
+                                              :dataset_query
+                                              card.api/result-metadata-for-query)))
+          (dissoc :id)))))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of dashboard."
