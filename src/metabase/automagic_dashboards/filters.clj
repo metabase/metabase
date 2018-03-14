@@ -1,6 +1,6 @@
 (ns metabase.automagic-dashboards.filters
   (:require [clojure.string :as str]
-            [metabase.models.field :refer [Field]]
+            [metabase.models.field :refer [Field] :as field]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -26,9 +26,10 @@
        (mapcat collect-field-references)
        distinct
        (map Field)
-       (filter (fn [{:keys [base_type special_type]}]
+       (filter (fn [{:keys [base_type special_type] :as field}]
                  (or (isa? base_type :type/DateTime)
-                     (isa? special_type :type/Category))))))
+                     (isa? special_type :type/Category)
+                     (field/unix-timestamp? field))))))
 
 (defn- find-fk
   [from-table to-field]
@@ -63,9 +64,10 @@
     dashcard))
 
 (defn- filter-type
-  [{:keys [base_type special_type]}]
+  [{:keys [base_type special_type] :as field}]
   (cond
     (isa? base_type :type/DateTime)    "date/all-options"
+    (field/unix-timestamp? field)      "date/all-options"
     (isa? special_type :type/State)    "location/state"
     (isa? special_type :type/Country)  "location/country"
     (isa? special_type :type/Category) "category"))

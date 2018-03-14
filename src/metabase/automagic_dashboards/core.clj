@@ -14,7 +14,7 @@
             [metabase.models
              [card :as card :refer [Card]]
              [database :refer [Database]]
-             [field :refer [Field]]
+             [field :refer [Field] :as field]
              [metric :refer [Metric]]
              [query :refer [Query]]
              [table :refer [Table]]]
@@ -55,7 +55,7 @@
   (url [metric] (format "%smetric/%s" public-endpoint (:id metric)))
 
   metabase.models.field.FieldInstance
-  (table [field] (-> field :table_id Table))
+  (table [field] (field/table field))
   (database [field] (-> field table database))
   (query-filter [field] nil)
   (full-name [field] (str "field " (:display_name field)))
@@ -117,8 +117,8 @@
   name)
 
 (defmethod ->reference [:native (type Field)]
-  [_ {:keys [name table_id]}]
-  (format "%s.%s" (-> table_id Table :name) name))
+  [_ field]
+  (field/qualified-name field))
 
 (defmethod ->reference [:native (type Table)]
   [_ {:keys [name]}]
