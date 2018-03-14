@@ -2,7 +2,6 @@
 
 import React, { Component } from "react";
 
-import Button from "metabase/components/Button";
 import { Link } from "react-router";
 import ExplorePane from "metabase/components/ExplorePane";
 import MetabotLogo from "metabase/components/MetabotLogo";
