@@ -116,7 +116,7 @@ class AutomaticDashboardApp extends React.Component {
             <div className="Layout-sidebar flex-no-shrink">
               <SuggestionsSidebar related={dashboard.related} />
             </div>
-        )}
+          )}
       </div>
     );
   }

@@ -400,22 +400,13 @@
   (let [root    (table root)
         tables  (concat [root] (linked-tables root))
         fields  (->> (db/select Field :table_id [:in (map :id tables)])
-                     (group-by :table_id))
-        context (as-> {:root-table (assoc root :fields (fields (:id root)))
-                       :tables     (map #(assoc % :fields (fields (:id %))) tables)
-                       :database   (:db_id root)} <>
-                  (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
-                  (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
-                  (assoc <> :filters (resolve-overloading <> (:filters rule))))]
-    (log/info (format "Dimensions bindings:\n%s"
-                      (->> context
-                           :dimensions
-                           (m/map-vals #(update % :matches (partial map :name)))
-                           u/pprint-to-str)))
-    (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
-                      (-> context :metrics u/pprint-to-str)
-                      (-> context :filters u/pprint-to-str)))
-    context))
+                     (group-by :table_id))]
+    (as-> {:root-table (assoc root :fields (fields (:id root)))
+           :tables     (map #(assoc % :fields (fields (:id %))) tables)
+           :database   (:db_id root)} context
+      (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
+      (assoc context :metrics (resolve-overloading context (:metrics rule)))
+      (assoc context :filters (resolve-overloading context (:filters rule))))))
 
 (defn- make-cards
   [context {:keys [cards]}]
@@ -455,12 +446,10 @@
         cards     (cond->> (make-cards context rule)
                     (query-filter root) (map (partial inject-segment root)))]
     (when cards
-      (log/info (format "Applying heuristic %s to %s."
-                        (:rule rule)
-                        (full-name root)))
       [(assoc dashboard
          :filters filters
-         :cards   cards)
+         :cards   cards
+         :context context)
        rule])))
 
 (defn candidate-tables
@@ -512,6 +501,18 @@
                                                         (:rule rule)
                                                         (:rule indepth))})))
                         (take max-related))]
+       (log/info (format "Applying heuristic %s to %s."
+                         (:rule rule)
+                         (full-name root)))
+       (log/info (format "Dimensions bindings:\n%s"
+                         (->> dashboard
+                              :context
+                              :dimensions
+                              (m/map-vals #(update % :matches (partial map :name)))
+                              u/pprint-to-str)))
+       (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
+                         (-> dashboard :context :metrics u/pprint-to-str)
+                         (-> dashboard :context :filters u/pprint-to-str)))
        (-> dashboard
            populate/create-dashboard
            (assoc :related
