@@ -41,7 +41,7 @@ const SegmentSidebar = ({ segment, user, style, className }) => (
       <SidebarItem
         key={`/auto/dashboard/segment/${segment.id}`}
         href={`/auto/dashboard/segment/${segment.id}`}
-        icon="beaker"
+        icon="bolt"
         name={t`Create a dashboard based on this segment`}
       />
 

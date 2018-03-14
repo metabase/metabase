@@ -35,7 +35,7 @@ const MetricSidebar = ({ metric, user, style, className }) => (
       <SidebarItem
         key={`/auto/dashboard/metric/${metric.id}`}
         href={`/auto/dashboard/metric/${metric.id}`}
-        icon="beaker"
+        icon="bolt"
         name={t`Generate a dashboard based on this metric`}
       />
       {user &&
