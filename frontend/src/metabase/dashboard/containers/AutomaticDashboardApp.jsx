@@ -6,6 +6,7 @@ import { Link } from "react-router";
 import { withBackground } from "metabase/hoc/Background";
 import ActionButton from "metabase/components/ActionButton";
 import Icon from "metabase/components/Icon";
+import cxs from "cxs";
 
 import { Dashboard } from "./Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
@@ -16,23 +17,32 @@ import * as Urls from "metabase/lib/urls";
 
 import { dissoc } from "icepick";
 
+const suggestionClasses = cxs ({
+  ":hover h3": {
+    color: "#509ee3",
+  },
+  ":hover .Icon": {
+    color: "#F9D45C",
+  }
+});
+
 const SuggestionsList = ({ suggestions }) => (
   <ol className="px2">
     {suggestions.map((s, i) => (
-      <li key={i}>
+      <li key={i} className={suggestionClasses}>
         <Link
           to={s.url}
           className="bordered rounded bg-white shadowed mb2 p2 flex no-decoration"
         >
           <div
-            className="bg-slate-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
+            className="bg-slate-extra-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
             style={{ width: 48, height: 48 }}
           >
-            <Icon name="bolt" size={22} />
+            <Icon name="bolt" className="Icon text-grey-1" size={22} />
           </div>
           <div>
-            <h3 className="m0 mb1">{s.title}</h3>
-            <p className="text-paragraph mt0">{s.description}</p>
+            <h3 className="m0 mb1 ml1">{s.title}</h3>
+            <p className="text-grey-4 ml1 mt0 mb0">{s.description}</p>
           </div>
         </Link>
       </li>
@@ -43,7 +53,7 @@ const SuggestionsList = ({ suggestions }) => (
 const SuggestionsSidebar = ({ related }) => (
   <div className="flex flex-column">
     <div className="py2 text-centered my3">
-      <h3>More X-rays</h3>
+      <h3>More explorations</h3>
     </div>
     {Object.values(related).map(suggestions => (
       <SuggestionsList suggestions={suggestions} />

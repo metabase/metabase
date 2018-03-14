@@ -1,5 +1,5 @@
 title: Users
-description: Some useful metrics about the [[UserTable]] table to get you started.
+description: An exploration of your users to get you started.
 metrics:
 - Count:
     metric: [count]

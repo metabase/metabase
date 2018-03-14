@@ -1,4 +1,5 @@
 title: Transactions
+description: Some metrics we found about your transactions.
 metrics:
 - AvgDiscount:
     metric: [/, [sum, [dimension, Discount]], [sum, [dimension, Income]]]
