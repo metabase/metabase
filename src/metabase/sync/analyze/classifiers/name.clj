@@ -138,7 +138,8 @@
    [#"companies"    :entity/CompanyTable]
    [#"vendor"       :entity/CompanyTable]])
 
-(s/defn ^:always-validate infer-entity-type :- i/TableInstance
+(s/defn infer-entity-type :- i/TableInstance
+  "Classifer that infers the special type of a TABLE based on its name."
   [table :- i/TableInstance]
   (let [table-name (-> table :name str/lower-case)]
     (assoc table :entity_type (or (some (fn [[pattern type]]

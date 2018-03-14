@@ -19,22 +19,31 @@
                                                     test-users/user->id
                                                     user/permissions-set
                                                     atom)]
-    ~@body))
+     ~@body))
+
 
 (expect
-  [[:field-id 1]
-   [:fk-> 1 2]
-   42]
-  (map (partial #'magic/->reference :mbql)
-       [(-> (field/->FieldInstance) (assoc :id 1))
-        (-> (field/->FieldInstance) (assoc :id 1 :fk_target_field_id 2))
-        42]))
+  [:field-id 1]
+  (->> (assoc (field/->FieldInstance) :id 1)
+       (#'magic/->reference :mbql)))
 
 (expect
-  [[:entity/UserTable :entity/GenericTable :entity/*]]
-  (map (comp (partial map :table_type)
-             (partial #'magic/matching-rules (rules/load-rules)))
-       [(table/map->TableInstance {:entity_type :entity/UserTable})]))
+  [:fk-> 1 2]
+  (->> (assoc (field/->FieldInstance) :id 1 :fk_target_field_id 2)
+       (#'magic/->reference :mbql)))
+
+(expect
+  42
+  (->> 42
+       (#'magic/->reference :mbql)))
+
+
+(expect
+  [:entity/UserTable :entity/GenericTable :entity/*]
+  (->> (table/map->TableInstance {:entity_type :entity/UserTable})
+       (#'magic/matching-rules (rules/load-rules))
+       (map :table_type)))
+
 
 (expect
   true
@@ -42,27 +51,62 @@
     (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
       (-> (keep automagic-dashboard (Table)) count pos?))))
 
+
+;; Identity
 (expect
-  [:d1 :d2 :d3 :d2 :d3]
-  (map (comp key first #'magic/most-specific-definition)
-       [; Identity
-        [{:d1 {:field_type [:type/Category] :score 100}}]
-        ; Base case: more ancestors
-        [{:d1 {:field_type [:type/Category] :score 100}}
-         {:d2 {:field_type [:type/State] :score 100}}]
-        ; Break ties based on the number of additional filters
-        [{:d1 {:field_type [:type/Category] :score 100}}
-         {:d2 {:field_type [:type/State] :score 100}}
-         {:d3 {:field_type [:type/State]
-               :named      "foo"
-               :score      100}}]
-        ; Break ties on score
-        [{:d1 {:field_type [:type/Category] :score 100}}
-         {:d2 {:field_type [:type/State] :score 100}}
-         {:d3 {:field_type [:type/State] :score 90}}]
-        ; Number of additional filters has precedence over score
-        [{:d1 {:field_type [:type/Category] :score 100}}
-         {:d2 {:field_type [:type/State] :score 100}}
-         {:d3 {:field_type [:type/State]
-               :named      "foo"
-               :score      0}}]]))
+  :d1
+  (-> [{:d1 {:field_type [:type/Category] :score 100}}]
+      (#'magic/most-specific-definition)
+      first
+      key))
+
+;; Identity
+(expect
+  :d1
+  (-> [{:d1 {:field_type [:type/Category] :score 100}}]
+      (#'magic/most-specific-definition)
+      first
+      key))
+
+;; Base case: more ancestors
+(expect
+  :d2
+  (-> [{:d1 {:field_type [:type/Category] :score 100}}
+       {:d2 {:field_type [:type/State] :score 100}}]
+      (#'magic/most-specific-definition)
+      first
+      key))
+
+;; Break ties based on the number of additional filters
+(expect
+  :d3
+  (-> [{:d1 {:field_type [:type/Category] :score 100}}
+       {:d2 {:field_type [:type/State] :score 100}}
+       {:d3 {:field_type [:type/State]
+             :named      "foo"
+             :score      100}}]
+      (#'magic/most-specific-definition)
+      first
+      key))
+
+;; Break ties on score
+(expect
+  :d2
+  (-> [{:d1 {:field_type [:type/Category] :score 100}}
+       {:d2 {:field_type [:type/State] :score 100}}
+       {:d3 {:field_type [:type/State] :score 90}}]
+      (#'magic/most-specific-definition)
+      first
+      key))
+
+;; Number of additional filters has precedence over score
+(expect
+  :d3
+  (-> [{:d1 {:field_type [:type/Category] :score 100}}
+       {:d2 {:field_type [:type/State] :score 100}}
+       {:d3 {:field_type [:type/State]
+             :named      "foo"
+             :score      0}}]
+      (#'magic/most-specific-definition)
+      first
+      key))

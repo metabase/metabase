@@ -881,12 +881,7 @@
   "Like clojure.core/update-in but does not create new keys if they do not exist.
    Useful when you don't want to create cruft."
   [m k f & args]
-  (if (not= ::not-found (reduce (fn [m k]
-                                  (if (and (map? m)
-                                           (contains? m k))
-                                    (m k)
-                                    (reduced ::not-found)))
-                                m k))
+  (if (not= ::not-found (get-in m k ::not-found))
     (apply update-in m k f args)
     m))
 

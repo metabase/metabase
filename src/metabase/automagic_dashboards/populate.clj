@@ -7,13 +7,13 @@
             [metabase.models.card :as card]
             [toucan.db :as db]))
 
-(def ^Long grid-width
+(def ^Long ^:const grid-width
   "Total grid width."
   18)
-(def ^Long default-card-width
+(def ^Long ^:const default-card-width
   "Default card width."
   6)
-(def ^Long default-card-height
+(def ^Long ^:const default-card-height
   "Default card height"
   4)
 
@@ -74,7 +74,7 @@
            :card                   nil
            :id                     (gensym)}))
 
-(def ^:private ^Long max-cards 9)
+(def ^:private ^Long ^:const max-cards 9)
 
 (defn- make-grid
   [width height]
@@ -131,6 +131,8 @@
 (def ^:private ^{:arglists '([card])} text-card?
   :text)
 
+(def ^:private ^Long ^:const group-heading-height 2)
+
 (defn- add-group
   [dashboard grid group cards]
   (let [start-row (bottom-row grid)
@@ -144,15 +146,14 @@
                    (add-text-card dashboard card xy)
                    (add-card dashboard card xy))
                  (fill-grid grid xy card)]))
-            [dashboard
-             (if group
-               (let [xy   [(- start-row 2) 0]
-                     card {:text   (format "# %s" (:title group))
-                           :width  default-card-width
-                           :height 2}]
-                 (add-text-card dashboard card xy)
-                 (fill-grid grid xy card))
-               grid)]
+            (if group
+              (let [xy   [(- start-row 2) 0]
+                    card {:text   (format "# %s" (:title group))
+                          :width  (* 2  default-card-width)
+                          :height group-heading-height}]
+                [(add-text-card dashboard card xy)
+                 (fill-grid grid xy card)])
+              [dashboard grid])
             cards)))
 
 (defn- shown-cards
@@ -185,7 +186,7 @@
 
 (defn create-dashboard
   "Create dashboard and populate it with cards."
-  ([dashboard] (create-dashboard dashboard max-cards))
+  ([dashboard] (create-dashboard dashboard (-> dashboard :cards count)))
   ([{:keys [title description groups filters cards]} n]
    (let [dashboard     {:name          title
                         :description   description
@@ -207,3 +208,26 @@
                        (str/join "; " (map :title cards))))
      (cond-> dashboard
        (not-empty filters) (magic.filters/add-filters filters)))))
+
+(defn merge-dashboards
+  "Merge dashboards `ds` into dashboard `d`."
+  [d & ds]
+  (reduce (fn [target dashboard]
+            (let [offset (->> dashboard
+                              :ordered_cards
+                              (map #(+ (:row %) (:sizeY %)))
+                              (apply max -2) ; -2 so it neturalizes +2 for spacing if
+                                             ; the target dashboard is empty.
+                              (+ 2))]
+              (-> target
+                  (add-text-card {:width  default-card-width
+                                  :height group-heading-height
+                                  :text   (:name dashboard)}
+                                 [offset 0])
+                  (update :ordered_cards concat
+                          (->> dashboard
+                               :ordered_cards
+                               (map #(update :row + offset group-heading-height))))
+                  (update :parameters concat (:parameters dashboard)))))
+          d
+          ds))

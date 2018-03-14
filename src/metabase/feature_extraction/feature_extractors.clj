@@ -10,7 +10,7 @@
              [math :as math :refer [safe-divide]]
              [timeseries :as ts]
              [values :as values]]
-            [metabase.models.table :refer [Table]]
+            [metabase.models.field :as field]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase
              [query-processor :as qp]
@@ -116,10 +116,10 @@
 
 ; The largest dataset returned will be 2*target-1 points as we need at least
 ; 2 points per bucket for downsampling to have any effect.
-(def ^:private ^Long datapoint-target-smooth 100)
-(def ^:private ^Long datapoint-target-noisy  300)
+(def ^:private ^Long ^:const datapoint-target-smooth 100)
+(def ^:private ^Long ^:const datapoint-target-noisy  300)
 
-(def ^:private ^Double noisiness-threshold 0.05)
+(def ^:private ^Double ^:const noisiness-threshold 0.05)
 
 (defn- target-size
   [series]
@@ -163,19 +163,14 @@
           :week-of-year :month-of-year :quarter-of-year}
         :unit))
 
-(defn- unix-timestamp?
-  [{:keys [base_type special_type]}]
-  (and (isa? base_type :type/Integer)
-       (isa? special_type :type/DateTime)))
-
 (defn- field-type
   [field]
   (if (sequential? field)
     (mapv field-type field)
     [(cond
-       (periodic-date-time? field) :type/Integer
-       (unix-timestamp? field)     :type/DateTime
-       :else                       (:base_type field))
+       (periodic-date-time? field)   :type/Integer
+       (field/unix-timestamp? field) :type/DateTime
+       :else                         (:base_type field))
      (or (:special_type field) :type/*)]))
 
 (defmulti
@@ -243,7 +238,7 @@
     {:field field
      :model field
      :type  (field-type field)
-     :table (Table (:table_id field))}))
+     :table (field/table field)}))
 
 (defmethod feature-extractor Num
   [{:keys [max-cost]} field]

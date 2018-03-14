@@ -568,7 +568,10 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     // copy over any virtual cards from the dashcard to the underlying card/question
     result.ordered_cards.forEach(card => {
       if (card.visualization_settings.virtual_card) {
-        _.extend(card.card, card.visualization_settings.virtual_card);
+        card.card = Object.assign(
+          card.card || {},
+          card.visualization_settings.virtual_card,
+        );
       }
     });
 
