@@ -3,7 +3,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { Link } from "react-router";
-
+import { withBackground } from "metabase/hoc/Background";
 import ActionButton from "metabase/components/ActionButton";
 import Icon from "metabase/components/Icon";
 
@@ -41,7 +41,7 @@ const SuggestionsList = ({ suggestions }) => (
 );
 
 const SuggestionsSidebar = ({ related }) => (
-  <div className="flex flex-column full-height">
+  <div className="flex flex-column">
     <div className="py2 text-centered my3">
       <h3>More X-rays</h3>
     </div>
@@ -77,8 +77,8 @@ class AutomaticDashboardApp extends React.Component {
       location,
     } = this.props;
     return (
-      <div className="flex full-height">
-        <div className="flex flex-column" style={{ flex: 1 }}>
+      <div className="flex">
+        <div className="flex-full">
           <div className="bg-white border-bottom py2">
             <div className="wrapper flex align-center">
               <Icon name="bolt" className="text-gold mr1" size={24} />
@@ -92,7 +92,7 @@ class AutomaticDashboardApp extends React.Component {
               </ActionButton>
             </div>
           </div>
-          <div className="px3 pb4 bg-slate-extra-light">
+          <div className="px3 pb4">
             {parameters &&
               parameters.length > 0 && (
                 <div className="px1 pt1">
@@ -113,13 +113,13 @@ class AutomaticDashboardApp extends React.Component {
         </div>
         {dashboard &&
           dashboard.related && (
-            <div className="bg-slate-light full-height" style={{ width: 300 }}>
+            <div className="Layout-sidebar flex-no-shrink">
               <SuggestionsSidebar related={dashboard.related} />
             </div>
-          )}
+        )}
       </div>
     );
   }
 }
 
-export default AutomaticDashboardApp;
+export default withBackground("bg-slate-extra-light")(AutomaticDashboardApp);
