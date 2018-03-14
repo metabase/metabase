@@ -184,7 +184,6 @@
   *  `none`   = admin has explicitly disabled search behavior for this Field"
   {:batched-hydrate :has_field_values}
   [fields]
-  (println "(u/pprint-to-str 'cyan fields):" (u/pprint-to-str 'cyan fields)) ; NOCOMMIT
   (let [fields-without-has-field-values-ids (set (for [field fields
                                                        :when (nil? (:has_field_values field))]
                                                    (:id field)))
