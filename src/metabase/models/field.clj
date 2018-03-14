@@ -184,20 +184,22 @@
   *  `none`   = admin has explicitly disabled search behavior for this Field"
   {:batched-hydrate :has_field_values}
   [fields]
+  (println "(u/pprint-to-str 'cyan fields):" (u/pprint-to-str 'cyan fields)) ; NOCOMMIT
   (let [fields-without-has-field-values-ids (set (for [field fields
                                                        :when (nil? (:has_field_values field))]
                                                    (:id field)))
         fields-with-fieldvalues-ids         (when (seq fields-without-has-field-values-ids)
                                               (db/select-field :field_id FieldValues
-                                                :field_id [:in fields-without-has-field-values-ids]))]
+                                                               :field_id [:in fields-without-has-field-values-ids]))]
     (for [field fields]
-      (assoc field
-        :has_field_values (or
-                           (:has_field_values field)
-                           (cond
-                             (contains? fields-with-fieldvalues-ids (u/get-id field)) :list
-                             (is-searchable? field)                                   :search
-                             :else                                                    :none))))))
+      (when field
+        (assoc field
+          :has_field_values (or
+                             (:has_field_values field)
+                             (cond
+                               (contains? fields-with-fieldvalues-ids (u/get-id field)) :list
+                               (is-searchable? field)                                   :search
+                               :else                                                    :none)))))))
 
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"
