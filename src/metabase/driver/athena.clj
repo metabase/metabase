@@ -22,7 +22,8 @@
             [metabase.query-processor.util :as qputil]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [metabase.driver.athena.athena-sql-parser :as schema-parser])
 
   (:import [java.sql DriverManager]
            [java.util Properties]))
@@ -77,7 +78,7 @@
     :map        :type/*
     :smallint   :type/Integer
     :string     :type/Text
-    :struct     :type/*
+    :struct     :type/Dictionary
     :timestamp  :type/DateTime
     :tinyint    :type/Integer
     :uniontype  :type/*
@@ -143,10 +144,7 @@
 (defn- describe-table-fields [db {:keys [name schema]}]
   (->> (run-query db (str "DESCRIBE " schema "." name ";")
                      {:read-fn describe-all-database->clj})
-       (map (fn [{:keys [name type]}]
-              {:name name
-               :base-type (or (column->base-type (keyword type))
-                              :type/*)}))
+       (map schema-parser/parse-schema)
        (set)))
 
 (defn- describe-table [driver db {:keys [name schema] :as table}]
@@ -300,7 +298,7 @@
                                          :placeholder  "*******"
                                          :required     true}]))
           :execute-query             execute-query
-          :features                  (constantly #{:basic-aggregations :standard-deviation-aggregations :native-parameters})
+          :features                  (constantly #{:basic-aggregations :standard-deviation-aggregations :native-parameters :nested-fields :foreign-keys})
           :mbql->native mbql->native
           :table-rows-seq (constantly nil)})
   sql/ISQLDriver

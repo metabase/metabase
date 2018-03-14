@@ -94,7 +94,7 @@
                   :exclusions [honeysql]]
                  [com.amazon.redshift/redshift-jdbc41 "1.2.8.1005"]]  ; Redshift JDBC driver
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]
-                 ["redshift" "http://redshift-maven-repository.s3-website-us-east-1.amazonaws.com/release"]] ; Repo for Crate JDBC driver
+                 ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]] ; Repo for Crate JDBC driver
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.11.0"                                       ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
@@ -125,7 +125,8 @@
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
                                 #"^metabase\.http-client$"]}
-  :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]              ; unit tests
+  :profiles {:dev {:resource-paths ["src/resource/AthenaJDBC41-1.1.1.jar"]
+                   :dependencies [[expectations "2.2.0-beta2"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
                    :plugins [[docstring-checker "1.0.2"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
                              [jonase/eastwood "0.2.3"
@@ -149,7 +150,8 @@
                                        "-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3010"
-                                       "-Dmb.api.key=test-api-key"]}
+                                       "-Dmb.api.key=test-api-key"
+                                       ]}
              ;; build the uberjar with `lein uberjar`
              :uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]" ; strip out metadata for faster load / smaller uberjar size

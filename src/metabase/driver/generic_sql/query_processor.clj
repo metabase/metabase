@@ -15,7 +15,8 @@
              [annotate :as annotate]
              [interface :as i]
              [util :as qputil]]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.driver.generic-sql.field-parent-resolver :as fpr])
   (:import clojure.lang.Keyword
            [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
            [java.util Calendar TimeZone]
@@ -97,8 +98,14 @@
     (formatted (expression-with-name expression-name)))
 
   Field
-  (formatted [{:keys [schema-name table-name special-type field-name]}]
-    (let [field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
+  (formatted [original-field]
+    (let [schema-name (:schema-name original-field)
+          table-name (:table-name original-field)
+          special-type (:special-type original-field)
+          field-name (:field-name original-field)
+          parent-name (:parent original-field)
+          parents (fpr/get-qualified-name original-field)
+          field (keyword (apply hx/qualify-and-escape-dots schema-name table-name parents))]
       (cond
         (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp (driver) field :seconds)
         (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp (driver) field :milliseconds)

@@ -45,3 +45,4 @@ bin/release/aws-eb/metabase-aws-eb.zip
 /build.xml
 /test-report-*
 /crate-*
+/metabase.iml
