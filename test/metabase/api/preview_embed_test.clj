@@ -48,10 +48,12 @@
   [{:id nil, :type "date/single", :target ["variable" ["template-tag" "d"]], :name "d", :slug "d", :default nil}]
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-card [card {:dataset_query
-                                      {:native {:template_tags {:a {:type "date", :name "a", :display_name "a"}
-                                                                :b {:type "date", :name "b", :display_name "b"}
-                                                                :c {:type "date", :name "c", :display_name "c"}
-                                                                :d {:type "date", :name "d", :display_name "d"}}}}}]
+                                      {:database (data/id)
+                                       :type     :native
+                                       :native   {:template_tags {:a {:type "date", :name "a", :display_name "a"}
+                                                                  :b {:type "date", :name "b", :display_name "b"}
+                                                                  :c {:type "date", :name "c", :display_name "c"}
+                                                                  :d {:type "date", :name "d", :display_name "d"}}}}}]
       (-> ((test-users/user->client :crowberto) :get 200 (card-url card {:_embedding_params {:a "locked"
                                                                                              :b "disabled"
                                                                                              :c "enabled"

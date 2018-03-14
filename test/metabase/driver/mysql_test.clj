@@ -1,5 +1,6 @@
 (ns metabase.driver.mysql-test
-  (:require [expectations :refer :all]
+  (:require [clj-time.core :as t]
+            [expectations :refer :all]
             [metabase
              [sync :as sync]
              [util :as u]]
@@ -97,9 +98,18 @@
   (with-redefs [metabase.driver/execute-query (constantly {:rows [["2018-01-08 23:00:00.008 CET"]]})]
     (tu/db-timezone-id)))
 
-(expect (#'mysql/timezone-id->offset-str "US/Pacific")          "-08:00")
-(expect (#'mysql/timezone-id->offset-str "UTC")                 "+00:00")
-(expect (#'mysql/timezone-id->offset-str "America/Los_Angeles") "-08:00")
+
+(def before-daylight-savings (u/str->date-time "2018-03-10 10:00:00"))
+(def after-daylight-savings (u/str->date-time "2018-03-12 10:00:00"))
+
+(expect (#'mysql/timezone-id->offset-str "US/Pacific" before-daylight-savings) "-08:00")
+(expect (#'mysql/timezone-id->offset-str "US/Pacific" after-daylight-savings)  "-07:00")
+
+(expect (#'mysql/timezone-id->offset-str "UTC" before-daylight-savings) "+00:00")
+(expect (#'mysql/timezone-id->offset-str "UTC" after-daylight-savings) "+00:00")
+
+(expect (#'mysql/timezone-id->offset-str "America/Los_Angeles" before-daylight-savings) "-08:00")
+(expect (#'mysql/timezone-id->offset-str "America/Los_Angeles" after-daylight-savings) "-07:00")
 
 ;; make sure DateTime types generate appropriate SQL...
 ;; ...with no report-timezone set

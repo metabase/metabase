@@ -6,7 +6,7 @@ import EditButton from "metabase/reference/components/EditButton.jsx";
 
 const GuideHeader = ({ startEditing, isSuperuser }) => (
   <div>
-    <div className="wrapper wrapper--trim py4 my3">
+    <div className="wrapper wrapper--trim sm-py4 sm-my3">
       <div className="flex align-center">
         <h1
           className="text-dark"

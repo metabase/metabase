@@ -20,7 +20,7 @@ export const AM_PM_OPTIONS = [
 ];
 
 export const DAY_OF_WEEK_OPTIONS = [
-  { name: t`"Sunday`, value: "sun" },
+  { name: t`Sunday`, value: "sun" },
   { name: t`Monday`, value: "mon" },
   { name: t`Tuesday`, value: "tue" },
   { name: t`Wednesday`, value: "wed" },
