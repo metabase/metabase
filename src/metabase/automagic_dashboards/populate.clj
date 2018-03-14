@@ -7,13 +7,13 @@
             [metabase.models.card :as card]
             [toucan.db :as db]))
 
-(def ^Long grid-width
+(def ^Long ^:const grid-width
   "Total grid width."
   18)
-(def ^Long default-card-width
+(def ^Long ^:const default-card-width
   "Default card width."
   6)
-(def ^Long default-card-height
+(def ^Long ^:const default-card-height
   "Default card height"
   4)
 
@@ -74,7 +74,7 @@
            :card                   nil
            :id                     (gensym)}))
 
-(def ^:private ^Long max-cards 9)
+(def ^:private ^Long ^:const max-cards 9)
 
 (defn- make-grid
   [width height]
@@ -131,7 +131,7 @@
 (def ^:private ^{:arglists '([card])} text-card?
   :text)
 
-(def ^:private ^Long group-heading-height 2)
+(def ^:private ^Long ^:const group-heading-height 2)
 
 (defn- add-group
   [dashboard grid group cards]

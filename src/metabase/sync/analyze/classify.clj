@@ -44,7 +44,7 @@
 (def ^:private FieldOrTableInstance (s/either i/FieldInstance i/TableInstance))
 
 (s/defn ^:private save-model-updates!
-  "Save the updates in UPDATED-FIELD."
+  "Save the updates in `updated-model` (can be either a `Field` or `Table`)."
   [original-model :- FieldOrTableInstance, updated-model :- FieldOrTableInstance]
   (assert (= (type original-model) (type updated-model)))
   (let [[_ values-to-set] (data/diff original-model updated-model)]
@@ -55,7 +55,7 @@
     (doseq [k (keys values-to-set)]
       (when-not (contains? values-that-can-be-set k)
         (throw (Exception. (format "Classifiers are not allowed to set the value of %s." k)))))
-    ;; cool, now we should be ok to update the Field
+    ;; cool, now we should be ok to update the model
     (when values-to-set
       (db/update! (if (instance? (type Field) original-model)
                     Field

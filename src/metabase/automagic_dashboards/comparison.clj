@@ -68,7 +68,7 @@
                                          :visualization_settings {}
                                          :id                     (gensym)}))))))
 
-(def ^:private ^Long title-height 2)
+(def ^:private ^Long ^:const title-height 2)
 
 (defn- add-col-title
   [dashboard title col]
