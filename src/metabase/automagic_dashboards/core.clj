@@ -26,11 +26,11 @@
 
 (defprotocol IRootEntity
   "Unified access to all entity types."
-  (table [this])
-  (database [this])
-  (query-filter [this])
-  (full-name [this])
-  (url [this]))
+  (table [this] "(Primary) table this draws from.")
+  (database [this] "Database this belongs to.")
+  (query-filter [this] "Filter expression to narrow results just to this.")
+  (full-name [this] "Name with time prefix.")
+  (url [this] "Public automagic dashboard endpoint for this."))
 
 (extend-protocol IRootEntity
   metabase.models.table.TableInstance
