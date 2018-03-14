@@ -49,12 +49,19 @@
 
   metabase.models.query.QueryInstance
   (table [query] (-> query :table_id Table))
-  (database [query] (-> query :database_id database))
+  (database [query] (-> query :database_id Database))
   (query-filter [query] (-> query :dataset_query :query :filter))
   (full-name [query] (str "ad-hoc question " (:name query)))
   (url [query] (format "%sadhoc/%s" public-endpoint (-> query
                                                         json/encode
-                                                        codec/base64-encode))))
+                                                        codec/base64-encode)))
+
+  metabase.models.card.CardInstance
+  (table [card] (-> card :table_id Table))
+  (database [card] (-> card :database_id Database))
+  (query-filter [card] (-> card :dataset_query :query :filter))
+  (full-name [card] (str "question " (:name card)))
+  (url [card] (format "%squestion/%s" public-endpoint (:id card))))
 
 (defmulti
   ^{:doc "Get a reference for a given model to be injected into a template
@@ -257,7 +264,8 @@
      :query    (cond-> {:source_table (-> context :root-table :id)}
                  (not-empty filters)
                  (assoc :filter (cond->> (map :filter filters)
-                                  (> (count filters) 1) (apply vector :and)))
+                                  (> (count filters) 1) (apply vector :and)
+                                  :else                 first))
 
                  (not-empty dimensions)
                  (assoc :breakout dimensions)
@@ -470,12 +478,14 @@
                                  (matching-rules rules)
                                  (keep (partial apply-rule table))
                                  first)]
-                   {:url         (str public-endpoint "table/" (:id table))
+                   {:url         (url table)
                     :title       (:title dashboard)
                     :score       (rule-specificity rule)
                     :description (:description dashboard)
                     :table       table})))
          (sort-by :score >))))
+
+(def ^:private ^Long max-related 6)
 
 (defn automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
@@ -489,25 +499,28 @@
                                     ;; matching-rules returns an ArraySeq so first
                                     ;; realises one element at a time (no chunking).
                                     first))]
-     (-> dashboard
-         populate/create-dashboard
-         (assoc :related
-           {:tables  (->> root
-                          database
-                          candidate-tables
-                          (remove (comp #{root} :table)))
-            :indepth (->> rule
-                          :rule
-                          rules/indepth
-                          (keep (fn [indepth]
-                                  (when-let [[dashboard _] (apply-rule root indepth)]
-                                    {:title       (:title dashboard)
-                                     :description (:description dashboard)
-                                     :table       (table root)
-                                     :url         (format "/%s/%s"
-                                                          (url root)
-                                                          (:rule rule)
-                                                          (:rule indepth))}))))}))
+     (let [indepth (->> rule
+                        :rule
+                        rules/indepth
+                        (keep (fn [indepth]
+                                (when-let [[dashboard _] (apply-rule root indepth)]
+                                  {:title       (:title dashboard)
+                                   :description (:description dashboard)
+                                   :table       (table root)
+                                   :url         (format "/%s/%s"
+                                                        (url root)
+                                                        (:rule rule)
+                                                        (:rule indepth))})))
+                        (take max-related))]
+       (-> dashboard
+           populate/create-dashboard
+           (assoc :related
+             {:tables  (->> root
+                            database
+                            candidate-tables
+                            (remove (comp #{root} :table))
+                            (take (- max-related (count indepth))))
+              :indepth indepth})))
      (log/info (format "Skipping %s: no cards fully match the topology."
                        (full-name root))))))
 
@@ -539,11 +552,11 @@
 
 (defmethod automagic-analysis (type Card)
   [card]
-  )
+  (automagic-dashboard card))
 
 (defmethod automagic-analysis (type Query)
   [query]
-  )
+  (automagic-dashboard query))
 
 (defmethod automagic-analysis (type Field)
   [field]
