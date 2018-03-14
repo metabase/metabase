@@ -28,7 +28,11 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export const CollectionEmptyState = () => (
   <div className="flex flex-column sm-flex-row align-center p2 mt4 bordered border-med border-brand rounded bg-grey-0 text-brand">
-    <Icon name="collection" size={32} className="mb2 sm-mr2 sm-mb0 hide sm-show" />
+    <Icon
+      name="collection"
+      size={32}
+      className="mb2 sm-mr2 sm-mb0 hide sm-show"
+    />
     <div className="flex-full text-centered sm-text-left">
       <h3>{t`Create collections for your saved questions`}</h3>
       <div className="mt1">
