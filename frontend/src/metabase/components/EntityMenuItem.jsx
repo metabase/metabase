@@ -22,7 +22,7 @@ const itemClasses = cxs({
     color: "#BCC5CA",
     marginRight: "0.65em",
   },
-  ":hover .Icon": {
+  ":hover > .Icon": {
     color: "#509ee3",
     transition: "all 300ms linear",
   },
