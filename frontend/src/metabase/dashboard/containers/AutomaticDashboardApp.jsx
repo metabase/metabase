@@ -48,12 +48,6 @@ const SuggestionsSidebar = ({ related }) => (
     {Object.values(related).map(suggestions => (
       <SuggestionsList suggestions={suggestions} />
     ))}
-    <div className="mt-auto border-top px2 py4">
-      <div className="flex align-center justify-center ml-auto mr-auto text-brand-hover">
-        <Icon name="refresh" className="mr1" />
-        <span className="text-bold">See something else</span>
-      </div>
-    </div>
   </div>
 );
 
