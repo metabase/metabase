@@ -1,0 +1,202 @@
+<!--
+  ~ © 2017. Stratio Big Data Inc., Sucursal en España. All rights reserved.
+  ~
+  ~ This software – including all its source code – contains proprietary information of Stratio Big Data Inc.,
+  ~ Sucursal en España and may not be revealed, sold, transferred, modified, distributed or otherwise made
+  ~ available, licensed or sublicensed to third parties; nor reverse engineered, disassembled or decompiled
+  ~ without express written authorization from Stratio Big Data Inc., Sucursal en España.
+  -->
+
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.stratio</groupId>
+        <artifactId>parent</artifactId>
+        <version>0.9.0</version>
+    </parent>
+
+    <artifactId>discovery-performance</artifactId>
+    <packaging>pom</packaging>
+    <version>0.1.0-SNAPSHOT</version>
+
+    <name>${project.artifactId}</name>
+
+    <properties>
+        <!-- JDK version used for the project. -->
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <encoding>UTF-8</encoding>
+        <!-- Scala version used for the project. Must match the version used by Gatling. -->
+        <scala.version>2.12.3</scala.version>
+        <scala.compat.version>2.12</scala.compat.version>
+        <!-- Gatling version and Gatling Maven plug-in version. -->
+        <gatling.version>2.3.0</gatling.version>
+        <gatling-maven-plugin.version>2.2.4</gatling-maven-plugin.version>
+        <!--
+            The first property specifies the package in which the Gatling simulations are found.
+            The second property specifies the Gatling simulation that is to be run.
+            Both these properties can be overridden when running a simulation with Maven.
+            This example will run the simulation with name Perf10Users30MinutesLowActivityHBase in the default simulations package:
+            mvn -Dgatling.simulation.name=Perf10Users30MinutesLowActivityHBase gatling:execute
+        -->
+        <gatling.simulations.package>com.stratio.performance.tests</gatling.simulations.package>
+        <gatling.simulation.name>Test_Perf10Users30MinutesLowActivityHBase</gatling.simulation.name>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.gatling.highcharts</groupId>
+            <artifactId>gatling-charts-highcharts</artifactId>
+            <version>${gatling.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <sourceDirectory>src/main/scala</sourceDirectory>
+        <testSourceDirectory>src/test/scala</testSourceDirectory>
+        <plugins>
+            <plugin>
+                <groupId>io.gatling</groupId>
+                <artifactId>gatling-maven-plugin</artifactId>
+                <version>${gatling-maven-plugin.version}</version>
+                <configuration>
+                    <failOnError>true</failOnError>
+                    <simulationClass>${gatling.simulations.package}.${gatling.simulation.name}</simulationClass>
+                    <resultsFolder>test-perf</resultsFolder>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>Test_Perf10Users30MinutesLowActivityHBase</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Test_Perf10Users30MinutesLowActivityHBase
+                </gatling.simulationClass>
+                <gatling.resultFolder>test-perf</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Perf10Users30MinutesHighActivityCrossdata</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Perf10Users30MinutesHighActivityCrossdata
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-perf-Perf10Users30MinutesHighActivityCrossdata</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Perf10Users30MinutesHighActivityPostgreSQL</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Perf10Users30MinutesHighActivityPostgreSQL
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-perf-Perf10Users30MinutesHighActivityPostgreSQL</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Perf10Users30MinutesLowActivityCrossdata</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Perf10Users30MinutesLowActivityCrossdata
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-perf-Perf10Users30MinutesLowActivityCrossdata</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Perf10Users30MinutesLowActivityPostgreSQL</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Perf10Users30MinutesLowActivityPostgreSQL
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-perf-Perf10Users30MinutesLowActivityPostgreSQL</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Perf150Users30MinutesHighActivityCrossdata</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Perf150Users30MinutesHighActivityCrossdata
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-perf-Perf150Users30MinutesHighActivityCrossdata</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Perf150Users30MinutesHighActivityPostgreSQL</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Perf150Users30MinutesHighActivityPostgreSQL
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-perf-Perf150Users30MinutesHighActivityPostgreSQL</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Perf150Users30MinutesLowActivityCrossdata</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Perf150Users30MinutesLowActivityCrossdata
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-perf-Perf150Users30MinutesLowActivityCrossdata</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Perf150Users30MinutesLowActivityPostgreSQL</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Perf150Users30MinutesLowActivityPostgreSQL
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-perf-Perf150Users30MinutesLowActivityPostgreSQL</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Perf200UsersMax5Minutes10UsersIncrementHighActivityCrossdata</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Perf200UsersMax5Minutes10UsersIncrementHighActivityCrossdata
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-perf-Perf200UsersMax5Minutes10UsersIncrementHighActivityCrossdata</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Perf200UsersMax5Minutes10UsersIncrementHighActivityPostgreSQL</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Perf200UsersMax5Minutes10UsersIncrementHighActivityPostgreSQL
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-perf-Perf200UsersMax5Minutes10UsersIncrementHighActivityPostgreSQL</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Perf200UsersMax5Minutes10UsersIncrementLowActivityCrossdata</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Perf200UsersMax5Minutes10UsersIncrementLowActivityCrossdata
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-perf-Perf200UsersMax5Minutes10UsersIncrementLowActivityCrossdata</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Perf200UsersMax5Minutes10UsersIncrementLowActivityPostgreSQL</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Perf200UsersMax5Minutes10UsersIncrementLowActivityPostgreSQL
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-perf-Perf200UsersMax5Minutes10UsersIncrementLowActivityPostgreSQL</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Stab10Users24HoursLowActivityPostgreSQL</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Stab10Users24HoursLowActivityPostgreSQL
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-stab-Stab10Users24HoursLowActivityPostgreSQL</gatling.resultFolder>
+            </properties>
+        </profile>
+        <profile>
+            <id>Stab10Users48HoursLowActivityPostgreSQL</id>
+            <properties>
+                <gatling.simulationClass>com.stratio.performance.tests.Stab10Users48HoursLowActivityPostgreSQL
+                </gatling.simulationClass>
+                <gatling.resultFolder>pnf-stab-Stab10Users48HoursLowActivityPostgreSQL</gatling.resultFolder>
+            </properties>
+        </profile>
+    </profiles>
+
+</project>
