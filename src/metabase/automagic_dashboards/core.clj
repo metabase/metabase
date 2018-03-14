@@ -552,11 +552,15 @@
 
 (defmethod automagic-analysis (type Card)
   [card]
-  (automagic-dashboard card))
+  (if (table-like? card)
+    (automagic-dashboard card)
+    nil))
 
 (defmethod automagic-analysis (type Query)
   [query]
-  (automagic-dashboard query))
+  (if (table-like? query)
+    (automagic-dashboard query)
+    nil))
 
 (defmethod automagic-analysis (type Field)
   [field]
