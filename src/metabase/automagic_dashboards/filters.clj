@@ -51,17 +51,16 @@
 
 (defn- add-filter
   [dashcard filter-id field]
-  (if-let [targets (->> (conj (:series dashcard) (:card dashcard))
-                        (keep (fn [card]
-                                (some-> card
-                                        (filter-for-card field)
-                                        (vector card))))
-                        not-empty)]
-    (update dashcard :parameter_mappings concat (for [[target card] targets]
-                                                  {:parameter_id filter-id
-                                                   :target       target
-                                                   :card_id      (:id card)}))
-    dashcard))
+  (let [mappings (->> (conj (:series dashcard) (:card dashcard))
+                      (keep (fn [card]
+                              (when-let [target (filter-for-card card field)]
+                                {:parameter_id filter-id
+                                 :target       target
+                                 :card_id      (:id card)})))
+                      not-empty)]
+    (cond
+      (nil? (:card dashcard)) dashcard
+      mappings                (update dashcard :parameter_mappings concat mappings))))
 
 (defn- filter-type
   [{:keys [base_type special_type] :as field}]
@@ -89,11 +88,13 @@
            (let [filter-id     (-> candidate hash str)
                  dashcards     (:ordered_cards dashboard)
                  dashcards-new (map #(add-filter % filter-id candidate) dashcards)]
-             (cond-> dashboard
-               (not= dashcards dashcards-new)
-               (-> (assoc :ordered_cards dashcards-new)
+             ;; Only add filters that apply to all cards.
+             (if (= (count dashcards) (count dashcards-new))
+               (-> dashboard
+                   (assoc :ordered_cards dashcards-new)
                    (update :parameters conj {:id   filter-id
                                              :type (filter-type candidate)
                                              :name (:display_name candidate)
-                                             :slug (:name candidate)})))))
+                                             :slug (:name candidate)}))
+               dashboard)))
          dashboard))))
