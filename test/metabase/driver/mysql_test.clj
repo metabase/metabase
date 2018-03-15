@@ -74,7 +74,7 @@
 
 ;; if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead
 (expect-with-engine :mysql
-  #{{:name "number-of-cans", :base_type :type/Integer, :special_type :type/Category}
+  #{{:name "number-of-cans", :base_type :type/Integer, :special_type :type/Quantity}
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
   (data/with-temp-db [db tiny-int-ones]
