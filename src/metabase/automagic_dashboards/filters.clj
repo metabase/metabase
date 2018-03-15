@@ -33,10 +33,11 @@
 
 (defn- build-fk-map
   [tables field]
-  (->> (db/select [Field :id :fk_target_field_id :table_id]
+  (->> (db/select Field
          :fk_target_field_id [:not= nil]
          :table_id [:in tables])
-       (filter (comp #{(:table_id field)} :table_id Field :fk_target_field_id))
+       field/with-targets
+       (filter (comp #{(:table_id field)} :table_id :target))
        (group-by :table_id)
        (keep (fn [[_ [fk & fks]]]
                ;; Bail out if there is more than one FK from the same table
