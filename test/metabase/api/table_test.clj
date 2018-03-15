@@ -408,6 +408,7 @@
                                                           :name         "CHECKINS"
                                                           :display_name "Checkins"
                                                           :entity_type  "entity/EventTable"
+                                                          :rows         nil
                                                           :updated_at   $
                                                           :id           $
                                                           :raw_table_id $
