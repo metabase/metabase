@@ -126,7 +126,7 @@ export class NewQueryOptions extends Component {
 
     return (
       <div className="full-height flex">
-        <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim flex-full px1 mt4 mb2 align-center">
+        <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim flex-full px4 mt4 mb2 align-center">
           <div
             className="flex align-center justify-center"
             style={{ minHeight: "100%" }}

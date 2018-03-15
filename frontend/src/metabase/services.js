@@ -13,6 +13,10 @@ import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // e
 
 import type { Data, Options } from "metabase/lib/api";
 
+import type { DatabaseId } from "metabase/meta/types/Database";
+import type { Candidate } from "metabase/meta/types/Auto";
+import type { DashboardWithCards } from "metabase/meta/types/Dashboard";
+
 export const ActivityApi = {
   list: GET("/api/activity"),
   recent_views: GET("/api/activity/recent_views"),
@@ -44,7 +48,10 @@ export const CardApi = {
 
 export const DashboardApi = {
   list: GET("/api/dashboard"),
+  // creates a new empty dashboard
   create: POST("/api/dashboard"),
+  // saves a complete transient dashboard
+  save: POST("/api/dashboard/save"),
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
@@ -84,6 +91,19 @@ export const EmbedApi = {
   dashboardCardQuery: GET(
     embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
+};
+
+type $AutoApi = {
+  dashboard: ({ subPath: string }) => DashboardWithCards,
+  db_candidates: ({ id: DatabaseId }) => Candidate[],
+};
+
+export const AutoApi: $AutoApi = {
+  dashboard: GET("/api/automagic-dashboards/:subPath", {
+    // this prevents the `subPath` parameter from being URL encoded
+    raw: { subPath: true },
+  }),
+  db_candidates: GET("/api/automagic-dashboards/database/:id/candidates"),
 };
 
 export const EmailApi = {

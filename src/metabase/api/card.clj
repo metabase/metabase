@@ -230,7 +230,7 @@
 ;; we'll also pass a simple checksum and have the frontend pass it back to us.  See the QP `results-metadata`
 ;; middleware namespace for more details
 
-(s/defn ^:private result-metadata-for-query :- results-metadata/ResultsMetadata
+(s/defn result-metadata-for-query :- results-metadata/ResultsMetadata
   "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return.
    This is obviously a bit wasteful so hopefully we can avoid having to do this."
   [query]
@@ -668,5 +668,12 @@
   (api/check-superuser)
   (api/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
+
+(defn adhoc-query
+  "Wrap query map into a Query object (mostly to fascilitate type dispatch)."
+  [query]
+  (->> {:dataset_query query}
+       (merge (card/query->database-and-table-ids query))
+       query/map->QueryInstance))
 
 (api/define-routes)

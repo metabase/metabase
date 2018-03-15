@@ -20,6 +20,7 @@ export default class WhatsAPulse extends Component {
             width={574}
             src="app/assets/img/pulse_empty_illustration.png"
             forceOriginalDimensions={false}
+            style={{ maxWidth: "574px", width: "100%" }}
           />
         </div>
         <div

@@ -20,6 +20,7 @@
    "America/Mexico_City"
    "America/Montevideo"
    "America/Santiago"
+   "America/Sao_Paulo"
    "America/Tijuana"
    "Asia/Amman"
    "Asia/Baghdad"

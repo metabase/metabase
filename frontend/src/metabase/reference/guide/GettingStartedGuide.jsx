@@ -138,7 +138,7 @@ export default class GettingStartedGuide extends Component {
     } = this.props;
 
     return (
-      <div className="full relative py4" style={style}>
+      <div className="full relative p3" style={style}>
         <LoadingAndErrorWrapper
           className="full"
           style={style}

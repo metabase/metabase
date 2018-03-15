@@ -1,6 +1,7 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the Generic SQL driver."
   (:require [clj-time
+             [coerce :as tcoerce]
              [core :as t]
              [format :as time]]
             [clojure
@@ -108,24 +109,30 @@
   (time/formatter "ZZ"))
 
 (defn- timezone-id->offset-str
-  "Get an appropriate timezone offset string for a timezone with `timezone-id`. MySQL only accepts these offsets as
-  strings like `-8:00`.
+  "Get an appropriate timezone offset string for a timezone with `timezone-id` and `date-time`. MySQL only accepts
+  these offsets as strings like `-8:00`.
 
-      (timezone-id->offset-str \"US/Pacific\") ; -> \"-08:00\"
+      (timezone-id->offset-str \"US/Pacific\", date-time) ; -> \"-08:00\"
 
-  Returns `nil` if `timezone-id` is itself `nil`."
-  [^String timezone-id]
+  Returns `nil` if `timezone-id` is itself `nil`. The `date-time` must be included as some timezones vary their
+  offsets at different times of the year (i.e. daylight savings time)."
+  [^String timezone-id date-time]
   (when timezone-id
-    (time/unparse (.withZone timezone-offset-formatter (t/time-zone-for-id timezone-id)) (t/now))))
+    (time/unparse (.withZone timezone-offset-formatter (t/time-zone-for-id timezone-id)) date-time)))
 
-(def ^:private ^String system-timezone-offset-str
-  (timezone-id->offset-str (.getID (TimeZone/getDefault))))
+(defn- ^String system-timezone->offset-str
+  "Get the system/JVM timezone offset specified at `date-time`. The time is needed here as offsets can change for a
+  given timezone based on the time of year (i.e. daylight savings time)."
+  [date-time]
+  (timezone-id->offset-str (.getID (TimeZone/getDefault)) date-time))
 
 ;; MySQL doesn't seem to correctly want to handle timestamps no matter how nicely we ask. SAD! Thus we will just
 ;; convert them to appropriate timestamp literals and include functions to convert timezones as needed
 (defmethod sqlqp/->honeysql [MySQLDriver Date]
   [_ date]
-  (let [report-timezone-offset-str (timezone-id->offset-str (driver/report-timezone))]
+  (let [date-as-dt                 (tcoerce/from-date date)
+        report-timezone-offset-str (timezone-id->offset-str (driver/report-timezone) date-as-dt)
+        system-timezone-offset-str (system-timezone->offset-str date-as-dt)]
     (if (and report-timezone-offset-str
              (not= report-timezone-offset-str system-timezone-offset-str))
       ;; if we have a report timezone we want to generate SQL like convert_tz('2004-01-01T12:00:00','-8:00','-2:00')
