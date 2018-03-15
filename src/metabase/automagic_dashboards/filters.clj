@@ -31,22 +31,22 @@
                      (isa? special_type :type/Category)
                      (field/unix-timestamp? field))))))
 
-(defn- find-fk
-  [from-table to-field]
-  (->> (db/select [Field :id :fk_target_field_id]
+(defn- build-fk-map
+  [tables field]
+  (->> (db/select [Field :id :fk_target_field_id :table_id]
          :fk_target_field_id [:not= nil]
-         :table_id from-table)
-       (filter (comp #{(:table_id to-field)} :table_id Field :fk_target_field_id))
-       (map :id)))
+         :table_id [:in tables])
+       (filter (comp #{(:table_id field)} :table_id Field :fk_target_field_id))
+       (group-by :table_id)
+       (keep (fn [[_ [fk & fks]]]
+               ;; Bail out if there is more than one FK from the same table
+               (when (empty? fks)
+                 [(:table_id fk) [:fk-> (:id fk) (:id field)]])))
+       (into {(:table_id field) [:field-id (:id field)]})))
 
 (defn- filter-for-card
   [card field]
-  (some->> (if (= (:table_id card) (:table_id field))
-             [:field-id (:id field)]
-             (let [fk (find-fk (:table_id card) field)]
-               ;; Bail out if there are multiple FKs from the same table.
-               (when (= (count fk) 1)
-                 [:fk-> (first fk) (:id field)])))
+  (some->> ((:fk-map field) (:table_id card))
            (vector :dimension)))
 
 (defn- add-filter
@@ -79,17 +79,21 @@
   ([dashboard]
    (add-filters dashboard (-> dashboard :orderd_cards candidates-for-filtering)))
   ([dashboard dimensions]
-   (reduce
-    (fn [dashboard candidate]
-      (let [filter-id     (-> candidate hash str)
-            dashcards     (:ordered_cards dashboard)
-            dashcards-new (map #(add-filter % filter-id candidate) dashcards)]
-        (cond-> dashboard
-          (not= dashcards dashcards-new)
-          (-> (assoc :ordered_cards dashcards-new)
-              (update :parameters conj {:id   filter-id
-                                        :type (filter-type candidate)
-                                        :name (:display_name candidate)
-                                        :slug (:name candidate)})))))
-    dashboard
-    dimensions)))
+   (->> dimensions
+        (map #(->> %
+                   (build-fk-map (keep (comp :table_id :card)
+                                       (:ordered_cards dashboard)))
+                   (assoc % :fk-map)))
+        (reduce
+         (fn [dashboard candidate]
+           (let [filter-id     (-> candidate hash str)
+                 dashcards     (:ordered_cards dashboard)
+                 dashcards-new (map #(add-filter % filter-id candidate) dashcards)]
+             (cond-> dashboard
+               (not= dashcards dashcards-new)
+               (-> (assoc :ordered_cards dashcards-new)
+                   (update :parameters conj {:id   filter-id
+                                             :type (filter-type candidate)
+                                             :name (:display_name candidate)
+                                             :slug (:name candidate)})))))
+         dashboard))))
