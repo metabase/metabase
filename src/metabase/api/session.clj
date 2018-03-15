@@ -15,14 +15,17 @@
               [metabase.models
                [session :refer [Session]]
                [setting :refer [defsetting]]
-               [user :as user :refer [User]]]
+               [user :as user :refer [User]]
+               [permissions-group :as group :refer [PermissionsGroup]]
+               [permissions-group-membership :refer [PermissionsGroupMembership]]]
               [metabase.util
                [password :as pass]
                [schema :as su]]
               [schema.core :as s]
               [throttle.core :as throttle]
               [metabase.public-settings :as public-settings]
-              [toucan.db :as db]))
+              [toucan.db :as db])
+    (:import java.util.UUID))
 
 (defn- create-session!
   "Generate a new `Session` for a given `User`. Returns the newly generated session ID."
@@ -62,15 +65,39 @@
 (defn- email-login
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username password headers]
-  (let [user_login (get headers (public-settings/user-header))]
-    (if user_login
-      (let [user
-            (db/select-one [User :id :password_salt :password :last_login :first_name], :first_name user_login, :is_active true)]
-        {:id (create-session! user)})
+  (let [user_login (get headers (public-settings/user-header))
+        user (db/select-one [User :id :password_salt :password :last_login :first_name], :first_name user_login, :is_active true)]
+    (if (and user_login user)
+      {:id (create-session! user)}
       (when-let [user (db/select-one [User :id :password_salt :password :last_login], :email username, :is_active true)]
         (when (pass/verify-password password (:password_salt user) (:password user))
               {:id (create-session! user)})))))
 
+
+(defn- get-existing-groups
+  "Return only existing groups of the list"
+  [group_list]
+  (vec (clojure.set/intersection (set group_list) (db/select-field :name PermissionsGroup))))
+
+;; TODO alfonsotratio:
+(defn- group-login
+  "Find a matching `Group` if one exists. Create user, assign goup and return a new Session for them, or `nil` if they couldn't be authenticated."
+  [username password headers]
+  (if (get headers (public-settings/group-header))
+    (let [group_login (get-existing-groups
+                       (clojure.string/split
+                        (get headers (public-settings/group-header)) (clojure.core/re-pattern (public-settings/group-header-delimiter))))
+          user_login (get headers (public-settings/user-header))]
+      (if (and (not-empty group_login) user_login)
+        (let [user (user/create-new-header-auth-user! user_login "" (str user_login "@example.com"))]
+          (doseq [x group_login]
+            (try (db/insert! PermissionsGroupMembership
+                             :group_id (get (db/select-one [PermissionsGroup :id], :name x) :id)
+                             :user_id  (get user :id))
+              (catch Exception e (log/info "User-group tuple already exists. User: " user_login " Group: " x))))
+          (log/info "Successfully user created with group-hearder. User: " user_login " For this group: " group_login)
+          (email-login username password headers)))))
+  )
 
 ;; TODO romartin:
 (api/defendpoint POST "/"
@@ -81,8 +108,10 @@
   (throttle/check (login-throttlers :ip-address) remote-address)
   (throttle/check (login-throttlers :username)   username)
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
+
   (or (ldap-login username password)  ; First try LDAP if it's enabled
       (email-login username password headers) ; Then try local authentication
+      (group-login username password headers) ; Then try local authentication
       ;; If nothing succeeded complain about it
       ;; Don't leak whether the account doesn't exist or the password was incorrect
       (throw (ex-info "Password did not match stored password." {:status-code 400

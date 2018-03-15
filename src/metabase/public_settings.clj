@@ -32,6 +32,14 @@
   "The header with the user to direct authentication."
   :default "")
 
+(defsetting group-header
+  "The header with the group to direct user creation and authentication."
+  :default "")
+
+(defsetting group-header-delimiter
+  "Character used as delimiter for group header parameter."
+  :default ",")
+
 (defsetting init-admin-user
   "The init admin user created when the instance is initiated"
   :default "")
