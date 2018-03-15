@@ -72,6 +72,7 @@
   #_(table-row-count/update-row-count! table)
   (fingerprint/fingerprint-fields! table)
   (classify/classify-fields! table)
+  (classify/classify-table! table)
   (update-fields-last-analyzed! table))
 
 

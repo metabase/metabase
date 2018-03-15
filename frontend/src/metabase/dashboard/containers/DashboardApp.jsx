@@ -32,7 +32,7 @@ import { parseHashOptions } from "metabase/lib/browser";
 
 const mapStateToProps = (state, props) => {
   return {
-    dashboardId: props.params.dashboardId,
+    dashboardId: props.dashboardId || props.params.dashboardId,
 
     isAdmin: getUserIsAdmin(state, props),
     isEditing: getIsEditing(state, props),

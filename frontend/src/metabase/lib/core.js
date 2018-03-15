@@ -105,6 +105,101 @@ export const field_special_types = [
     name: t`Zip Code`,
     section: "Common",
   },
+  {
+    id: TYPE.Quantity,
+    name: "Quantity",
+    section: "Common",
+  },
+  {
+    id: TYPE.Income,
+    name: "Income",
+    section: "Common",
+  },
+  {
+    id: TYPE.Discount,
+    name: "Discount",
+    section: "Common",
+  },
+  {
+    id: TYPE.CreationTimestamp,
+    name: "Creation timestamp",
+    section: "Common",
+  },
+  {
+    id: TYPE.Product,
+    name: "Product",
+    section: "Common",
+  },
+  {
+    id: TYPE.User,
+    name: "User",
+    section: "Common",
+  },
+  {
+    id: TYPE.Source,
+    name: "Source",
+    section: "Common",
+  },
+  {
+    id: TYPE.Price,
+    name: "Price",
+    section: "Common",
+  },
+  {
+    id: TYPE.JoinTimestamp,
+    name: "Join timestamp",
+    section: "Common",
+  },
+  {
+    id: TYPE.Share,
+    name: "Share",
+    section: "Common",
+  },
+  {
+    id: TYPE.Owner,
+    name: "Owner",
+    section: "Common",
+  },
+  {
+    id: TYPE.Company,
+    name: "Company",
+    section: "Common",
+  },
+  {
+    id: TYPE.Subscription,
+    name: "Subscription",
+    section: "Common",
+  },
+  {
+    id: TYPE.Score,
+    name: "Score",
+    section: "Common",
+  },
+  {
+    id: TYPE.Description,
+    name: "Description",
+    section: "Common",
+  },
+  {
+    id: TYPE.Title,
+    name: "Title",
+    section: "Common",
+  },
+  {
+    id: TYPE.Comment,
+    name: "Comment",
+    section: "Common",
+  },
+  {
+    id: TYPE.Cost,
+    name: "Cost",
+    section: "Common",
+  },
+  {
+    id: TYPE.GrossMargin,
+    name: "Gross margin",
+    section: "Common",
+  },
 ];
 
 export const field_special_types_map = field_special_types.reduce(
