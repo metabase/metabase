@@ -267,7 +267,7 @@ Object {
   },
   "display_name": "Orders",
   "entity_name": null,
-  "entity_type": null,
+  "entity_type": "entity/TransactionTable",
   "fields": Array [
     Object {
       "active": true,
