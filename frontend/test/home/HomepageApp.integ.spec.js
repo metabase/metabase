@@ -23,7 +23,7 @@ import Activity from "metabase/home/components/Activity";
 import ActivityItem from "metabase/home/components/ActivityItem";
 import ActivityStory from "metabase/home/components/ActivityStory";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
-import { CardApi, MetricApi, SegmentApi } from "metabase/services";
+import { MetricApi, SegmentApi } from "metabase/services";
 
 describe("HomepageApp", () => {
   beforeAll(async () => {
