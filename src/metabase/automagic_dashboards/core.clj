@@ -514,7 +514,7 @@
                                   {:title       (:title dashboard)
                                    :description (:description dashboard)
                                    :table       (table root)
-                                   :url         (format "/%s/%s"
+                                   :url         (format "%s/%s/%s"
                                                         (url root)
                                                         (:rule rule)
                                                         (:rule indepth))})))
