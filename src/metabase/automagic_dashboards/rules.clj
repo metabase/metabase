@@ -9,8 +9,7 @@
             [schema
              [coerce :as sc]
              [core :as s]]
-            [yaml.core :as yaml])
-  (:import org.yaml.snakeyaml.constructor.SafeConstructor))
+            [yaml.core :as yaml]))
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
@@ -234,7 +233,7 @@
     (try
       (-> f
           slurp
-          (yaml/parse-string :constructor (SafeConstructor.))
+          yaml/parse-string
           (assoc :rule (file-name->table-type f))
           (update :table_type #(or % (file-name->table-type f)))
           rules-validator)
