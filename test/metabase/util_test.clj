@@ -243,12 +243,28 @@
     :present #{:a :b :c}
     :non-nil #{:d :e :f}))
 
-(expect
-  [-2 -1 0 1 2 3 0 3]
-  (map order-of-magnitude [0.01 0.5 4 12 444 1023 0 -1444]))
 
-(expect
-  [{:foo 2}
-   {:foo 2 :bar 3}]
-  [(update-when {:foo 2} :bar inc)
-   (update-when {:foo 2 :bar 2} :bar inc)])
+;;; tests for `order-of-magnitude`
+(expect -2 (order-of-magnitude 0.01))
+(expect -1 (order-of-magnitude 0.5))
+(expect 0  (order-of-magnitude 4))
+(expect 1  (order-of-magnitude 12))
+(expect 2  (order-of-magnitude 444))
+(expect 3  (order-of-magnitude 1023))
+(expect 0  (order-of-magnitude 0))
+(expect 3  (order-of-magnitude -1444))
+
+
+;;; tests for `update-when` and `update-in-when`
+(expect {:foo 2}        (update-when {:foo 2} :bar inc))
+(expect {:foo 2 :bar 3} (update-when {:foo 2 :bar 2} :bar inc))
+
+(expect {:foo 2}        (update-in-when {:foo 2} [:foo :bar] inc))
+(expect {:foo {:bar 3}} (update-in-when {:foo {:bar 2}} [:foo :bar] inc))
+
+
+;;; tests for `index-of`
+(expect 2   (index-of pos? [-1 0 2 3]))
+(expect nil (index-of pos? [-1 0 -2 -3]))
+(expect nil (index-of pos? nil))
+(expect nil (index-of pos? []))

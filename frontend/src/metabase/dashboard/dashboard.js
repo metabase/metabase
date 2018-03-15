@@ -46,6 +46,8 @@ import {
   RevisionApi,
   PublicApi,
   EmbedApi,
+  AutoApi,
+  MetabaseApi,
 } from "metabase/services";
 
 import { getDashboard, getDashboardComplete } from "./selectors";
@@ -112,6 +114,8 @@ function getDashboardType(id) {
     return "public";
   } else if (Utils.isJWT(id)) {
     return "embed";
+  } else if (/\/auto\/dashboard/.test(id)) {
+    return "transient";
   } else {
     return "normal";
   }
@@ -468,6 +472,8 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
           ...getParametersBySlug(dashboard.parameters, parameterValues),
         }),
       );
+    } else if (dashboardType === "transient") {
+      result = await fetchDataOrError(MetabaseApi.dataset(datasetQuery));
     } else {
       result = await fetchDataOrError(
         CardApi.query({ cardId: card.id, parameters: datasetQuery.parameters }),
@@ -517,6 +523,20 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
           dashboard_id: dashId,
         })),
       };
+    } else if (dashboardType === "transient") {
+      const subPath = dashId
+        .split("/")
+        .slice(3)
+        .join("/");
+      result = await AutoApi.dashboard({ subPath });
+      result = {
+        ...result,
+        id: dashId,
+        ordered_cards: result.ordered_cards.map(dc => ({
+          ...dc,
+          dashboard_id: dashId,
+        })),
+      };
     } else {
       result = await DashboardApi.get({ dashId: dashId });
     }
@@ -548,7 +568,10 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     // copy over any virtual cards from the dashcard to the underlying card/question
     result.ordered_cards.forEach(card => {
       if (card.visualization_settings.virtual_card) {
-        _.extend(card.card, card.visualization_settings.virtual_card);
+        card.card = Object.assign(
+          card.card || {},
+          card.visualization_settings.virtual_card,
+        );
       }
     });
 

@@ -236,7 +236,9 @@
                                    (db/select-one [Card [:table_id :table-id] [:database_id :database-id]]
                                      :id (Integer/parseInt card-id))))))
 
-(defn- populate-query-fields [{{query-type :type, :as outer-query} :dataset_query, :as card}]
+(defn populate-query-fields
+  "Lift `database_id`, `table_id`, and `query_type` from query definition."
+  [{{query-type :type, :as outer-query} :dataset_query, :as card}]
   (merge (when-let [{:keys [database-id table-id]} (and query-type
                                                         (query->database-and-table-ids outer-query))]
            {:database_id database-id

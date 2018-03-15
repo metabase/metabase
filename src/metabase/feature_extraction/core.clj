@@ -126,18 +126,11 @@
      :sample?      (sampled? opts dataset)
      :comparables  (comparables table)}))
 
-(defn index-of
-  "Return index of the first element in `coll` for which `pred` reutrns true."
-  [pred coll]
-  (first (keep-indexed (fn [i x]
-                         (when (pred x) i))
-                       coll)))
-
 (defn- ensure-aligment
   [fields cols rows]
   (if (not= fields (take 2 cols))
     (eduction (map (apply juxt (for [field fields]
-                                 (let [idx (index-of #{field} cols)]
+                                 (let [idx (u/index-of #{field} cols)]
                                    #(nth % idx)))))
               rows)
     rows))

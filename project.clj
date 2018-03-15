@@ -10,7 +10,8 @@
             "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
             "profile" ["with-profile" "+profile" "run" "profile"]
-            "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]}
+            "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]
+            "validate-automagic-dashboards" ["with-profile" "+validate-automagic-dashboards" "run"]}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.3.442"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
@@ -18,6 +19,7 @@
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
                  [org.clojure/java.classpath "0.2.3"]                 ; examine the Java classpath from Clojure programs
                  [org.clojure/java.jdbc "0.7.5"]                      ; basic JDBC access from Clojure
+                 [org.clojure/math.combinatorics "0.1.4"]             ; combinatorics functions
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
@@ -65,6 +67,9 @@
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
                  [instaparse "1.4.0"]                                 ; Insaparse parser generator
+                 [io.forward/yaml "1.0.6"                             ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
+                  :exclusions [org.clojure/clojure
+                               org.yaml/snakeyaml]]
                  [kixi/stats "0.3.10"                                 ; Various statistic measures implemented as transducers
                   :exclusions [org.clojure/test.check                 ; test.check and AVL trees are used in kixi.stats.random. Remove exlusion if using.
                                org.clojure/data.avl]]
@@ -176,4 +181,5 @@
              :profile {:jvm-opts ["-XX:+CITime"                       ; print time spent in JIT compiler
                                   "-XX:+PrintGC"]}                    ; print a message when garbage collection takes place
              ;; get the H2 shell with 'lein h2'
-             :h2-shell {:main org.h2.tools.Shell}})
+             :h2-shell {:main org.h2.tools.Shell}
+             :validate-automagic-dashboards {:main metabase.automagic-dashboards.rules}})

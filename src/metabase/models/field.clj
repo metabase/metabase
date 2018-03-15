@@ -229,3 +229,9 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (db/select-one 'Table, :id table_id))
+
+(defn unix-timestamp?
+  "Is field a UNIX timestamp?"
+  [{:keys [base_type special_type]}]
+  (and (isa? base_type :type/Integer)
+       (isa? special_type :type/DateTime)))
