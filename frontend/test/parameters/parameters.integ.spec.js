@@ -10,6 +10,7 @@ import {
   logout,
   waitForRequestToComplete,
   waitForAllRequestsToComplete,
+  cleanup,
 } from "__support__/integrated_tests";
 
 import jwt from "jsonwebtoken";
@@ -44,19 +45,17 @@ const METABASE_SECRET_KEY =
 describe("parameters", () => {
   let question, dashboard;
 
-  const cleanup = [];
-
   beforeAll(async () => {
     useSharedAdminLogin();
 
     // enable public sharing
     await SettingsApi.put({ key: "enable-public-sharing", value: true });
-    cleanup.push(() =>
+    cleanup.fn(() =>
       SettingsApi.put({ key: "enable-public-sharing", value: false }),
     );
 
     await SettingsApi.put({ key: "enable-embedding", value: true });
-    cleanup.push(() =>
+    cleanup.fn(() =>
       SettingsApi.put({ key: "enable-embedding", value: false }),
     );
 
@@ -71,7 +70,7 @@ describe("parameters", () => {
       name: "User ID",
       human_readable_field_id: PEOPLE_NAME_FIELD_ID,
     });
-    cleanup.push(() =>
+    cleanup.fn(() =>
       MetabaseApi.field_dimension_delete({
         fieldId: ORDER_USER_ID_FIELD_ID,
       }),
@@ -90,7 +89,7 @@ describe("parameters", () => {
         id: fieldId,
         has_field_values: "search",
       });
-      cleanup.push(() => MetabaseApi.field_update(field));
+      cleanup.fn(() => MetabaseApi.field_update(field));
     }
 
     const store = await createTestStore();
@@ -147,7 +146,7 @@ describe("parameters", () => {
       .setDisplay("scalar")
       .setDisplayName("Test Question");
     question = await createSavedQuestion(unsavedQuestion);
-    cleanup.push(() =>
+    cleanup.fn(() =>
       CardApi.update({
         id: question.id(),
         archived: true,
@@ -165,7 +164,7 @@ describe("parameters", () => {
         { name: "User", slug: "user_id", id: "4", type: "id" },
       ],
     });
-    cleanup.push(() =>
+    cleanup.fn(() =>
       DashboardApi.update({
         id: dashboard.id,
         archived: true,
@@ -400,11 +399,7 @@ describe("parameters", () => {
     sharedParametersTests(() => ({ app, store }));
   });
 
-  afterAll(async () => {
-    useSharedAdminLogin();
-    // do some cleanup so that we don't impact other tests
-    await Promise.all(cleanup.map(fn => fn()));
-  });
+  afterAll(cleanup);
 });
 
 async function sharedParametersTests(getAppAndStore) {
