@@ -473,7 +473,7 @@ export default class Visualization extends Component {
                   </div>
                 ) : (
                   <div>
-                    {t`This is usually pretty fast, but seems to be taking awhile right now.`}
+                    {t`This is usually pretty fast but seems to be taking awhile right now.`}
                   </div>
                 )}
               </div>

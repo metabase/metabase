@@ -101,7 +101,7 @@
   :default 1000)
 
 (defsetting query-caching-max-ttl
-  (tru "The absoulte maximum time to keep any cached query results, in seconds.")
+  (tru "The absolute maximum time to keep any cached query results, in seconds.")
   :type    :integer
   :default (* 60 60 24 100)) ; 100 days
 
