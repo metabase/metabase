@@ -177,7 +177,7 @@ export class VariationTrendInsight extends Component {
     const { mode } = this.props;
     const MODE_ADVERB_STRINGS = {
       increasing: t`increasingly`,
-      decreasing: t`decreasingly`
+      decreasing: t`decreasingly`,
     };
 
     return (
