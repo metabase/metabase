@@ -176,8 +176,8 @@ export class VariationTrendInsight extends Component {
   render() {
     const { mode } = this.props;
     const MODE_ADVERB_STRINGS = {
-      big: t`bigly`,
-      huge: t`hugely`,
+      increasing: t`increasingly`,
+      decreasing: t`decreasingly`
     };
 
     return (
