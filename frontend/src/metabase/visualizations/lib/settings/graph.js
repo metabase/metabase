@@ -315,7 +315,16 @@ export const GRAPH_AXIS_SETTINGS = {
   "graph.x_axis.axis_enabled": {
     section: "Axes",
     title: t`Show x-axis line and marks`,
-    widget: "toggle",
+    widget: "select",
+    props: {
+      options: [
+        { name: t`Disabled`, value: false },
+        { name: t`Enabled`, value: true },
+        { name: t`Compact`, value: "compact" },
+        { name: t`45°`, value: "rotate-45" },
+        { name: t`90°`, value: "rotate-90" },
+      ],
+    },
     default: true,
   },
   "graph.y_axis.axis_enabled": {
@@ -380,20 +389,6 @@ export const GRAPH_AXIS_SETTINGS = {
     title: t`Show label on x-axis`,
     widget: "toggle",
     default: true,
-  },
-  "graph.x_axis.labels_style": {
-    section: "Labels",
-    title: t`X-axis label style`,
-    widget: "select",
-    props: {
-      options: [
-        { name: t`Default`, value: null },
-        { name: t`Compact`, value: "compact" },
-        { name: t`45°`, value: "rotate-45" },
-        { name: t`90°`, value: "rotate-90" },
-      ],
-    },
-    default: null
   },
   "graph.x_axis.title_text": {
     section: "Labels",
