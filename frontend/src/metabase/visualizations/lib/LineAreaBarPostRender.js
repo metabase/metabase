@@ -4,9 +4,10 @@ import d3 from "d3";
 
 import { clipPathReference } from "metabase/lib/dom";
 
-const X_LABEL_MIN_SPACING = 2; // minimum amount of space we want to leave between labels
-const X_LABEL_ROTATE_90_THRESHOLD = 40;
-const X_LABEL_HIDE_THRESHOLD = 12;
+const X_LABEL_MIN_SPACING = 2; // minimum space we want to leave between labels
+const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching from 45° to 90°
+const X_LABEL_HIDE_THRESHOLD = 12; // tick width breakpoint for hiding labels entirely
+const X_LABEL_MAX_LABEL_HEIGHT_RATIO = 0.7; // percent rotated labels are allowed to take
 
 // +-------------------------------------------------------------------------------------------------------------------+
 // |                                                ON RENDER FUNCTIONS                                                |
@@ -350,8 +351,7 @@ function computeMinHorizontalMargins(chart) {
   return min;
 }
 
-function computeXAxisMargin(chart) {
-  const rotation = getXAxisRotation(chart);
+function computeXAxisLabelMaxSize(chart) {
   let maxWidth = 0;
   let maxHeight = 0;
   chart.selectAll("g.x text").each(function() {
@@ -359,9 +359,21 @@ function computeXAxisMargin(chart) {
     maxWidth = Math.max(maxWidth, width);
     maxHeight = Math.max(maxHeight, height);
   });
-  const rotatedMaxHeight =
-    Math.sin((rotation + 180) * (Math.PI / 180)) * maxWidth;
-  return Math.max(0, rotatedMaxHeight - maxHeight); // subtract the existing height
+  return { width: maxWidth, height: maxHeight };
+}
+
+function rotateSize(size, rotation) {
+  return {
+    width: Math.sin(rotation * (Math.PI / 180)) * size.width,
+    height: Math.sin(rotation * (Math.PI / 180)) * size.height,
+  };
+}
+
+function computeXAxisMargin(chart) {
+  const rotation = getXAxisRotation(chart);
+  const maxSize = computeXAxisLabelMaxSize(chart);
+  const rotatedMaxSize = rotateSize(maxSize, rotation + 180);
+  return Math.max(0, rotatedMaxSize.width - maxSize.height); // subtract the existing height
 }
 
 function checkLabelOverlap(chart) {
@@ -377,6 +389,16 @@ function checkLabelOverlap(chart) {
     }
   }
   return false;
+}
+
+function checkLabelHeight(chart, rotation) {
+  const rotatedMaxSize = rotateSize(
+    computeXAxisLabelMaxSize(chart),
+    rotation + 180,
+  );
+  const xAxisSize = chart.selectAll("g.y")[0][0].getBBox();
+  const ratio = Math.abs(rotatedMaxSize.width) / xAxisSize.height;
+  return ratio < X_LABEL_MAX_LABEL_HEIGHT_RATIO;
 }
 
 function computeXAxisSpacing(chart) {
@@ -405,9 +427,17 @@ function beforeRenderComputeXAxisLabelType(chart) {
         if (spacing < X_LABEL_HIDE_THRESHOLD) {
           chart.settings["graph.x_axis.axis_enabled"] = false;
         } else if (spacing < X_LABEL_ROTATE_90_THRESHOLD) {
-          chart.settings["graph.x_axis.axis_enabled"] = "rotate-90";
+          if (checkLabelHeight(chart, 90)) {
+            chart.settings["graph.x_axis.axis_enabled"] = "rotate-90";
+          } else {
+            chart.settings["graph.x_axis.axis_enabled"] = false;
+          }
         } else {
-          chart.settings["graph.x_axis.axis_enabled"] = "rotate-45";
+          if (checkLabelHeight(chart, 45)) {
+            chart.settings["graph.x_axis.axis_enabled"] = "rotate-45";
+          } else {
+            chart.settings["graph.x_axis.axis_enabled"] = false;
+          }
         }
       } else {
         chart.settings["graph.x_axis.axis_enabled"] = false;
