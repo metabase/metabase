@@ -234,10 +234,9 @@
       `links_to`, ...) are used;
    3) if there is still a tie, `score`."
   (comp last (partial sort-by (comp (fn [[_ definition]]
-                                      [(->> definition
-                                            :field_type
-                                            (map (comp count ancestors))
-                                            (reduce + ))
+                                      [(transduce (map (comp count ancestors))
+                                                  +
+                                                  (:field_type definition))
                                        (count definition)
                                        (:score definition)])
                                     first))))
@@ -245,8 +244,8 @@
 (defn- bind-dimensions
   "Bind fields to dimensions and resolve overloading.
    Each field x aggregation pair will be bound to only one dimension. If multiple
-   dimension definitions match a single field, the field is bound to the specific
-   definition is used (see `most-specific-defintion` for details)."
+   dimension definitions match a single field, the field is bound to the most
+   specific definition used (see `most-specific-defintion` for details)."
   [context dimensions]
   (->> dimensions
        (mapcat (comp (partial make-binding context) first))
@@ -540,7 +539,7 @@
                             (remove (comp #{root} :table))
                             (take (- max-related (count indepth))))
               :indepth indepth})))
-     (log/info (format "Skipping %s: no cards fully match the topology."
+     (log/info (format "Skipping %s: no cards fully match bound dimensions."
                        (full-name root))))))
 
 (def ^:private ^{:arglists '([card])} table-like?
@@ -573,4 +572,15 @@
 
 (defmethod automagic-analysis (type Field)
   [field]
-  nil)
+  (-> "special/field.yaml"
+      rules/load-rule
+      (update :dimensions conj
+              {"Field"
+               {:field_type  [(-> field table :entity_type)
+                              ((some-fn :special_type :base_type) field)]
+                :named       (:name field)
+                :score       100
+                :aggregation (cond
+                               (isa? (:base_type field) :type/DateTime) :month
+                               (isa? (:base_type field) :type/Number)   :default)}})
+      (automagic-dashboard field)))

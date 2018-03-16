@@ -116,7 +116,7 @@ export default class PulseEditCards extends Component {
       notices.push({
         type: "warning",
         head: t`Looks like this pulse is getting big`,
-        body: t`We recommend keeping pulses small and focused to help keep them digestable and useful to the whole team.`,
+        body: t`We recommend keeping pulses small and focused to help keep them digestible and useful to the whole team.`,
       });
     }
     return notices;

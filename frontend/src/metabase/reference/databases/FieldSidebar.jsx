@@ -46,12 +46,12 @@ const FieldSidebar = ({
       />
 
       {
-        // <SidebarItem
-        //   key={`/auto/dashboard/field/${field.id}`}
-        //   href={`/auto/dashboard/field/${field.id}`}
-        //   icon='bolt'
-        //   name={t`Generate a dashboard based on this field`}
-        // />
+        <SidebarItem
+          key={`/auto/dashboard/field/${field.id}`}
+          href={`/auto/dashboard/field/${field.id}`}
+          icon="bolt"
+          name={t`Generate a dashboard based on this field`}
+        />
       }
 
       {showXray && (

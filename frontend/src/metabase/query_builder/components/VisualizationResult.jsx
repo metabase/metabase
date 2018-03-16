@@ -66,9 +66,9 @@ export default class VisualizationResult extends Component {
                     <p>
                       {jt`You can also ${(
                         <a className="link" onClick={this.showCreateAlertModal}>
-                          get an alert
+                          {t`get an alert`}
                         </a>
-                      )} when there are any results.`}
+                      )} when there are some results.`}
                     </p>
                   )}
                 <button

@@ -543,7 +543,7 @@
                  (* 2 sparkline-dot-radius)
                  (* 2 sparkline-dot-radius)))
     (when-not (ImageIO/write image "png" os)                    ; returns `true` if successful -- see JavaDoc
-      (let [^String msg (tru "No approprate image writer found!")]
+      (let [^String msg (tru "No appropriate image writer found!")]
         (throw (Exception. msg))))
     (.toByteArray os)))
 
