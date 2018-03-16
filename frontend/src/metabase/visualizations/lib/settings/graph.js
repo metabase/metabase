@@ -315,16 +315,17 @@ export const GRAPH_AXIS_SETTINGS = {
   "graph.x_axis.axis_enabled": {
     section: "Axes",
     title: t`Show x-axis line and marks`,
-    widget: "select",
-    props: {
-      options: [
-        { name: t`Disabled`, value: false },
-        { name: t`Enabled`, value: true },
-        { name: t`Compact`, value: "compact" },
-        { name: t`45°`, value: "rotate-45" },
-        { name: t`90°`, value: "rotate-90" },
-      ],
-    },
+    widget: "toggle",
+    // widget: "select",
+    // props: {
+    //   options: [
+    //     { name: t`Disabled`, value: false },
+    //     { name: t`Enabled`, value: true },
+    //     { name: t`Compact`, value: "compact" },
+    //     { name: t`45°`, value: "rotate-45" },
+    //     { name: t`90°`, value: "rotate-90" },
+    //   ],
+    // },
     default: true,
   },
   "graph.y_axis.axis_enabled": {
