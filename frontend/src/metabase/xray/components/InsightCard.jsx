@@ -175,10 +175,14 @@ export class VariationTrendInsight extends Component {
 
   render() {
     const { mode } = this.props;
+    const MODE_ADVERB_STRINGS = {
+      big: t`bigly`,
+      huge: t`hugely`,
+    };
 
     return (
       <InsightText>
-        {t`It looks like this data has grown ${mode}ly`}{" "}
+        {t`It looks like this data has grown ${MODE_ADVERB_STRINGS[mode]}`}{" "}
         <TermWithDefinition
           definition={variationTrendDefinition}
           link={varianceLink}
