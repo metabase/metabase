@@ -22,12 +22,12 @@ export default class CreatedDatabaseModal extends Component {
             {jt`We're analyzing its schema now to make some educated guesses about its
                         metadata. ${(
                           <Link to={`/admin/datamodel/database/${databaseId}`}>
-                            View this database
+                            {t`View this database`}
                           </Link>
                         )} in the Data Model section to see what we've found and to
                         make edits, or ${(
                           <Link to={Urls.question(null, `?db=${databaseId}`)}>
-                            ask a question
+                            {t`ask a question`}
                           </Link>
                         )} about
                         this database.`}

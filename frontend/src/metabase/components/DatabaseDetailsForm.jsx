@@ -260,7 +260,7 @@ export default class DatabaseDetailsForm extends Component {
           <div className="Grid-cell--top">
             {jt`${(
               <a href={credentialsURL} target="_blank">
-                Click here
+                {t`Click here`}
               </a>
             )} to generate a Client ID and Client Secret for your project.`}
             {t`Choose "Other" as the application type. Name it whatever you'd like.`}
@@ -287,7 +287,7 @@ export default class DatabaseDetailsForm extends Component {
             <div className="Grid-cell--top">
               {jt`${(
                 <a href={authURL} target="_blank">
-                  Click here
+                  {t`Click here`}
                 </a>
               )} to get an auth code`}
               {engine === "bigquery" && (
@@ -322,7 +322,7 @@ export default class DatabaseDetailsForm extends Component {
             <div className="Grid-cell--top ml1">
               {jt`${(
                 <a href={enableAPIURL} target="_blank">
-                  Click here
+                  {t`Click here`}
                 </a>
               )} to go to the console if you haven't already done so.`}
             </div>
