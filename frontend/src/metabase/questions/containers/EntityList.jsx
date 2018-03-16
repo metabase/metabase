@@ -105,7 +105,7 @@ const SECTIONS = [
 
 const DEFAULT_SECTION = {
   icon: "all",
-  empty: t`There aren't any questions matching those criteria.`,
+  empty: t`There aren't any questions matching that criteria.`,
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
