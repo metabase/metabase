@@ -82,10 +82,10 @@
   [id]
   (-> id Metric api/check-404 magic/automagic-analysis))
 
-;; (api/defendpoint GET "/field/:id"
-;;   "Return an automagic dashboard analyzing field with id `id`."
-;;   [id]
-;;   (-> id Field api/check-404 :table_id Table magic/automagic-dashboard))
+(api/defendpoint GET "/field/:id"
+  "Return an automagic dashboard analyzing field with id `id`."
+  [id]
+  (-> id Field api/check-404 magic/automagic-analysis))
 
 (api/defendpoint GET "/question/:id"
   "Return an automagic dashboard analyzing question with id `id`."

@@ -60,14 +60,6 @@
       first
       key))
 
-;; Identity
-(expect
-  :d1
-  (-> [{:d1 {:field_type [:type/Category] :score 100}}]
-      (#'magic/most-specific-definition)
-      first
-      key))
-
 ;; Base case: more ancestors
 (expect
   :d2
