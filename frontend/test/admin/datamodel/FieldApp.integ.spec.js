@@ -211,8 +211,6 @@ describe("FieldApp", () => {
       expect(picker.text()).toMatch(/Select a special type/);
 
       // clean up after ourselves
-      const newSpecialType = getRawFieldWithId(store, CREATED_AT_ID)
-        .special_type;
       MetabaseApi.field_update({
         id: CREATED_AT_ID,
         special_type: originalSpecialType,
