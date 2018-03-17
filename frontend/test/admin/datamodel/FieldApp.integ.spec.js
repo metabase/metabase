@@ -45,6 +45,9 @@ import SelectButton from "metabase/components/SelectButton";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import { getMetadata } from "metabase/selectors/metadata";
 
+// To undo changes
+import { MetabaseApi } from "metabase/services";
+
 const getRawFieldWithId = (store, fieldId) =>
   store.getState().metadata.fields[fieldId];
 
@@ -189,6 +192,9 @@ describe("FieldApp", () => {
       const { store, fieldApp } = await initFieldApp({
         fieldId: CREATED_AT_ID,
       });
+      const originalSpecialType = getRawFieldWithId(store, CREATED_AT_ID)
+        .special_type;
+
       const picker = fieldApp.find(SpecialTypeAndTargetPicker);
       const typeSelect = picker.find(Select).at(0);
       click(typeSelect);
@@ -203,6 +209,14 @@ describe("FieldApp", () => {
 
       await store.waitForActions([UPDATE_FIELD]);
       expect(picker.text()).toMatch(/Select a special type/);
+
+      // clean up after ourselves
+      const newSpecialType = getRawFieldWithId(store, CREATED_AT_ID)
+        .special_type;
+      MetabaseApi.field_update({
+        id: CREATED_AT_ID,
+        special_type: originalSpecialType,
+      });
     });
 
     it("lets you change the type to 'Number'", async () => {
