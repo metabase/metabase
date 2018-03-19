@@ -192,8 +192,6 @@ describe("FieldApp", () => {
       const { store, fieldApp } = await initFieldApp({
         fieldId: CREATED_AT_ID,
       });
-      const originalSpecialType = getRawFieldWithId(store, CREATED_AT_ID)
-        .special_type;
 
       const picker = fieldApp.find(SpecialTypeAndTargetPicker);
       const typeSelect = picker.find(Select).at(0);
@@ -209,12 +207,6 @@ describe("FieldApp", () => {
 
       await store.waitForActions([UPDATE_FIELD]);
       expect(picker.text()).toMatch(/Select a special type/);
-
-      // clean up after ourselves
-      MetabaseApi.field_update({
-        id: CREATED_AT_ID,
-        special_type: originalSpecialType,
-      });
     });
 
     it("lets you change the type to 'Number'", async () => {
@@ -281,7 +273,7 @@ describe("FieldApp", () => {
       await store.dispatch(
         updateField({
           ...createdAtField,
-          special_type: null,
+          special_type: "type/CreationTimestamp",
           fk_target_field_id: null,
         }),
       );
