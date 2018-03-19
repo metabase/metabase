@@ -15,6 +15,8 @@
              [annotate :as annotate]
              [interface :as i]
              [util :as qputil]]
+            [toucan.db :as db]
+            [metabase.driver.generic-sql.field-hierarchy-factory :as fhf]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.driver.generic-sql.field-parent-resolver :as fpr])
   (:import clojure.lang.Keyword
@@ -259,17 +261,32 @@
   [_ honeysql-form {clause :filter}]
   (h/where honeysql-form (filter-clause->predicate clause)))
 
+
+(defn- get-field-hierarchy [source-table-id]
+  (->>
+    (db/select [metabase.models.field/Field [:id :field-id] [:name :field-name] [:parent_id :parent-id]] :table_id [:= source-table-id])
+    (fhf/create-from-list)))
+
+
+(defn get-qualified-name [field-info-list source-field]
+  (->>
+    (filter #(= (:field-id source-field) (:field-id %)) field-info-list)
+    (first)
+    (fpr/get-qualified-name)))
+
 (defn apply-join-tables
   "Apply expanded query `join-tables` clause to HONEYSQL-FORM. Default implementation of `apply-join-tables` for SQL drivers."
-  [_ honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
-  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
-    (let [honeysql-form (h/merge-left-join honeysql-form
-                          [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
-                          [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
-                              (hx/qualify-and-escape-dots join-alias                      (:field-name pk-field))])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+  [_ honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema, source-table-id :id} :source-table}]
+
+  (let [field-info-list (get-field-hierarchy source-table-id)]
+    (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
+      (let [honeysql-form (h/merge-left-join honeysql-form
+                                             [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
+                                             [:= (apply hx/qualify-and-escape-dots source-schema source-table-name (get-qualified-name field-info-list source-field))
+                                              (hx/qualify-and-escape-dots join-alias (:field-name pk-field))])]
+        (if (seq more)
+          (recur honeysql-form more)
+          honeysql-form)))))
 
 (defn apply-limit
   "Apply `limit` clause to HONEYSQL-FORM. Default implementation of `apply-limit` for SQL drivers."
