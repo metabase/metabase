@@ -84,10 +84,7 @@ export default class AddToDashboard extends Component {
   render() {
     const { query, collection } = this.state;
     return (
-      <div
-        className="flex align-center"
-        style={{ maxWidth: 800, marginLeft: "auto", marginRight: "auto" }}
-      >
+      <div className="ml-auto mr-auto" style={{ maxWidth: 800 }}>
         <ModalContent
           title={t`Pick a question to add`}
           className="mb4 scroll-y"
