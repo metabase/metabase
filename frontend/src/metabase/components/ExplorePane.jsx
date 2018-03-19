@@ -34,7 +34,7 @@ export const ExplorePane = ({
       </div>
     )}
     {description && (
-      <div className="mb4">
+      <div className="mb4 text-paragraph">
         <span>{description}</span>
       </div>
     )}
