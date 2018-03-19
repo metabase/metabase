@@ -134,7 +134,7 @@ export default class ActionButton extends Component {
             ? cx("Button", "Button--waiting")
             : cx(className, {
                 "Button--waiting pointer-events-none": active,
-                "Button--success": result === "success",
+                "Button--success pointer-events-none": result === "success",
                 "Button--danger": result === "failed",
               })
         }

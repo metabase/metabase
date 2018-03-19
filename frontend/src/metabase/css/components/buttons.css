@@ -212,6 +212,8 @@
   color: #fff;
 }
 .Button--success:hover {
+  background-color: var(--green-saturated-color);
+  border-color: var(--green-saturated-color);
   color: #fff;
 }
 
