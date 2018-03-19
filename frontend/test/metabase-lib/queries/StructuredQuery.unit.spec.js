@@ -380,6 +380,15 @@ describe("StructuredQuery unit tests", () => {
       pending();
     });
 
+    describe("segments", () => {
+      it('should list any applied segments that are currently active filters', () => {
+
+        const queryWithSegmentFilter = query.addFilter(["SEGMENT", 1])
+        expect(queryWithSegmentFilter.segments()).toBeDefined()
+
+      })
+    })
+
     describe("canAddFilter", () => {
       pending();
     });
