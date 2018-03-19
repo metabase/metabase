@@ -3429,7 +3429,7 @@ Object {
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 178.66056910569105,
+            "average-length": 178.66158536585365,
             "percent-email": 0,
             "percent-json": 0,
             "percent-url": 0,
