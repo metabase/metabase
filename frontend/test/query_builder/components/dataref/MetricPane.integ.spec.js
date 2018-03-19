@@ -1,6 +1,7 @@
 import {
   useSharedAdminLogin,
   createTestStore,
+  cleanup,
 } from "__support__/integrated_tests";
 import { click } from "__support__/enzyme_utils";
 
@@ -27,11 +28,10 @@ import { MetricApi } from "metabase/services";
 describe("MetricPane", () => {
   let store = null;
   let queryBuilder = null;
-  let metricId = null;
 
   beforeAll(async () => {
     useSharedAdminLogin();
-    metricId = (await MetricApi.create(vendor_count_metric)).id;
+    cleanup.metric(await MetricApi.create(vendor_count_metric));
     store = await createTestStore();
 
     store.pushPath(Urls.plainQuestion());
@@ -39,12 +39,8 @@ describe("MetricPane", () => {
     await store.waitForActions([INITIALIZE_QB]);
   });
 
-  afterAll(async () => {
-    await MetricApi.delete({
-      metricId,
-      revision_message: "Let's exterminate this metric",
-    });
-  });
+  afterAll(cleanup);
+
   // NOTE: These test cases are intentionally stateful
   // (doing the whole app rendering thing in every single test case would probably slow things down)
 

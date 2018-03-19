@@ -10,6 +10,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
+             [db :as mdb]
              [config :as config]
              [driver :as driver]
              [public-settings :as public-settings]
@@ -369,8 +370,22 @@
 ;; `pre-update` implementation.
 ;;
 ;; Caching these permissions will prevent 1000+ DB call API calls. See https://github.com/metabase/metabase/issues/6889
-(defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
+(defmigration ^{:author "camsaul", :added "0.29.0"} populate-card-read-permissions
   (run!
    (fn [card]
      (db/update! Card (u/get-id card) {}))
    (db/select-reducible Card :archived false, :read_permissions nil)))
+
+;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
+;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
+;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
+;; keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
+;; meaning of the Category special type.
+;;
+;; Since the meanings of things has changed we'll want to make sure we mark all Category fields as `list` as well so
+;; their behavior doesn't suddenly change.
+(defmigration ^{:author "camsaul", :added "0.29.0"} mark-category-fields-as-list
+  (db/update-where! Field {:has_field_values nil
+                           :special_type     (mdb/isa :type/Category)
+                           :active           true}
+    :has_field_values "list"))

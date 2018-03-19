@@ -11,7 +11,13 @@ import "./mocks";
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
 import { defer } from "metabase/lib/promise";
-import { DashboardApi, SessionApi } from "metabase/services";
+import {
+  DashboardApi,
+  SessionApi,
+  CardApi,
+  MetricApi,
+  SegmentApi,
+} from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
@@ -486,6 +492,43 @@ export async function withApiMocks(mocks, test) {
     });
   }
 }
+
+// to help tests cleanup after themselves, since integration tests don't use
+// isolated environments, e.x.
+//
+// beforeAll(async () => {
+//   cleanup.metric(await MetricApi.create({ ... }))
+// })
+// afterAll(cleanup);
+//
+export const cleanup = () => {
+  useSharedAdminLogin();
+  Promise.all(
+    cleanup.actions.splice(0, cleanup.actions.length).map(action => action()),
+  );
+};
+cleanup.actions = [];
+cleanup.fn = action => cleanup.actions.push(action);
+cleanup.metric = metric => cleanup.fn(() => deleteMetric(metric));
+cleanup.segment = segment => cleanup.fn(() => deleteSegment(segment));
+cleanup.question = question => cleanup.fn(() => deleteQuestion(question));
+
+export const deleteQuestion = question =>
+  CardApi.delete({ cardId: getId(question) });
+export const deleteSegment = segment =>
+  SegmentApi.delete({ segmentId: getId(segment), revision_message: "Please" });
+export const deleteMetric = metric =>
+  MetricApi.delete({ metricId: getId(metric), revision_message: "Please" });
+
+const getId = o =>
+  typeof o === "object" && o != null
+    ? typeof o.id === "function" ? o.id() : o.id
+    : o;
+
+export const deleteAllSegments = async () =>
+  Promise.all((await SegmentApi.list()).map(deleteSegment));
+export const deleteAllMetrics = async () =>
+  Promise.all((await MetricApi.list()).map(deleteMetric));
 
 let pendingRequests = 0;
 let pendingRequestsDeferred = null;
