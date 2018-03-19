@@ -56,10 +56,10 @@ export const ExploreList = ({ options }: { options: Candidate[] }) => (
 export const ExploreOption = ({ option }: { option: Candidate }) => (
   <Link to={option.url} className="link flex align-center text-bold">
     <div
-      className="bg-slate-almost-extra-light p2 flex align-center rounded mr1 justify-center text-gold"
+      className="bg-grey-0 flex align-center rounded mr1 p2 justify-center text-gold"
       style={{ width: 48, height: 48 }}
     >
-      <Icon name="bolt" size={32} />
+      <Icon name="bolt" size={24} className="flex-no-shrink" />
     </div>
     <span>{option.title}</span>
   </Link>

@@ -94,7 +94,7 @@ class AutomaticDashboardApp extends React.Component {
               <Icon name="bolt" className="text-gold mr1" size={24} />
               <h2>{dashboard && dashboard.name}</h2>
               <ActionButton
-                className="ml-auto bg-green text-white"
+                className="ml-auto Button--success bg-green-saturated-hover"
                 borderless
                 actionFn={this.save}
               >
