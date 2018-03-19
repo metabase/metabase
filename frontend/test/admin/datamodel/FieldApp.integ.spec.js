@@ -45,9 +45,6 @@ import SelectButton from "metabase/components/SelectButton";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import { getMetadata } from "metabase/selectors/metadata";
 
-// To undo changes
-import { MetabaseApi } from "metabase/services";
-
 const getRawFieldWithId = (store, fieldId) =>
   store.getState().metadata.fields[fieldId];
 
