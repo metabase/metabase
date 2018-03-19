@@ -9,6 +9,9 @@
             [hiccup.core :refer [html]]
             [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]
+            [metabase.util.i18n :refer [available-locales-with-names set-locale]]
+            [metabase.util.password :as password]
+            [puppetlabs.i18n.core :refer [tru]]
             [ring.util.codec :as codec]))
 
 ;;; ------------------------------------------------------------ PUBLIC LINKS UTIL FNS ------------------------------------------------------------
@@ -53,7 +56,7 @@
 ;;; ------------------------------------------------------------ EMBEDDING UTIL FNS ------------------------------------------------------------
 
 (setting/defsetting ^:private embedding-secret-key
-  "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints."
+  (tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
   :setter (fn [new-value]
             (when (seq new-value)
               (assert (re-matches #"[0-9a-f]{64}" new-value)
