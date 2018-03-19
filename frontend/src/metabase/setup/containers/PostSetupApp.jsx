@@ -148,7 +148,7 @@ export default class PostSetupApp extends Component {
           )}
           <div className="m4 text-centered">
             <Link to="/" className="no-decoration">
-              No thanks, I’ll set things up on my own
+              {t`No thanks, I’ll set things up on my own`}
             </Link>
           </div>
         </div>
