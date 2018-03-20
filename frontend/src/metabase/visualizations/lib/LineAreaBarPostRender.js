@@ -264,7 +264,7 @@ function getXAxisRotation(chart) {
     /^rotate-(\d+)$/,
   );
   if (match) {
-    return -parseInt(match[1], 10);
+    return parseInt(match[1], 10);
   } else {
     return 0;
   }
@@ -275,8 +275,10 @@ function onRenderRotateAxis(chart) {
   if (degrees !== 0) {
     chart.selectAll("g.x text").attr("transform", function() {
       const { width, height } = this.getBBox();
-      return `translate(-${width /
-        2},${-height / 2}) rotate(${degrees}, ${width / 2}, ${height})`;
+      return (// translate left half the width so the right edge is at the tick
+        `translate(-${width / 2},${-height / 2}) ` +
+        // rotate counter-clockwise around the right edge
+        `rotate(${-degrees}, ${width / 2}, ${height})` );
     });
   }
 }
@@ -372,7 +374,7 @@ function rotateSize(size, rotation) {
 function computeXAxisMargin(chart) {
   const rotation = getXAxisRotation(chart);
   const maxSize = computeXAxisLabelMaxSize(chart);
-  const rotatedMaxSize = rotateSize(maxSize, rotation + 180);
+  const rotatedMaxSize = rotateSize(maxSize, rotation);
   return Math.max(0, rotatedMaxSize.width - maxSize.height); // subtract the existing height
 }
 
