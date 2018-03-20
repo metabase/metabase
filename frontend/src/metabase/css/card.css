@@ -17,7 +17,7 @@
 }
 
 .Card-title {
-  color: #3F3A3A;
+  color: #3f3a3a;
   font-size: 0.8em;
 }
 
@@ -31,9 +31,9 @@
 }
 
 @media screen and (--breakpoint-min-md) {
-    .Card-title {
-        font-size: 0.8em;
-    }
+  .Card-title {
+    font-size: 0.8em;
+  }
 }
 
 .Card--errored {
@@ -41,7 +41,7 @@
 }
 
 .Card-scalarValue {
-    overflow: hidden;
+  overflow: hidden;
 }
 
 @media screen and (--breakpoint-min-lg) {
@@ -72,7 +72,7 @@
 
 .CardSettings {
   border-top: 1px solid #ddd;
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .12);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.12);
 }
 
 .CardSettings-label {
@@ -90,9 +90,9 @@
 }
 
 .CardSettings-colorBlock:last-child {
-    margin-right: 0;
+  margin-right: 0;
 }
 
 .Card--scalar {
-    padding: 1em;
+  padding: 1em;
 }

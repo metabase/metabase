@@ -10,6 +10,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
+             [db :as mdb]
              [config :as config]
              [driver :as driver]
              [public-settings :as public-settings]
@@ -21,6 +22,7 @@
              [dashboard-card :refer [DashboardCard]]
              [database :refer [Database virtual-id]]
              [field :refer [Field]]
+             [humanization :as humanization]
              [permissions :as perms :refer [Permissions]]
              [permissions-group :as perm-group]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
@@ -341,3 +343,49 @@
           :when (not= db-id virtual-id)]
     (db/update-where! Card {:id [:in (map :id cards)]}
       :database_id db-id)))
+
+;; Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
+;; `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
+;; was replaced by the `humanization-strategy` Setting, which (at the time of this writing) allows for a choice
+;; between three options: advanced, simple, or none. Migrate any values of the old Setting, if set, to the new one.
+(defmigration ^{:author "camsaul", :added "0.28.0"} migrate-humanization-setting
+  (when-let [enable-advanced-humanization-str (db/select-one-field :value Setting, :key "enable-advanced-humanization")]
+    (when (seq enable-advanced-humanization-str)
+      ;; if an entry exists for the old Setting, it will be a boolean string, either "true" or "false". Try inserting
+      ;; a record for the new setting with the appropriate new value. This might fail if for some reason
+      ;; humanization-strategy has been set already, or enable-advanced-humanization has somehow been set to an
+      ;; invalid value. In that case, fail silently.
+      (u/ignore-exceptions
+        (humanization/humanization-strategy (if (Boolean/parseBoolean enable-advanced-humanization-str)
+                                              "advanced"
+                                              "simple"))))
+    ;; either way, delete the old value from the DB since we'll never be using it again.
+    ;; use `simple-delete!` because `Setting` doesn't have an `:id` column :(
+    (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
+
+;; for every Card in the DB, pre-calculate the read permissions required to read the Card/run its query and save them
+;; under the new `read_permissions` column. Calculating read permissions is too expensive to do on the fly for Cards,
+;; since it requires parsing their queries and expanding things like FKs or Segment/Metric macros. Simply calling
+;; `update!` on each Card will cause it to be saved with updated `read_permissions` as a side effect of Card's
+;; `pre-update` implementation.
+;;
+;; Caching these permissions will prevent 1000+ DB call API calls. See https://github.com/metabase/metabase/issues/6889
+(defmigration ^{:author "camsaul", :added "0.29.0"} populate-card-read-permissions
+  (run!
+   (fn [card]
+     (db/update! Card (u/get-id card) {}))
+   (db/select-reducible Card :archived false, :read_permissions nil)))
+
+;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
+;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
+;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
+;; keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
+;; meaning of the Category special type.
+;;
+;; Since the meanings of things has changed we'll want to make sure we mark all Category fields as `list` as well so
+;; their behavior doesn't suddenly change.
+(defmigration ^{:author "camsaul", :added "0.29.0"} mark-category-fields-as-list
+  (db/update-where! Field {:has_field_values nil
+                           :special_type     (mdb/isa :type/Category)
+                           :active           true}
+    :has_field_values "list"))

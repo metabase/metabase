@@ -117,6 +117,18 @@
 (expect 2 (qputil/get-normalized {:num-toucans 2}  :num-toucans))
 
 (expect
+  false
+  (qputil/get-normalized {:case-sensitive false} :case-sensitive))
+
+(expect
+  false
+  (qputil/get-normalized {:case-sensitive false} :case-sensitive true))
+
+(expect
+  true
+  (qputil/get-normalized {:explodes-database false} :case-sensitive true))
+
+(expect
   nil
   (qputil/get-normalized nil :num-toucans))
 

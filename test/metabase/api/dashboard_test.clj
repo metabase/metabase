@@ -11,6 +11,7 @@
              [dashboard :as dashboard-api]]
             [metabase.models
              [card :refer [Card]]
+             [collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
              [dashboard-card-series :refer [DashboardCardSeries]]
@@ -118,7 +119,6 @@
   (merge dashboard-defaults
          {:name          "Test Dashboard"
           :creator_id    (user->id :rasta)
-          :creator       (user-details (fetch-user :rasta))
           :ordered_cards [{:sizeX                  2
                            :sizeY                  2
                            :col                    0
@@ -130,12 +130,13 @@
                            :card                   (merge card-api-test/card-defaults
                                                           {:name                   "Dashboard Test Card"
                                                            :creator_id             (user->id :rasta)
-                                                           :creator                (user-details (fetch-user :rasta))
                                                            :display                "table"
                                                            :query_type             nil
                                                            :dataset_query          {}
+                                                           :read_permissions       []
                                                            :visualization_settings {}
                                                            :query_average_duration nil
+                                                           :in_public_dashboard    false
                                                            :result_metadata        nil})
                            :series                 []}]})
   ;; fetch a dashboard WITH a dashboard card on it
@@ -144,6 +145,19 @@
                   DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
     (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id)))))
 
+;; ## GET /api/dashboard/:id with a series, should fail if the user doesn't have access to the collection
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Collection          [{coll-id :id}      {:name "Collection 1"}]
+                  Dashboard           [{dashboard-id :id} {:name       "Test Dashboard"
+                                                           :creator_id (user->id :crowberto)}]
+                  Card                [{card-id :id}      {:name          "Dashboard Test Card"
+                                                           :collection_id coll-id}]
+                  Card                [{card-id2 :id}     {:name          "Dashboard Test Card 2"
+                                                           :collection_id coll-id}]
+                  DashboardCard       [{dbc_id :id}       {:dashboard_id dashboard-id, :card_id card-id}]
+                  DashboardCardSeries [_                  {:dashboardcard_id dbc_id, :card_id card-id2, :position 0}]]
+    ((user->client :rasta) :get 403 (format "dashboard/%d" dashboard-id))))
 
 ;; ## PUT /api/dashboard/:id
 (expect
@@ -536,7 +550,7 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     ((user->client :crowberto) :delete 404 (format "dashboard/%d/public_link" Integer/MAX_VALUE))))
 
-;; Test that we can fetch a list of publically-accessible dashboards
+;; Test that we can fetch a list of publicly-accessible dashboards
 (expect
   [{:name true, :id true, :public_uuid true}]
   (tu/with-temporary-setting-values [enable-public-sharing true]

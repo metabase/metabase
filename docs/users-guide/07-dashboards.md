@@ -21,8 +21,28 @@ Once you add a question to your dashboard, it’ll look something like this:
 
 ![First Dashboard](images/dashboards/FirstDashboard.png)
 
+### Adding headings or descriptions with text cards
+Another neat thing you can do is add text cards to your dashboards so that you can write descriptions, explanations, notes, or even add images. Text cards can also be used to create separations between sections of charts in your dashboards.
+
+To add a new text card, create a new dashboard or edit an existing one and click on the text card button in the top-right:
+
+![Text card button](images/dashboards/text-cards/text-card-button.png)
+
+Your new, empty text card will appear. It has two modes: writing and previewing. Toggle between the modes by clicking the eye or pencil icons in the top-left of the card:
+
+![New text card](images/dashboards/text-cards/new-text-card.png)
+
+You can use [Markdown](http://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends).
+
+![Markdown](images/dashboards/text-cards/markdown.png)
+
+Click the eyeball icon to see what your formatted Markdown will look like when you save the card:
+
+![Result](images/dashboards/text-cards/result.png)
+
+
 ### Arranging cards
-Each question on a dashboard is in its own card that you can move around or resize as you see fit; just click the edit icon that looks like a pencil in the top-right of the dashboard screen.  
+Each question on a dashboard is in its own card that you can move around or resize as you see fit; just click the edit icon that looks like a pencil in the top-right of the dashboard screen.
 
 Once you're in edit mode you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
 
@@ -91,7 +111,7 @@ Some tips:
 
 *  Place the most important saved question cards near the top of the dashboard, and/or make them bigger than the other cards. That will help draw people’s attention to what matters most.
 *  If you have more than 10 cards on a dashboard, think about breaking the dashboard into two separate ones. You don't want to overwhelm people with too much information, and each dashboard should revolve around one theme or topic. Remember — you can make as many dashboards as you want, so you don’t have to cram everything into just one.
-* Consider [adding filters to your dashboard](07-dashboards.md#dashboard-filters) to make them more useful and flexible. For example, instead of your dashboard being full of questions that are restricted to a specific time span, you can make more general questions and use dashboard filters to change the time span you're looking at.
+* Consider [adding filters to your dashboard](08-dashboard-filters.md) to make them more useful and flexible. For example, instead of your dashboard being full of questions that are restricted to a specific time span, you can make more general questions and use dashboard filters to change the time span you're looking at.
 
 ---
 

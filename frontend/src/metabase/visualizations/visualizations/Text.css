@@ -1,5 +1,5 @@
 :root {
-  --text-card-padding: .65em;
+  --text-card-padding: 0.65em;
 }
 
 :local .Text {
@@ -12,7 +12,7 @@
   padding: 2.8em 1.3em var(--text-card-padding) 1.3em;
 }
 :local .Text .text-card-textarea {
-  padding: .5em .75em .5em .75em;
+  padding: 0.5em 0.75em 0.5em 0.75em;
   font-size: 1.143em;
   line-height: 1.602em;
   pointer-events: all;
@@ -23,63 +23,62 @@
 :local .Text .text-card-textarea:focus {
   border-color: var(--brand-color);
   background-color: white;
-  box-shadow: 0 1px 7px rgba(0, 0, 0, .1);
+  box-shadow: 0 1px 7px rgba(0, 0, 0, 0.1);
 }
 :local .Text .text-card-markdown {
-  overflow: scroll;
-  pointer-events: all
+  overflow: auto;
+  pointer-events: all;
 }
 
 :local .Text .text-card-markdown h1 {
   font-weight: 900;
   font-size: 1.831em;
-  margin: .375em 0 .25em 0;
+  margin: 0.375em 0 0.25em 0;
   padding-right: 1.5em;
 }
 :local .Text .text-card-markdown h2 {
   font-size: 1.627em;
-  margin: .375em 0 .25em 0;
+  margin: 0.375em 0 0.25em 0;
   padding-right: 1.5em;
 }
 :local .Text .text-card-markdown h3 {
   font-size: 1.447em;
-  margin: .375em 0 .25em 0;
+  margin: 0.375em 0 0.25em 0;
   padding-right: 1.5em;
 }
 :local .Text .text-card-markdown h4 {
   font-size: 1.286em;
-  margin: .375em 0 .25em 0;
+  margin: 0.375em 0 0.25em 0;
   padding-right: 1.5em;
 }
 :local .Text .text-card-markdown h5 {
   font-size: 1.143em;
-  margin: .375em 0 .25em 0;
+  margin: 0.375em 0 0.25em 0;
   padding-right: 1.5em;
 }
 :local .Text .text-card-markdown p {
   font-size: 1.143em;
   line-height: 1.602em;
   padding: 0;
-  margin: 0 1.5em .5em 0;
-  max-width: 620px;
+  margin: 0 1.5em 0.5em 0;
 }
 
 :local .text-card-markdown ul {
   font-size: 16px;
-  margin: .5em 0 .5em 0;
+  margin: 0.5em 0 0.5em 0;
   padding: 0 1.5em 0 1em;
   list-style-type: disc;
 }
 :local .text-card-markdown ol {
   font-size: 16px;
-  margin: .5em 0 .5em 0;
+  margin: 0.5em 0 0.5em 0;
   padding: 0 1.5em 0 1em;
   list-style-type: decimal;
 }
 
 :local .text-card-markdown li {
   list-style-position: inside;
-  padding: .25em 0 0 0;
+  padding: 0.25em 0 0 0;
 }
 :local .text-card-markdown ol li::before {
   content: "";
@@ -101,7 +100,9 @@
   text-decoration: underline;
 }
 
-:local .text-card-markdown th { text-align: left; }
+:local .text-card-markdown th {
+  text-align: left;
+}
 :local .text-card-markdown table {
   /* standard table reset */
   border-collapse: collapse;
@@ -122,7 +123,7 @@
 }
 :local .text-card-markdown th,
 :local .text-card-markdown td {
-  padding: .75em;
+  padding: 0.75em;
   border: 1px solid var(--table-border-color);
 }
 
@@ -130,7 +131,7 @@
   font-family: Monaco, monospace;
   font-size: 12.64px;
   line-height: 20px;
-  padding: 0 .25em;
+  padding: 0 0.25em;
   background-color: var(--base-grey);
   border-radius: var(--default-border-radius);
 }
@@ -145,7 +146,7 @@
   color: var(--grey-4);
   border-left: 5px solid var(--grey-1);
   padding: 0 1.5em 0 17px;
-  margin: .5em 0 .5em 1em;
+  margin: 0.5em 0 0.5em 1em;
 }
 :local .text-card-markdown blockquote p {
   padding: 0;
@@ -159,6 +160,6 @@
 
 @media screen and (--breakpoint-max-lg) {
   :local .Text {
-    padding: .5em 0 .5em 1em;
+    padding: 0.5em 0 0.5em 1em;
   }
 }

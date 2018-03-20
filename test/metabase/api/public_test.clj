@@ -14,6 +14,8 @@
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
+             [dimension :refer [Dimension]]
+             [field :refer [Field]]
              [field-values :refer [FieldValues]]]
             [metabase.test
              [data :as data]
@@ -53,7 +55,9 @@
 (defn- add-card-to-dashboard! [card dashboard]
   (db/insert! DashboardCard :dashboard_id (u/get-id dashboard), :card_id (u/get-id card)))
 
-(defmacro with-temp-public-dashboard-and-card {:style/indent 1} [[dashboard-binding card-binding & [dashcard-binding]] & body]
+(defmacro ^:private with-temp-public-dashboard-and-card
+  {:style/indent 1}
+  [[dashboard-binding card-binding & [dashcard-binding]] & body]
   `(with-temp-public-dashboard [dash#]
      (with-temp-public-card [card#]
        (let [~dashboard-binding        dash#
@@ -88,7 +92,7 @@
 
 ;; Check that we can fetch a PublicCard
 (expect
-  #{:dataset_query :description :display :id :name :visualization_settings :param_values}
+  #{:dataset_query :description :display :id :name :visualization_settings :param_values :param_fields}
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (set (keys (http/client :get 200 (str "public/card/" uuid)))))))
@@ -98,18 +102,20 @@
   {(data/id :categories :name) {:values                75
                                 :human_readable_values {}
                                 :field_id              (data/id :categories :name)}}
-  (tt/with-temp Card [card {:dataset_query {:type   :native
-                                            :native {:query         (str "SELECT COUNT(*) "
-                                                                         "FROM venues "
-                                                                         "LEFT JOIN categories ON venues.category_id = categories.id "
-                                                                         "WHERE {{category}}")
-                                                     :collection    "CATEGORIES"
-                                                     :template_tags {:category {:name         "category"
-                                                                                :display_name "Category"
-                                                                                :type         "dimension"
-                                                                                :dimension    ["field-id" (data/id :categories :name)]
-                                                                                :widget_type  "category"
-                                                                                :required     true}}}}}]
+  (tt/with-temp Card [card {:dataset_query
+                            {:database (data/id)
+                             :type     :native
+                             :native   {:query         (str "SELECT COUNT(*) "
+                                                            "FROM venues "
+                                                            "LEFT JOIN categories ON venues.category_id = categories.id "
+                                                            "WHERE {{category}}")
+                                        :collection    "CATEGORIES"
+                                        :template_tags {:category {:name         "category"
+                                                                   :display_name "Category"
+                                                                   :type         "dimension"
+                                                                   :dimension    ["field-id" (data/id :categories :name)]
+                                                                   :widget_type  "category"
+                                                                   :required     true}}}}}]
     (-> (:param_values (#'public-api/public-card :id (u/get-id card)))
         (update-in [(data/id :categories :name) :values] count))))
 
@@ -313,7 +319,9 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash card]
       (with-temp-public-card [card-2]
-        (tt/with-temp DashboardCardSeries [_ {:dashboardcard_id (db/select-one-id DashboardCard :card_id (u/get-id card), :dashboard_id (u/get-id dash))
+        (tt/with-temp DashboardCardSeries [_ {:dashboardcard_id (db/select-one-id DashboardCard
+                                                                  :card_id      (u/get-id card)
+                                                                  :dashboard_id (u/get-id dash))
                                               :card_id          (u/get-id card-2)}]
           (qp-test/rows (http/client :get 200 (dashcard-url-path dash card-2))))))))
 
@@ -334,7 +342,8 @@
   (db/update! Dashboard (u/get-id dashboard) :parameters [{:name "Price", :type "category", :slug "price"}]))
 
 (defn- add-dimension-param-mapping-to-dashcard! [dashcard card dimension]
-  (db/update! DashboardCard (u/get-id dashcard) :parameter_mappings [{:card_id (u/get-id card), :target ["dimension" dimension]}]))
+  (db/update! DashboardCard (u/get-id dashcard) :parameter_mappings [{:card_id (u/get-id card)
+                                                                      :target  ["dimension" dimension]}]))
 
 (defn- GET-param-values [dashboard]
   (tu/with-temporary-setting-values [enable-public-sharing true]
@@ -344,7 +353,13 @@
 (expect
   (price-param-values)
   (with-temp-public-dashboard-and-card [dash card dashcard]
-    (db/update! Card (u/get-id card) :dataset_query {:native {:template_tags {:price {:name "price", :display_name "Price", :type "dimension", :dimension ["field-id" (data/id :venues :price)]}}}})
+    (db/update! Card (u/get-id card)
+      :dataset_query {:database (data/id)
+                      :type     :native
+                      :native   {:template_tags {:price {:name         "price"
+                                                         :display_name "Price"
+                                                         :type         "dimension"
+                                                         :dimension    ["field-id" (data/id :venues :price)]}}}})
     (add-price-param-to-dashboard! dash)
     (add-dimension-param-mapping-to-dashcard! dashcard card ["template-tag" "price"])
     (GET-param-values dash)))
@@ -364,3 +379,432 @@
     (add-price-param-to-dashboard! dash)
     (add-dimension-param-mapping-to-dashcard! dashcard card ["fk->" (data/id :checkins :venue_id) (data/id :venues :price)])
     (GET-param-values dash)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        New FieldValues search endpoints                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- mbql-card-referencing-nothing []
+  {:dataset_query {:database (data/id)
+                   :type     :query
+                   :query    {:source-table (data/id :venues)}}})
+
+(defn mbql-card-referencing [table-kw field-kw]
+  {:dataset_query
+   {:database (data/id)
+    :type     :query
+    :query    {:source-table (data/id table-kw)
+               :filter       [:= [:field-id (data/id table-kw field-kw)] "Krua Siri"]}}})
+
+(defn- mbql-card-referencing-venue-name []
+  (mbql-card-referencing :venues :name))
+
+(defn- sql-card-referencing-venue-name []
+  {:dataset_query
+   {:database (data/id)
+    :type     :native
+    :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
+               :template_tags {:x {:name         :x
+                                   :display_name "X"
+                                   :type         :dimension
+                                   :dimension    [:field-id (data/id :venues :name)]}}}}})
+
+
+;;; ------------------------------------------- card->referenced-field-ids -------------------------------------------
+
+(expect
+  #{}
+  (tt/with-temp Card [card (mbql-card-referencing-nothing)]
+    (#'public-api/card->referenced-field-ids card)))
+
+;; It should pick up on Fields referenced in the MBQL query itself...
+(expect
+ #{(data/id :venues :name)}
+ (tt/with-temp Card [card (mbql-card-referencing-venue-name)]
+   (#'public-api/card->referenced-field-ids card)))
+
+;; ...as well as template tag "implict" params for SQL queries
+(expect
+  #{(data/id :venues :name)}
+  (tt/with-temp Card [card (sql-card-referencing-venue-name)]
+    (#'public-api/card->referenced-field-ids card)))
+
+
+;;; --------------------------------------- check-field-is-referenced-by-card ----------------------------------------
+
+;; Check that the check succeeds when Field is referenced
+(expect
+  (tt/with-temp Card [card (mbql-card-referencing-venue-name)]
+    (#'public-api/check-field-is-referenced-by-card (data/id :venues :name) (u/get-id card))))
+
+;; check that exception is thrown if the Field isn't referenced
+(expect
+  Exception
+  (tt/with-temp Card [card (mbql-card-referencing-venue-name)]
+    (#'public-api/check-field-is-referenced-by-card (data/id :venues :category_id) (u/get-id card))))
+
+
+;;; ----------------------------------------- check-search-field-is-allowed ------------------------------------------
+
+;; search field is allowed IF:
+;; A) search-field is the same field as the other one
+(expect
+  (#'public-api/check-search-field-is-allowed (data/id :venues :id) (data/id :venues :id)))
+
+(expect
+  Exception
+  (#'public-api/check-search-field-is-allowed (data/id :venues :id) (data/id :venues :category_id)))
+
+;; B) there's a Dimension that lists search field as the human_readable_field for the other field
+(expect
+  (tt/with-temp Dimension [_ {:field_id (data/id :venues :id), :human_readable_field_id (data/id :venues :category_id)}]
+    (#'public-api/check-search-field-is-allowed (data/id :venues :id) (data/id :venues :category_id))))
+
+;; C) search-field is a Name Field belonging to the same table as the other field, which is a PK
+(expect
+  (do ;tu/with-temp-vals-in-db Field (data/id :venues :name) {:special_type "type/Name"}
+    (#'public-api/check-search-field-is-allowed (data/id :venues :id) (data/id :venues :name))))
+
+;; not allowed if search field isn't a NAME
+(expect
+  Exception
+  (tu/with-temp-vals-in-db Field (data/id :venues :name) {:special_type "type/Latitude"}
+    (#'public-api/check-search-field-is-allowed (data/id :venues :id) (data/id :venues :name))))
+
+;; not allowed if search field belongs to a different TABLE
+(expect
+  Exception
+  (tu/with-temp-vals-in-db Field (data/id :categories :name) {:special_type "type/Name"}
+    (#'public-api/check-search-field-is-allowed (data/id :venues :id) (data/id :categories :name))))
+
+
+;;; ------------------------------------- check-field-is-referenced-by-dashboard -------------------------------------
+
+(defn- dashcard-with-param-mapping-to-venue-id [dashboard card]
+  {:dashboard_id       (u/get-id dashboard)
+   :card_id            (u/get-id card)
+   :parameter_mappings [{:card_id (u/get-id card)
+                         :target  [:dimension [:field-id (data/id :venues :id)]]}]})
+
+;; Field is "referenced" by Dashboard if it's one of the Dashboard's params...
+(expect
+  (tt/with-temp* [Dashboard     [dashboard]
+                  Card          [card]
+                  DashboardCard [_ (dashcard-with-param-mapping-to-venue-id dashboard card)]]
+    (#'public-api/check-field-is-referenced-by-dashboard (data/id :venues :id) (u/get-id dashboard))))
+
+(expect
+  Exception
+  (tt/with-temp* [Dashboard     [dashboard]
+                  Card          [card]
+                  DashboardCard [_ (dashcard-with-param-mapping-to-venue-id dashboard card)]]
+    (#'public-api/check-field-is-referenced-by-dashboard (data/id :venues :name) (u/get-id dashboard))))
+
+;; ...*or* if it's a so-called "implicit" param (a Field Filter Template Tag (FFTT) in a SQL Card)
+(expect
+  (tt/with-temp* [Dashboard     [dashboard]
+                  Card          [card (sql-card-referencing-venue-name)]
+                  DashboardCard [_ {:dashboard_id (u/get-id dashboard), :card_id (u/get-id card)}]]
+    (#'public-api/check-field-is-referenced-by-dashboard (data/id :venues :name) (u/get-id dashboard))))
+
+(expect
+  Exception
+  (tt/with-temp* [Dashboard     [dashboard]
+                  Card          [card (sql-card-referencing-venue-name)]
+                  DashboardCard [_ {:dashboard_id (u/get-id dashboard), :card_id (u/get-id card)}]]
+    (#'public-api/check-field-is-referenced-by-dashboard (data/id :venues :id) (u/get-id dashboard))))
+
+
+;;; ------------------------------------------- card-and-field-id->values --------------------------------------------
+
+;; We should be able to get values for a Field referenced by a Card
+(expect
+  {:values   [["20th Century Cafe"]
+              ["25°"]
+              ["33 Taps"]
+              ["800 Degrees Neapolitan Pizzeria"]
+              ["BCD Tofu House"]]
+   :field_id (data/id :venues :name)}
+  (tt/with-temp Card [card (mbql-card-referencing :venues :name)]
+    (-> (public-api/card-and-field-id->values (u/get-id card) (data/id :venues :name))
+        (update :values (partial take 5)))))
+
+;; SQL param field references should work just as well as MBQL field referenced
+(expect
+  {:values   [["20th Century Cafe"]
+              ["25°"]
+              ["33 Taps"]
+              ["800 Degrees Neapolitan Pizzeria"]
+              ["BCD Tofu House"]]
+   :field_id (data/id :venues :name)}
+  (tt/with-temp Card [card (sql-card-referencing-venue-name)]
+    (-> (public-api/card-and-field-id->values (u/get-id card) (data/id :venues :name))
+        (update :values (partial take 5)))))
+
+;; But if the Field is not referenced we should get an Exception
+(expect
+  Exception
+  (tt/with-temp Card [card (mbql-card-referencing :venues :price)]
+    (public-api/card-and-field-id->values (u/get-id card) (data/id :venues :name))))
+
+
+;;; ------------------------------- GET /api/public/card/:uuid/field/:field-id/values --------------------------------
+
+(defn- field-values-url [card-or-dashboard field-or-id]
+  (str "public/"
+       (condp instance? card-or-dashboard
+         (class Card)      "card"
+         (class Dashboard) "dashboard")
+       "/" (or (:public_uuid card-or-dashboard)
+               (throw (Exception. (str "Missing public UUID: " card-or-dashboard))))
+       "/field/" (u/get-id field-or-id)
+       "/values"))
+
+(defn- do-with-sharing-enabled-and-temp-card-referencing {:style/indent 2} [table-kw field-kw f]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [card (merge (shared-obj) (mbql-card-referencing table-kw field-kw))]
+      (f card))))
+
+(defmacro ^:private with-sharing-enabled-and-temp-card-referencing
+  {:style/indent 3}
+  [table-kw field-kw [card-binding] & body]
+  `(do-with-sharing-enabled-and-temp-card-referencing ~table-kw ~field-kw
+     (fn [~card-binding]
+       ~@body)))
+
+;; should be able to fetch values for a Field referenced by a public Card
+(expect
+  {:values   [["20th Century Cafe"]
+              ["25°"]
+              ["33 Taps"]
+              ["800 Degrees Neapolitan Pizzeria"]
+              ["BCD Tofu House"]]
+   :field_id (data/id :venues :name)}
+  (with-sharing-enabled-and-temp-card-referencing :venues :name [card]
+    (-> (http/client :get 200 (field-values-url card (data/id :venues :name)))
+        (update :values (partial take 5)))))
+
+;; but for Fields that are not referenced we should get an Exception
+(expect
+ "An error occurred."
+ (with-sharing-enabled-and-temp-card-referencing :venues :name [card]
+   (http/client :get 400 (field-values-url card (data/id :venues :price)))))
+
+;; Endpoint should fail if public sharing is disabled
+(expect
+ "An error occurred."
+ (with-sharing-enabled-and-temp-card-referencing :venues :name [card]
+   (tu/with-temporary-setting-values [enable-public-sharing false]
+     (http/client :get 400 (field-values-url card (data/id :venues :name))))))
+
+
+;;; ----------------------------- GET /api/public/dashboard/:uuid/field/:field-id/values -----------------------------
+
+(defn do-with-sharing-enabled-and-temp-dashcard-referencing {:style/indent 2} [table-kw field-kw f]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp* [Dashboard     [dashboard (shared-obj)]
+                    Card          [card      (mbql-card-referencing table-kw field-kw)]
+                    DashboardCard [dashcard  {:dashboard_id       (u/get-id dashboard)
+                                              :card_id            (u/get-id card)
+                                              :parameter_mappings [{:card_id (u/get-id card)
+                                                                    :target  [:dimension
+                                                                              [:field-id
+                                                                               (data/id table-kw field-kw)]]}]}]]
+      (f dashboard card dashcard))))
+
+(defmacro with-sharing-enabled-and-temp-dashcard-referencing
+  {:style/indent 3}
+  [table-kw field-kw [dashboard-binding card-binding dashcard-binding] & body]
+  `(do-with-sharing-enabled-and-temp-dashcard-referencing ~table-kw ~field-kw
+     (fn [~(or dashboard-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
+       ~@body)))
+
+;; should be able to use it when everything is g2g
+(expect
+  {:values   [["20th Century Cafe"]
+              ["25°"]
+              ["33 Taps"]
+              ["800 Degrees Neapolitan Pizzeria"]
+              ["BCD Tofu House"]]
+   :field_id (data/id :venues :name)}
+  (with-sharing-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
+    (-> (http/client :get 200 (field-values-url dashboard (data/id :venues :name)))
+        (update :values (partial take 5)))))
+
+;; shound NOT be able to use the endpoint with a Field not referenced by the Dashboard
+(expect
+ "An error occurred."
+ (with-sharing-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
+   (http/client :get 400 (field-values-url dashboard (data/id :venues :price)))))
+
+;; Endpoint should fail if public sharing is disabled
+(expect
+ "An error occurred."
+ (with-sharing-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
+   (tu/with-temporary-setting-values [enable-public-sharing false]
+     (http/client :get 400 (field-values-url dashboard (data/id :venues :name))))))
+
+
+;;; ----------------------------------------------- search-card-fields -----------------------------------------------
+
+(expect
+ [[93 "33 Taps"]]
+ (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
+   (do ;tu/with-temp-vals-in-db Field (data/id :venues :name) {:special_type "type/Name"}
+     (public-api/search-card-fields (u/get-id card) (data/id :venues :id) (data/id :venues :name) "33 T" 10))))
+
+;; shouldn't work if the search-field isn't allowed to be used in combination with the other Field
+(expect
+ Exception
+ (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
+   (public-api/search-card-fields (u/get-id card) (data/id :venues :id) (data/id :venues :price) "33 T" 10)))
+
+;; shouldn't work if the field isn't referenced by CARD
+(expect
+ Exception
+ (with-sharing-enabled-and-temp-card-referencing :venues :name [card]
+   (public-api/search-card-fields (u/get-id card) (data/id :venues :id) (data/id :venues :id) "33 T" 10)))
+
+
+;;; ----------------------- GET /api/public/card/:uuid/field/:field-id/search/:search-field-id -----------------------
+
+(defn- field-search-url [card-or-dashboard field-or-id search-field-or-id]
+  (str "public/"
+       (condp instance? card-or-dashboard
+         (class Card)      "card"
+         (class Dashboard) "dashboard")
+       "/" (:public_uuid card-or-dashboard)
+       "/field/" (u/get-id field-or-id)
+       "/search/" (u/get-id search-field-or-id)))
+
+(expect
+ [[93 "33 Taps"]]
+ (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
+   (http/client :get 200 (field-search-url card (data/id :venues :id) (data/id :venues :name))
+                :value "33 T")))
+
+;; if search field isn't allowed to be used with the other Field endpoint should return exception
+(expect
+ "An error occurred."
+ (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
+   (http/client :get 400 (field-search-url card (data/id :venues :id) (data/id :venues :price))
+                :value "33 T")))
+
+;; Endpoint should fail if public sharing is disabled
+(expect
+  "An error occurred."
+  (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
+    (tu/with-temporary-setting-values [enable-public-sharing false]
+      (http/client :get 400 (field-search-url card (data/id :venues :id) (data/id :venues :name))
+                   :value "33 T"))))
+
+
+;;; -------------------- GET /api/public/dashboard/:uuid/field/:field-id/search/:search-field-id ---------------------
+
+(expect
+  [[93 "33 Taps"]]
+ (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+   (http/client :get (field-search-url dashboard (data/id :venues :id) (data/id :venues :name))
+                :value "33 T")))
+
+;; if search field isn't allowed to be used with the other Field endpoint should return exception
+(expect
+  "An error occurred."
+  (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+    (http/client :get 400 (field-search-url dashboard (data/id :venues :id) (data/id :venues :price))
+                 :value "33 T")))
+
+;; Endpoint should fail if public sharing is disabled
+(expect
+  "An error occurred."
+  (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+    (tu/with-temporary-setting-values [enable-public-sharing false]
+      (http/client :get 400 (field-search-url dashboard (data/id :venues :name) (data/id :venues :name))
+                   :value "33 T"))))
+
+;;; --------------------------------------------- field-remapped-values ----------------------------------------------
+
+;; `field-remapped-values` should return remappings in the expected format when the combination of Fields is allowed.
+;; It should parse the value string (it comes back from the API as a string since it is a query param)
+(expect
+ [10 "Fred 62"]
+ (#'public-api/field-remapped-values (data/id :venues :id) (data/id :venues :name) "10"))
+
+;; if the Field isn't allowed
+(expect
+  Exception
+  (#'public-api/field-remapped-values (data/id :venues :id) (data/id :venues :price) "10"))
+
+
+;;; ----------------------- GET /api/public/card/:uuid/field/:field-id/remapping/:remapped-id ------------------------
+
+(defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
+  (str "public/"
+       (condp instance? card-or-dashboard
+         (class Card)      "card"
+         (class Dashboard) "dashboard")
+       "/" (:public_uuid card-or-dashboard)
+       "/field/" (u/get-id field-or-id)
+       "/remapping/" (u/get-id remapped-field-or-id)))
+
+;; we should be able to use the API endpoint and get the same results we get by calling the function above directly
+(expect
+ [10 "Fred 62"]
+ (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
+   (http/client :get 200 (field-remapping-url card (data/id :venues :id) (data/id :venues :name))
+                :value "10")))
+
+;; shouldn't work if Card doesn't reference the Field in question
+(expect
+ "An error occurred."
+ (with-sharing-enabled-and-temp-card-referencing :venues :price [card]
+   (http/client :get 400 (field-remapping-url card (data/id :venues :id) (data/id :venues :name))
+                :value "10")))
+
+;; ...or if the remapping Field isn't allowed to be used with the other Field
+(expect
+ "An error occurred."
+ (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
+   (http/client :get 400 (field-remapping-url card (data/id :venues :id) (data/id :venues :price))
+                :value "10")))
+
+;; ...or if public sharing is disabled
+(expect
+ "An error occurred."
+ (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
+   (tu/with-temporary-setting-values [enable-public-sharing false]
+     (http/client :get 400 (field-remapping-url card (data/id :venues :id) (data/id :venues :name))
+                  :value "10"))))
+
+
+;;; --------------------- GET /api/public/dashboard/:uuid/field/:field-id/remapping/:remapped-id ---------------------
+
+;; we should be able to use the API endpoint and get the same results we get by calling the function above directly
+(expect
+ [10 "Fred 62"]
+ (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+   (http/client :get 200 (field-remapping-url dashboard (data/id :venues :id) (data/id :venues :name))
+                :value "10")))
+
+;; shouldn't work if Card doesn't reference the Field in question
+(expect
+ "An error occurred."
+ (with-sharing-enabled-and-temp-dashcard-referencing :venues :price [dashboard]
+   (http/client :get 400 (field-remapping-url dashboard (data/id :venues :id) (data/id :venues :name))
+                :value "10")))
+
+;; ...or if the remapping Field isn't allowed to be used with the other Field
+(expect
+ "An error occurred."
+ (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+   (http/client :get 400 (field-remapping-url dashboard (data/id :venues :id) (data/id :venues :price))
+                :value "10")))
+
+;; ...or if public sharing is disabled
+(expect
+ "An error occurred."
+ (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+   (tu/with-temporary-setting-values [enable-public-sharing false]
+     (http/client :get 400 (field-remapping-url dashboard (data/id :venues :id) (data/id :venues :name))
+                  :value "10"))))

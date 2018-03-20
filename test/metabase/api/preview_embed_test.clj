@@ -2,14 +2,16 @@
   (:require [expectations :refer :all]
             [metabase.api.embed-test :as embed-test]
             [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 
-;;; ------------------------------------------------------------ GET /api/preview_embed/card/:token ------------------------------------------------------------
+;;; --------------------------------------- GET /api/preview_embed/card/:token ---------------------------------------
 
-(defn- card-url [card & [additional-token-params]] (str "preview_embed/card/" (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))))
+(defn- card-url [card & [additional-token-params]]
+  (str "preview_embed/card/" (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))))
 
 ;; it should be possible to use this endpoint successfully if all the conditions are met
 (expect
@@ -45,15 +47,22 @@
 (expect
   [{:id nil, :type "date/single", :target ["variable" ["template-tag" "d"]], :name "d", :slug "d", :default nil}]
   (embed-test/with-embedding-enabled-and-new-secret-key
-    (embed-test/with-temp-card [card {:dataset_query {:native {:template_tags {:a {:type "date", :name "a", :display_name "a"}
-                                                                               :b {:type "date", :name "b", :display_name "b"}
-                                                                               :c {:type "date", :name "c", :display_name "c"}
-                                                                               :d {:type "date", :name "d", :display_name "d"}}}}}]
-      (:parameters ((test-users/user->client :crowberto) :get 200 (card-url card {:_embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}
-                                                                                  :params            {:c 100}}))))))
+    (embed-test/with-temp-card [card {:dataset_query
+                                      {:database (data/id)
+                                       :type     :native
+                                       :native   {:template_tags {:a {:type "date", :name "a", :display_name "a"}
+                                                                  :b {:type "date", :name "b", :display_name "b"}
+                                                                  :c {:type "date", :name "c", :display_name "c"}
+                                                                  :d {:type "date", :name "d", :display_name "d"}}}}}]
+      (-> ((test-users/user->client :crowberto) :get 200 (card-url card {:_embedding_params {:a "locked"
+                                                                                             :b "disabled"
+                                                                                             :c "enabled"
+                                                                                             :d "enabled"}
+                                                                         :params            {:c 100}}))
+          :parameters ))))
 
 
-;;; ------------------------------------------------------------ GET /api/preview_embed/card/:token/query ------------------------------------------------------------
+;;; ------------------------------------ GET /api/preview_embed/card/:token/query ------------------------------------
 
 (defn- card-query-url [card & [additional-token-params]]
   (str "preview_embed/card/"
@@ -104,14 +113,17 @@
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-card [card]
-      ((test-users/user->client :crowberto) :get 200 (card-query-url card {:_embedding_params {:abc "locked"}, :params {:abc 100}})))))
+      ((test-users/user->client :crowberto) :get 200 (card-query-url card {:_embedding_params {:abc "locked"}
+                                                                           :params            {:abc 100}})))))
 
 ;; if `:locked` parameter is present in URL params, request should fail
 (expect
   "You can only specify a value for :abc in the JWT."
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-card [card]
-      ((test-users/user->client :crowberto) :get 400 (str (card-query-url card {:_embedding_params {:abc "locked"}, :params {:abc 100}}) "?abc=200")))))
+      ((test-users/user->client :crowberto) :get 400 (str (card-query-url card {:_embedding_params {:abc "locked"}
+                                                                                :params            {:abc 100}})
+                                                          "?abc=200")))))
 
 ;;; DISABLED params
 
@@ -120,14 +132,16 @@
   "You're not allowed to specify a value for :abc."
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-card [card]
-      ((test-users/user->client :crowberto) :get 400 (card-query-url card {:_embedding_params {:abc "disabled"}, :params {:abc 100}})))))
+      ((test-users/user->client :crowberto) :get 400 (card-query-url card {:_embedding_params {:abc "disabled"}
+                                                                           :params            {:abc 100}})))))
 
 ;; If a `:disabled` param is passed in the URL the request should fail
 (expect
   "You're not allowed to specify a value for :abc."
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-card [card]
-      ((test-users/user->client :crowberto) :get 400 (str (card-query-url card {:_embedding_params {:abc "disabled"}}) "?abc=200")))))
+      ((test-users/user->client :crowberto) :get 400 (str (card-query-url card {:_embedding_params {:abc "disabled"}})
+                                                          "?abc=200")))))
 
 ;;; ENABLED params
 
@@ -136,26 +150,32 @@
   "You can't specify a value for :abc if it's already set in the JWT."
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-card [card]
-      ((test-users/user->client :crowberto) :get 400 (str (card-query-url card {:_embedding_params {:abc "enabled"}, :params {:abc 100}}) "?abc=200")))))
+      ((test-users/user->client :crowberto) :get 400 (str (card-query-url card {:_embedding_params {:abc "enabled"}
+                                                                                :params            {:abc 100}})
+                                                          "?abc=200")))))
 
 ;; If an `:enabled` param is present in the JWT, that's ok
 (expect
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-card [card]
-      ((test-users/user->client :crowberto) :get 200 (card-query-url card {:_embedding_params {:abc "enabled"}, :params {:abc "enabled"}})))))
+      ((test-users/user->client :crowberto) :get 200 (card-query-url card {:_embedding_params {:abc "enabled"}
+                                                                           :params            {:abc "enabled"}})))))
 
 ;; If an `:enabled` param is present in URL params but *not* the JWT, that's ok
 (expect
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-card [card]
-      ((test-users/user->client :crowberto) :get 200 (str (card-query-url card {:_embedding_params {:abc "enabled"}}) "?abc=200")))))
+      ((test-users/user->client :crowberto) :get 200 (str (card-query-url card {:_embedding_params {:abc "enabled"}})
+                                                          "?abc=200")))))
 
 
-;;; ------------------------------------------------------------ GET /api/preview_embed/dashboard/:token ------------------------------------------------------------
+;;; ------------------------------------ GET /api/preview_embed/dashboard/:token -------------------------------------
 
-(defn- dashboard-url [dashboard & [additional-token-params]] (str "preview_embed/dashboard/" (embed-test/dash-token dashboard (merge {:_embedding_params {}} additional-token-params))))
+(defn- dashboard-url {:style/indent 1} [dashboard & [additional-token-params]]
+  (str "preview_embed/dashboard/" (embed-test/dash-token dashboard (merge {:_embedding_params {}}
+                                                                          additional-token-params))))
 
 ;; it should be possible to call this endpoint successfully...
 (expect
@@ -195,14 +215,19 @@
                                                 {:slug "b", :name "b", :type "date"}
                                                 {:slug "c", :name "c", :type "date"}
                                                 {:slug "d", :name "d", :type "date"}]}]
-      (:parameters ((test-users/user->client :crowberto) :get 200 (dashboard-url dash {:params            {:c 100},
-                                                                                       :_embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}}))))))
+      (:parameters ((test-users/user->client :crowberto) :get 200 (dashboard-url dash
+                                                                    {:params            {:c 100},
+                                                                     :_embedding_params {:a "locked"
+                                                                                         :b "disabled"
+                                                                                         :c "enabled"
+                                                                                         :d "enabled"}}))))))
 
 
-;;; ------------------------------------------------------------ GET /api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id ------------------------------------------------------------
+;;; ------------------ GET /api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -------------------
 
 (defn- dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
-  (str "preview_embed/dashboard/" (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}} additional-token-params))
+  (str "preview_embed/dashboard/" (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}}
+                                                                                         additional-token-params))
        "/dashcard/" (u/get-id dashcard)
        "/card/" (:card_id dashcard)))
 
@@ -277,7 +302,8 @@
   "You're not allowed to specify a value for :abc."
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-dashcard [dashcard]
-      ((test-users/user->client :crowberto) :get 400 (str (dashcard-url dashcard {:_embedding_params {:abc "disabled"}}) "?abc=200")))))
+      ((test-users/user->client :crowberto) :get 400 (str (dashcard-url dashcard {:_embedding_params {:abc "disabled"}})
+                                                          "?abc=200")))))
 
 ;;; ENABLED params
 
@@ -286,18 +312,47 @@
   "You can't specify a value for :abc if it's already set in the JWT."
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-dashcard [dashcard]
-      ((test-users/user->client :crowberto) :get 400 (str (dashcard-url dashcard {:_embedding_params {:abc "enabled"}, :params {:abc 100}}) "?abc=200")))))
+      ((test-users/user->client :crowberto) :get 400 (str (dashcard-url dashcard {:_embedding_params {:abc "enabled"}
+                                                                                  :params            {:abc 100}})
+                                                          "?abc=200")))))
 
 ;; If an `:enabled` param is present in the JWT, that's ok
 (expect
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-dashcard [dashcard]
-      ((test-users/user->client :crowberto) :get 200 (dashcard-url dashcard {:_embedding_params {:abc "enabled"}, :params {:abc 100}})))))
+      ((test-users/user->client :crowberto) :get 200 (dashcard-url dashcard {:_embedding_params {:abc "enabled"}
+                                                                             :params            {:abc 100}})))))
 
 ;; If an `:enabled` param is present in URL params but *not* the JWT, that's ok
 (expect
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-dashcard [dashcard]
-      ((test-users/user->client :crowberto) :get 200 (str (dashcard-url dashcard {:_embedding_params {:abc "enabled"}}) "?abc=200")))))
+      ((test-users/user->client :crowberto) :get 200 (str (dashcard-url dashcard {:_embedding_params {:abc "enabled"}})
+                                                          "?abc=200")))))
+
+;; Check that editable query params work correctly and keys get coverted from strings to keywords, even if they're
+;; something that our middleware doesn't normally assume is implicitly convertable to a keyword. See
+;; `ring.middleware.keyword-params/keyword-syntax?` (#6783)
+(expect
+  "completed"
+  (embed-test/with-embedding-enabled-and-new-secret-key
+    (embed-test/with-temp-card [card {:dataset_query
+                                      {:database (data/id)
+                                       :type     "native"
+                                       :native   {:query         (str "SELECT {{num_birds}} AS num_birds,"
+                                                                      "       {{2nd_date_seen}} AS 2nd_date_seen")
+                                                  :template_tags {:equipment        {:name         "num_birds"
+                                                                                     :display_name "Num Birds"
+                                                                                     :type         "number"}
+                                                                  :7_days_ending_on {:name         "2nd_date_seen",
+                                                                                     :display_name "Date Seen",
+                                                                                     :type         "date"}}}}}]
+      (-> (embed-test/with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+            ((test-users/user->client :crowberto) :get 200 (str (dashcard-url dashcard
+                                                                  {:_embedding_params {:num_birds     :locked
+                                                                                       :2nd_date_seen :enabled}
+                                                                   :params            {:num_birds 2}})
+                                                                "?2nd_date_seen=2018-02-14")))
+          :status))))

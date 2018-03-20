@@ -10,81 +10,77 @@ import Query from "metabase/lib/query";
 import _ from "underscore";
 
 export default class FieldWidget extends Component {
-    constructor(props, context) {
-        super(props, context);
+  constructor(props, context) {
+    super(props, context);
 
-        this.state = {
-            isOpen: props.isInitiallyOpen || false
-        };
-
-        _.bindAll(this, "toggle", "setField");
-    }
-
-    static propTypes = {
-        field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
-        fieldOptions: PropTypes.object.isRequired,
-        customFieldOptions: PropTypes.object,
-        setField: PropTypes.func.isRequired,
-        removeField: PropTypes.func,
-        isInitiallyOpen: PropTypes.bool,
-        tableMetadata: PropTypes.object.isRequired,
-        enableSubDimensions: PropTypes.bool
+    this.state = {
+      isOpen: props.isInitiallyOpen || false,
     };
 
-    static defaultProps = {
-        color: "brand",
-        enableSubDimensions: true
-    };
+    _.bindAll(this, "toggle", "setField");
+  }
 
-    setField(value) {
-        this.props.setField(value);
-        if (Query.isValidField(value)) {
-            this.toggle();
-        }
-    }
+  static propTypes = {
+    field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
+    fieldOptions: PropTypes.object.isRequired,
+    customFieldOptions: PropTypes.object,
+    setField: PropTypes.func.isRequired,
+    removeField: PropTypes.func,
+    isInitiallyOpen: PropTypes.bool,
+    tableMetadata: PropTypes.object.isRequired,
+    enableSubDimensions: PropTypes.bool,
+  };
 
-    toggle() {
-        this.setState({ isOpen: !this.state.isOpen });
-    }
+  static defaultProps = {
+    color: "brand",
+    enableSubDimensions: true,
+  };
 
-    renderPopover() {
-        if (this.state.isOpen) {
-            return (
-                <Popover
-                    ref="popover"
-                    className="FieldPopover"
-                    onClose={this.toggle}
-                >
-                    <FieldList
-                        className={"text-" + this.props.color}
-                        tableMetadata={this.props.tableMetadata}
-                        field={this.props.field}
-                        fieldOptions={this.props.fieldOptions}
-                        customFieldOptions={this.props.customFieldOptions}
-                        onFieldChange={this.setField}
-                        enableSubDimensions={this.props.enableSubDimensions}
-                    />
-                </Popover>
-            );
-        }
+  setField(value) {
+    this.props.setField(value);
+    if (Query.isValidField(value)) {
+      this.toggle();
     }
+  }
 
-    render() {
-        const { className, field, query } = this.props;
-        return (
-            <div className="flex align-center">
-                <FieldName
-                    className={className}
-                    field={field}
-                    query={query}
-                    tableMetadata={this.props.tableMetadata}
-                    fieldOptions={this.props.fieldOptions}
-                    customFieldOptions={this.props.customFieldOptions}
-                    removeField={this.props.removeField}
-                    onClick={this.toggle}
-                />
-                {this.renderPopover()}
-            </div>
-        );
+  toggle() {
+    this.setState({ isOpen: !this.state.isOpen });
+  }
+
+  renderPopover() {
+    if (this.state.isOpen) {
+      return (
+        <Popover ref="popover" className="FieldPopover" onClose={this.toggle}>
+          <FieldList
+            className={"text-" + this.props.color}
+            tableMetadata={this.props.tableMetadata}
+            field={this.props.field}
+            fieldOptions={this.props.fieldOptions}
+            customFieldOptions={this.props.customFieldOptions}
+            onFieldChange={this.setField}
+            enableSubDimensions={this.props.enableSubDimensions}
+          />
+        </Popover>
+      );
     }
+  }
+
+  render() {
+    const { className, field, query } = this.props;
+    return (
+      <div className="flex align-center">
+        <FieldName
+          className={className}
+          field={field}
+          query={query}
+          tableMetadata={this.props.tableMetadata}
+          fieldOptions={this.props.fieldOptions}
+          customFieldOptions={this.props.customFieldOptions}
+          removeField={this.props.removeField}
+          onClick={this.toggle}
+        />
+        {this.renderPopover()}
+      </div>
+    );
+  }
 }

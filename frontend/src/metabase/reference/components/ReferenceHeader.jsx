@@ -11,68 +11,68 @@ import E from "metabase/reference/components/EditButton.css";
 import IconBorder from "metabase/components/IconBorder.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
-import { t } from 'c-3po';
+import { t } from "c-3po";
 
 const ReferenceHeader = ({
-    name,
-    type,
-    headerIcon,
-    headerBody,
-    headerLink
-}) =>
-    <div className="wrapper wrapper--trim">
-        <div className={cx("relative", L.header)}>
-            <div className={L.leftIcons}>
-                { headerIcon &&
-                    <IconBorder
-                        borderWidth="0"
-                        style={{backgroundColor: "#E9F4F8"}}
-                    >
-                        <Icon
-                            className="text-brand"
-                            name={headerIcon}
-                            width={24}
-                            height={24}
-                        />
-                    </IconBorder>
-                }
-            </div>
-            <div
-                className={S.headerBody}
+  name,
+  type,
+  headerIcon,
+  headerBody,
+  headerLink,
+}) => (
+  <div className="wrapper wrapper--trim">
+    <div className={cx("relative", L.header)}>
+      <div className={L.leftIcons}>
+        {headerIcon && (
+          <IconBorder borderWidth="0" style={{ backgroundColor: "#E9F4F8" }}>
+            <Icon
+              className="text-brand"
+              name={headerIcon}
+              width={24}
+              height={24}
+            />
+          </IconBorder>
+        )}
+      </div>
+      <div className={S.headerBody}>
+        <Ellipsified
+          key="1"
+          className={!headerLink && "flex-full"}
+          tooltipMaxWidth="100%"
+        >
+          {name}
+        </Ellipsified>
+
+        {headerLink && (
+          <div key="2" className={cx("flex-full", S.headerButton)}>
+            <Link
+              to={headerLink}
+              className={cx(
+                "Button",
+                "Button--borderless",
+                "ml3",
+                E.editButton,
+              )}
+              data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
             >
-                <Ellipsified
-                    key="1"
-                    className={!headerLink && "flex-full"}
-                    tooltipMaxWidth="100%"
-                >
-                    { name }
-                </Ellipsified>
-                
-                {headerLink &&
-                    <div key="2" className={cx("flex-full", S.headerButton)}>
-                        <Link
-                            to={headerLink}
-                            className={cx("Button", "Button--borderless", "ml3", E.editButton)}
-                            data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
-                        >
-                            <div className="flex align-center relative">
-                                <span className="mr1 flex-no-shrink">{t`See this ${type}`}</span>
-                                <Icon name="chevronright" size={16} />
-                            </div>
-                        </Link>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>;
+              <div className="flex align-center relative">
+                <span className="mr1 flex-no-shrink">{t`See this ${type}`}</span>
+                <Icon name="chevronright" size={16} />
+              </div>
+            </Link>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+);
 
 ReferenceHeader.propTypes = {
-    name: PropTypes.string.isRequired,
-    type: PropTypes.string,
-    headerIcon: PropTypes.string,
-    headerBody: PropTypes.string,
-    headerLink: PropTypes.string
-
+  name: PropTypes.string.isRequired,
+  type: PropTypes.string,
+  headerIcon: PropTypes.string,
+  headerBody: PropTypes.string,
+  headerLink: PropTypes.string,
 };
 
 export default pure(ReferenceHeader);

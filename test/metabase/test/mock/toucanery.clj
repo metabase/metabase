@@ -1,7 +1,6 @@
 (ns metabase.test.mock.toucanery
-  "A document style database mocked for testing.
-   This is a `:dynamic-schema` db with `:nested-fields`.
-   Most notably meant to serve as a representation of a Mongo database."
+  "A document style database mocked for testing. This is a dynamic schema db with `:nested-fields`. Most notably meant
+  to serve as a representation of a Mongo database."
   (:require [metabase.driver :as driver]
             [metabase.test.mock.util :as mock-util]))
 
@@ -76,7 +75,7 @@
   (merge driver/IDriverDefaultsMixin
          {:describe-database        describe-database
           :describe-table           describe-table
-          :features                 (constantly #{:dynamic-schema :nested-fields})
+          :features                 (constantly #{:nested-fields})
           :details-fields           (constantly [])
           :table-rows-seq           table-rows-seq
           :process-query-in-context mock-util/process-query-in-context}))

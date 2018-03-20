@@ -9,43 +9,41 @@ import PulseEdit from "../components/PulseEdit.jsx";
 
 import { editPulseSelectors } from "../selectors";
 import {
-    setEditingPulse,
-    updateEditingPulse,
-    saveEditingPulse,
-    deletePulse,
-    fetchCards,
-    fetchUsers,
-    fetchPulseFormInput,
-    fetchPulseCardPreview,
-    testPulse,
+  setEditingPulse,
+  updateEditingPulse,
+  saveEditingPulse,
+  deletePulse,
+  fetchCards,
+  fetchUsers,
+  fetchPulseFormInput,
+  fetchPulseCardPreview,
+  testPulse,
 } from "../actions";
 
 const mapStateToProps = (state, props) => {
-    return {
-        ...editPulseSelectors(state, props),
-        user: state.currentUser
-    }
-}
+  return {
+    ...editPulseSelectors(state, props),
+    user: state.currentUser,
+  };
+};
 
 const mapDispatchToProps = {
-    setEditingPulse,
-    updateEditingPulse,
-    saveEditingPulse,
-    deletePulse,
-    fetchCards,
-    fetchUsers,
-    fetchPulseFormInput,
-    fetchPulseCardPreview,
-    testPulse,
-    onChangeLocation: push
+  setEditingPulse,
+  updateEditingPulse,
+  saveEditingPulse,
+  deletePulse,
+  fetchCards,
+  fetchUsers,
+  fetchPulseFormInput,
+  fetchPulseCardPreview,
+  testPulse,
+  onChangeLocation: push,
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ pulse }) => pulse && pulse.name)
 export default class PulseEditApp extends Component {
-    render() {
-        return (
-            <PulseEdit { ...this.props } />
-        );
-    }
+  render() {
+    return <PulseEdit {...this.props} />;
+  }
 }

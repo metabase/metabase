@@ -13,41 +13,48 @@ import cx from "classnames";
  */
 
 export default class IconBorder extends Component {
+  static propTypes = {
+    borderWidth: PropTypes.string,
+    borderStyle: PropTypes.string,
+    borderColor: PropTypes.string,
+    borderRadius: PropTypes.string,
+    style: PropTypes.object,
+    children: PropTypes.any.isRequired,
+  };
 
-    static propTypes = {
-        borderWidth: PropTypes.string,
-        borderStyle: PropTypes.string,
-        borderColor: PropTypes.string,
-        borderRadius: PropTypes.string,
-        style: PropTypes.object,
-        children: PropTypes.any.isRequired
+  static defaultProps = {
+    borderWidth: "1px",
+    borderStyle: "solid",
+    borderColor: "currentcolor",
+    borderRadius: "99px",
+    style: {},
+  };
+
+  render() {
+    const {
+      borderWidth,
+      borderStyle,
+      borderColor,
+      borderRadius,
+      className,
+      style,
+      children,
+    } = this.props;
+    const size = parseInt(children.props.size || children.props.width, 10) * 2;
+    const styles = {
+      width: size,
+      height: size,
+      borderWidth: borderWidth,
+      borderStyle: borderStyle,
+      borderColor: borderColor,
+      borderRadius: borderRadius,
+      ...style,
     };
 
-    static defaultProps = {
-        borderWidth: '1px',
-        borderStyle: 'solid',
-        borderColor: 'currentcolor',
-        borderRadius: '99px',
-        style: {},
-    };
-
-    render() {
-        const { borderWidth, borderStyle, borderColor, borderRadius, className, style, children } = this.props;
-        const size = parseInt(children.props.size || children.props.width, 10) * 2
-        const styles = {
-            width: size,
-            height: size,
-            borderWidth: borderWidth,
-            borderStyle: borderStyle,
-            borderColor: borderColor,
-            borderRadius: borderRadius,
-            ...style
-        }
-
-        return (
-            <div className={cx('flex layout-centered', className)} style={styles}>
-                {children}
-            </div>
-        );
-    }
+    return (
+      <div className={cx("flex layout-centered", className)} style={styles}>
+        {children}
+      </div>
+    );
+  }
 }

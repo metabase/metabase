@@ -53,13 +53,16 @@
 (defn- key-by [key-fn coll]
   (zipmap (map key-fn coll) coll))
 
-(defn- notify-recipient-changes!
-  "This function compares `OLD-ALERT` and `UPDATED-ALERT` to determine if there have been any recipient related
-  changes. Recipients that have been added or removed will be notified."
-  [old-alert updated-alert]
-  (let [{old-recipients :recipients} (email-channel old-alert)
-        {new-recipients :recipients} (email-channel updated-alert)
-        old-ids->users (key-by :id old-recipients)
+(defn- notify-email-disabled! [alert recipients]
+  (doseq [user recipients]
+    (messages/send-admin-unsubscribed-alert-email! alert user @api/*current-user*)))
+
+(defn- notify-email-enabled! [alert recipients]
+  (doseq [user recipients]
+    (messages/send-you-were-added-alert-email! alert user @api/*current-user*)))
+
+(defn- notify-email-recipient-diffs! [old-alert old-recipients new-alert new-recipients]
+  (let [old-ids->users (key-by :id old-recipients)
         new-ids->users (key-by :id new-recipients)
         [removed-ids added-ids _] (data/diff (set (keys old-ids->users))
                                              (set (keys new-ids->users)))]
@@ -69,7 +72,26 @@
 
     (doseq [new-id added-ids
             :let [added-user (get new-ids->users new-id)]]
-      (messages/send-you-were-added-alert-email! updated-alert added-user @api/*current-user*))))
+      (messages/send-you-were-added-alert-email! new-alert added-user @api/*current-user*))))
+
+(defn- notify-recipient-changes!
+  "This function compares `OLD-ALERT` and `UPDATED-ALERT` to determine if there have been any channel or recipient
+  related changes. Recipients that have been added or removed will be notified."
+  [old-alert updated-alert]
+  (let [{old-recipients :recipients, old-enabled :enabled} (email-channel old-alert)
+        {new-recipients :recipients, new-enabled :enabled} (email-channel updated-alert)]
+    (cond
+      ;; Did email notifications just get disabled?
+      (and old-enabled (not new-enabled))
+      (notify-email-disabled! old-alert old-recipients)
+
+      ;; Did a disabled email notifications just get re-enabled?
+      (and (not old-enabled) new-enabled)
+      (notify-email-enabled! updated-alert new-recipients)
+
+      ;; No need to notify recipients if emails are disabled
+      new-enabled
+      (notify-email-recipient-diffs! old-alert old-recipients updated-alert new-recipients))))
 
 (defn- collect-alert-recipients [alert]
   (set (:recipients (email-channel alert))))
@@ -85,6 +107,11 @@
     (doseq [recipient (non-creator-recipients alert)]
       (messages/send-you-were-added-alert-email! alert recipient @api/*current-user*))))
 
+(defn- maybe-include-csv [card alert-condition]
+  (if (= "rows" alert-condition)
+    (assoc card :include_csv true)
+    card))
+
 (api/defendpoint POST "/"
   "Create a new alert (`Pulse`)"
   [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal] :as req} :body}]
@@ -94,10 +121,11 @@
    card              su/Map
    channels          (su/non-empty [su/Map])}
   (pulse-api/check-card-read-permissions [card])
-  (let [new-alert (api/check-500
+  (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/create-card-ref)
+        new-alert (api/check-500
                    (-> req
                        only-alert-keys
-                       (pulse/create-alert! api/*current-user-id* (u/get-id card) channels)))]
+                       (pulse/create-alert! api/*current-user-id* alert-card channels)))]
 
     (notify-new-alert-created! new-alert)
 
@@ -131,7 +159,7 @@
         _             (check-alert-update-permissions old-alert)
         updated-alert (-> req
                           only-alert-keys
-                          (assoc :id id :card (u/get-id card) :channels channels)
+                          (assoc :id id :card (pulse/create-card-ref card) :channels channels)
                           pulse/update-alert!)]
 
     ;; Only admins can update recipients

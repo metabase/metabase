@@ -76,7 +76,7 @@
     [:or
      [:and
       [:< :fingerprint_version 2]
-      [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Float"}]]
+      [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Float" "type/Share"}]]
      [:and
       [:< :fingerprint_version 1]
       [:in :base_type #{"type/ImageURL" "type/AvatarURL"}]]]]}
@@ -94,7 +94,7 @@
     [:or
      [:and
       [:< :fingerprint_version 2]
-      [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Float"}]]
+      [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Float" "type/Share"}]]
      ;; no type/Float stuff should be included for 1
      [:and
       [:< :fingerprint_version 1]
@@ -112,7 +112,7 @@
     [:or
      [:and
       [:< :fingerprint_version 4]
-      [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Float"}]]
+      [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Float" "type/Share"}]]
      [:and
       [:< :fingerprint_version 3]
       [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]

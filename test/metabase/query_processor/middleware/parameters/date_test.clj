@@ -1,12 +1,13 @@
 (ns metabase.query-processor.middleware.parameters.date-test
+  "Tests for datetime parameters."
   (:require [expectations :refer :all]
             [clj-time.core :as t]
             [metabase.query-processor.middleware.parameters.dates :refer :all]))
 
 ;; we hard code "now" to a specific point in time so that we can control the test output
 (defn- test-date->range [value]
-  (with-redefs-fn {#'clj-time.core/now (fn [] (t/date-time 2016 06 07 12 0 0))}
-    #(date-string->range value nil)))
+  (with-redefs [t/now (constantly (t/date-time 2016 06 07 12 0 0))]
+    (date-string->range value nil)))
 
 (expect {:end "2016-03-31", :start "2016-01-01"} (test-date->range "Q1-2016"))
 (expect {:end "2016-02-29", :start "2016-02-01"} (test-date->range "2016-02"))

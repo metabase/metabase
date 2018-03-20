@@ -110,7 +110,7 @@
   clojure.lang.Named
   (getName [_] "Vertica"))
 
-(def ^:private vertica-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss z"))
+(def ^:private vertica-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss z"))
 (def ^:private vertica-db-time-query "select to_char(CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS TZ')")
 
 (u/strict-extend VerticaDriver
@@ -141,7 +141,7 @@
                                             {:name         "additional-options"
                                              :display-name "Additional JDBC connection string options"
                                              :placeholder  "ConnectionLoadBalance=1"}]))
-          :current-db-time   (driver/make-current-db-time-fn vertica-date-formatter vertica-db-time-query)})
+          :current-db-time   (driver/make-current-db-time-fn vertica-db-time-query vertica-date-formatters)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:column->base-type         (u/drop-first-arg column->base-type)
