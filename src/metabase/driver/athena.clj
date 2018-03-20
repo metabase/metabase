@@ -232,8 +232,7 @@
   [driver {inner-query :query, database :database, :as outer-query}]
   (binding [metabase.driver.generic-sql.query-processor/*query* outer-query]
     (let [honeysql-form (sql-qp/build-honeysql-form driver outer-query)
-          unqualify-honey-form (unqualify-query honeysql-form)
-          [sql & args]  (sql/honeysql-form->sql+args driver unqualify-honey-form)
+          [sql & args]  (sql/honeysql-form->sql+args driver honeysql-form)
           athena-sql (unquote-table-name sql (get-in inner-query [:source-table :name]))]
       {:query  athena-sql
        :params args})))
