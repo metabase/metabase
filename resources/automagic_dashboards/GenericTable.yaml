@@ -24,24 +24,13 @@ dimensions:
   - GenericCategory:
       field_type: Category
       score: 75
+  - Singleton:
+      field_type: Category
+      max_cardinality: 1
+      score: 40
   - Timestamp: DateTime
   - JoinDate: JoinTimestamp
   - CreateDate: CreationTimestamp
-  - DayOfWeek:
-      field_type: DateTime
-      aggregation: day-of-week
-  - HourOfDay:
-      field_type: DateTime
-      aggregation: hour-of-day
-  - DayOfMonth:
-      field_type: DateTime
-      aggregation: day-of-month
-  - MonthOfYear:
-      field_type: DateTime
-      aggregation: month-of-year
-  - QuarterOfYear:
-      field_type: DateTime
-      aggregation: quarter-of-year
   - FK: FK
 filters:
   - Last30Days:
@@ -50,6 +39,9 @@ filters:
   - Last30Days:
       filter: ["time-interval", [dimension, Timestamp], -30, day]
       score: 90
+groups:
+- Singletons:
+    title: Fields with only a single value
 cards:
   - Rowcount:
       title: Number of rows
@@ -117,33 +109,171 @@ cards:
         - Sum
         - Avg
       score: 70
-  - DayOfWeek:
+  - DayOfWeekTimestamp:
       title: Distribution by day of week
       visualization: bar
-      dimensions: DayOfWeek
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-week
       metrics: Count
       score: 60
-  - HourOfDay:
+  - HourOfDayTimestamp:
       title: Distribution by hour of day
       visualization: bar
-      dimensions: HourOfDay
+      dimensions:
+      - Timestamp:
+          aggregation: hour-of-day
       metrics: Count
       score: 50
-  - DayOfMonth:
+  - DayOfMonthTimestamp:
       title: Distribution by day of month
       visualization: bar
-      dimensions: DayOfMonth
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-month
       metrics: Count
       score: 40
-  - MonthOfYear:
+  - MonthOfYearTimestamp:
       title: Distribution by month of year
       visualization: bar
-      dimensions: MonthOfYear
+      dimensions:
+        - Timestamp:
+            aggregation: month-of-year
       metrics: Count
       score: 40
-  - QuerterOfYear:
+  - QuerterOfYearTimestamp:
       title: Distribution by quarter of year
       visualization: bar
-      dimensions: QuarterOfYear
+      dimensions:
+        - Timestamp:
+            aggregation: quarter-of-year
       metrics: Count
       score: 40
+  - DayOfWeekCreateDate:
+      title: Distribution by day of week
+      visualization: bar
+      dimensions:
+        - CreateDate:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+  - HourOfDayCreateDate:
+      title: Distribution by hour of day
+      visualization: bar
+      dimensions:
+      - CreateDate:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+  - DayOfMonthCreateDate:
+      title: Distribution by day of month
+      visualization: bar
+      dimensions:
+        - CreateDate:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+  - MonthOfYearCreateDate:
+      title: Distribution by month of year
+      visualization: bar
+      dimensions:
+        - CreateDate:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+  - QuerterOfYearCreateDate:
+      title: Distribution by quarter of year
+      visualization: bar
+      dimensions:
+        - CreateDate:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+  - DayOfWeekCreateDate:
+      title: Distribution by day of week
+      visualization: bar
+      dimensions:
+        - CreateDate:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+  - HourOfDayCreateDate:
+      title: Distribution by hour of day
+      visualization: bar
+      dimensions:
+      - CreateDate:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+  - DayOfMonthCreateDate:
+      title: Distribution by day of month
+      visualization: bar
+      dimensions:
+        - CreateDate:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+  - MonthOfYearCreateDate:
+      title: Distribution by month of year
+      visualization: bar
+      dimensions:
+        - CreateDate:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+  - QuerterOfYearCreateDate:
+      title: Distribution by quarter of year
+      visualization: bar
+      dimensions:
+        - CreateDate:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+  - DayOfWeekJoinDate:
+      title: Distribution by day of week
+      visualization: bar
+      dimensions:
+        - JoinDate:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+  - HourOfDayJoinDate:
+      title: Distribution by hour of day
+      visualization: bar
+      dimensions:
+      - JoinDate:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+  - DayOfMonthJoinDate:
+      title: Distribution by day of month
+      visualization: bar
+      dimensions:
+        - JoinDate:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+  - MonthOfYearJoinDate:
+      title: Distribution by month of year
+      visualization: bar
+      dimensions:
+        - JoinDate:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+  - QuerterOfYearJoinDate:
+      title: Distribution by quarter of year
+      visualization: bar
+      dimensions:
+        - JoinDate:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+  - Singleton:
+      title: "[[Singleton]]"
+      visualization: table
+      dimensions: Singleton
+      score: 30
+      height: 2
+      width: 2
+      group: Singletons

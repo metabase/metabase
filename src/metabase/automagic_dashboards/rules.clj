@@ -67,7 +67,6 @@
 (def ^:private Dimension {Identifier {(s/required-key :field_type)      FieldSpec
                                       (s/required-key :score)           Score
                                       (s/optional-key :links_to)        TableType
-                                      (s/optional-key :aggregation)     s/Str
                                       (s/optional-key :named)           s/Str
                                       (s/optional-key :max_cardinality) s/Int}})
 
@@ -80,12 +79,14 @@
                                              populate/grid-width)))
 (def ^:private Height (s/constrained s/Int pos?))
 
+(def ^:private CardDimension {Identifier {(s/optional-key :aggregation) s/Str}})
+
 (def ^:private Card
   {Identifier {(s/required-key :title)         s/Str
                (s/required-key :score)         Score
                (s/optional-key :visualization) Visualization
                (s/optional-key :text)          s/Str
-               (s/optional-key :dimensions)    [s/Str]
+               (s/optional-key :dimensions)    [CardDimension]
                (s/optional-key :filters)       [s/Str]
                (s/optional-key :metrics)       [s/Str]
                (s/optional-key :limit)         su/IntGreaterThanZero
@@ -100,8 +101,12 @@
   {Identifier {(s/required-key :title)       s/Str
                (s/optional-key :description) s/Str}})
 
+(def ^:private ^{:arglists '([definition])} identifier
+  "Return `key` in `{key {}}`."
+  (comp key first))
+
 (def ^:private ^{:arglists '([definitions])} identifiers
-  (comp set (partial map (comp key first))))
+  (comp set (partial map identifier)))
 
 (defn- all-references
   [k cards]
@@ -111,7 +116,8 @@
   [(s/one (s/constrained (s/either s/Str s/Keyword)
                          (comp #{"dimension"} str/lower-case name))
           "dimension")
-   s/Str])
+   (s/one s/Str "identifier")
+   su/Map])
 
 (def ^{:arglists '([form])} dimension-form?
   "Does form denote a dimension referece?"
@@ -139,14 +145,17 @@
         defined-metrics    (identifiers metrics)
         defined-filters    (identifiers filters)]
     (and (every? defined-metrics (all-references :metrics cards))
-         (every? defined-filters (all-references :filters cards))
-         (every? defined-dimensions (all-references :dimensions cards))
+         (every? defined-filters (all-references :filters cards))         
          (every? groups (keep (comp :group val first) cards))
-         (every? (comp (into defined-dimensions defined-metrics) key first)
+         (every? (comp (into defined-dimensions defined-metrics) identifier)
                  (all-references :order_by cards))
          (every? (some-fn defined-dimensions (comp table-type? ->entity) #{"this"})
                  (collect-dimensions rule))
-         (every? defined-dimensions dashboard_filters))))
+         (every? defined-dimensions dashboard_filters)
+         (->> cards
+              (all-references :dimensions)
+              (map identifier)              
+              (every? defined-dimensions)))))
 
 (def ^:private Rules
   (s/constrained
@@ -187,37 +196,42 @@
 (def ^:private rules-validator
   (sc/coercer!
    Rules
-   {[s/Str]       ensure-seq
-    [OrderByPair] ensure-seq
-    FieldSpec     (fn [x]
-                    (let [[table-type field-type] (str/split x #"\.")]
-                      (if field-type
-                        [(->entity table-type) (->type field-type)]
-                        [(->type table-type)])))
-    OrderByPair   (fn [x]
-                    (if (string? x)
-                      {x "ascending"}
-                      x))
-    Visualization (fn [x]
-                    (if (string? x)
-                      [x {}]
-                      (first x)))
-    Metric        (comp (with-defaults {:score max-score})
-                        (shorthand-definition :metric))
-    Dimension     (comp (with-defaults {:score max-score})
-                        (shorthand-definition :field_type))
-    Filter        (comp (with-defaults {:score max-score})
-                        (shorthand-definition :filter))
-    Card          (with-defaults {:score  max-score
-                                  :width  populate/default-card-width
-                                  :height populate/default-card-height})
-    TableType     ->entity
-    FieldType     ->type
-    Identifier    (fn [x]
-                    (if (keyword? x)
-                      (name x)
-                      x))
-    Groups        (partial apply merge)}))
+   {[s/Str]         ensure-seq
+    [OrderByPair]   ensure-seq
+    FieldSpec       (fn [x]
+                      (let [[table-type field-type] (str/split x #"\.")]
+                        (if field-type
+                          [(->entity table-type) (->type field-type)]
+                          [(->type table-type)])))
+    OrderByPair     (fn [x]
+                      (if (string? x)
+                        {x "ascending"}
+                        x))
+    Visualization   (fn [x]
+                      (if (string? x)
+                        [x {}]
+                        (first x)))
+    Metric          (comp (with-defaults {:score max-score})
+                          (shorthand-definition :metric))
+    Dimension       (comp (with-defaults {:score max-score})
+                          (shorthand-definition :field_type))
+    Filter          (comp (with-defaults {:score max-score})
+                          (shorthand-definition :filter))
+    Card            (with-defaults {:score  max-score
+                                    :width  populate/default-card-width
+                                    :height populate/default-card-height})
+    [CardDimension] ensure-seq
+    CardDimension   (fn [x]
+                      (if (string? x)
+                        {x {}}
+                        x))
+    TableType       ->entity
+    FieldType       ->type
+    Identifier      (fn [x]
+                      (if (keyword? x)
+                        (name x)
+                        x))
+    Groups          (partial apply merge)}))
 
 (def ^:private rules-dir "resources/automagic_dashboards/")
 

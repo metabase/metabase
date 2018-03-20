@@ -65,12 +65,10 @@ filters:
 dimensions:
 - Timestamp:
     field_type: CreationTimestamp
-    aggregation: month     # by default DateTime fields are aggregated by day
     score: 100
 # Overloaded definition
 - Timestamp:
     field_type: DateTime
-    aggregation: month
     score: 90
 # shorthand
 - Income: Income

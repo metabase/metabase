@@ -243,15 +243,15 @@
 
 (defn- bind-dimensions
   "Bind fields to dimensions and resolve overloading.
-   Each field x aggregation pair will be bound to only one dimension. If multiple
-   dimension definitions match a single field, the field is bound to the most
-   specific definition used (see `most-specific-defintion` for details)."
+   Each field will be bound to only one dimension. If multiple dimension definitions
+   match a single field, the field is bound to the most specific definition used
+   (see `most-specific-defintion` for details)."
   [context dimensions]
   (->> dimensions
        (mapcat (comp (partial make-binding context) first))
-       (group-by (comp (juxt :id :aggregation) first :matches val first))
+       (group-by (comp :id first :matches val first))
        (map (comp most-specific-definition val))
-       (apply merge-with (fn [a b]
+       (apply merge-with (fn [a b]                   
                            (case (compare (:score a) (:score b))
                              1  a
                              0  (update a :matches concat (:matches b))
@@ -274,7 +274,8 @@
    (walk/postwalk
     (fn [subform]
       (if (rules/dimension-form? subform)
-        (->> subform second bindings (->reference :mbql))
+        (let [[_ identifier opts] subform]
+          (->reference :mbql (-> identifier bindings (merge opts))))
         subform))
     {:type     :query
      :database (:database context)
@@ -352,7 +353,7 @@
                                       (transduce (keep :score) stats/mean))
                                  rules/max-score)
                              (/ score rules/max-score)))
-        dimensions      (map (partial vector :dimension) dimensions)
+        dimensions      (map (comp (partial into [:dimension]) first) dimensions)
         used-dimensions (rules/collect-dimensions [dimensions metrics filters query])]
     (->> used-dimensions
          (map (some-fn #(get-in (:dimensions context) [% :matches])
@@ -532,13 +533,12 @@
                          (-> dashboard :context :filters u/pprint-to-str)))
        (-> dashboard
            populate/create-dashboard
-           (assoc :related
-             {:tables  (->> root
-                            database
-                            candidate-tables
-                            (remove (comp #{root} :table))
-                            (take (- max-related (count indepth))))
-              :indepth indepth})))
+           (assoc :related {:tables  (->> root
+                                          database
+                                          candidate-tables
+                                          (remove (comp #{root} :table))
+                                          (take (- max-related (count indepth))))
+                            :indepth indepth})))
      (log/info (format "Skipping %s: no cards fully match bound dimensions."
                        (full-name root))))))
 
