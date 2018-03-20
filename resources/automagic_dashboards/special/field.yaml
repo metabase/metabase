@@ -5,9 +5,6 @@ metrics:
 - Avg: [avg, [dimension, GenericNumber]]
 - Count: [count]
 dimensions:
-  - Field:
-      field_type: "*"
-      score: 0
   - GenericNumber: GenericTable.Number
 # bind just so they don't get used
   - LongLat: GenericTable.Coordinate
@@ -34,14 +31,14 @@ dashboard_filters:
   - GenericCategoryMedium
 cards:
   - Distribution:
-      title: Distribution of [[Field]]
+      title: Distribution of [[this]]
       visualization: bar
       metrics: Count
-      dimensions: Field
+      dimensions: this
   - ByNumber:
-      title: "[[GenericNumber]] by [[Field]]"
+      title: "[[GenericNumber]] by [[this]]"
       visualization: line
       metrics:
       - Sum
       - Avg
-      dimensions: Field
+      dimensions: this

@@ -106,7 +106,7 @@
   (comp key first))
 
 (def ^:private ^{:arglists '([definitions])} identifiers
-  (comp set (partial map identifier)))
+  (partial into #{"this"} (map identifier)))
 
 (defn- all-references
   [k cards]
@@ -149,7 +149,7 @@
          (every? groups (keep (comp :group val first) cards))
          (every? (comp (into defined-dimensions defined-metrics) identifier)
                  (all-references :order_by cards))
-         (every? (some-fn defined-dimensions (comp table-type? ->entity) #{"this"})
+         (every? (some-fn defined-dimensions (comp table-type? ->entity))
                  (collect-dimensions rule))
          (every? defined-dimensions dashboard_filters)
          (->> cards

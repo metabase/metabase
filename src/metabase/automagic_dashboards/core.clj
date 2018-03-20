@@ -116,6 +116,10 @@
   [_ {:keys [name]}]
   name)
 
+(defmethod ->reference [:mbql (type Metric)]
+  [_ {:keys [id]}]
+  ["METRIC" id])
+
 (defmethod ->reference [:native (type Field)]
   [_ field]
   (field/qualified-name field))
@@ -453,9 +457,40 @@
       (update-in [:dataset_query :query :filter] merge-filters (query-filter entity))
       (update :series (partial map (partial inject-segment entity)))))
 
+(defmulti
+  ^{:private  true
+    :arglists '([root context])}
+  inject-root (fn [root _] (type root)))
+
+(defmethod inject-root (type Field)
+  [root context]
+  (update context :dimensions
+          (fn [dimensions]
+            (->> dimensions
+                 (keep (fn [[identifier definition]]
+                         (when-let [matches (->> definition
+                                                 :matches
+                                                 (remove (comp #{(:id root)} :id))
+                                                 not-empty)]
+                           [identifier (assoc definition :matches matches)])))
+                 (concat [["this" {:matches [root]
+                                   :score   rules/max-score}]])
+                 (into {})))))
+
+(defmethod inject-root (type Metric)
+  [root context]
+  (update context :metrics assoc "this" {:metric (->reference :mbql root)
+                                         :score  rules/max-score}))
+
+(defmethod inject-root :default
+  [_ context]
+  context)
+
 (defn- apply-rule
   [root rule]
-  (let [context   (make-context root rule)
+  (let [context   (->> rule
+                       (make-context root)
+                       (inject-root root))
         dashboard (->> (select-keys rule [:title :description :groups])
                                     (instantiate-metadata context {"this" root}))
         filters   (->> rule
