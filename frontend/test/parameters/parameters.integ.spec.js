@@ -10,6 +10,7 @@ import {
   logout,
   waitForRequestToComplete,
   waitForAllRequestsToComplete,
+  cleanup,
 } from "__support__/integrated_tests";
 
 import jwt from "jsonwebtoken";
@@ -49,7 +50,15 @@ describe("parameters", () => {
 
     // enable public sharing
     await SettingsApi.put({ key: "enable-public-sharing", value: true });
+    cleanup.fn(() =>
+      SettingsApi.put({ key: "enable-public-sharing", value: false }),
+    );
+
     await SettingsApi.put({ key: "enable-embedding", value: true });
+    cleanup.fn(() =>
+      SettingsApi.put({ key: "enable-embedding", value: false }),
+    );
+
     await SettingsApi.put({
       key: "embedding-secret-key",
       value: METABASE_SECRET_KEY,
@@ -61,6 +70,27 @@ describe("parameters", () => {
       name: "User ID",
       human_readable_field_id: PEOPLE_NAME_FIELD_ID,
     });
+    cleanup.fn(() =>
+      MetabaseApi.field_dimension_delete({
+        fieldId: ORDER_USER_ID_FIELD_ID,
+      }),
+    );
+
+    // set each of these fields to have "has_field_values" = "search"
+    for (const fieldId of [
+      ORDER_USER_ID_FIELD_ID,
+      PEOPLE_ID_FIELD_ID,
+      PEOPLE_NAME_FIELD_ID,
+    ]) {
+      const field = await MetabaseApi.field_get({
+        fieldId: fieldId,
+      });
+      await MetabaseApi.field_update({
+        id: fieldId,
+        has_field_values: "search",
+      });
+      cleanup.fn(() => MetabaseApi.field_update(field));
+    }
 
     const store = await createTestStore();
     await store.dispatch(fetchTableMetadata(1));
@@ -116,6 +146,12 @@ describe("parameters", () => {
       .setDisplay("scalar")
       .setDisplayName("Test Question");
     question = await createSavedQuestion(unsavedQuestion);
+    cleanup.fn(() =>
+      CardApi.update({
+        id: question.id(),
+        archived: true,
+      }),
+    );
 
     // create a dashboard
     dashboard = await createDashboard({
@@ -128,6 +164,13 @@ describe("parameters", () => {
         { name: "User", slug: "user_id", id: "4", type: "id" },
       ],
     });
+    cleanup.fn(() =>
+      DashboardApi.update({
+        id: dashboard.id,
+        archived: true,
+      }),
+    );
+
     const dashcard = await DashboardApi.addcard({
       dashId: dashboard.id,
       cardId: question.id(),
@@ -356,25 +399,7 @@ describe("parameters", () => {
     sharedParametersTests(() => ({ app, store }));
   });
 
-  afterAll(async () => {
-    useSharedAdminLogin();
-    // archive the dash so we don't impact other tests
-    await DashboardApi.update({
-      id: dashboard.id,
-      archived: true,
-    });
-    // archive the card so we don't impact other tests
-    await CardApi.update({
-      id: question.id(),
-      archived: true,
-    });
-    // do some cleanup so that we don't impact other tests
-    await SettingsApi.put({ key: "enable-public-sharing", value: false });
-    await SettingsApi.put({ key: "enable-embedding", value: false });
-    await MetabaseApi.field_dimension_delete({
-      fieldId: ORDER_USER_ID_FIELD_ID,
-    });
-  });
+  afterAll(cleanup);
 });
 
 async function sharedParametersTests(getAppAndStore) {

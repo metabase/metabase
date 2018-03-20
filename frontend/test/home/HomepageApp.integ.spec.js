@@ -2,6 +2,7 @@ import {
   useSharedAdminLogin,
   createTestStore,
   createSavedQuestion,
+  cleanup,
 } from "__support__/integrated_tests";
 import { click } from "__support__/enzyme_utils";
 
@@ -22,38 +23,24 @@ import Activity from "metabase/home/components/Activity";
 import ActivityItem from "metabase/home/components/ActivityItem";
 import ActivityStory from "metabase/home/components/ActivityStory";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
-import { CardApi, MetricApi, SegmentApi } from "metabase/services";
+import { MetricApi, SegmentApi } from "metabase/services";
 
 describe("HomepageApp", () => {
-  let questionId = null;
-  let segmentId = null;
-  let metricId = null;
-
   beforeAll(async () => {
     useSharedAdminLogin();
 
     // Create some entities that will show up in the top of activity feed
     // This test doesn't care if there already are existing items in the feed or not
     // Delays are required for having separable creation times for each entity
-    questionId = (await createSavedQuestion(unsavedOrderCountQuestion)).id();
+    cleanup.question(await createSavedQuestion(unsavedOrderCountQuestion));
     await delay(100);
-    segmentId = (await SegmentApi.create(orders_past_300_days_segment)).id;
+    cleanup.segment(await SegmentApi.create(orders_past_300_days_segment));
     await delay(100);
-    metricId = (await MetricApi.create(vendor_count_metric)).id;
+    cleanup.metric(await MetricApi.create(vendor_count_metric));
     await delay(100);
   });
 
-  afterAll(async () => {
-    await MetricApi.delete({
-      metricId,
-      revision_message: "Let's exterminate this metric",
-    });
-    await SegmentApi.delete({
-      segmentId,
-      revision_message: "Let's exterminate this segment",
-    });
-    await CardApi.delete({ cardId: questionId });
-  });
+  afterAll(cleanup);
 
   describe("activity feed", async () => {
     it("shows the expected list of activity", async () => {

@@ -189,6 +189,7 @@ describe("FieldApp", () => {
       const { store, fieldApp } = await initFieldApp({
         fieldId: CREATED_AT_ID,
       });
+
       const picker = fieldApp.find(SpecialTypeAndTargetPicker);
       const typeSelect = picker.find(Select).at(0);
       click(typeSelect);
@@ -269,7 +270,7 @@ describe("FieldApp", () => {
       await store.dispatch(
         updateField({
           ...createdAtField,
-          special_type: null,
+          special_type: "type/CreationTimestamp",
           fk_target_field_id: null,
         }),
       );

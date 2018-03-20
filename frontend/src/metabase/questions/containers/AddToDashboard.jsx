@@ -84,44 +84,50 @@ export default class AddToDashboard extends Component {
   render() {
     const { query, collection } = this.state;
     return (
-      <ModalContent
-        title={t`Pick a question to add`}
-        className="px4 mb4 scroll-y"
-        onClose={() => this.props.onClose()}
-      >
-        <div className="py1">
-          <div className="flex align-center">
-            {!query ? (
-              <ExpandingSearchField
-                defaultValue={query && query.q}
-                onSearch={value =>
-                  this.setState({
-                    collection: null,
-                    query: { q: value },
-                  })
-                }
-              />
-            ) : (
-              <HeaderWithBack
-                name={collection && collection.name}
-                onBack={() => this.setState({ collection: null, query: null })}
-              />
-            )}
-            {query && (
-              <div className="ml-auto flex align-center">
-                <h5>Sort by</h5>
-                <Button borderless>{t`Last modified`}</Button>
-                <Button borderless>{t`Alphabetical order`}</Button>
-              </div>
-            )}
+      <div className="wrapper wrapper--trim">
+        <ModalContent
+          title={t`Pick a question to add`}
+          className="mb4 scroll-y"
+          onClose={() => this.props.onClose()}
+        >
+          <div className="py1">
+            <div className="flex align-center ml3 mb3">
+              {!query ? (
+                <ExpandingSearchField
+                  defaultValue={query && query.q}
+                  onSearch={value =>
+                    this.setState({
+                      collection: null,
+                      query: { q: value },
+                    })
+                  }
+                />
+              ) : (
+                <HeaderWithBack
+                  name={collection && collection.name}
+                  onBack={() =>
+                    this.setState({ collection: null, query: null })
+                  }
+                />
+              )}
+              {query && (
+                <div className="ml-auto flex align-center pr2">
+                  <h5>Sort by</h5>
+                  <Button borderless>{t`Last modified`}</Button>
+                  <Button borderless>{t`Alphabetical order`}</Button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        {query
-          ? // a search term has been entered so show the questions list
-            this.renderQuestionList()
-          : // show the collections list
-            this.renderCollections()}
-      </ModalContent>
+          <div className="mx4">
+            {query
+              ? // a search term has been entered so show the questions list
+                this.renderQuestionList()
+              : // show the collections list
+                this.renderCollections()}
+          </div>
+        </ModalContent>
+      </div>
     );
   }
 }

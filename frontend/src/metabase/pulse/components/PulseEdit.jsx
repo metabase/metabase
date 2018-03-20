@@ -88,7 +88,7 @@ export default class PulseEdit extends Component {
           <span key={index}>
             {jt`This pulse will no longer be emailed to ${(
               <strong>
-                {c.recipients.length} {inflect("address", c.recipients.length)}
+                {c.recipients.length} {inflect(t`address`, c.recipients.length)}
               </strong>
             )} ${<strong>{c.schedule_type}</strong>}`}.
           </span>

@@ -19,11 +19,12 @@
   {:name         "ID"
    :table_id     (data/id :venues)
    :special_type :type/PK
-   :name_field   {:id           (data/id :venues :name)
-                  :table_id     (data/id :venues)
-                  :display_name "Name"
-                  :base_type    :type/Text
-                  :special_type :type/Name}}
+   :name_field   {:id               (data/id :venues :name)
+                  :table_id         (data/id :venues)
+                  :display_name     "Name"
+                  :base_type        :type/Text
+                  :special_type     :type/Name
+                  :has_field_values "list"}}
   (-> (db/select-one [Field :name :table_id :special_type], :id (data/id :venues :id))
       (hydrate :name_field)))
 
@@ -58,26 +59,27 @@
 
 ;; check that we can hydrate param_fields for a Card
 (expect
- {(data/id :venues :id) {:id               (data/id :venues :id)
-                         :table_id         (data/id :venues)
-                         :display_name     "ID"
-                         :base_type        :type/BigInteger
-                         :special_type     :type/PK
-                         :has_field_values :search
-                         :name_field       {:id           (data/id :venues :name)
-                                            :table_id     (data/id :venues)
-                                            :display_name "Name"
-                                            :base_type    :type/Text
-                                            :special_type :type/Name}
-                         :dimensions       []}}
- (tt/with-temp Card [card {:dataset_query
-                           {:database (data/id)
-                            :type     :native
-                            :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
-                                       :template_tags {:name {:name         :name
-                                                              :display_name "Name"
-                                                              :type         :dimension
-                                                              :dimension    [:field-id (data/id :venues :id)]}}}}}]
+  {(data/id :venues :id) {:id               (data/id :venues :id)
+                          :table_id         (data/id :venues)
+                          :display_name     "ID"
+                          :base_type        :type/BigInteger
+                          :special_type     :type/PK
+                          :has_field_values :none
+                          :name_field       {:id               (data/id :venues :name)
+                                             :table_id         (data/id :venues)
+                                             :display_name     "Name"
+                                             :base_type        :type/Text
+                                             :special_type     :type/Name
+                                             :has_field_values "list"}
+                          :dimensions       []}}
+  (tt/with-temp Card [card {:dataset_query
+                            {:database (data/id)
+                             :type     :native
+                             :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
+                                        :template_tags {:name {:name         :name
+                                                               :display_name "Name"
+                                                               :type         :dimension
+                                                               :dimension    [:field-id (data/id :venues :id)]}}}}}]
    (-> (hydrate card :param_fields)
        :param_fields)))
 
@@ -88,12 +90,13 @@
                           :display_name     "ID"
                           :base_type        :type/BigInteger
                           :special_type     :type/PK
-                          :has_field_values :search
-                          :name_field       {:id           (data/id :venues :name)
-                                             :table_id     (data/id :venues)
-                                             :display_name "Name"
-                                             :base_type    :type/Text
-                                             :special_type :type/Name}
+                          :has_field_values :none
+                          :name_field       {:id               (data/id :venues :name)
+                                             :table_id         (data/id :venues)
+                                             :display_name     "Name"
+                                             :base_type        :type/Text
+                                             :special_type     :type/Name
+                                             :has_field_values "list"}
                           :dimensions       []}}
   (public-test/with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
     (-> (hydrate dashboard :param_fields)

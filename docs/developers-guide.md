@@ -124,6 +124,7 @@ Integration tests use an enforced file naming convention `<test-suite-name>.inte
 Useful commands:
 ```bash
 ./bin/build version uberjar # Builds the JAR without frontend assets; run this every time you need to update the backend
+lein run refresh-integration-test-db-metadata # Scan the sample dataset and re-run sync/classification/field values caching
 yarn run test-integrated-watch # Watches for file changes and runs the tests that have changed
 yarn run test-integrated-watch -- TestFileName # Watches the files in paths that match the given (regex) string
 ```
