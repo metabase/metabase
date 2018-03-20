@@ -17,7 +17,7 @@
   border: 1px solid var(--dropdown-border-color);
   background-color: #fff;
   border-radius: 4px;
-  box-shadow: 0 0 2px rgba(0, 0, 0, .12);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.12);
   background-clip: padding-box;
   padding-top: 1em;
   padding-bottom: 1em;
@@ -30,36 +30,36 @@
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
   border-right: 5px solid red;
-  content: '';
+  content: "";
   display: block;
 }
 
 /* switching from home rolled to BS logic for dropdowns so we still have both classes */
 .Dropdown.open .Dropdown-content,
-.Dropdown--showing.Dropdown-content{
+.Dropdown--showing.Dropdown-content {
   opacity: 1;
   pointer-events: all;
-  transition: opacity .3s linear, margin .2s linear;
+  transition: opacity 0.3s linear, margin 0.2s linear;
   margin-top: 0;
 }
 
 .Dropdown-item {
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
-    line-height: 1;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  padding-left: 2rem;
+  padding-right: 2rem;
+  line-height: 1;
 }
 
 .Dropdown .Dropdown-item .link:hover {
-    text-decoration: none;
+  text-decoration: none;
 }
 
 .Dropdown-item:hover {
-    color: #fff;
-    background-color: var(--brand-color);
+  color: #fff;
+  background-color: var(--brand-color);
 }
 
 .Dropdown .Dropdown-item:hover {
-    text-decoration: none;
+  text-decoration: none;
 }

@@ -230,7 +230,7 @@
 ;; we'll also pass a simple checksum and have the frontend pass it back to us.  See the QP `results-metadata`
 ;; middleware namespace for more details
 
-(s/defn ^:private result-metadata-for-query :- results-metadata/ResultsMetadata
+(s/defn result-metadata-for-query :- results-metadata/ResultsMetadata
   "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return.
    This is obviously a bit wasteful so hopefully we can avoid having to do this."
   [query]
@@ -265,11 +265,11 @@
    metadata_checksum      (s/maybe su/NonBlankString)}
   ;; check that we have permissions to run the query that we're trying to save
   (api/check-403 (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                                                          (card/query-perms-set dataset_query :write)))
+                   (card/query-perms-set dataset_query :write)))
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (when collection_id
     (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                                    (perms/collection-readwrite-path collection_id))))
+                     (perms/collection-readwrite-path collection_id))))
   ;; everything is g2g, now save the card
   (let [card (db/insert! Card
                :creator_id             api/*current-user-id*
@@ -594,7 +594,7 @@
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
   {:style/indent 1}
   [card-id & {:keys [parameters constraints context dashboard-id]
-              :or   {constraints dataset-api/default-query-constraints
+              :or   {constraints qp/default-query-constraints
                      context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (api/read-check (hydrate (Card card-id) :in_public_dashboard))
@@ -669,5 +669,11 @@
   (api/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
-(api/define-routes
-  (middleware/streaming-json-response (route-fn-name 'POST "/:card-id/query")))
+(defn adhoc-query
+  "Wrap query map into a Query object (mostly to fascilitate type dispatch)."
+  [query]
+  (->> {:dataset_query query}
+       (merge (card/query->database-and-table-ids query))
+       query/map->QueryInstance))
+
+(api/define-routes)

@@ -47,15 +47,15 @@
                   ;; slurp will throw a FileNotFoundException for 404s, so in that case just return an appropriate
                   ;; 'Not Found' message
                   (catch java.io.FileNotFoundException e
-                    {:valid false, :status "invalid token: not found."})
+                    {:valid false, :status "Unable to validate token."})
                   ;; if there was any other error fetching the token, log it and return a generic message about the
                   ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
                   ;; we do not want something complicated
                   (catch Throwable e
                     (log/error "Error fetching token status:" e)
-                    {:valid false, :status "there was an error checking whether this token was valid."})))
+                    {:valid false, :status "There was an error checking whether this token was valid."})))
            fetch-token-status-timeout-ms
-           {:valid false, :status "token validation timed out."})))
+           {:valid false, :status "Token validation timed out."})))
 
 (defn- check-embedding-token-is-valid* [token]
   (when (s/check ValidToken token)
@@ -86,10 +86,14 @@
   "Token for premium embedding. Go to the MetaStore to get yours!"
   :setter (fn [new-value]
             ;; validate the new value if we're not unsetting it
-            (when (seq new-value)
-              (check-embedding-token-is-valid new-value)
-              (log/info "Token is valid."))
-            (setting/set-string! :premium-embedding-token new-value)))
+            (try
+              (when (seq new-value)
+                (check-embedding-token-is-valid new-value)
+                (log/info "Token is valid."))
+              (setting/set-string! :premium-embedding-token new-value)
+              (catch Throwable e
+                (log/error e "Error setting premium embedding token")
+                (throw (ex-info (.getMessage e) {:status-code 400}))))))
 
 (defn hide-embed-branding?
   "Should we hide the 'Powered by Metabase' attribution on the embedding pages? `true` if we have a valid premium

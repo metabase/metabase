@@ -15,12 +15,12 @@ import undo from "metabase/redux/undo";
 import { currentUser } from "metabase/redux/user";
 
 export default {
-    // global reducers
-    app,
-    auth,
-    currentUser,
-    metadata,
-    requests,
-    settings,
-    undo,
+  // global reducers
+  app,
+  auth,
+  currentUser,
+  metadata,
+  requests,
+  settings,
+  undo,
 };

@@ -1,13 +1,12 @@
 (ns metabase.middleware-test
   (:require [cheshire.core :as json]
-            [clojure.core.async :as async]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [compojure.core :refer [GET]]
             [expectations :refer :all]
             [metabase
              [config :as config]
-             [middleware :as middleware :refer :all]
+             [middleware :as middleware :refer :all :as mid]
              [routes :as routes]
              [util :as u]]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
@@ -185,93 +184,3 @@
 (expect "{\"my-bytes\":\"0xC42360D7\"}"
         (json/generate-string {:my-bytes (byte-array [196 35  96 215  8 106 108 248 183 215 244 143  17 160 53 186
                                                       213 30 116  25 87  31 123 172 207 108  47 107 191 215 76  92])}))
-
-;; Handlers that will generate response. Some of them take a `BLOCK-ON` argument that will hold up the response until
-;; the promise has been delivered. This allows coordination between the scaffolding and the expected response and
-;; avoids the sleeps
-
-(defn- streaming-fast-success [_]
-  (resp/response {:success true}))
-
-(defn- streaming-fast-failure [_]
-  (throw (Exception. "immediate failure")))
-
-(defn- streaming-slow-success [block-on]
-  (fn [_]
-    @block-on
-    (resp/response {:success true})))
-
-(defn- streaming-slow-failure [block-on]
-  (fn [_]
-    @block-on
-    (throw (Exception. "delayed failure"))))
-
-(def ^:private long-timeout
-  ;; 2 minutes
-  (* 2 60000))
-
-(defn- take-with-timeout [response-chan]
-  (let [[response c] (async/alts!! [response-chan
-                                    ;; We should never reach this unless something is REALLY wrong
-                                    (async/timeout long-timeout)])]
-    (when-not response
-      (throw (Exception. "Taking from streaming endpoint timed out!")))
-
-    response))
-
-(defn- test-streaming-endpoint [handler handle-response-fn]
-  (let [path (str handler)]
-    (with-redefs [metabase.routes/routes (compojure.core/routes
-                                          (GET (str "/" path) [] (middleware/streaming-json-response
-                                                                  handler)))]
-      (let  [connection (async/chan 1000)
-             reader (io/input-stream (str "http://localhost:" (config/config-int :mb-jetty-port) "/" path))]
-        (async/go-loop [next-char (.read reader)]
-          (if (pos? next-char)
-            (do
-              (async/>! connection (char next-char))
-              (recur (.read reader)))
-            (async/close! connection)))
-        (handle-response-fn connection)))))
-
-;;slow success
-(expect
-  [\newline \newline "{\"success\":true}"]
-  (let [send-response (promise)]
-    (test-streaming-endpoint (streaming-slow-success send-response)
-                             (fn [response-chan]
-                               [(take-with-timeout response-chan)
-                                (take-with-timeout response-chan)
-                                (do
-                                  (deliver send-response true)
-                                  (string/trim (apply str (async/<!! (async/into [] response-chan)))))]))))
-
-;; immediate success should have no padding
-(expect
-  "{\"success\":true}"
-  (test-streaming-endpoint streaming-fast-success
-                           (fn [response-chan]
-                             (string/trim (apply str (async/<!! (async/into [] response-chan)))))))
-
-;; we know delayed failures (exception thrown) will just drop the connection
-(expect
-  [\newline \newline ""]
-  (let [send-response (promise)]
-    (test-streaming-endpoint (streaming-slow-failure send-response)
-                             (fn [response-chan]
-                               [(take-with-timeout response-chan)
-                                (take-with-timeout response-chan)
-                                (do
-                                  (deliver send-response true)
-                                  (string/trim (apply str (async/<!! (async/into [] response-chan)))))]))))
-
-;; immediate failures (where an exception is thown will return a 500
-(expect
-  #"Server returned HTTP response code: 500 for URL:.*"
-  (try
-    (test-streaming-endpoint streaming-fast-failure
-                             (fn [response-chan]
-                               ;; Should never reach here
-                               (throw (Exception. "Should not process a message"))))
-    (catch java.io.IOException e
-      (.getMessage e))))

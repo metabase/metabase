@@ -181,11 +181,12 @@
   invocation)."
   [table-name-to-update update-table-def-fn update-rows-fn table-def]
   (vec
-   (for [[table-name table-def rows] table-def
-         :when (= table-name table-name-to-update)]
-     [table-name
-      (update-table-def-fn table-def)
-      (update-rows-fn rows)])))
+   (for [[table-name table-def rows :as orig-table-def] table-def]
+     (if (= table-name table-name-to-update)
+       [table-name
+        (update-table-def-fn table-def)
+        (update-rows-fn rows)]
+       orig-table-def))))
 
 (defmacro def-database-definition
   "Convenience for creating a new `DatabaseDefinition` named by the symbol DATASET-NAME."

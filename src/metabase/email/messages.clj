@@ -107,7 +107,7 @@
   "Format and send an email informing the user how to reset their password."
   [email google-auth? hostname password-reset-url]
   {:pre [(m/boolean? google-auth?)
-         (u/is-email? email)
+         (u/email? email)
          (string? hostname)
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file "metabase/email/password_reset"
@@ -149,7 +149,7 @@
 (defn send-notification-email!
   "Format and send an email informing the user about changes to objects in the system."
   [email context]
-  {:pre [(u/is-email? email) (map? context)]}
+  {:pre [(u/email? email) (map? context)]}
   (let [context      (merge (update context :dependencies build-dependencies)
                             notification-context
                             (random-quote-context))
@@ -163,7 +163,7 @@
 (defn send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."
   [email msg-type]
-  {:pre [(u/is-email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
+  {:pre [(u/email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
   (let [subject      (if (= "abandon" msg-type)
                        "[Metabase] Help make Metabase better."
                        "[Metabase] Tell us how things are going.")
@@ -204,19 +204,21 @@
      :content-type content-type
      :file-name    (format "%s.%s" card-name ext)
      :content      (-> attachment-file .toURI .toURL)
-     :description  (format "Full results for '%s'" card-name)}))
+     :description  (format "More results for '%s'" card-name)}))
 
 (defn- result-attachments [results]
   (remove nil?
           (apply concat
-                 (for [{{card-name :name, csv? :include_csv, xls? :include_xls} :card :as result} results
-                       :when (and (or csv? xls?)
-                                  (seq (get-in result [:result :data :rows])))]
-                   [(when-let [temp-file (and csv? (create-temp-file "csv"))]
+                 (for [{{card-name :name, :as card} :card :as result} results
+                       :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
+                       :when (seq rows)]
+                   [(when-let [temp-file (and (render/include-csv-attachment? card result-data)
+                                              (create-temp-file "csv"))]
                       (export/export-to-csv-writer temp-file result)
                       (create-result-attachment-map "csv" card-name temp-file))
 
-                    (when-let [temp-file (and xls? (create-temp-file "xlsx"))]
+                    (when-let [temp-file (and (render/include-xls-attachment? card result-data)
+                                              (create-temp-file "xlsx"))]
                       (export/export-to-xlsx-file temp-file result)
                       (create-result-attachment-map "xlsx" card-name temp-file))]))))
 

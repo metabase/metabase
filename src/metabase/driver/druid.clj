@@ -43,6 +43,7 @@
 
 (def ^:private ^{:arglists '([url & {:as options}])} GET  (partial do-request http/get))
 (def ^:private ^{:arglists '([url & {:as options}])} POST (partial do-request http/post))
+(def ^:private ^{:arglists '([url & {:as options}])} DELETE (partial do-request http/delete))
 
 
 ;;; ### Misc. Driver Fns
@@ -57,15 +58,42 @@
 (defn- do-query [details query]
   {:pre [(map? query)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (try (vec (POST (details->url details-with-tunnel "/druid/v2"), :body query))
-         (catch Throwable e
-           ;; try to extract the error
-           (let [message (or (u/ignore-exceptions
-                               (:error (json/parse-string (:body (:object (ex-data e))) keyword)))
-                             (.getMessage e))]
-             (log/error (u/format-color 'red "Error running query:\n%s" message))
-             ;; Re-throw a new exception with `message` set to the extracted message
-             (throw (Exception. message e)))))))
+    (try
+      (POST (details->url details-with-tunnel "/druid/v2"), :body query)
+      (catch Throwable e
+        ;; try to extract the error
+        (let [message (or (u/ignore-exceptions
+                            (when-let [body (json/parse-string (:body (:object (ex-data e))) keyword)]
+                              (str (:error body) "\n"
+                                   (:errorMessage body) "\n"
+                                   "Error class:" (:errorClass body))))
+                          (.getMessage e))]
+          (log/error (u/format-color 'red "Error running query:\n%s" message))
+          ;; Re-throw a new exception with `message` set to the extracted message
+          (throw (Exception. message e)))))))
+
+(defn- do-query-with-cancellation [details query]
+  (let [query-id  (get-in query [:context :queryId])
+        query-fut (future (do-query details query))]
+    (try
+      ;; Run the query in a future so that this thread will be interrupted, not the thread running the query (which is
+      ;; not interrupt aware)
+      @query-fut
+      (catch InterruptedException interrupted-ex
+        ;; The future has been cancelled, if we ahve a query id, try to cancel the query
+        (if-not query-id
+          (log/warn interrupted-ex "Client closed connection, no queryId found, can't cancel query")
+          (ssh/with-ssh-tunnel [details-with-tunnel details]
+            (log/warnf "Client closed connection, cancelling Druid queryId '%s'" query-id)
+            (try
+              ;; If we can't cancel the query, we don't want to hide the original exception, attempt to cancel, but if
+              ;; we can't, we should rethrow the InterruptedException, not an exception from the cancellation
+              (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id)))
+              (catch Exception cancel-ex
+                (log/warnf cancel-ex "Failed to cancel Druid query with queryId" query-id))
+              (finally
+                ;; Propogate the exception, will cause any other catch/finally clauses to fire
+                (throw interrupted-ex)))))))))
 
 
 ;;; ### Sync
@@ -134,7 +162,7 @@
                                              :display-name "Broker node port"
                                              :type         :integer
                                              :default      8082}]))
-          :execute-query     (fn [_ query] (qp/execute-query do-query query))
+          :execute-query     (fn [_ query] (qp/execute-query do-query-with-cancellation query))
           :features          (constantly #{:basic-aggregations :set-timezone :expression-aggregations})
           :mbql->native      (u/drop-first-arg qp/mbql->native)}))
 
