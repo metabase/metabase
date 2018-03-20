@@ -45,7 +45,14 @@
          ~@body))))
 
 (defmacro ^:private with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
-  `(let [dashboard-settings# (merge (shared-obj) ~dashboard)]
+  `(let [dashboard-settings# (merge
+                              {:parameters [{:name    "Venue ID"
+                                             :slug    "venue_id"
+                                             :type    "id"
+                                             :target  [:dimension (data/id :venues :id)]
+                                             :default nil}]}
+                              (shared-obj)
+                              ~dashboard)]
      (tt/with-temp Dashboard [dashboard# dashboard-settings#]
        (let [~binding (assoc dashboard# :public_uuid (:public_uuid dashboard-settings#))]
          ~@body))))
@@ -174,10 +181,11 @@
 
 ;; Check that we can exec a PublicCard with `?parameters`
 (expect
-  [{:type "category", :value 2}]
+  [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
-      (get-in (http/client :get 200 (str "public/card/" uuid "/query"), :parameters (json/encode [{:type "category", :value 2}]))
+      (get-in (http/client :get 200 (str "public/card/" uuid "/query")
+                           :parameters (json/encode [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]))
               [:json_query :parameters]))))
 
 ;; make sure CSV (etc.) downloads take editable params into account (#6407)
@@ -211,8 +219,8 @@
       (binding [http/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port) "/")]
         (http/client :get 200 (str "public/question/" uuid ".csv")
                      :parameters (json/encode [{:type   :date/quarter-year
-                                              :target [:dimension [:template-tag :date]]
-                                              :value  "Q1-2014"}]))))))
+                                                :target [:dimension [:template-tag :date]]
+                                                :value  "Q1-2014"}]))))))
 
 
 ;;; ---------------------------------------- GET /api/public/dashboard/:uuid -----------------------------------------
@@ -305,11 +313,43 @@
 
 ;; Check that we can exec a PublicCard via a PublicDashboard with `?parameters`
 (expect
-  [{:type "category", :value 2}]
+  [{:name    "Venue ID"
+    :slug    "venue_id"
+    :target  ["dimension" (data/id :venues :id)]
+    :value   [10]
+    :default nil
+    :type    "id"}]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash card]
-      (get-in (http/client :get 200 (dashcard-url-path dash card), :parameters (json/encode [{:type "category", :value 2}]))
+      (get-in (http/client :get 200 (dashcard-url-path dash card)
+                           :parameters (json/encode [{:name   "Venue ID"
+                                                      :slug   :venue_id
+                                                      :target [:dimension (data/id :venues :id)]
+                                                      :value  [10]}]))
               [:json_query :parameters]))))
+
+;; Make sure params are validated: this should pass because venue_id *is* one of the Dashboard's :parameters
+(expect
+ [[1]]
+ (tu/with-temporary-setting-values [enable-public-sharing true]
+   (with-temp-public-dashboard-and-card [dash card]
+     (-> (http/client :get 200 (dashcard-url-path dash card)
+                      :parameters (json/encode [{:name   "Venue ID"
+                                                 :slug   :venue_id
+                                                 :target [:dimension (data/id :venues :id)]
+                                                 :value  [10]}]))
+         qp-test/rows))))
+
+;; Make sure params are validated: this should fail because venue_name is *not* one of the Dashboard's :parameters
+(expect
+ "An error occurred."
+ (tu/with-temporary-setting-values [enable-public-sharing true]
+   (with-temp-public-dashboard-and-card [dash card]
+     (http/client :get 400 (dashcard-url-path dash card)
+                  :parameters (json/encode [{:name   "Venue Name"
+                                             :slug   :venue_name
+                                             :target [:dimension (data/id :venues :name)]
+                                             :value  ["PizzaHacker"]}])))))
 
 ;; Check that an additional Card series works as well
 (expect
