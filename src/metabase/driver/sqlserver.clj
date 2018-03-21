@@ -102,7 +102,15 @@
     :default         expr
     :minute          (hx/cast :smalldatetime expr)
     :minute-of-hour  (date-part :minute expr)
-    :hour            (hx/->datetime (hx/format "yyyy-MM-dd HH:00:00" expr))
+    :hour            (hx/->datetime (hx/+ (hx/cast :varchar (hx/year expr))
+                                          (hx/literal "-")
+                                          (hx/cast :varchar (hx/month expr))
+                                          (hx/literal "-")
+                                          (hx/cast :varchar (hx/day expr))
+                                          (hx/literal " ")
+                                          (hx/cast :varchar (date-part :hour expr))
+                                          (hx/literal ":00:00")
+                      ))
     :hour-of-day     (date-part :hour expr)
     ;; jTDS is retarded; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates like
     ;; every other SQL DB we support. Work around that by casting to DATE for truncation then back to DATETIME so we
@@ -121,14 +129,11 @@
                                 (hx/- 1 (date-part :weekday expr))
                                 (hx/->date expr)))
     :week-of-year    (date-part :iso_week expr)
-    :month           (hx/->datetime (hx/format "yyyy-MM-01" expr))
+    :month           (hx/->datetime (hx/+ (hx/cast :varchar (hx/year expr)) (hx/literal "-") (hx/cast :varchar (hx/month expr)) (hx/literal "-01")))
     :month-of-year   (date-part :month expr)
-    ;; Format date as yyyy-01-01 then add the appropriate number of quarter
-    ;; Equivalent SQL:
-    ;;     DATEADD(quarter, DATEPART(quarter, %s) - 1, FORMAT(%s, 'yyyy-01-01'))
     :quarter         (date-add :quarter
                                (hx/dec (date-part :quarter expr))
-                               (hx/format "yyyy-01-01" expr))
+                               (hx/cast :varchar (hx/year expr)))
     :quarter-of-year (date-part :quarter expr)
     :year            (date-part :year expr)))
 

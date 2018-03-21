@@ -140,6 +140,7 @@
 (def ^{:arglists '([& exprs])} floor   "SQL `floor` function."  (partial hsql/call :floor))
 (def ^{:arglists '([& exprs])} hour    "SQL `hour` function."   (partial hsql/call :hour))
 (def ^{:arglists '([& exprs])} minute  "SQL `minute` function." (partial hsql/call :minute))
+(def ^{:arglists '([& exprs])} day     "SQL `day` function."    (partial hsql/call :day))
 (def ^{:arglists '([& exprs])} week    "SQL `week` function."   (partial hsql/call :week))
 (def ^{:arglists '([& exprs])} month   "SQL `month` function."  (partial hsql/call :month))
 (def ^{:arglists '([& exprs])} quarter "SQL `quarter` function."(partial hsql/call :quarter))
