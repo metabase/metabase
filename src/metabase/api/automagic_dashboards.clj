@@ -1,5 +1,6 @@
 (ns metabase.api.automagic-dashboards
-  (:require [cheshire.core :as json]
+  (:require [buddy.core.codecs :as codecs]
+            [cheshire.core :as json]
             [compojure.core :refer [GET POST]]
             [metabase.api
              [card :as card.api]
@@ -21,6 +22,9 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
+
+(def ^:private ^{:arglists '([s])} decode-base64-json
+  (comp json/decode codecs/bytes->str codec/base64-decode))
 
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
@@ -57,23 +61,19 @@
       api/check-404
       (magic/automagic-dashboard (rules/load-rule (str prefix "/" rule ".yaml")))))
 
-(api/defendpoint GET "/question/:id/:cell-query"
+(api/defendpoint GET "/question/:id/cell/:cell-query"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry`."
   [id cell-query]
-  (-> (card.api/adhoc-query {:query {:filter (-> cell-query
-                                                 codec/base64-decode
-                                                 json/decode)}})
+  (-> (card.api/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
       (magic/inject-segment (-> id Card api/check-404))
       magic/automagic-dashboard))
 
-(api/defendpoint GET "/question/:id/:cell-query/:prefix/:rule"
+(api/defendpoint GET "/question/:id/cell/:cell-query/:prefix/:rule"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry` using rule `rule`."
   [id cell-query prefix rule]
-  (-> (card.api/adhoc-query {:query {:filter (-> cell-query
-                                                 codec/base64-decode
-                                                 json/decode)}})
+  (-> (card.api/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
       (magic/inject-segment (-> id Card api/check-404))
       (magic/automagic-dashboard (rules/load-rule (str prefix "/" rule ".yaml")))))
 
@@ -96,8 +96,7 @@
   "Return an automagic dashboard analyzing ad hoc query."
   [query]
   (-> query
-      codec/base64-decode
-      json/decode
+      decode-base64-json
       card.api/adhoc-query
       magic/automagic-analysis))
 
