@@ -27,9 +27,9 @@ export const ExplorePane = ({
   <div>
     {title && (
       <div className="flex align-center mb2">
-        <MetabotLogo className="mr2" />
-        <h3>
-          <span>{title}</span>
+        <MetabotLogo />
+        <h3 className="ml2">
+          <span className="block" style={{ marginTop: 8 }}>{title}</span>
         </h3>
       </div>
     )}
