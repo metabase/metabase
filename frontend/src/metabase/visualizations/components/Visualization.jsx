@@ -130,6 +130,7 @@ export default class Visualization extends Component {
   }
 
   static defaultProps = {
+    className: "full-height",
     showTitle: false,
     isDashboard: false,
     isEditing: false,
