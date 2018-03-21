@@ -11,6 +11,7 @@ import Question from "metabase-lib/lib/Question";
 
 // type annotations
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type { Card } from 'metabase/meta/types/Card'
 
 /*
  * AdHocQuestionLoader
@@ -44,7 +45,7 @@ import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
 type Props = {
   children: Function,
-  loadMetadataForCard: Function,
+  loadMetadataForCard: (card: Card) => Promise<void>,
   metadata: Metadata,
   questionHash: string,
 };
@@ -52,6 +53,7 @@ type Props = {
 type State = {
   // the question should be of type Question if it is set
   question: ?Question,
+  card: ?Card
 };
 
 export class AdHocQuestionLoader extends React.Component {
@@ -60,6 +62,9 @@ export class AdHocQuestionLoader extends React.Component {
   state: State = {
     // this will store the loaded question
     question: null,
+    // keep a reference to the card as well to help with re-creating question
+    // objects if the underlying metadata changes
+    card: null
   };
 
   componentWillMount() {
@@ -73,6 +78,14 @@ export class AdHocQuestionLoader extends React.Component {
     if (nextProps.questionHash !== this.props.questionHash) {
       this._loadQuestion(nextProps.questionHash);
     }
+
+    // if the metadata changes for some reason we need to make sure we
+    // update the question with that metadata
+    if(nextProps.metadata !== this.props.metadata && this.state.card) {
+      this.setState({
+        question: new Question(nextProps.metadata, this.state.card)
+      })
+    }
   }
 
   /*
@@ -85,6 +98,7 @@ export class AdHocQuestionLoader extends React.Component {
    * 4. Set the component state to the new Question
    */
   async _loadQuestion(questionHash: string) {
+    // get the card definition from the URL, the "card"
     const card = deserializeCardFromUrl(questionHash);
     // pass the decoded card to load any necessary metadata
     // (tables, source db, segments, etc) into
@@ -98,8 +112,9 @@ export class AdHocQuestionLoader extends React.Component {
     const question = new Question(this.props.metadata, card);
 
     // finally, set state to store the Question object so it can be passed
-    // to the component using the loader
-    this.setState({ question });
+    // to the component using the loader, keep a reference to the card
+    // as well
+    this.setState({ question, card });
   }
 
   render() {

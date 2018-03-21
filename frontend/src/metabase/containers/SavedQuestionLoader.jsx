@@ -11,6 +11,7 @@ import Question from "metabase-lib/lib/Question";
 
 // type annotations
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type { Card } from 'metabase/meta/types/Card'
 
 /*
  * SavedQuestionLaoder
@@ -44,13 +45,16 @@ import type Metadata from "metabase-lib/lib/metadata/Metadata";
 type Props = {
   children: Function,
   metadata: Metadata,
-  loadMetadataForCard: Function,
+  loadMetadataForCard: (card: Card) => Promise<void>,
   questionId: number,
 };
 
 type State = {
   // the question should be of type Question if it is set
   question: ?Question,
+  // keep a reference to the card as well to help with re-creating question
+  // objects if the underlying metadata changes
+  card: ?Card
 };
 
 export class SavedQuestionLoader extends React.Component {
@@ -71,6 +75,14 @@ export class SavedQuestionLoader extends React.Component {
     // url change) then we need to load this new question
     if (nextProps.questionId !== this.props.questionId) {
       this._loadQuestion(nextProps.questionId);
+    }
+
+    // if the metadata changes for some reason we need to make sure we
+    // update the question with that metadata
+    if(nextProps.metadata !== this.props.metadata && this.state.card) {
+      this.setState({
+        question: new Question(nextProps.metadata, this.state.card)
+      })
     }
   }
 
@@ -100,8 +112,9 @@ export class SavedQuestionLoader extends React.Component {
     const question = new Question(this.props.metadata, card);
 
     // finally, set state to store the Question object so it can be passed
-    // to the component using the loader
-    this.setState({ question });
+    // to the component using the loader, keep a reference to the card
+    // as well
+    this.setState({ question, card });
   }
 
   render() {

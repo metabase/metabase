@@ -30,10 +30,9 @@ export class QuestionResultLoader extends React.Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    // if the question is different, we need to do a fresh load
-    // TODO - is this the best way to check for new questions? any performance
-    // implications?
-    if (nextProps.question !== this.props.question) {
+    // if the question is different, we need to do a fresh load, check the
+    // difference by comparing the URL we'd generate for the question
+    if (nextProps.question && nextProps.question.getUrl() !== this.props.question && this.props.question.getUrl()) {
       this._loadResult(nextProps.question);
     }
   }

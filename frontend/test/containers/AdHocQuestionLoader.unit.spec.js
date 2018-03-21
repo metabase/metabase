@@ -25,7 +25,7 @@ describe("AdHocQuestionLoader", () => {
     expect(loadSpy).toHaveBeenCalledWith(questionHash);
   });
 
-  it("should load a new question if the question ID changes", () => {
+  it("should load a new question if the question hash changes", () => {
     // create some junk strigs, real question hashes are more ludicrous but this
     // is easier to verify
     const originalQuestionHash = "#abc123";
@@ -33,10 +33,10 @@ describe("AdHocQuestionLoader", () => {
 
     const loadSpy = jest.spyOn(AdHocQuestionLoader.prototype, "_loadQuestion");
 
+    const mockChild = jest.fn().mockReturnValue(<div />)
+
     const wrapper = shallow(
-      <AdHocQuestionLoader questionHash={originalQuestionHash}>
-        {() => <div />}
-      </AdHocQuestionLoader>,
+      <AdHocQuestionLoader questionHash={originalQuestionHash} children={mockChild} />
     );
 
     expect(loadSpy).toHaveBeenCalledWith(originalQuestionHash);
@@ -47,5 +47,7 @@ describe("AdHocQuestionLoader", () => {
 
     // question loading should begin with the new ID
     expect(loadSpy).toHaveBeenCalledWith(newQuestionHash);
+
+    expect(mockChild).toHaveBeenCalled()
   });
 });
