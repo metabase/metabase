@@ -111,7 +111,6 @@ const CompareHistograms = ({
   <div className="flex" style={{ height }}>
     <div className="flex-full">
       <Visualization
-        className="full-height"
         rawSeries={[
           {
             card: {
