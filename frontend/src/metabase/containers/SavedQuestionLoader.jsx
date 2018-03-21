@@ -11,7 +11,7 @@ import Question from "metabase-lib/lib/Question";
 
 // type annotations
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { Card } from 'metabase/meta/types/Card'
+import type { Card } from "metabase/meta/types/Card";
 
 /*
  * SavedQuestionLaoder
@@ -54,7 +54,7 @@ type State = {
   question: ?Question,
   // keep a reference to the card as well to help with re-creating question
   // objects if the underlying metadata changes
-  card: ?Card
+  card: ?Card,
 };
 
 export class SavedQuestionLoader extends React.Component {
@@ -79,10 +79,10 @@ export class SavedQuestionLoader extends React.Component {
 
     // if the metadata changes for some reason we need to make sure we
     // update the question with that metadata
-    if(nextProps.metadata !== this.props.metadata && this.state.card) {
+    if (nextProps.metadata !== this.props.metadata && this.state.card) {
       this.setState({
-        question: new Question(nextProps.metadata, this.state.card)
-      })
+        question: new Question(nextProps.metadata, this.state.card),
+      });
     }
   }
 

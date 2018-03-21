@@ -33,10 +33,13 @@ describe("AdHocQuestionLoader", () => {
 
     const loadSpy = jest.spyOn(AdHocQuestionLoader.prototype, "_loadQuestion");
 
-    const mockChild = jest.fn().mockReturnValue(<div />)
+    const mockChild = jest.fn().mockReturnValue(<div />);
 
     const wrapper = shallow(
-      <AdHocQuestionLoader questionHash={originalQuestionHash} children={mockChild} />
+      <AdHocQuestionLoader
+        questionHash={originalQuestionHash}
+        children={mockChild}
+      />,
     );
 
     expect(loadSpy).toHaveBeenCalledWith(originalQuestionHash);
@@ -48,6 +51,6 @@ describe("AdHocQuestionLoader", () => {
     // question loading should begin with the new ID
     expect(loadSpy).toHaveBeenCalledWith(newQuestionHash);
 
-    expect(mockChild).toHaveBeenCalled()
+    expect(mockChild).toHaveBeenCalled();
   });
 });

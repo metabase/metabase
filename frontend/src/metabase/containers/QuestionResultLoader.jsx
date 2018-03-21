@@ -32,7 +32,11 @@ export class QuestionResultLoader extends React.Component {
   componentWillReceiveProps(nextProps) {
     // if the question is different, we need to do a fresh load, check the
     // difference by comparing the URL we'd generate for the question
-    if (nextProps.question && nextProps.question.getUrl() !== this.props.question && this.props.question.getUrl()) {
+    if (
+      nextProps.question &&
+      nextProps.question.getUrl() !== this.props.question &&
+      this.props.question.getUrl()
+    ) {
       this._loadResult(nextProps.question);
     }
   }
