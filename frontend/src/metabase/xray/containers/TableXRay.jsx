@@ -123,7 +123,7 @@ class TableXRay extends Component {
                   </p>
                 </div>
                 <div className="ml-auto flex align-center">
-                  <h3 className="mr2">{t`Fidelity:`}</h3>
+                  <h3 className="mr2">{t`Fidelity`}:</h3>
                   <CostSelect
                     xrayType="table"
                     currentCost={params.cost}

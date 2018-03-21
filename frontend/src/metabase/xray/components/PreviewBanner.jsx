@@ -1,6 +1,6 @@
 import React from "react";
 import Icon from "metabase/components/Icon";
-import { jt } from "c-3po";
+import { t, jt } from "c-3po";
 const SURVEY_LINK =
   "https://docs.google.com/forms/d/e/1FAIpQLSc92WzF76ViiT8l4646lvFSWejNUhh4lhCSMXdZECILVwJG2A/viewform?usp=sf_link";
 
@@ -14,7 +14,7 @@ const PreviewBanner = () => (
     />
     <span>{jt`Welcome to the x-ray preview! We'd love ${(
       <a className="link" href={SURVEY_LINK} target="_blank">
-        your feedback
+        {t`your feedback`}
       </a>
     )}`}</span>
   </div>

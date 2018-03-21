@@ -326,6 +326,8 @@
   (field-remapped-values field-id remapped-field-id value-str))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/remapping/:remapped-id"
+  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
+  Cards."
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
   (api/check-public-sharing-enabled)
@@ -333,6 +335,8 @@
     (card-field-remapped-values card-id field-id remapped-id value)))
 
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/remapping/:remapped-id"
+  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
+  Dashboards."
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
   (api/check-public-sharing-enabled)

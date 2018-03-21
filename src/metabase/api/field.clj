@@ -211,8 +211,8 @@
   {value-pairs [[(s/one s/Num "value") (s/optional su/NonBlankString "human readable value")]]}
   (let [field (api/write-check Field id)]
     (api/check (field-values/field-should-have-field-values? field)
-      [400 (str "You can only update the human readable values of a mapped values of a Field whose 'special_type' "
-                "is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'.")])
+      [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
+                "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
     (if-let [field-value-id (db/select-one-id FieldValues, :field_id id)]
       (update-field-values! field-value-id value-pairs)
       (create-field-values! field value-pairs)))
