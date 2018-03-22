@@ -101,7 +101,7 @@
   {Identifier {(s/required-key :title)       s/Str
                (s/optional-key :description) s/Str}})
 
-(def ^:private ^{:arglists '([definition])} identifier
+(def ^{:arglists '([definition])} identifier
   "Return `key` in `{key {}}`."
   (comp key first))
 

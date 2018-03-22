@@ -35,16 +35,33 @@
                            "#509EE3"
                            "Cards used in automatically generated dashboards."))))
 
+(def ^:private colors
+  ["#509EE3" "#9CC177" "#A989C5" "#EF8C8C" "#f9d45c" "#F1B556" "#A6E7F3" "#7172AD"])
+
+(defn- colorize
+  [{:keys [dimensions metrics visualization dataset_query]}]
+  (when (and (= (count dimensions) 1)
+             (= (count metrics) 1)
+             (#{"line" "row" "bar" "scatter"} (first visualization)))
+    {:graph.colors [(-> dataset_query
+                        :query
+                        :breakout
+                        first
+                        hash
+                        (mod (count colors))
+                        colors)]}))
+
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [visualization title description dataset_query width height]} [x y]]
+  [dashboard {:keys [visualization title description dataset_query width height] :as card} [x y]]
   (let [[display visualization-settings] visualization
         card (-> {:creator_id             api/*current-user-id*
                   :dataset_query          dataset_query
                   :description            description
                   :display                display
                   :name                   title
-                  :visualization_settings visualization-settings
+                  :visualization_settings (-> visualization-settings
+                                              (merge (colorize card)))
                   :collection_id          (-> automagic-collection deref :id)
                   :id                     (gensym)}
                  card/populate-query-fields)]
