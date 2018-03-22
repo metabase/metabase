@@ -91,7 +91,7 @@ class AutomaticDashboardApp extends React.Component {
     } = this.props;
     return (
       <div className="flex">
-        <div className="flex-full">
+        <div className="flex-full overflow-x-hidden">
           <div className="bg-white border-bottom py2">
             <div className="wrapper flex align-center">
               <Icon name="bolt" className="text-gold mr1" size={24} />
