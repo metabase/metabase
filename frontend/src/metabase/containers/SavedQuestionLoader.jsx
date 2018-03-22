@@ -21,8 +21,8 @@ type ChildProps = {
 };
 
 type Props = {
-  questionId: number,
-  children: (props: ChildProps) => React$Element<any>,
+  questionId: ?number,
+  children?: (props: ChildProps) => React$Element<any>,
   // provided by redux
   loadMetadataForCard: (card: Card) => Promise<void>,
   metadata: Metadata,
@@ -107,7 +107,16 @@ export class SavedQuestionLoader extends React.Component {
    *    be used
    * 4. Set the component state to the new Question
    */
-  async _loadQuestion(questionId: number) {
+  async _loadQuestion(questionId: ?number) {
+    if (questionId == null) {
+      this.setState({
+        loading: false,
+        error: null,
+        question: null,
+        card: null,
+      });
+      return;
+    }
     try {
       this.setState({ loading: true, error: null });
       // get the saved question via the card API
@@ -135,9 +144,10 @@ export class SavedQuestionLoader extends React.Component {
   }
 
   render() {
+    const { children } = this.props;
     const { question, loading, error } = this.state;
     // call the child function with our loaded question
-    return this.props.children({ question, loading, error });
+    return children && children({ question, loading, error });
   }
 }
 

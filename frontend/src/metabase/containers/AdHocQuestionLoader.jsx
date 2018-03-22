@@ -21,8 +21,8 @@ type ChildProps = {
 };
 
 type Props = {
-  questionHash: string,
-  children: (props: ChildProps) => React$Element<any>,
+  questionHash?: string,
+  children?: (props: ChildProps) => React$Element<any>,
   // provided by redux
   loadMetadataForCard: (card: Card) => Promise<void>,
   metadata: Metadata,
@@ -108,7 +108,16 @@ export class AdHocQuestionLoader extends React.Component {
    *    be used
    * 4. Set the component state to the new Question
    */
-  async _loadQuestion(questionHash: string) {
+  async _loadQuestion(questionHash: ?string) {
+    if (!questionHash) {
+      this.setState({
+        loading: false,
+        error: null,
+        question: null,
+        card: null,
+      });
+      return;
+    }
     try {
       this.setState({ loading: true, error: null });
       // get the card definition from the URL, the "card"
@@ -134,9 +143,10 @@ export class AdHocQuestionLoader extends React.Component {
   }
 
   render() {
+    const { children } = this.props;
     const { question, loading, error } = this.state;
     // call the child function with our loaded question
-    return this.props.children({ question, loading, error });
+    return children && children({ question, loading, error });
   }
 }
 

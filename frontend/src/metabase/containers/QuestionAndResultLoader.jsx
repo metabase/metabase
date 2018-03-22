@@ -13,9 +13,9 @@ import type { ChildProps as QuestionResultLoaderChildProps } from "./QuestionRes
 type ChildProps = QuestionLoaderChildProps & QuestionResultLoaderChildProps;
 
 type Props = {
-  questionId: ?number,
-  questionHash: ?string,
-  children: (props: ChildProps) => React$Element<any>,
+  questionId?: ?number,
+  questionHash?: ?string,
+  children?: (props: ChildProps) => React$Element<any>,
 };
 
 /*
@@ -41,12 +41,11 @@ const QuestionAndResultLoader = ({
   questionHash,
   children,
 }: Props) => (
-  // $FlowFixMe: doesn't recognize JSX children
   <QuestionLoader questionId={questionId} questionHash={questionHash}>
     {({ loading: questionLoading, error: questionError, ...questionProps }) => (
-      // $FlowFixMe: doesn't recognize JSX children
       <QuestionResultLoader question={questionProps.question}>
         {({ loading: resultLoading, error: resultError, ...resultProps }) =>
+          children &&
           children({
             ...questionProps,
             ...resultProps,

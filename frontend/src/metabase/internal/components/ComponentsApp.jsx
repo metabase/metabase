@@ -1,5 +1,7 @@
+/* @flow */
+
 import React, { Component } from "react";
-import { Link } from "react-router";
+import { Link, Route } from "react-router";
 
 import { slugify } from "metabase/lib/formatting";
 import reactElementToJSXString from "react-element-to-jsx-string";
@@ -13,6 +15,7 @@ const Section = ({ title, children }) => (
 );
 
 export default class ComponentsApp extends Component {
+  static routes: ?[React$Element<Route>];
   render() {
     const componentName = slugify(this.props.params.componentName);
     const exampleName = slugify(this.props.params.exampleName);
@@ -116,3 +119,12 @@ export default class ComponentsApp extends Component {
     );
   }
 }
+
+ComponentsApp.routes = [
+  <Route path="components" component={ComponentsApp} />,
+  <Route path="components/:componentName" component={ComponentsApp} />,
+  <Route
+    path="components/:componentName/:exampleName"
+    component={ComponentsApp}
+  />,
+];

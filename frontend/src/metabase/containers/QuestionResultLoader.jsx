@@ -4,6 +4,7 @@ import React from "react";
 import { defer } from "metabase/lib/promise";
 
 import type { Dataset } from "metabase/meta/types/Dataset";
+import type { RawSeries } from "metabase/meta/types/Visualization";
 
 import Question from "metabase-lib/lib/Question";
 
@@ -12,13 +13,14 @@ export type ChildProps = {
   error: ?any,
   results: ?(Dataset[]),
   result: ?Dataset,
+  rawSeries: ?RawSeries,
   cancel: () => void,
   reload: () => void,
 };
 
 type Props = {
   question: ?Question,
-  children: (props: ChildProps) => React$Element<any>,
+  children?: (props: ChildProps) => React$Element<any>,
 };
 
 type State = {
@@ -125,15 +127,24 @@ export class QuestionResultLoader extends React.Component {
   };
 
   render() {
+    const { question, children } = this.props;
     const { results, loading, error } = this.state;
-    return this.props.children({
-      result: results && results[0],
-      results,
-      loading,
-      error,
-      cancel: this._cancel,
-      reload: this._reload,
-    });
+    return (
+      children &&
+      children({
+        results,
+        result: results && results[0],
+        // convienence for <Visualization /> component. Only support single series for now
+        rawSeries:
+          question && results
+            ? [{ card: question.card(), data: results[0].data }]
+            : null,
+        loading,
+        error,
+        cancel: this._cancel,
+        reload: this._reload,
+      })
+    );
   }
 }
 
