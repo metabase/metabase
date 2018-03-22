@@ -443,7 +443,8 @@
            vals
            (apply concat)))
 
-(defn- merge-filters
+(defn merge-filters
+  "Merge MBQL filter clauses."
   [a b]
   (cond
     (empty? a) b
