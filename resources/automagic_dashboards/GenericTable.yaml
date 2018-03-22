@@ -271,9 +271,9 @@ cards:
       score: 40
   - Singleton:
       title: "[[Singleton]]"
-      visualization: table
+      visualization: scalar
       dimensions: Singleton
       score: 30
-      height: 2
-      width: 2
+      height: 3
+      width: 3
       group: Singletons
