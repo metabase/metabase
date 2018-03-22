@@ -166,16 +166,27 @@ export default class QueryBuilder extends Component {
       nextProps.location.action === "POP" &&
       getURL(nextProps.location) !== getURL(this.props.location)
     ) {
+      // the browser forward/back button was pressed
       this.props.popState(nextProps.location);
+    } else if (
+      nextProps.location.action === "PUSH" &&
+      getURL(nextProps.location) !== getURL(this.props.location) &&
+      nextProps.question &&
+      getURL(nextProps.location) !== nextProps.question.getUrl()
+    ) {
+      // a link to a different qb url was clicked
+      this.props.initializeQB(nextProps.location, nextProps.params);
     } else if (
       this.props.location.hash !== "#?tutorial" &&
       nextProps.location.hash === "#?tutorial"
     ) {
+      // tutorial link was clicked
       this.props.initializeQB(nextProps.location, nextProps.params);
     } else if (
       getURL(nextProps.location) === "/question" &&
       getURL(this.props.location) !== "/question"
     ) {
+      // "New Question" link was clicked
       this.props.initializeQB(nextProps.location, nextProps.params);
     }
   }
