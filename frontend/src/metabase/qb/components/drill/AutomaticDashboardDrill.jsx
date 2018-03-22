@@ -1,7 +1,6 @@
 /* @flow */
 
 import { inflect } from "metabase/lib/formatting";
-import { utf8_to_b64url } from "metabase/lib/card";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { t } from "c-3po";
@@ -13,11 +12,6 @@ import type {
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   const query = question.query();
   if (!(query instanceof StructuredQuery)) {
-    return [];
-  }
-
-  // saved questions only, for now
-  if (question.id() == null) {
     return [];
   }
 
@@ -37,9 +31,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
           .drillUnderlyingRecords(dimensions)
           .query()
           .filters();
-        const filter = filters.length > 1 ? ["and", ...filters] : filters[0];
-        const cellQuery = utf8_to_b64url(JSON.stringify(filter));
-        return `/auto/dashboard/question/${question.id()}/cell/${cellQuery}`;
+        return question.getAutomaticDashboardUrl(filters);
       },
     },
   ];

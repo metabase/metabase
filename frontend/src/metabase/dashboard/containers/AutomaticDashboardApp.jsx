@@ -12,6 +12,8 @@ import { Dashboard } from "./Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import Parameters from "metabase/parameters/components/Parameters";
 
+import { getMetadata } from "metabase/selectors/metadata";
+
 import { DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 
@@ -65,6 +67,7 @@ const getDashboardId = (state, { params: { splat } }) =>
   `/auto/dashboard/${splat}`;
 
 const mapStateToProps = (state, props) => ({
+  metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
 });
 
