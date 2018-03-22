@@ -421,7 +421,9 @@
   [root rule]
   (let [root    (table root)
         tables  (concat [root] (linked-tables root))
-        fields  (->> (db/select Field :table_id [:in (map :id tables)])
+        fields  (->> (db/select Field
+                       :table_id        [:in (map :id tables)]
+                       :visibility_type "normal")
                      (group-by :table_id))]
     (as-> {:root-table (assoc root :fields (fields (:id root)))
            :tables     (map #(assoc % :fields (fields (:id %))) tables)
