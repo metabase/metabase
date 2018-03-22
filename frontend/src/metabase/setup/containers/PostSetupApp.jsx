@@ -147,7 +147,10 @@ export default class PostSetupApp extends Component {
             </BorderedPanel>
           )}
           <div className="m4 text-centered">
-            <Link to="/" className="no-decoration text-bold text-grey-3 text-grey-4-hover">
+            <Link
+              to="/"
+              className="no-decoration text-bold text-grey-3 text-grey-4-hover"
+            >
               No thanks, I’ll set things up on my own
             </Link>
           </div>

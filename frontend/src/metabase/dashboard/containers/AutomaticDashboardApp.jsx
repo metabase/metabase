@@ -6,15 +6,15 @@ import { withBackground } from "metabase/hoc/Background";
 import ActionButton from "metabase/components/ActionButton";
 import Icon from "metabase/components/Icon";
 import cxs from "cxs";
-import { t } from 'c-3po'
+import { t } from "c-3po";
 
 import { Dashboard } from "./Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import Parameters from "metabase/parameters/components/Parameters";
 
-import { addUndo, createUndo } from 'metabase/redux/undo'
+import { addUndo, createUndo } from "metabase/redux/undo";
 import { DashboardApi } from "metabase/services";
-import * as Urls from "metabase/lib/urls"
+import * as Urls from "metabase/lib/urls";
 
 import { dissoc } from "icepick";
 
@@ -78,17 +78,18 @@ class AutomaticDashboardApp extends React.Component {
     const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
     addUndo(
       createUndo({
-        type: 'metabase/automatic-dashboards/link-to-created-object',
-        message: () =>
+        type: "metabase/automatic-dashboards/link-to-created-object",
+        message: () => (
           <div className="flex align-center">
-            <Icon name='dashboard' size={22} className="mr2" />
+            <Icon name="dashboard" size={22} className="mr2" />
             <Link className="link" to={Urls.dashboard(newDashboard.id)}>
-              { t`View your recently created dashboard` }
+              {t`View your recently created dashboard`}
             </Link>
-          </div>,
-        action: null
-      })
-    )
+          </div>
+        ),
+        action: null,
+      }),
+    );
   };
 
   render() {
