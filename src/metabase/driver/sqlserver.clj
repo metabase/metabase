@@ -109,8 +109,7 @@
                                           (hx/cast :varchar (hx/day expr))
                                           (hx/literal " ")
                                           (hx/cast :varchar (date-part :hour expr))
-                                          (hx/literal ":00:00")
-                      ))
+                                          (hx/literal ":00:00")))
     :hour-of-day     (date-part :hour expr)
     ;; jTDS is retarded; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates like
     ;; every other SQL DB we support. Work around that by casting to DATE for truncation then back to DATETIME so we
@@ -129,7 +128,10 @@
                                 (hx/- 1 (date-part :weekday expr))
                                 (hx/->date expr)))
     :week-of-year    (date-part :iso_week expr)
-    :month           (hx/->datetime (hx/+ (hx/cast :varchar (hx/year expr)) (hx/literal "-") (hx/cast :varchar (hx/month expr)) (hx/literal "-01")))
+    :month           (hx/->datetime (hx/+ (hx/cast :varchar (hx/year expr)) 
+                                          (hx/literal "-")
+                                          (hx/cast :varchar (hx/month expr))
+                                          (hx/literal "-01")))
     :month-of-year   (date-part :month expr)
     :quarter         (date-add :quarter
                                (hx/dec (date-part :quarter expr))
