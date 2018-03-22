@@ -62,8 +62,8 @@
   (url [field] (format "%field/%s" public-endpoint (:id field)))
 
   metabase.models.query.QueryInstance
-  (table [query] (-> query :table_id Table))
-  (database [query] (-> query :database_id Database))
+  (table [query] (-> query :table-id Table))
+  (database [query] (-> query :database-id Database))
   (query-filter [query] (-> query :dataset_query :query :filter))
   (full-name [query] (str "ad-hoc question " (:name query)))
   (url [query] (format "%sadhoc/%s" public-endpoint (-> query
