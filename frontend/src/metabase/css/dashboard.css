@@ -1,10 +1,6 @@
 :root {
   --night-mode-color: rgba(255, 255, 255, 0.86);
 }
-.Dashboard {
-  background-color: #f9fbfc;
-  height: 100vh;
-}
 
 .DashboardHeader {
   background-color: white;

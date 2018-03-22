@@ -71,6 +71,7 @@ const mapStateToProps = (state, props) => ({
 
 @connect(mapStateToProps, { addUndo, createUndo })
 @DashboardData
+@withBackground("bg-slate-extra-light")
 class AutomaticDashboardApp extends React.Component {
   save = async () => {
     const { dashboard, addUndo, createUndo } = this.props;
@@ -146,4 +147,4 @@ class AutomaticDashboardApp extends React.Component {
   }
 }
 
-export default withBackground("bg-slate-extra-light")(AutomaticDashboardApp);
+export default AutomaticDashboardApp;
