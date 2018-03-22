@@ -59,7 +59,7 @@
                                    :order-by     [:asc (data/id :venues :id)]
                                    :limit        10}
                     :limit        5
-                    :order-by     [:asc :id]}})))) ; this ordering is needed for teradata and shouldn't affect others
+                    :order-by     [:asc (data/id :venues :id)]}})))) ; this ordering is needed for teradata and shouldn't affect others
 
 ;; TODO - `identifier`, `quoted-identifier` might belong in some sort of shared util namespace
 (defn- identifier

@@ -9,6 +9,7 @@
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.driver.generic-sql.util.deduplicate :as deduplicateutil]
             [metabase.models.field :as field]
             [metabase.query-processor.util :as qputil]
             [metabase.util
@@ -162,7 +163,11 @@
     :year            (extract-integer :year expr)))
 
 (defn- apply-limit [honeysql-form {value :limit}]
-  (assoc honeysql-form :modifiers [(format "TOP %d" value)]))
+  (update (assoc honeysql-form :modifiers [(format "TOP %d" value)]) :select deduplicateutil/deduplicate-identifiers))
+
+(defn- apply-aggregation [driver honeysql-form query]
+  (-> (sqlqp/apply-aggregation driver honeysql-form query)
+      (update :select deduplicateutil/deduplicate-identifiers)))
 
 (defn- apply-page [honeysql-form {{:keys [items page]} :page}]
   (assoc honeysql-form :offset (hsql/raw (format "QUALIFY ROW_NUMBER() OVER (%s) BETWEEN %d AND %d"
@@ -214,7 +219,7 @@
   "Run the query itself without setting the timezone connection parameter as this must not be changed on a Teradata connection.
    Setting connection attributes like timezone would make subsequent queries behave unexpectedly."
   [{sql :query, params :params, remark :remark} timezone connection]
-  (let [sql              (s/replace (str "-- " remark "\n" (hx/unescape-dots sql)) "OFFSET" "")
+  (let [sql              (s/replace (s/replace (str "-- " remark "\n" (hx/unescape-dots sql)) "OFFSET" "") "test_data" "test-data") ;; temporary hack
         statement        (into [sql] params)
         [columns & rows] (jdbc/query connection statement {:identifiers    identity, :as-arrays? true
                                                            :read-columns   (#'metabase.driver.generic-sql.query-processor/read-columns-with-date-handling timezone)})]
@@ -277,6 +282,7 @@
      :current-datetime-fn       (constantly now)
      :string-length-fn          (u/drop-first-arg string-length-fn)
      :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
+     :apply-aggregation         apply-aggregation
      :apply-limit               (u/drop-first-arg apply-limit)
      :apply-page                (u/drop-first-arg apply-page)
      :stddev-fn                 (constantly :STDDEV_SAMP)

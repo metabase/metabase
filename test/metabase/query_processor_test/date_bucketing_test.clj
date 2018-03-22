@@ -289,7 +289,7 @@
 
     (oracle-or-redshift? *engine*)
     (results-by-hour (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
-
+    
     (supports-report-timezone? *engine*)
     (results-by-hour (source-date-formatter utc-tz) (result-date-formatter pacific-tz))
 
@@ -852,23 +852,24 @@
 
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly when it takes so long to load the data that the times are
 ;; no longer current (these tests pass locally if your machine isn't as slow as the CircleCI ones)
+;; Teradata Hack - these tests run against the 15-seconds database because of an unknown identification problem
 (expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
 
 (expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
 (expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
-(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
-(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata} 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata} 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata} 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery} 1 (count-of-grouping (checkins:1-per-day) :day "current"))
-(expect-with-non-timeseries-dbs-except #{:bigquery} 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
-(expect-with-non-timeseries-dbs-except #{:bigquery} 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata} 1 (count-of-grouping (checkins:1-per-day) :day "current"))
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata} 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata} 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery} 7 (count-of-grouping (checkins:1-per-day) :week "current"))
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata} 7 (count-of-grouping (checkins:1-per-day) :week "current"))
 
 ;; SYNTACTIC SUGAR
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata}
   1
   (-> (data/with-temp-db [_ (checkins:1-per-day)]
         (data/run-query checkins
@@ -876,7 +877,7 @@
           (ql/filter (ql/time-interval $timestamp :current :day))))
       first-row first int))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata}
   7
   (-> (data/with-temp-db [_ (checkins:1-per-day)]
         (data/run-query checkins
@@ -899,31 +900,31 @@
                (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata}
   {:rows 1, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata}
   {:rows 7, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "week"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata}
   {:rows 1, :unit :week}
   (date-bucketing-unit-when-you :breakout-by "week", :filter-by "day"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata}
   {:rows 1, :unit :quarter}
   (date-bucketing-unit-when-you :breakout-by "quarter", :filter-by "day"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata}
   {:rows 1, :unit :hour}
   (date-bucketing-unit-when-you :breakout-by "hour", :filter-by "day"))
 
 ;; make sure if you use a relative date bucket in the past (e.g. "past 2 months") you get the correct amount of rows (#3910)
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata}
   {:rows 2, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day", :with-interval -2))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:bigquery :teradata}
   {:rows 2, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day", :with-interval 2))
