@@ -30,10 +30,16 @@
    Value is wrapped in a delay so that we don't hit the DB out of order."
   (delay
    (or (db/select-one 'Collection
-         :name "Automatically Generated Questions")
-       (create-collection! "Automatically Generated Questions"
-                           "#509EE3"
-                           "Cards used in automatically generated dashboards."))))
+         :name     [:like "Automatically Generated Questions%"]
+         :archived false)
+       (let [c (db/count 'Collection
+                 :name [:like "Automatically Generated Questions%"])]
+         (create-collection!
+          (if (pos? c)
+            (format "Automatically Generated Questions %s" (inc c))
+            "Automatically Generated Questions")
+          "#509EE3"
+          "Cards used in automatically generated dashboards.")))))
 
 (def ^:private colors
   ["#509EE3" "#9CC177" "#A989C5" "#EF8C8C" "#f9d45c" "#F1B556" "#A6E7F3" "#7172AD"])
