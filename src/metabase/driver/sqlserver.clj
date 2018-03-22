@@ -135,7 +135,8 @@
     :month-of-year   (date-part :month expr)
     :quarter         (date-add :quarter
                                (hx/dec (date-part :quarter expr))
-                               (hx/cast :varchar (hx/year expr)))
+                               (hx/+ (hx/cast :varchar (hx/year expr)) 
+                                     (hx/literal "-01-01")))
     :quarter-of-year (date-part :quarter expr)
     :year            (date-part :year expr)))
 
