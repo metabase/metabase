@@ -1,7 +1,23 @@
+/* @flow */
+
 import React from "react";
 
 import AdHocQuestionLoader from "metabase/containers/AdHocQuestionLoader";
 import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
+
+import Question from "metabase-lib/lib/Question";
+
+export type ChildProps = {
+  loading: boolean,
+  error: ?any,
+  question: ?Question,
+};
+
+type Props = {
+  questionId?: ?number,
+  questionHash?: ?string,
+  children: (props: ChildProps) => React$Element<any>,
+};
 
 /*
  * QuestionLoader
@@ -15,7 +31,7 @@ import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
  *
  * const MyQuestionExplorer = ({ params, location }) =>
  *  <QuestionLoader questionId={params.questionId} questionHash={
- *  { question =>
+ *  { ({ question, loading, error }) =>
  *      <div>
  *        { // display info about the loaded question }
  *        <h1>{ question.displayName() }</h1>
@@ -40,15 +56,12 @@ import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
  *
  */
 
-const QuestionLoader = (
-  { questionId, questionHash, children },
-  { questionId: number, quetsionHash: string },
-) =>
+const QuestionLoader = ({ questionId, questionHash, children }: Props) =>
   // if there's a questionHash it means we're in ad-hoc land
   questionHash ? (
     <AdHocQuestionLoader questionHash={questionHash} children={children} />
   ) : // otherwise if there's a non-null questionId it means we're in saved land
-  questionId !== null ? (
+  questionId != null ? (
     <SavedQuestionLoader questionId={questionId} children={children} />
   ) : // finally, if neither is present, just don't do anything
   null;

@@ -1,4 +1,5 @@
 /* @flow */
+
 import React from "react";
 import { connect } from "react-redux";
 
@@ -12,6 +13,30 @@ import Question from "metabase-lib/lib/Question";
 // type annotations
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type { Card } from "metabase/meta/types/Card";
+
+type ChildProps = {
+  loading: boolean,
+  error: ?any,
+  question: ?Question,
+};
+
+type Props = {
+  questionId: number,
+  children: (props: ChildProps) => React$Element<any>,
+  // provided by redux
+  loadMetadataForCard: (card: Card) => Promise<void>,
+  metadata: Metadata,
+};
+
+type State = {
+  // the question should be of type Question if it is set
+  question: ?Question,
+  // keep a reference to the card as well to help with re-creating question
+  // objects if the underlying metadata changes
+  card: ?Card,
+  loading: boolean,
+  error: ?any,
+};
 
 /*
  * SavedQuestionLaoder
@@ -28,7 +53,7 @@ import type { Card } from "metabase/meta/types/Card";
  *    render () {
  *      return (
  *        <SavedQuestionLoader questionId={this.props.params.questionId}>
- *        { (question) => {
+ *        { ({ question, loading, error }) => {
  *
  *        }}
  *        </SavedQuestion>
@@ -41,28 +66,15 @@ import type { Card } from "metabase/meta/types/Card";
  * The raw un-connected component is also exported so we can unit test it
  * without the redux store.
  */
-
-type Props = {
-  children: Function,
-  metadata: Metadata,
-  loadMetadataForCard: (card: Card) => Promise<void>,
-  questionId: number,
-};
-
-type State = {
-  // the question should be of type Question if it is set
-  question: ?Question,
-  // keep a reference to the card as well to help with re-creating question
-  // objects if the underlying metadata changes
-  card: ?Card,
-};
-
 export class SavedQuestionLoader extends React.Component {
   props: Props;
 
   state: State = {
     // this will store the loaded question
     question: null,
+    card: null,
+    loading: false,
+    error: null,
   };
 
   componentWillMount() {
@@ -96,30 +108,36 @@ export class SavedQuestionLoader extends React.Component {
    * 4. Set the component state to the new Question
    */
   async _loadQuestion(questionId: number) {
-    // get the saved question via the card API
-    const card = await CardApi.get({ cardId: questionId });
+    try {
+      this.setState({ loading: true, error: null });
+      // get the saved question via the card API
+      const card = await CardApi.get({ cardId: questionId });
 
-    // pass the retrieved card to load any necessary metadata
-    // (tables, source db, segments, etc) into
-    // the redux store, the resulting metadata will be avaliable as metadata on the
-    // component props once it's avaliable
-    await this.props.loadMetadataForCard(card);
+      // pass the retrieved card to load any necessary metadata
+      // (tables, source db, segments, etc) into
+      // the redux store, the resulting metadata will be avaliable as metadata on the
+      // component props once it's avaliable
+      await this.props.loadMetadataForCard(card);
 
-    // instantiate a new question object using the metadata and saved question
-    // so we can use metabase-lib methods to retrieve information and modify
-    // the question
-    //
-    const question = new Question(this.props.metadata, card);
+      // instantiate a new question object using the metadata and saved question
+      // so we can use metabase-lib methods to retrieve information and modify
+      // the question
+      //
+      const question = new Question(this.props.metadata, card);
 
-    // finally, set state to store the Question object so it can be passed
-    // to the component using the loader, keep a reference to the card
-    // as well
-    this.setState({ question, card });
+      // finally, set state to store the Question object so it can be passed
+      // to the component using the loader, keep a reference to the card
+      // as well
+      this.setState({ loading: false, question, card });
+    } catch (error) {
+      this.setState({ loading: false, error });
+    }
   }
 
   render() {
+    const { question, loading, error } = this.state;
     // call the child function with our loaded question
-    return this.props.children(this.state.question);
+    return this.props.children({ question, loading, error });
   }
 }
 

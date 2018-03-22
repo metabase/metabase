@@ -1,5 +1,31 @@
+/* @flow */
+
 import React from "react";
 import { defer } from "metabase/lib/promise";
+
+import type { Dataset } from "metabase/meta/types/Dataset";
+
+import Question from "metabase-lib/lib/Question";
+
+export type ChildProps = {
+  loading: boolean,
+  error: ?any,
+  results: ?(Dataset[]),
+  result: ?Dataset,
+  cancel: () => void,
+  reload: () => void,
+};
+
+type Props = {
+  question: ?Question,
+  children: (props: ChildProps) => React$Element<any>,
+};
+
+type State = {
+  results: ?(Dataset[]),
+  loading: boolean,
+  error: ?any,
+};
 
 /*
  * Question result loader
@@ -20,22 +46,25 @@ import { defer } from "metabase/lib/promise";
  *
  */
 export class QuestionResultLoader extends React.Component {
-  state = {
-    result: null,
-    cancel: null,
+  props: Props;
+  state: State = {
+    results: null,
+    loading: false,
+    error: null,
   };
+
+  _cancelDeferred: ?() => void;
 
   componentWillMount() {
     this._loadResult(this.props.question);
   }
 
-  componentWillReceiveProps(nextProps) {
+  componentWillReceiveProps(nextProps: Props) {
     // if the question is different, we need to do a fresh load, check the
     // difference by comparing the URL we'd generate for the question
     if (
-      nextProps.question &&
-      nextProps.question.getUrl() !== this.props.question &&
-      this.props.question.getUrl()
+      (nextProps.question && nextProps.question.getUrl()) !==
+      (this.props.question && this.props.question.getUrl())
     ) {
       this._loadResult(nextProps.question);
     }
@@ -44,24 +73,30 @@ export class QuestionResultLoader extends React.Component {
   /*
    * load the result by calling question.apiGetResults
    */
-  async _loadResult(question) {
+  async _loadResult(question: ?Question) {
     // we need to have a question for anything to happen
     if (question) {
-      // set up a defer for cancelation
-      let cancelDeferred = defer();
+      try {
+        // set up a defer for cancelation
+        this._cancelDeferred = defer();
 
-      // begin the request, set cancel in state so the query can be canceled
-      this.setState({ cancel: cancelDeferred, result: null });
+        // begin the request, set cancel in state so the query can be canceled
+        this.setState({ loading: true, results: null, error: null });
 
-      // call apiGetResults and pass our cancel to allow for cancelation
-      const result = await question.apiGetResults({ cancelDeferred });
+        // call apiGetResults and pass our cancel to allow for cancelation
+        const results: Dataset[] = await question.apiGetResults({
+          cancelDeferred: this._cancelDeferred,
+        });
 
-      // setState with our result, remove our cancel since we've finished
-      this.setState({ cancel: null, result });
+        // setState with our result, remove our cancel since we've finished
+        this.setState({ loading: false, results });
+      } catch (error) {
+        this.setState({ loading: false, error });
+      }
     } else {
       // if there's not a question we can't do anything so go back to our initial
       // state
-      this.setState({ cancel: null, result: null });
+      this.setState({ loading: false, results: null, error: null });
     }
   }
 
@@ -79,20 +114,25 @@ export class QuestionResultLoader extends React.Component {
    */
   _cancel = () => {
     // we only want to do things if cancel has been set
-    if (this.state.cancel) {
-      // call our cancel to cancel the query
-      this.state.cancel();
-      // cancel our cancel...
-      this.setState({ cancel: null });
+    if (this.state.loading) {
+      // set loading false
+      this.setState({ loading: false });
+      // call our _cancelDeferred to cancel the query
+      if (this._cancelDeferred) {
+        this._cancelDeferred();
+      }
     }
   };
 
   render() {
-    const { result } = this.state;
+    const { results, loading, error } = this.state;
     return this.props.children({
+      result: results && results[0],
+      results,
+      loading,
+      error,
       cancel: this._cancel,
       reload: this._reload,
-      result,
     });
   }
 }

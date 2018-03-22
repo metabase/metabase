@@ -1,7 +1,22 @@
+/* @flow */
+
 import React from "react";
 
 import QuestionLoader from "metabase/containers/QuestionLoader";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
+
+import Question from "metabase-lib/lib/Question";
+
+import type { ChildProps as QuestionLoaderChildProps } from "./QuestionLoader";
+import type { ChildProps as QuestionResultLoaderChildProps } from "./QuestionResultLoader";
+
+type ChildProps = QuestionLoaderChildProps & QuestionResultLoaderChildProps;
+
+type Props = {
+  questionId: ?number,
+  questionHash: ?string,
+  children: (props: ChildProps) => React$Element<any>,
+};
 
 /*
  * QuestionAndResultLoader
@@ -21,11 +36,24 @@ import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
  * </QuestionAndResultLoader>
  *
  */
-const QuestionAndResultLoader = ({ questionId, questionHash, children }) => (
+const QuestionAndResultLoader = ({
+  questionId,
+  questionHash,
+  children,
+}: Props) => (
+  // $FlowFixMe: doesn't recognize JSX children
   <QuestionLoader questionId={questionId} questionHash={questionHash}>
-    {question => (
-      <QuestionResultLoader question={question}>
-        {props => children({ question, ...props })}
+    {({ loading: questionLoading, error: questionError, ...questionProps }) => (
+      // $FlowFixMe: doesn't recognize JSX children
+      <QuestionResultLoader question={questionProps.question}>
+        {({ loading: resultLoading, error: resultError, ...resultProps }) =>
+          children({
+            ...questionProps,
+            ...resultProps,
+            loading: resultLoading || questionLoading,
+            error: resultError || questionError,
+          })
+        }
       </QuestionResultLoader>
     )}
   </QuestionLoader>
