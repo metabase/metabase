@@ -100,6 +100,16 @@
       card.api/adhoc-query
       magic/automagic-analysis))
 
+(api/defendpoint GET "/adhoc/:query/cell/:cell-query"
+  "Return an automagic dashboard analyzing ad hoc query."
+  [query cell-query]
+  (let [query      (decode-base64-json query)
+        cell-query (decode-base64-json cell-query)]
+    (-> query
+        card.api/adhoc-query
+        (update-in [:dataset_query :query :filter] magic/merge-filters cell-query)
+        magic/automagic-analysis)))
+
 (def ^:private valid-comparison-pair?
   #{["segment" "segment"]
     ["segment" "table"]
