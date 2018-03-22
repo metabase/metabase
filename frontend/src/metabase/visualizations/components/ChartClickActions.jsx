@@ -196,13 +196,16 @@ export const ChartClickAction = ({
     "text-brand-hover cursor-pointer no-decoration",
     isLastItem ? "pr2" : "pr4",
   );
-  if (action.question) {
-    return (
-      <Link to={action.question().getUrl()} className={className}>
-        {action.title}
-      </Link>
-    );
-  } else if (action.url) {
+  // NOTE: disabling <Link> for `questoin` click actions for now since on dashboards
+  // currently they need to go through navigateToNewCardFromDashboard to merge in parameters
+  // if (action.question) {
+  //   return (
+  //     <Link to={action.question().getUrl()} className={className}>
+  //       {action.title}
+  //     </Link>
+  //   );
+  // } else
+  if (action.url) {
     return (
       <Link to={action.url()} className={className}>
         {action.title}
