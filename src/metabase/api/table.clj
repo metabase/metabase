@@ -212,7 +212,7 @@
                 field)))))
 
 (api/defendpoint GET "/:id/query_metadata"
-  "Get metadata about a `Table` useful for running queries.
+  "Get metadata about a `Table` us eful for running queries.
    Returns DB, fields, field FKs, and field values.
 
   By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case will
@@ -222,7 +222,7 @@
   (let [table (api/read-check Table id)
         driver (driver/database-id->driver (:db_id table))]
     (-> table
-        (hydrate :db [:fields :target :dimensions :has_field_values] :segments :metrics)
+        (hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options driver)
         format-fields-for-response
@@ -244,8 +244,8 @@
           (assoc
               :table_id     (str "card__" card-id)
               :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
-              ;; don't return :special_type if it's a PK or FK because it confuses the frontend since it can't actually be
-              ;; used that way IRL
+              ;; don't return :special_type if it's a PK or FK because it confuses the frontend since it can't
+              ;; actually be used that way IRL
               :special_type (when-let [special-type (keyword (:special_type col))]
                               (when-not (or (isa? special-type :type/PK)
                                             (isa? special-type :type/FK))
@@ -263,12 +263,15 @@
              :display_name (:name card)
              :schema       (get-in card [:collection :name] "Everything else")
              :description  (:description card)}
-      include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/get-id card) database_id (:result_metadata card))))))
+      include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/get-id card)
+                                                                           database_id
+                                                                           (:result_metadata card))))))
 
 (api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
-  (let [{:keys [database_id] :as card } (db/select-one [Card :id :dataset_query :result_metadata :name :description :collection_id :database_id]
+  (let [{:keys [database_id] :as card } (db/select-one [Card :id :dataset_query :result_metadata :name :description
+                                                        :collection_id :database_id]
                                           :id id)]
     (-> card
         api/read-check

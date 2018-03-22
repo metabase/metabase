@@ -552,7 +552,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
       }
     }
 
-    if (dashboardType === "normal") {
+    if (dashboardType === "normal" || dashboardType === "transient") {
       // fetch database metadata for every card
       _.chain(result.ordered_cards)
         .map(dc => [dc.card].concat(dc.series))

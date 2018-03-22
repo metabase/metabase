@@ -93,11 +93,12 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
-          :types          (constantly {:base_type       :keyword
-                                       :special_type    :keyword
-                                       :visibility_type :keyword
-                                       :description     :clob
-                                       :fingerprint     :json})
+          :types          (constantly {:base_type        :keyword
+                                       :special_type     :keyword
+                                       :visibility_type  :keyword
+                                       :description      :clob
+                                       :has_field_values :clob
+                                       :fingerprint      :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-update     pre-update
@@ -165,6 +166,15 @@
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))
 
+(defn- is-searchable?
+  "Is this `field` a Field that you should be presented with a search widget for (to search its values)? If so, we can
+  give it a `has_field_values` value of `search`."
+  [{base-type :base_type}]
+  ;; For the time being we will consider something to be "searchable" if it's a text Field since the `starts-with`
+  ;; filter that powers the search queries (see `metabase.api.field/search-values`) doesn't work on anything else
+  (or (isa? base-type :type/Text)
+      (isa? base-type :type/TextLike)))
+
 (defn with-has-field-values
   "Infer what the value of the `has_field_values` should be for Fields where it's not set. Admins can set this to one
   of the values below, but if it's `nil` in the DB we'll infer it automatically.
@@ -179,12 +189,16 @@
                                                    (:id field)))
         fields-with-fieldvalues-ids         (when (seq fields-without-has-field-values-ids)
                                               (db/select-field :field_id FieldValues
-                                                :field_id [:in fields-without-has-field-values-ids]))]
+                                                               :field_id [:in fields-without-has-field-values-ids]))]
     (for [field fields]
-      (assoc field :has_field_values (or (:has_field_values field)
-                                         (if (contains? fields-with-fieldvalues-ids (u/get-id field))
-                                           :list
-                                           :search))))))
+      (when field
+        (assoc field
+          :has_field_values (or
+                             (:has_field_values field)
+                             (cond
+                               (contains? fields-with-fieldvalues-ids (u/get-id field)) :list
+                               (is-searchable? field)                                   :search
+                               :else                                                    :none)))))))
 
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"

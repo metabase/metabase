@@ -32,7 +32,7 @@
    (or (db/select-one 'Collection
          :name "Automatically Generated Questions")
        (create-collection! "Automatically Generated Questions"
-                           "#509ee3"
+                           "#509EE3"
                            "Cards used in automatically generated dashboards."))))
 
 (defn- add-card

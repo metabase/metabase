@@ -2,6 +2,8 @@
 import {
   useSharedAdminLogin,
   createTestStore,
+  deleteAllSegments,
+  deleteAllMetrics,
 } from "__support__/integrated_tests";
 import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 import { mount } from "enzyme";
@@ -199,14 +201,18 @@ describe("admin/datamodel", () => {
       ).toEqual("User countCount");
     });
 
-    afterAll(async () => {
-      await MetabaseApi.table_update({ id: 1, visibility_type: null }); // Sample Dataset
-      await MetabaseApi.field_update({
-        id: 8,
-        visibility_type: "normal",
-        special_type: null,
-      }); // Address
-      await MetabaseApi.field_update({ id: 9, visibility_type: "normal" }); // Address
-    });
+    afterAll(() =>
+      Promise.all([
+        MetabaseApi.table_update({ id: 1, visibility_type: null }), // Sample Dataset
+        MetabaseApi.field_update({
+          id: 8,
+          visibility_type: "normal",
+          special_type: null,
+        }), // Address
+        MetabaseApi.field_update({ id: 9, visibility_type: "normal" }), // Address
+        deleteAllSegments(),
+        deleteAllMetrics(),
+      ]),
+    );
   });
 });
