@@ -5,8 +5,6 @@ import React from "react";
 import QuestionLoader from "metabase/containers/QuestionLoader";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 
-import Question from "metabase-lib/lib/Question";
-
 import type { ChildProps as QuestionLoaderChildProps } from "./QuestionLoader";
 import type { ChildProps as QuestionResultLoaderChildProps } from "./QuestionResultLoader";
 
