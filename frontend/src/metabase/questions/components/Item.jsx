@@ -1,3 +1,4 @@
+/* @flow */
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
@@ -19,6 +20,35 @@ import * as Urls from "metabase/lib/urls";
 
 const ITEM_ICON_SIZE = 20;
 
+import type { Item as ItemType, Entity } from "../types";
+import type { Collection } from "metabase/meta/types/Collection";
+import type { Label } from "metabase/meta/types/Label";
+
+type ItemProps = ItemType & {
+  showCollectionName: boolean,
+  setItemSelected: (selected: { [key: number]: boolean }) => void,
+  setFavorited: (id: number, favorited: boolean) => void,
+  setArchived: (id: number, archived: boolean, undoable: boolean) => void,
+  onEntityClick: (entity: Entity) => void,
+};
+
+type ItemBodyProps = {
+  entity: Entity,
+  id: number,
+  name: string,
+  description: string,
+  labels: Label[],
+  favorite: boolean,
+  collection: ?Collection,
+  setFavorited: (id: number, favorited: boolean) => void,
+  onEntityClick: (entity: Entity) => void,
+};
+
+type ItemCreatedProps = {
+  created: string,
+  by: string,
+};
+
 const Item = ({
   entity,
   id,
@@ -37,7 +67,7 @@ const Item = ({
   setArchived,
   showCollectionName,
   onEntityClick,
-}) => (
+}: ItemProps) => (
   <div className={cx("hover-parent hover--visibility", S.item)}>
     <div className="flex flex-full align-center">
       <div
@@ -148,7 +178,7 @@ const ItemBody = pure(
     collection,
     setFavorited,
     onEntityClick,
-  }) => (
+  }: ItemBodyProps) => (
     <div className={S.itemBody}>
       <div className={cx("flex", S.itemTitle)}>
         <Link
@@ -203,7 +233,7 @@ ItemBody.propTypes = {
 };
 
 const ItemCreated = pure(
-  ({ created, by }) =>
+  ({ created, by }: ItemCreatedProps) =>
     created || by ? (
       <div className={S.itemSubtitle}>
         {t`Created` + (created ? ` ${created}` : ``) + (by ? t` by ${by}` : ``)}
