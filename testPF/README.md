@@ -24,8 +24,7 @@ $ docker inspect <CONTAINER_ID> (see if it is 'postgresdisc')
 ```
 $ docker exec -it <CONTAINER_ID> bash
 ```
-4. Copy the SQL script to the container (<i>src/test/resources/postgresql-data.sql</i>) and launch it through PSQL 
-console.
+4. Copy the SQL script to the container (<i>src/test/resources/postgresql-data.sql</i>) and launch it through PSQL console.
 ```
 $ export PGPASSWORD=<POSTGRES_PASSWORD>
 $ psql -U <POSTGRES_USER> -d <POSTGRES_DATABASE> -p <PORT> -f <PATH_TO_SQL_FILE>/postgresql-data.sql
@@ -52,15 +51,14 @@ $ docker exec -it <CONTAINER_ID> bash
 4. Copy the SQL script to the container (<i>src/test/resources/crossdata-data.sql</i>) and launch it Crossdata Shell.
 ```
 $ /opt/sds/crossdata/bin/crossdata-shell --user crossdata-1 --queries-file <PATH_TO_SQL_FILE>/crossdata-data.sql
-
+ 
 i.e.:
 $ /opt/sds/crossdata/bin/crossdata-shell --user crossdata-1 --queries-file /tmp/crossdata-data.sql
 ```
 
 ##### CREATE DATABASES IN DISCOVERY
 
-After all data is created and stored it's needed to generate, in Discovery, databases for Postgres and Crossdata2 
-through the admin web interface.
+After all data is created and stored it's needed to generate, in Discovery, databases for Postgres and Crossdata2 through the admin web interface.
 
 <u>IMPORTANT:</u> the queries executed in these tests depend on the <i>postgresdisc</i> database catalog, so in order to properly execute the tests it's mandatory to:
 1. Have a fresh Discovery installation.
@@ -75,12 +73,11 @@ Otherwise the query must be changed in the classes <i>Test_CrossdataQuery</i> an
 
 Each test has its own profile in order to be launched easily with maven; also each test store its results in their own folder (as can be seen in <i>pom.xml</i>).
 
-It's mandatory to provide the <COOKIE> variable to the maven command. You have to enter Discovery web interface and get it using the web browser development tools.
+It's mandatory to provide the COOKIE variable to the maven command. You have to enter Discovery web interface and get it using the web browser development tools.
 ```
 -DCOOKIE="<COOKIE>"
 ```
-If the VHOST defined for <i>Discovery</i> in marathon-lb-sec is different from 'discovery.labs.stratio.com' then it 
-is mandatory to provide <BASE_URL> variable to the maven command.
+If the VHOST defined for <i>Discovery</i> in marathon-lb-sec is different from 'discovery.labs.stratio.com' then it is mandatory to provide BASE_URL variable to the maven command.
 ```
 -DBASE_URL="https://<VHOST>/services/metabase"
 ```
