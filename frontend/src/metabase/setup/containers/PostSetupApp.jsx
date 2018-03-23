@@ -47,32 +47,42 @@ export default class PostSetupApp extends Component {
 
   // $FlowFixMe: doesn't expect componentWillMount to return Promise<void>
   async componentWillMount() {
-    const [sampleDbs, otherDbs] = _.partition(
-      await MetabaseApi.db_list(),
-      db => db.is_sample,
-    );
-    if (otherDbs.length > 0) {
-      this.setState({ databaseId: otherDbs[0].id, isSample: false }, () => {
+    // If we get passed in a database id, just use that.
+    // Don't fall back to the sample dataset
+    if (this.props.databaseId) {
+      this.setState({ databaseId: this.props.databaseId }, () => {
         this._loadCandidates();
       });
-      // After timeout load candidates for sample dataset
-      this._sampleTimeout = setTimeout(async () => {
-        this._sampleTimeout = null;
-        this.setState({
-          sampleCandidates: await AutoApi.db_candidates({
-            id: sampleDbs[0].id,
-          }),
-        });
-      }, CANDIDATES_TIMEOUT);
     } else {
-      this.setState({ databaseId: sampleDbs[0].id, isSample: true }, () => {
-        this._loadCandidates();
-      });
+      // Otherwise, it's a fresh start. Grab the last added database
+      const [sampleDbs, otherDbs] = _.partition(
+        await MetabaseApi.db_list(),
+        db => db.is_sample,
+      );
+      if (otherDbs.length > 0) {
+        this.setState({ databaseId: otherDbs[0].id, isSample: false }, () => {
+          this._loadCandidates();
+        });
+        // If things are super slow for whatever reason,
+        // just load candidates for sample dataset
+        this._sampleTimeout = setTimeout(async () => {
+          this._sampleTimeout = null;
+          this.setState({
+            sampleCandidates: await AutoApi.db_candidates({
+              id: sampleDbs[0].id,
+            }),
+          });
+        }, CANDIDATES_TIMEOUT);
+      } else {
+        this.setState({ databaseId: sampleDbs[0].id, isSample: true }, () => {
+          this._loadCandidates();
+        });
+      }
+      this._pollTimer = setInterval(
+        this._loadCandidates,
+        CANDIDATES_POLL_INTERVAL,
+      );
     }
-    this._pollTimer = setInterval(
-      this._loadCandidates,
-      CANDIDATES_POLL_INTERVAL,
-    );
   }
   componentWillUnmount() {
     this._clearTimers();

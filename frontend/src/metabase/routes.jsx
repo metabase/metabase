@@ -205,6 +205,7 @@ export const getRoutes = store => (
         {/* HOME */}
         <Route path="/" component={HomepageApp} />
         <Route path="/ready" component={PostSetupApp} />
+        <Route path="/ready/:databaseId" component={PostSetupApp} />
 
         {/* DASHBOARD LIST */}
         <Route
