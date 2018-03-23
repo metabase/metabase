@@ -26,10 +26,8 @@
 (expect
   {:name "scheduleslots"
    :base-type :type/Dictionary
-   :nested-fields [{:name "availabledays" :base-type :type/Array}
-                   {:name "availablepartsofday" :base-type :type/Array}
-                   ]
-   }
+   :nested-fields #{{:name "availabledays" :base-type :type/Array}
+                    {:name "availablepartsofday" :base-type :type/Array}}}
   (parser/parse-schema {:name "scheduleslots" :type "struct<availabledays:array<string>,availablepartsofday:array<string>>"}))
 
 (expect
@@ -40,22 +38,22 @@
 (expect
   {:name "sk_references"
    :base-type :type/Dictionary
-   :nested-fields [{:name "cepid" :base-type :type/Text}
-                   {:name "customerid" :base-type :type/Text}
-                   {:name "id" :base-type :type/Integer}]}
+   :nested-fields #{{:name "cepid" :base-type :type/Text}
+                    {:name "customerid" :base-type :type/Text}
+                    {:name "id" :base-type :type/Integer}}}
   (parser/parse-schema {:name "sk_references" :type "struct<cepid:string,customerid:string,id:int>"}))
 
 (expect
   {:name "options"
    :base-type :type/Dictionary
-   :nested-fields [{:name "conventional"
-                    :base-type :type/Dictionary
-                    :nested-fields [{:name "price" :base-type :type/Float}
-                                    {:name "eta"
-                                     :base-type :type/Dictionary
-                                     :nested-fields [{:name "date" :base-type :type/Text}
-                                                     {:name "businessdays" :base-type :type/Integer}
-                                                     {:name "lowerboundbusinessdays" :base-type :type/Integer}]}]}]}
+   :nested-fields #{{:name "conventional"
+                     :base-type :type/Dictionary
+                     :nested-fields #{{:name "price" :base-type :type/Float}
+                                      {:name "eta"
+                                       :base-type :type/Dictionary
+                                       :nested-fields #{{:name "date" :base-type :type/Text}
+                                                        {:name "businessdays" :base-type :type/Integer}
+                                                        {:name "lowerboundbusinessdays" :base-type :type/Integer}}}}}}}
   (parser/parse-schema {:name "options" :type (str "struct<options:struct<conventional:struct<"
                                                    "price:double,eta:struct<"
                                                    "date:string,businessdays:int,lowerboundbusinessdays:int>>>>")}))
