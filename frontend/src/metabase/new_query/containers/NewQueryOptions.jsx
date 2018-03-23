@@ -118,15 +118,15 @@ export class NewQueryOptions extends Component {
 
     if (!hasDatabases) {
       return (
-        <div className="full-height flex align-center justify-center">
+        <div className="viewport-height flex align-center justify-center">
           <NoDatabasesEmptyState />
         </div>
       );
     }
 
     return (
-      <div className="full-height flex">
-        <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim flex-full px4 mt4 mb2 align-center">
+      <div className="spread flex">
+        <div className="full-height wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim flex-full px4 align-center">
           <div
             className="flex align-center justify-center"
             style={{ minHeight: "100%" }}
