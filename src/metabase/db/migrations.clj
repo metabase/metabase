@@ -369,8 +369,24 @@
 ;; `pre-update` implementation.
 ;;
 ;; Caching these permissions will prevent 1000+ DB call API calls. See https://github.com/metabase/metabase/issues/6889
+;; NOTE: This used used to be 
+;; (defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
+;;   (run!
+;;     (fn [card]
+;;      (db/update! Card (u/get-id card) {}))
+;;   (db/select-reducible Card :archived false, :read_permissions nil)))
+;; But due to bug https://github.com/metabase/metabase/issues/7189 was replaced
 (defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
+  (log/info "Not running migration `populate-card-read-permissions` as it has been replaced by a subsequent migration "))
+
+  
+;; Migration from 0.28.2 above had a flaw in that passing in `{}` to the update results in 
+;; the functions that do pre-insert permissions checking don't have the query dictionary to analyze
+;; and always short-circuit due to the missing query dictionary. Passing the card itself into the 
+;; check mimicks how this works in-app, and appears to fix things.
+
+(defmigration ^{:author "salsakran", :added "0.28.3"} repopulate-card-read-permissions
   (run!
    (fn [card]
-     (db/update! Card (u/get-id card) {}))
-   (db/select-reducible Card :archived false, :read_permissions nil)))
+     (db/update! Card (u/get-id card) card))
+   (db/select-reducible Card :archived false)))
