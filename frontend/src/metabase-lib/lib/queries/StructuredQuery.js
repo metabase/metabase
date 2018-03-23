@@ -490,7 +490,7 @@ export default class StructuredQuery extends AtomicQuery {
         // segment id is stored as the second part of the filter clause
         // e.x. ["SEGMENT", 1]
         const segmentId = segmentFilter[1];
-        return this.metadata().segments[segmentId];
+        return this.metadata().segment(segmentId)
       });
   }
 
