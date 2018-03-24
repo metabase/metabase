@@ -161,7 +161,7 @@
 ;; TODO - do we need to hydrate the cards' collections as well?
 (defn- cards-for-filter-option [filter-option model-id label collection-slug]
   (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
-                  (hydrate :creator :collection)
+                  (hydrate :creator :collection :in_public_dashboard)
                   hydrate-labels
                   hydrate-favorites)]
     ;; Since labels and collections are hydrated in Clojure-land we need to wait until this point to apply
@@ -216,11 +216,10 @@
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
-  (-> (api/read-check Card id)
-      (hydrate :creator :dashboard_count :labels :can_write :collection)
-      (assoc :actor_id api/*current-user-id*)
-      (->> (events/publish-event! :card-read))
-      (dissoc :actor_id)))
+  (u/prog1 (-> (Card id)
+               (hydrate :creator :dashboard_count :labels :can_write :collection :in_public_dashboard)
+               api/read-check)
+    (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
 
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
@@ -231,7 +230,7 @@
 ;; we'll also pass a simple checksum and have the frontend pass it back to us.  See the QP `results-metadata`
 ;; middleware namespace for more details
 
-(s/defn ^:private result-metadata-for-query :- results-metadata/ResultsMetadata
+(s/defn result-metadata-for-query :- results-metadata/ResultsMetadata
   "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return.
    This is obviously a bit wasteful so hopefully we can avoid having to do this."
   [query]
@@ -266,11 +265,11 @@
    metadata_checksum      (s/maybe su/NonBlankString)}
   ;; check that we have permissions to run the query that we're trying to save
   (api/check-403 (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                                                          (card/query-perms-set dataset_query :write)))
+                   (card/query-perms-set dataset_query :write)))
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (when collection_id
     (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                                    (perms/collection-readwrite-path collection_id))))
+                     (perms/collection-readwrite-path collection_id))))
   ;; everything is g2g, now save the card
   (let [card (db/insert! Card
                :creator_id             api/*current-user-id*
@@ -595,10 +594,10 @@
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
   {:style/indent 1}
   [card-id & {:keys [parameters constraints context dashboard-id]
-              :or   {constraints dataset-api/default-query-constraints
+              :or   {constraints qp/default-query-constraints
                      context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
-  (let [card    (api/read-check Card card-id)
+  (let [card    (api/read-check (hydrate (Card card-id) :in_public_dashboard))
         query   (query-for-card card parameters constraints)
         options {:executed-by  api/*current-user-id*
                  :context      context
@@ -631,7 +630,7 @@
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
 (api/defendpoint POST "/:card-id/public_link"
-  "Generate publically-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
+  "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
   [card-id]
@@ -645,7 +644,7 @@
                  :made_public_by_id api/*current-user-id*)))})
 
 (api/defendpoint DELETE "/:card-id/public_link"
-  "Delete the publically-accessible link to this Card."
+  "Delete the publicly-accessible link to this Card."
   [card-id]
   (api/check-superuser)
   (api/check-public-sharing-enabled)
@@ -656,7 +655,7 @@
   {:status 204, :body nil})
 
 (api/defendpoint GET "/public"
-  "Fetch a list of Cards with public UUIDs. These cards are publically-accessible *if* public sharing is enabled."
+  "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
   (api/check-superuser)
   (api/check-public-sharing-enabled)
@@ -670,5 +669,11 @@
   (api/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
-(api/define-routes
-  (middleware/streaming-json-response (route-fn-name 'POST "/:card-id/query")))
+(defn adhoc-query
+  "Wrap query map into a Query object (mostly to fascilitate type dispatch)."
+  [query]
+  (->> {:dataset_query query}
+       (merge (card/query->database-and-table-ids query))
+       query/map->QueryInstance))
+
+(api/define-routes)

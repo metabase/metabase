@@ -17,6 +17,7 @@
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
   (:import java.util.UUID
+           java.sql.Time
            metabase.query_processor.interface.Value))
 
 (defrecord PostgresDriver []
@@ -199,6 +200,10 @@
       (isa? base-type :type/PostgresEnum) (hx/quoted-cast database-type value)
       :else                               (sqlqp/->honeysql driver value))))
 
+(defmethod sqlqp/->honeysql [PostgresDriver Time]
+  [driver time-value]
+  (hx/->time time-value))
+
 (defn- string-length-fn [field-key]
   (hsql/call :char_length (hx/cast :VARCHAR field-key)))
 
@@ -224,7 +229,7 @@
   (sql/describe-table (assoc driver :enum-types (enum-types database)) database table))
 
 
-(def ^:private pg-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSS zzz"))
+(def ^:private pg-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
 (def ^:private pg-db-time-query "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
 
 (def PostgresISQLDriverMixin
@@ -242,7 +247,7 @@
 (u/strict-extend PostgresDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:current-db-time                   (driver/make-current-db-time-fn pg-date-formatter pg-db-time-query)
+         {:current-db-time                   (driver/make-current-db-time-fn pg-db-time-query pg-date-formatters)
           :date-interval                     (u/drop-first-arg date-interval)
           :describe-table                    describe-table
           :details-fields                    (constantly (ssh/with-tunnel-config

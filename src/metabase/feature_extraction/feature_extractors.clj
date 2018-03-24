@@ -10,7 +10,7 @@
              [math :as math :refer [safe-divide]]
              [timeseries :as ts]
              [values :as values]]
-            [metabase.models.table :refer [Table]]
+            [metabase.models.field :as field]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase
              [query-processor :as qp]
@@ -116,10 +116,10 @@
 
 ; The largest dataset returned will be 2*target-1 points as we need at least
 ; 2 points per bucket for downsampling to have any effect.
-(def ^:private ^Integer datapoint-target-smooth 100)
-(def ^:private ^Integer datapoint-target-noisy  300)
+(def ^:private ^Long ^:const datapoint-target-smooth 100)
+(def ^:private ^Long ^:const datapoint-target-noisy  300)
 
-(def ^:private ^Double noisiness-threshold 0.05)
+(def ^:private ^Double ^:const noisiness-threshold 0.05)
 
 (defn- target-size
   [series]
@@ -163,19 +163,14 @@
           :week-of-year :month-of-year :quarter-of-year}
         :unit))
 
-(defn- unix-timestamp?
-  [{:keys [base_type special_type]}]
-  (and (isa? base_type :type/Integer)
-       (isa? special_type :type/DateTime)))
-
 (defn- field-type
   [field]
   (if (sequential? field)
     (mapv field-type field)
     [(cond
-       (periodic-date-time? field) :type/Integer
-       (unix-timestamp? field)     :type/DateTime
-       :else                       (:base_type field))
+       (periodic-date-time? field)   :type/Integer
+       (field/unix-timestamp? field) :type/DateTime
+       :else                         (:base_type field))
      (or (:special_type field) :type/*)]))
 
 (defmulti
@@ -211,18 +206,14 @@
 (def ^:private Num      [:type/Number :type/*])
 (def ^:private DateTime [:type/DateTime :type/*])
 (def ^:private Category [:type/* :type/Category])
-(def ^:private Any      [:type/* :type/*])
 (def ^:private Text     [:type/Text :type/*])
 
 (prefer-method feature-extractor Category Text)
 (prefer-method feature-extractor Num Category)
-(prefer-method feature-extractor [DateTime Num] [Any Num])
 (prefer-method x-ray Category Text)
 (prefer-method x-ray Num Category)
-(prefer-method x-ray [DateTime Num] [Any Num])
 (prefer-method comparison-vector Category Text)
 (prefer-method comparison-vector Num Category)
-(prefer-method comparison-vector [DateTime Num] [Any Num])
 
 (defn- histogram-extractor
   [{:keys [histogram]}]
@@ -247,7 +238,7 @@
     {:field field
      :model field
      :type  (field-type field)
-     :table (Table (:table_id field))}))
+     :table (field/table field)}))
 
 (defmethod feature-extractor Num
   [{:keys [max-cost]} field]
@@ -519,15 +510,15 @@
                               :display_name "Decomposition residual"
                               :base_type    :type/Float}])))))
 
-(defmethod feature-extractor [Any Num]
+(defmethod feature-extractor [Category Num]
   [{:keys [max-cost]} field]
   (redux/post-complete
-   (redux/fuse {:histogram (h/histogram-aggregated first second)})
+   (redux/fuse {:histogram (h/map->histogram-categorical first second)})
    (merge-juxt
     (field-metadata-extractor field)
     histogram-extractor)))
 
-(defmethod x-ray [Any Num]
+(defmethod x-ray [Category Num]
   [{:keys [field histogram] :as features}]
   (-> features
       (update :histogram (partial histogram-aggregated->dataset field))))

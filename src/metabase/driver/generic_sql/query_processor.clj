@@ -20,7 +20,7 @@
            [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
            [java.util Calendar Date TimeZone]
            [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression
-            ExpressionRef Field FieldLiteral RelativeDateTimeValue Value]))
+            ExpressionRef Field FieldLiteral RelativeDateTimeValue TimeField TimeValue Value]))
 
 (def ^:dynamic *query*
   "The outer query currently being processed."
@@ -128,6 +128,10 @@
   [driver {unit :unit, field :field}]
   (sql/date driver unit (->honeysql driver field)))
 
+(defmethod ->honeysql [Object TimeField]
+  [driver {field :field}]
+  (->honeysql driver field))
+
 (defmethod ->honeysql [Object BinnedField]
   [driver {:keys [bin-width min-value max-value field]}]
   (let [honeysql-field-form (->honeysql driver field)]
@@ -142,33 +146,6 @@
         hx/floor
         (hx/* bin-width)
         (hx/+ min-value))))
-
-;; e.g. the ["aggregation" 0] fields we allow in order-by
-(defmethod ->honeysql [Object AgFieldRef]
-  [_ {index :index}]
-  (let [{:keys [aggregation-type]} (aggregation-at-index index)]
-    ;; For some arcane reason we name the results of a distinct aggregation "count",
-    ;; everything else is named the same as the aggregation
-    (if (= aggregation-type :distinct)
-      :count
-      aggregation-type)))
-
-(defmethod ->honeysql [Object Value]
-  [driver {:keys [value]}]
-  (->honeysql driver value))
-
-(defmethod ->honeysql [Object DateTimeValue]
-  [driver {{unit :unit} :field, value :value}]
-  (sql/date driver unit (->honeysql driver value)))
-
-(defmethod ->honeysql [Object RelativeDateTimeValue]
-  [driver {:keys [amount unit], {field-unit :unit} :field}]
-  (sql/date driver field-unit (if (zero? amount)
-                                (sql/current-datetime-fn driver)
-                                (driver/date-interval driver unit amount))))
-
-
-;;; ## Clause Handlers
 
 (defn- aggregation->honeysql
   "Generate the HoneySQL form for an aggregation."
@@ -192,7 +169,7 @@
       (->honeysql driver field))))
 
 ;; TODO - can't we just roll this into the ->honeysql method for `expression`?
-(defn- expression-aggregation->honeysql
+(defn expression-aggregation->honeysql
   "Generate the HoneySQL form for an expression aggregation."
   [driver expression]
   (->honeysql driver
@@ -203,6 +180,42 @@
                   (number? arg)           arg
                   (:aggregation-type arg) (aggregation->honeysql driver (:aggregation-type arg) (:field arg))
                   (:operator arg)         (expression-aggregation->honeysql driver arg)))))))
+
+;; e.g. the ["aggregation" 0] fields we allow in order-by
+(defmethod ->honeysql [Object AgFieldRef]
+  [driver {index :index}]
+  (let [{:keys [aggregation-type] :as aggregation} (aggregation-at-index index)]
+    (cond
+      ;; For some arcane reason we name the results of a distinct aggregation "count",
+      ;; everything else is named the same as the aggregation
+      (= aggregation-type :distinct)
+      :count
+
+      (instance? Expression aggregation)
+      (expression-aggregation->honeysql driver aggregation)
+
+      :else
+      aggregation-type)))
+
+(defmethod ->honeysql [Object Value]
+  [driver {:keys [value]}]
+  (->honeysql driver value))
+
+(defmethod ->honeysql [Object DateTimeValue]
+  [driver {{unit :unit} :field, value :value}]
+  (sql/date driver unit (->honeysql driver value)))
+
+(defmethod ->honeysql [Object RelativeDateTimeValue]
+  [driver {:keys [amount unit], {field-unit :unit} :field}]
+  (sql/date driver field-unit (if (zero? amount)
+                                (sql/current-datetime-fn driver)
+                                (driver/date-interval driver unit amount))))
+
+(defmethod ->honeysql [Object TimeValue]
+  [driver  {:keys [value]}]
+  (->honeysql driver value))
+
+;;; ## Clause Handlers
 
 (defn- apply-expression-aggregation [driver honeysql-form expression]
   (h/merge-select honeysql-form [(expression-aggregation->honeysql driver expression)
@@ -238,22 +251,39 @@
   (apply h/merge-select honeysql-form (for [field fields]
                                         (as driver (->honeysql driver field) field))))
 
+(defn- like-clause
+  "Generate a SQL `LIKE` clause. `value` is assumed to be a `Value` object (a record type with a key `:value` as well as
+  some sort of type info) or similar as opposed to a raw value literal."
+  [driver field value case-sensitive?]
+  ;; TODO - don't we need to escape underscores and percent signs in the pattern, since they have special meanings in
+  ;; LIKE clauses? That's what we're doing with Druid...
+  ;;
+  ;; TODO - Postgres supports `ILIKE`. Does that make a big enough difference performance-wise that we should do a
+  ;; custom implementation?
+  (if case-sensitive?
+    [:like field                    (->honeysql driver value)]
+    [:like (hsql/call :lower field) (->honeysql driver (update value :value str/lower-case))]))
+
 (defn filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a HoneySQL filter predicate form for use in HoneySQL `where`."
-  [driver {:keys [filter-type field value], :as filter}]
+  [driver {:keys [filter-type field value case-sensitive?], :as filter}]
   {:pre [(map? filter) field]}
   (let [field (->honeysql driver field)]
     (case          filter-type
-      :between     [:between field (->honeysql driver (:min-val filter)) (->honeysql driver (:max-val filter))]
-      :starts-with [:like    field (->honeysql driver (update value :value (fn [s] (str    s \%)))) ]
-      :contains    [:like    field (->honeysql driver (update value :value (fn [s] (str \% s \%))))]
-      :ends-with   [:like    field (->honeysql driver (update value :value (fn [s] (str \% s))))]
-      :>           [:>       field (->honeysql driver value)]
-      :<           [:<       field (->honeysql driver value)]
-      :>=          [:>=      field (->honeysql driver value)]
-      :<=          [:<=      field (->honeysql driver value)]
-      :=           [:=       field (->honeysql driver value)]
-      :!=          [:not=    field (->honeysql driver value)])))
+      :between     [:between field
+                    (->honeysql driver (:min-val filter))
+                    (->honeysql driver (:max-val filter))]
+
+      :starts-with (like-clause driver field (update value :value #(str    % \%)) case-sensitive?)
+      :contains    (like-clause driver field (update value :value #(str \% % \%)) case-sensitive?)
+      :ends-with   (like-clause driver field (update value :value #(str \% %))    case-sensitive?)
+
+      :>           [:>    field (->honeysql driver value)]
+      :<           [:<    field (->honeysql driver value)]
+      :>=          [:>=   field (->honeysql driver value)]
+      :<=          [:<=   field (->honeysql driver value)]
+      :=           [:=    field (->honeysql driver value)]
+      :!=          [:not= field (->honeysql driver value)])))
 
 (defn filter-clause->predicate
   "Given a filter CLAUSE, return a HoneySQL filter predicate form for use in HoneySQL `where`.
@@ -443,6 +473,9 @@
     (mapv (fn [^Integer i value]
             (cond
 
+              (and tz (instance? java.sql.Time value))
+              (.setTime stmt i value (Calendar/getInstance tz))
+
               (and tz (instance? java.sql.Timestamp value))
               (.setTimestamp stmt i value (Calendar/getInstance tz))
 
@@ -453,16 +486,46 @@
               (jdbc/set-parameter value stmt i)))
           (rest (range)) params)))
 
+(defmacro ^:private with-ensured-connection
+  "In many of the clojure.java.jdbc functions, it checks to see if there's already a connection open before opening a
+  new one. This macro checks to see if one is open, or will open a new one. Will bind the connection to `conn-sym`."
+  [conn-sym db & body]
+  `(let [db# ~db]
+     (if-let [~conn-sym (jdbc/db-find-connection db#)]
+       (do ~@body)
+       (with-open [~conn-sym (jdbc/get-connection db#)]
+         ~@body))))
+
+(defn- cancellable-run-query
+  "Runs `sql` in such a way that it can be interrupted via a `future-cancel`"
+  [db sql params opts]
+  (with-ensured-connection conn db
+    ;; This is normally done for us by java.jdbc as a result of our `jdbc/query` call
+    (with-open [^PreparedStatement stmt (jdbc/prepare-statement conn sql opts)]
+      ;; Need to run the query in another thread so that this thread can cancel it if need be
+      (try
+        (let [query-future (future (jdbc/query conn (into [stmt] params) opts))]
+          ;; This thread is interruptable because it's awaiting the other thread (the one actually running the
+          ;; query). Interrupting this thread means that the client has disconnected (or we're shutting down) and so
+          ;; we can give up on the query running in the future
+          @query-future)
+        (catch InterruptedException e
+          (log/warn e "Client closed connection, cancelling query")
+          ;; This is what does the real work of cancelling the query. We aren't checking the result of
+          ;; `query-future` but this will cause an exception to be thrown, saying the query has been cancelled.
+          (.cancel stmt)
+          (throw e))))))
+
 (defn- run-query
   "Run the query itself."
   [{sql :query, params :params, remark :remark} timezone connection]
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
-        [columns & rows] (jdbc/query connection statement {:identifiers    identity, :as-arrays? true
-                                                           :read-columns   (read-columns-with-date-handling timezone)
-                                                           :set-parameters (set-parameters-with-timezone timezone)})]
-    {:rows    (or rows [])
-     :columns columns}))
+        [columns & rows] (cancellable-run-query connection sql params {:identifiers    identity, :as-arrays? true
+                                                                       :read-columns   (read-columns-with-date-handling timezone)
+                                                                       :set-parameters (set-parameters-with-timezone timezone)})]
+       {:rows    (or rows [])
+        :columns columns}))
 
 (defn- exception->nice-error-message ^String [^SQLException e]
   (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes

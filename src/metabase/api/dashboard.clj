@@ -4,6 +4,7 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase
              [events :as events]
+             [query-processor :as qp]
              [util :as u]]
             [metabase.api
              [common :as api]
@@ -82,7 +83,7 @@
 
 (defn- hide-unreadable-cards
   "Replace the `:card` and `:series` entries from dashcards that they user isn't allowed to read with empty objects."
-  [dashboard]
+  [{public-uuid :public_uuid, :as dashboard}]
   (update dashboard :ordered_cards (fn [dashcards]
                                      (vec (for [dashcard dashcards]
                                             (-> dashcard
@@ -123,7 +124,7 @@
   [{:keys [dataset_query]}]
   (u/ignore-exceptions
     [(qp-util/query-hash dataset_query)
-     (qp-util/query-hash (assoc dataset_query :constraints dataset/default-query-constraints))]))
+     (qp-util/query-hash (assoc dataset_query :constraints qp/default-query-constraints))]))
 
 (defn- dashcard->query-hashes
   "Return a sequence of all the query hashes for this DASHCARD, including the top-level Card and any Series."
@@ -181,7 +182,8 @@
   "Get `Dashboard` with ID."
   [id]
   (u/prog1 (-> (Dashboard id)
-               (hydrate :creator [:ordered_cards [:card :creator] :series])
+               api/check-404
+               (hydrate [:ordered_cards [:card :in_public_dashboard] :series])
                api/read-check
                api/check-not-archived
                hide-unreadable-cards
@@ -324,7 +326,7 @@
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
 (api/defendpoint POST "/:dashboard-id/public_link"
-  "Generate publically-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
+  "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
   [dashboard-id]
@@ -338,7 +340,7 @@
                  :made_public_by_id api/*current-user-id*)))})
 
 (api/defendpoint DELETE "/:dashboard-id/public_link"
-  "Delete the publically-accessible link to this Dashboard."
+  "Delete the publicly-accessible link to this Dashboard."
   [dashboard-id]
   (api/check-superuser)
   (api/check-public-sharing-enabled)
@@ -349,7 +351,7 @@
   {:status 204, :body nil})
 
 (api/defendpoint GET "/public"
-  "Fetch a list of Dashboards with public UUIDs. These dashboards are publically-accessible *if* public sharing is
+  "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
   enabled."
   []
   (api/check-superuser)
@@ -364,5 +366,13 @@
   (api/check-embedding-enabled)
   (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
+
+;;; --------------------------------------------------- Transient dashboards ---------------------------------------------------
+
+(api/defendpoint POST "/save"
+  "Save a denormalized description of dashboard."
+  [:as {dashboard :body}]
+  (->> (dashboard/save-transient-dashboard! dashboard)
+       (events/publish-event! :dashboard-create)))
 
 (api/define-routes)

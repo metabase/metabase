@@ -71,11 +71,11 @@
                              dispatch-token) varr}))]
     (fn dispatch*
       ([]
-       (keys-description (tru "Here's what I can {0}:" verb) fn-map))
+       (keys-description (tru "Here''s what I can {0}:" verb) fn-map))
       ([what & args]
        (if-let [f (fn-map (keyword what))]
          (apply f args)
-         (tru "I don't know how to {0} `{1}`.\n{2}"
+         (tru "I don''t know how to {0} `{1}`.\n{2}"
                  verb
                  (if (instance? clojure.lang.Named what)
                    (name what)
@@ -85,7 +85,7 @@
 (defn- format-exception
   "Format a `Throwable` the way we'd like for posting it on slack."
   [^Throwable e]
-  (tru "Uh oh! :cry:\n>" (.getMessage e)))
+  (tru "Uh oh! :cry:\n> {0}" (.getMessage e)))
 
 (defmacro ^:private do-async {:style/indent 0} [& body]
   `(future (try ~@body
@@ -105,7 +105,7 @@
   [& _]
   (let [cards (with-metabot-permissions
                 (filterv mi/can-read? (db/select [Card :id :name :dataset_query], {:order-by [[:id :desc]], :limit 20})))]
-    (tru "Here's your {0} most recent cards:\n{1}" (count cards) (format-cards cards))))
+    (tru "Here''s your {0} most recent cards:\n{1}" (count cards) (format-cards cards))))
 
 (defn- card-with-name [card-name]
   (first (u/prog1 (db/select [Card :id :name], :%lower.name [:like (str \% (str/lower-case card-name) \%)])
@@ -118,13 +118,13 @@
     (integer? card-id-or-name)     (db/select-one [Card :id :name], :id card-id-or-name)
     (or (string? card-id-or-name)
         (symbol? card-id-or-name)) (card-with-name card-id-or-name)
-    :else                          (throw (Exception. (str (tru "I don't know what Card `{0}` is. Give me a Card ID or name." card-id-or-name))))))
+    :else                          (throw (Exception. (str (tru "I don''t know what Card `{0}` is. Give me a Card ID or name." card-id-or-name))))))
 
 
 (defn ^:metabot show
   "Implementation of the `metabot show card <name-or-id>` command."
   ([]
-   (tru "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don't know which card you want, try `metabot list`."))
+   (tru "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don''t know which card you want, try `metabot list`."))
   ([card-id-or-name]
    (if-let [{card-id :id} (id-or-name->card card-id-or-name)]
      (do

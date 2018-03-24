@@ -4,6 +4,7 @@
   (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max + - / *])
   (:require [clojure.core :as core]
             [clojure.tools.logging :as log]
+            [metabase.driver :as driver]
             [metabase.query-processor
              [interface :as i]
              [util :as qputil]]
@@ -108,7 +109,10 @@
     (instance? DateTimeValue v)         v
     (instance? RelativeDatetime v)      (i/map->RelativeDateTimeValue (assoc v :unit (datetime-unit f v), :field (datetime-field f (datetime-unit f v))))
     (instance? DateTimeField f)         (i/map->DateTimeValue {:value (u/->Timestamp v), :field f})
-    (instance? FieldLiteral f)          (i/map->Value {:value v, :field f})
+    (instance? FieldLiteral f)          (if (isa? (:base-type f) :type/DateTime)
+                                          (i/map->DateTimeValue {:value (u/->Timestamp v)
+                                                                 :field (i/map->DateTimeField {:field f :unit :default})})
+                                          (i/map->Value {:value v, :field f}))
     :else                               (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
 
 (s/defn ^:private field-or-value
@@ -289,12 +293,40 @@
   (and (between lat-field lat-min lat-max)
        (between lon-field lon-min lon-max)))
 
-(s/defn ^:private string-filter :- StringFilter [filter-type f s]
-  (i/map->StringFilter {:filter-type filter-type, :field (field f), :value (value f s)}))
 
-(def ^:ql ^{:arglists '([f s])} starts-with "Filter subclause. Return results where F starts with the string S."    (partial string-filter :starts-with))
-(def ^:ql ^{:arglists '([f s])} contains    "Filter subclause. Return results where F contains the string S."       (partial string-filter :contains))
-(def ^:ql ^{:arglists '([f s])} ends-with   "Filter subclause. Return results where F ends with with the string S." (partial string-filter :ends-with))
+(s/defn ^:private string-filter :- StringFilter
+  "String search filter clauses: `contains`, `starts-with`, and `ends-with`. First shipped in `0.11.0` (before initial
+  public release) but only supported case-sensitive searches. In `0.29.0` support for case-insensitive searches was
+  added. For backwards-compatibility, and to avoid possible performance implications, case-sensitive is the default
+  option if no `options-maps` is specified for all drivers except GA. Whether we should default to case-sensitive can
+  be specified by the `IDriver` method `default-to-case-sensitive?`."
+  ([filter-type f s]
+   (string-filter filter-type f s {:case-sensitive (if i/*driver*
+                                                     (driver/default-to-case-sensitive? i/*driver*)
+                                                     ;; if *driver* isn't bound then just assume `true`
+                                                     true)}))
+  ([filter-type f s options-map]
+   (i/strict-map->StringFilter
+    {:filter-type     filter-type
+     :field           (field f)
+     :value           (value f s)
+     :case-sensitive? (qputil/get-normalized options-map :case-sensitive true)})))
+
+(def ^:ql ^{:arglists '([f s] [f s options-map])} starts-with
+  "Filter subclause. Return results where F starts with the string S. By default, is case-sensitive, but you may pass an
+  `options-map` with `{:case-sensitive false}` for case-insensitive searches."
+  (partial string-filter :starts-with))
+
+(def ^:ql ^{:arglists '([f s] [f s options-map])} contains
+  "Filter subclause. Return results where F contains the string S. By default, is case-sensitive, but you may pass an
+  `options-map` with `{:case-sensitive false}` for case-insensitive searches."
+  (partial string-filter :contains))
+
+(def ^:ql ^{:arglists '([f s] [f s options-map])} ends-with
+  "Filter subclause. Return results where F ends with with the string S. By default, is case-sensitive, but you may pass
+  an `options-map` with `{:case-sensitive false}` for case-insensitive searches."
+  (partial string-filter :ends-with))
+
 
 (s/defn ^:ql not :- i/Filter
   "Filter subclause. Return results that do *not* satisfy SUBCLAUSE.
@@ -331,23 +363,33 @@
 (s/defn ^:ql time-interval :- i/Filter
   "Filter subclause. Syntactic sugar for specifying a specific time interval.
 
-    ;; return rows where datetime Field 100's value is in the current day
-    (filter {} (time-interval (field-id 100) :current :day)) "
-  [f n unit]
+ Optionally accepts a map of `options`. The following options are currently implemented:
+
+ *  `:include-current` Should we include partial results for the current day/month/etc? Defaults to `false`; set
+     this to `true` to include them.
+
+     ;; return rows where datetime Field 100's value is in the current month
+     (filter {} (time-interval (field-id 100) :current :month))
+
+     ;; return rows where datetime Field 100's value is in the current month, including partial results for the
+     ;; current day
+     (filter {} (time-interval (field-id 100) :current :month {:include-current true}))"
+  [f n unit & [options]]
   (if-not (integer? n)
     (case (qputil/normalize-token n)
-      :current (recur f  0 unit)
-      :last    (recur f -1 unit)
-      :next    (recur f  1 unit))
-    (let [f (datetime-field f unit)]
+      :current (recur f  0 unit options)
+      :last    (recur f -1 unit options)
+      :next    (recur f  1 unit options))
+    (let [f                (datetime-field f unit)
+          include-current? (qputil/get-normalized options :include-current)]
       (cond
         (core/= n  0) (= f (value f (relative-datetime  0 unit)))
         (core/= n -1) (= f (value f (relative-datetime -1 unit)))
         (core/= n  1) (= f (value f (relative-datetime  1 unit)))
-        (core/< n -1) (between f (value f (relative-datetime  n unit))
-                                 (value f (relative-datetime -1 unit)))
-        (core/> n  1) (between f (value f (relative-datetime  1 unit))
-                                 (value f (relative-datetime  n unit)))))))
+        (core/< n -1) (between f (value f (relative-datetime                          n unit))
+                                 (value f (relative-datetime (if include-current? 0 -1) unit)))
+        (core/> n  1) (between f (value f (relative-datetime (if include-current? 0  1) unit))
+                                 (value f (relative-datetime                          n unit)))))))
 
 (s/defn ^:ql filter
   "Filter the results returned by the query.

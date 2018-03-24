@@ -72,7 +72,7 @@
 
 ;; The docs say TZ should be allowed at the end of the format string, but it doesn't appear to work
 ;; Redshift is always in UTC and doesn't return it's timezone
-(def ^:private redshift-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSS zzz"))
+(def ^:private redshift-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
 (def ^:private redshift-db-time-query "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
 
 (u/strict-extend RedshiftDriver
@@ -103,7 +103,7 @@
                                                     :placeholder  "*******"
                                                     :required     true}]))
           :format-custom-field-name (u/drop-first-arg str/lower-case)
-          :current-db-time          (driver/make-current-db-time-fn redshift-date-formatter redshift-db-time-query)})
+          :current-db-time          (driver/make-current-db-time-fn redshift-db-time-query redshift-date-formatters)})
 
   sql/ISQLDriver
   (merge postgres/PostgresISQLDriverMixin

@@ -56,7 +56,7 @@
 (def ^:private EmailMessage
   (s/constrained
    {:subject      s/Str
-    :recipients   [(s/pred u/is-email?)]
+    :recipients   [(s/pred u/email?)]
     :message-type (s/enum :text :html :attachments)
     :message      (s/cond-pre s/Str [su/Map])} ; TODO - what should this be a sequence of?
    (fn [{:keys [message-type message]}]
@@ -87,7 +87,7 @@
 
 (defn send-message!
   "Send an email to one or more RECIPIENTS.
-   RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html` or `:attachments`.
+  RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html` or `:attachments`.
 
      (email/send-message!
        :subject      \"[Metabase] Password Reset Request\"
@@ -95,7 +95,7 @@
        :message-type :text
        :message      \"How are you today?\")
 
-   Upon success, this returns the MESSAGE that was just sent. This function will catch and log any exception,
+  Upon success, this returns the MESSAGE that was just sent. This function will catch and log any exception,
   returning a map with a description of the error"
   {:style/indent 0}
   [& {:keys [subject recipients message-type message] :as msg-args}]
@@ -134,10 +134,9 @@
 (def ^:private email-security-order ["tls" "starttls" "ssl"])
 
 (defn- guess-smtp-security
-  "Attempts to use each of the security methods in security order with the same set of credentials.
-   This is used only when the initial connection attempt fails, so it won't overwrite a functioning
-   configuration. If this uses something other than the provided method, a warning gets printed on
-   the config page"
+  "Attempts to use each of the security methods in security order with the same set of credentials. This is used only
+  when the initial connection attempt fails, so it won't overwrite a functioning configuration. If this uses something
+  other than the provided method, a warning gets printed on the config page"
   [details]
   (loop [[security-type & more-to-try] email-security-order] ;; make sure this is not lazy, or chunking
     (when security-type                                      ;; can cause some servers to block requests

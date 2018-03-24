@@ -117,6 +117,7 @@ var config = module.exports = {
                     "**/types/*.js",
                     "**/*.spec.*",
                     "**/__support__/*.js",
+                    "**/__mocks__/*.js*",
                     "public/lib/types.js",
                     "internal/lib/components-node.js"
                 ]

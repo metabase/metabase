@@ -4,6 +4,7 @@
    Objects that implement `IDriverTestExtensions` know how to load a `DatabaseDefinition` into an
    actual physical RDMS database. This functionality allows us to easily test with multiple datasets."
   (:require [clojure.string :as str]
+            [clojure.tools.reader.edn :as edn]
             [environ.core :refer [env]]
             [metabase
              [db :as db]
@@ -166,15 +167,37 @@
                                                            :table-definitions (mapv (partial apply create-table-definition)
                                                                                     table-name+field-definition-maps+rows)})))
 
+(def ^:private ^:const edn-definitions-dir "./test/metabase/test/data/dataset_definitions/")
+
+(defn slurp-edn-table-def [dbname]
+  (edn/read-string (slurp (str edn-definitions-dir dbname ".edn"))))
+
+(defn update-table-def
+  "Function useful for modifying a table definition before it's
+  applied. Will invoke `UPDATE-TABLE-DEF-FN` on the vector of column
+  definitions and `UPDATE-ROWS-FN` with the vector of rows in the
+  database definition. `TABLE-DEF` is the database
+  definition (typically used directly in a `def-database-definition`
+  invocation)."
+  [table-name-to-update update-table-def-fn update-rows-fn table-def]
+  (vec
+   (for [[table-name table-def rows :as orig-table-def] table-def]
+     (if (= table-name table-name-to-update)
+       [table-name
+        (update-table-def-fn table-def)
+        (update-rows-fn rows)]
+       orig-table-def))))
+
 (defmacro def-database-definition
   "Convenience for creating a new `DatabaseDefinition` named by the symbol DATASET-NAME."
-  [^clojure.lang.Symbol dataset-name & table-name+field-definition-maps+rows]
+  [^clojure.lang.Symbol dataset-name table-name+field-definition-maps+rows]
   {:pre [(symbol? dataset-name)]}
   `(def ~(vary-meta dataset-name assoc :tag DatabaseDefinition)
-     (create-database-definition ~(name dataset-name)
-       ~@table-name+field-definition-maps+rows)))
+     (apply create-database-definition ~(name dataset-name) ~table-name+field-definition-maps+rows)))
 
-
+(defmacro def-database-definition-edn [dbname]
+  `(def-database-definition ~dbname
+     ~(slurp-edn-table-def (name dbname))))
 
 ;;; ## Convenience + Helper Functions
 ;; TODO - should these go here, or in `metabase.test.data`?

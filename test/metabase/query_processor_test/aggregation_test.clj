@@ -8,7 +8,7 @@
             [metabase.test.data.datasets :as datasets]
             [metabase.test.util :as tu]))
 
-;;; ------------------------------------------------------------ "COUNT" AGGREGATION ------------------------------------------------------------
+;;; ---------------------------------------------- "COUNT" AGGREGATION -----------------------------------------------
 
 (qp-expect-with-all-engines
     {:rows        [[100]]
@@ -21,7 +21,7 @@
          (format-rows-by [int])))
 
 
-;;; ------------------------------------------------------------ "SUM" AGGREGATION ------------------------------------------------------------
+;;; ----------------------------------------------- "SUM" AGGREGATION ------------------------------------------------
 (qp-expect-with-all-engines
     {:rows        [[203]]
      :columns     ["sum"]
@@ -33,7 +33,7 @@
          (format-rows-by [int])))
 
 
-;;; ------------------------------------------------------------ "AVG" AGGREGATION ------------------------------------------------------------
+;;; ----------------------------------------------- "AVG" AGGREGATION ------------------------------------------------
 (qp-expect-with-all-engines
     {:rows        [[35.5059]]
      :columns     ["avg"]
@@ -45,7 +45,7 @@
          (format-rows-by [(partial u/round-to-decimals 4)])))
 
 
-;;; ------------------------------------------------------------ "DISTINCT COUNT" AGGREGATION ------------------------------------------------------------
+;;; ------------------------------------------ "DISTINCT COUNT" AGGREGATION ------------------------------------------
 (qp-expect-with-all-engines
     {:rows        [[15]]
      :columns     ["count"]
@@ -57,8 +57,8 @@
          (format-rows-by [int])))
 
 
-;;; ------------------------------------------------------------ "ROWS" AGGREGATION ------------------------------------------------------------
-;; Test that a rows aggregation just returns rows as-is.
+;;; ------------------------------------------------- NO AGGREGATION -------------------------------------------------
+;; Test that no aggregation (formerly known as a 'rows' aggregation in MBQL '95) just returns rows as-is.
 (qp-expect-with-all-engines
     {:rows        [[ 1 "Red Medicine"                  4 10.0646 -165.374 3]
                    [ 2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
@@ -81,9 +81,9 @@
         tu/round-fingerprint-cols))
 
 
-;;; ------------------------------------------------------------ STDDEV AGGREGATION ------------------------------------------------------------
+;;; ----------------------------------------------- STDDEV AGGREGATION -----------------------------------------------
 
-(qp-expect-with-engines (engines-that-support :standard-deviation-aggregations)
+(qp-expect-with-engines (non-timeseries-engines-with-feature :standard-deviation-aggregations)
   {:columns     ["stddev"]
    :cols        [(aggregate-col :stddev (venues-col :latitude))]
    :rows        [[3.4]]
@@ -95,7 +95,7 @@
                                  [[(u/round-to-decimals 1 v)]]))))
 
 ;; Make sure standard deviation fails for the Mongo driver since its not supported
-(datasets/expect-with-engines (engines-that-dont-support :standard-deviation-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-without-feature :standard-deviation-aggregations)
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
   (select-keys (data/run-query venues
@@ -103,9 +103,9 @@
                [:status :error]))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------+
-;;; |                                                      MIN & MAX                                                       |
-;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   MIN & MAX                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (expect-with-non-timeseries-dbs [1] (first-row
                                       (format-rows-by [int]
@@ -132,9 +132,9 @@
             (ql/breakout $price)))))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------+
-;;; |                                                 MULTIPLE AGGREGATIONS                                                |
-;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             MULTIPLE AGGREGATIONS                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; can we run a simple query with *two* aggregations?
 (expect-with-non-timeseries-dbs
@@ -151,7 +151,9 @@
             (ql/aggregation (ql/avg $price) (ql/count) (ql/sum $price))))))
 
 ;; make sure that multiple aggregations of the same type have the correct metadata (#4003)
-;; (TODO - this isn't tested against Mongo or BigQuery because those drivers don't currently work correctly with multiple columns with the same name)
+;;
+;; (TODO - this isn't tested against Mongo or BigQuery because those drivers don't currently work correctly with
+;; multiple columns with the same name)
 (datasets/expect-with-engines (disj non-timeseries-engines :mongo :bigquery)
   [(aggregate-col :count)
    (assoc (aggregate-col :count)
@@ -163,7 +165,7 @@
       :data :cols))
 
 
-;;; ------------------------------------------------------------ CUMULATIVE SUM ------------------------------------------------------------
+;;; ------------------------------------------------- CUMULATIVE SUM -------------------------------------------------
 
 ;;; cum_sum w/o breakout should be treated the same as sum
 (qp-expect-with-all-engines
@@ -254,7 +256,7 @@
        (format-rows-by [int int])))
 
 
-;;; ------------------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------------------
+;;; ------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------
 
 (defn- cumulative-count-col [col-fn col-name]
   (assoc (aggregate-col :count (col-fn col-name))

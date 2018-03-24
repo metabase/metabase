@@ -5,7 +5,8 @@
     "transform-decorators-legacy",
     ["transform-builtin-extend", {
         "globals": ["Error", "Array"]
-    }]
+    }],
+    "syntax-trailing-function-commas"
   ],
   "presets": ["es2015", "stage-0", "react"],
   "env": {
@@ -18,7 +19,8 @@
           "extract": {
             "output": "locales/metabase-frontend.pot"
           },
-          "discover": ["t", "jt"]
+          "discover": ["t", "jt"],
+          "numberedExpressions": true
         }]
       ]
     }
