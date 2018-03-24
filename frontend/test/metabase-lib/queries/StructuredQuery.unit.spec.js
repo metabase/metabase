@@ -14,6 +14,7 @@ import {
   PRODUCT_TILE_FIELD_ID,
 } from "__support__/sample_dataset_fixture";
 
+import Segment from "metabase-lib/lib/metadata/Segment";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 function makeDatasetQuery(query) {
@@ -378,6 +379,16 @@ describe("StructuredQuery unit tests", () => {
     });
     describe("filterSegmentOptions", () => {
       pending();
+    });
+
+    describe("segments", () => {
+      it("should list any applied segments that are currently active filters", () => {
+        const queryWithSegmentFilter = query.addFilter(["SEGMENT", 1]);
+        // expect there to be segments
+        expect(queryWithSegmentFilter.segments().length).toBe(1);
+        // and they should actually be segments
+        expect(queryWithSegmentFilter.segments()[0]).toBeInstanceOf(Segment);
+      });
     });
 
     describe("canAddFilter", () => {

@@ -1,18 +1,19 @@
 import React from "react";
 
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
 import { Link } from "react-router";
 import { withBackground } from "metabase/hoc/Background";
 import ActionButton from "metabase/components/ActionButton";
 import Icon from "metabase/components/Icon";
 import cxs from "cxs";
+import { t } from "c-3po";
 
 import { Dashboard } from "./Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import Parameters from "metabase/parameters/components/Parameters";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { addUndo, createUndo } from "metabase/redux/undo";
 
 import { DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
@@ -53,9 +54,9 @@ const SuggestionsList = ({ suggestions }) => (
 );
 
 const SuggestionsSidebar = ({ related }) => (
-  <div className="flex flex-column">
+  <div className="flex flex-column bg-slate-almost-extra-light full-height">
     <div className="py2 text-centered my3">
-      <h3>More explorations</h3>
+      <h3 className="text-grey-3">More explorations</h3>
     </div>
     {Object.values(related).map(suggestions => (
       <SuggestionsList suggestions={suggestions} />
@@ -71,14 +72,27 @@ const mapStateToProps = (state, props) => ({
   dashboardId: getDashboardId(state, props),
 });
 
-@connect(mapStateToProps, { push })
+@connect(mapStateToProps, { addUndo, createUndo })
 @DashboardData
 class AutomaticDashboardApp extends React.Component {
   save = async () => {
-    const { dashboard, push } = this.props;
+    const { dashboard, addUndo, createUndo } = this.props;
     // remove the transient id before trying to save
     const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
-    push(Urls.dashboard(newDashboard.id));
+    addUndo(
+      createUndo({
+        type: "metabase/automatic-dashboards/link-to-created-object",
+        message: () => (
+          <div className="flex align-center">
+            <Icon name="dashboard" size={22} className="mr2" />
+            <Link className="link" to={Urls.dashboard(newDashboard.id)}>
+              {t`View your recently created dashboard`}
+            </Link>
+          </div>
+        ),
+        action: null,
+      }),
+    );
   };
 
   render() {
@@ -97,7 +111,7 @@ class AutomaticDashboardApp extends React.Component {
               <Icon name="bolt" className="text-gold mr1" size={24} />
               <h2>{dashboard && dashboard.name}</h2>
               <ActionButton
-                className="ml-auto bg-green text-white"
+                className="ml-auto Button--success"
                 borderless
                 actionFn={this.save}
               >

@@ -110,7 +110,8 @@ export default class Progress extends Component {
       onVisualizationClick,
       visualizationIsClickable,
     } = this.props;
-    const value: number = rows[0][0];
+    const value: number =
+      rows[0] && typeof rows[0][0] === "number" ? rows[0][0] : 0;
     const goal = settings["progress.goal"] || 0;
 
     const mainColor = settings["progress.color"];
