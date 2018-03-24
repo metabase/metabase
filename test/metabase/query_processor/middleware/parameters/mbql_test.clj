@@ -214,8 +214,8 @@
 ;; running the query above these tests are more of a sanity check to make sure the SQL generated is sane.)
 (datasets/expect-with-engine :h2
   {:query  (str "SELECT count(*) AS \"count\" "
-                "FROM \"PUBLIC\".\"VENUES\" "
-                "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
+                "FROM \"PUBLIC\".\"VENUES\" \"t1\" "
+                "WHERE (\"t1\".\"PRICE\" = 3 OR \"t1\".\"PRICE\" = 4)")
    :params nil}
   (let [inner-query (data/query venues
                       (ql/aggregation (ql/count)))
@@ -230,9 +230,9 @@
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
 (datasets/expect-with-engine :h2
-  {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
-                "WHERE (CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date) "
-                "OR CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
+  {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" \"t1\" "
+                "WHERE (CAST(\"t1\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date) "
+                "OR CAST(\"t1\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
    :params [(u/->Timestamp #inst "2014-06-01")
             (u/->Timestamp #inst "2014-06-30")
             (u/->Timestamp #inst "2015-06-01")

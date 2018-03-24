@@ -18,8 +18,8 @@
                              [99]]
                :columns     ["ID"]
                :cols        [(merge col-defaults {:name "ID", :display_name "ID", :base_type :type/Integer})]
-               :native_form {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}}}
-  (-> (qp/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}
+               :native_form {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2", :params []}}}
+  (-> (qp/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                          :type     :native
                          :database (id)})
       (m/dissoc-in [:data :results_metadata])))
@@ -35,8 +35,8 @@
                                   [{:name "ID",          :display_name "ID",          :base_type :type/Integer}
                                    {:name "NAME",        :display_name "Name",        :base_type :type/Text}
                                    {:name "CATEGORY_ID", :display_name "Category ID", :base_type :type/Integer}])
-               :native_form {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}}}
-  (-> (qp/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}
+               :native_form {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2", :params []}}}
+  (-> (qp/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                          :type     :native
                          :database (id)})
       (m/dissoc-in [:data :results_metadata])))
