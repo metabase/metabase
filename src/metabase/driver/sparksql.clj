@@ -4,6 +4,7 @@
                      [string :as s])
             (honeysql [core :as hsql]
                       [helpers :as h])
+            [metabase.config :as config]
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
@@ -129,13 +130,17 @@
                                         :display-name "Additional JDBC settings, appended to the connection string"
                                         :placeholder ";transportMode=http"}])
           :execute-query execute-query
-          :features (constantly #{:basic-aggregations
-                                  :expression-aggregations
-                                  :expressions
-                                  ;;:foreign-keys
-                                  :native-parameters
-                                  :nested-queries
-                                  :standard-deviation-aggregations})})
+          :features (constantly (set/union #{:basic-aggregations
+                                             :binning
+                                             :expression-aggregations
+                                             :expressions
+                                             :native-parameters
+                                             :native-query-params
+                                             :nested-queries
+                                             :standard-deviation-aggregations}
+                                           (when-not config/is-test?
+                                             ;; during unit tests don't treat Spark SQL as having FK support
+                                             #{:foreign-keys})))})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:apply-page qp/apply-page-using-row-number-for-offset
