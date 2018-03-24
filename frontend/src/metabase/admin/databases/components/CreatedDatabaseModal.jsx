@@ -13,7 +13,7 @@ export default class CreatedDatabaseModal extends Component {
   props: Props;
 
   render() {
-    const { onClose, onDone } = this.props;
+    const { onClose, onDone, databaseId } = this.props;
     return (
       <ModalContent title={t`Your database has been added!`} onClose={onClose}>
         <div className="Form-inputs mb4">
@@ -24,8 +24,11 @@ export default class CreatedDatabaseModal extends Component {
 
         <div className="Form-actions flex layout-centered">
           <a className="link" onClick={onDone}>{t`I'm good thanks`}</a>
-          <Link to="/ready" className="Button Button--primary ml-auto">
-            Explore this data
+          <Link
+            to={`/ready/${databaseId}`}
+            className="Button Button--primary ml-auto"
+          >
+            {t`Explore this data`}
           </Link>
         </div>
       </ModalContent>
