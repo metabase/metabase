@@ -6,6 +6,7 @@ import { t } from "c-3po";
 import ModalContent from "metabase/components/ModalContent.jsx";
 
 type Props = {
+  databaseId: number, 
   onClose: () => void,
   onDone: () => void,
 };
