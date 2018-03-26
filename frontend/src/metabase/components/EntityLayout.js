@@ -39,7 +39,7 @@ export const PageHeading = ({ icon, title }) => (
 
 export const PageLayout = ({ children }) =>
   <Box w={2 / 3}>
-    <Box className="text-measure">
+    <Box w="70%">
       {children}
     </Box>
   </Box>;

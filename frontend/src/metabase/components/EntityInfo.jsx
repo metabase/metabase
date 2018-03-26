@@ -46,7 +46,7 @@ const EntityInfo = ({ entity }) => (
     <Box>
       <Box my={2}>
         <h3>What's interesting about this</h3>
-        <p>
+        <p className="text-paragraph text-measure">
           There is some weirdness in how you have to filter this table in order
           to get the metric you want. Also note that instances check in twice
           per day, so if you do a count of rows to determine active instances,
@@ -55,7 +55,7 @@ const EntityInfo = ({ entity }) => (
       </Box>
       <Box my={2}>
         <h3>Things to know about this</h3>
-        <p>
+        <p className="text-paragraph text-measure">
           There is some weirdness in how you have to filter this table in order
           to get the metric you want. Also note that instances check in twice
           per day, so if you do a count of rows to determine active instances,
@@ -64,7 +64,7 @@ const EntityInfo = ({ entity }) => (
       </Box>
       <Box my={2}>
         <h3>How is this calculated?</h3>
-        <p>
+        <p className="text-paragraph text-measure">
           There is some weirdness in how you have to filter this table in order
           to get the metric you want. Also note that instances check in twice
           per day, so if you do a count of rows to determine active instances,
