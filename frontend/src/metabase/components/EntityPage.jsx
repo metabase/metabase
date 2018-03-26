@@ -4,11 +4,11 @@ import { Link } from "react-router";
 
 import { PageSidebar, Wrapper } from "./EntityLayout";
 
+import Icon from "metabase/components/Icon"
 import EntityInfo from "./EntityInfo";
 import EntitySegments from "./EntitySegments";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-
 import QuestionAndResultLoader from "metabase/containers/QuestionAndResultLoader";
 
 class EntityPage extends Component {
