@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { Box, Flex } from "rebass";
 import { Link } from "react-router";
 
-import { PageSidebar, Wrapper } from "./EntityLayout";
+import { PageSidebar, Wrapper, PageLayout } from "./EntityLayout";
 
 import Icon from "metabase/components/Icon"
 import EntityInfo from "./EntityInfo";
@@ -10,6 +10,8 @@ import EntitySegments from "./EntitySegments";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import QuestionAndResultLoader from "metabase/containers/QuestionAndResultLoader";
+
+import RelatedItems from 'metabase/components/RelatedItems'
 
 class EntityPage extends Component {
   render() {
@@ -25,7 +27,7 @@ class EntityPage extends Component {
           }
 
           const mode = question.mode && question.mode();
-          const actions = mode && mode.actions();
+          const actions = mode && mode.actions(question);
 
           return (
             <div key="entity">
@@ -50,7 +52,10 @@ class EntityPage extends Component {
               <Box>
                 <Wrapper>
                   <Flex>
-                    <EntityInfo entity={question} />
+                    <PageLayout>
+                      <EntityInfo entity={question} />
+                      <RelatedItems questionId={this.props.params.cardId} questionHash={this.props.location.hash} />
+                    </PageLayout>
                     <PageSidebar>
                       <Box
                         p={2}

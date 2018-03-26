@@ -8,10 +8,11 @@ import Tooltip from "metabase/components/Tooltip"
 import { PageLayout } from "./EntityLayout";
 
 const EntityInfo = ({ entity }) => (
-  <PageLayout>
+  <Box>
     <Box my={4}>
       <Heading>
         {entity.displayName() || "Good title" }
+        { entity.query().segments().length > 0  && <span> filtered by</span> }
         {entity.query().segments().map(s =>
           <div className="inline-block">
             <Tooltip tooltip={s.description}>
@@ -65,7 +66,7 @@ const EntityInfo = ({ entity }) => (
         </p>
       </Box>
     </Box>
-  </PageLayout>
+  </Box>
 );
 
 export default EntityInfo;
