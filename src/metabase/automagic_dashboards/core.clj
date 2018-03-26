@@ -255,7 +255,7 @@
        (mapcat (comp (partial make-binding context) first))
        (group-by (comp :id first :matches val first))
        (map (comp most-specific-definition val))
-       (apply merge-with (fn [a b]                   
+       (apply merge-with (fn [a b]
                            (case (compare (:score a) (:score b))
                              1  a
                              0  (update a :matches concat (:matches b))

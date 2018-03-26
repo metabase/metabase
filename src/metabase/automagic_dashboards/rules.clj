@@ -145,7 +145,7 @@
         defined-metrics    (identifiers metrics)
         defined-filters    (identifiers filters)]
     (and (every? defined-metrics (all-references :metrics cards))
-         (every? defined-filters (all-references :filters cards))         
+         (every? defined-filters (all-references :filters cards))
          (every? groups (keep (comp :group val first) cards))
          (every? (comp (into defined-dimensions defined-metrics) identifier)
                  (all-references :order_by cards))
@@ -154,7 +154,7 @@
          (every? defined-dimensions dashboard_filters)
          (->> cards
               (all-references :dimensions)
-              (map identifier)              
+              (map identifier)
               (every? defined-dimensions)))))
 
 (def ^:private Rules
