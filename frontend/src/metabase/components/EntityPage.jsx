@@ -18,7 +18,7 @@ class EntityPage extends Component {
         questionId={this.props.params.cardId}
         questionHash={this.props.location.hash}
       >
-        {({ question, result, cancel, reload }) => {
+        {({ question, result, cancel, reload, rawSeries }) => {
 
           if (!question) {
             return <div>"Loading..."</div>;
@@ -26,7 +26,6 @@ class EntityPage extends Component {
 
           const mode = question.mode && question.mode();
           const actions = mode && mode.actions();
-          const card = question.card && question.card();
 
           return (
             <div key="entity">
@@ -34,15 +33,10 @@ class EntityPage extends Component {
                 className="border-bottom"
                 style={{ backgroundColor: "#FCFDFD", height: "65vh" }}
               >
-                { result && (
+                { rawSeries && (
                     <Visualization
                       className="full-height"
-                      rawSeries={[
-                        {
-                          card,
-                          data: result[0].data,
-                        },
-                      ]}
+                      rawSeries={rawSeries}
                     />
 
                 )}
