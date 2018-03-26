@@ -18,7 +18,7 @@ class EntityPage extends Component {
         questionId={this.props.params.cardId}
         questionHash={this.props.location.hash}
       >
-        {({ question, result, cancel, reload, rawSeries }) => {
+        {({ question, result, cancel, reload, rawSeries, loading }) => {
 
           if (!question) {
             return <div>"Loading..."</div>;
@@ -30,19 +30,23 @@ class EntityPage extends Component {
           return (
             <div key="entity">
               <Box
-                className="border-bottom"
+                className="border-bottom hover-parent hover--visibility relative"
                 style={{ backgroundColor: "#FCFDFD", height: "65vh" }}
               >
-                { rawSeries && (
-                    <Visualization
-                      className="full-height"
-                      rawSeries={rawSeries}
-                    />
-
-                )}
+                <Box className="hover-child absolute top right">
+                  { !loading && (
+                    <a className="bordered rounded shadowed" onClick={() => reload()}>
+                      <Icon name="reload" />
+                    </a>
+                  )}
+                  { loading && (
+                    <a onClick={() => cancel()}>
+                      <Icon name="close" />
+                    </a>
+                  )}
+                </Box>
+                { rawSeries && <Visualization rawSeries={rawSeries} /> }
               </Box>
-              <a onClick={() => reload()}>Reload</a>
-              <a onClick={() => cancel()}>Cancel</a>
               <Box>
                 <Wrapper>
                   <Flex>
