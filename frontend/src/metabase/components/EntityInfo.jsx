@@ -1,11 +1,10 @@
 import React from "react";
-import { Box, Heading } from "rebass";
+import { Box, Flex, Heading } from "rebass";
 import { Link } from 'react-router'
 
 import Icon from "metabase/components/Icon"
 import Tooltip from "metabase/components/Tooltip"
-
-import { PageLayout } from "./EntityLayout";
+import UserAvatar from "metabase/components/UserAvatar"
 
 const EntityInfo = ({ entity }) => (
   <Box>
@@ -30,6 +29,13 @@ const EntityInfo = ({ entity }) => (
         )}
       </Heading>
       <p>{entity.card().description}</p>
+
+      { entity.card().creator && (
+        <Flex align='center'>
+          <UserAvatar user={entity.card().creator} />
+          { entity.card().creator.common_name } created this question
+        </Flex>
+      )}
     </Box>
     <Box my={4}>
       <div className="bordered rounded shadowed p3">
