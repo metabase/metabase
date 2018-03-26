@@ -659,3 +659,8 @@
   (data/with-db (data/get-or-create-database! defs/test-data-with-time)
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :users)))]
       (dimension-options-for-field response "last_login_time"))))
+
+;; Test related/recommended entities
+(expect
+  #{:metrics :segments :linked-from :linking-to}
+  (-> ((user->client :crowberto) :get 200 (format "table/%s/related" (data/id :venues))) keys set))

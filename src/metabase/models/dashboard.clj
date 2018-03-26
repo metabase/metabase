@@ -7,7 +7,6 @@
              [events :as events]
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.api.card :as card.api]
             [metabase.models
              [card :as card :refer [Card]]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
@@ -15,6 +14,8 @@
              [interface :as i]
              [params :as params]
              [revision :as revision]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.interface :as qpi]
             [metabase.models.revision.diff :refer [build-sentence]]
             [toucan
              [db :as db]
@@ -229,6 +230,13 @@
     (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
       (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids))))
 
+
+(defn- result-metadata-for-query
+  "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return."
+  [query]
+  (binding [qpi/*disable-qp-logging* true]
+    (get-in (qp/process-query query) [:data :results_metadata :columns])))
+
 (defn- save-card!
   [card]
   (when (:dataset_query card)
@@ -236,7 +244,7 @@
       (-> card
           (update :result_metadata #(or % (-> card
                                               :dataset_query
-                                              card.api/result-metadata-for-query)))
+                                              result-metadata-for-query)))
           (dissoc :id)))))
 
 (defn save-transient-dashboard!
