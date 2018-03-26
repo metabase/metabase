@@ -6,7 +6,12 @@
             [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
+<<<<<<< HEAD
              [helpers :as h]]
+=======
+             [helpers :as h]
+             [format :as hformat]]
+>>>>>>> sabino/bigquery-jdbc
             [metabase
              [config :as config]
              [driver :as driver]
@@ -24,6 +29,10 @@
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
+<<<<<<< HEAD
+=======
+           [com.google.api.client.http HttpRequestInitializer HttpRequest]
+>>>>>>> sabino/bigquery-jdbc
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
            [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema
             TableList TableList$Tables TableReference TableRow TableSchema]
@@ -39,7 +48,18 @@
 ;;; ----------------------------------------------------- Client -----------------------------------------------------
 
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
+<<<<<<< HEAD
   (.build (doto (Bigquery$Builder. google/http-transport google/json-factory credential)
+=======
+  (.build (doto (Bigquery$Builder.
+                 google/http-transport
+                 google/json-factory
+                 (reify HttpRequestInitializer
+                   (initialize [this httpRequest]
+                     (.initialize credential httpRequest)
+                     (.setConnectTimeout httpRequest 0)
+                     (.setReadTimeout httpRequest 0))))
+>>>>>>> sabino/bigquery-jdbc
             (.setApplicationName google/application-name))))
 
 (def ^:private ^{:arglists '([database])} ^GoogleCredential database->credential
@@ -111,7 +131,11 @@
    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
 
 
+<<<<<<< HEAD
 (def ^:private ^:const ^Integer query-timeout-seconds 60)
+=======
+(def ^:private ^:const ^Integer query-timeout-seconds 120)
+>>>>>>> sabino/bigquery-jdbc
 
 (defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} query-string]
@@ -120,10 +144,20 @@
   ([^Bigquery client, ^String project-id, ^String query-string]
    {:pre [client (seq project-id) (seq query-string)]}
    (let [request (doto (QueryRequest.)
+<<<<<<< HEAD
                    (.setTimeoutMs (* query-timeout-seconds 1000))
                    ;; if the query contains a `#standardSQL` directive then use Standard SQL instead of legacy SQL
                    (.setUseLegacySql (not (str/includes? (str/lower-case query-string) "#standardsql")))
                    (.setQuery query-string))]
+=======
+                   (.setTimeoutMs (* query-timeout-seconds 10000))
+                   ;; if the query contains a `#standardSQL` directive then use Standard SQL instead of legacy SQL
+                   (.setUseLegacySql (str/includes? (str/lower-case query-string) "#legacysql"))
+                  (prn query-string)
+                  (prn "-- After Regex Replace --")
+                  (prn (str/replace (str/replace (str/replace query-string #"\[[^]]+\.[^]]+\.([^]]+)\]" "$1") "[" "`") "]" "`"))
+                   (.setQuery (str/replace (str/replace (str/replace query-string #"\[[^]]+\.[^]]+\.([^]]+)\]" "$1") "[" "`") "]" "`")))]
+>>>>>>> sabino/bigquery-jdbc
      (google/execute (.query (.jobs client) project-id request)))))
 
 (def ^:private ^java.util.TimeZone default-timezone
@@ -198,6 +232,7 @@
 ;; microseconds = unix timestamp in microseconds. Most BigQuery functions like strftime require timestamps in this
 ;; format
 
+<<<<<<< HEAD
 (def ^:private ->microseconds (partial hsql/call :timestamp_to_usec))
 
 (defn- microseconds->str [format-str µs]
@@ -205,12 +240,31 @@
 
 (defn- trunc-with-format [format-str timestamp]
   (hx/->timestamp (microseconds->str format-str (->microseconds timestamp))))
+=======
+(defn- microseconds->str [format-str µs]
+  (hsql/call :format_timestamp (hx/literal format-str) (hsql/call :safe-cast µs :timestamp)))
+
+(defn- trunc-with-format [format-str timestamp]
+  (hx/->timestamp (microseconds->str format-str timestamp)))
+
+(defn- fetch-day [timestamp]
+  (hx/->timestamp (hsql/call :safe-cast timestamp :timestamp)))
+
+;; register the safe_cast function with HoneySQL
+(defmethod hformat/fn-handler "safe-cast" [_ expr type-to-cast]
+  (str "safe_cast(" (hformat/to-sql expr) " as " (name type-to-cast) ")"))
+
+;; register the extract function with HoneySQL
+(defmethod hformat/fn-handler "extract" [_ expr part]
+  (str "extract(" (name part) " FROM " (hformat/to-sql expr) ")"))
+>>>>>>> sabino/bigquery-jdbc
 
 (defn- date [unit expr]
   {:pre [expr]}
   (case unit
     :default         expr
     :minute          (trunc-with-format "%Y-%m-%d %H:%M:00" expr)
+<<<<<<< HEAD
     :minute-of-hour  (hx/minute expr)
     :hour            (trunc-with-format "%Y-%m-%d %H:00:00" expr)
     :hour-of-day     (hx/hour expr)
@@ -228,6 +282,22 @@
                                      3))
     :quarter-of-year (hx/quarter expr)
     :year            (hx/year expr)))
+=======
+    :minute-of-hour  (hsql/call :timestamp_trunc (hsql/call :safe-cast expr :timestamp) :minute)
+    :hour            (trunc-with-format "%Y-%m-%d %H:00:00" expr)
+    :hour-of-day     (hsql/call :extract expr :hour)
+    :day             (fetch-day expr)
+    :day-of-week     (hsql/call :extract expr :dayofweek)
+    :day-of-month    (hsql/call :extract expr :day)
+    :day-of-year     (hsql/call :extract expr :dayofyear)
+    :week            (hsql/call :date_trunc (hx/->date expr) :week)
+    :week-of-year    (hsql/call :format_date (hx/literal "%V") (hsql/call :safe-cast expr :date))
+    :month           (trunc-with-format "%Y-%m-01" expr)
+    :month-of-year   (hsql/call :format_date (hx/literal "%m") (hsql/call :safe-cast expr :date))
+    :quarter         (hsql/call :date_trunc (hx/->date expr) :quarter)
+    :quarter-of-year (hsql/call :extract expr :quarter)
+    :year            (hsql/call :date_trunc (hx/->date expr) :year)))
+>>>>>>> sabino/bigquery-jdbc
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
@@ -452,17 +522,27 @@
 ;; at most 128 characters long.
 (defn- format-custom-field-name ^String [^String custom-field-name]
   (str/join (take 128 (-> (str/trim custom-field-name)
+<<<<<<< HEAD
                         (str/replace #"[^\w\d_]" "_")
+=======
+>>>>>>> sabino/bigquery-jdbc
                         (str/replace #"(^\d)" "_$1")))))
 
 ; (defn- date-interval [driver unit amount]
 ;   (sqlqp/->honeysql driver (u/relative-date unit amount)))
 
 (defn- date-interval [unit amount]
+<<<<<<< HEAD
    (hsql/raw (format "(DATE_ADD(NOW(), %d, '%s'))" (int amount) (name unit))))
 
 ;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC
 (def ^:private bigquery-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSSSSS"))
+=======
+   (hsql/raw (format "DATE_ADD(current_date(), INTERVAL %d %s)" (int amount) (name unit))))
+
+;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC
+(def ^:private bigquery-date-formatter (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSSSSS"))
+>>>>>>> sabino/bigquery-jdbc
 (def ^:private bigquery-db-time-query "select CAST(CURRENT_TIMESTAMP() AS STRING)")
 
 (def ^:private driver (BigQueryJDBCDriver.))
@@ -498,6 +578,7 @@
           :subname     (str "//https://www.googleapis.com/bigquery/v2:443;ProjectId=" project-id ";OAuthType=0;OAuthPvtKeyPath=" json-path ";OAuthServiceAcctEmail=" service-account ";AdditionalProjects=" additional-projects)}
          (dissoc opts :project-id :json-path :service-account :additional-projects)))
 
+<<<<<<< HEAD
 
 (def ^:private bigquery-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSSSSS"))
 (def ^:private bigquery-db-time-query "select CAST(CURRENT_TIMESTAMP() AS STRING)")
@@ -536,6 +617,13 @@
     :quarter-of-year (hx/quarter expr)
     :year (hx/year expr)))
 
+=======
+(defn- string-length-fn [field-key]
+  (hsql/call :length field-key))
+
+(defn- date->quarter [format-str µs]
+  (hsql/call :format_timestamp (hx/literal format-str) (hsql/call :timestamp µs)))
+>>>>>>> sabino/bigquery-jdbc
 
 (u/strict-extend BigQueryJDBCDriver
                  driver/IDriver
