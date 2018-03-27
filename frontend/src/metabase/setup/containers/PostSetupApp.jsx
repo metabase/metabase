@@ -21,6 +21,8 @@ const QUOTES = [
   t`Metabot is doing science…`,
   t`Metabot is checking out your metrics…`,
   t`Metabot is looking for trends and outliers…`,
+  t`Metabot is consulting the quantum abacus…`,
+  t`Metabot is feeling pretty good about all this…`,
 ];
 
 import type { Candidate } from "metabase/meta/types/Auto";
@@ -125,12 +127,12 @@ export default class PostSetupApp extends Component {
           {!candidates ? (
             <div>
               <h2 className="text-centered mx4 px4">
-                We’ll show you some interesting explorations of your data in
-                just a minute.
+                {t`We’ll show you some interesting explorations of your data in
+                just a few minutes.`}
               </h2>
               <BorderedPanel className="my4 flex">
-                <MetabotLogo className="mr4" />
-                <div className="flex-full">
+                <MetabotLogo />
+                <div className="flex-full ml3 mt1">
                   <div className="mb1">
                     <Quotes quotes={QUOTES} period={2000} />
                   </div>
@@ -164,7 +166,7 @@ export default class PostSetupApp extends Component {
               to="/"
               className="no-decoration text-bold text-grey-3 text-grey-4-hover"
             >
-              No thanks, I’ll set things up on my own
+              {t`No thanks, I’ll set things up on my own`}
             </Link>
           </div>
         </div>
