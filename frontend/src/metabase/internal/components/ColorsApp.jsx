@@ -7,7 +7,7 @@ import CopyToClipboard from "react-copy-to-clipboard";
 import { addUndo, createUndo } from "metabase/redux/undo";
 import { normal, saturated, harmony } from "metabase/lib/colors";
 
-const SWATCH_SIZE = 200;
+const SWATCH_SIZE = 150;
 
 const mapDispatchToProps = {
   addUndo,
@@ -37,7 +37,7 @@ class ColorSwatch extends React.Component {
             width: SWATCH_SIZE,
             color: "white",
           }}
-          className="p3 mr2 mb2"
+          className="p3 mr2 mb2 cursor-pointer"
         >
           {name}
           <h2>{color}</h2>
