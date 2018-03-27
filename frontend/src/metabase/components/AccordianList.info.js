@@ -6,7 +6,6 @@ const DemoPopover = ({ children }) => (
   <PopoverWithTrigger
     triggerElement={<button className="Button">Click me!</button>}
     verticalAttachments={["top"]}
-    isInitiallyOpen
   >
     {children}
   </PopoverWithTrigger>
