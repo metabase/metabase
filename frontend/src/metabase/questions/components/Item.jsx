@@ -13,7 +13,6 @@ import CheckBox from "metabase/components/CheckBox.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import MoveToCollection from "../containers/MoveToCollection.jsx";
-import Labels from "./Labels.jsx";
 import CollectionBadge from "./CollectionBadge.jsx";
 
 import * as Urls from "metabase/lib/urls";
@@ -54,7 +53,6 @@ const Item = ({
   id,
   name,
   description,
-  labels,
   created,
   by,
   favorite,
@@ -105,7 +103,6 @@ const Item = ({
         id={id}
         name={name}
         description={description}
-        labels={labels}
         favorite={favorite}
         collection={showCollectionName && collection}
         setFavorited={setFavorited}
@@ -154,7 +151,6 @@ Item.propTypes = {
   created: PropTypes.string.isRequired,
   description: PropTypes.string,
   by: PropTypes.string.isRequired,
-  labels: PropTypes.array.isRequired,
   collection: PropTypes.object,
   selected: PropTypes.bool.isRequired,
   favorite: PropTypes.bool.isRequired,
@@ -173,7 +169,6 @@ const ItemBody = pure(
     id,
     name,
     description,
-    labels,
     favorite,
     collection,
     setFavorited,
@@ -210,7 +205,6 @@ const ItemBody = pure(
               />
             </Tooltip>
           )}
-        <Labels labels={labels} />
       </div>
       <div
         className={cx(
