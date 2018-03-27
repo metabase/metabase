@@ -3,9 +3,9 @@ import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "c-3po";
+import { Box, Subhead } from "rebass";
 
 import Icon from "metabase/components/Icon.jsx";
-import SidebarSection from "./SidebarSection.jsx";
 import * as Urls from "metabase/lib/urls";
 
 import { getRecentViews } from "metabase/home/selectors";
@@ -46,30 +46,40 @@ export default class RecentViews extends Component {
     }
   }
 
+  getIconColor({ model, model_object }) {
+    if (model === "card") {
+      return normal.grey2;
+    } else if (model === "dashboard") {
+      return normal.blue;
+    } else {
+      return null;
+    }
+  }
+
   render() {
     const { recentViews } = this.props;
     return (
-      <SidebarSection title={t`Recently Viewed`} icon="clock">
+      <Box>
+        <Subhead>Recent views</Subhead>
         {recentViews.length > 0 ? (
-          <ul className="p2">
+          <ul>
             {recentViews.map((item, index) => {
               const iconName = this.getIconName(item);
               return (
-                <li key={index} className="py1 ml1 flex align-center clearfix">
-                  <Icon
-                    name={iconName}
-                    size={18}
-                    style={{
-                      color:
-                        iconName === "dashboard" ? normal.purple : normal.blue,
-                    }}
-                  />
+                <li key={index} className="py1 flex align-center clearfix">
+                  <Box style={{ backgroundColor: "#F4F5F6" }} p={1}>
+                    <Icon
+                      name={iconName}
+                      size={18}
+                      style={{ color: this.getIconColor(item) }}
+                    />
+                  </Box>
                   <Link
                     to={Urls.modelToUrl(item.model, item.model_id)}
                     data-metabase-event={
                       "Recent Views;" + item.model + ";" + item.cnt
                     }
-                    className="ml1 flex-full link"
+                    className="ml1 flex-full text-paragraph text-bold no-decoration text-brand-hover"
                   >
                     {item.model_object.name}
                   </Link>
@@ -87,7 +97,7 @@ export default class RecentViews extends Component {
             </p>
           </div>
         )}
-      </SidebarSection>
+      </Box>
     );
   }
 }
