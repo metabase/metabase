@@ -21,7 +21,6 @@ import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
 import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
 // main app containers
-import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
 import Dashboards from "metabase/dashboards/containers/Dashboards.jsx";
 import DashboardsArchive from "metabase/dashboards/containers/DashboardsArchive.jsx";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
@@ -39,7 +38,6 @@ import EntityList from "metabase/questions/containers/EntityList.jsx";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
-import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
@@ -109,6 +107,14 @@ import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
 import { DashboardHistoryModal } from "metabase/dashboard/components/DashboardHistoryModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
+import GlobalLanding from 'metabase/home/GlobalLanding'
+import CollectionLanding from 'metabase/components/CollectionLanding'
+
+const CollectionHome = () =>
+  <div>
+    HOME HOME HOME
+  </div>
+
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => !authData.hasSetupToken,
   failureRedirectPath: "/setup",
@@ -123,15 +129,15 @@ const UserIsAuthenticated = UserAuthWrapper({
   authSelector: state => state.currentUser,
   wrapperDisplayName: "UserIsAuthenticated",
   redirectAction: location =>
-    // HACK: workaround for redux-auth-wrapper not including hash
-    // https://github.com/mjrussell/redux-auth-wrapper/issues/121
-    routerActions.replace({
-      ...location,
-      query: {
-        ...location.query,
-        redirect: location.query.redirect + (window.location.hash || ""),
-      },
-    }),
+  // HACK: workaround for redux-auth-wrapper not including hash
+  // https://github.com/mjrussell/redux-auth-wrapper/issues/121
+  routerActions.replace({
+    ...location,
+    query: {
+      ...location.query,
+      redirect: location.query.redirect + (window.location.hash || ""),
+    },
+  }),
 });
 
 const UserIsAdmin = UserAuthWrapper({
@@ -175,76 +181,49 @@ export const getRoutes = store => (
       }}
     />
 
-    {/* PUBLICLY SHARED LINKS */}
-    <Route path="public">
-      <Route path="question/:uuid" component={PublicQuestion} />
-      <Route path="dashboard/:uuid" component={PublicDashboard} />
+  {/* PUBLICLY SHARED LINKS */}
+  <Route path="public">
+    <Route path="question/:uuid" component={PublicQuestion} />
+    <Route path="dashboard/:uuid" component={PublicDashboard} />
+  </Route>
+
+  {/* APP */}
+  <Route
+    onEnter={async (nextState, replace, done) => {
+      await store.dispatch(loadCurrentUser());
+      done();
+    }}
+  >
+    {/* AUTH */}
+    <Route path="/auth">
+      <IndexRedirect to="/auth/login" />
+      <Route component={IsNotAuthenticated}>
+        <Route path="login" title={t`Login`} component={LoginApp} />
+      </Route>
+      <Route path="logout" component={LogoutApp} />
+      <Route path="forgot_password" component={ForgotPasswordApp} />
+      <Route path="reset_password/:token" component={PasswordResetApp} />
+      <Route path="google_no_mb_account" component={GoogleNoAccount} />
     </Route>
 
-    {/* APP */}
-    <Route
-      onEnter={async (nextState, replace, done) => {
-        await store.dispatch(loadCurrentUser());
-        done();
-      }}
-    >
-      {/* AUTH */}
-      <Route path="/auth">
-        <IndexRedirect to="/auth/login" />
-        <Route component={IsNotAuthenticated}>
-          <Route path="login" title={t`Login`} component={LoginApp} />
-        </Route>
-        <Route path="logout" component={LogoutApp} />
-        <Route path="forgot_password" component={ForgotPasswordApp} />
-        <Route path="reset_password/:token" component={PasswordResetApp} />
-        <Route path="google_no_mb_account" component={GoogleNoAccount} />
-      </Route>
+    {/* MAIN */}
+    <Route component={IsAuthenticated}>
 
-      {/* MAIN */}
-      <Route component={IsAuthenticated}>
-        {/* HOME */}
-        <Route path="/" component={QuestionIndex} />
-        <Route path="/ready" component={PostSetupApp} />
 
-        {/* DASHBOARD LIST */}
+      { /* The global all hands rotues, things in here are for all the folks */ }
+      <Route path="/" component={CollectionLanding}>
+        { /*
+          The global landing is where you see global
+          */
+        }
+        <IndexRoute component={GlobalLanding} />
         <Route
-          path="/dashboards"
+          path="dashboards"
           title={t`Dashboards`}
           component={Dashboards}
         />
-        <Route
-          path="/dashboards/archive"
-          title={t`Dashboards`}
-          component={DashboardsArchive}
-        />
 
-        {/* INDIVIDUAL DASHBOARDS */}
-        <Route
-          path="/dashboard/:dashboardId"
-          title={t`Dashboard`}
-          component={DashboardApp}
-        >
-          <ModalRoute path="history" modal={DashboardHistoryModal} />
-        </Route>
 
-        <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
-
-        {/* QUERY BUILDER */}
-        <Route path="/question">
-          <IndexRoute component={EntityPage} />
-          {/* NEW QUESTION FLOW */}
-          <Route path="new" title={t`New Question`}>
-            <IndexRoute component={NewQuestionStart} />
-            <Route
-              path="metric"
-              title={t`Metrics`}
-              component={NewQuestionMetricSearch}
-            />
-          </Route>
-        </Route>
-        <Route path="/question/:cardId" component={EntityPage} />
-
-        {/* QUESTIONS */}
         <Route path="/questions" title={t`Questions`}>
           <IndexRoute component={QuestionIndex} />
           <Route
@@ -253,125 +232,165 @@ export const getRoutes = store => (
             component={SearchResults}
           />
           <Route path="archive" title={t`Archive`} component={Archive} />
+        </Route>
+      </Route>
+
+      <Route
+        path="collections/:collectionSlug"
+        component={CollectionLanding}
+      />
+
+      <Route
+        path="dashboard/:dashboardId"
+        title={t`Dashboard`}
+        component={DashboardApp}
+      >
+        <ModalRoute path="history" modal={DashboardHistoryModal} />
+
+      </Route>
+
+      <Route path="/question">
+        <IndexRoute component={EntityPage} />
+        {/* NEW QUESTION FLOW */}
+        <Route path="new" title={t`New Question`}>
+          <IndexRoute component={NewQuestionStart} />
           <Route
-            path="collections/:collectionSlug"
-            component={CollectionPage}
+            path="metric"
+            title={t`Metrics`}
+            component={NewQuestionMetricSearch}
           />
         </Route>
+      </Route>
+      <Route path="/question/:cardId" component={EntityPage} />
 
-        <Route
-          path="/entities/:entityType"
-          component={({ location, params }) => (
-            <div className="p4">
-              <EntityList
-                entityType={params.entityType}
-                entityQuery={location.query}
-              />
-            </div>
-          )}
+      <Route path="/ready" component={PostSetupApp} />
+
+      {/* DASHBOARD LIST */}
+      <Route
+        path="/dashboards/archive"
+        title={t`Dashboards`}
+        component={DashboardsArchive}
+      />
+
+    {/* INDIVIDUAL DASHBOARDS */}
+
+    <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
+
+  </Route>
+
+  <Route
+    path="/entities/:entityType"
+    component={({ location, params }) => (
+      <div className="p4">
+        <EntityList
+          entityType={params.entityType}
+          entityQuery={location.query}
         />
+      </div>
+    )}
+  />
 
-        <Route path="/collections">
-          <Route path="create" component={CollectionCreate} />
-          <Route path="permissions" component={CollectionPermissions} />
-          <Route path=":collectionId" component={CollectionEdit} />
-        </Route>
+<Route path="/collections">
+  <Route path="create" component={CollectionCreate} />
+  <Route path="permissions" component={CollectionPermissions} />
+  <Route path=":collectionId" component={CollectionEdit} />
+</Route>
 
-        <Route path="/labels">
-          <IndexRoute component={EditLabels} />
-        </Route>
+<Route path="/labels">
+  <IndexRoute component={EditLabels} />
+</Route>
 
-        {/* REFERENCE */}
-        <Route path="/reference" title={`Data Reference`}>
-          <IndexRedirect to="/reference/guide" />
-          <Route
-            path="guide"
-            title={`Getting Started`}
-            component={GettingStartedGuideContainer}
-          />
-          <Route path="metrics" component={MetricListContainer} />
-          <Route path="metrics/:metricId" component={MetricDetailContainer} />
-          <Route
-            path="metrics/:metricId/questions"
-            component={MetricQuestionsContainer}
-          />
-          <Route
-            path="metrics/:metricId/revisions"
-            component={MetricRevisionsContainer}
-          />
-          <Route path="segments" component={SegmentListContainer} />
-          <Route
-            path="segments/:segmentId"
-            component={SegmentDetailContainer}
-          />
-          <Route
-            path="segments/:segmentId/fields"
-            component={SegmentFieldListContainer}
-          />
-          <Route
-            path="segments/:segmentId/fields/:fieldId"
-            component={SegmentFieldDetailContainer}
-          />
-          <Route
-            path="segments/:segmentId/questions"
-            component={SegmentQuestionsContainer}
-          />
-          <Route
-            path="segments/:segmentId/revisions"
-            component={SegmentRevisionsContainer}
-          />
-          <Route path="databases" component={DatabaseListContainer} />
-          <Route
-            path="databases/:databaseId"
-            component={DatabaseDetailContainer}
-          />
-          <Route
-            path="databases/:databaseId/tables"
-            component={TableListContainer}
-          />
-          <Route
-            path="databases/:databaseId/tables/:tableId"
-            component={TableDetailContainer}
-          />
-          <Route
-            path="databases/:databaseId/tables/:tableId/fields"
-            component={FieldListContainer}
-          />
-          <Route
-            path="databases/:databaseId/tables/:tableId/fields/:fieldId"
-            component={FieldDetailContainer}
-          />
-          <Route
-            path="databases/:databaseId/tables/:tableId/questions"
-            component={TableQuestionsContainer}
-          />
-        </Route>
+{/* REFERENCE */}
+<Route path="/reference" title={`Data Reference`}>
+  <IndexRedirect to="/reference/guide" />
+  <Route
+    path="guide"
+    title={`Getting Started`}
+    component={GettingStartedGuideContainer}
+  />
+  <Route path="metrics" component={MetricListContainer} />
+  <Route path="metrics/:metricId" component={MetricDetailContainer} />
+  <Route
+    path="metrics/:metricId/questions"
+    component={MetricQuestionsContainer}
+  />
+  <Route
+    path="metrics/:metricId/revisions"
+    component={MetricRevisionsContainer}
+  />
+  <Route path="segments" component={SegmentListContainer} />
+  <Route
+    path="segments/:segmentId"
+    component={SegmentDetailContainer}
+  />
+  <Route
+    path="segments/:segmentId/fields"
+    component={SegmentFieldListContainer}
+  />
+  <Route
+    path="segments/:segmentId/fields/:fieldId"
+    component={SegmentFieldDetailContainer}
+  />
+  <Route
+    path="segments/:segmentId/questions"
+    component={SegmentQuestionsContainer}
+  />
+  <Route
+    path="segments/:segmentId/revisions"
+    component={SegmentRevisionsContainer}
+  />
+  <Route path="databases" component={DatabaseListContainer} />
+  <Route
+    path="databases/:databaseId"
+    component={DatabaseDetailContainer}
+  />
+  <Route
+    path="databases/:databaseId/tables"
+    component={TableListContainer}
+  />
+  <Route
+    path="databases/:databaseId/tables/:tableId"
+    component={TableDetailContainer}
+  />
+  <Route
+    path="databases/:databaseId/tables/:tableId/fields"
+    component={FieldListContainer}
+  />
+  <Route
+    path="databases/:databaseId/tables/:tableId/fields/:fieldId"
+    component={FieldDetailContainer}
+  />
+  <Route
+    path="databases/:databaseId/tables/:tableId/questions"
+    component={TableQuestionsContainer}
+  />
+</Route>
 
-        {/* XRAY */}
-        <Route path="/xray" title={t`XRay`}>
-          <Route path="segment/:segmentId/:cost" component={SegmentXRay} />
-          <Route path="table/:tableId/:cost" component={TableXRay} />
-          <Route path="field/:fieldId/:cost" component={FieldXRay} />
-          <Route path="card/:cardId/:cost" component={CardXRay} />
-          <Route
-            path="compare/:modelTypePlural/:modelId1/:modelId2/:cost"
-            component={SharedTypeComparisonXRay}
-          />
-          <Route
-            path="compare/:modelType1/:modelId1/:modelType2/:modelId2/:cost"
-            component={TwoTypesComparisonXRay}
-          />
-        </Route>
+{/* XRAY */}
+<Route path="/xray" title={t`XRay`}>
+  <Route path="segment/:segmentId/:cost" component={SegmentXRay} />
+  <Route path="table/:tableId/:cost" component={TableXRay} />
+  <Route path="field/:fieldId/:cost" component={FieldXRay} />
+  <Route path="card/:cardId/:cost" component={CardXRay} />
+  <Route
+    path="compare/:modelTypePlural/:modelId1/:modelId2/:cost"
+    component={SharedTypeComparisonXRay}
+  />
+  <Route
+    path="compare/:modelType1/:modelId1/:modelType2/:modelId2/:cost"
+    component={TwoTypesComparisonXRay}
+  />
+</Route>
 
-        {/* PULSE */}
-        <Route path="/pulse" title={t`Pulses`}>
-          <IndexRoute component={PulseListApp} />
-          <Route path="create" component={PulseEditApp} />
-          <Route path=":pulseId" component={PulseEditApp} />
-        </Route>
+{/* PULSE */}
+<Route path="/pulse" title={t`Pulses`}>
+  <IndexRoute component={PulseListApp} />
+  <Route path="create" component={PulseEditApp} />
+  <Route path=":pulseId" component={PulseEditApp} />
+</Route>
 
-        {/* USER */}
-        <Route path="/user/edit_current" component={UserSettingsApp} />
+{/* USER */}
+<Route path="/user/edit_current" component={UserSettingsApp} />
       </Route>
 
       {/* ADMIN */}
@@ -435,28 +454,28 @@ export const getRoutes = store => (
       <Route
         path="/_internal"
         getChildRoutes={(partialNextState, callback) =>
-          // $FlowFixMe: flow doesn't know about require.ensure
-          require.ensure([], require => {
-            callback(null, [require("metabase/internal/routes").default]);
-          })
+            // $FlowFixMe: flow doesn't know about require.ensure
+            require.ensure([], require => {
+              callback(null, [require("metabase/internal/routes").default]);
+            })
         }
       />
 
-      {/* DEPRECATED */}
-      {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
+    {/* DEPRECATED */}
+    {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
       <Route
         path="/q"
         onEnter={({ location }, replace) =>
-          replace({ pathname: "/question", hash: location.hash })
+            replace({ pathname: "/question", hash: location.hash })
         }
       />
       <Route
         path="/card/:cardId"
         onEnter={({ location, params }, replace) =>
-          replace({
-            pathname: `/question/${params.cardId}`,
-            hash: location.hash,
-          })
+            replace({
+              pathname: `/question/${params.cardId}`,
+              hash: location.hash,
+            })
         }
       />
       <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
@@ -465,5 +484,4 @@ export const getRoutes = store => (
       <Route path="/unauthorized" component={Unauthorized} />
       <Route path="/*" component={NotFound} />
     </Route>
-  </Route>
 );
