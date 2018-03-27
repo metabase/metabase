@@ -25,7 +25,10 @@ const QUOTES = [
 
 import type { Candidate } from "metabase/meta/types/Auto";
 
-type Props = {};
+type Props = {
+  databaseId: ?number,
+};
+
 type State = {
   databaseId: ?number,
   isSample: ?boolean,
