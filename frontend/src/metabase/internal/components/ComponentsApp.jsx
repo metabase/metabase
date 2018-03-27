@@ -106,7 +106,7 @@ export default class ComponentsApp extends Component {
                             <div className="relative">
                               <AceEditor
                                 value={reactElementToJSXString(element)}
-                                mode={"jsx"}
+                                mode="ace/mode/jsx"
                                 theme="ace/theme/metabase"
                                 readOnly
                               />
