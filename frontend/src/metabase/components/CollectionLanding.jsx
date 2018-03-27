@@ -5,6 +5,8 @@ import { Link } from 'react-router'
 import Icon from 'metabase/components/Icon'
 import CollectionListLoader from 'metabase/components/CollectionListLoader'
 
+import LandingNav from 'metabase/components/LandingNav'
+
 const CollectionList = () => {
   return (
     <CollectionListLoader>
@@ -29,7 +31,8 @@ const CollectionList = () => {
 
 const DefaultLanding = () => {
   return (
-    <Box>
+    <Box w='100%'>
+      <LandingNav />
       <Subhead>Pins</Subhead>
       <Subhead>Other stuff</Subhead>
     </Box>
