@@ -6,7 +6,8 @@ import { t } from "c-3po";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 
-import ExpandingSearchField from "../components/ExpandingSearchField";
+import { Box, Flex, Heading } from "rebass";
+
 import CollectionActions from "../components/CollectionActions";
 
 import CollectionButtons from "../components/CollectionButtons";
@@ -80,9 +81,6 @@ export const QuestionIndexHeader = ({
 
   return (
     <div className="flex align-center pt4 pb2">
-      {showSearch &&
-        hasCollections && <ExpandingSearchField onSearch={onSearch} />}
-
       <div className="flex align-center ml-auto">
         <CollectionActions>
           {showSetPermissionsLink && (
@@ -156,6 +154,7 @@ export class QuestionIndex extends Component {
 
         {showNoCollectionsState && <CollectionEmptyState />}
 
+        <Heading>Metabase</Heading>
         {!loading && (
           <QuestionIndexHeader
             questions={questions}
@@ -165,30 +164,31 @@ export class QuestionIndex extends Component {
           />
         )}
 
-        {hasCollections && (
-          <CollectionButtons
-            collections={collections}
-            isAdmin={isAdmin}
-            push={push}
-          />
-        )}
+        <Flex>
+          {hasCollections && (
+            <CollectionButtons
+              collections={collections}
+              isAdmin={isAdmin}
+              push={push}
+            />
+          )}
+          <Box w={2 / 3}>
+            {/* EntityList loads `questions` according to the query specified in the url query string */}
+            <EntityList
+              entityType="cards"
+              entityQuery={{ f: "all", collection: "", ...location.query }}
+              // use replace when changing sections so back button still takes you back to collections page
+              onChangeSection={section =>
+                replace({
+                  ...location,
+                  query: { ...location.query, f: section },
+                })
+              }
+            />
+          </Box>
+        </Flex>
 
         {showNoSavedQuestionsState && <NoSavedQuestionsState />}
-
-        <div className={cx("pt4", { hide: !showEntityList })}>
-          {/* EntityList loads `questions` according to the query specified in the url query string */}
-          <EntityList
-            entityType="cards"
-            entityQuery={{ f: "all", collection: "", ...location.query }}
-            // use replace when changing sections so back button still takes you back to collections page
-            onChangeSection={section =>
-              replace({
-                ...location,
-                query: { ...location.query, f: section },
-              })
-            }
-          />
-        </div>
       </div>
     );
   }
