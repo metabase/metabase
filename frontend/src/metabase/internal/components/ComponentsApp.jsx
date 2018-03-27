@@ -6,6 +6,8 @@ import { Link, Route } from "react-router";
 import { slugify } from "metabase/lib/formatting";
 import reactElementToJSXString from "react-element-to-jsx-string";
 import COMPONENTS from "../lib/components-webpack";
+import AceEditor from "metabase/components/TextEditor";
+import CopyButton from "metabase/components/CopyButton";
 
 const Section = ({ title, children }) => (
   <div className="mb2">
@@ -101,9 +103,18 @@ export default class ComponentsApp extends Component {
                             <div className="p2 bordered flex align-center flex-full">
                               <div className="full">{element}</div>
                             </div>
-                            <div className="border-left border-right border-bottom text-code">
-                              <div className="p1">
-                                {reactElementToJSXString(element)}
+                            <div className="relative">
+                              <AceEditor
+                                value={reactElementToJSXString(element)}
+                                mode={"jsx"}
+                                theme="ace/theme/metabase"
+                                readOnly
+                              />
+                              <div className="absolute top right text-brand-hover cursor-pointer z2">
+                                <CopyButton
+                                  className="p1"
+                                  value={reactElementToJSXString(element)}
+                                />
                               </div>
                             </div>
                           </div>
