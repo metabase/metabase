@@ -60,6 +60,7 @@
     "react-sortable": "^1.2.0",
     "react-textarea-autosize": "^4.0.5",
     "react-virtualized": "^9.7.2",
+    "rebass": "^1.0.7",
     "recompose": "^0.23.1",
     "redux": "^3.5.2",
     "redux-actions": "^2.0.1",
