@@ -1,23 +1,24 @@
 /* @flow */
 
 import React from "react";
-import { Box, Flex, Subhead } from "rebass";
 import cx from "classnames";
 
 import { normal, saturated, harmony } from "metabase/lib/colors";
 
 const SWATCH_SIZE = 200;
 const ColorSwatch = ({ color, name }) => (
-  <Box
-    w={SWATCH_SIZE}
-    style={{ backgroundColor: color, height: SWATCH_SIZE, borderRadius: 12 }}
-    p={3}
-    mr={2}
-    mb={2}
+  <div
+    style={{
+      backgroundColor: color,
+      height: SWATCH_SIZE,
+      borderRadius: 12,
+      width: SWATCH_SIZE,
+    }}
+    className="p3 mr2 mb2"
   >
     {name}
     <h2>{color}</h2>
-  </Box>
+  </div>
 );
 
 // eslint-disable-next-line import/no-commonjs
@@ -25,32 +26,32 @@ let colorStyles = require("!style-loader!css-loader?modules!postcss-loader!metab
 
 const ColorsApp = () => (
   <div className="wrapper">
-    <Box my={2}>
-      <Subhead my={3}>Normal</Subhead>
-      <Flex wrap>
+    <div className="my2">
+      <h2 className="my3">Normal</h2>
+      <div className="flex flex-wrap">
         {Object.entries(normal).map(([name, value]) => (
           <ColorSwatch color={value} name={name} />
         ))}
-      </Flex>
-    </Box>
-    <Box my={2}>
-      <Subhead my={3}>Saturated</Subhead>
-      <Flex wrap>
+      </div>
+    </div>
+    <div className="my2">
+      <h2 className="my3">Saturated</h2>
+      <div className="flex flex-wrap">
         {Object.entries(saturated).map(([name, value]) => (
           <ColorSwatch color={value} name={name} />
         ))}
-      </Flex>
-    </Box>
-    <Box my={2}>
-      <Subhead my={3}>Chart colors</Subhead>
-      <Flex wrap>
+      </div>
+    </div>
+    <div className="my2">
+      <h2 className="my3">Chart colors</h2>
+      <div className="flex flex-wrap">
         {harmony.map((color, index) => (
           <ColorSwatch color={color} name={`Series ${index + 1}`} />
         ))}
-      </Flex>
-    </Box>
-    <Box my={2}>
-      <Subhead>CSS Colors</Subhead>
+      </div>
+    </div>
+    <div className="my2">
+      <h2 className="my3">CSS colors</h2>
       {Object.entries(colorStyles).map(([name, className]) => (
         <div
           className={cx(className, "rounded px1")}
@@ -63,7 +64,7 @@ const ColorsApp = () => (
           {name}
         </div>
       ))}
-    </Box>
+    </div>
   </div>
 );
 
