@@ -1,4 +1,5 @@
 (ns metabase.util.export
+  (:use clj-pdf.core)
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
             [dk.ative.docjure.spreadsheet :as spreadsheet])
@@ -54,6 +55,64 @@
   (for [row rows]
     (zipmap columns row)))
 
+
+(defn row-template-paragraph 
+  [row columns]
+  (template
+    [:paragraph str(row)]
+  )
+)
+
+(defn pdf-table [& rows]
+  "Helper method to write a set of static rows"
+  (into
+    [:pdf-table 
+      {:width-percent 100}
+      nil
+    ]
+    (map (partial map (fn [element] [:pdf-cell (str element) ])) rows)))
+
+(defn pdf-table-seq [rows]
+  "Helper method to write the dataset"
+  (into
+    [:pdf-table 
+      {:width-percent 100}
+      nil
+    ]
+    (mapv (fn [row] (vec (map (fn [element] [:pdf-cell (str element) ]) row ) ) ) rows)
+  ))
+
+(defn- export-to-pdf [columns rows]
+  "Write a PDF to stream with the content in rows vector of sequences"
+  
+  (let [output-stream (ByteArrayOutputStream.)
+       ]  
+
+    (pdf 
+      [{}
+        ; write the title
+        [:paragraph "results"]
+
+        ; write the header row
+        (into
+          [:pdf-table 
+            {:width-percent 100
+            }
+            nil
+          ]
+          [(mapv name columns)]
+        )
+
+        ; write the contents
+        (pdf-table-seq rows) 
+  
+      ]
+      output-stream)
+
+    ; write the stream
+    (ByteArrayInputStream. (.toByteArray output-stream))))
+
+
 (def export-formats
   "Map of export types to their relevant metadata"
   {"csv"  {:export-fn    export-to-csv
@@ -64,6 +123,10 @@
            :content-type "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
            :ext          "xlsx"
            :context      :xlsx-download},
+   "pdf"  {:export-fn    export-to-pdf
+           :content-type "application/pdf"
+           :ext          "pdf"
+           :context      :pdf-download},
    "json" {:export-fn    export-to-json
            :content-type "applicaton/json"
            :ext          "json"

@@ -37,6 +37,7 @@
                                commons-io
                                slingshot]]
                  [clj-time "0.13.0"]                                  ; library for dealing with date/time
+                 [clj-pdf "2.2.31"]                                   ; for pdf generation / export
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.amazon.redshift/redshift-jdbc41-no-awssdk       ; Redshift JDBC driver without embedded Amazon SDK

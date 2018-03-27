@@ -17,7 +17,7 @@ import * as Urls from "metabase/lib/urls";
 import _ from "underscore";
 import cx from "classnames";
 
-const EXPORT_FORMATS = ["csv", "xlsx", "json"];
+const EXPORT_FORMATS = ["csv", "xlsx", "json", "pdf"];
 
 const QueryDownloadWidget = ({ className, card, result, uuid, token }) => (
   <PopoverWithTrigger
@@ -28,7 +28,7 @@ const QueryDownloadWidget = ({ className, card, result, uuid, token }) => (
     }
     triggerClasses={cx(className, "text-brand-hover")}
   >
-    <div className="p2" style={{ maxWidth: 320 }}>
+    <div className="p2" style={{ /* maxWidth: 320 */ }}>
       <h4>{t`Download full results`}</h4>
       {result.data.rows_truncated != null && (
         <FieldSet className="my2 text-gold border-gold" legend={t`Warning`}>
