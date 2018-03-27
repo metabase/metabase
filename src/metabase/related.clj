@@ -155,17 +155,16 @@
 (defn- recommended-dashboards
   [cards]
   (let [recent           (recently-modified-dashboards)
-        card->dashboards (apply db/select-field->field :card_id :dashboard_id
-                                DashboardCard
-                                (cond-> []
-                                  (not-empty cards)
-                                  (concat [:card_id [:in (map :id cards)]])
+        card->dashboards (->> (apply db/select [DashboardCard :card_id :dashboard_id]
+                                     (cond-> {}
+                                       (not-empty cards)
+                                       (assoc :card_id [:in (map :id cards)])
 
-                                  (not-empty recent)
-                                  (concat [:dashboard_id [:not-in recent]])))
+                                       (not-empty recent)
+                                       (assoc :dashboard_id [:not-in recent])))
+                              (group-by :card_id))
         best             (->> cards
                               (mapcat (comp card->dashboards :id))
-                              (map :dashboard_id)
                               distinct
                               (take max-best-matches))]
     (map Dashboard (concat best recent))))
@@ -175,7 +174,7 @@
   (->> cards
        (m/distinct-by :collection_id)
        interesting-mix
-       (map (comp Collection :collection_id))))
+       (keep (comp Collection :collection_id))))
 
 (defmulti
   ^{:doc "Return related entities."
