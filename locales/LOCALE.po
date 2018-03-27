@@ -1,0 +1,137 @@
+# #-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#
+# Language LOCALE translations for metabase package.
+# Copyright (C) 2018 Metabase <docs@metabase.com>
+# This file is distributed under the same license as the metabase package.
+# ericklopez <ericklopez76@gmail.com>, 2018.
+#
+msgid ""
+msgstr ""
+"#-#-#-#-#  metabase-frontend.pot  #-#-#-#-#\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+"#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#\n"
+"Project-Id-Version: metabase\n"
+"Report-Msgid-Bugs-To: docs@metabase.com\n"
+"POT-Creation-Date: 2017-08-21 21:54+0200\n"
+"PO-Revision-Date: 2018-02-08 22:39-0600\n"
+"Last-Translator: ericklopez <ericklopez76@gmail.com>\n"
+"Language-Team: Language LOCALE\n"
+"Language: LOCALE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: frontend/src/metabase/home/components/Activity.jsx:131
+msgid "Hello World!"
+msgstr "Hola Mundo"
+
+#: frontend/src/metabase/home/components/Activity.jsx:132
+msgid "Metabase is up and running."
+msgstr "Metabase esta en servicio y funcionando"
+
+#: frontend/src/metabase/home/components/Activity.jsx:176
+msgid "removed the filter {item.details.name}"
+msgstr "el filtro ha sido removido {item.details.name}"
+
+#: frontend/src/metabase/home/components/Activity.jsx:179
+msgid "joined!"
+msgstr "unido"
+
+#: frontend/src/metabase/home/components/NextStep.jsx:31
+msgid "Setup Tip"
+msgstr "Tip de configuracion"
+
+#: frontend/src/metabase/home/components/NextStep.jsx:32
+msgid "View all"
+msgstr "Ver Todo"
+
+#: frontend/src/metabase/home/components/RecentViews.jsx:38
+msgid "Recently Viewed"
+msgstr "Visto Recientemente"
+
+#: frontend/src/metabase/home/components/RecentViews.jsx:60
+msgid "You haven't looked at any dashboards or questions recently"
+msgstr "Tu no has observado ningún tablero o pregunta recientemente"
+
+#: frontend/src/metabase/home/containers/HomepageApp.jsx:93
+msgid "Activity"
+msgstr "Actividad"
+
+#: frontend/src/metabase/lib/greeting.js:2
+msgid "Hey there"
+msgstr "Hey por aquí"
+
+#: frontend/src/metabase/lib/greeting.js:3
+#: frontend/src/metabase/lib/greeting.js:25
+msgid "How's it going"
+msgstr "Como va todo?"
+
+#: frontend/src/metabase/lib/greeting.js:4
+msgid "Howdy"
+msgstr "Hola"
+
+#: frontend/src/metabase/lib/greeting.js:5
+msgid "Greetings"
+msgstr "Saludos"
+
+#: frontend/src/metabase/lib/greeting.js:6
+msgid "Good to see you"
+msgstr "Es bueno verte"
+
+#: frontend/src/metabase/lib/greeting.js:10
+msgid "What do you want to know?"
+msgstr "Que es lo que quieres saber?"
+
+#: frontend/src/metabase/lib/greeting.js:11
+msgid "What's on your mind?"
+msgstr "Que tienes en mente?"
+
+#: frontend/src/metabase/lib/greeting.js:12
+msgid "What do you want to find out?"
+msgstr "Que es lo andas buscando?"
+
+#: frontend/src/metabase/nav/containers/Navbar.jsx:129
+msgid "Dashboards"
+msgstr "Tableros"
+
+#: frontend/src/metabase/nav/containers/Navbar.jsx:132
+msgid "Questions"
+msgstr "Preguntas"
+
+#: frontend/src/metabase/nav/containers/Navbar.jsx:135
+msgid "Pulses"
+msgstr "Pulsos"
+
+#: frontend/src/metabase/nav/containers/Navbar.jsx:138
+msgid "Data Reference"
+msgstr "Referencia de Datos"
+
+#: frontend/src/metabase/nav/containers/Navbar.jsx:142
+msgid "New Question"
+msgstr "Nueva Pregunta"
+
+#: src/metabase/api/setup.clj
+msgid "Add a database"
+msgstr "Agregar una base de datos"
+
+#: src/metabase/api/setup.clj
+msgid "Get connected"
+msgstr "Te has conectado"
+
+#: src/metabase/api/setup.clj
+msgid "Connect to your data so your whole team can start to explore."
+msgstr "Conectese a sus datos para que todo el equipo pueda empezar a explorar."
+
+#. This is the very first log message that will get printed.
+#. It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
+#. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+#: src/metabase/util.clj
+msgid "Loading {0}..."
+msgstr "Cargando {0}..."
+
+#. This is the very first log message that will get printed.
+#. It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
+#. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+#: src/metabase/util.clj
+msgid "Metabase"
+msgstr "Metabase"
