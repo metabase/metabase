@@ -55,6 +55,29 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
+class SearchBar extends React.Component {
+  state = {
+    active: false,
+  };
+
+  render() {
+    return (
+      <div>
+        <input
+          type="text"
+          placeholder="Search for anything..."
+          className="input"
+          onClick={() => this.setState({ active: true })}
+          style={{
+            width: this.state.active ? 600 : 320,
+            maxWidth: 600,
+          }}
+        />
+      </div>
+    );
+  }
+}
+
 const MainNavLink = ({ to, name, eventName, icon }) => (
   <Link
     to={to}
@@ -145,8 +168,8 @@ export default class Navbar extends Component {
 
   renderMainNav() {
     return (
-      <nav className="Nav relative bg-brand">
-        <ul className="md-pl4 flex align-center md-pr1">
+      <nav className="relative bg-brand">
+        <ul className="flex align-center">
           <li>
             <Link
               to="/"
@@ -157,47 +180,8 @@ export default class Navbar extends Component {
               <LogoIcon dark={true} />
             </Link>
           </li>
-          <li className="md-pl3 hide xs-show">
-            <MainNavLink
-              to="/dashboards"
-              name={t`Dashboards`}
-              eventName="Dashboards"
-              icon="dashboard"
-            />
-          </li>
-          <li className="md-pl1 hide xs-show">
-            <MainNavLink
-              to="/questions"
-              name={t`Questions`}
-              eventName="Questions"
-              icon="all"
-            />
-          </li>
-          <li className="md-pl1 hide xs-show">
-            <MainNavLink
-              to="/pulse"
-              name={t`Pulses`}
-              eventName="Pulses"
-              icon="pulse"
-            />
-          </li>
-          <li className="md-pl1 hide xs-show">
-            <MainNavLink
-              to="/reference/guide"
-              name={t`Data Reference`}
-              eventName="DataReference"
-              icon="reference"
-            />
-          </li>
-          <li className="md-pl3 hide sm-show">
-            <Link
-              to={Urls.newQuestion()}
-              data-metabase-event={"Navbar;New Question"}
-              style={BUTTON_PADDING_STYLES.newQuestion}
-              className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all"
-            >
-              {t`New Question`}
-            </Link>
+          <li>
+            <SearchBar />
           </li>
           <li className="flex-align-right transition-background hide sm-show">
             <div className="inline-block text-white">
