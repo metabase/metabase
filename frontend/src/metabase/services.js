@@ -47,7 +47,7 @@ export const CardApi = {
 
   // related
   related: GET("/api/card/:cardId/related"),
-  adHocRelated: POST("/api/card/related")
+  adHocRelated: POST("/api/card/related"),
 };
 
 export const DashboardApi = {

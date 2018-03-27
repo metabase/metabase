@@ -48,6 +48,9 @@ import {
   NewQuestionMetricSearch,
 } from "metabase/new_query/router_wrappers";
 
+import Segments from 'metabase/components/SegmentList'
+import Metrics from 'metabase/components/MetricList'
+
 // admin containers
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
 import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp.jsx";
@@ -109,11 +112,6 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import GlobalLanding from 'metabase/home/GlobalLanding'
 import CollectionLanding from 'metabase/components/CollectionLanding'
-
-const CollectionHome = () =>
-  <div>
-    HOME HOME HOME
-  </div>
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => !authData.hasSetupToken,
@@ -223,6 +221,17 @@ export const getRoutes = store => (
           component={Dashboards}
         />
 
+        <Route
+          path="segments"
+          title={t`Segments`}
+          component={Segments}
+        />
+
+        <Route
+          path="metrics"
+          title={t`metrics`}
+          component={Metrics}
+        />
 
         <Route path="/questions" title={t`Questions`}>
           <IndexRoute component={QuestionIndex} />
@@ -383,105 +392,105 @@ export const getRoutes = store => (
 </Route>
 
 {/* PULSE */}
-<Route path="/pulse" title={t`Pulses`}>
-  <IndexRoute component={PulseListApp} />
-  <Route path="create" component={PulseEditApp} />
-  <Route path=":pulseId" component={PulseEditApp} />
+  <Route path="/pulse" title={t`Pulses`}>
+    <IndexRoute component={PulseListApp} />
+    <Route path="create" component={PulseEditApp} />
+    <Route path=":pulseId" component={PulseEditApp} />
+  </Route>
+
+  {/* USER */}
+  <Route path="/user/edit_current" component={UserSettingsApp} />
 </Route>
 
-{/* USER */}
-<Route path="/user/edit_current" component={UserSettingsApp} />
-      </Route>
+{/* ADMIN */}
+<Route path="/admin" title={t`Admin`} component={IsAdmin}>
+  <IndexRedirect to="/admin/settings" />
 
-      {/* ADMIN */}
-      <Route path="/admin" title={t`Admin`} component={IsAdmin}>
-        <IndexRedirect to="/admin/settings" />
+  <Route path="databases" title={t`Databases`}>
+    <IndexRoute component={DatabaseListApp} />
+    <Route path="create" component={DatabaseEditApp} />
+    <Route path=":databaseId" component={DatabaseEditApp} />
+  </Route>
 
-        <Route path="databases" title={t`Databases`}>
-          <IndexRoute component={DatabaseListApp} />
-          <Route path="create" component={DatabaseEditApp} />
-          <Route path=":databaseId" component={DatabaseEditApp} />
-        </Route>
+  <Route path="datamodel" title={t`Data Model`}>
+    <IndexRedirect to="database" />
+    <Route path="database" component={MetadataEditorApp} />
+    <Route path="database/:databaseId" component={MetadataEditorApp} />
+    <Route
+      path="database/:databaseId/:mode"
+      component={MetadataEditorApp}
+    />
+    <Route
+      path="database/:databaseId/:mode/:tableId"
+      component={MetadataEditorApp}
+    />
+    <Route
+      path="database/:databaseId/:mode/:tableId/settings"
+      component={TableSettingsApp}
+    />
+    <Route
+      path="database/:databaseId/:mode/:tableId/:fieldId"
+      component={FieldApp}
+    />
+    <Route path="metric/create" component={MetricApp} />
+    <Route path="metric/:id" component={MetricApp} />
+    <Route path="segment/create" component={SegmentApp} />
+    <Route path="segment/:id" component={SegmentApp} />
+    <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
+  </Route>
 
-        <Route path="datamodel" title={t`Data Model`}>
-          <IndexRedirect to="database" />
-          <Route path="database" component={MetadataEditorApp} />
-          <Route path="database/:databaseId" component={MetadataEditorApp} />
-          <Route
-            path="database/:databaseId/:mode"
-            component={MetadataEditorApp}
-          />
-          <Route
-            path="database/:databaseId/:mode/:tableId"
-            component={MetadataEditorApp}
-          />
-          <Route
-            path="database/:databaseId/:mode/:tableId/settings"
-            component={TableSettingsApp}
-          />
-          <Route
-            path="database/:databaseId/:mode/:tableId/:fieldId"
-            component={FieldApp}
-          />
-          <Route path="metric/create" component={MetricApp} />
-          <Route path="metric/:id" component={MetricApp} />
-          <Route path="segment/create" component={SegmentApp} />
-          <Route path="segment/:id" component={SegmentApp} />
-          <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
-        </Route>
-
-        {/* PEOPLE */}
-        <Route path="people" title={t`People`} component={AdminPeopleApp}>
-          <IndexRoute component={PeopleListingApp} />
-          <Route path="groups" title={t`Groups`}>
-            <IndexRoute component={GroupsListingApp} />
-            <Route path=":groupId" component={GroupDetailApp} />
-          </Route>
-        </Route>
-
-        {/* SETTINGS */}
-        <Route path="settings" title={t`Settings`}>
-          <IndexRedirect to="/admin/settings/setup" />
-          {/* <IndexRoute component={SettingsEditorApp} /> */}
-          <Route path=":section/:authType" component={SettingsEditorApp} />
-          <Route path=":section" component={SettingsEditorApp} />
-        </Route>
-
-        {getAdminPermissionsRoutes(store)}
-      </Route>
-
-      {/* INTERNAL */}
-      <Route
-        path="/_internal"
-        getChildRoutes={(partialNextState, callback) =>
-            // $FlowFixMe: flow doesn't know about require.ensure
-            require.ensure([], require => {
-              callback(null, [require("metabase/internal/routes").default]);
-            })
-        }
-      />
-
-    {/* DEPRECATED */}
-    {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
-      <Route
-        path="/q"
-        onEnter={({ location }, replace) =>
-            replace({ pathname: "/question", hash: location.hash })
-        }
-      />
-      <Route
-        path="/card/:cardId"
-        onEnter={({ location, params }, replace) =>
-            replace({
-              pathname: `/question/${params.cardId}`,
-              hash: location.hash,
-            })
-        }
-      />
-      <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
-
-      {/* MISC */}
-      <Route path="/unauthorized" component={Unauthorized} />
-      <Route path="/*" component={NotFound} />
+  {/* PEOPLE */}
+  <Route path="people" title={t`People`} component={AdminPeopleApp}>
+    <IndexRoute component={PeopleListingApp} />
+    <Route path="groups" title={t`Groups`}>
+      <IndexRoute component={GroupsListingApp} />
+      <Route path=":groupId" component={GroupDetailApp} />
     </Route>
+  </Route>
+
+  {/* SETTINGS */}
+  <Route path="settings" title={t`Settings`}>
+    <IndexRedirect to="/admin/settings/setup" />
+    {/* <IndexRoute component={SettingsEditorApp} /> */}
+    <Route path=":section/:authType" component={SettingsEditorApp} />
+    <Route path=":section" component={SettingsEditorApp} />
+  </Route>
+
+  {getAdminPermissionsRoutes(store)}
+</Route>
+
+  {/* INTERNAL */}
+  <Route
+    path="/_internal"
+    getChildRoutes={(partialNextState, callback) =>
+        // $FlowFixMe: flow doesn't know about require.ensure
+        require.ensure([], require => {
+          callback(null, [require("metabase/internal/routes").default]);
+        })
+    }
+  />
+
+{/* DEPRECATED */}
+{/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
+  <Route
+    path="/q"
+    onEnter={({ location }, replace) =>
+        replace({ pathname: "/question", hash: location.hash })
+    }
+  />
+  <Route
+    path="/card/:cardId"
+    onEnter={({ location, params }, replace) =>
+        replace({
+          pathname: `/question/${params.cardId}`,
+          hash: location.hash,
+        })
+    }
+  />
+  <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
+
+  {/* MISC */}
+  <Route path="/unauthorized" component={Unauthorized} />
+  <Route path="/*" component={NotFound} />
+</Route>
 );

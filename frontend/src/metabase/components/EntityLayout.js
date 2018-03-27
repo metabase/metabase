@@ -37,11 +37,10 @@ export const PageHeading = ({ icon, title }) => (
   </Flex>
 );
 
-export const PageLayout = ({ children }) =>
+export const PageLayout = ({ children }) => (
   <Box w={2 / 3}>
-    <Box w="70%">
-      {children}
-    </Box>
-  </Box>;
+    <Box w="70%">{children}</Box>
+  </Box>
+);
 
 export const PageSidebar = ({ children }) => <Box w={1 / 3}>{children}</Box>;

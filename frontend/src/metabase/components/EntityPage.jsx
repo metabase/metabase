@@ -4,14 +4,14 @@ import { Link } from "react-router";
 
 import { PageSidebar, Wrapper, PageLayout } from "./EntityLayout";
 
-import Icon from "metabase/components/Icon"
+import Icon from "metabase/components/Icon";
 import EntityInfo from "./EntityInfo";
 import EntitySegments from "./EntitySegments";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import QuestionAndResultLoader from "metabase/containers/QuestionAndResultLoader";
 
-import RelatedItems from 'metabase/components/RelatedItems'
+import RelatedItems from "metabase/components/RelatedItems";
 
 class EntityPage extends Component {
   render() {
@@ -21,7 +21,6 @@ class EntityPage extends Component {
         questionHash={this.props.location.hash}
       >
         {({ question, result, cancel, reload, rawSeries, loading }) => {
-
           if (!question) {
             return <div>"Loading..."</div>;
           }
@@ -36,25 +35,31 @@ class EntityPage extends Component {
                 style={{ backgroundColor: "#FCFDFD", height: "65vh" }}
               >
                 <Box className="hover-child absolute top right">
-                  { !loading && (
-                    <a className="bordered rounded shadowed" onClick={() => reload()}>
+                  {!loading && (
+                    <a
+                      className="bordered rounded shadowed"
+                      onClick={() => reload()}
+                    >
                       <Icon name="reload" />
                     </a>
                   )}
-                  { loading && (
+                  {loading && (
                     <a onClick={() => cancel()}>
                       <Icon name="close" />
                     </a>
                   )}
                 </Box>
-                { rawSeries && <Visualization rawSeries={rawSeries} /> }
+                {rawSeries && <Visualization rawSeries={rawSeries} />}
               </Box>
               <Box>
                 <Wrapper>
                   <Flex>
                     <PageLayout>
                       <EntityInfo entity={question} />
-                      <RelatedItems questionId={this.props.params.cardId} questionHash={this.props.location.hash} />
+                      <RelatedItems
+                        questionId={this.props.params.cardId}
+                        questionHash={this.props.location.hash}
+                      />
                     </PageLayout>
                     <PageSidebar>
                       <Box
