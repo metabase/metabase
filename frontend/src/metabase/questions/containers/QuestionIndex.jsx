@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
-import cx from "classnames";
 import { t } from "c-3po";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
@@ -9,10 +8,7 @@ import Button from "metabase/components/Button";
 import { Box, Flex, Heading } from "rebass";
 
 import CollectionActions from "../components/CollectionActions";
-
 import CollectionButtons from "../components/CollectionButtons";
-
-import EntityList from "./EntityList";
 
 import { search } from "../questions";
 import { loadCollections } from "../collections";
@@ -23,9 +19,10 @@ import {
 } from "../selectors";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
+import RecentViews from "metabase/home/components/RecentViews";
+
 import { replace, push } from "react-router-redux";
 import EmptyState from "metabase/components/EmptyState";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export const CollectionEmptyState = () => (
   <div className="flex flex-column sm-flex-row align-center p2 mt4 bordered border-med border-brand rounded bg-grey-0 text-brand">
@@ -52,6 +49,35 @@ export const CollectionEmptyState = () => (
   </div>
 );
 
+const CollectionEntityNav = () => (
+  <Flex>
+    <Flex align="center" justify="center">
+      <Link to="/dashboards">
+        <Icon name="dashboard" />
+        Dashboards
+      </Link>
+    </Flex>
+    <Flex align="center" justify="center">
+      <Link to="/metrics">
+        <Icon name="insight" />
+        Metrics
+      </Link>
+    </Flex>
+    <Flex align="center" justify="center">
+      <Link to="/segments">
+        <Icon name="dashboard" />
+        Segments
+      </Link>
+    </Flex>
+    <Flex align="center" justify="center">
+      <Link to="/segments">
+        <Icon name="dashboard" />
+        Questions
+      </Link>
+    </Flex>
+  </Flex>
+);
+
 export const NoSavedQuestionsState = () => (
   <div className="flex-full flex align-center justify-center mb4">
     <EmptyState
@@ -74,9 +100,7 @@ export const QuestionIndexHeader = ({
 }) => {
   // Some replication of logic for making writing tests easier
   const hasCollections = collections && collections.length > 0;
-  const hasQuestionsWithoutCollection = questions && questions.length > 0;
 
-  const showSearch = hasCollections || hasQuestionsWithoutCollection;
   const showSetPermissionsLink = isAdmin && hasCollections;
 
   return (
@@ -122,38 +146,12 @@ export class QuestionIndex extends Component {
   }
 
   render() {
-    const {
-      loading,
-      questions,
-      collections,
-      replace,
-      push,
-      location,
-      isAdmin,
-    } = this.props;
+    const { loading, questions, collections, push, isAdmin } = this.props;
 
     const hasCollections = collections && collections.length > 0;
-    const hasQuestionsWithoutCollection = questions && questions.length > 0;
-
-    const showNoCollectionsState = !loading && isAdmin && !hasCollections;
-    const showNoSavedQuestionsState =
-      !loading && !hasCollections && !hasQuestionsWithoutCollection;
-
-    const hasEntityListSectionQuery = !!(location.query && location.query.f);
-    const showEntityList =
-      hasQuestionsWithoutCollection || hasEntityListSectionQuery;
 
     return (
-      <div
-        className={cx("relative px4", {
-          "full-height bg-slate-extra-light": showNoSavedQuestionsState,
-        })}
-      >
-        {/* Use loading wrapper only for displaying the loading indicator as EntityList component should always be in DOM */}
-        {loading && <LoadingAndErrorWrapper loading={true} noBackground />}
-
-        {showNoCollectionsState && <CollectionEmptyState />}
-
+      <Box>
         <Heading>Metabase</Heading>
         {!loading && (
           <QuestionIndexHeader
@@ -173,23 +171,25 @@ export class QuestionIndex extends Component {
             />
           )}
           <Box w={2 / 3}>
+            <CollectionEntityNav />
+            <RecentViews />
             {/* EntityList loads `questions` according to the query specified in the url query string */}
-            <EntityList
-              entityType="cards"
-              entityQuery={{ f: "all", collection: "", ...location.query }}
-              // use replace when changing sections so back button still takes you back to collections page
-              onChangeSection={section =>
-                replace({
-                  ...location,
-                  query: { ...location.query, f: section },
-                })
-              }
-            />
+            {/*
+              <EntityList
+                entityType="cards"
+                entityQuery={{ f: "all", collection: "", ...location.query }}
+                // use replace when changing sections so back button still takes you back to collections page
+                onChangeSection={section =>
+                  replace({
+                    ...location,
+                    query: { ...location.query, f: section },
+                  })
+                }
+              />
+              */}
           </Box>
         </Flex>
-
-        {showNoSavedQuestionsState && <NoSavedQuestionsState />}
-      </div>
+      </Box>
     );
   }
 }

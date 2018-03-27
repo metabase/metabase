@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "c-3po";
@@ -7,8 +8,20 @@ import Icon from "metabase/components/Icon.jsx";
 import SidebarSection from "./SidebarSection.jsx";
 import * as Urls from "metabase/lib/urls";
 
+import { getRecentViews } from "metabase/home/selectors";
+import { fetchRecentViews } from "metabase/home/actions";
+
 import { normal } from "metabase/lib/colors";
 
+const mapStateToProps = state => ({
+  recentViews: getRecentViews(state),
+});
+
+const mapDispatchToProps = {
+  fetchRecentViews,
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class RecentViews extends Component {
   static propTypes = {
     fetchRecentViews: PropTypes.func.isRequired,
