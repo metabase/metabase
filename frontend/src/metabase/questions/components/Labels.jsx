@@ -1,3 +1,4 @@
+/* @flow */
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
@@ -10,7 +11,9 @@ import EmojiIcon from "metabase/components/EmojiIcon.jsx";
 
 import cx from "classnames";
 
-const Labels = ({ labels }) => (
+import type { Label as LabelType } from "metabase/meta/types/Label";
+
+const Labels = ({ labels }: { labels: LabelType[] }) => (
   <ul className={S.list}>
     {labels.map(label => (
       <li className={S.listItem} key={label.id}>
@@ -25,6 +28,10 @@ Labels.propTypes = {
 };
 
 class Label extends Component {
+  props: LabelType;
+  state: {
+    hovered: boolean,
+  };
   constructor(props) {
     super(props);
     this.state = {
