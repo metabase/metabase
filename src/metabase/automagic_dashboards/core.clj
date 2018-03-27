@@ -592,8 +592,6 @@
   [metric]
   (-> "special/metric.yaml"
       rules/load-rule
-      (update :metrics conj {"Metric" {:metric ["METRIC" (:id metric)]
-                                       :score  100}})
       (automagic-dashboard metric)))
 
 (defmethod automagic-analysis (type Card)
@@ -611,14 +609,5 @@
 (defmethod automagic-analysis (type Field)
   [field]
   (-> "special/field.yaml"
-      rules/load-rule
-      (update :dimensions conj
-              {"Field"
-               {:field_type  [(-> field table :entity_type)
-                              ((some-fn :special_type :base_type) field)]
-                :named       (:name field)
-                :score       100
-                :aggregation (cond
-                               (isa? (:base_type field) :type/DateTime) :month
-                               (isa? (:base_type field) :type/Number)   :default)}})
+      rules/load-rule      
       (automagic-dashboard field)))
