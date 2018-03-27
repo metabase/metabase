@@ -143,7 +143,11 @@ export function mergeEntities(entities, newEntities) {
 
 // helper for working with normalizr
 // reducer that merges payload.entities
-export function handleEntities(actionPattern, entityType, reducer) {
+export function handleEntities(
+  actionPattern,
+  entityType,
+  reducer = (state = {}, action) => state,
+) {
   return (state, action) => {
     if (state === undefined) {
       state = {};
