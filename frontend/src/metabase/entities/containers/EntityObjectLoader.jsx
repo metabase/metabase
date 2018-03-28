@@ -33,11 +33,11 @@ export default class EntitiesObjectLoader extends React.Component {
     return children({ object, loading, error, remove: this.remove });
   };
   render() {
-    const { loadingAndErrorWrapper, loading, error } = this.props;
+    const { loadingAndErrorWrapper, object, loading, error } = this.props;
     if (loadingAndErrorWrapper) {
       return (
         <LoadingAndErrorWrapper
-          loading={loading}
+          loading={loading || !object}
           error={error}
           children={this.renderChildren}
         />

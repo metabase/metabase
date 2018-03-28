@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, Route, IndexRoute } from "react-router";
+import { Route, IndexRoute } from "react-router";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
@@ -9,6 +9,7 @@ import { entities as entityDefs } from "metabase/redux/entities";
 
 import Button from "metabase/components/Button";
 import Confirm from "metabase/components/Confirm";
+import Link from "metabase/components/Link";
 
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
@@ -37,6 +38,7 @@ const EntityListApp = ({ params: { entityType } }) => (
   <EntityListLoader entityType={entityType}>
     {({ list }) => (
       <div className="p2">
+        <h2 className="pb2">{capitalize(entityType)}</h2>
         <div>
           {list &&
             list.map(object => (
@@ -61,23 +63,39 @@ const EntityObjectApp = ({ params: { entityType, entityId }, push }) => (
   <EntityObjectLoader entityType={entityType} entityId={entityId}>
     {({ object, remove }) => (
       <div className="p2">
-        {object && (
-          <div className="mb2">
-            <Link to={`/_internal/entities/${entityType}/${object.id}/edit`}>
-              <Button className="mr1">Edit</Button>
-            </Link>
-            <Confirm
-              title="Delete this?"
-              action={async () => {
-                await remove();
-                push(`/_internal/entities/${entityType}`);
-              }}
-            >
-              <Button warning>Delete</Button>
-            </Confirm>
-          </div>
-        )}
-        <pre>{JSON.stringify(object, null, 2)}</pre>
+        <h2 className="pb2">{object.name}</h2>
+        <table className="Table">
+          <tbody>
+            {Object.entries(object).map(([key, value]) => (
+              <tr>
+                <td>{key}</td>
+                <td>
+                  {typeof value === "number" || typeof value === "string" ? (
+                    value
+                  ) : (
+                    <pre style={{ margin: 0 }}>
+                      {JSON.stringify(value, null, 2)}
+                    </pre>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="my2">
+          <Link to={`/_internal/entities/${entityType}/${object.id}/edit`}>
+            <Button className="mr1">Edit</Button>
+          </Link>
+          <Confirm
+            title="Delete this?"
+            action={async () => {
+              await remove();
+              push(`/_internal/entities/${entityType}`);
+            }}
+          >
+            <Button warning>Delete</Button>
+          </Confirm>
+        </div>
       </div>
     )}
   </EntityObjectLoader>
