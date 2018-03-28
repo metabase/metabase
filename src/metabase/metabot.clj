@@ -85,7 +85,7 @@
 (defn- format-exception
   "Format a `Throwable` the way we'd like for posting it on slack."
   [^Throwable e]
-  (tru "Uh oh! :cry:\n>" (.getMessage e)))
+  (tru "Uh oh! :cry:\n> {0}" (.getMessage e)))
 
 (defmacro ^:private do-async {:style/indent 0} [& body]
   `(future (try ~@body

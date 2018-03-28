@@ -46,12 +46,13 @@ import type {
   HoverObject,
   ClickObject,
   Series,
+  RawSeries,
   OnChangeCardAndRun,
 } from "metabase/meta/types/Visualization";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 type Props = {
-  rawSeries: Series,
+  rawSeries: RawSeries,
 
   className: string,
 
@@ -130,6 +131,7 @@ export default class Visualization extends Component {
   }
 
   static defaultProps = {
+    className: "full-height",
     showTitle: false,
     isDashboard: false,
     isEditing: false,

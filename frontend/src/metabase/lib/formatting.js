@@ -51,6 +51,9 @@ const BINNING_DEGREES_FORMATTER = (value, binWidth) => {
   return d3.format(`.0${decimalCount(binWidth)}f`)(value);
 };
 
+const getMonthFormat = options => (options.compact ? "MMM" : "MMMM");
+const getDayFormat = options => (options.compact ? "ddd" : "dddd");
+
 // use en dashes, for Maz
 const RANGE_SEPARATOR = ` – `;
 
@@ -156,25 +159,29 @@ export function formatTimeRangeWithUnit(
   }
 
   // Tooltips should show full month name, but condense "MMMM D, YYYY - MMMM D, YYYY" to "MMMM D - D, YYYY" etc
-  const monthFormat = options.type === "tooltip" ? "MMMM" : "MMM";
-  const condensed = options.type === "tooltip";
+  const monthFormat =
+    options.type === "tooltip" ? "MMMM" : getMonthFormat(options);
+  const condensed = options.compact || options.type === "tooltip";
 
   const start = m.clone().startOf(unit);
   const end = m.clone().endOf(unit);
   if (start.isValid() && end.isValid()) {
     if (!condensed || start.year() !== end.year()) {
+      // January 1, 2018 - January 2, 2019
       return (
         start.format(`${monthFormat} D, YYYY`) +
         RANGE_SEPARATOR +
         end.format(`${monthFormat} D, YYYY`)
       );
     } else if (start.month() !== end.month()) {
+      // January 1 - Feburary 2, 2018
       return (
         start.format(`${monthFormat} D`) +
         RANGE_SEPARATOR +
         end.format(`${monthFormat} D, YYYY`)
       );
     } else {
+      // January 1 - 2, 2018
       return (
         start.format(`${monthFormat} D`) +
         RANGE_SEPARATOR +
@@ -206,11 +213,11 @@ export function formatTimeWithUnit(
     case "hour": // 12 AM - January 1, 2015
       return formatMajorMinor(
         m.format("h A"),
-        m.format("MMMM D, YYYY"),
+        m.format(`${getMonthFormat(options)} D, YYYY`),
         options,
       );
     case "day": // January 1, 2015
-      return m.format("MMMM D, YYYY");
+      return m.format(`${getMonthFormat(options)} D, YYYY`);
     case "week": // 1st - 2015
       if (options.type === "tooltip") {
         // tooltip show range like "January 1 - 7, 2017"
@@ -230,11 +237,11 @@ export function formatTimeWithUnit(
     case "month": // January 2015
       return options.jsx ? (
         <div>
-          <span className="text-bold">{m.format("MMMM")}</span>{" "}
+          <span className="text-bold">{m.format(getMonthFormat(options))}</span>{" "}
           {m.format("YYYY")}
         </div>
       ) : (
-        m.format("MMMM") + " " + m.format("YYYY")
+        m.format(`${getMonthFormat(options)} YYYY`)
       );
     case "year": // 2015
       return m.format("YYYY");
@@ -252,7 +259,7 @@ export function formatTimeWithUnit(
         moment()
           // $FlowFixMe:
           .day(value - 1)
-          .format("dddd")
+          .format(getDayFormat(options))
       );
     case "day-of-month":
       return moment()
@@ -267,7 +274,7 @@ export function formatTimeWithUnit(
         moment()
           // $FlowFixMe:
           .month(value - 1)
-          .format("MMMM")
+          .format(getMonthFormat(options))
       );
     case "quarter-of-year": // January
       return moment()

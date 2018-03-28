@@ -48,7 +48,7 @@
   ([field]
    ;; fetch up to one more value than allowed for FieldValues. e.g. if the max is 100 distinct values fetch up to 101.
    ;; That way we will know if we're over the limit
-   (field-distinct-values field (inc field-values/low-cardinality-threshold)))
+   (field-distinct-values field (inc field-values/list-cardinality-threshold)))
   ([field max-results]
    {:pre [(integer? max-results)]}
    (mapv first (field-query field (-> {}

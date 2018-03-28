@@ -13,8 +13,8 @@
 
 (s/defn ^:private clear-field-values-for-field! [field :- i/FieldInstance]
   (when (db/exists? FieldValues :field_id (u/get-id field))
-    (log/debug (format "Based on type info, %s should no longer have field values.\n" (sync-util/name-for-logging field))
-               (format "(base type: %s, special type: %s, visibility type: %s)\n" (:base_type field) (:special_type field) (:visibility_type field))
+    (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
+                       (sync-util/name-for-logging field))
                "Deleting FieldValues...")
     (db/delete! FieldValues :field_id (u/get-id field))))
 

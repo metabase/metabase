@@ -393,6 +393,8 @@
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
 (api/defendpoint GET "/card/:token/field/:field-id/remapping/:remapped-id"
+  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
+  embedded Cards."
   [token field-id remapped-id value]
   {value su/NonBlankString}
   (let [unsigned-token (eu/unsign token)
@@ -401,6 +403,8 @@
     (public-api/card-field-remapped-values card-id field-id remapped-id value)))
 
 (api/defendpoint GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
+  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
+  embedded Dashboards."
   [token field-id remapped-id value]
   {value su/NonBlankString}
   (let [unsigned-token (eu/unsign token)

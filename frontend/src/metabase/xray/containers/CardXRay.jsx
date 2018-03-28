@@ -137,7 +137,6 @@ class CardXRay extends Component {
                         data: xray.features["linear-regression"].value,
                       },
                     ]}
-                    className="full-height"
                   />
                 </div>
               </div>
@@ -166,7 +165,6 @@ class CardXRay extends Component {
                       },
                     },
                   ]}
-                  className="full-height"
                 />
               </div>
             </div>
@@ -210,7 +208,6 @@ class CardXRay extends Component {
                         xray.features["seasonal-decomposition"].value.residual,
                     },
                   ]}
-                  className="full-height"
                 />
               </div>
             </div>
