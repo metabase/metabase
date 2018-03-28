@@ -531,7 +531,7 @@
          (sort-by :score >))))
 
 (def ^:private ^:const ^Long max-related 6)
-(def ^:private ^:const ^Long max-cards 2)
+(def ^:private ^:const ^Long max-cards 9)
 
 (defn automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
