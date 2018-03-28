@@ -1,16 +1,31 @@
 import React from "react";
-import { Link, Route } from "react-router";
+import { Link, Route, IndexRoute } from "react-router";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
+
+import { capitalize } from "metabase/lib/formatting";
 
 import { entities as entityDefs } from "metabase/redux/entities";
+
+import Button from "metabase/components/Button";
+import Confirm from "metabase/components/Confirm";
+
+import EntityListLoader from "metabase/entities/containers/EntityListLoader";
+import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
+import EntityForm from "metabase/entities/containers/EntityForm";
+
+const withPush = ComposedComponent =>
+  connect(null, { push })(ComposedComponent);
 
 export default class EntitiesApp extends React.Component {
   render() {
     return (
-      <div>
-        {Object.entries(entityDefs).map(([name, entityDef]) => (
+      <div className="p2">
+        {Object.values(entityDefs).map(entityDef => (
           <div>
-            <Link to={`/_internal/entities/${name}`}>{name}</Link>
+            <Link to={`/_internal/entities/${entityDef.name}`}>
+              {capitalize(entityDef.name)}
+            </Link>
           </div>
         ))}
       </div>
@@ -18,64 +33,100 @@ export default class EntitiesApp extends React.Component {
   }
 }
 
-const getEntityType = (state, props) => props.params.entityType;
-const getEntityDef = (state, props) => entityDefs[getEntityType(state, props)];
-const getEntityList = (state, props) =>
-  getEntityDef(state, props).selectors.getList(state, props);
-const getEntityId = (state, props) => props.params.entityId;
-const getEntityObject = (state, props) =>
-  getEntityDef(state, props).selectors.getObject(state, props);
-
-@connect((state, props) => ({
-  entityDef: getEntityDef(state, props),
-  entityList: getEntityList(state, props),
-}))
-class EntitiesListApp extends React.Component {
-  componentWillMount() {
-    const { entityDef } = this.props;
-    this.props.dispatch(entityDef.actions.list());
-  }
-  render() {
-    const { entityDef, entityList } = this.props;
-    return (
-      <div>
-        <h3>{entityDef.name}</h3>
-        {entityList &&
-          entityList.map(item => (
-            <div>
-              <Link to={`/_internal/entities/${entityDef.name}/${item.id}`}>
-                {item[entityDef.nameProperty]}
-              </Link>
-            </div>
-          ))}
+const EntityListApp = ({ params: { entityType } }) => (
+  <EntityListLoader entityType={entityType}>
+    {({ list }) => (
+      <div className="p2">
+        <div>
+          {list &&
+            list.map(object => (
+              <div>
+                <Link to={`/_internal/entities/${entityType}/${object.id}`}>
+                  {object[entityDefs[entityType].nameProperty]}
+                </Link>
+              </div>
+            ))}
+        </div>
+        <div className="my2">
+          <Link to={`/_internal/entities/${entityType}/create`}>
+            <Button>Create</Button>
+          </Link>
+        </div>
       </div>
-    );
-  }
-}
+    )}
+  </EntityListLoader>
+);
 
-@connect((state, props) => ({
-  entityDef: getEntityDef(state, props),
-  entityId: getEntityId(state, props),
-  entityObject: getEntityObject(state, props),
-}))
-class EntitiesObjectApp extends React.Component {
-  componentWillMount() {
-    const { entityDef, entityId } = this.props;
-    this.props.dispatch(entityDef.actions.get(entityId));
-  }
-  render() {
-    const { entityDef, entityObject } = this.props;
-    return (
-      <div>
-        <h3>{entityDef.name}</h3>
-        <pre>{JSON.stringify(entityObject, null, 2)}</pre>
+const EntityObjectApp = ({ params: { entityType, entityId }, push }) => (
+  <EntityObjectLoader entityType={entityType} entityId={entityId}>
+    {({ object, remove }) => (
+      <div className="p2">
+        {object && (
+          <div className="mb2">
+            <Link to={`/_internal/entities/${entityType}/${object.id}/edit`}>
+              <Button className="mr1">Edit</Button>
+            </Link>
+            <Confirm
+              title="Delete this?"
+              action={async () => {
+                await remove();
+                push(`/_internal/entities/${entityType}`);
+              }}
+            >
+              <Button warning>Delete</Button>
+            </Confirm>
+          </div>
+        )}
+        <pre>{JSON.stringify(object, null, 2)}</pre>
       </div>
-    );
-  }
-}
+    )}
+  </EntityObjectLoader>
+);
+
+const EntityObjectCreateApp = ({ params: { entityType }, push }) => (
+  <EntityForm
+    className="p2 full"
+    entityType={entityType}
+    onSaved={({ id }) => push(`/_internal/entities/${entityType}/${id}`)}
+  />
+);
+const EntityObjectEditApp = ({ params: { entityType, entityId }, push }) => (
+  <EntityObjectLoader entityType={entityType} entityId={entityId}>
+    {({ object }) =>
+      object ? (
+        <EntityForm
+          className="p2 full"
+          entityType={entityType}
+          entityObject={object}
+          onSaved={({ id }) => push(`/_internal/entities/${entityType}/${id}`)}
+        />
+      ) : null
+    }
+  </EntityObjectLoader>
+);
+
+const EntitySidebarLayout = ({ params, children }) => (
+  <div className="flex flex-full">
+    <div className="border-right flex-no-shrink">
+      <EntityListApp params={params} />
+    </div>
+    <div className="flex-full">{children}</div>
+  </div>
+);
 
 EntitiesApp.routes = [
-  <Route path="entities" component={EntitiesApp} />,
-  <Route path="entities/:entityType" component={EntitiesListApp} />,
-  <Route path="entities/:entityType/:entityId" component={EntitiesObjectApp} />,
+  <Route path="entities">
+    <IndexRoute component={EntitiesApp} />
+    <Route path=":entityType">
+      <IndexRoute component={EntityListApp} />,
+      <Route component={EntitySidebarLayout}>
+        <Route path="create" component={withPush(EntityObjectCreateApp)} />,
+        <Route path=":entityId" component={withPush(EntityObjectApp)} />,
+        <Route
+          path=":entityId/edit"
+          component={withPush(EntityObjectEditApp)}
+        />
+      </Route>
+    </Route>
+  </Route>,
 ];

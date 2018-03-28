@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
-import FormField from "metabase/components/FormField.jsx";
+import FormField from "metabase/components/form/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Radio from "metabase/components/Radio.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
@@ -159,9 +159,9 @@ export default class SaveQuestionModal extends Component {
     if (!this.props.card.id && this.props.originalCard) {
       saveOrUpdate = (
         <FormField
+          name="saveType"
           displayName={t`Replace or save as new?`}
-          fieldName="saveType"
-          errors={this.state.errors}
+          formError={this.state.errors}
         >
           <Radio
             value={this.state.details.saveType}
@@ -212,9 +212,9 @@ export default class SaveQuestionModal extends Component {
                 className="saveQuestionModalFields"
               >
                 <FormField
+                  name="name"
                   displayName={t`Name`}
-                  fieldName="name"
-                  errors={this.state.errors}
+                  formError={this.state.errors}
                 >
                   <input
                     className="Form-input full"
@@ -226,9 +226,9 @@ export default class SaveQuestionModal extends Component {
                   />
                 </FormField>
                 <FormField
+                  name="description"
                   displayName={t`Description`}
-                  fieldName="description"
-                  errors={this.state.errors}
+                  formError={this.state.errors}
                 >
                   <textarea
                     className="Form-input full"
@@ -242,9 +242,9 @@ export default class SaveQuestionModal extends Component {
                   {collections =>
                     collections.length > 0 && (
                       <FormField
+                        name="collection_id"
                         displayName={t`Which collection should this go in?`}
-                        fieldName="collection_id"
-                        errors={this.state.errors}
+                        formError={this.state.errors}
                       >
                         <Select
                           className="block"

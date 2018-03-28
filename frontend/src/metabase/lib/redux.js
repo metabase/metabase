@@ -107,7 +107,9 @@ export const updateData = async ({
   dependentRequestStatePaths,
   putData,
 }) => {
-  const existingData = getIn(getState(), existingStatePath);
+  const existingData = existingStatePath
+    ? getIn(getState(), existingStatePath)
+    : null;
   const statePath = requestStatePath.concat(["update"]);
   try {
     dispatch(setRequestState({ statePath, state: "LOADING" }));
