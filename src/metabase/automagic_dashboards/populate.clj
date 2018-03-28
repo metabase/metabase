@@ -137,8 +137,6 @@
            :card                   nil
            :id                     (gensym)}))
 
-(def ^:private ^Long ^:const max-cards 9)
-
 (defn- make-grid
   [width height]
   (vec (repeat height (vec (repeat width false)))))
@@ -227,7 +225,7 @@
    favourized, but it is still possible that not all cards in a group make it
    (consider a group of 4 cards which starts as 7/9; in that case only 2 cards
    from the group will be picked)."
-  [n cards]
+  [max-cards cards]
   (->> cards
        (group-by (some-fn :group hash))
        (map (fn [[_ group]]
@@ -242,15 +240,18 @@
                  :size  (count group)})))
        (sort-by (juxt :score :size) (comp (partial * -1) compare))
        (mapcat :cards)
-       (take n)))
+       (take max-cards)))
 
 (def ^:private ^:const ^Long max-filters 4)
 
 (defn create-dashboard
   "Create dashboard and populate it with cards."
-  ([dashboard] (create-dashboard dashboard (-> dashboard :cards count)))
+  ([dashboard] (create-dashboard dashboard :all))
   ([{:keys [title description groups filters cards]} n]
-   (let [dashboard     {:name          title
+   (let [n             (if (= n :all)
+                         (count cards)
+                         n)
+         dashboard     {:name          title
                         :description   description
                         :creator_id    api/*current-user-id*
                         :parameters    []}

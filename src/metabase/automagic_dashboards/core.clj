@@ -530,55 +530,66 @@
                     :table       table})))
          (sort-by :score >))))
 
-(def ^:private ^Long ^:const max-related 6)
+(def ^:private ^:const ^Long max-related 6)
+(def ^:private ^:const ^Long max-cards 2)
 
 (defn automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  ([root] (automagic-dashboard nil root))
-  ([rule root]
-   (if-let [[dashboard rule] (if rule
-                               (apply-rule root rule)
-                               (->> root
-                                    (matching-rules (rules/load-rules))
-                                    (keep (partial apply-rule root))
-                                    ;; matching-rules returns an ArraySeq so first
-                                    ;; realises one element at a time (no chunking).
-                                    first))]
-     (let [indepth (->> rule
-                        :rule
-                        rules/indepth
-                        (keep (fn [indepth]
-                                (when-let [[dashboard _] (apply-rule root indepth)]
-                                  {:title       (:title dashboard)
-                                   :description (:description dashboard)
-                                   :table       (table root)
-                                   :url         (format "%s/%s/%s"
-                                                        (url root)
-                                                        (:rule rule)
-                                                        (:rule indepth))})))
-                        (take max-related))]
-       (log/info (format "Applying heuristic %s to %s."
-                         (:rule rule)
-                         (full-name root)))
-       (log/info (format "Dimensions bindings:\n%s"
-                         (->> dashboard
-                              :context
-                              :dimensions
-                              (m/map-vals #(update % :matches (partial map :name)))
-                              u/pprint-to-str)))
-       (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
-                         (-> dashboard :context :metrics u/pprint-to-str)
-                         (-> dashboard :context :filters u/pprint-to-str)))
-       (-> dashboard
-           populate/create-dashboard
-           (assoc :related {:tables  (->> root
-                                          database
-                                          candidate-tables
-                                          (remove (comp #{root} :table))
-                                          (take (- max-related (count indepth))))
-                            :indepth indepth})))
-     (log/info (format "Skipping %s: no cards fully match bound dimensions."
-                       (full-name root))))))
+  [root {:keys [rule show]}]
+  (if-let [[dashboard rule] (if rule
+                              (apply-rule root rule)
+                              (->> root
+                                   (matching-rules (rules/load-rules))
+                                   (keep (partial apply-rule root))
+                                   ;; `matching-rules` returns an ArraySeq
+                                   ;; (via `sort-by`) so first realises one element
+                                   ;; at a time (no chunking).
+                                   first))]
+    (let [indepth (->> rule
+                       :rule
+                       rules/indepth
+                       (keep (fn [indepth]
+                               (when-let [[dashboard _] (apply-rule root indepth)]
+                                 {:title       (:title dashboard)
+                                  :description (:description dashboard)
+                                  :table       (table root)
+                                  :url         (format "%s/%s/%s"
+                                                       (url root)
+                                                       (:rule rule)
+                                                       (:rule indepth))})))
+                       (take max-related))]
+      (log/info (format "Applying heuristic %s to %s."
+                        (:rule rule)
+                        (full-name root)))
+      (log/info (format "Dimensions bindings:\n%s"
+                        (->> dashboard
+                             :context
+                             :dimensions
+                             (m/map-vals #(update % :matches (partial map :name)))
+                             u/pprint-to-str)))
+      (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
+                        (-> dashboard :context :metrics u/pprint-to-str)
+                        (-> dashboard :context :filters u/pprint-to-str)))
+      (-> (populate/create-dashboard dashboard (or show max-cards))
+          (assoc :related {:tables  (->> root
+                                         database
+                                         candidate-tables
+                                         (remove (comp #{root} :table))
+                                         (take (- max-related (count indepth))))
+                           :indepth indepth
+                           :more    (if (and (-> dashboard
+                                                   :cards
+                                                   count
+                                                   (> max-cards))
+                                               (not= show :all))
+                                      [{:title       "Show more"
+                                        :description nil
+                                        :table       (table root)
+                                        :url         (format "%s?show=all"
+                                                             (url root))}]
+                                      [])})))
+    (log/info (format "Skipping %s: no cards fully match bound dimensions."
+                      (full-name root)))))
 
 (def ^:private ^{:arglists '([card])} table-like?
   (comp empty? :aggregation :query :dataset_query))
@@ -586,28 +597,29 @@
 (defmulti
   ^{:doc "Create a transient dashboard analyzing given entity."
    :arglists '([entity])}
-  automagic-analysis type)
+  automagic-analysis (fn [entity _]
+                       (type entity)))
 
 (defmethod automagic-analysis (type Metric)
-  [metric]
+  [metric opts]
   (-> "special/metric.yaml"
       rules/load-rule
-      (automagic-dashboard metric)))
+      (automagic-dashboard metric opts)))
 
 (defmethod automagic-analysis (type Card)
-  [card]
+  [card opts]
   (if (table-like? card)
-    (automagic-dashboard card)
+    (automagic-dashboard card opts)
     nil))
 
 (defmethod automagic-analysis (type Query)
-  [query]
+  [query opts]
   (if (table-like? query)
-    (automagic-dashboard query)
+    (automagic-dashboard query opts)
     nil))
 
 (defmethod automagic-analysis (type Field)
-  [field]
+  [field opts]
   (-> "special/field.yaml"
       rules/load-rule      
-      (automagic-dashboard field)))
+      (automagic-dashboard field opts)))
