@@ -154,20 +154,23 @@
     ;; for WRITE permissions always recalculate since these will be determined relatively infrequently (hopefully)
     ;; e.g. when updating a Card
     (= :write read-or-write) (query-perms-set query :write)
-    ;; if the Card has populated `:read_permissions` and we're looking up read pems return those rather than calculating
+    ;; if the Card has *populated* `:read_permissions` and we're looking up read pems return those rather than calculating
     ;; on-the-fly. Cast to `set` to be extra-double-sure it's a set like we'd expect when it gets deserialized from JSON
-    read-perms (set read-perms)
+    (seq read-perms) (set read-perms)
     ;; otherwise if :read_permissions was NOT populated. This should not normally happen since the data migration
     ;; should have pre-populated values for all the Cards. If it does it might mean something like we fetched the Card
     ;; without its `read_permissions` column. Since that would be "doing something wrong" warn about it.
     :else (do (log/warn "Card" id "is missing its read_permissions. Calculating them now...")
               (query-perms-set query :read))))
 
-(defn- card-perms-set-for-current-user
-  "Calculate the permissions required to `read-or-write` `card` *for the current user*. This takes into account whether
-  the Card is publicly available, or in a collection the current user can view; it also attempts to use precalcuated
+(defn- card-perms-set-taking-collection-etc-into-account
+  "Calculate the permissions required to `read-or-write` `card`*for a user. This takes into account whether the Card is
+  publicly available, or in a collection the current user can view; it also attempts to use precalcuated
   `read_permissions` when possible. This is the function that should be used for general permissions checking for a
-  Card."
+  Card.
+
+  This function works the same regardless of whether called with a current user (e.g. `api/*current-user*`, etc.) or
+  not! It simply calculates the permssions a User would need to see the Card."
   [{collection-id :collection_id, public-uuid :public_uuid, in-public-dash? :in_public_dashboard,
     outer-query :dataset_query, :as card}
    read-or-write]
@@ -186,7 +189,7 @@
       ;; Card based on a source card you can read, thus read/write permissions for this new Card will be the same as
       ;; read permissions for its source. This is dicussed in further detail above in `mbql-permissions-path-set`
       source-card-id
-      (card-perms-set-for-current-user (Card source-card-id) :read)
+      (card-perms-set-taking-collection-etc-into-account (Card source-card-id) :read)
 
       :else
       (card-perms-set-for-query card read-or-write))))
@@ -244,10 +247,22 @@
             :query_type  (keyword query-type)})
          card))
 
+(defn- maybe-update-read-permissions
+  "When inserting or updating a `card`, if `:dataset_query` is going to change, calculate the updated `:read_permssions`
+  and `assoc` those to the output so they get changed as well.
+
+     (maybe-update-read-permssions card-to-be-saved) ;-> updated-card-to-be-saved"
+  [{query :dataset_query, :as card}]
+  (if-not (seq query)
+    card
+    (assoc card :read_permissions (query-perms-set query :read))))
+
 (defn- pre-insert [{query :dataset_query, :as card}]
   ;; TODO - make sure if `collection_id` is specified that we have write permissions for that collection
-  ;; Save the new Card with read permissions since calculating them dynamically is so expensive.
-  (u/prog1 (assoc card :read_permissions (query-perms-set query :read))
+  ;;
+  ;; updated Card with updated read permissions when applicable. (New Cards should never be created without a valid
+  ;; `:dataset_query` so this should always happen)
+  (u/prog1 (maybe-update-read-permissions card)
     ;; for native queries we need to make sure the user saving the card has native query permissions for the DB
     ;; because users can always see native Cards and we don't want someone getting around their lack of permissions
     ;; that way
@@ -265,8 +280,8 @@
       (field-values/update-field-values-for-on-demand-dbs! field-ids))))
 
 (defn- pre-update [{archived? :archived, query :dataset_query, :as card}]
-  ;; save the updated Card with updated read permissions.
-  (u/prog1 (assoc card :read_permissions (query-perms-set query :read))
+  ;; save the updated Card with updated read permissions when applicable.
+  (u/prog1 (maybe-update-read-permissions card)
     ;; if the Card is archived, then remove it from any Dashboards
     (when archived?
       (db/delete! 'DashboardCard :card_id (u/get-id card)))
@@ -318,7 +333,7 @@
   (merge i/IObjectPermissionsDefaults
          {:can-read?         (partial i/current-user-has-full-permissions? :read)
           :can-write?        (partial i/current-user-has-full-permissions? :write)
-          :perms-objects-set card-perms-set-for-current-user})
+          :perms-objects-set card-perms-set-taking-collection-etc-into-account})
 
   revision/IRevisioned
   (assoc revision/IRevisionedDefaults

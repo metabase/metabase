@@ -217,3 +217,39 @@
        (db/update! Card id {:name          "another name"
                             :dataset_query (dummy-dataset-query (data/id))})
        (into {} (db/select-one [Card :name :database_id] :id id)))]))
+
+
+;;; ---------------------------------------------- Updating Read Perms -----------------------------------------------
+
+;; Make sure when saving a new Card read perms get calculated
+(expect
+  #{(format "/db/%d/native/read/" (data/id))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT 1"}}}]
+    ;; read_permissions should have been populated
+    (db/select-one-field :read_permissions Card :id (u/get-id card))))
+
+;; Make sure when updating a Card's query read perms get updated
+(expect
+  #{(format "/db/%d/schema/PUBLIC/table/%d/" (data/id) (data/id :venues))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT 1"}}}]
+    ;; now change the query...
+    (db/update! Card (u/get-id card) :dataset_query {:database (data/id)
+                                                     :type     :query
+                                                     :query    {:source-table (data/id :venues)}})
+    ;; read permissions should have been updated
+    (db/select-one-field :read_permissions Card :id (u/get-id card))))
+
+;; Make sure when updating a Card but not changing query read perms do not get changed
+(expect
+  #{(format "/db/%d/native/read/" (data/id))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT 1"}}}]
+    ;; now change something *besides* the query...
+    (db/update! Card (u/get-id card) :name "Cam's super-awesome CARD")
+    ;; read permissions should *not* have been updated
+    (db/select-one-field :read_permissions Card :id (u/get-id card))))
