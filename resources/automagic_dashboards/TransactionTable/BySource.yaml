@@ -58,6 +58,7 @@ cards:
     metrics: TotalOrders
     width: 18
     score: 100
+    height: 8
 - OrderBySource:
     group: Financial
     title: Total orders by source (top 10)

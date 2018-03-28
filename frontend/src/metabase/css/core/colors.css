@@ -22,7 +22,7 @@
   --orange-color: #f9a354;
   --purple-color: #a989c5;
   --green-color: #9cc177;
-  --green-saturated-color: #84bb4c;
+  --green-saturated-color: #90bd64;
   --dark-color: #4c545b;
   --slate-color: #9ba5b1;
   --slate-light-color: #dfe8ea;
@@ -145,6 +145,10 @@
 
 .bg-green {
   background-color: var(--green-color);
+}
+.bg-green-saturated,
+.bg-green-saturated-hover:hover {
+  background-color: var(--green-saturated-color);
 }
 
 /* alt */
