@@ -244,6 +244,8 @@
        (mapcat :cards)
        (take n)))
 
+(def ^:private ^:const ^Long max-filters 4)
+
 (defn create-dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard (-> dashboard :cards count)))
@@ -269,7 +271,7 @@
                        title
                        (str/join "; " (map :title cards))))
      (cond-> dashboard
-       (not-empty filters) (magic.filters/add-filters filters)))))
+       (not-empty filters) (magic.filters/add-filters filters max-filters)))))
 
 (defn merge-dashboards
   "Merge dashboards `ds` into dashboard `d`."

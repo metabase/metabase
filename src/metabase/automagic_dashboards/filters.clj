@@ -78,14 +78,31 @@
     (isa? special_type :type/Country)  "location/country"
     (isa? special_type :type/Category) "category"))
 
+(defn- score
+  [{:keys [base_type special_type fingerprint] :as field}]
+  (cond-> 0
+    (some-> fingerprint :global :distinct-count (< 10)) inc
+    (some-> fingerprint :global :distinct-count (> 20)) dec
+    ((descendants :type/Category) special_type)         inc
+    (field/unix-timestamp? field)                       inc
+    (isa? base_type :type/DateTime)                     inc
+    ((descendants :type/DateTime) special_type)         inc
+    (isa? special_type :type/CreationTimestamp)         inc
+    (#{:type/State :type/Country} special_type)         inc))
+
 (defn add-filters
-  "Add filters to dashboard `dashboard`. Takes an optional argument `dimensions`
-   which is a list of fields for which to create filters, else it tries to infer
-   by which fields it would be useful to filter."
-  ([dashboard]
-   (add-filters dashboard (-> dashboard :orderd_cards candidates-for-filtering)))
-  ([dashboard dimensions]
+  "Add up to `max-filters` filters to dashboard `dashboard`. Takes an optional
+   argument `dimensions` which is a list of fields for which to create filters, else
+   it tries to infer by which fields it would be useful to filter."
+  ([dashboard max-filters]
+   (->> dashboard
+        :orderd_cards
+        candidates-for-filtering
+        (add-filters dashboard max-filters)))
+  ([dashboard  dimensions max-filters]
    (->> dimensions
+        (sort-by score >)
+        (take max-filters)
         (map #(->> %
                    (build-fk-map (keep (comp :table_id :card)
                                        (:ordered_cards dashboard)))
