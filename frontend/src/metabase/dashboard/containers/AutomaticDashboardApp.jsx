@@ -56,7 +56,7 @@ const SuggestionsList = ({ suggestions }) => (
 const SuggestionsSidebar = ({ related }) => (
   <div className="flex flex-column bg-slate-almost-extra-light full-height">
     <div className="py2 text-centered my3">
-      <h3 className="text-grey-3">More explorations</h3>
+      <h3 className="text-grey-3">More X-rays</h3>
     </div>
     {Object.values(related).map(suggestions => (
       <SuggestionsList suggestions={suggestions} />
