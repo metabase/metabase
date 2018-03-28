@@ -10,6 +10,7 @@ import metadata from "metabase/redux/metadata";
 import requests from "metabase/redux/requests";
 import settings from "metabase/redux/settings";
 import undo from "metabase/redux/undo";
+// eslint-disable-next-line import/no-named-as-default
 import entities from "metabase/redux/entities";
 
 /* user */

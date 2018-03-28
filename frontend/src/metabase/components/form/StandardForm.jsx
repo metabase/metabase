@@ -1,13 +1,13 @@
 import React from "react";
 
 import FormField from "metabase/components/form/FormField";
-import FormLabel from "metabase/components/form/FormLabel";
-import FormMessage from "metabase/components/form/FormMessage";
 import FormWidget from "metabase/components/form/FormWidget";
+import FormMessage from "metabase/components/form/FormMessage";
 
 import Button from "metabase/components/Button";
 
 import cx from "classnames";
+import { getIn } from "icepick";
 
 const StandardForm = ({
   form,
@@ -15,6 +15,7 @@ const StandardForm = ({
   handleSubmit,
   resetForm,
   submitting,
+  error,
   dirty,
   invalid,
   updating,
@@ -25,21 +26,23 @@ const StandardForm = ({
 }) => (
   <form onSubmit={handleSubmit} className={cx(className, { NewForm: newForm })}>
     <div className="m1">
-      {form.fields.map(formField => (
-        <FormField
-          key={formField.name}
-          displayName={formField.title || formField.name}
-          offset={!newForm}
-          {...fields[formField.name]}
-        >
-          <FormWidget
-            field={fields[formField.name]}
+      {form.fields.map(formField => {
+        const nameComponents = formField.name.split(".");
+        const field = getIn(fields, nameComponents);
+        return (
+          <FormField
+            key={formField.name}
+            displayName={
+              formField.title || nameComponents[nameComponents.length - 1]
+            }
             offset={!newForm}
-            {...formField}
-          />
-          {!newForm && <span className="Form-charm" />}
-        </FormField>
-      ))}
+            {...field}
+          >
+            <FormWidget field={field} offset={!newForm} {...formField} />
+            {!newForm && <span className="Form-charm" />}
+          </FormField>
+        );
+      })}
     </div>
     <div className={cx("m1", { "Form-offset": !newForm })}>
       <Button
@@ -59,6 +62,7 @@ const StandardForm = ({
           Reset
         </Button>
       )}
+      {error && <FormMessage message={error} formError />}
     </div>
   </form>
 );

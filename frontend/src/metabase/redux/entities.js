@@ -2,10 +2,9 @@ import {
   combineReducers,
   createThunkAction,
   fetchData,
-  updateData,
   handleEntities,
 } from "metabase/lib/redux";
-import { setRequestState, clearRequestState } from "metabase/redux/requests";
+import { setRequestState } from "metabase/redux/requests";
 
 import api from "metabase/lib/api";
 const { GET, PUT, POST, DELETE } = api;
@@ -144,6 +143,7 @@ for (const def of entityDefs) {
         }
       },
     ),
+
     fetchList: createThunkAction(
       FETCH_LIST_ACTION,
       (reload = false) => (dispatch, getState) =>
@@ -199,7 +199,7 @@ for (const def of entityDefs) {
     getError,
   };
 
-  // REDUCER
+  // REDUCERS
   reducers[entity.name] = handleEntities(/^metabase\/entities\//, entity.name);
   reducers[entity.name + "_list"] = (state = null, action) => {
     if (action.error) {

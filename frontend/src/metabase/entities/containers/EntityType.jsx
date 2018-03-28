@@ -6,14 +6,17 @@ import { entities as entityDefs } from "metabase/redux/entities";
 
 export default (entityType = null) => ComposedComponent => {
   const mapStateToProps = (state, props) => ({
-    entityDef: entityDefs[entityType || props.entityType],
+    entityDef: props.entityDef || entityDefs[entityType || props.entityType],
   });
   return connect(mapStateToProps)(
     class extends React.Component {
+      static displayName = "EntityType";
+
       constructor(props) {
         super(props);
         this._bindActionCreators(props);
       }
+
       componentWillReceiveProps(nextProps) {
         if (
           nextProps.entityDef !== this.props.entityDef ||
@@ -23,12 +26,14 @@ export default (entityType = null) => ComposedComponent => {
           this.forceUpdate();
         }
       }
+
       _bindActionCreators({ entityDef, dispatch }) {
         this._boundActionCreators = bindActionCreators(
           entityDef.actions,
           dispatch,
         );
       }
+
       render() {
         return (
           <ComposedComponent {...this._boundActionCreators} {...this.props} />
