@@ -151,7 +151,7 @@ export default class PostSetupApp extends Component {
               to="/"
               className="no-decoration text-bold text-grey-3 text-grey-4-hover"
             >
-               {t`No thanks, I’ll set things up on my own`}
+              {t`No thanks, I’ll set things up on my own`}
             </Link>
           </div>
         </div>
