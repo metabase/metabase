@@ -1,9 +1,44 @@
+/* @flow weak */
+
 import React from "react";
 
 import entityType from "./EntityType";
-import { reduxForm } from "redux-form";
+import { reduxForm, getValues } from "redux-form";
 
 import StandardForm from "metabase/components/form/StandardForm";
+
+type FormFieldName = string;
+type FormFieldType = "input" | "password" | "select" | "textarea" | "color";
+
+type FormValue = any;
+type FormError = string;
+type FormValues = { [name: FormFieldName]: FormValue };
+type FormErrors = { [name: FormFieldName]: FormError };
+
+type FormFieldDef = {
+  name: FormFieldName,
+  type: FormFieldType,
+  initial?: (() => FormValue) | FormValue,
+  normalize?: (value: FormValue) => FormValue,
+  validate?: (value: FormValue) => ?FormError,
+};
+
+type FormDef = {
+  // $FlowFixMe
+  fields: ((values: FormValues) => FormFieldDef[]) | FormFieldDef[],
+  // $FlowFixMe
+  initial?: (() => FormValues) | FormValues,
+  normalize?: (values: FormValues) => FormValues,
+  validate?: (values: FormValues) => FormErrors,
+};
+
+type Form = {
+  fields: (values: FormValues) => FormFieldDef[],
+  fieldNames: (values: FormValues) => FormFieldName[],
+  initial: () => FormValues,
+  normalize: (values: FormValues) => FormValues,
+  validate: (values: FormValues) => FormErrors,
+};
 
 // returns a function that takes an object
 // apply the top level method (if any) to the whole object
@@ -16,11 +51,16 @@ import StandardForm from "metabase/components/form/StandardForm";
 // form.fields[0] is { name: "foo", initial: "bar" }
 // form.fields[0] is { name: "foo", initial: () => "bar" }
 //
-function getFormMethod(form, methodName, defaultValues = {}) {
-  return object => {
+function makeFormMethod(
+  form: Form,
+  methodName: string,
+  defaultValues: any = {},
+) {
+  const originalMethod = form[methodName];
+  form[methodName] = object => {
     const values =
-      getValue(form[methodName], object) || getValue(defaultValues, object);
-    for (const field of form.fields) {
+      getValue(originalMethod, object) || getValue(defaultValues, object);
+    for (const field of form.fields(object)) {
       const value = getValue(field[methodName], object && object[field.name]);
       if (value !== undefined) {
         values[field.name] = value;
@@ -32,6 +72,23 @@ function getFormMethod(form, methodName, defaultValues = {}) {
 // if the first arg is a function, call it, otherwise return it.
 function getValue(fnOrValue, ...args) {
   return typeof fnOrValue === "function" ? fnOrValue(...args) : fnOrValue;
+}
+function makeForm(formDef: FormDef): Form {
+  const form = {
+    ...formDef,
+    fields: values => getValue(formDef.fields, values),
+    fieldNames: values => [
+      "id",
+      ...form.fields(values).map(field => field.name),
+    ],
+  };
+  // for validating the object, or individual values
+  makeFormMethod(form, "validate");
+  // for getting the initial values object, or getting individual values
+  makeFormMethod(form, "initial");
+  // for normalizeing the object before submitting, or normalizeing individual values
+  makeFormMethod(form, "normalize", object => object);
+  return form;
 }
 
 @entityType()
@@ -45,33 +102,39 @@ export default class EntityForm extends React.Component {
     children: StandardForm,
   };
 
+  _FormComponent: any;
+
   // dynamically generates a component decorated with reduxForm
   _updateForm(props) {
     const { entityDef, entityObject } = this.props;
-    const { form } = entityDef;
-    if (form) {
-      // for validating the object, or individual values
-      const validate = getFormMethod(form, "validate");
-      // for getting the initial values object, or getting individual values
-      const initial = getFormMethod(form, "initial");
-      // for transforming the object before submitting, or transforming individual values
-      const transform = getFormMethod(form, "transform", object => object);
+    if (entityDef.form) {
+      const form = makeForm(entityDef.form);
+      const formName = `entity-form-${entityDef.name}`;
+      const initialValues = entityObject || form.initial();
       // redux-form config:
       const formConfig = {
-        form: `entity-form-${entityDef.name}`,
-        // every listed field plus "id"
-        fields: ["id", ...form.fields.map(field => field.name)],
-        validate: validate,
-        initialValues: entityObject || initial(),
-        onSubmit: entityObject => this.handleSubmit(transform(entityObject)),
+        form: formName,
+        fields: form.fieldNames(initialValues),
+        validate: form.validate,
+        initialValues: initialValues,
+        onSubmit: entityObject =>
+          this.handleSubmit(form.normalize(entityObject)),
       };
-      this._FormComponent = reduxForm(formConfig)(({ children, ...props }) =>
-        children({ ...props, form }),
+      const mapStateToProps = (state, ownProps) => {
+        const values = getValues(state.form[formName]);
+        if (values) {
+          return { fields: form.fieldNames(values) };
+        } else {
+          return {};
+        }
+      };
+      this._FormComponent = reduxForm(formConfig, mapStateToProps)(
+        ({ children, ...props }) => children({ ...props, form }),
       );
     }
   }
 
-  handleSubmit = async object => {
+  handleSubmit = async (object: FormValues) => {
     try {
       if (object.id != null) {
         return await this.props.update(object);
@@ -81,10 +144,10 @@ export default class EntityForm extends React.Component {
     } catch (error) {
       console.error("EntityForm save failed", error);
       // redux-form expects { "FIELD NAME": "ERROR STRING" }
-      if (error.data.errors) {
+      if (error && error.data && error.data.errors) {
         throw error.data.errors;
       } else {
-        throw { _error: error.data.message };
+        throw { _error: error.data.message || error.data };
       }
     }
   };

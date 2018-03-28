@@ -19,7 +19,7 @@ export const form = {
       name: "description",
       type: "text",
       placeholder: "It's optional but oh, so helpful",
-      transform: description => description || null, // expected to be nil or non-empty string
+      normalize: description => description || null, // expected to be nil or non-empty string
     },
     {
       name: "color",

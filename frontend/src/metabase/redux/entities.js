@@ -6,8 +6,7 @@ import {
 } from "metabase/lib/redux";
 import { setRequestState } from "metabase/redux/requests";
 
-import api from "metabase/lib/api";
-const { GET, PUT, POST, DELETE } = api;
+import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
 import { createSelector } from "reselect";
 import { normalize, schema } from "normalizr";

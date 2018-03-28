@@ -10,23 +10,26 @@ import cx from "classnames";
 import { getIn } from "icepick";
 
 const StandardForm = ({
-  form,
   fields,
-  handleSubmit,
-  resetForm,
   submitting,
   error,
   dirty,
   invalid,
+  values,
+  handleSubmit,
+  resetForm,
+
+  form,
   updating,
   className,
   resetButton = true,
   newForm = true,
+
   ...props
 }) => (
   <form onSubmit={handleSubmit} className={cx(className, { NewForm: newForm })}>
     <div className="m1">
-      {form.fields.map(formField => {
+      {form.fields(values).map(formField => {
         const nameComponents = formField.name.split(".");
         const field = getIn(fields, nameComponents);
         return (

@@ -2,10 +2,10 @@ import React from "react";
 
 import cx from "classnames";
 
-const FormInputWidget = ({ placeholder, field, offset }) => (
+const FormInputWidget = ({ type = "text", placeholder, field, offset }) => (
   <input
     className={cx("Form-input full", { "Form-offset": offset })}
-    type="text"
+    type={type}
     placeholder={placeholder}
     {...field}
   />

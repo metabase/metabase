@@ -142,4 +142,7 @@ class Api extends EventEmitter {
   }
 }
 
-export default new Api();
+const instance = new Api();
+
+export default instance;
+export const { GET, POST, PUT, DELETE } = instance;
