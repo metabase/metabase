@@ -1,3 +1,5 @@
+/* @flow */
+
 import {
   combineReducers,
   createThunkAction,
@@ -18,10 +20,10 @@ export const reducers = {};
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
 //
 // name: plural, like "questions" or "dashboards"
-// schema: normalizr schema, defaults to `new schema.Entity(entity.name)`
-// nameProperty: property to show as the name, defaults to `name`
 // api: object containing `list`, `create`, `get`, `update`, `delete` methods (OR see `path` below)
 // path: API endpoint to create default `api` object
+// schema: normalizr schema, defaults to `new schema.Entity(entity.name)`
+// getName: property to show as the name, defaults to `name`
 //
 
 // $FlowFixMe: doesn't know about require.context
@@ -34,8 +36,8 @@ for (const def of entityDefs) {
   if (!entity.schema) {
     entity.schema = new schema.Entity(entity.name);
   }
-  if (!entity.nameProperty) {
-    entity.nameProperty = "name";
+  if (!entity.getName) {
+    entity.getName = object => object.name;
   }
 
   // API
@@ -216,7 +218,6 @@ for (const def of entityDefs) {
   };
 }
 
-window.Metabase = window.Metabase || {};
-window.Metabase.entities = entities;
+(window.Metabase = window.Metabase || {}).entities = entities;
 
 export default combineReducers(reducers);

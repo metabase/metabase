@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import { t } from "c-3po";
 
 import { normal, getRandomColor } from "metabase/lib/colors";
@@ -9,7 +11,6 @@ export const form = {
   fields: [
     {
       name: "name",
-      type: "input",
       placeholder: "My new fantastic collection",
       validate: name =>
         (!name && t`Name is required`) ||

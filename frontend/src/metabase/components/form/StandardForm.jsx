@@ -20,7 +20,6 @@ const StandardForm = ({
   resetForm,
 
   form,
-  updating,
   className,
   resetButton = true,
   newForm = true,
@@ -54,7 +53,7 @@ const StandardForm = ({
         disabled={submitting || invalid}
         className="mr1"
       >
-        {updating ? "Update" : "Create"}
+        {values.id != null ? "Update" : "Create"}
       </Button>
       {resetButton && (
         <Button

@@ -42,9 +42,9 @@ const EntityListApp = ({ params: { entityType } }) => (
         <div>
           {list &&
             list.map(object => (
-              <div>
+              <div key={object.id}>
                 <Link to={`/_internal/entities/${entityType}/${object.id}`}>
-                  {object[entityDefs[entityType].nameProperty]}
+                  {entityDefs[entityType].getName(object)}
                 </Link>
               </div>
             ))}
