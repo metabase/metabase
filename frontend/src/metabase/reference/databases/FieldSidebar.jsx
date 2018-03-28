@@ -50,7 +50,7 @@ const FieldSidebar = ({
           key={`/auto/dashboard/field/${field.id}`}
           href={`/auto/dashboard/field/${field.id}`}
           icon="bolt"
-          name={t`Generate a dashboard based on this field`}
+          name={t`See an exploration of this field`}
         />
       }
 

@@ -48,7 +48,7 @@ const TableSidebar = ({ database, table, style, className, showXray }) => (
         key={`/auto/dashboard/table/${table.id}`}
         href={`/auto/dashboard/table/${table.id}`}
         icon="bolt"
-        name={t`Generate a dashboard based on this table`}
+        name={t`See an exploration of this table`}
       />
       {showXray && (
         <SidebarItem

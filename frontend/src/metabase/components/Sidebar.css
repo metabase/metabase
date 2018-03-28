@@ -56,7 +56,6 @@
 :local(.item.selected) :local(.icon),
 :local(.sectionTitle.selected),
 :local(.item):hover,
-:local(.item):hover :local(.icon),
 :local(.sectionTitle):hover {
   background-color: #e3f0f9;
   color: #2d86d4;
