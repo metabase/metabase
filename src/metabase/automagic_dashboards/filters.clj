@@ -1,14 +1,20 @@
 (ns metabase.automagic-dashboards.filters
   (:require [clojure.string :as str]
             [metabase.models.field :refer [Field] :as field]
+            [metabase.query-processor.util :as qp.util]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
 (def ^:private FieldIdForm
-  [(s/one (s/constrained (s/either s/Str s/Keyword)
-                         (comp #{"field-id" "fk->"} str/lower-case name))
+  [(s/one (s/constrained su/KeywordOrString
+                         (comp #{:field-id :fk->} qp.util/normalize-token))
           "head")
    s/Any])
+
+(def ^{:arglists '([form])} field-form?
+  "Is given form an MBQL field form?"
+  (complement (s/checker FieldIdForm)))
 
 (defn- collect-field-references
   [card]
@@ -17,7 +23,7 @@
        :query
        ((juxt :breakout :fields))
        (tree-seq sequential? identity)
-       (remove (s/checker FieldIdForm))
+       (filter field-form?)
        (map last)))
 
 (defn- candidates-for-filtering

@@ -22,7 +22,7 @@
       (select-keys [:dataset_query :description :display :name :result_metadata
                     :visualization_settings])
       (assoc :creator_id    api/*current-user-id*
-             :collection_id (-> populate/automagic-collection deref :id)
+             :collection_id (:id (populate/automagic-collection))
              :id            (gensym))))
 
 (defn- overlay-comparison?
