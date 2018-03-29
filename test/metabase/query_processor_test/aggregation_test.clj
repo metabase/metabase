@@ -44,7 +44,23 @@
          booleanize-native-form
          (format-rows-by [(partial u/round-to-decimals 4)])))
 
+;;; ----------------------------------------------- "MEDIAN" AGGREGATION ------------------------------------------------
+(qp-expect-with-engines (non-timeseries-engines-with-feature :median-aggregations)
+ {:rows        [[34.1135]]
+  :columns     ["median"]
+  :cols        [(aggregate-col :median (venues-col :latitude))]
+  :native_form true}
+ (->> (data/run-query venues
+                      (ql/aggregation (ql/median $latitude)))
+      booleanize-native-form
+      (format-rows-by [(partial u/round-to-decimals 4)])))
 
+(datasets/expect-with-engines (non-timeseries-engines-without-feature :median-aggregations)
+                              {:status :failed
+                               :error  "Aggregation type is not supported by this driver."}
+                              (select-keys (data/run-query venues
+                                                           (ql/aggregation (ql/median $latitude)))
+                                           [:status :error]))
 ;;; ------------------------------------------ "DISTINCT COUNT" AGGREGATION ------------------------------------------
 (qp-expect-with-all-engines
     {:rows        [[15]]
@@ -97,7 +113,7 @@
 ;; Make sure standard deviation fails for the Mongo driver since its not supported
 (datasets/expect-with-engines (non-timeseries-engines-without-feature :standard-deviation-aggregations)
   {:status :failed
-   :error  "standard-deviation-aggregations is not supported by this driver."}
+   :error  "Aggregation type is not supported by this driver."}
   (select-keys (data/run-query venues
                  (ql/aggregation (ql/stddev $latitude)))
                [:status :error]))

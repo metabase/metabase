@@ -6,6 +6,7 @@
              [string :as s]]
             [clojure.java.jdbc :as jdbc]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -103,6 +104,10 @@
     :json :type/SerializedJSON
     :inet :type/IPAddress
     nil))
+
+;; register the function "postgres-median" with HoneySQL
+(defmethod hformat/fn-handler "postgres-median" [_ field]
+  (str "percentile_cont(0.5) within group(order by " (hformat/to-sql field) ")"))
 
 (def ^:private ^:const ssl-params
   "Params to include in the JDBC connection spec for an SSL connection."
@@ -242,7 +247,8 @@
           :date                      (u/drop-first-arg date)
           :set-timezone-sql          (constantly "SET SESSION TIMEZONE TO %s;")
           :string-length-fn          (u/drop-first-arg string-length-fn)
-          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
+          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
+          :median-fn                 (constantly :postgres-median)}))
 
 (u/strict-extend PostgresDriver
   driver/IDriver
@@ -277,7 +283,10 @@
                                                             {:name         "additional-options"
                                                              :display-name "Additional JDBC connection string options"
                                                              :placeholder  "prepareThreshold=0"}]))
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
+          :features                          (fn [this]
+                                               (-> (sql/features this)
+                                                   (conj :median-aggregations)))})
 
   sql/ISQLDriver PostgresISQLDriverMixin)
 

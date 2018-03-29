@@ -441,6 +441,14 @@ var Aggregators = [
     requiredDriverFeature: "basic-aggregations",
   },
   {
+    name: t`Median of ...`,
+    short: "median",
+    description: t`Median of all the values of a column`,
+    validFieldsFilters: [summableFields],
+    requiresField: true,
+    requiredDriverFeature: "median-aggregations",
+  },
+  {
     name: t`Number of distinct values of ...`,
     short: "distinct",
     description: t`Number of unique values of a column among all the rows in the answer.`,

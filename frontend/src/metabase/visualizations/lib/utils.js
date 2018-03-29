@@ -114,6 +114,7 @@ const FRIENDLY_NAME_MAP = {
   sum: t`Sum`,
   distinct: t`Distinct`,
   stddev: t`Standard Deviation`,
+  median: t`Median`,
 };
 
 export function getXValues(datas, chartType) {

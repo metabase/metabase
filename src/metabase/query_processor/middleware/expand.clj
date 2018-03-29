@@ -175,6 +175,13 @@
   (i/assert-driver-supports :standard-deviation-aggregations)
   (ag-with-field :stddev f))
 
+(defn ^:ql median
+  "Aggregation clause. Return the median of values of F.
+   Requires the feature `:median-aggregations`."
+  [f]
+  (i/assert-driver-supports :median-aggregations)
+  (ag-with-field :median f))
+
 (s/defn ^:ql count :- i/Aggregation
   "Aggregation clause. Return total row count (e.g., `COUNT(*)`). If F is specified, only count rows where F is non-null (e.g. `COUNT(f)`)."
   ([]  (i/map->AggregationWithoutField {:aggregation-type :count}))

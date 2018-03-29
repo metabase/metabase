@@ -7,6 +7,7 @@ export type DatabaseType = string; // "h2" | "postgres" | etc
 
 export type DatabaseFeature =
   | "basic-aggregations"
+  | "median-aggregations"
   | "standard-deviation-aggregations"
   | "expression-aggregations"
   | "foreign-keys"

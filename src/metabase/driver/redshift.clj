@@ -102,6 +102,9 @@
                                                     :type         :password
                                                     :placeholder  "*******"
                                                     :required     true}]))
+          :features                 (fn [this]
+                                      (-> (sql/features this)
+                                          (conj :median-aggregations)))
           :format-custom-field-name (u/drop-first-arg str/lower-case)
           :current-db-time          (driver/make-current-db-time-fn redshift-db-time-query redshift-date-formatters)})
 
@@ -110,7 +113,8 @@
          {:connection-details->spec  (u/drop-first-arg connection-details->spec)
           :current-datetime-fn       (constantly :%getdate)
           :set-timezone-sql          (constantly "SET TIMEZONE TO %s;")
-          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}
+          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
+          :median-fn                 (constantly :median)}
          ;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests
          ;; against a single remote host; when running tests tell the sync process to ignore all the other schemas
          (when config/is-test?

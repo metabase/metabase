@@ -103,6 +103,24 @@
        booleanize-native-form
        :data (format-rows-by [int int])))
 
+;;; order_by aggregate ["median" field-id]
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :median-aggregations)
+ {:columns     [(data/format-name "price")
+                "median"]
+  :rows        [[3 7]
+                [2 20]
+                [1 30]
+                [4 53]]
+  :cols        [(breakout-col (venues-col :price))
+                (aggregate-col :median (venues-col :category_id))]
+  :native_form true}
+ (->> (data/run-query venues
+                      (ql/aggregation (ql/median $category_id))
+                      (ql/breakout $price)
+                      (ql/order-by (ql/asc (ql/aggregate-field 0))))
+      booleanize-native-form
+      :data (format-rows-by [int int])))
+
 ;;; ### order_by aggregate ["stddev" field-id]
 ;; SQRT calculations are always NOT EXACT (normal behavior) so round everything to the nearest int.
 ;; Databases might use different versions of SQRT implementations

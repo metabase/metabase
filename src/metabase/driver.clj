@@ -142,6 +142,7 @@
   *  `:basic-aggregations` - Does the driver support *basic* aggregations like `:count` and `:sum`? (Currently,
       everything besides standard deviation is considered \"basic\"; only GA doesn't support this).
   *  `:standard-deviation-aggregations` - Does this driver support standard deviation aggregations?
+  *  `:median-aggregations` - Does this driver support median aggregations?
   *  `:expressions` - Does this driver support expressions (e.g. adding the values of 2 columns together)?
   *  `:native-parameters` - Does the driver support parameter substitution on native queries?
   *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like

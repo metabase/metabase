@@ -71,6 +71,7 @@ const METRIC_TYPE_BY_AGGREGATION = {
 
 const SORTABLE_AGGREGATION_TYPES = new Set([
   "avg",
+  "median",
   "count",
   "distinct",
   "stddev",
@@ -612,6 +613,11 @@ var Query = {
           case "avg":
             return [
               t`Average of `,
+              Query.getFieldName(tableMetadata, aggregation[1], options),
+            ];
+          case "Median":
+            return [
+              t`Median of `,
               Query.getFieldName(tableMetadata, aggregation[1], options),
             ];
           case "distinct":

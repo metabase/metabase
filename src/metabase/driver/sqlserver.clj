@@ -1,6 +1,7 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
   (:require [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [metabase
              [config :as config]
              [driver :as driver]
@@ -163,6 +164,9 @@
 (defn- string-length-fn [field-key]
   (hsql/call :len (hx/cast :VARCHAR field-key)))
 
+;; register the function "sqlserver-median" with HoneySQL
+(defmethod hformat/fn-handler "sqlserver-median" [_ field]
+  (str "percentile_cont(0.5) within group(order by " (hformat/to-sql field) ")"))
 
 (def ^:private sqlserver-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
 (def ^:private sqlserver-db-time-query "select CONVERT(nvarchar(30), SYSDATETIMEOFFSET(), 127)")
@@ -210,7 +214,9 @@
                        ;; SQLServer LIKE clauses are case-sensitive or not based on whether the collation of the
                        ;; server and the columns themselves. Since this isn't something we can really change in the
                        ;; query itself don't present the option to the users in the UI
-                       (conj (sql/features this) :no-case-sensitivity-string-filter-options))})
+                       (conj (sql/features this)
+                             :no-case-sensitivity-string-filter-options
+                             :median-aggregations))})
 
   sql/ISQLDriver
   (merge
@@ -224,7 +230,8 @@
     :excluded-schemas          (constantly #{"sys" "INFORMATION_SCHEMA"})
     :stddev-fn                 (constantly :stdev)
     :string-length-fn          (u/drop-first-arg string-length-fn)
-    :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
+    :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
+    :median-fn                 (constantly :sqlserver-median)}))
 
 (defn -init-driver
   "Register the SQLServer driver"
