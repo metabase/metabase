@@ -64,8 +64,8 @@ const SuggestionsSidebar = ({ related }) => (
   </div>
 );
 
-const getDashboardId = (state, { params: { splat } }) =>
-  `/auto/dashboard/${splat}`;
+const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
+  `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
 
 const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state),
