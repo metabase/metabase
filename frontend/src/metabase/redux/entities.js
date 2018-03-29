@@ -175,20 +175,22 @@ for (const def of entityDefs) {
   );
 
   const getRequestState = (state, props) => {
-    const path = ["requests", "states", "entities", entity.name];
+    const path = ["requests", "states", "entities"];
     if (props.entityId != null) {
-      path.push(props.entityId);
+      path.push(entity.name, props.entityId);
+    } else {
+      path.push(entity.name + "_list");
     }
     path.push(props.requestType || "fetch");
     return getIn(state, path);
   };
   const getLoading = createSelector(
     [getRequestState],
-    requestState => requestState && requestState.state === "LOADING",
+    requestState => (requestState ? requestState.state === "LOADING" : true),
   );
   const getError = createSelector(
     [getRequestState],
-    requestState => requestState && requestState.error,
+    requestState => (requestState ? requestState.error : null),
   );
 
   entity.selectors = {
@@ -207,7 +209,7 @@ for (const def of entityDefs) {
       return state;
     }
     if (action.type === FETCH_LIST_ACTION) {
-      return action.payload.result;
+      return action.payload.result || state;
     } else if (action.type === CREATE_ACTION) {
       return state && state.concat([action.payload.result]);
     } else if (action.type === DELETE_ACTION) {
