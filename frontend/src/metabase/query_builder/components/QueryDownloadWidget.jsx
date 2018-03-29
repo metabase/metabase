@@ -28,7 +28,14 @@ const QueryDownloadWidget = ({ className, card, result, uuid, token }) => (
     }
     triggerClasses={cx(className, "text-brand-hover")}
   >
-    <div className="p2" style={{ /* maxWidth: 320 */ }}>
+    <div
+      className="p2"
+      style={
+        {
+          /* maxWidth: 320 */
+        }
+      }
+    >
       <h4>{t`Download full results`}</h4>
       {result.data.rows_truncated != null && (
         <FieldSet className="my2 text-gold border-gold" legend={t`Warning`}>

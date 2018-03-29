@@ -1,6 +1,6 @@
 (ns metabase.util.export
-  (:use clj-pdf.core)
   (:require [cheshire.core :as json]
+            [clj-pdf.core :as pdf]
             [clojure.data.csv :as csv]
             [dk.ative.docjure.spreadsheet :as spreadsheet])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream File]
@@ -55,58 +55,36 @@
   (for [row rows]
     (zipmap columns row)))
 
-
-(defn row-template-paragraph 
-  [row columns]
-  (template
-    [:paragraph str(row)]
-  )
-)
-
-(defn pdf-table [& rows]
-  "Helper method to write a set of static rows"
-  (into
-    [:pdf-table 
-      {:width-percent 100}
-      nil
-    ]
-    (map (partial map (fn [element] [:pdf-cell (str element) ])) rows)))
-
-(defn pdf-table-seq [rows]
+(defn- pdf-table-seq
   "Helper method to write the dataset"
+  [rows]
   (into
-    [:pdf-table 
+    [:pdf-table
       {:width-percent 100}
       nil
     ]
     (mapv (fn [row] (vec (map (fn [element] [:pdf-cell (str element) ]) row ) ) ) rows)
   ))
 
-(defn- export-to-pdf [columns rows]
+(defn- export-to-pdf
   "Write a PDF to stream with the content in rows vector of sequences"
-  
-  (let [output-stream (ByteArrayOutputStream.)
-       ]  
+  [columns rows]
+  (let [output-stream (ByteArrayOutputStream.)]
+    (pdf/pdf [{}
+      ; write the title
+      [:paragraph "results"]
 
-    (pdf 
-      [{}
-        ; write the title
-        [:paragraph "results"]
+      ; write the header row
+      (into
+        [:pdf-table
+          {:width-percent 100
+          }
+          nil
+        ]
+        [(mapv name columns)])
 
-        ; write the header row
-        (into
-          [:pdf-table 
-            {:width-percent 100
-            }
-            nil
-          ]
-          [(mapv name columns)]
-        )
-
-        ; write the contents
-        (pdf-table-seq rows) 
-  
-      ]
+      ; write the contents
+      (pdf-table-seq rows)]
       output-stream)
 
     ; write the stream

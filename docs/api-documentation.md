@@ -862,7 +862,7 @@ Like `GET /api/embed/card/query`, but returns the results as a file in the speci
 
 *  **`token`** 
 
-*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
+*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`, `pdf`.
 
 *  **`&`** 
 
@@ -1402,7 +1402,7 @@ Fetch a publically-accessible Card and return query results in the specified for
 
 *  **`uuid`** 
 
-*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
+*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`, `pdf`.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
