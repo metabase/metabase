@@ -1,5 +1,5 @@
 title: Transactions by source
-table_type: TransactionTable
+applies_to: TransactionTable
 metrics:
 - TotalIncome:
     metric: [sum, [dimension, Income]]

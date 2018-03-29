@@ -377,17 +377,24 @@
                       (assoc :score         score
                              :dataset_query query))))))))
 
-(def ^:private ^{:arglists '([ruke])} rule-specificity
-  (comp count ancestors :table_type))
+(def ^:private ^{:arglists '([rule])} rule-specificity
+  (comp (partial transduce (map (comp count ancestors)) +) :applies_to))
 
 (defn- matching-rules
   "Return matching rules orderd by specificity.
    Most specific is defined as entity type specification the longest ancestor
    chain."
   [rules root]
-  (->> rules
-       (filter (comp (partial isa? (-> root table :entity_type)) :table_type))
-       (sort-by rule-specificity >)))
+  (let [table-type (-> root table :entity_type)]
+    (->> rules
+         (filter (fn [{:keys [applies_to]}]
+                   (if (isa? applies_to :entity/*)
+                     (isa? table-type applies_to)
+                     (let [[entity-type field-type] applies_to]
+                       (and (isa? table-type entity-type)
+                            (some #(isa? % field-type)
+                                  ((juxt :base_type :special_type) root)))))))
+         (sort-by rule-specificity >))))
 
 (defn- linked-tables
   "Return all tables accessable from a given table with the paths to get there.
@@ -512,7 +519,7 @@
   "Return a list of tables in database with ID `database-id` for which it makes sense
    to generate an automagic dashboard."
   [database]
-  (let [rules (rules/load-rules)]
+  (let [rules (rules/load-rules "table")]
     (->> (db/select Table
            :db_id (:id database)
            :visibility_type nil)
@@ -535,19 +542,18 @@
 
 (defn automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [root {:keys [rule show]}]
-  (if-let [[dashboard rule] (if rule
-                              (apply-rule root rule)
-                              (->> root
-                                   (matching-rules (rules/load-rules))
-                                   (keep (partial apply-rule root))
-                                   ;; `matching-rules` returns an ArraySeq
-                                   ;; (via `sort-by`) so first realises one element
-                                   ;; at a time (no chunking).
-                                   first))]
+  [root {:keys [rule show rules-prefix]}]
+  (if-let [[dashboard rule]
+           (if rule
+             (apply-rule root rule)
+             (->> root
+                  (matching-rules (rules/load-rules (or rules-prefix "table")))
+                  (keep (partial apply-rule root))
+                  ;; `matching-rules` returns an `ArraySeq` (via `sort-by`) so `first`
+                  ;; realises one element at a time (no chunking).
+                  first))]
     (let [indepth (->> rule
-                       :rule
-                       rules/indepth
+                       :indepth
                        (keep (fn [indepth]
                                (when-let [[dashboard _] (apply-rule root indepth)]
                                  {:title       (:title dashboard)
@@ -585,7 +591,7 @@
                                       [{:title       "Show more"
                                         :description nil
                                         :table       (table root)
-                                        :url         (format "%s?show=all"
+                                        :url         (format "%s#show=all"
                                                              (url root))}]
                                       [])})))
     (log/info (format "Skipping %s: no cards fully match bound dimensions."
@@ -602,9 +608,7 @@
 
 (defmethod automagic-analysis (type Metric)
   [metric opts]
-  (-> "special/metric.yaml"
-      rules/load-rule
-      (automagic-dashboard metric opts)))
+  (automagic-dashboard metric (assoc opts :rules-prefix "metric")))
 
 (defmethod automagic-analysis (type Card)
   [card opts]
@@ -620,6 +624,4 @@
 
 (defmethod automagic-analysis (type Field)
   [field opts]
-  (-> "special/field.yaml"
-      rules/load-rule      
-      (automagic-dashboard field opts)))
+  (automagic-dashboard field (assoc opts :rules-prefix "field")))

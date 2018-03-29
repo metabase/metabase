@@ -1,5 +1,5 @@
 title: Analysis of [[this]]
-table_type: GenericTable
+applies_to: GenericTable.*
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]
 - Avg: [avg, [dimension, GenericNumber]]

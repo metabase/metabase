@@ -26,6 +26,10 @@
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp json/decode codecs/bytes->str codec/base64-decode))
 
+(defn- load-rule
+  [entity prefix rule]
+  (rules/load-rule (format "%s/%s/%s.yaml" entity prefix rule)))
+
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
   [id]
@@ -47,7 +51,7 @@
       Table
       api/check-404
       (magic/automagic-dashboard
-       {:rule (rules/load-rule (str prefix "/" rule ".yaml"))
+       {:rule (load-rule "table" prefix rule)
         :show (keyword show)})))
 
 (api/defendpoint GET "/segment/:id"
@@ -62,7 +66,7 @@
       Segment
       api/check-404
       (magic/automagic-dashboard
-       {:rule (rules/load-rule (str prefix "/" rule ".yaml"))
+       {:rule (load-rule "table" prefix rule)
         :show (keyword show)})))
 
 (api/defendpoint GET "/question/:id/cell/:cell-query"
@@ -80,7 +84,7 @@
   (-> (card.api/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
       (magic/inject-segment (-> id Card api/check-404))
       (magic/automagic-dashboard
-       {:rule (rules/load-rule (str prefix "/" rule ".yaml"))
+       {:rule (load-rule "table" prefix rule)
         :show (keyword show)})))
 
 (api/defendpoint GET "/metric/:id"

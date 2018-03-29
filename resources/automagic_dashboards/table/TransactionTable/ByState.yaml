@@ -1,5 +1,5 @@
-title: Transactions by country
-table_type: TransactionTable
+title: Transactions by state
+applies_to: TransactionTable
 metrics:
 - TotalIncome:
     metric: [sum, [dimension, Income]]
@@ -13,8 +13,8 @@ dimensions:
     field_type: CreationTimestamp
 - Timestamp:
     field_type: DateTime
-- Country:
-    field_type: UserTable.Country
+- State:
+    field_type: UserTable.State
 - Income: Income
 - Quantity:
     field_type: Quantity
@@ -40,20 +40,20 @@ filters:
   - NewUsers:
       filter: ["time-interval", [dimension, Cohort], -30, day]
 cards:
-- TopCountrysBySales:
-    title: Top countrys by sales (top 10)
+- TopStatesBySales:
+    title: Top states by sales (top 10)
     visualization: row
-    dimensions: Country
+    dimensions: State
     metrics: TotalOrders
     order_by:
       - TotalOrders: descending
     limit: 10
     score: 100
     height: 8
-- TopCountrysBySalesLast30Days:
-    title: Top countrys by sales in the last 30 days (top 10)
+- TopStatesBySalesLast30Days:
+    title: Top states by sales in the last 30 days (top 10)
     visualization: row
-    dimensions: Country
+    dimensions: State
     metrics: TotalOrders
     order_by:
       - TotalOrders: descending
@@ -61,58 +61,58 @@ cards:
     limit: 10
     score: 100
     height: 8
-- OrdersByCountry:
+- OrdersByState:
     visualization:
       map:
         map.type: region
-        map.region: us_countrys
-    title: Sales by country
-    dimensions: Country
+        map.region: us_states
+    title: Sales by state
+    dimensions: State
     metrics: TotalOrders
     score: 90
-- QuantityByCountry:
+- QuantityByState:
     visualization:
       map:
         map.type: region
-        map.region: us_countrys
-    title: Average quantity by country
-    dimensions: Country
+        map.region: us_states
+    title: Average quantity by state
+    dimensions: State
     metrics: AvgQuantity
     score: 90
-- IncomeByCountry:
+- IncomeByState:
     visualization:
       map:
         map.type: region
-        map.region: us_countrys
-    title: Income by country
-    dimensions: Country
+        map.region: us_states
+    title: Income by state
+    dimensions: State
     metrics: TotalIncome
     score: 90
-- AverageIncomeByCountry:
+- AverageIncomeByState:
     visualization:
       map:
         map.type: region
-        map.region: us_countrys
-    title: Average Income by country
-    dimensions: Country
+        map.region: us_states
+    title: Average Income by state
+    dimensions: State
     metrics: AvgIncome
     score: 90
-- UsersByCountry:
+- UsersByState:
     visualization:
       map:
         map.type: region
-        map.region: us_countrys
-    title: Number of users by country
-    dimensions: Country
+        map.region: us_states
+    title: Number of users by state
+    dimensions: State
     metrics: TotalUsers
     score: 90
-- NewUsersByCountry:
+- NewUsersByState:
     visualization:
       map:
         map.type: region
-        map.region: us_countrys
-    title: New users in the last 30 days by country
-    dimensions: Country
+        map.region: us_states
+    title: New users in the last 30 days by state
+    dimensions: State
     metrics: TotalUsers
     filters: NewUsers
     score: 90

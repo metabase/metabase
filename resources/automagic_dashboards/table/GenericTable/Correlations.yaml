@@ -1,5 +1,5 @@
 title: Correlation analysis for [[GenericTable]]
-table_type: GenericTable
+applies_to: GenericTable
 
 dimensions:
   - Number1:

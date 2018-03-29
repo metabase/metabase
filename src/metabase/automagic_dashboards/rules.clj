@@ -61,10 +61,11 @@
 (def ^:private FieldType (s/either (s/constrained s/Str ga-dimension?)
                                    (s/constrained s/Keyword field-type?)))
 
-(def ^:private FieldSpec (s/either [FieldType]
+(def ^:private AppliesTo (s/either [FieldType]
+                                   [TableType]
                                    [(s/one TableType "table") FieldType]))
 
-(def ^:private Dimension {Identifier {(s/required-key :field_type)      FieldSpec
+(def ^:private Dimension {Identifier {(s/required-key :field_type)      AppliesTo
                                       (s/required-key :score)           Score
                                       (s/optional-key :links_to)        TableType
                                       (s/optional-key :named)           s/Str
@@ -163,11 +164,12 @@
     (s/required-key :dimensions)        [Dimension]
     (s/required-key :cards)             [Card]
     (s/required-key :rule)              s/Str
-    (s/optional-key :table_type)        TableType
+    (s/optional-key :applies_to)        AppliesTo
     (s/optional-key :description)       s/Str
     (s/optional-key :metrics)           [Metric]
     (s/optional-key :filters)           [Filter]
     (s/optional-key :groups)            Groups
+    (s/optional-key :indepth)           [s/Any]
     (s/optional-key :dashboard_filters) [s/Str]}
    valid-references? "Valid references"))
 
@@ -197,12 +199,7 @@
   (sc/coercer!
    Rules
    {[s/Str]         ensure-seq
-    [OrderByPair]   ensure-seq
-    FieldSpec       (fn [x]
-                      (let [[table-type field-type] (str/split x #"\.")]
-                        (if field-type
-                          [(->entity table-type) (->type field-type)]
-                          [(->type table-type)])))
+    [OrderByPair]   ensure-seq    
     OrderByPair     (fn [x]
                       (if (string? x)
                         {x "ascending"}
@@ -231,12 +228,22 @@
                       (if (keyword? x)
                         (name x)
                         x))
-    Groups          (partial apply merge)}))
+    Groups          (partial apply merge)
+    AppliesTo       (fn [x]
+                      (let [[table-type field-type] (str/split x #"\.")]
+                        (if field-type
+                          [(->entity table-type) (->type field-type)]
+                          [(if (-> table-type ->entity table-type?)
+                             (->entity table-type)
+                             (->type table-type))])))}))
 
 (def ^:private rules-dir "resources/automagic_dashboards/")
 
-(def ^:private ^{:arglists '([f])} file-name->table-type
+(def ^:private ^{:arglists '([f])} file->table-type
   (comp (partial re-find #".+(?=\.yaml)") (memfn ^java.io.File getName)))
+
+(def ^:private ^{:arglists '([f])} file->parent-dir
+  (comp last #(str/split % #"/") (memfn ^java.io.File getParent)))
 
 (defn load-rule
   "Load and validate rule from file `f`."
@@ -248,9 +255,12 @@
       (-> f
           slurp
           yaml/parse-string
-          (assoc :rule (file-name->table-type f))
-          (update :table_type #(or % (file-name->table-type f)))
-          rules-validator)
+          (assoc :rule    (file-name->table-type f))
+          (update :applies_to #(or % (file->table-type f)))
+          rules-validator
+          (assoc :indepth (load-rules (format "%s/%s"
+                                              (file->parent-dir f)
+                                              (file-name->table-type f)))))
       (catch Exception e
         (log/error (format "Error parsing %s:\n%s"
                            (.getName f)
@@ -263,20 +273,17 @@
 
 (defn load-rules
   "Load and validate all rules in dir."
-  ([] (load-rules rules-dir))
-  ([dir]
-   (->> dir
-        clojure.java.io/file
-        .listFiles
-        (filter (memfn ^java.io.File isFile))
-        (keep load-rule))))
-
-(def ^{:arglists '([rule])} indepth
-  "Load and validate indepth refinement for given rule."
-  (comp load-rules (partial str rules-dir "/") name))
+  [dir]
+  (->> (str rules-dir dir)
+       clojure.java.io/file
+       .listFiles
+       (filter (memfn ^java.io.File isFile))
+       (keep load-rule)))
 
 (defn -main
   "Entry point for lein task `validate-automagic-dashboards`"
   [& _]
-  (dorun (load-rules))
+  (dorun (load-rules "tables"))
+  (dorun (load-rules "metrics"))
+  (dorun (load-rules "fields"))
   (System/exit 0))
