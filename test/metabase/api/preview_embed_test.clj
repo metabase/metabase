@@ -7,7 +7,9 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.users :as test-users]
+            [metabase.test.data
+             [datasets :as datasets]
+             [users :as test-users]]
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 
@@ -372,5 +374,28 @@
                                                                                  :parameter_id "537e37b4"}]}}]
         (-> ((test-users/user->client :crowberto) :get (str (dashcard-url dashcard {:_embedding_params {:num "enabled"}})
                                                             "?num=50"))
+            :data
+            :rows)))))
+
+;; Make sure that ID params correctly get converted to numbers as needed (Postgres-specific)...
+(datasets/expect-with-engine :postgres
+  [[1]]
+  (embed-test/with-embedding-enabled-and-new-secret-key
+    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                              :type     :query
+                                              :query    {:source-table (data/id :venues)
+                                                         :aggregation  [:count]}}}]
+      (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters [{:name "Venue ID"
+                                                                         :slug "venue_id"
+                                                                         :id   "22486e00"
+                                                                         :type "id"}]}
+                                                :dashcard {:card_id            (u/get-id card)
+                                                           :parameter_mappings [{:parameter_id "22486e00"
+                                                                                 :card_id      (u/get-id card)
+                                                                                 :target       [:dimension
+                                                                                                [:field-id
+                                                                                                 (data/id :venues :id)]]}]}}]
+        (-> ((test-users/user->client :crowberto) :get (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}})
+                                                            "?venue_id=1"))
             :data
             :rows)))))

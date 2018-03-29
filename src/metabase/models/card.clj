@@ -160,7 +160,7 @@
     ;; otherwise if :read_permissions was NOT populated. This should not normally happen since the data migration
     ;; should have pre-populated values for all the Cards. If it does it might mean something like we fetched the Card
     ;; without its `read_permissions` column. Since that would be "doing something wrong" warn about it.
-    :else (do (log/warn "Card" id "is missing its read_permissions. Calculating them now...")
+    :else (do (log/info "Card" id "does not have cached read_permissions.")
               (query-perms-set query :read))))
 
 (defn- card-perms-set-taking-collection-etc-into-account
