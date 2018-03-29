@@ -145,7 +145,10 @@
   [card]
   (update card :parameters concat (template-tag-parameters card)))
 
-(defn- apply-parameter-values
+(s/defn ^:private apply-parameter-values :- (s/maybe [{:slug   su/NonBlankString
+                                                       :type   su/NonBlankString
+                                                       :target s/Any
+                                                       :value  s/Any}])
   "Adds `value` to parameters with `slug` matching a key in `parameter-values` and removes parameters without a
    `value`."
   [parameters parameter-values]
@@ -153,7 +156,7 @@
     (for [param parameters
           :let  [value (get parameter-values (keyword (:slug param)))]
           :when (some? value)]
-      (assoc (select-keys param [:type :target])
+      (assoc (select-keys param [:type :target :slug])
         :value value))))
 
 (defn- resolve-card-parameters
