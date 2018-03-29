@@ -88,7 +88,13 @@
 (def ^:private DimensionValue
   {:type                   su/NonBlankString
    :target                 s/Any
-   (s/optional-key :value) s/Any}) ; not specified if the param has no value. TODO - make this stricter
+   ;; not specified if the param has no value. TODO - make this stricter
+   (s/optional-key :value) s/Any
+   ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
+   ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
+   (s/optional-key :slug) su/NonBlankString
+   (s/optional-key :name) su/NonBlankString
+   (s/optional-key :id)   s/Any}) ; used internally by the frontend
 
 (def ^:private SingleValue
   "Schema for a valid *single* value for a param. As of 0.28.0 params can either be single-value or multiple value."
@@ -112,7 +118,7 @@
   {s/Keyword ParamValue})
 
 (def ^:private ParamSnippetInfo
-  {(s/optional-key :replacement-snippet)     s/Str                       ; allowed to be blank if this is an optional param
+  {(s/optional-key :replacement-snippet)     s/Str     ; allowed to be blank if this is an optional param
    (s/optional-key :prepared-statement-args) [s/Any]})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -197,12 +203,12 @@
   (.parse (NumberFormat/getInstance) ^String s))
 
 (s/defn ^:private value->number :- (s/cond-pre s/Num CommaSeparatedNumbers)
-  "Parse a 'numeric' param value. Normally this returns an integer or floating-point number,
-   but as a somewhat undocumented feature it also accepts comma-separated lists of numbers. This was a side-effect of
-   the old parameter code that unquestioningly substituted any parameter passed in as a number directly into the SQL.
-   This has long been changed for security purposes (avoiding SQL injection), but since users have come to expect
-   comma-separated numeric values to work we'll allow that (with validation) and return an instance of
-   `CommaSeperatedNumbers`. (That is converted to SQL as a simple comma-separated list.)"
+  "Parse a 'numeric' param value. Normally this returns an integer or floating-point number, but as a somewhat
+  undocumented feature it also accepts comma-separated lists of numbers. This was a side-effect of the old parameter
+  code that unquestioningly substituted any parameter passed in as a number directly into the SQL. This has long been
+  changed for security purposes (avoiding SQL injection), but since users have come to expect comma-separated numeric
+  values to work we'll allow that (with validation) and return an instance of `CommaSeperatedNumbers`. (That is
+  converted to SQL as a simple comma-separated list.)"
   [value]
   (cond
     ;; if not a string it's already been parsed
@@ -274,7 +280,8 @@
 (defprotocol ^:private ISQLParamSubstituion
   "Protocol for specifying what SQL should be generated for parameters of various types."
   (^:private ->replacement-snippet-info [this]
-   "Return information about how THIS should be converted to SQL, as a map with keys `:replacement-snippet` and `:prepared-statement-args`.
+   "Return information about how THIS should be converted to SQL, as a map with keys `:replacement-snippet` and
+   `:prepared-statement-args`.
 
       (->replacement-snippet-info \"ABC\") -> {:replacement-snippet \"?\", :prepared-statement-args \"ABC\"}"))
 

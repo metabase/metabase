@@ -93,6 +93,7 @@
   (dataset-api/as-format export-format
     (run-query-for-card-with-public-uuid uuid (json/parse-string parameters keyword), :constraints nil)))
 
+
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
 (defn public-dashboard
@@ -121,15 +122,13 @@
   (dashboard-with-uuid uuid))
 
 (s/defn ^:private resolve-params :- (s/maybe [{s/Keyword s/Any}])
-  [dashboard-id :- s/Int, query-params :- (s/maybe [{s/Keyword s/Any}])]
+  [dashboard-id :- su/IntGreaterThanZero, query-params :- (s/maybe [{:slug su/NonBlankString, s/Keyword s/Any}])]
   (when (seq query-params)
-    (let [slug->dashboard-param (u/key-by :slug (db/select-one-field :parameters Dashboard :id dashboard-id))]
+    (let [slug->dashboard-param (u/key-by :slug (db/select-one-field :parameters Dashboard, :id dashboard-id))]
       (for [{slug :slug, :as query-param} query-params
-            :let [dashboard-param (slug->dashboard-param slug)]]
-        (do
-          (when-not dashboard-param
-            (throw (Exception. (str "Invalid param: " slug))))
-          (assoc dashboard-param :value (:value query-param)))))))
+            :let [dashboard-param (or (slug->dashboard-param slug)
+                                      (throw (Exception. (str "Invalid param: " slug))))]]
+        (merge query-param dashboard-param)))))
 
 
 (defn public-dashcard-results
