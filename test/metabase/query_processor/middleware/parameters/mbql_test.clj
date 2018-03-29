@@ -18,7 +18,7 @@
 (expect
   {:database   1
    :type       :query
-   :query      {:filter   [:= ["field-id" 123] "666"]
+   :query      {:filter   [:= ["field-id" (data/id :venues :name)] "Cam's Toucannery"]
                 :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
@@ -26,10 +26,8 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "id"
-                                    :target ["dimension" ["field-id" 123]]
-                                    :value  "666"}]}))
-
-(defn- unused-field-id [])
+                                    :target ["dimension" ["field-id" (data/id :venues :name)]]
+                                    :value  "Cam's Toucannery"}]}))
 
 ;; multiple filters are conjoined by an "AND"
 (expect
