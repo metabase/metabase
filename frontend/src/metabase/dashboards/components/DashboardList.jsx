@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box } from 'rebass'
+import { Box } from "rebass";
 import { Link } from "react-router";
 import cx from "classnames";
 import moment from "moment";
@@ -14,9 +14,9 @@ import type { Dashboard } from "metabase/meta/types/Dashboard";
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Tooltip from "metabase/components/Tooltip";
-import CheckBox from "metabase/components/CheckBox"
+import CheckBox from "metabase/components/CheckBox";
 
-import { normal } from 'metabase/lib/colors'
+import { normal } from "metabase/lib/colors";
 
 type DashboardListItemProps = {
   dashboard: Dashboard,
@@ -26,70 +26,84 @@ type DashboardListItemProps = {
 
 type SelectableProps = {
   onSelectItem: () => void,
-  selectedItems: []
-}
+  selectedItems: [],
+};
 
-const selectable = (selectIdentifier, selectList) => ComposedComponent => {
+export const selectable = identifierFn => ComposedComponent => {
   return class extends React.Component {
-    props: SelectableProps
-    static displayName = 'Selectable'
+    props: SelectableProps;
+    static displayName = "Selectable";
 
-    render () {
-
-      const id = this.props[selectList][selectIdentifier]
-
-      const selected = this.props.selectedItems.includes(id)
+    constructor(props) {
+      super(props);
+      this.identifier = identifierFn(props);
+    }
+    render() {
+      const selected = this.props.selectedItems.includes(this.identifier);
 
       return (
         <span className="flex align-center relative hover-parent hover--visibility">
-          <span className={cx("hover-child absolute p1", { "visible": selected })} style={{ left: -30 }}>
-           <CheckBox checked={selected} onChange={() => this.props.onSelectItem(id) } />
+          <span
+            className={cx("hover-child absolute p1", { visible: selected })}
+            style={{ left: -30 }}
+          >
+            <CheckBox
+              checked={selected}
+              onChange={() => this.props.onSelectItem(this.identifier)}
+            />
           </span>
           <ComposedComponent {...this.props} selected={selected} />
         </span>
-      )
+      );
     }
-  }
-}
+  };
+};
 
-const selectManager = ComposedComponent  => class extends React.Component {
-  static displayName = 'SelectManager'
+export const selectManager = ComposedComponent =>
+  class extends React.Component {
+    static displayName = "SelectManager";
 
-  state = {
-    selectedItems: []
-  }
+    state = {
+      selectedItems: [],
+    };
 
-  onSelectItem (id) {
-    console.log('selecting', id)
-    const selected = this.state.selectedItems
+    onSelectItem(id) {
+      const selected = this.state.selectedItems;
 
-    if(selected.includes(id)) {
-      return false
+      if (selected.includes(id)) {
+        this.setState({
+          selectedItems: selected.filter(item => item !== id),
+        });
+      } else {
+        this.setState({ selectedItems: selected.concat([id]) });
+      }
     }
 
-    this.setState({ selectedItems: selected.concat([id]) })
-  }
+    render() {
+      console.log("Select Manager Props", this.props);
+      console.log("Select Manager State", this.state);
+      return (
+        <div>
+          <ComposedComponent
+            {...this.props}
+            onSelectItem={this.onSelectItem.bind(this)}
+            selectedItems={this.state.selectedItems}
+          />
+        </div>
+      );
+    }
+  };
 
-  render () {
-    console.log('Select Manager Props', this.props)
-    console.log('Select Manager State', this.state)
-    return (
-      <div>
-        <ComposedComponent {...this.props} onSelectItem={this.onSelectItem.bind(this)} selectedItems={this.state.selectedItems} />
-      </div>
-    )
-  }
-}
-
-const withSelectControls = ComposedComponent => class extends React.Component {
-  render () {
-    console.log('withSelectControl Props', this.props)
-    return <ComposedComponent {...this.props} />
-  }
-}
+const withSelectControls = ComposedComponent =>
+  class extends React.Component {
+    render() {
+      console.log("withSelectControl Props", this.props);
+      return <ComposedComponent {...this.props} />;
+    }
+  };
 
 // TODO - this should be much more elegant
-@selectable('id', 'dashboard')
+@selectable(({ dashboard }) => ({ identifier: dashboard.id }))
 export class DashboardListItem extends Component {
   //props: DashboardListItemProps;
 
@@ -108,10 +122,20 @@ export class DashboardListItem extends Component {
       <Link
         to={Urls.dashboard(id)}
         data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + id}
-        className={cx("border-bottom full flex align-center relative p1 no-decoration", { "bg-slate-extra-light": selected  })}
+        className={cx(
+          "border-bottom full flex align-center relative p1 no-decoration",
+          { "bg-slate-extra-light": selected },
+        )}
       >
-        <Box p={1} bg={ selected ? normal.blue : normal.grey1 } color={ selected ? 'white' : 'inherit' } mr={1} className="rounded" style={{ lineHeight: 1 }}>
-          <Icon name='dashboard' />
+        <Box
+          p={1}
+          bg={selected ? normal.blue : normal.grey1}
+          color={selected ? "white" : "inherit"}
+          mr={1}
+          className="rounded"
+          style={{ lineHeight: 1 }}
+        >
+          <Icon name="dashboard" />
         </Box>
         <div className={"flex-full shrink-below-content-size"}>
           <div className="flex align-center">
@@ -122,12 +146,12 @@ export class DashboardListItem extends Component {
                 )}
                 style={{ marginBottom: "0.3em" }}
               >
-                <Ellipsified>{name} {id}</Ellipsified>
+                <Ellipsified>
+                  {name} {id}
+                </Ellipsified>
               </h3>
               <div
-                className={
-                  "text-smaller text-uppercase text-bold text-grey-3"
-                }
+                className={"text-smaller text-uppercase text-bold text-grey-3"}
               >
                 {/* NOTE: Could these time formats be centrally stored somewhere? */}
                 {moment(created_at).format("MMM D, YYYY")}
@@ -148,7 +172,14 @@ class DashboardList extends Component {
   };
 
   render() {
-    const { dashboards, selectedItems, onSelectItem, isArchivePage, setFavorited, setArchived } = this.props;
+    const {
+      dashboards,
+      selectedItems,
+      onSelectItem,
+      isArchivePage,
+      setFavorited,
+      setArchived,
+    } = this.props;
 
     return (
       <ol>
@@ -168,4 +199,4 @@ class DashboardList extends Component {
   }
 }
 
-export default DashboardList
+export default DashboardList;
