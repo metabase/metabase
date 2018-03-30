@@ -39,7 +39,8 @@ export const selectable = identifierFn => ComposedComponent => {
       this.identifier = identifierFn(props);
     }
     render() {
-      const selected = this.props.selectedItems.includes(this.identifier);
+      const { selectedItems } = this.props
+      const selected = selectedItems && selectedItems.includes(this.identifier);
 
       return (
         <span className="flex align-center relative hover-parent hover--visibility">
@@ -102,7 +103,6 @@ const withSelectControls = ComposedComponent =>
     }
   };
 
-// TODO - this should be much more elegant
 @selectable(({ dashboard }) => ({ identifier: dashboard.id }))
 export class DashboardListItem extends Component {
   //props: DashboardListItemProps;

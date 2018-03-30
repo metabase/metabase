@@ -154,50 +154,11 @@ export class Dashboards extends Component {
       <LoadingAndErrorWrapper loading={isLoading} className="block full">
         {modalOpen ? this.renderCreateDashboardModal() : null}
 
-        <TitleAndDescription title={t`Dashboards`} />
-
-        <div className="flex-align-right cursor-pointer text-grey-5">
-          <Link to="/dashboards/archive">
-            <Icon
-              name="viewArchive"
-              className="mr2 text-brand-hover"
-              tooltip={t`View the archive`}
-              size={20}
-            />
-          </Link>
-
-          {!noDashboardsCreated && (
-            <Icon
-              name="add"
-              className="text-brand-hover"
-              tooltip={t`Add new dashboard`}
-              size={20}
-              onClick={this.showCreateDashboard}
-            />
-          )}
-        </div>
-        {noDashboardsCreated ? (
-          <div>
-            <EmptyState
-              message={
-                <span>{jt`Put the charts and graphs you look at ${(
-                  <br />
-                )}frequently in a single, handy place.`}</span>
-              }
-              image="/app/img/dashboard_illustration"
-              action={t`Create a dashboard`}
-              onActionClick={this.showCreateDashboard}
-              className="mt2"
-              imageClassName="mln2"
-            />
-          </div>
-        ) : (
-            <DashboardList
-              dashboards={filteredDashboards}
-              setFavorited={this.props.setFavorited}
-              setArchived={this.props.setArchived}
-            />
-        )}
+        <DashboardList
+          dashboards={filteredDashboards}
+          setFavorited={this.props.setFavorited}
+          setArchived={this.props.setArchived}
+        />
       </LoadingAndErrorWrapper>
     );
   }

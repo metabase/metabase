@@ -241,6 +241,10 @@ export const getRoutes = store => (
             component={SearchResults}
           />
           <Route path="archive" title={t`Archive`} component={Archive} />
+          <Route
+            path="collections/:collectionSlug"
+            component={CollectionPage}
+          />
         </Route>
       </Route>
 

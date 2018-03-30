@@ -4,15 +4,20 @@ import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon";
 import CollectionListLoader from "metabase/components/CollectionListLoader";
+import EntityMenu from 'metabase/components/EntityMenu'
+
+import SegmentList from 'metabase/components/SegmentList'
+import MetricList from 'metabase/components/MetricList'
 
 import LandingNav from "metabase/components/LandingNav";
 
 const CollectionList = () => {
   return (
     <Box
-      p={1}
-      style={{ backgroundColor: "#FAFCFE", border: "1px solid #DCE1E4" }}
+      p={2}
+      style={{ backgroundColor: "#FAFCFE", border: "1px solid #DCE1E4", borderRadius: 6 }}
     >
+      <h3 className="mb2">Collections</h3>
       <CollectionListLoader>
         {({ collections, loading, error }) => {
           if (loading) {
@@ -21,8 +26,8 @@ const CollectionList = () => {
           return (
             <Box>
               {collections.map(collection => (
-                <Flex align="center" key={`collection-${collection.id}`}>
-                  <Icon name="all" />
+                <Flex align="center" my={1} key={`collection-${collection.id}`}>
+                  <Icon name="all" className="mr1" />
                   <Link to={`collections/${collection.slug}`}>
                     {collection.name}
                   </Link>
@@ -39,8 +44,10 @@ const CollectionList = () => {
 const DefaultLanding = () => {
   return (
     <Box w="100%">
-      <Subhead>Pins</Subhead>
-      <Subhead>Other stuff</Subhead>
+      <Subhead>Pinned metrics</Subhead>
+      <MetricList />
+      <Subhead>Pinned segments</Subhead>
+      <SegmentList />
     </Box>
   );
 };
@@ -50,13 +57,59 @@ class CollectionLanding extends React.Component {
     const { children } = this.props;
     return (
       <Box className="wrapper">
-        <Box my={2}>
+        <Flex my={3}>
           {/* TODO - this should be the collection or instance name */}
-          <Heading>Metabase, Inc</Heading>
-        </Box>
+          <Subhead>
+            <Flex align='center'>
+              <Flex>
+                <Link to='/'>Metabase, Inc</Link>
+              </Flex>
+              { this.props.params.collectionSlug && (
+                <Flex align='center'>
+                  <Icon name='chevronright' className="ml2 mr2" />
+                  <Flex>
+                    <Link to={`/collections/${this.props.params.collectionSlug}`}>
+                      {this.props.params.collectionSlug }
+                    </Link>
+                  </Flex>
+                </Flex>
+              )}
+            </Flex>
+          </Subhead>
+
+          <Box ml='auto'>
+            <EntityMenu
+              items={[
+                {
+                  action: function noRefCheck() {},
+                  icon: 'editdocument',
+                  title: 'Edit this question'
+                },
+                {
+                  icon: 'history',
+                  link: '/derp',
+                  title: 'View revision history'
+                },
+                {
+                  action: function noRefCheck() {},
+                  icon: 'move',
+                  title: 'Move'
+                },
+                {
+                  action: function noRefCheck() {},
+                  icon: 'archive',
+                  title: 'Archive'
+                }
+              ]}
+              triggerIcon="pencil"
+            />
+          </Box>
+        </Flex>
         <Flex>
           <Box w={2 / 3}>
-            <LandingNav />
+            <Box mb={2}>
+              <LandingNav collectionSlug={this.props.params.collectionSlug} />
+            </Box>
             {children ? children : <DefaultLanding />}
           </Box>
           <Box w={1 / 3}>
