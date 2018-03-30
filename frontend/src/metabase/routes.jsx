@@ -210,11 +210,6 @@ export const getRoutes = store => (
 
       { /* The global all hands rotues, things in here are for all the folks */ }
       <Route path="/" component={CollectionLanding}>
-        { /*
-          The global landing is where you see global
-          */
-        }
-        <IndexRoute component={GlobalLanding} />
         <Route
           path="dashboards"
           title={t`Dashboards`}
