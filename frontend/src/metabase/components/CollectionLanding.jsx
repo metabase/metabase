@@ -11,17 +11,21 @@ import MetricList from 'metabase/components/MetricList'
 
 import LandingNav from "metabase/components/LandingNav";
 
-const CollectionList = () => {
+const CollectionList = ({ collectionSlug }) => {
   return (
     <Box
       p={2}
-      style={{ backgroundColor: "#FAFCFE", border: "1px solid #DCE1E4", borderRadius: 6 }}
+      style={{ backgroundColor: "#FAFCFE", border: "1px solid #DCE1E4", height: '100vh' }}
     >
       <h3 className="mb2">Collections</h3>
       <CollectionListLoader>
         {({ collections, loading, error }) => {
           if (loading) {
             return <Box>Loading...</Box>;
+          }
+          let collectionList = collections
+          if(collectionSlug) {
+            collectionList.reverse()
           }
           return (
             <Box>
@@ -56,8 +60,8 @@ class CollectionLanding extends React.Component {
   render() {
     const { children } = this.props;
     return (
-      <Box className="wrapper">
-        <Flex my={3}>
+      <Box>
+        <Flex py={3} style={{ borderBottom: '1px solid #DCE1E4'}} pl={3}>
           {/* TODO - this should be the collection or instance name */}
           <Subhead>
             <Flex align='center'>
@@ -106,14 +110,16 @@ class CollectionLanding extends React.Component {
           </Box>
         </Flex>
         <Flex>
-          <Box w={2 / 3}>
-            <Box mb={2}>
-              <LandingNav collectionSlug={this.props.params.collectionSlug} />
+          <Box w={2 / 3} ml={3}>
+            <Box>
+              <Box py={2}>
+                <LandingNav collectionSlug={this.props.params.collectionSlug} />
+              </Box>
+              {children ? children : <DefaultLanding />}
             </Box>
-            {children ? children : <DefaultLanding />}
           </Box>
           <Box w={1 / 3}>
-            <CollectionList />
+            <CollectionList collectionSlug={this.props.params.collectionSlug} />
           </Box>
         </Flex>
       </Box>
