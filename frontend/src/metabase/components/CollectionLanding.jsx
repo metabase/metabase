@@ -110,6 +110,9 @@ class CollectionLanding extends React.Component {
           </Box>
         </Flex>
         <Flex>
+          <Box w={1 / 3}>
+            <CollectionList collectionSlug={this.props.params.collectionSlug} />
+          </Box>
           <Box w={2 / 3} ml={3}>
             <Box>
               <Box py={2}>
@@ -117,9 +120,6 @@ class CollectionLanding extends React.Component {
               </Box>
               {children ? children : <DefaultLanding />}
             </Box>
-          </Box>
-          <Box w={1 / 3}>
-            <CollectionList collectionSlug={this.props.params.collectionSlug} />
           </Box>
         </Flex>
       </Box>
