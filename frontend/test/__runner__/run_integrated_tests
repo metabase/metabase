@@ -1,3 +1,5 @@
+#!/usr/bin/env babel-node
+
 // Provide custom afterAll implementation for letting shared-resouce.js set method for doing cleanup
 let jasmineAfterAllCleanup = async () => {};
 global.afterAll = method => {
