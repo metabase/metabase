@@ -76,6 +76,34 @@ describe("LineAreaBarRenderer-bar", () => {
                   }),
                 );
 
+              const getSVGElementMiddle = element => {
+                return (
+                  parseFloat(element.getAttribute("x")) +
+                  parseFloat(element.getAttribute("width")) / 2
+                );
+              };
+              const getSVGElementTransformMiddle = element => {
+                const transform = element.getAttribute("transform");
+                const match = transform.match(/translate\(([0-9\.]+)/);
+                return parseFloat(match[1]);
+              };
+
+              const getClosestLabelText = bar => {
+                // get the horizontal center of the target element
+                const barCenter = getSVGElementMiddle(bar);
+                let closest;
+                let minDelta = Infinity;
+                for (const label of qsa(".axis.x .tick")) {
+                  const labelCenter = getSVGElementTransformMiddle(label);
+                  const delta = Math.abs(barCenter - labelCenter);
+                  if (delta < minDelta) {
+                    closest = label;
+                    minDelta = delta;
+                  }
+                }
+                return closest && closest.textContent;
+              };
+
               describe(description, () => {
                 beforeAll(function() {
                   document.body.style.width = `${WIDTH}px`;
@@ -103,6 +131,18 @@ describe("LineAreaBarRenderer-bar", () => {
                   // check that the number of tooltips matches the number of rows
                   expect(getTooltipDimensionValueText().length).toBe(
                     rows.length,
+                  );
+                });
+                it("should have tooltips that match source data", () => {
+                  expect(getTooltipDimensionValueText()).toEqual(
+                    rows.map(([timestamp]) =>
+                      moment.tz(timestamp, reportTz).format("MMMM YYYY"),
+                    ),
+                  );
+                });
+                it("should have labels that match tooltips", () => {
+                  expect(qsa(".bar").map(getClosestLabelText)).toEqual(
+                    getTooltipDimensionValueText(),
                   );
                 });
               });
