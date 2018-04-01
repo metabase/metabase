@@ -12,6 +12,7 @@
 *  [Changing password complexity](#changing-metabase-password-complexity)
 *  [Handling Timezones](#handling-timezones-in-metabase)
 *  [Configuring Emoji Logging](#configuring-emoji-logging)
+*  [Configuring Logging Level](#configuring-logging-level)
 *  [How to setup monitoring via JMX](#monitoring-via-jmx)
 *  [A word on Java versions](#java-versions)
 
