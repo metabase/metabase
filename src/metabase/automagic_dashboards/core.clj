@@ -29,7 +29,8 @@
   (table [this] "(Primary) table this draws from.")
   (database [this] "Database this belongs to.")
   (query-filter [this] "Filter expression to narrow results just to this.")
-  (full-name [this] "Name with time prefix.")
+  (full-name [this] "Name with type prefix.")
+  (name-postfix [this] "Type postfix to be used with titles.")
   (url [this] "Public automagic dashboard endpoint for this."))
 
 (extend-protocol IRootEntity
@@ -38,6 +39,7 @@
   (database [table] (-> table :db_id Database))
   (query-filter [table] nil)
   (full-name [table] (str "table " (:display_name table)))
+  (name-postfix [table] "")
   (url [table] (format "%stable/%s" public-endpoint (:id table)))
 
   metabase.models.segment.SegmentInstance
@@ -45,6 +47,7 @@
   (database [segment] (-> segment table database))
   (query-filter [segment] (-> segment :definition :filter))
   (full-name [segment] (str "segment " (:name segment)))
+  (name-postfix [segment] (format " (%s)" (full-name segment)))
   (url [segment] (format "%ssegment/%s" public-endpoint (:id segment)))
 
   metabase.models.metric.MetricInstance
@@ -66,6 +69,7 @@
   (database [query] (-> query :database-id Database))
   (query-filter [query] (-> query :dataset_query :query :filter))
   (full-name [query] (str "ad-hoc question " (:name query)))
+  (name-postfix [query] (format " (%s)" (full-name query)))
   (url [query] (format "%sadhoc/%s" public-endpoint (-> query
                                                         json/encode
                                                         codec/base64-encode)))
@@ -75,6 +79,7 @@
   (database [card] (-> card :database_id Database))
   (query-filter [card] (-> card :dataset_query :query :filter))
   (full-name [card] (str "question " (:name card)))
+  (name-postfix [card] (format " (%s)" (full-name card)))
   (url [card] (format "%squestion/%s" public-endpoint (:id card))))
 
 (defmulti
@@ -218,7 +223,7 @@
         (filter-fields {:fieldspec       tablespec
                         :named           named
                         :max-cardinality max_cardinality}
-                       (-> context :root-table :fields))))))
+                       (-> context :source-table :fields))))))
 
 (defn- make-binding
   [context [identifier definition]]
@@ -283,7 +288,7 @@
         subform))
     {:type     :query
      :database (:database context)
-     :query    (cond-> {:source_table (-> context :root-table :id)}
+     :query    (cond-> {:source_table (-> context :source-table :id)}
                  (not-empty filters)
                  (assoc :filter (cond->> (map :filter filters)
                                   (> (count filters) 1) (apply vector :and)
@@ -432,9 +437,9 @@
                        :table_id        [:in (map :id tables)]
                        :visibility_type "normal")
                      (group-by :table_id))]
-    (as-> {:root-table (assoc root :fields (fields (:id root)))
-           :tables     (map #(assoc % :fields (fields (:id %))) tables)
-           :database   (:db_id root)} context
+    (as-> {:source-table (assoc root :fields (fields (:id root)))
+           :tables       (map #(assoc % :fields (fields (:id %))) tables)
+           :database     (:db_id root)} context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
       (assoc context :metrics (resolve-overloading context (:metrics rule)))
       (assoc context :filters (resolve-overloading context (:filters rule))))))
@@ -501,8 +506,10 @@
   (let [context   (->> rule
                        (make-context root)
                        (inject-root root))
-        dashboard (->> (select-keys rule [:title :description :groups])
-                                    (instantiate-metadata context {"this" root}))
+        dashboard (instantiate-metadata context {"this" root}
+                                        (-> rule
+                                            (select-keys [:title :description :groups])
+                                            (update :title str (name-postfix root))))
         filters   (->> rule
                        :dashboard_filters
                        (mapcat (comp :matches (:dimensions context))))

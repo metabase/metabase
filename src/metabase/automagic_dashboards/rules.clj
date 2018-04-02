@@ -255,12 +255,12 @@
       (-> f
           slurp
           yaml/parse-string
-          (assoc :rule    (file-name->table-type f))
+          (assoc :rule    (file->table-type f))
           (update :applies_to #(or % (file->table-type f)))
           rules-validator
           (assoc :indepth (load-rules (format "%s/%s"
                                               (file->parent-dir f)
-                                              (file-name->table-type f)))))
+                                              (file->table-type f)))))
       (catch Exception e
         (log/error (format "Error parsing %s:\n%s"
                            (.getName f)

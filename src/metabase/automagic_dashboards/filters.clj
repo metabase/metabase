@@ -16,7 +16,9 @@
   "Is given form an MBQL field form?"
   (complement (s/checker FieldIdForm)))
 
-(defn- collect-field-references
+(defn collect-field-references
+  "Collect all field references (`[:field-id]` or `[:fk->]` forms) in `:breakout` and
+   `:fields` sections of a card's query."
   [card]
   (->> card
        :dataset_query
