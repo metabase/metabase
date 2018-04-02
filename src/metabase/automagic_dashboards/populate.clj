@@ -47,12 +47,6 @@
 (def ^:private colors
   ["#509EE3" "#9CC177" "#A989C5" "#EF8C8C" "#f9d45c" "#F1B556" "#A6E7F3" "#7172AD"])
 
-(def ^:private ^{:arglists '([mbql-form])} normalize-mbql
-  (partial postwalk (fn [form]
-                      (if (s/checker su/KeywordOrString)
-                        form
-                        (qp.util/normalize-token form)))))
-
 (defn- ensure-distinct-colors
   [candidates]
   (->> candidates
