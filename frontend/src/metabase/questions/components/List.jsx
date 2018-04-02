@@ -7,6 +7,7 @@ import Item from "./Item";
 
 import S from "./List.css";
 
+// $FlowFixMe: react-virtualized ignored
 import { List as VirtalizedList, WindowScroller } from "react-virtualized";
 import "react-virtualized/styles.css";
 

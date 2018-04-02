@@ -5,7 +5,7 @@ import cx from "classnames";
 
 import { getScrollX, getScrollY } from "metabase/lib/dom";
 
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+import { CSSTransitionGroup } from "react-transition-group";
 import { Motion, spring } from "react-motion";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
@@ -88,7 +88,7 @@ export class WindowModal extends Component {
       "flex justify-center align-center fixed top left bottom right";
     ReactDOM.unstable_renderSubtreeIntoContainer(
       this,
-      <ReactCSSTransitionGroup
+      <CSSTransitionGroup
         transitionName="Modal"
         transitionAppear={true}
         transitionAppearTimeout={250}
@@ -104,7 +104,7 @@ export class WindowModal extends Component {
             {this._modalComponent()}
           </div>
         )}
-      </ReactCSSTransitionGroup>,
+      </CSSTransitionGroup>,
       this._modalElement,
     );
   }
