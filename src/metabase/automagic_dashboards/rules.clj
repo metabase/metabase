@@ -245,6 +245,8 @@
 (def ^:private ^{:arglists '([f])} file->parent-dir
   (comp last #(str/split % #"/") (memfn ^java.io.File getParent)))
 
+(declare load-rules)
+
 (defn load-rule
   "Load and validate rule from file `f`."
   [f]
