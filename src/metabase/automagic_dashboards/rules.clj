@@ -199,7 +199,7 @@
   (sc/coercer!
    Rules
    {[s/Str]         ensure-seq
-    [OrderByPair]   ensure-seq    
+    [OrderByPair]   ensure-seq
     OrderByPair     (fn [x]
                       (if (string? x)
                         {x "ascending"}
