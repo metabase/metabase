@@ -395,7 +395,7 @@
             :data
             :rows)))))
 
-;; ...with MBQL Cards as well
+;; ...with MBQL Cards as well...
 (expect
   [[1]]
   (tu/with-temporary-setting-values [enable-public-sharing true]
@@ -420,6 +420,34 @@
                         [{:type   :id
                           :target [:dimension [:field-id (data/id :venues :id)]]
                           :value  "50"}])))
+            :data
+            :rows)))))
+
+;; ...and also for DateTime params
+(expect
+  [[733]]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                              :type     :query
+                                              :query    {:source-table (data/id :checkins)
+                                                         :aggregation  [:count]}}}]
+      (with-temp-public-dashboard [dash {:parameters [{:name "Date Filter"
+                                                       :slug "date_filter"
+                                                       :id   "18a036ec"
+                                                       :type "date/all-options"}]}]
+        (add-card-to-dashboard! card dash
+          :parameter_mappings [{:parameter_id "18a036ec"
+                                :card_id      (u/get-id card)
+                                :target       [:dimension
+                                               [:field-id
+                                                (data/id :checkins :date)]]}])
+        (-> ((test-users/user->client :crowberto)
+             :get (str (dashcard-url dash card)
+                       "?parameters="
+                       (json/generate-string
+                        [{:type   "date/all-options"
+                          :target [:dimension [:field-id (data/id :checkins :date)]]
+                          :value  "~2015-01-01"}])))
             :data
             :rows)))))
 
