@@ -609,7 +609,7 @@
 
 (defmulti
   ^{:doc "Create a transient dashboard analyzing given entity."
-   :arglists '([entity])}
+   :arglists '([entity opts])}
   automagic-analysis (fn [entity _]
                        (type entity)))
 
