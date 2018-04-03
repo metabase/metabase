@@ -2,6 +2,9 @@
   "Automatically generate questions and dashboards based on predefined
    heuristics."
   (:require [cheshire.core :as json]
+            [clj-time
+             [core :as t]
+             [format :as t.format]]
             [clojure.math.combinatorics :as combo]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -90,15 +93,30 @@
   ->reference (fn [template-type model]
                 [template-type (type model)]))
 
+(defn- optimal-datetime-resolution
+  [field]
+  (let [[earliest latest] (->> field
+                               :fingerprint
+                               :type
+                               :type/DateTime
+                               ((juxt :earliest :latest))
+                               (map t.format/parse))]
+    (condp > (t/in-hours (t/interval earliest latest))
+      3               :minute
+      (* 24 7)        :hour
+      (* 24 30 6)     :day
+      (* 24 30 12 10) :month
+      :year)))
+
 (defmethod ->reference [:mbql (type Field)]
-  [_ {:keys [fk_target_field_id id link aggregation base_type fingerprint]}]
+  [_ {:keys [fk_target_field_id id link aggregation base_type fingerprint] :as field}]
   (let [reference (cond
                     link               [:fk-> link id]
                     fk_target_field_id [:fk-> id fk_target_field_id]
                     :else              [:field-id id])]
     (cond
       (isa? base_type :type/DateTime)
-      [:datetime-field reference (or aggregation :day)]
+      [:datetime-field reference (or aggregation (optimal-datetime-resolution field))]
 
       (and aggregation
            ; We don't handle binning on non-analyzed fields gracefully
@@ -393,12 +411,11 @@
   (let [table-type (-> root table :entity_type)]
     (->> rules
          (filter (fn [{:keys [applies_to]}]
-                   (if (isa? applies_to :entity/*)
-                     (isa? table-type applies_to)
-                     (let [[entity-type field-type] applies_to]
-                       (and (isa? table-type entity-type)
-                            (some #(isa? % field-type)
-                                  ((juxt :base_type :special_type) root)))))))
+                    (let [[entity-type field-type] applies_to]
+                      (and (isa? table-type entity-type)
+                           (or (nil? field-type)
+                               (some #(isa? % field-type)
+                                     ((juxt :base_type :special_type) root)))))))
          (sort-by rule-specificity >))))
 
 (defn- linked-tables
