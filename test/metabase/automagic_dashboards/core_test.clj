@@ -42,7 +42,7 @@
   [:entity/UserTable :entity/GenericTable :entity/*]
   (->> (table/map->TableInstance {:entity_type :entity/UserTable})
        (#'magic/matching-rules (rules/load-rules "table"))
-       (map :table_type)))
+       (map :applies_to)))
 
 
 (expect
