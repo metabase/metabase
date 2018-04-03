@@ -138,18 +138,20 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
                 ? this.state.widgetWidth + BORDER_WIDTH * 2
                 : null,
             }}
+            minWidth={400}
             maxWidth={400}
           />
           <div className="flex p1">
             <Button
               primary
               className="ml-auto"
+              disabled={savedValue.length === 0 && unsavedValue.length === 0}
               onClick={() => {
                 setValue(unsavedValue.length > 0 ? unsavedValue : null);
                 focusChanged(false);
               }}
             >
-              Done
+              {savedValue.length > 0 ? "Update filter" : "Add filter"}
             </Button>
           </div>
         </Popover>

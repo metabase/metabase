@@ -148,7 +148,7 @@ export class FieldValuesWidget extends Component {
     }
 
     this.setState({
-      loadingState: "INIT",
+      loadingState: "LOADING",
     });
 
     if (this._cancel) {
