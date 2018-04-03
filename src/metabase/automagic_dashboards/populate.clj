@@ -221,20 +221,14 @@
    from the group will be picked)."
   [max-cards cards]
   (->> cards
+       (sort-by :score >)
+       (take max-cards)
        (group-by (some-fn :group hash))
        (map (fn [[_ group]]
-              (let [group-position (apply max (map :position group))]
-                ;; Fractional positioning to keep in-group ordering and position
-                ;; the group in the right spot.
-                {:cards (map #(update % :position
-                                      (fn [position]
-                                        (+ group-position (- 1 (/ (inc position))))))
-                             group)
-                 :score (apply max (map :score group))
-                 :size  (count group)})))
-       (sort-by (juxt :score :size) (comp (partial * -1) compare))
-       (mapcat :cards)
-       (take max-cards)))
+              {:cards    (sort-by :position group)
+               :position (apply min (map :position group))}))
+       (sort-by :position)
+       (mapcat :cards)))
 
 (def ^:private ^:const ^Long max-filters 4)
 
@@ -251,7 +245,7 @@
                         :creator_id    api/*current-user-id*
                         :parameters    []}
          collection    (:id (automagic-collection))
-         cards         (->> cards (shown-cards n) (sort-by :position))
+         cards         (shown-cards n cards) 
          [dashboard _] (->> cards
                             (map #(assoc % :collection collection))
                             (partition-by :group)
