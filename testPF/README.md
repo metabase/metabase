@@ -87,7 +87,7 @@ $ mvn clean -P<POM_PROFILE> gatling:execute -DCOOKIE="<COOKIE>" [-DBASE_URL="htt
 ```
 or
 ```
-$ mvn clean -Dgatling.simulation.name=<CLASS_NAME> gatling:execute -DCOOKIE="<COOKIE>" [-DBASE_URL="https://<VHOST>/services/metabase"] -DlogLevel=DEBUG
+$ mvn clean -Dgatling.simulationClass=<CLASS_NAME_WITH_PACKAGE> gatling:execute -DCOOKIE="<COOKIE>" [-DBASE_URL="https://<VHOST>/services/metabase"] -DlogLevel=DEBUG
 ```
 And all the implemented tests are:
 ```

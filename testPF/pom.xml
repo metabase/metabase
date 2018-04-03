@@ -35,14 +35,14 @@
         <gatling.version>2.3.0</gatling.version>
         <gatling-maven-plugin.version>2.2.4</gatling-maven-plugin.version>
         <!--
-            The first property specifies the package in which the Gatling simulations are found.
-            The second property specifies the Gatling simulation that is to be run.
+            The first property specifies the Gatling simulation that is to be run.
+            The second property specifies the Gatling destination folder for the test results.
             Both these properties can be overridden when running a simulation with Maven.
             This example will run the simulation with name Perf10Users30MinutesLowActivityHBase in the default simulations package:
-            mvn -Dgatling.simulation.name=Perf10Users30MinutesLowActivityHBase gatling:execute
+            mvn -Dgatling.simulationClass=com.stratio.performance.tests.Test_Perf10Users30MinutesLowActivityHBase gatling:execute
         -->
-        <gatling.simulations.package>com.stratio.performance.tests</gatling.simulations.package>
-        <gatling.simulation.name>Test_Perf10Users30MinutesLowActivityHBase</gatling.simulation.name>
+        <gatling.simulationClass>com.stratio.performance.tests.Test_Perf10Users30MinutesLowActivityHBase</gatling.simulationClass>
+        <gatling.resultFolder>test-perf</gatling.resultFolder>
     </properties>
 
     <dependencies>
@@ -69,8 +69,8 @@
                 <version>${gatling-maven-plugin.version}</version>
                 <configuration>
                     <failOnError>true</failOnError>
-                    <simulationClass>${gatling.simulations.package}.${gatling.simulation.name}</simulationClass>
-                    <resultsFolder>test-perf</resultsFolder>
+                    <simulationClass>${gatling.simulationClass}</simulationClass>
+                    <resultsFolder>${gatling.resultFolder}</resultsFolder>
                 </configuration>
             </plugin>
         </plugins>
