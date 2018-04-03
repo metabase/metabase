@@ -1,47 +1,50 @@
 title: "[[GenericTable]] x-ray"
 description: Potentially interesting metrics about [[GenericTable]] by things like time, place, and category.
 metrics:
-  - Count:
-      metric: ["count"]
-      score: 100
-  - CountDistinctFKs:
-      metric: [distinct, [dimension, FK]]
+  - Count: ["count"]
+  - CountDistinctFKs: [distinct, [dimension, FK]]
   - Sum: [sum, [dimension, GenericNumber]]
   - Avg: [avg, [dimension, GenericNumber]]
 dimensions:
   - Country:
-      field_type: Country
+      field_type: GenericTable.Country
       score: 100
   - State:
-      field_type: State
+      field_type: GenericTable.State
       score: 100
   - GenericNumber:
-      field_type: Number
-      score: 50
+      field_type: GenericTable.Number
+      score: 80
   - Source:
-      field_type: Source
+      field_type: GenericTable.Source
       score: 100
   - GenericCategorySmall:
-      field_type: Category
-      score: 85
+      field_type: GenericTable.Category
+      score: 80
       max_cardinality: 5
   - GenericCategoryMedium:
-      field_type: Category
+      field_type: GenericTable.Category
       score: 75
       max_cardinality: 10
   - GenericCategoryLarge:
-      field_type: Category
-      score: 45
+      field_type: GenericTable.Category
+      score: 70
   - Singleton:
-      field_type: Category
+      field_type: GenericTable.Category
       max_cardinality: 1
-      score: 40
-  - Timestamp: DateTime
-  - JoinDate: JoinTimestamp
-  - CreateDate: CreationTimestamp
+      score: 100
+  - Timestamp:
+      field_type: DateTime
+      score: 60
+  - JoinDate: 
+      field_type: GenericTable.JoinTimestamp
+      score: 50
+  - CreateDate: 
+      field_type: CreationTimestamp
+      score: 80
   - FK: FK
-  - Long: Longitude
-  - Lat: Latitude
+  - Long: GenericTable.Longitude
+  - Lat: GenericTable.Latitude
 filters:
   - Last30Days:
       filter: ["time-interval", [dimension, CreateDate], -30, day]
@@ -89,7 +92,7 @@ cards:
       title: Distribution by country
       metrics: Count
       dimensions: Country
-      score: 100
+      score: 90
       visualization:
         map:
           map.type: region
@@ -99,7 +102,7 @@ cards:
       title: Distribution by state
       metrics: Count
       dimensions: State
-      score: 100
+      score: 90
       visualization:
         map:
           map.type: region
@@ -125,10 +128,19 @@ cards:
       dimensions: GenericCategorySmall
       metrics: Count
       visualization: row
-      score: 100
+      score: 90
       group: General
       order_by:
         - Count: descending
+  - NumberDistribution:
+      title: Distribution of [[GenericNumber]]
+      dimensions:
+        - GenericNumber:
+            aggregation: default
+      metrics: Count
+      visualization: bar
+      score: 90
+      group: General
   - CountByCategoryMedium:
       title: Distribution by [[GenericCategoryMedium]]
       dimensions: GenericCategoryMedium
@@ -145,33 +157,24 @@ cards:
       metrics: Count
       visualization: table
       height: 8
-      score: 100
+      score: 70
       group: General
       order_by:
         - Count: descending
-  - NumberDistribution:
-      title: Distribution of [[GenericNumber]]
-      dimensions:
-        - GenericNumber:
-            aggregation: default
-      metrics: Count
-      visualization: bar
-      score: 100
-      group: General
 # By Time
   - CountByJoinDate:
       title: Newly jonied over time
       visualization: line
       dimensions: JoinDate
       metrics: Count
-      score: 100
+      score: 90
       group: ByTime
   - CountByCreateDate:
       title: Newly created over time
       visualization: line
       dimensions: CreateDate
       metrics: Count
-      score: 100
+      score: 90
       group: ByTime
   - CountByTimestamp:
       title: Nuber of events over time
