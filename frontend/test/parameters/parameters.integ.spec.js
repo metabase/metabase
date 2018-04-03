@@ -3,9 +3,14 @@ import {
   useSharedAdminLogin,
   logout,
   createTestStore,
+  createDashboard,
   restorePreviousLogin,
-  waitForRequestToComplete,
+  waitForRequestToComplete
 } from "__support__/integrated_tests";
+
+import _ from "underscore";
+import jwt from "jsonwebtoken";
+
 import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 
 import { mount } from "enzyme";
@@ -39,6 +44,7 @@ import {
   ADD_PARAM_VALUES,
   FETCH_TABLE_METADATA,
 } from "metabase/redux/metadata";
+import { FETCH_DASHBOARD_CARD_DATA } from "metabase/dashboard/dashboard";
 import RunButton from "metabase/query_builder/components/RunButton";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import Parameters from "metabase/parameters/components/Parameters";
@@ -54,6 +60,15 @@ import ListSearchField from "metabase/components/ListSearchField";
 import * as Urls from "metabase/lib/urls";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
+
+import {
+  CardApi,
+  DashboardApi,
+  SettingsApi,
+} from "metabase/services";
+
+const PEOPLE_TABLE_ID = 2;
+const PEOPLE_ID_FIELD_ID = 13;
 
 async function updateQueryText(store, queryText) {
   // We don't have Ace editor so we have to trigger the Redux action manually
@@ -354,17 +369,237 @@ describe("parameters", () => {
       // that expect that we're already logged in
       afterAll(() => restorePreviousLogin());
     });
+  });
 
-    afterAll(async () => {
-      const store = await createTestStore();
+  describe("dashboards", () => {
+    let publicDashUrl = null;
+    let embedDashUrl = null;
 
-      // Disable public sharing and embedding after running tests
-      await store.dispatch(
-        updateSetting({ key: "enable-public-sharing", value: false }),
+    it("should allow creating a public/embedded Dashboard with parameters", async () => {
+      // create a Dashboard
+      const dashboard = await createDashboard({
+        name: "Test Dashboard",
+        parameters: [
+          {name: "Num", slug: "num", id: "537e37b4", type: "category"},
+          {name: "People ID", slug: "people_id", id: "22486e00", type: "people_id"}
+        ]
+      });
+      /* cleanup.fn(() =>
+       *   DashboardApi.update({
+       *     id: dashboard.id,
+       *     archived: true
+       *   })
+       * );*/
+
+      // create the 2 Cards we will need
+      const sqlCard = await CardApi.create({
+        name: "SQL Card",
+        display: "scalar",
+        visualization_settings: {},
+        dataset_query: {
+          database: 1,
+          type: "native",
+          native: {
+            query: "SELECT {{num}} AS num",
+            template_tags: {
+              num: {
+                name: "num",
+                display_name: "Num",
+                type: "number",
+                required: true,
+                default: 1
+              }
+            }
+          }
+        }
+      });
+      /* cleanup.fn(() =>
+       *   CardApi.update({
+       *     id: sqlCard.id(),
+       *     archived: true
+       *   })
+       * );*/
+
+      const mbqlCard = await CardApi.create({
+        name: "MBQL Card",
+        display: "scalar",
+        visualization_settings: {},
+        dataset_query: {
+          database: 1,
+          type: "query",
+          query: {
+            source_table: PEOPLE_TABLE_ID,
+            aggregation: ["count"]
+          }
+        }
+      });
+      /* cleanup.fn(() =>
+       *   CardApi.update({
+       *     id: mbqlCard.id(),
+       *     archived: true
+       *   })
+       * );*/
+
+      // add the two Cards to the Dashboard
+      const sqlDashcard = await DashboardApi.addcard({
+        dashId: dashboard.id,
+        cardId: sqlCard.id
+      });
+      console.log("sqlDashcard:", sqlDashcard); // NOCOMMIT
+      const mbqlDashcard = await DashboardApi.addcard({
+        dashId: dashboard.id,
+        cardId: mbqlCard.id
+      });
+      console.log("mbqlDashcard:", mbqlDashcard); // NOCOMMIT
+
+      // wire up the params for the Cards
+      await DashboardApi.reposition_cards({
+        dashId: dashboard.id,
+        cards: [
+          {
+            id: sqlDashcard.id,
+            card_id: sqlCard.id,
+            row: 0,
+            col: 0,
+            sizeX: 4,
+            sizeY: 4,
+            series: [],
+            visualization_settings: {},
+            parameter_mappings: [
+              {
+                card_id: sqlCard.id,
+                target: ["variable", ["template-tag", "num"]],
+                parameter_id: "537e37b4"
+              }
+            ]
+          },
+          {
+            id: mbqlDashcard.id,
+            card_id: mbqlCard.id,
+            row: 0,
+            col: 4,
+            sizeX: 4,
+            sizeY: 4,
+            series: [],
+            visualization_settings: {},
+            parameter_mappings: [
+              {
+                card_id: mbqlCard.id,
+                target: ["dimension", ["field-id", PEOPLE_ID_FIELD_ID]],
+                parameter_id: "22486e00"
+              }
+            ]
+          }
+        ]
+      });
+
+      // make the Dashboard public + save the URL
+      const publicDash = await DashboardApi.createPublicLink({
+        id: dashboard.id
+      });
+      // don't use Urls.publicDashboard() because it includes host which the store.pushPath() function doesn't like
+      publicDashUrl = "/public/dashboard/" + publicDash.uuid;
+      console.log("publicDashUrl:", publicDashUrl); // NOCOMMIT
+
+      // make the Dashboard embeddable + make params editable + save the URL
+      await DashboardApi.update({
+        id: dashboard.id,
+        embedding_params: {
+          people_id: "enabled"
+        },
+        enable_embedding: true
+      });
+
+      const settings = await SettingsApi.list();
+      const secretKey = (_.findWhere(settings, { key: "embedding-secret-key" })).value;
+      console.log("secretKey:", secretKey); // NOCOMMIT
+
+      const token = jwt.sign(
+        {
+          resource: {
+            dashboard: dashboard.id
+          },
+          params: {},
+        },
+        secretKey
       );
-      await store.dispatch(
-        updateSetting({ key: "enable-embedding", value: false }),
-      );
+      embedDashUrl = Urls.embedDashboard(token);
+      console.log("embedDashUrl:", embedDashUrl); // NOCOMMIT
     });
+
+    describe("as an anonymous user", () => {
+      beforeAll(() => logout());
+
+      async function runSharedDashboardTests(store, dashUrl) {
+        console.log("navigating to dashUrl:", dashUrl); // NOCOMMIT
+        store.pushPath(dashUrl);
+
+        const app = mount(store.getAppContainer());
+
+        // I think this means we *wait* for the Cards to load?
+        await store.waitForActions([FETCH_DASHBOARD_CARD_DATA]);
+
+        // We need to wait for the API requests to finish or something like that.
+        // TODO - this is different for embedded dashboards so parameterize the regex like for the Cards tests
+        // await waitForRequestToComplete("GET", ".*");
+        await delay(10000);
+
+        // what doe we have on the screen?
+        console.log("DEBUG:", app.update().debug()); // NOCOMMIT
+
+        const getValueOfSqlCard  = () => app.update().find(Scalar).first();
+        const getValueofMbqlCard = () => app.update().find(Scalar).second();
+
+        // check that initial value of SQL Card is 1
+        expect(getValueOfSqlCard()).toBe("1");
+
+        // check that initial value of People Count MBQL Card is 1000 (or whatever people.count is supposed to be)
+        expect(getValueOfMbqlCard()).toBe("1000");
+
+        // TODO - now set the SQL param to '50' & wait for Dashboard to reload
+
+        // check that value of SQL Card is updated
+        expect(getValueOfSqlCard()).toBe("50");
+
+        // TODO - now set our MBQL param to '50' & wait for Dashboard to reload
+
+        // check that value of the MBQL Card is updated
+        expect(getValueOfMbqlCard()).toBe("1");
+      }
+
+      it("should handle parameters in public Dashboards correctly", async () => {
+        if (!publicDashUrl) throw new Error("This test fails because test setup code didn't produce a public Dashboard URL.");
+
+        const publicUrlTestStore = await createTestStore({ publicApp: true });
+        await runSharedDashboardTests(
+          publicUrlTestStore,
+          publicDashUrl
+        );
+      });
+
+      it("should handle parameters in embedded Dashboards correctly", async () => {
+        if (!embedDashUrl) throw new Error("This test fails because test setup code didn't produce a embedded Dashboard URL.");
+
+        const embedUrlTestStore = await createTestStore({ embedApp: true });
+        await runSharedDashboardTests(
+          embedUrlTestStore,
+          embedDashUrl
+        );
+      });
+
+      afterAll(() => restorePreviousLogin());
+    });
+  });
+
+  afterAll(async () => {
+    const store = await createTestStore();
+
+    // Disable public sharing and embedding after running tests
+    await store.dispatch(
+      updateSetting({ key: "enable-public-sharing", value: false }),
+    );
+    await store.dispatch(
+      updateSetting({ key: "enable-embedding", value: false }),
+    );
   });
 });
