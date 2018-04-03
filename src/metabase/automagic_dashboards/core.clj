@@ -525,25 +525,26 @@
 (defn candidate-tables
   "Return a list of tables in database with ID `database-id` for which it makes sense
    to generate an automagic dashboard."
-  [database]
-  (let [rules (rules/load-rules "table")]
-    (->> (db/select Table
-           :db_id           (:id database)
-           :schema          (:schema database)
-           :visibility_type nil)
-         (remove (some-fn link-table? list-like-table?))
-         (keep (fn [table]
-                 (when-let [[dashboard rule]
-                            (->> table
-                                 (matching-rules rules)
-                                 (keep (partial apply-rule table))
-                                 first)]
-                   {:url         (url table)
-                    :title       (:title dashboard)
-                    :score       (rule-specificity rule)
-                    :description (:description dashboard)
-                    :table       table})))
-         (sort-by :score >))))
+  ([database] (candidate-tables database nil))
+  ([database schema]
+   (let [rules (rules/load-rules "table")]
+     (->> (apply db/select Table
+                 (cond-> [:db_id           (:id database)
+                          :visibility_type nil]
+                   schema (concat [:schema schema])))
+          (remove (some-fn link-table? list-like-table?))
+          (keep (fn [table]
+                  (when-let [[dashboard rule]
+                             (->> table
+                                  (matching-rules rules)
+                                  (keep (partial apply-rule table))
+                                  first)]
+                    {:url         (url table)
+                     :title       (:title dashboard)
+                     :score       (rule-specificity rule)
+                     :description (:description dashboard)
+                     :table       table})))
+          (sort-by :score >)))))
 
 (def ^:private ^:const ^Long max-related 6)
 (def ^:private ^:const ^Long max-cards 15)
@@ -586,9 +587,8 @@
                          (-> dashboard :context :metrics u/pprint-to-str)
                          (-> dashboard :context :filters u/pprint-to-str)))
        (-> (populate/create-dashboard dashboard (or show max-cards))
-           (assoc :related {:tables  (->> root
-                                          database
-                                          candidate-tables
+           (assoc :related {:tables  (->> (candidate-tables (database root)
+                                                            (-> root table :schema))
                                           (remove (comp #{root} :table))
                                           (take (- max-related (count indepth))))
                             :indepth indepth

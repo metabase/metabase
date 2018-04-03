@@ -142,7 +142,7 @@
   [{:keys [metrics cards]}]
   (every? (identifiers metrics) (all-references :metrics cards)))
 
-(defn- valid-filters-references?  
+(defn- valid-filters-references?
   [{:keys [filters cards]}]
   (every? (identifiers filters) (all-references :filters cards)))
 
@@ -150,7 +150,7 @@
   [{:keys [cards groups]}]
   (every? groups (keep (comp :group val first) cards)))
 
-(defn- valid-order-by-references?  
+(defn- valid-order-by-references?
   [{:keys [dimensions metrics cards]}]
   (every? (comp (into (identifiers dimensions)
                       (identifiers metrics))
@@ -162,7 +162,7 @@
   (every? (some-fn (identifiers dimensions) (comp table-type? ->entity))
           (collect-dimensions rule)))
 
-(defn- valid-dashboard-filters-references?  
+(defn- valid-dashboard-filters-references?
   [{:keys [dimensions dashboard_filters]}]
   (every? (identifiers dimensions) dashboard_filters))
 
