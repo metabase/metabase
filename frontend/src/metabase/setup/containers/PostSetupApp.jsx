@@ -28,7 +28,9 @@ const QUOTES = [
 import type { Candidate } from "metabase/meta/types/Auto";
 
 type Props = {
-  databaseId: ?number,
+  params: {
+    databaseId: ?number,
+  },
 };
 
 type State = {
@@ -54,8 +56,8 @@ export default class PostSetupApp extends Component {
   async componentWillMount() {
     // If we get passed in a database id, just use that.
     // Don't fall back to the sample dataset
-    if (this.props.databaseId) {
-      this.setState({ databaseId: this.props.databaseId }, () => {
+    if (this.props.params.databaseId) {
+      this.setState({ databaseId: this.props.params.databaseId }, () => {
         this._loadCandidates();
       });
     } else {
