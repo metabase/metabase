@@ -4,8 +4,12 @@ import React, { Component } from "react";
 import { Link, Route } from "react-router";
 
 import { slugify } from "metabase/lib/formatting";
+
+// $FlowFixMe: react-virtualized ignored
 import reactElementToJSXString from "react-element-to-jsx-string";
+
 import COMPONENTS from "../lib/components-webpack";
+
 import AceEditor from "metabase/components/TextEditor";
 import CopyButton from "metabase/components/CopyButton";
 
