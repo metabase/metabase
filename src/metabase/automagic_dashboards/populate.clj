@@ -245,7 +245,7 @@
                         :creator_id    api/*current-user-id*
                         :parameters    []}
          collection    (:id (automagic-collection))
-         cards         (shown-cards n cards) 
+         cards         (shown-cards n cards)
          [dashboard _] (->> cards
                             (map #(assoc % :collection collection))
                             (partition-by :group)
