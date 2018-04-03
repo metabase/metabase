@@ -181,13 +181,14 @@ export default class TableSimple extends Component {
                               "cursor-pointer text-brand-hover": isClickable,
                             })}
                             onClick={
-                              isClickable &&
-                              (e => {
-                                onVisualizationClick({
-                                  ...clicked,
-                                  element: e.currentTarget,
-                                });
-                              })
+                              isClickable
+                                ? e => {
+                                    onVisualizationClick({
+                                      ...clicked,
+                                      element: e.currentTarget,
+                                    });
+                                  }
+                                : undefined
                             }
                           >
                             {cell == null

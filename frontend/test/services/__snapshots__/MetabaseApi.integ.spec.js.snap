@@ -427,6 +427,12 @@ Object {
         "global": Object {
           "distinct-count": 1381,
         },
+        "type": Object {
+          "type/DateTime": Object {
+            "earliest": "2015-11-05T00:00:00.000-08:00",
+            "latest": "2019-11-02T00:00:00.000-07:00",
+          },
+        },
       },
       "fingerprint_version": 1,
       "fk_target_field_id": null,
@@ -1571,6 +1577,12 @@ Object {
         "global": Object {
           "distinct-count": 2293,
         },
+        "type": Object {
+          "type/DateTime": Object {
+            "earliest": "1957-11-06T00:00:00.000-08:00",
+            "latest": "1999-10-31T00:00:00.000-07:00",
+          },
+        },
       },
       "fingerprint_version": 1,
       "fk_target_field_id": null,
@@ -1786,6 +1798,12 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 980,
+        },
+        "type": Object {
+          "type/DateTime": Object {
+            "earliest": "2015-11-02T00:00:00.000-08:00",
+            "latest": "2018-11-02T00:00:00.000-07:00",
+          },
         },
       },
       "fingerprint_version": 1,
@@ -2769,6 +2787,12 @@ Object {
         "global": Object {
           "distinct-count": 178,
         },
+        "type": Object {
+          "type/DateTime": Object {
+            "earliest": "2015-11-07T00:00:00.000-08:00",
+            "latest": "2018-11-02T00:00:00.000-07:00",
+          },
+        },
       },
       "fingerprint_version": 1,
       "fk_target_field_id": null,
@@ -3610,6 +3634,12 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 624,
+        },
+        "type": Object {
+          "type/DateTime": Object {
+            "earliest": "2015-12-16T00:00:00.000-08:00",
+            "latest": "2019-11-02T00:00:00.000-07:00",
+          },
         },
       },
       "fingerprint_version": 1,

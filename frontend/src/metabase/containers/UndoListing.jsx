@@ -11,7 +11,7 @@ import { t } from "c-3po";
 import Icon from "metabase/components/Icon";
 import BodyComponent from "metabase/components/BodyComponent";
 
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+import { CSSTransitionGroup } from "react-transition-group";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -37,7 +37,7 @@ export default class UndoListing extends Component {
     const { undos, performUndo, dismissUndo } = this.props;
     return (
       <ul className={S.listing}>
-        <ReactCSSTransitionGroup
+        <CSSTransitionGroup
           transitionName="UndoListing"
           transitionEnterTimeout={300}
           transitionLeaveTimeout={300}
@@ -65,7 +65,7 @@ export default class UndoListing extends Component {
               )}
             </li>
           ))}
-        </ReactCSSTransitionGroup>
+        </CSSTransitionGroup>
       </ul>
     );
   }

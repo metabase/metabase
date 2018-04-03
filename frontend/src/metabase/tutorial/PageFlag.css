@@ -32,6 +32,7 @@
 }
 
 .PageFlag:after {
+  top: 0;
   left: -12px;
   border-top: 12px solid transparent;
   border-bottom: 12px solid transparent;

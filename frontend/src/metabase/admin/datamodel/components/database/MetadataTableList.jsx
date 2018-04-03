@@ -78,7 +78,7 @@ export default class MetadataTableList extends Component {
     if (queryableTables.length > 0) {
       queryableTablesHeader = (
         <li className="AdminList-section">
-          {queryableTables.length} Queryable{" "}
+          {queryableTables.length} {t`Queryable`}{" "}
           {inflect("Table", queryableTables.length)}
         </li>
       );
@@ -86,7 +86,8 @@ export default class MetadataTableList extends Component {
     if (hiddenTables.length > 0) {
       hiddenTablesHeader = (
         <li className="AdminList-section">
-          {hiddenTables.length} Hidden {inflect("Table", hiddenTables.length)}
+          {hiddenTables.length} {t`Hidden`}{" "}
+          {inflect("Table", hiddenTables.length)}
         </li>
       );
     }

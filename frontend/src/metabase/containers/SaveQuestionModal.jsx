@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+import { CSSTransitionGroup } from "react-transition-group";
 
 import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -201,7 +201,7 @@ export default class SaveQuestionModal extends Component {
       >
         <form className="Form-inputs" onSubmit={this.formSubmitted}>
           {saveOrUpdate}
-          <ReactCSSTransitionGroup
+          <CSSTransitionGroup
             transitionName="saveQuestionModalFields"
             transitionEnterTimeout={500}
             transitionLeaveTimeout={500}
@@ -275,7 +275,7 @@ export default class SaveQuestionModal extends Component {
                 </CollectionList>
               </div>
             )}
-          </ReactCSSTransitionGroup>
+          </CSSTransitionGroup>
         </form>
       </ModalContent>
     );

@@ -1,16 +1,5 @@
 import React from "react";
 import AccordianList from "metabase/components/AccordianList";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
-const DemoPopover = ({ children }) => (
-  <PopoverWithTrigger
-    triggerElement={<button className="Button">Click me!</button>}
-    verticalAttachments={["top"]}
-    isInitiallyOpen
-  >
-    {children}
-  </PopoverWithTrigger>
-);
 
 export const component = AccordianList;
 
@@ -34,42 +23,34 @@ const sections = [
 
 export const examples = {
   Default: (
-    <DemoPopover>
-      <AccordianList
-        className="text-brand"
-        sections={sections}
-        itemIsSelected={item => item.name === "Foo"}
-      />
-    </DemoPopover>
+    <AccordianList
+      className="text-brand full"
+      sections={sections}
+      itemIsSelected={item => item.name === "Foo"}
+    />
   ),
   "Always Expanded": (
-    <DemoPopover>
-      <AccordianList
-        className="text-brand"
-        sections={sections}
-        itemIsSelected={item => item.name === "Foo"}
-        alwaysExpanded
-      />
-    </DemoPopover>
+    <AccordianList
+      className="text-brand full"
+      sections={sections}
+      itemIsSelected={item => item.name === "Foo"}
+      alwaysExpanded
+    />
   ),
   Searchable: (
-    <DemoPopover>
-      <AccordianList
-        className="text-brand"
-        sections={sections}
-        itemIsSelected={item => item.name === "Foo"}
-        searchable
-      />
-    </DemoPopover>
+    <AccordianList
+      className="text-brand full"
+      sections={sections}
+      itemIsSelected={item => item.name === "Foo"}
+      searchable
+    />
   ),
   "Hide Single Section Title": (
-    <DemoPopover>
-      <AccordianList
-        className="text-brand"
-        sections={sections.slice(0, 1)}
-        itemIsSelected={item => item.name === "Foo"}
-        hideSingleSectionTitle
-      />
-    </DemoPopover>
+    <AccordianList
+      className="text-brand full"
+      sections={sections.slice(0, 1)}
+      itemIsSelected={item => item.name === "Foo"}
+      hideSingleSectionTitle
+    />
   ),
 };
