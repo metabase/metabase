@@ -1,57 +1,115 @@
 title: Interesting metrics about [[EventTable]]
 description: A look at your events over time and by several categories.
 metrics:
-  - Count:
-      metric: ["count"]
+  - Count: ["count"]
 dimensions:
   - Timestamp: DateTime
-  - Category: Category
-  - CategorySmall:
-      field_type: Category
+  - GenericCategorySmall:
+      field_type: GenericTable.Category
+      score: 80
+      max_cardinality: 5
+  - GenericCategoryMedium:
+      field_type: GenericTable.Category
+      score: 75
       max_cardinality: 10
-  - State: State
-  - Country: Country
-  - Long: Longitude
-  - Lat: Latitude
+  - GenericCategoryLarge:
+      field_type: GenericTable.Category
+      score: 70
+  - State: GenericTable.State
+  - Country: GenericTable.Country
+  - Long: GenericTable.Longitude
+  - Lat: GenericTable.Latitude
+  - GenericNumber:
+      field_type: GenericTable.Number
+      score: 80
 filters:
   - Last30Days:
       filter: ["time-interval", [dimension, Timestamp], -30, day]
+groups:
+  - Overview:
+      title: Overview
+  - Periodicity:
+      title: Periodicity
+  - Geographical:
+      title: Geographical breakdown
+  - General:
+      title: General distributions
 cards:
+# Overview
   - Rowcount:
       title: Total number of event
       visualization: scalar
       metrics: Count
       score: 30
+      group: Overview
   - RowcountLast30Days:
       title: Events in the last 30 days
       visualization: scalar
       metrics: Count
       score: 25
       filters: Last30Days
-  - EventsByDay:
-     title: Events by [[CategorySmall]]
-     description: Count of events by [[CategorySmall]] through time.
+      group: Overview
+  - EventsByTime:
+     title: Events by [[GenericCategorySmall]]
+     description: Count of events by [[GenericCategorySmall]] through time.
      metrics: Count
      dimensions:
        - Timestamp
-       - CategorySmall
+       - GenericCategorySmall
      visualization:
        area:
          stackable.stack_type: stacked
      score: 100
-  - EventsByDay:
+     group: Overview
+     width: 18
+  - EventsByTime:
       title: Events by time
       metrics: Count
       dimensions: Timestamp
       visualization: line
+      group: Overview
+      width: 18
       score: 90
-  - EventsByCategory:
-      title: Events by [[Category]] distribution
-      description: Total number events for each [Category] category.
+# General
+  - CountByCategorySmall:
+      title: Distribution by [[GenericCategorySmall]]
+      dimensions: GenericCategorySmall
       metrics: Count
-      dimensions: Category
+      visualization: row
+      score: 90
+      group: General
+      order_by:
+        - Count: descending
+  - NumberDistribution:
+      title: Distribution of [[GenericNumber]]
+      dimensions:
+        - GenericNumber:
+            aggregation: default
+      metrics: Count
       visualization: bar
+      score: 90
+      group: General
+  - CountByCategoryMedium:
+      title: Distribution by [[GenericCategoryMedium]]
+      dimensions: GenericCategoryMedium
+      metrics: Count
+      visualization: row
       score: 80
+      height: 8
+      group: General
+      order_by:
+        - Count: descending
+  - CountByCategoryLarge:
+      title: Distribution by [[GenericCategoryLarge]]
+      dimensions: GenericCategoryLarge
+      metrics: Count
+      visualization: table
+      height: 8
+      score: 70
+      group: General
+      order_by:
+        - Count: descending
+# Geographical
   - EventsByCountry:
       title: Distribution by country
       metrics: Count
@@ -61,6 +119,7 @@ cards:
         map:
           map.type: region
           map.region: world_countries
+      group: Geographical
   - EventsByState:
       title: Distribution by state
       metrics: Count
@@ -70,6 +129,7 @@ cards:
         map:
           map.type: region
           map.region: us_state
+      group: Geographical
   - EventsByCoords:
       title: Distribution by coordinates
       metrics: Count
@@ -78,3 +138,50 @@ cards:
         - Long
       score: 80
       visualization: map
+      group: Geographical
+# Periodicity
+  - DayOfWeekTimestamp:
+      title: Distribution by day of week
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: Periodicity
+  - HourOfDayTimestamp:
+      title: Distribution by hour of day
+      visualization: bar
+      dimensions:
+      - Timestamp:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: Periodicity
+  - DayOfMonthTimestamp:
+      title: Distribution by day of month
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+      group: Periodicity
+  - MonthOfYearTimestamp:
+      title: Distribution by month of year
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: Periodicity
+  - QuerterOfYearTimestamp:
+      title: Distribution by quarter of year
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: Periodicity
