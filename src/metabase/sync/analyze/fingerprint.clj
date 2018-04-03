@@ -9,6 +9,7 @@
              [interface :as i]
              [util :as sync-util]]
             [metabase.sync.analyze.fingerprint
+             [datetime :as datetime]
              [global :as global]
              [number :as number]
              [sample :as sample]
@@ -22,8 +23,9 @@
   "Return type-specific fingerprint info for FIELD AND. a FieldSample of Values if it has an elligible base type"
   [field :- i/FieldInstance, values :- i/FieldSample]
   (condp #(isa? %2 %1) (:base_type field)
-    :type/Text   {:type/Text (text/text-fingerprint values)}
-    :type/Number {:type/Number (number/number-fingerprint values)}
+    :type/Text     {:type/Text (text/text-fingerprint values)}
+    :type/Number   {:type/Number (number/number-fingerprint values)}
+    :type/DateTime {:type/DateTime (datetime/datetime-fingerprint values)}
     nil))
 
 (s/defn ^:private fingerprint :- i/Fingerprint
