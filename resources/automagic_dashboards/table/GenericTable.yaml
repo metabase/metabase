@@ -21,9 +21,17 @@ dimensions:
   - Source:
       field_type: Source
       score: 100
-  - GenericCategory:
+  - GenericCategorySmall:
+      field_type: Category
+      score: 85
+      max_cardinality: 5
+  - GenericCategoryMedium:
       field_type: Category
       score: 75
+      max_cardinality: 10
+  - GenericCategoryLarge:
+      field_type: Category
+      score: 45
   - Singleton:
       field_type: Category
       max_cardinality: 1
@@ -32,33 +40,51 @@ dimensions:
   - JoinDate: JoinTimestamp
   - CreateDate: CreationTimestamp
   - FK: FK
+  - Long: Longitude
+  - Lat: Latitude
 filters:
   - Last30Days:
       filter: ["time-interval", [dimension, CreateDate], -30, day]
       score: 100
   - Last30Days:
-      filter: ["time-interval", [dimension, Timestamp], -30, day]
+      filter: ["time-interval", [dimension, JoinDate], -30, day]
       score: 90
+  - Last30Days:
+      filter: ["time-interval", [dimension, Timestamp], -30, day]
+      score: 80
 groups:
+- Overview:
+    title: Overview
 - Singletons:
     title: Fields with only a single value
+- ByTime:
+    title: Distribution by time
+- Geographical:
+    title: Geographical breakdown
+- General:
+    title: General distributions
 cards:
+# Overview
   - Rowcount:
       title: Number of rows
       visualization: scalar
       metrics: Count
-      score: 30
+      score: 100
+      group: Overview
   - RowcountLast30Days:
       title: New entries in the last 30 days
       visualization: scalar
       metrics: Count
-      score: 25
+      score: 100
       filters: Last30Days
+      group: Overview
   - DistinctFKCounts:
       title: Distinct [[FK]] (foregin key)
       visualization: scalar
       metrics: CountDistinctFKs
-      score: 50
+      score: 100
+      group: Overview
+# Geographical
   - CountByCountry:
       title: Distribution by country
       metrics: Count
@@ -68,6 +94,7 @@ cards:
         map:
           map.type: region
           map.region: world_countries
+      group: Geographical
   - CountByState:
       title: Distribution by state
       metrics: Count
@@ -77,30 +104,82 @@ cards:
         map:
           map.type: region
           map.region: us_states
-  - CountByCategory:
-      title: Distribution by [[GenericCategory]]
-      dimensions: GenericCategory
+      group: Geographical
+  - CountByCoords:
+      title: Distribution by coordinates
+      metrics: Count
+      dimensions:
+        - Long
+        - Lat
+      visualization:
+        map:
+          map.type: pin
+          # explicitly bind dimensions
+          map.latitude_column: Lat
+          map.longitude_column: Long
+      score: 80
+      group: Geographical
+# General
+  - CountByCategorySmall:
+      title: Distribution by [[GenericCategorySmall]]
+      dimensions: GenericCategorySmall
+      metrics: Count
+      visualization: row
+      score: 100
+      group: General
+      order_by:
+        - Count: descending
+  - CountByCategoryMedium:
+      title: Distribution by [[GenericCategoryMedium]]
+      dimensions: GenericCategoryMedium
+      metrics: Count
+      visualization: row
+      score: 80
+      height: 8
+      group: General
+      order_by:
+        - Count: descending
+  - CountByCategoryLarge:
+      title: Distribution by [[GenericCategoryLarge]]
+      dimensions: GenericCategoryLarge
+      metrics: Count
+      visualization: table
+      height: 8
+      score: 100
+      group: General
+      order_by:
+        - Count: descending
+  - NumberDistribution:
+      title: Distribution of [[GenericNumber]]
+      dimensions:
+        - GenericNumber:
+            aggregation: default
       metrics: Count
       visualization: bar
-      score: 50
+      score: 100
+      group: General
+# By Time
   - CountByJoinDate:
       title: Newly jonied over time
       visualization: line
       dimensions: JoinDate
       metrics: Count
       score: 100
+      group: ByTime
   - CountByCreateDate:
       title: Newly created over time
       visualization: line
       dimensions: CreateDate
       metrics: Count
       score: 100
+      group: ByTime
   - CountByTimestamp:
       title: Nuber of events over time
       visualization: line
       dimensions: Timestamp
       metrics: Count
       score: 20
+      group: ByTime
   - NumberOverTime:
       title: "[[GenericNumber]] over time"
       visualization: line
@@ -109,6 +188,25 @@ cards:
         - Sum
         - Avg
       score: 70
+      group: ByTime
+  - NumberOverJoinDate:
+      title: "[[GenericNumber]] by [[JoinDate]]"
+      visualization: line
+      dimensions: JoinDate
+      metrics:
+        - Sum
+        - Avg
+      score: 80
+      group: ByTime
+  - NumberOverCreateDate:
+      title: "[[GenericNumber]] by [[CreateDate]]"
+      visualization: line
+      dimensions: CreateDate
+      metrics:
+        - Sum
+        - Avg
+      score: 90
+      group: ByTime
   - DayOfWeekTimestamp:
       title: Distribution by day of week
       visualization: bar
@@ -117,6 +215,7 @@ cards:
             aggregation: day-of-week
       metrics: Count
       score: 60
+      group: ByTime
   - HourOfDayTimestamp:
       title: Distribution by hour of day
       visualization: bar
@@ -125,6 +224,7 @@ cards:
           aggregation: hour-of-day
       metrics: Count
       score: 50
+      group: ByTime
   - DayOfMonthTimestamp:
       title: Distribution by day of month
       visualization: bar
@@ -133,6 +233,7 @@ cards:
             aggregation: day-of-month
       metrics: Count
       score: 40
+      group: ByTime
   - MonthOfYearTimestamp:
       title: Distribution by month of year
       visualization: bar
@@ -141,6 +242,7 @@ cards:
             aggregation: month-of-year
       metrics: Count
       score: 40
+      group: ByTime
   - QuerterOfYearTimestamp:
       title: Distribution by quarter of year
       visualization: bar
@@ -149,129 +251,147 @@ cards:
             aggregation: quarter-of-year
       metrics: Count
       score: 40
+      group: ByTime
   - DayOfWeekCreateDate:
-      title: Distribution by day of week
+      title: Distribution of creation time by day of week
       visualization: bar
       dimensions:
         - CreateDate:
             aggregation: day-of-week
       metrics: Count
       score: 60
+      group: ByTime
   - HourOfDayCreateDate:
-      title: Distribution by hour of day
+      title: Distribution of creation time by hour of day
       visualization: bar
       dimensions:
       - CreateDate:
           aggregation: hour-of-day
       metrics: Count
       score: 50
+      group: ByTime
   - DayOfMonthCreateDate:
-      title: Distribution by day of month
+      title: Distribution of creation time by day of month
       visualization: bar
       dimensions:
         - CreateDate:
             aggregation: day-of-month
       metrics: Count
       score: 40
+      group: ByTime
   - MonthOfYearCreateDate:
-      title: Distribution by month of year
+      title: Distribution of creation time by month of year
       visualization: bar
       dimensions:
         - CreateDate:
             aggregation: month-of-year
       metrics: Count
       score: 40
+      group: ByTime
   - QuerterOfYearCreateDate:
-      title: Distribution by quarter of year
+      title: Distribution of creation time by quarter of year
       visualization: bar
       dimensions:
         - CreateDate:
             aggregation: quarter-of-year
       metrics: Count
       score: 40
+      group: ByTime
   - DayOfWeekCreateDate:
-      title: Distribution by day of week
+      title: Distribution of creation time by day of week
       visualization: bar
       dimensions:
         - CreateDate:
             aggregation: day-of-week
       metrics: Count
       score: 60
+      group: ByTime
   - HourOfDayCreateDate:
-      title: Distribution by hour of day
+      title: Distribution of creation time by hour of day
       visualization: bar
       dimensions:
       - CreateDate:
           aggregation: hour-of-day
       metrics: Count
       score: 50
+      group: ByTime
   - DayOfMonthCreateDate:
-      title: Distribution by day of month
+      title: Distribution of creation time by day of month
       visualization: bar
       dimensions:
         - CreateDate:
             aggregation: day-of-month
       metrics: Count
       score: 40
+      group: ByTime
   - MonthOfYearCreateDate:
-      title: Distribution by month of year
+      title: Distribution of creation time by month of year
       visualization: bar
       dimensions:
         - CreateDate:
             aggregation: month-of-year
       metrics: Count
       score: 40
+      group: ByTime
   - QuerterOfYearCreateDate:
-      title: Distribution by quarter of year
+      title: Distribution of creation time by quarter of year
       visualization: bar
       dimensions:
         - CreateDate:
             aggregation: quarter-of-year
       metrics: Count
       score: 40
+      group: ByTime
   - DayOfWeekJoinDate:
-      title: Distribution by day of week
+      title: Distribution of join date by day of week
       visualization: bar
       dimensions:
         - JoinDate:
             aggregation: day-of-week
       metrics: Count
       score: 60
+      group: ByTime
   - HourOfDayJoinDate:
-      title: Distribution by hour of day
+      title: Distribution of join date by hour of day
       visualization: bar
       dimensions:
       - JoinDate:
           aggregation: hour-of-day
       metrics: Count
       score: 50
+      group: ByTime
   - DayOfMonthJoinDate:
-      title: Distribution by day of month
+      title: Distribution of join date by day of month
       visualization: bar
       dimensions:
         - JoinDate:
             aggregation: day-of-month
       metrics: Count
       score: 40
+      group: ByTime
   - MonthOfYearJoinDate:
-      title: Distribution by month of year
+      title: Distribution of join date by month of year
       visualization: bar
       dimensions:
         - JoinDate:
             aggregation: month-of-year
       metrics: Count
       score: 40
+      group: ByTime
   - QuerterOfYearJoinDate:
-      title: Distribution by quarter of year
+      title: Distribution of join date by quarter of year
       visualization: bar
       dimensions:
         - JoinDate:
             aggregation: quarter-of-year
       metrics: Count
       score: 40
+      group: ByTime
+# Special
   - Singleton:
       title: "[[Singleton]]"
-      visualization: scalar
+      visualization: bar
+      metrics: Count
       dimensions: Singleton
       score: 30
       height: 3

@@ -3,15 +3,15 @@ applies_to: GenericTable
 
 dimensions:
   - Number1:
-      field_type: Number
-      aggregation: default
+      field_type: Number      
   - Number2:
       field_type: Number
-      aggregation: default
 cards:
 - Correlation:
     title: Correlation between [[Number1]] and [[Number2]]
     visualization: scatter
     dimensions:
-      - Number1
-      - Number2
+      - Number1:
+          aggregation: default
+      - Number2:
+          aggregation: default
