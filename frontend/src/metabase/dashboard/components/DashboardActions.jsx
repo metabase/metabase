@@ -1,5 +1,5 @@
 import React from "react";
-
+import { t } from "c-3po";
 import Tooltip from "metabase/components/Tooltip";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
@@ -33,7 +33,7 @@ export const getDashboardActions = ({
 
   if (!isEditing && isFullscreen) {
     buttons.push(
-      <Tooltip tooltip={isNightMode ? "Daytime mode" : "Nighttime mode"}>
+      <Tooltip tooltip={isNightMode ? t`Daytime mode` : t`Nighttime mode`}>
         <span data-metabase-event={"Dashboard;Night Mode;" + !isNightMode}>
           <NightModeIcon
             className="text-brand-hover cursor-pointer"
@@ -49,7 +49,9 @@ export const getDashboardActions = ({
   if (!isEditing && !isEmpty) {
     // option click to enter fullscreen without making the browser go fullscreen
     buttons.push(
-      <Tooltip tooltip={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
+      <Tooltip
+        tooltip={isFullscreen ? t`Exit fullscreen` : t`Enter fullscreen`}
+      >
         <span
           data-metabase-event={"Dashboard;Fullscreen Mode;" + !isFullscreen}
         >

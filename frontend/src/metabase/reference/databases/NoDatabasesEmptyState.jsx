@@ -1,4 +1,4 @@
-import * as React from "react";
+import React from "react";
 import { t } from "c-3po";
 
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";

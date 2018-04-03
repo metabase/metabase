@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+import { CSSTransitionGroup } from "react-transition-group";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
@@ -259,7 +259,7 @@ export default class Popover extends Component {
     const popoverElement = this._getPopoverElement();
     ReactDOM.unstable_renderSubtreeIntoContainer(
       this,
-      <ReactCSSTransitionGroup
+      <CSSTransitionGroup
         transitionName="Popover"
         transitionAppear
         transitionEnter
@@ -269,7 +269,7 @@ export default class Popover extends Component {
         transitionLeaveTimeout={POPOVER_TRANSITION_LEAVE}
       >
         {isOpen ? this._popoverComponent() : null}
-      </ReactCSSTransitionGroup>,
+      </CSSTransitionGroup>,
       popoverElement,
     );
 

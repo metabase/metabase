@@ -164,6 +164,13 @@ export default class Visualization extends Component {
     }
   }
 
+  componentDidCatch(error, info) {
+    console.error("Error caught in <Visualization>", error, info);
+    this.setState({
+      error: new Error("An error occurred displaying this visualization."),
+    });
+  }
+
   // $FlowFixMe
   getWarnings(props = this.props, state = this.state) {
     let warnings = state.warnings || [];
