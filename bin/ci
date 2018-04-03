@@ -58,7 +58,7 @@ node-5() {
     run_step lein with-profile +ci eastwood
 
     run_step yarn run test-karma
-    run_step yarn run test-unit
+    run_step yarn run test-unit --coverage
     report-frontend-coverage
 }
 node-6() {

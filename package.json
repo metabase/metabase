@@ -157,7 +157,7 @@
     "lint-eslint": "eslint --ext .js --ext .jsx --max-warnings 0 frontend/src frontend/test",
     "lint-prettier": "prettier -l 'frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to run \"yarn run prettier\"?' && false)",
     "flow": "flow check",
-    "test": "yarn run test-unit --coverage && yarn run test-timezones && yarn run test-integrated && yarn run test-karma",
+    "test": "yarn run test-unit && yarn run test-timezones && yarn run test-integrated && yarn run test-karma",
     "test-integrated": "./frontend/test/__runner__/run_integrated_tests",
     "test-integrated-watch": "./frontend/test/__runner__/run_integrated_tests --watch",
     "test-unit": "jest --maxWorkers=8 --config jest.unit.conf.json",
