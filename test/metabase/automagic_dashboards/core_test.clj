@@ -123,7 +123,7 @@
                                          :latest   "2017"}}}}))
 
 (expect
-  :month
+  :hour
   (#'magic/optimal-datetime-resolution
    {:fingerprint {:type {:type/DateTime {:earliest "2017-01-01"
                                          :latest   "2017-01-02"}}}}))
