@@ -528,7 +528,8 @@
   [database]
   (let [rules (rules/load-rules "table")]
     (->> (db/select Table
-           :db_id (:id database)
+           :db_id           (:id database)
+           :schema          (:schema database)
            :visibility_type nil)
          (remove (some-fn link-table? list-like-table?))
          (keep (fn [table]

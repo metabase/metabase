@@ -138,28 +138,49 @@
                    :else                     nil)))
        distinct))
 
-(defn- valid-references?
-  "Check if all references to metrics, dimensions, and filters are valid (ie.
-   have a corresponding definition)."
-  [{:keys [metrics dimensions filters cards groups dashboard_filters] :as rule}]
-  (let [defined-dimensions (identifiers dimensions)
-        defined-metrics    (identifiers metrics)
-        defined-filters    (identifiers filters)]
-    (and (every? defined-metrics (all-references :metrics cards))
-         (every? defined-filters (all-references :filters cards))
-         (every? groups (keep (comp :group val first) cards))
-         (every? (comp (into defined-dimensions defined-metrics) identifier)
-                 (all-references :order_by cards))
-         (every? (some-fn defined-dimensions (comp table-type? ->entity))
-                 (collect-dimensions rule))
-         (every? defined-dimensions dashboard_filters)
-         (->> cards
-              (all-references :dimensions)
-              (map identifier)
-              (every? defined-dimensions)))))
+(defn- valid-metrics-references?
+  [{:keys [metrics cards]}]
+  (every? (identifiers metrics) (all-references :metrics cards)))
+
+(defn- valid-filters-references?  
+  [{:keys [filters cards]}]
+  (every? (identifiers filters) (all-references :filters cards)))
+
+(defn- valid-group-references?
+  [{:keys [cards groups]}]
+  (every? groups (keep (comp :group val first) cards)))
+
+(defn- valid-order-by-references?  
+  [{:keys [dimensions metrics cards]}]
+  (every? (comp (into (identifiers dimensions)
+                      (identifiers metrics))
+                identifier)
+          (all-references :order_by cards)))
+
+(defn- valid-dimension-references?
+  [{:keys [dimensions] :as rule}]
+  (every? (some-fn (identifiers dimensions) (comp table-type? ->entity))
+          (collect-dimensions rule)))
+
+(defn- valid-dashboard-filters-references?  
+  [{:keys [dimensions dashboard_filters]}]
+  (every? (identifiers dimensions) dashboard_filters))
+
+(defn- valid-breakout-dimension-references?
+  [{:keys [cards dimensions]}]
+  (->> cards
+       (all-references :dimensions)
+       (map identifier)
+       (every? (identifiers dimensions))))
+
+(defn- constrained-all
+  [schema & constraints]
+  (reduce (partial apply s/constrained)
+          schema
+          (partition 2 constraints)))
 
 (def ^:private Rules
-  (s/constrained
+  (constrained-all
    {(s/required-key :title)             s/Str
     (s/required-key :dimensions)        [Dimension]
     (s/required-key :cards)             [Card]
@@ -171,7 +192,13 @@
     (s/optional-key :groups)            Groups
     (s/optional-key :indepth)           [s/Any]
     (s/optional-key :dashboard_filters) [s/Str]}
-   valid-references? "Valid references"))
+   valid-metrics-references?            "Valid metrics references"
+   valid-filters-references?            "Valid filters references"
+   valid-group-references?              "Valid group references"
+   valid-order-by-references?           "Valid order_by references"
+   valid-dashboard-filters-references?  "Valid dashboard filters references"
+   valid-dimension-references?          "Valid dimension references"
+   valid-breakout-dimension-references? "Valid card dimension references"))
 
 (defn- with-defaults
   [defaults]
