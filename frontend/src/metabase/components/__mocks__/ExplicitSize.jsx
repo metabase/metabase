@@ -1,0 +1,7 @@
+import React from "react";
+
+const ExplicitSize = ComposedComponent => props => (
+  <ComposedComponent width={1000} height={1000} {...props} />
+);
+
+export default ExplicitSize;
