@@ -8,7 +8,7 @@ import chronological from "chronological";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
-import { parseTimestamp, guessTimezone } from "metabase/lib/time";
+import { guessTimezone } from "metabase/lib/time";
 
 import { computeTimeseriesTicksInterval } from "./timeseries";
 import { getFriendlyName } from "./utils";

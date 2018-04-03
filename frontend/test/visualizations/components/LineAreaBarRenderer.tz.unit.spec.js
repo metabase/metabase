@@ -1,15 +1,12 @@
 import "__support__/mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
 
-import MockDate from "mockdate";
 import _ from "underscore";
 import moment from "moment-timezone";
 
 import {
   NumberColumn,
-  StringColumn,
   DateTimeColumn,
   dispatchUIEvent,
-  initFixtureElement,
 } from "../__support__/visualizations";
 
 import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
@@ -88,23 +85,6 @@ describe("LineAreaBarRenderer-bar", () => {
     process.env["METABASE_TEST_TIMEZONES"] || "America/Los_Angeles"
   ).split(" ");
 
-  // NOTE: for now only run with current time of "now" since the others seem to
-  // fail identically. Re-enable if we find frontend bugs that depend on the
-  // current time of year.
-  // [
-  //   null, // now
-  //   new Date(2016, 0, 1), // 2016-01-01
-  //   new Date(2016, 5, 1), // 2016-06-01
-  // ].map(onDate => {
-  //   beforeAll(() => {
-  //     if (onDate) {
-  //       MockDate.set(onDate);
-  //     }
-  //   });
-  //   afterAll(() => {
-  //     MockDate.reset();
-  //   });
-  //   describe(onDate ? `on date ${onDate}` : "now", () => {
   describe(`client timezone ${clientTz}`, () => {
     reportTzs.map(reportTz => {
       describe(`report timezone ${reportTz}`, () => {
@@ -208,8 +188,6 @@ describe("LineAreaBarRenderer-bar", () => {
       });
     });
   });
-  //   });
-  // });
 });
 
 const DEFAULT_SETTINGS = {
