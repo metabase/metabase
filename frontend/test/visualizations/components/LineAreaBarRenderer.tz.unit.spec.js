@@ -21,7 +21,65 @@ const HEIGHT = 1000;
 
 describe("LineAreaBarRenderer-bar", () => {
   let element;
+  let onHoverChange;
+
   const qsa = selector => [...element.querySelectorAll(selector)];
+
+  function setupFixture() {
+    document.body.style.width = `${WIDTH}px`;
+    document.body.style.height = `${HEIGHT}px`;
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      `<div id="fixture" style="height: ${HEIGHT}px; width: ${WIDTH}px;">`,
+    );
+    element = document.getElementById("fixture");
+  }
+
+  function teardownFixture() {
+    document.body.removeChild(element);
+  }
+
+  const activateTooltips = () =>
+    qsa(".bar").map(bar => dispatchUIEvent(bar, "mousemove"));
+
+  const getXAxisLabelsText = () =>
+    qsa(".axis.x .tick text").map(t => t.textContent);
+  const getTooltipDimensionValueText = () =>
+    onHoverChange.mock.calls.map(([{ data }]) =>
+      formatValue(data[0].value, {
+        column: data[0].col,
+      }),
+    );
+
+  const getSVGElementMiddle = element => {
+    return (
+      parseFloat(element.getAttribute("x")) +
+      parseFloat(element.getAttribute("width")) / 2
+    );
+  };
+  const getSVGElementTransformMiddle = element => {
+    const transform = element.getAttribute("transform");
+    const match = transform.match(/translate\(([0-9\.]+)/);
+    return parseFloat(match[1]);
+  };
+
+  const MAX_DELTA = 0;
+
+  const getClosestLabelText = bar => {
+    // get the horizontal center of the target element
+    const barCenter = getSVGElementMiddle(bar);
+    let closest;
+    let minDelta = Infinity;
+    for (const label of qsa(".axis.x .tick")) {
+      const labelCenter = getSVGElementTransformMiddle(label);
+      const delta = Math.abs(barCenter - labelCenter);
+      if (delta < minDelta) {
+        closest = label;
+        minDelta = delta;
+      }
+    }
+    return closest && minDelta <= MAX_DELTA ? closest.textContent : null;
+  };
 
   // run_timezone_tests sets "TZ" environment variable to change the timezone
   const clientTz = process.env["TZ"] || "[default]";
@@ -33,125 +91,125 @@ describe("LineAreaBarRenderer-bar", () => {
   // NOTE: for now only run with current time of "now" since the others seem to
   // fail identically. Re-enable if we find frontend bugs that depend on the
   // current time of year.
-  [
-    null, // now
-    // new Date(2016, 0, 1), // 2016-01-01
-    // new Date(2016, 5, 1), // 2016-06-01
-  ].map(onDate => {
-    beforeAll(() => {
-      if (onDate) {
-        MockDate.set(onDate);
-      }
-    });
-    afterAll(() => {
-      MockDate.reset();
-    });
-    describe(onDate ? `on date ${onDate}` : "now", () => {
-      describe(`client timezone ${clientTz}`, () => {
-        reportTzs.map(reportTz => {
-          describe(`report timezone ${reportTz}`, () => {
-            const rows = generateRowsInTz(reportTz);
+  // [
+  //   null, // now
+  //   new Date(2016, 0, 1), // 2016-01-01
+  //   new Date(2016, 5, 1), // 2016-06-01
+  // ].map(onDate => {
+  //   beforeAll(() => {
+  //     if (onDate) {
+  //       MockDate.set(onDate);
+  //     }
+  //   });
+  //   afterAll(() => {
+  //     MockDate.reset();
+  //   });
+  //   describe(onDate ? `on date ${onDate}` : "now", () => {
+  describe(`client timezone ${clientTz}`, () => {
+    reportTzs.map(reportTz => {
+      describe(`report timezone ${reportTz}`, () => {
+        const rows = generateRowsInTz(reportTz);
+        console.log(rows.map(row => row[0]).join("\n"));
 
-            sharedTests(rows.slice(0, 2), "points in standard time");
-            sharedTests(rows.slice(6, 8), "points in daylights saving time");
-            sharedTests(
-              rows.slice(2, 4),
-              "point starting in standard time, ending in daylights saving time",
-            );
-            sharedTests(
-              rows.slice(10, 12),
-              "points starting in daylights saving time, ending in standard time",
-            );
-            sharedTests(rows, "all points");
+        sharedMonthTests(rows.slice(0, 2), "months in standard time");
+        sharedMonthTests(rows.slice(6, 8), "months in daylights saving time");
+        sharedMonthTests(
+          rows.slice(2, 4),
+          "months starting in standard time, ending in daylights saving time",
+        );
+        sharedMonthTests(
+          rows.slice(10, 12),
+          "months starting in daylights saving time, ending in standard time",
+        );
+        sharedMonthTests(rows, "all months");
 
-            function sharedTests(rows, description) {
-              let onHoverChange;
+        sharedIntervalTests("hour", "h A - MMMM D, YYYY");
+        sharedIntervalTests("day", "MMMM D, YYYY");
+        // sharedIntervalTests("week", "wo - gggg"); // weeks have differing formats for ticks and tooltips, disable this test for now
+        sharedIntervalTests("month", "MMMM YYYY");
+        sharedIntervalTests("quarter", "[Q]Q - YYYY");
+        sharedIntervalTests("year", "YYYY");
 
-              const getXAxisLabelsText = () =>
-                qsa(".axis.x .tick text").map(t => t.textContent);
-              const getTooltipDimensionValueText = () =>
-                onHoverChange.mock.calls.map(([{ data }]) =>
-                  formatValue(data[0].value, {
-                    column: data[0].col,
-                  }),
-                );
+        function sharedMonthTests(rows, description) {
+          describe(`with ${description}`, () => {
+            beforeAll(() => {
+              setupFixture();
+              onHoverChange = jest.fn();
+              renderTimeseries(element, "month", rows, { onHoverChange });
+              // hover each bar to trigger onHoverChange
+              activateTooltips();
+            });
+            afterAll(teardownFixture);
 
-              const getSVGElementMiddle = element => {
-                return (
-                  parseFloat(element.getAttribute("x")) +
-                  parseFloat(element.getAttribute("width")) / 2
-                );
-              };
-              const getSVGElementTransformMiddle = element => {
-                const transform = element.getAttribute("transform");
-                const match = transform.match(/translate\(([0-9\.]+)/);
-                return parseFloat(match[1]);
-              };
-
-              const getClosestLabelText = bar => {
-                // get the horizontal center of the target element
-                const barCenter = getSVGElementMiddle(bar);
-                let closest;
-                let minDelta = Infinity;
-                for (const label of qsa(".axis.x .tick")) {
-                  const labelCenter = getSVGElementTransformMiddle(label);
-                  const delta = Math.abs(barCenter - labelCenter);
-                  if (delta < minDelta) {
-                    closest = label;
-                    minDelta = delta;
-                  }
-                }
-                return closest && closest.textContent;
-              };
-
-              describe(description, () => {
-                beforeAll(function() {
-                  document.body.style.width = `${WIDTH}px`;
-                  document.body.style.height = `${HEIGHT}px`;
-                  document.body.insertAdjacentHTML(
-                    "afterbegin",
-                    `<div id="fixture" style="height: ${HEIGHT}px; width: ${WIDTH}px;">`,
-                  );
-                  element = document.getElementById("fixture");
-                  onHoverChange = jest.fn();
-                  renderTimeseries(element, "month", rows, { onHoverChange });
-                });
-                afterAll(function() {
-                  document.body.removeChild(element);
-                });
-                it("should have sequential months in labels", () => {
-                  // check that the labels are sequential months
-                  assertSequentialMonths(getXAxisLabelsText());
-                });
-                it("should have sequential months in tooltips", () => {
-                  // hover each bar to trigger onHoverChange
-                  qsa(".bar").map(bar => dispatchUIEvent(bar, "mousemove"));
-                  // check that the resulting tooltips are sequential
-                  assertSequentialMonths(getTooltipDimensionValueText());
-                  // check that the number of tooltips matches the number of rows
-                  expect(getTooltipDimensionValueText().length).toBe(
-                    rows.length,
-                  );
-                });
-                it("should have tooltips that match source data", () => {
-                  expect(getTooltipDimensionValueText()).toEqual(
-                    rows.map(([timestamp]) =>
-                      moment.tz(timestamp, reportTz).format("MMMM YYYY"),
-                    ),
-                  );
-                });
-                it("should have labels that match tooltips", () => {
-                  expect(qsa(".bar").map(getClosestLabelText)).toEqual(
-                    getTooltipDimensionValueText(),
-                  );
-                });
-              });
-            }
+            it("should have sequential months in labels", () => {
+              // check that the labels are sequential months
+              assertSequentialMonths(getXAxisLabelsText());
+            });
+            it("should have sequential months in tooltips", () => {
+              // check that the resulting tooltips are sequential
+              assertSequentialMonths(getTooltipDimensionValueText());
+              // check that the number of tooltips matches the number of rows
+              expect(getTooltipDimensionValueText().length).toBe(rows.length);
+            });
+            it("should have tooltips that match source data", () => {
+              expect(getTooltipDimensionValueText()).toEqual(
+                rows.map(([timestamp]) =>
+                  moment.tz(timestamp, reportTz).format("MMMM YYYY"),
+                ),
+              );
+            });
+            it("should have labels that match tooltips", () => {
+              expect(qsa(".bar").map(getClosestLabelText)).toEqual(
+                getTooltipDimensionValueText(),
+              );
+            });
           });
-        });
+        }
+
+        function sharedIntervalTests(interval, expectedFormat) {
+          describe(`with ${interval}s`, () => {
+            const rows = [
+              [
+                moment()
+                  .tz(reportTz)
+                  .startOf(interval),
+                1,
+              ],
+              [
+                moment()
+                  .tz(reportTz)
+                  .startOf(interval)
+                  .add(1, interval),
+                1,
+              ],
+            ];
+            beforeAll(() => {
+              setupFixture();
+              onHoverChange = jest.fn();
+              renderTimeseries(element, interval, rows, { onHoverChange });
+              // hover each bar to trigger onHoverChange
+              activateTooltips();
+            });
+            afterAll(teardownFixture);
+            it("should have tooltips that match source data", () => {
+              expect(getTooltipDimensionValueText()).toEqual(
+                rows.map(([timestamp]) =>
+                  moment.tz(timestamp, reportTz).format(expectedFormat),
+                ),
+              );
+            });
+            it("should have labels that match tooltips", () => {
+              expect(qsa(".bar").map(getClosestLabelText)).toEqual(
+                getTooltipDimensionValueText(),
+              );
+            });
+          });
+        }
       });
     });
   });
+  //   });
+  // });
 });
 
 const DEFAULT_SETTINGS = {
@@ -225,7 +283,8 @@ function generateRowsInTz(tz) {
     moment("2016-01-01")
       .tz(tz)
       .startOf("month")
-      .add(month, "months"),
+      .add(month, "months")
+      .format(),
     0,
   ]);
 }

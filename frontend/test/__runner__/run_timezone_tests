@@ -24,10 +24,10 @@ for tz in $tzs; do
   echo "Running unit tests in timezone $tz"
   if TZ="$tz" METABASE_TEST_TIMEZONES="$tzs" yarn run test-unit tz.unit; then
     passed="$passed $tz"
-    results="$results ✓ $tz\n"
+    results="$results \e[32m✓\e[0m $tz\n"
   else
     failed="$failed $tz"
-    results="$results ✕ $tz\n"
+    results="$results \e[31m✕\e[0m $tz\n"
   fi
 done
 

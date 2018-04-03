@@ -1815,6 +1815,10 @@ chownr@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/chownr/-/chownr-1.0.1.tgz#e2a75042a9551908bebd25b8523d5f9769d79181"
 
+chronological@^1.3.1:
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/chronological/-/chronological-1.3.1.tgz#4a5a4941b98e8d230c892bdcdd1adce98cc883fd"
+
 ci-info@^1.0.0:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/ci-info/-/ci-info-1.1.1.tgz#47b44df118c48d2597b56d342e7e25791060171a"
