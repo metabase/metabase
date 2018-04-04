@@ -15,41 +15,89 @@
 
 ;;; ------------------------------------------ basic parser tests ------------------------------------------
 
-(expect
-  [:SQL "select * from foo where bar=1"]
-  (#'sql/sql-template-parser "select * from foo where bar=1"))
+(defn- parse-template
+  ([sql]
+   (parse-template sql {}))
+  ([sql param-key->value]
+   (binding [metabase.query-processor.middleware.parameters.sql/*driver* (driver/engine->driver :h2)]
+     (#'sql/parse-template sql param-key->value))))
 
 (expect
-  [:SQL "select * from foo where bar=" [:PARAM "baz"]]
-  (#'sql/sql-template-parser "select * from foo where bar={{baz}}"))
+  {:query "select * from foo where bar=1"
+   :params []}
+  (parse-template "select * from foo where bar=1"))
 
 (expect
-  [:SQL "select * from foo " [:OPTIONAL "where bar = " [:PARAM "baz"] " "]]
-  (#'sql/sql-template-parser "select * from foo [[where bar = {{baz}} ]]"))
+  {:query "select * from foo where bar=?"
+   :params ["foo"]}
+  (parse-template "select * from foo where bar={{baz}}" {:baz "foo"}))
 
 (expect
-  [:SQL "select * from foobars "
-   [:OPTIONAL " where foobars.id in (string_to_array(" [:PARAM "foobar_id"] ", ',')::integer" "[" "]" ") "]]
-  (#'sql/sql-template-parser "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"))
+  {:query "select * from foo where bar = ?"
+   :params ["foo"]}
+  (parse-template "select * from foo [[where bar = {{baz}} ]]" {:baz "foo"}))
+
+;; Multiple optional clauses, all present
+(expect
+  {:query "select * from foo where bar1 = ? and bar2 = ? and bar3 = ? and bar4 = ?"
+   :params (repeat 4 "foo")}
+  (parse-template (str "select * from foo where bar1 = {{baz}} "
+                       "[[and bar2 = {{baz}}]] "
+                       "[[and bar3 = {{baz}}]] "
+                       "[[and bar4 = {{baz}}]]")
+                  {:baz "foo"}))
+
+;; Multiple optional clauses, none present
+(expect
+  {:query "select * from foo where bar1 = ?"
+   :params ["foo"]}
+  (parse-template (str "select * from foo where bar1 = {{baz}} "
+                       "[[and bar2 = {{none}}]] "
+                       "[[and bar3 = {{none}}]] "
+                       "[[and bar4 = {{none}}]]")
+                  {:baz "foo"}))
 
 (expect
-  [:SQL
-   "SELECT " "[" "test_data.checkins.venue_id" "]" " AS " "[" "venue_id" "]"
-   ",        " "[" "test_data.checkins.user_id" "]" " AS " "[" "user_id" "]"
-   ",        " "[" "test_data.checkins.id" "]" " AS " "[" "checkins_id" "]"
-   " FROM " "[" "test_data.checkins" "]" " LIMIT 2"]
-  (-> (str "SELECT [test_data.checkins.venue_id] AS [venue_id], "
-             "       [test_data.checkins.user_id] AS [user_id], "
-             "       [test_data.checkins.id] AS [checkins_id] "
-             "FROM [test_data.checkins] "
-             "LIMIT 2")
-      (#'sql/sql-template-parser)
-      (update 1 #(apply str %))))
+  {:query "select * from foobars  where foobars.id in (string_to_array(?, ',')::integer[])"
+   :params ["foo"]}
+  (parse-template "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"
+                  {:foobar_id "foo"}))
+
+(expect
+  {:query (str "SELECT [test_data.checkins.venue_id] AS [venue_id], "
+               "       [test_data.checkins.user_id] AS [user_id], "
+               "       [test_data.checkins.id] AS [checkins_id] "
+               "FROM [test_data.checkins] "
+               "LIMIT 2")
+   :params []}
+  (parse-template (str "SELECT [test_data.checkins.venue_id] AS [venue_id], "
+                       "       [test_data.checkins.user_id] AS [user_id], "
+                       "       [test_data.checkins.id] AS [checkins_id] "
+                       "FROM [test_data.checkins] "
+                       "LIMIT 2")))
 
 ;; Valid syntax in PG
 (expect
-  [:SQL "SELECT array_dims(1 || '" "[" "0:1" "]" "=" "{" "2,3" "}" "'::int" "[" "]" ")"]
-  (#'sql/sql-template-parser "SELECT array_dims(1 || '[0:1]={2,3}'::int[])"))
+  {:query "SELECT array_dims(1 || '[0:1]={2,3}'::int[])"
+   :params []}
+  (parse-template "SELECT array_dims(1 || '[0:1]={2,3}'::int[])"))
+
+;; Testing that invalid/unterminated template params/clauses throw an exception
+(expect
+  java.lang.IllegalArgumentException
+  (parse-template "select * from foo [[where bar = {{baz}} " {:baz "foo"}))
+
+(expect
+  java.lang.IllegalArgumentException
+  (parse-template "select * from foo [[where bar = {{baz]]" {:baz "foo"}))
+
+(expect
+  java.lang.IllegalArgumentException
+  (parse-template "select * from foo {{bar}} {{baz" {:bar "foo" :baz "foo"}))
+
+(expect
+  java.lang.IllegalArgumentException
+  (parse-template "select * from foo [[clause 1 {{bar}}]] [[clause 2" {:bar "foo"}))
 
 ;;; ------------------------------------------ simple substitution -- {{x}} ------------------------------------------
 
