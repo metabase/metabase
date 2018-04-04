@@ -24,8 +24,8 @@
              table]
             [metabase.sync.interface :as si]
             [metabase.util :as u]
-            [schema.core :as s]
             [puppetlabs.i18n.core :refer [tru]]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.Keyword
            java.text.SimpleDateFormat

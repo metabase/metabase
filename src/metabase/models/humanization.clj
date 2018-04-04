@@ -113,8 +113,8 @@
   (re-humanize-table-and-field-names!))
 
 (defsetting ^{:added "0.28.0"} humanization-strategy
-  (tru "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g.
-  \"somehorriblename\" becomes \"Some Horrible Name\". This doesn’t work all that well if the names are in a language
-  other than English, however. Do you want us to take a guess?")
+  (str (tru "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\".")
+       (tru "This doesn’t work all that well if the names are in a language other than English, however.")
+       (tru "Do you want us to take a guess?"))
   :default "advanced"
   :setter  set-humanization-strategy!)

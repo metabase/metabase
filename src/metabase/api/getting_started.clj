@@ -9,7 +9,7 @@
             [toucan.db :as db]))
 
 (defsetting getting-started-things-to-know
-  (tru "'Some things to know' text field for the Getting Started guide."))
+  (tru "''Some things to know'' text field for the Getting Started guide."))
 
 (defsetting getting-started-contact-name
   (tru "Name of somebody users can contact for help in the Getting Started guide."))

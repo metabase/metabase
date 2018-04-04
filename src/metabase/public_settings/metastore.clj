@@ -6,10 +6,10 @@
             [clj-http.client :as client]
             [environ.core :refer [env]]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [puppetlabs.i18n.core :refer [tru]]
             [metabase.config :as config]
             [metabase.util :as u]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]))
 
 (def ^:private ValidToken

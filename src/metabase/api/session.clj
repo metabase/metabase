@@ -19,9 +19,9 @@
             [metabase.util
              [password :as pass]
              [schema :as su]]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [throttle.core :as throttle]
-            [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db]))
 
 (defn- create-session!
