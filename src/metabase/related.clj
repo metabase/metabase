@@ -188,7 +188,7 @@
        (m/distinct-by :collection_id)
        interesting-mix
        (keep (comp Collection :collection_id))
-       (filter mi/can-read?)))
+       (filter (every-pred (comp false? :archived) mi/can-read?))))
 
 (defmulti
   ^{:doc "Return related entities."
