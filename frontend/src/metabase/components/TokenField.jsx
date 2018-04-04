@@ -536,11 +536,8 @@ export default class TokenField extends Component {
     const valuesList = (
       <ul
         className={cx(
-          "m1 p0 pb1 bordered rounded flex flex-wrap bg-white scroll-x scroll-y",
+          "m1 p0 pb1 flex flex-wrap bg-white scroll-x scroll-y",
           inputBoxClasses,
-          {
-            [`border-grey-2`]: this.state.isFocused,
-          },
         )}
         style={this.props.style}
         onMouseDownCapture={this.onMouseDownCapture}
@@ -590,7 +587,7 @@ export default class TokenField extends Component {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className="ml1 scroll-y scroll-show"
+          className="pl1 pt2 scroll-y scroll-show border-top"
           style={{ maxHeight: 300 }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
