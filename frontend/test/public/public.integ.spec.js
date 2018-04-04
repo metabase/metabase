@@ -488,7 +488,7 @@ describe("public/embedded", () => {
 
       const settings = await SettingsApi.list();
       const secretKey = _.findWhere(settings, { key: "embedding-secret-key" })
-                         .value;
+        .value;
 
       const token = jwt.sign(
         {
