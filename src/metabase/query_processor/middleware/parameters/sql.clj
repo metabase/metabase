@@ -89,15 +89,16 @@
    (s/optional-key :default)     s/Any})
 
 (def ^:private DimensionValue
-  {:type                   su/NonBlankString
-   :target                 s/Any
+  {:type                     su/NonBlankString
+   :target                   s/Any
    ;; not specified if the param has no value. TODO - make this stricter
-   (s/optional-key :value) s/Any
+   (s/optional-key :value)   s/Any
    ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
    ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
-   (s/optional-key :slug) su/NonBlankString
-   (s/optional-key :name) su/NonBlankString
-   (s/optional-key :id)   s/Any}) ; used internally by the frontend
+   (s/optional-key :slug)    su/NonBlankString
+   (s/optional-key :name)    su/NonBlankString
+   (s/optional-key :default) s/Any
+   (s/optional-key :id)      s/Any}) ; used internally by the frontend
 
 (def ^:private SingleValue
   "Schema for a valid *single* value for a param. As of 0.28.0 params can either be single-value or multiple value."
