@@ -4,6 +4,7 @@
             [compojure.core :refer [GET]]
             [metabase.api.common :refer [defendpoint define-routes]]
             [metabase.models.setting :as setting :refer [defsetting]]
+            [puppetlabs.i18n.core :refer [tru]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -63,8 +64,8 @@
                      :builtin     true}})
 
 (defsetting custom-geojson
-  "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US
-  State or World GeoJSON."
+  (tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US
+  State or World GeoJSON.")
   :type    :json
   :default {}
   :getter  (fn [] (merge (setting/get-json :custom-geojson) builtin-geojson))

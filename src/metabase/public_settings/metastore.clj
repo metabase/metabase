@@ -6,6 +6,7 @@
             [clj-http.client :as client]
             [environ.core :refer [env]]
             [metabase.models.setting :as setting :refer [defsetting]]
+            [puppetlabs.i18n.core :refer [tru]]
             [metabase.config :as config]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -83,7 +84,7 @@
 
 ;; TODO - better docstring
 (defsetting premium-embedding-token
-  "Token for premium embedding. Go to the MetaStore to get yours!"
+  (tru "Token for premium embedding. Go to the MetaStore to get yours!")
   :setter (fn [new-value]
             ;; validate the new value if we're not unsetting it
             (try
