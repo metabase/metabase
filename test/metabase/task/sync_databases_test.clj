@@ -1,10 +1,11 @@
 (ns metabase.task.sync-databases-test
-  "Tests for the logic behind scheduling the various sync operations of Databases. Most of the actual logic we're testing is part of `metabase.models.database`,
-   so there's an argument to be made that these sorts of tests could just as easily belong to a `database-test` namespace."
+  "Tests for the logic behind scheduling the various sync operations of Databases. Most of the actual logic we're
+  testing is part of `metabase.models.database`, so there's an argument to be made that these sorts of tests could
+  just as easily belong to a `database-test` namespace."
   (:require [clojure.string :as str]
             [expectations :refer :all]
             [metabase.models.database :refer [Database]]
-            metabase.task.sync-databases
+            [metabase.task.sync-databases :as sync-db]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -19,48 +20,51 @@
          (-> task
              (update :description replace-trailing-id-with-<id>)
              (update :key replace-trailing-id-with-<id>)
-             (update-in [:data "db-id"] class)
              (update :triggers (fn [triggers]
                                  (vec (for [trigger triggers]
-                                        (update trigger :key replace-trailing-id-with-<id>)))))))))
+                                        (-> trigger
+                                            (update    :key  replace-trailing-id-with-<id>)
+                                            (update-in [:data "db-id"] replace-trailing-id-with-<id>))))))))))
 
 (defn- current-tasks []
   (replace-ids-with-<id> (tu/scheduler-current-tasks)))
 
+(defmacro ^:private with-scheduler-setup [& body]
+  `(tu/with-temp-scheduler
+     (#'sync-db/job-init)
+     ~@body))
+
+(def ^:private sync-job
+  {:description "sync-and-analyze for all databases"
+   :class       SyncAndAnalyzeDatabase
+   :key         "metabase.task.sync-and-analyze.job"
+   :data        {}
+   :triggers    [{:key           "metabase.task.sync-and-analyze.trigger.<id>"
+                  :cron-schedule "0 50 * * * ? *"
+                  :data          {"db-id" "<id>"}}]})
+
+(def ^:private fv-job
+  {:description "update-field-values for all databases"
+   :class       UpdateFieldValues
+   :key         "metabase.task.update-field-values.job"
+   :data        {}
+   :triggers    [{:key           "metabase.task.update-field-values.trigger.<id>"
+                  :cron-schedule "0 50 0 * * ? *"
+                  :data          {"db-id" "<id>"}}]})
+
 ;; Check that a newly created database automatically gets scheduled
 (expect
-  [{:description "sync-and-analyze Database <id>"
-    :class       SyncAndAnalyzeDatabase
-    :key         "metabase.task.sync-and-analyze.job.<id>"
-    :data        {"db-id" Integer}
-    :triggers    [{:key           "metabase.task.sync-and-analyze.trigger.<id>"
-                   :cron-schedule "0 50 * * * ? *"}]}
-   {:description "update-field-values Database <id>"
-    :class       UpdateFieldValues
-    :key         "metabase.task.update-field-values.job.<id>"
-    :data        {"db-id" Integer}
-    :triggers    [{:key           "metabase.task.update-field-values.trigger.<id>"
-                   :cron-schedule "0 50 0 * * ? *"}]}]
-  (tu/with-temp-scheduler
+  [sync-job fv-job]
+  (with-scheduler-setup
     (tt/with-temp Database [database {:engine :postgres}]
       (current-tasks))))
 
 
 ;; Check that a custom schedule is respected when creating a new Database
 (expect
-  [{:description "sync-and-analyze Database <id>"
-    :class       SyncAndAnalyzeDatabase
-    :key         "metabase.task.sync-and-analyze.job.<id>"
-    :data        {"db-id" Integer}
-    :triggers    [{:key           "metabase.task.sync-and-analyze.trigger.<id>"
-                   :cron-schedule "0 30 4,16 * * ? *"}]}
-   {:description "update-field-values Database <id>"
-    :class       UpdateFieldValues
-    :key         "metabase.task.update-field-values.job.<id>"
-    :data        {"db-id" Integer}
-    :triggers    [{:key           "metabase.task.update-field-values.trigger.<id>"
-                   :cron-schedule "0 15 10 ? * 6#3"}]}]
-  (tu/with-temp-scheduler
+  [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 30 4,16 * * ? *")
+   (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 15 10 ? * 6#3")]
+  (with-scheduler-setup
     (tt/with-temp Database [database {:engine                      :postgres
                                       :metadata_sync_schedule      "0 30 4,16 * * ? *" ; 4:30 AM and PM daily
                                       :cache_field_values_schedule "0 15 10 ? * 6#3"}] ; 10:15 on the 3rd Friday of the Month
@@ -69,67 +73,38 @@
 
 ;; Check that a deleted database gets unscheduled
 (expect
-  []
-  (tu/with-temp-scheduler
+  [(update sync-job :triggers empty)
+   (update fv-job   :triggers empty)]
+  (with-scheduler-setup
     (tt/with-temp Database [database {:engine :postgres}]
       (db/delete! Database :id (u/get-id database))
       (current-tasks))))
 
 ;; Check that changing the schedule column(s) for a DB properly updates the scheduled tasks
 (expect
-  [{:description "sync-and-analyze Database <id>"
-    :class       SyncAndAnalyzeDatabase
-    :key         "metabase.task.sync-and-analyze.job.<id>"
-    :data        {"db-id" Integer}
-    :triggers    [{:key           "metabase.task.sync-and-analyze.trigger.<id>"
-                   :cron-schedule "0 15 10 ? * MON-FRI"}]}
-   {:description "update-field-values Database <id>"
-    :class       UpdateFieldValues
-    :key         "metabase.task.update-field-values.job.<id>"
-    :data        {"db-id" Integer}
-    :triggers    [{:key           "metabase.task.update-field-values.trigger.<id>"
-                   :cron-schedule "0 11 11 11 11 ?"}]}]
-  (tu/with-temp-scheduler
+  [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
+   (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 11 11 11 11 ?")]
+  (with-scheduler-setup
     (tt/with-temp Database [database {:engine :postgres}]
       (db/update! Database (u/get-id database)
         :metadata_sync_schedule      "0 15 10 ? * MON-FRI" ; 10:15 AM every weekday
-        :cache_field_values_schedule "0 11 11 11 11 ?") ; Every November 11th at 11:11 AM
+        :cache_field_values_schedule "0 11 11 11 11 ?")    ; Every November 11th at 11:11 AM
       (current-tasks))))
 
 ;; Check that changing one schedule doesn't affect the other
 (expect
-  [{:description "sync-and-analyze Database <id>"
-    :class       SyncAndAnalyzeDatabase
-    :key         "metabase.task.sync-and-analyze.job.<id>"
-    :data        {"db-id" Integer}
-    :triggers    [{:key           "metabase.task.sync-and-analyze.trigger.<id>"
-                   :cron-schedule "0 50 * * * ? *"}]}
-   {:description "update-field-values Database <id>"
-    :class       UpdateFieldValues
-    :key         "metabase.task.update-field-values.job.<id>"
-    :data        {"db-id" Integer}
-    :triggers    [{:key           "metabase.task.update-field-values.trigger.<id>"
-                   :cron-schedule "0 15 10 ? * MON-FRI"}]}]
-  (tu/with-temp-scheduler
+  [sync-job
+   (assoc-in fv-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")]
+  (with-scheduler-setup
     (tt/with-temp Database [database {:engine :postgres}]
       (db/update! Database (u/get-id database)
         :cache_field_values_schedule "0 15 10 ? * MON-FRI")
       (current-tasks))))
 
 (expect
-  [{:description "sync-and-analyze Database <id>"
-    :class       SyncAndAnalyzeDatabase
-    :key         "metabase.task.sync-and-analyze.job.<id>"
-    :data        {"db-id" Integer}
-    :triggers    [{:key           "metabase.task.sync-and-analyze.trigger.<id>"
-                   :cron-schedule "0 15 10 ? * MON-FRI"}]}
-   {:description "update-field-values Database <id>"
-    :class       UpdateFieldValues
-    :key         "metabase.task.update-field-values.job.<id>"
-    :data        {"db-id" Integer}
-    :triggers    [{:key           "metabase.task.update-field-values.trigger.<id>"
-                   :cron-schedule "0 50 0 * * ? *"}]}]
-  (tu/with-temp-scheduler
+  [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
+   fv-job]
+  (with-scheduler-setup
     (tt/with-temp Database [database {:engine :postgres}]
       (db/update! Database (u/get-id database)
         :metadata_sync_schedule "0 15 10 ? * MON-FRI")
@@ -171,7 +146,7 @@
     (with-redefs [metabase.sync.sync-metadata/sync-db-metadata!   (fn [& _] (swap! sync-db-metadata-counter inc))
                   metabase.sync.analyze/analyze-db!               (fn [& _] (swap! analyze-db-counter inc))
                   metabase.sync.field-values/update-field-values! (fn [& _] (swap! update-field-values-counter inc))]
-      (tu/with-temp-scheduler
+      (with-scheduler-setup
         (tt/with-temp Database [database db-info]
           ;; give tasks some time to run
           (Thread/sleep 2000)

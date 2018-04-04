@@ -4,9 +4,11 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [metabase
+             [config :as config]
              [http-client :as http]
              [query-processor-test :as qp-test]
              [util :as u]]
+            [metabase.api.public :as public-api]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
@@ -22,7 +24,7 @@
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
-;;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
+;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defn count-of-venues-card []
   {:dataset_query {:database (data/id)
@@ -43,7 +45,14 @@
          ~@body))))
 
 (defmacro ^:private with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
-  `(let [dashboard-settings# (merge (shared-obj) ~dashboard)]
+  `(let [dashboard-settings# (merge
+                              {:parameters [{:name    "Venue ID"
+                                             :slug    "venue_id"
+                                             :type    "id"
+                                             :target  [:dimension (data/id :venues :id)]
+                                             :default nil}]}
+                              (shared-obj)
+                              ~dashboard)]
      (tt/with-temp Dashboard [dashboard# dashboard-settings#]
        (let [~binding (assoc dashboard# :public_uuid (:public_uuid dashboard-settings#))]
          ~@body))))
@@ -51,7 +60,9 @@
 (defn- add-card-to-dashboard! [card dashboard]
   (db/insert! DashboardCard :dashboard_id (u/get-id dashboard), :card_id (u/get-id card)))
 
-(defmacro with-temp-public-dashboard-and-card {:style/indent 1} [[dashboard-binding card-binding & [dashcard-binding]] & body]
+(defmacro ^:private with-temp-public-dashboard-and-card
+  {:style/indent 1}
+  [[dashboard-binding card-binding & [dashcard-binding]] & body]
   `(with-temp-public-dashboard [dash#]
      (with-temp-public-card [card#]
        (let [~dashboard-binding        dash#
@@ -62,7 +73,7 @@
 
 
 
-;;; ------------------------------------------------------------ GET /api/public/card/:uuid ------------------------------------------------------------
+;;; ------------------------------------------- GET /api/public/card/:uuid -------------------------------------------
 
 ;; Check that we *cannot* fetch a PublicCard if the setting is disabled
 (expect
@@ -91,27 +102,30 @@
     (with-temp-public-card [{uuid :public_uuid}]
       (set (keys (http/client :get 200 (str "public/card/" uuid)))))))
 
-(tu/resolve-private-vars metabase.api.public public-card)
-
 ;; make sure :param_values get returned as expected
 (expect
   {(data/id :categories :name) {:values                75
                                 :human_readable_values {}
                                 :field_id              (data/id :categories :name)}}
-  (tt/with-temp Card [card {:dataset_query {:type   :native
-                                            :native {:query         "SELECT COUNT(*) FROM venues LEFT JOIN categories ON venues.category_id = categories.id WHERE {{category}}"
-                                                     :collection    "CATEGORIES"
-                                                     :template_tags {:category {:name         "category"
-                                                                                :display_name "Category"
-                                                                                :type         "dimension"
-                                                                                :dimension    ["field-id" (data/id :categories :name)]
-                                                                                :widget_type  "category"
-                                                                                :required     true}}}}}]
-    (-> (:param_values (public-card :id (u/get-id card)))
+  (tt/with-temp Card [card {:dataset_query
+                            {:database (data/id)
+                             :type     :native
+                             :native   {:query         (str "SELECT COUNT(*) "
+                                                            "FROM venues "
+                                                            "LEFT JOIN categories ON venues.category_id = categories.id "
+                                                            "WHERE {{category}}")
+                                        :collection    "CATEGORIES"
+                                        :template_tags {:category {:name         "category"
+                                                                   :display_name "Category"
+                                                                   :type         "dimension"
+                                                                   :dimension    ["field-id" (data/id :categories :name)]
+                                                                   :widget_type  "category"
+                                                                   :required     true}}}}}]
+    (-> (:param_values (#'public-api/public-card :id (u/get-id card)))
         (update-in [(data/id :categories :name) :values] count))))
 
 
-;;; ------------------------------------------------------------ GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions)  ------------------------------------------------------------
+;;; ------------------------- GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions) --------------------------
 
 ;; Check that we *cannot* execute a PublicCard if the setting is disabled
 (expect
@@ -167,14 +181,49 @@
 
 ;; Check that we can exec a PublicCard with `?parameters`
 (expect
-  [{:type "category", :value 2}]
+  [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
-      (get-in (http/client :get 200 (str "public/card/" uuid "/query"), :parameters (json/encode [{:type "category", :value 2}]))
+      (get-in (http/client :get 200 (str "public/card/" uuid "/query")
+                           :parameters (json/encode [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]))
               [:json_query :parameters]))))
 
+;; make sure CSV (etc.) downloads take editable params into account (#6407)
 
-;;; ------------------------------------------------------------ GET /api/public/dashboard/:uuid ------------------------------------------------------------
+(defn- card-with-date-field-filter []
+  (assoc (shared-obj)
+    :dataset_query {:database (data/id)
+                    :type     :native
+                    :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
+                               :template_tags {:date {:name         "date"
+                                                      :display_name "Date"
+                                                      :type         "dimension"
+                                                      :dimension    [:field-id (data/id :checkins :date)]
+                                                      :widget_type  "date/quarter-year"}}}}))
+
+(expect
+  "count\n107\n"
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
+      (http/client :get 200 (str "public/card/" uuid "/query/csv")
+                   :parameters (json/encode [{:type   :date/quarter-year
+                                              :target [:dimension [:template-tag :date]]
+                                              :value  "Q1-2014"}])))))
+
+;; make sure it also works with the forwarded URL
+(expect
+  "count\n107\n"
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
+      ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+      (binding [http/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port) "/")]
+        (http/client :get 200 (str "public/question/" uuid ".csv")
+                     :parameters (json/encode [{:type   :date/quarter-year
+                                                :target [:dimension [:template-tag :date]]
+                                                :value  "Q1-2014"}]))))))
+
+
+;;; ---------------------------------------- GET /api/public/dashboard/:uuid -----------------------------------------
 
 ;; Check that we *cannot* fetch PublicDashboard if setting is disabled
 (expect
@@ -211,7 +260,7 @@
       (fetch-public-dashboard dash))))
 
 
-;;; ------------------------------------------------------------ GET /api/public/dashboard/:uuid/card/:card-id ------------------------------------------------------------
+;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
 (defn- dashcard-url-path [dash card]
   (str "public/dashboard/" (:public_uuid dash) "/card/" (u/get-id card)))
@@ -264,11 +313,43 @@
 
 ;; Check that we can exec a PublicCard via a PublicDashboard with `?parameters`
 (expect
-  [{:type "category", :value 2}]
+  [{:name    "Venue ID"
+    :slug    "venue_id"
+    :target  ["dimension" (data/id :venues :id)]
+    :value   [10]
+    :default nil
+    :type    "id"}]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash card]
-      (get-in (http/client :get 200 (dashcard-url-path dash card), :parameters (json/encode [{:type "category", :value 2}]))
+      (get-in (http/client :get 200 (dashcard-url-path dash card)
+                           :parameters (json/encode [{:name   "Venue ID"
+                                                      :slug   :venue_id
+                                                      :target [:dimension (data/id :venues :id)]
+                                                      :value  [10]}]))
               [:json_query :parameters]))))
+
+;; Make sure params are validated: this should pass because venue_id *is* one of the Dashboard's :parameters
+(expect
+ [[1]]
+ (tu/with-temporary-setting-values [enable-public-sharing true]
+   (with-temp-public-dashboard-and-card [dash card]
+     (-> (http/client :get 200 (dashcard-url-path dash card)
+                      :parameters (json/encode [{:name   "Venue ID"
+                                                 :slug   :venue_id
+                                                 :target [:dimension (data/id :venues :id)]
+                                                 :value  [10]}]))
+         qp-test/rows))))
+
+;; Make sure params are validated: this should fail because venue_name is *not* one of the Dashboard's :parameters
+(expect
+ "An error occurred."
+ (tu/with-temporary-setting-values [enable-public-sharing true]
+   (with-temp-public-dashboard-and-card [dash card]
+     (http/client :get 400 (dashcard-url-path dash card)
+                  :parameters (json/encode [{:name   "Venue Name"
+                                             :slug   :venue_name
+                                             :target [:dimension (data/id :venues :name)]
+                                             :value  ["PizzaHacker"]}])))))
 
 ;; Check that an additional Card series works as well
 (expect
@@ -276,12 +357,14 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash card]
       (with-temp-public-card [card-2]
-        (tt/with-temp DashboardCardSeries [_ {:dashboardcard_id (db/select-one-id DashboardCard :card_id (u/get-id card), :dashboard_id (u/get-id dash))
+        (tt/with-temp DashboardCardSeries [_ {:dashboardcard_id (db/select-one-id DashboardCard
+                                                                  :card_id      (u/get-id card)
+                                                                  :dashboard_id (u/get-id dash))
                                               :card_id          (u/get-id card-2)}]
           (qp-test/rows (http/client :get 200 (dashcard-url-path dash card-2))))))))
 
 
-;;; ------------------------------------------------------------ Check that parameter information comes back with Dashboard ------------------------------------------------------------
+;;; --------------------------- Check that parameter information comes back with Dashboard ---------------------------
 
 ;; double-check that the Field has FieldValues
 (expect
@@ -297,7 +380,8 @@
   (db/update! Dashboard (u/get-id dashboard) :parameters [{:name "Price", :type "category", :slug "price"}]))
 
 (defn- add-dimension-param-mapping-to-dashcard! [dashcard card dimension]
-  (db/update! DashboardCard (u/get-id dashcard) :parameter_mappings [{:card_id (u/get-id card), :target ["dimension" dimension]}]))
+  (db/update! DashboardCard (u/get-id dashcard) :parameter_mappings [{:card_id (u/get-id card)
+                                                                      :target  ["dimension" dimension]}]))
 
 (defn- GET-param-values [dashboard]
   (tu/with-temporary-setting-values [enable-public-sharing true]
@@ -307,7 +391,13 @@
 (expect
   (price-param-values)
   (with-temp-public-dashboard-and-card [dash card dashcard]
-    (db/update! Card (u/get-id card) :dataset_query {:native {:template_tags {:price {:name "price", :display_name "Price", :type "dimension", :dimension ["field-id" (data/id :venues :price)]}}}})
+    (db/update! Card (u/get-id card)
+      :dataset_query {:database (data/id)
+                      :type     :native
+                      :native   {:template_tags {:price {:name         "price"
+                                                         :display_name "Price"
+                                                         :type         "dimension"
+                                                         :dimension    ["field-id" (data/id :venues :price)]}}}})
     (add-price-param-to-dashboard! dash)
     (add-dimension-param-mapping-to-dashcard! dashcard card ["template-tag" "price"])
     (GET-param-values dash)))

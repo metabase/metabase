@@ -3,6 +3,7 @@
   (:require [expectations :refer :all]
             [metabase.models
              [database :refer [Database]]
+             [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
             [metabase.test.util :as tu]
@@ -10,8 +11,7 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
-            [toucan.util.test :as tt]
-            [metabase.models.field :refer [Field]]))
+            [toucan.util.test :as tt]))
 
 ;; Test that the `_metabase_metadata` table can be used to populate values for things like descriptions
 (defn- get-table-and-fields-descriptions [table-or-id]
@@ -37,9 +37,10 @@
                   :name   "movies"
                   :active true)]
       (db/insert! Field
-        :base_type :type/Boolean
-        :table_id (u/get-id table)
-        :name     "filming")
+        :database_type "BOOL"
+        :base_type     :type/Boolean
+        :table_id      (u/get-id table)
+        :name          "filming")
       ;; here we go
       [(get-table-and-fields-descriptions table)
        (do

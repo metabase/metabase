@@ -1,103 +1,131 @@
 import { TYPE } from "metabase/lib/types";
+import { t } from "c-3po";
 
-export const field_special_types = [{
-    'id': TYPE.PK,
-    'name': 'Entity Key',
-    'section': 'Overall Row',
-    'description': 'The primary key for this table.'
-}, {
-    'id': TYPE.Name,
-    'name': 'Entity Name',
-    'section': 'Overall Row',
-    'description': 'The "name" of each record. Usually a column called "name", "title", etc.'
-}, {
-    'id': TYPE.FK,
-    'name': 'Foreign Key',
-    'section': 'Overall Row',
-    'description': 'Points to another table to make a connection.'
-}, {
-    'id': TYPE.AvatarURL,
-    'name': 'Avatar Image URL',
-    'section': 'Common'
-}, {
-    'id': TYPE.Category,
-    'name': 'Category',
-    'section': 'Common'
-}, {
-    'id': TYPE.City,
-    'name': 'City',
-    'section': 'Common'
-}, {
-    'id': TYPE.Country,
-    'name': 'Country',
-    'section': 'Common'
-}, {
-    'id': TYPE.Description,
-    'name': 'Description',
-    'section': 'Common'
-}, {
-    'id': TYPE.Email,
-    'name': 'Email',
-    'section': 'Common'
-}, {
-    'id': TYPE.Enum,
-    'name': 'Enum',
-    'section': 'Common'
-}, {
-    'id': TYPE.ImageURL,
-    'name': 'Image URL',
-    'section': 'Common'
-}, {
-    'id': TYPE.SerializedJSON,
-    'name': 'Field containing JSON',
-    'section': 'Common'
-}, {
-    'id': TYPE.Latitude,
-    'name': 'Latitude',
-    'section': 'Common'
-}, {
-    'id': TYPE.Longitude,
-    'name': 'Longitude',
-    'section': 'Common'
-}, {
-    'id': TYPE.Number,
-    'name': 'Number',
-    'section': 'Common'
-}, {
-    'id': TYPE.State,
-    'name': 'State',
-    'section': 'Common'
-}, {
+export const field_special_types = [
+  {
+    id: TYPE.PK,
+    name: t`Entity Key`,
+    section: "Overall Row",
+    description: t`The primary key for this table.`,
+  },
+  {
+    id: TYPE.Name,
+    name: t`Entity Name`,
+    section: "Overall Row",
+    description: t`The "name" of each record. Usually a column called "name", "title", etc.`,
+  },
+  {
+    id: TYPE.FK,
+    name: t`Foreign Key`,
+    section: "Overall Row",
+    description: t`Points to another table to make a connection.`,
+  },
+  {
+    id: TYPE.AvatarURL,
+    name: t`Avatar Image URL`,
+    section: "Common",
+  },
+  {
+    id: TYPE.Category,
+    name: t`Category`,
+    section: "Common",
+  },
+  {
+    id: TYPE.City,
+    name: t`City`,
+    section: "Common",
+  },
+  {
+    id: TYPE.Country,
+    name: t`Country`,
+    section: "Common",
+  },
+  {
+    id: TYPE.Description,
+    name: t`Description`,
+    section: "Common",
+  },
+  {
+    id: TYPE.Email,
+    name: t`Email`,
+    section: "Common",
+  },
+  {
+    id: TYPE.Enum,
+    name: t`Enum`,
+    section: "Common",
+  },
+  {
+    id: TYPE.ImageURL,
+    name: t`Image URL`,
+    section: "Common",
+  },
+  {
+    id: TYPE.SerializedJSON,
+    name: t`Field containing JSON`,
+    section: "Common",
+  },
+  {
+    id: TYPE.Latitude,
+    name: t`Latitude`,
+    section: "Common",
+  },
+  {
+    id: TYPE.Longitude,
+    name: t`Longitude`,
+    section: "Common",
+  },
+  {
+    id: TYPE.Number,
+    name: t`Number`,
+    section: "Common",
+  },
+  {
+    id: TYPE.State,
+    name: t`State`,
+    section: "Common",
+  },
+  {
     id: TYPE.UNIXTimestampSeconds,
-    name: 'UNIX Timestamp (Seconds)',
-    'section': 'Common'
-}, {
+    name: t`UNIX Timestamp (Seconds)`,
+    section: "Common",
+  },
+  {
     id: TYPE.UNIXTimestampMilliseconds,
-    name: 'UNIX Timestamp (Milliseconds)',
-    'section': 'Common'
-}, {
-    'id': TYPE.URL,
-    'name': 'URL',
-    'section': 'Common'
-}, {
-    'id': TYPE.ZipCode,
-    'name': 'Zip Code',
-    'section': 'Common'
-}];
+    name: t`UNIX Timestamp (Milliseconds)`,
+    section: "Common",
+  },
+  {
+    id: TYPE.URL,
+    name: t`URL`,
+    section: "Common",
+  },
+  {
+    id: TYPE.ZipCode,
+    name: t`Zip Code`,
+    section: "Common",
+  },
+];
 
-export const field_special_types_map = field_special_types
-    .reduce((map, type) => Object.assign({}, map, {[type.id]: type}), {});
+export const field_special_types_map = field_special_types.reduce(
+  (map, type) => Object.assign({}, map, { [type.id]: type }),
+  {},
+);
 
-export const field_visibility_types = [{
-    'id': 'normal',
-    'name': 'Everywhere',
-    'description': 'The default setting.  This field will be displayed normally in tables and charts.'
-}, {
-    'id': 'details-only',
-    'name': 'Only in Detail Views',
-    'description': "This field will only be displayed when viewing the details of a single record. Use this for information that's lengthy or that isn't useful in a table or chart."
-}, {
-    'id': 'sensitive',
-    'name': 'Do Not Include',
-    'description': 'Metabase will never retrieve this field. Use this for sensitive or irrelevant information.'
-}];
+export const field_visibility_types = [
+  {
+    id: "normal",
+    name: t`Everywhere`,
+    description: t`The default setting. This field will be displayed normally in tables and charts.`,
+  },
+  {
+    id: "details-only",
+    name: t`Only in Detail Views`,
+    description: t`This field will only be displayed when viewing the details of a single record. Use this for information that's lengthy or that isn't useful in a table or chart.`,
+  },
+  {
+    id: "sensitive",
+    name: t`Do Not Include`,
+    description: t`Metabase will never retrieve this field. Use this for sensitive or irrelevant information.`,
+  },
+];

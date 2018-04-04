@@ -24,15 +24,18 @@
   (apply merge-with set/union (for [{:keys [model model_id], :as activity} activities
                                     :when                                  model]
                                 (merge {model #{model_id}}
-                                       ;; pull the referenced card IDs out of the dashcards for dashboard activites that involve adding/removing cards
+                                       ;; pull the referenced card IDs out of the dashcards for dashboard activites
+                                       ;; that involve adding/removing cards
                                        (when (dashcard-activity? activity)
                                          {"card" (set (for [dashcard (get-in activity [:details :dashcards])]
                                                         (:card_id dashcard)))})))))
 
 (defn- referenced-objects->existing-objects
-  "Given a map of existing objects like the one returned by `activities->referenced-objects`, return a similar map of models to IDs of objects *that exist*.
+  "Given a map of existing objects like the one returned by `activities->referenced-objects`, return a similar map of
+   models to IDs of objects *that exist*.
 
-     (referenced-objects->existing-objects {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...}) -> {\"dashboard\" #{41 43}, \"card\" #{101}, ...}"
+     (referenced-objects->existing-objects {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...})
+     ;; -> {\"dashboard\" #{41 43}, \"card\" #{101}, ...}"
   [referenced-objects]
   (into {} (for [[model ids] referenced-objects
                  :when       (seq ids)]

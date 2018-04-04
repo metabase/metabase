@@ -36,25 +36,25 @@
 (expect
   {:name   "VENUES"
    :schema "PUBLIC"
-   :fields #{{:name      "NAME",
-              :custom    {:column-type "VARCHAR"}
-              :base-type :type/Text}
-             {:name      "LATITUDE"
-              :custom    {:column-type "DOUBLE"}
-              :base-type :type/Float}
-             {:name      "LONGITUDE"
-              :custom    {:column-type "DOUBLE"}
-              :base-type :type/Float}
-             {:name      "PRICE"
-              :custom    {:column-type "INTEGER"}
-              :base-type :type/Integer}
-             {:name      "CATEGORY_ID"
-              :custom    {:column-type "INTEGER"}
-              :base-type :type/Integer}
-             {:name      "ID"
-              :custom    {:column-type "BIGINT"}
-              :base-type :type/BigInteger
-              :pk?       true}}}
+   :fields #{{:name          "NAME",
+              :database-type "VARCHAR"
+              :base-type     :type/Text}
+             {:name          "LATITUDE"
+              :database-type "DOUBLE"
+              :base-type     :type/Float}
+             {:name          "LONGITUDE"
+              :database-type "DOUBLE"
+              :base-type     :type/Float}
+             {:name          "PRICE"
+              :database-type "INTEGER"
+              :base-type     :type/Integer}
+             {:name          "CATEGORY_ID"
+              :database-type "INTEGER"
+              :base-type     :type/Integer}
+             {:name          "ID"
+              :database-type "BIGINT"
+              :base-type     :type/BigInteger
+              :pk?           true}}}
   (driver/describe-table (H2Driver.) (db) @venues-table))
 
 ;; DESCRIBE-TABLE-FKS

@@ -7,6 +7,10 @@
             [metabase.util.password :as password]
             [schema.core :as s]))
 
+;; always validate all schemas in s/defn function declarations. See
+;; https://github.com/plumatic/schema#schemas-in-practice for details.
+(s/set-fn-validation! true)
+
 (defn with-api-error-message
   "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails
    validation.
@@ -130,7 +134,7 @@
 
 (def Email
   "Schema for a valid email string."
-  (with-api-error-message (s/constrained s/Str u/is-email? "Valid email address")
+  (with-api-error-message (s/constrained s/Str u/email? "Valid email address")
     "value must be a valid email address."))
 
 (def ComplexPassword

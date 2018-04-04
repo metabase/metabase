@@ -1,5 +1,5 @@
 (ns metabase.api.public
-  "Metabase API endpoints for viewing publically-accessible Cards and Dashboards."
+  "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require [cheshire.core :as json]
             [compojure.core :refer [GET]]
             [metabase
@@ -40,29 +40,29 @@
   "Return a public Card matching key-value CONDITIONS, removing all fields that should not be visible to the general
    public. Throws a 404 if the Card doesn't exist."
   [& conditions]
-  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings], :archived false, conditions))
+  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
+                            :archived false, conditions))
       remove-card-non-public-fields
       params/add-card-param-values))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
 (api/defendpoint GET "/card/:uuid"
-  "Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth
+  "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid]
   (api/check-public-sharing-enabled)
   (card-with-uuid uuid))
 
-
 (defn run-query-for-card-with-id
   "Run the query belonging to Card with CARD-ID with PARAMETERS and other query options (e.g. `:constraints`)."
+  {:style/indent 2}
   [card-id parameters & options]
-  (u/prog1 (-> (let [parameters (if (string? parameters) (json/parse-string parameters keyword) parameters)]
-                 ;; run this query with full superuser perms
-                 (binding [api/*current-user-permissions-set*     (atom #{"/"})
-                           qp/*allow-queries-with-no-executor-id* true]
-                   (apply card-api/run-query-for-card card-id, :parameters parameters, :context :public-question, options)))
-               (u/select-nested-keys [[:data :columns :cols :rows :rows_truncated] [:json_query :parameters] :error :status]))
+  (u/prog1 (-> ;; run this query with full superuser perms
+            (binding [api/*current-user-permissions-set*     (atom #{"/"})
+                      qp/*allow-queries-with-no-executor-id* true]
+              (apply card-api/run-query-for-card card-id, :parameters parameters, :context :public-question, options))
+            (u/select-nested-keys [[:data :columns :cols :rows :rows_truncated] [:json_query :parameters] :error :status]))
     ;; if the query failed instead of returning anything about the query just return a generic error message
     (when (= (:status <>) :failed)
       (throw (ex-info "An error occurred while running the query." {:status-code 400})))))
@@ -71,26 +71,30 @@
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception."
   [uuid parameters & options]
   (api/check-public-sharing-enabled)
-  (apply run-query-for-card-with-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false)) parameters options))
+  (apply run-query-for-card-with-id
+         (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))
+         parameters
+         options))
 
 
 (api/defendpoint GET "/card/:uuid/query"
-  "Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth
+  "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
-  (run-query-for-card-with-public-uuid uuid parameters))
+  (run-query-for-card-with-public-uuid uuid (json/parse-string parameters keyword)))
 
 (api/defendpoint GET "/card/:uuid/query/:export-format"
-  "Fetch a publically-accessible Card and return query results in the specified format. Does not require auth
+  "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid export-format parameters]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
   (dataset-api/as-format export-format
-    (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
+    (run-query-for-card-with-public-uuid uuid (json/parse-string parameters keyword), :constraints nil)))
 
-;;; ----------------------------------------------- Public Dashboards -----------------------------------------------
+
+;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
 (defn public-dashboard
   "Return a public Dashboard matching key-value CONDITIONS, removing all fields that should not be visible to the
@@ -112,10 +116,19 @@
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
 (api/defendpoint GET "/dashboard/:uuid"
-  "Fetch a publically-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
+  "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [uuid]
   (api/check-public-sharing-enabled)
   (dashboard-with-uuid uuid))
+
+(s/defn ^:private resolve-params :- (s/maybe [{s/Keyword s/Any}])
+  [dashboard-id :- su/IntGreaterThanZero, query-params :- (s/maybe [{:slug su/NonBlankString, s/Keyword s/Any}])]
+  (when (seq query-params)
+    (let [slug->dashboard-param (u/key-by :slug (db/select-one-field :parameters Dashboard, :id dashboard-id))]
+      (for [{slug :slug, :as query-param} query-params
+            :let [dashboard-param (or (slug->dashboard-param slug)
+                                      (throw (Exception. (str "Invalid param: " slug))))]]
+        (merge query-param dashboard-param)))))
 
 
 (defn public-dashcard-results
@@ -130,15 +143,19 @@
                        (db/exists? DashboardCardSeries
                          :card_id          card-id
                          :dashboardcard_id [:in dashcard-ids]))))
-  (run-query-for-card-with-id card-id parameters, :context context, :dashboard-id dashboard-id))
+  (run-query-for-card-with-id card-id (resolve-params dashboard-id (if (string? parameters)
+                                                                     (json/parse-string parameters keyword)
+                                                                     parameters))
+    :context context, :dashboard-id dashboard-id))
 
 (api/defendpoint GET "/dashboard/:uuid/card/:card-id"
-  "Fetch the results for a Card in a publically-accessible Dashboard. Does not require auth credentials. Public
+  "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [uuid card-id parameters]
   {parameters (s/maybe su/JSONString)}
   (api/check-public-sharing-enabled)
-  (public-dashcard-results (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false)) card-id parameters))
+  (public-dashcard-results (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))
+                           card-id parameters))
 
 
 (api/defendpoint GET "/oembed"

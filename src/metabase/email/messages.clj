@@ -12,6 +12,7 @@
              [util :as u]]
             [metabase.pulse.render :as render]
             [metabase.util
+             [export :as export]
              [quotation :as quotation]
              [urls :as url]]
             [stencil
@@ -106,7 +107,7 @@
   "Format and send an email informing the user how to reset their password."
   [email google-auth? hostname password-reset-url]
   {:pre [(m/boolean? google-auth?)
-         (u/is-email? email)
+         (u/email? email)
          (string? hostname)
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file "metabase/email/password_reset"
@@ -148,7 +149,7 @@
 (defn send-notification-email!
   "Format and send an email informing the user about changes to objects in the system."
   [email context]
-  {:pre [(u/is-email? email) (map? context)]}
+  {:pre [(u/email? email) (map? context)]}
   (let [context      (merge (update context :dependencies build-dependencies)
                             notification-context
                             (random-quote-context))
@@ -162,7 +163,7 @@
 (defn send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."
   [email msg-type]
-  {:pre [(u/is-email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
+  {:pre [(u/email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
   (let [subject      (if (= "abandon" msg-type)
                        "[Metabase] Help make Metabase better."
                        "[Metabase] Tell us how things are going.")
@@ -178,55 +179,68 @@
       :message-type :html
       :message      message-body)))
 
-
-;; HACK: temporary workaround to postal requiring a file as the attachment
-(defn- write-byte-array-to-temp-file
-  [^bytes img-bytes]
-  (u/prog1 (doto (File/createTempFile "metabase_pulse_image_" ".png")
-             .deleteOnExit)
-    (with-open [fos (FileOutputStream. <>)]
-      (.write fos img-bytes))))
-
-(defn- hash-bytes
-  "Generate a hash to be used in a Content-ID"
-  [^bytes img-bytes]
-  (Math/abs ^Integer (Arrays/hashCode img-bytes)))
-
-(defn- render-image [images-atom, ^bytes image-bytes]
-  (let [content-id (str (hash-bytes image-bytes) "@metabase")]
-    (if-not (contains? @images-atom content-id)
-      (swap! images-atom assoc content-id image-bytes))
-    (str "cid:" content-id)))
-
-(defn- write-image-content [[content-id bytes]]
+(defn- make-message-attachment [[content-id url]]
   {:type         :inline
    :content-id   content-id
    :content-type "image/png"
-   :content      (write-byte-array-to-temp-file bytes)})
+   :content      url})
 
-(defn- pulse-context [body pulse]
+(defn- pulse-context [pulse]
   (merge {:emailType    "pulse"
-          :pulse        (html body)
           :pulseName    (:name pulse)
-          :sectionStyle render/section-style
+          :sectionStyle (render/style render/section-style)
           :colorGrey4   render/color-gray-4
           :logoFooter   true}
          (random-quote-context)))
 
-(defn- render-message-body
-  [message-template message-context images]
-  (vec (cons {:type "text/html; charset=utf-8" :content (stencil/render-file message-template message-context)}
-             (map write-image-content images))))
+(defn- create-temp-file
+  [suffix]
+  (doto (java.io.File/createTempFile "metabase_attachment" suffix)
+    .deleteOnExit))
+
+(defn- create-result-attachment-map [export-type card-name ^File attachment-file]
+  (let [{:keys [content-type ext]} (get export/export-formats export-type)]
+    {:type         :attachment
+     :content-type content-type
+     :file-name    (format "%s.%s" card-name ext)
+     :content      (-> attachment-file .toURI .toURL)
+     :description  (format "More results for '%s'" card-name)}))
+
+(defn- result-attachments [results]
+  (remove nil?
+          (apply concat
+                 (for [{{card-name :name, :as card} :card :as result} results
+                       :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
+                       :when (seq rows)]
+                   [(when-let [temp-file (and (render/include-csv-attachment? card result-data)
+                                              (create-temp-file "csv"))]
+                      (export/export-to-csv-writer temp-file result)
+                      (create-result-attachment-map "csv" card-name temp-file))
+
+                    (when-let [temp-file (and (render/include-xls-attachment? card result-data)
+                                              (create-temp-file "xlsx"))]
+                      (export/export-to-xlsx-file temp-file result)
+                      (create-result-attachment-map "xlsx" card-name temp-file))]))))
+
+(defn- render-message-body [message-template message-context timezone results]
+  (let [rendered-cards (binding [render/*include-title* true]
+                         ;; doall to ensure we haven't exited the binding before the valures are created
+                         (doall (map #(render/render-pulse-section timezone %) results)))
+        message-body   (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards)))))
+        attachments    (apply merge (map :attachments rendered-cards))]
+    (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file message-template message-body)}]
+                 (map make-message-attachment attachments)
+                 (result-attachments results)))))
+
+(defn- assoc-attachment-booleans [pulse results]
+  (for [{{result-card-id :id} :card :as result} results
+        :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
+    (update result :card merge (select-keys pulse-card [:include_csv :include_xls]))))
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [timezone pulse results]
-  (let [images       (atom {})
-        body         (binding [render/*include-title* true
-                               render/*render-img-fn* (partial render-image images)]
-                       (vec (cons :div (for [result results]
-                                         (render/render-pulse-section timezone result)))))]
-    (render-message-body "metabase/email/pulse" (pulse-context body pulse) (seq @images))))
+  (render-message-body "metabase/email/pulse" (pulse-context pulse) timezone (assoc-attachment-booleans pulse results)))
 
 (defn pulse->alert-condition-kwd
   "Given an `ALERT` return a keyword representing what kind of goal needs to be met."
@@ -267,15 +281,11 @@
 (defn render-alert-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [timezone {:keys [alert_first_only] :as alert} results goal-value]
-  (let [images       (atom {})
-        body         (binding [render/*include-title* true
-                               render/*render-img-fn* (partial render-image images)]
-                       (html (vec (cons :div (for [result results]
-                                               (render/render-pulse-section timezone result))))))
-        message-ctx  (default-alert-context alert (alert-results-condition-text goal-value))]
+  (let [message-ctx  (default-alert-context alert (alert-results-condition-text goal-value))]
     (render-message-body "metabase/email/alert"
-                         (assoc message-ctx :pulse body :firstRunOnly? alert_first_only)
-                         (seq @images))))
+                         (assoc message-ctx :firstRunOnly? alert_first_only)
+                         timezone
+                         (assoc-attachment-booleans alert results))))
 
 (def ^:private alert-condition-text
   {:meets "when this question meets its goal"

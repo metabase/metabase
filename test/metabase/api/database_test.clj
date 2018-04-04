@@ -68,6 +68,7 @@
    :points_of_interest          nil
    :cache_field_values_schedule "0 50 0 * * ? *"
    :metadata_sync_schedule      "0 50 * * * ? *"
+   :options                     nil
    :timezone                    nil})
 
 (defn- db-details
@@ -272,7 +273,7 @@
 (defn- field-details [field]
   (merge
    default-field-details
-   (match-$ (hydrate/hydrate field :values)
+   (match-$ field
      {:updated_at          $
       :id                  $
       :raw_column_id       $
@@ -280,11 +281,9 @@
       :last_analyzed       $
       :fingerprint         $
       :fingerprint_version $
-      :fk_target_field_id  $
-      :values              $})))
+      :fk_target_field_id  $})))
 
-;; ## GET /api/meta/table/:id/query_metadata
-;; TODO - add in example with Field :values
+;; ## GET /api/database/:id/metadata
 (expect
   (merge default-db-details
          (match-$ (db)
@@ -301,19 +300,23 @@
                                    :name         "CATEGORIES"
                                    :display_name "Categories"
                                    :fields       [(assoc (field-details (Field (id :categories :id)))
-                                                    :table_id        (id :categories)
-                                                    :special_type    "type/PK"
-                                                    :name            "ID"
-                                                    :display_name    "ID"
-                                                    :base_type       "type/BigInteger"
-                                                    :visibility_type "normal")
+                                                    :table_id         (id :categories)
+                                                    :special_type     "type/PK"
+                                                    :name             "ID"
+                                                    :display_name     "ID"
+                                                    :database_type    "BIGINT"
+                                                    :base_type        "type/BigInteger"
+                                                    :visibility_type  "normal"
+                                                    :has_field_values "search")
                                                   (assoc (field-details (Field (id :categories :name)))
-                                                    :table_id           (id :categories)
-                                                    :special_type       "type/Name"
-                                                    :name               "NAME"
-                                                    :display_name       "Name"
-                                                    :base_type          "type/Text"
-                                                    :visibility_type    "normal")]
+                                                    :table_id         (id :categories)
+                                                    :special_type     "type/Name"
+                                                    :name             "NAME"
+                                                    :display_name     "Name"
+                                                    :database_type    "VARCHAR"
+                                                    :base_type        "type/Text"
+                                                    :visibility_type  "normal"
+                                                    :has_field_values "list")]
                                    :segments     []
                                    :metrics      []
                                    :rows         75
@@ -479,10 +482,13 @@
                                    :result_metadata [{:name "age_in_bird_years"}])]]
   (saved-questions-virtual-db
     (assoc (virtual-table-for-card card)
-      :fields [{:name         "age_in_bird_years"
-                :table_id     (str "card__" (u/get-id card))
-                :id           ["field-literal" "age_in_bird_years" "type/*"]
-                :special_type nil}]))
+      :fields [{:name                     "age_in_bird_years"
+                :table_id                 (str "card__" (u/get-id card))
+                :id                       ["field-literal" "age_in_bird_years" "type/*"]
+                :special_type             nil
+                :base_type                nil
+                :default_dimension_option nil
+                :dimension_options        []}]))
   ((user->client :crowberto) :get 200 (format "database/%d/metadata" database/virtual-id)))
 
 ;; if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`

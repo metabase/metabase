@@ -38,26 +38,29 @@
 (expect
   {:Segment #{2 3}
    :Metric  nil}
-  (card-dependencies Card 12 {:dataset_query {:type :query
-                                              :query {:aggregation ["rows"]
-                                                      :filter      ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["SEGMENT" 2] ["SEGMENT" 3]]}}}))
+  (card-dependencies
+   {:dataset_query {:type :query
+                    :query {:aggregation ["rows"]
+                            :filter      ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["SEGMENT" 2] ["SEGMENT" 3]]}}}))
 
 (expect
   {:Segment #{1}
    :Metric #{7}}
-  (card-dependencies Card 12 {:dataset_query {:type :query
-                                              :query {:aggregation ["METRIC" 7]
-                                                      :filter      ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["OR" ["SEGMENT" 1] ["!=" 5 "5"]]]}}}))
+  (card-dependencies
+   {:dataset_query {:type :query
+                    :query {:aggregation ["METRIC" 7]
+                            :filter      ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["OR" ["SEGMENT" 1] ["!=" 5 "5"]]]}}}))
 
 (expect
   {:Segment nil
    :Metric  nil}
-  (card-dependencies Card 12 {:dataset_query {:type :query
-                                              :query {:aggregation nil
-                                                      :filter      nil}}}))
+  (card-dependencies
+   {:dataset_query {:type :query
+                    :query {:aggregation nil
+                            :filter      nil}}}))
 
 
-;;; ------------------------------------------------------------ Permissions Checking ------------------------------------------------------------
+;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
 (expect
   false
@@ -150,12 +153,23 @@
                                             :native   {:query "SELECT * FROM CHECKINS"}}}]
     (query-perms-set (query-with-source-card card) :read)))
 
+;; You should still only need native READ permissions if you want to save a Card based on another Card you can already
+;; READ.
 (expect
-  #{(perms/native-readwrite-path (data/id))}
+  #{(perms/native-read-path (data/id))}
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query "SELECT * FROM CHECKINS"}}}]
     (query-perms-set (query-with-source-card card) :write)))
+
+;; However if you just pass in the same query directly as a `:source-query` you will still require READWRITE
+;; permissions to save the query since we can't verify that it belongs to a Card that you can view.
+(expect
+  #{(perms/native-readwrite-path (data/id))}
+  (query-perms-set {:database (data/id)
+                    :type     :query
+                    :query    {:source-query {:native "SELECT * FROM CHECKINS"}}}
+                   :write))
 
 ;; invalid/legacy card should return perms for something that doesn't exist so no one gets to see it
 (expect
@@ -203,3 +217,39 @@
        (db/update! Card id {:name          "another name"
                             :dataset_query (dummy-dataset-query (data/id))})
        (into {} (db/select-one [Card :name :database_id] :id id)))]))
+
+
+;;; ---------------------------------------------- Updating Read Perms -----------------------------------------------
+
+;; Make sure when saving a new Card read perms get calculated
+(expect
+  #{(format "/db/%d/native/read/" (data/id))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT 1"}}}]
+    ;; read_permissions should have been populated
+    (db/select-one-field :read_permissions Card :id (u/get-id card))))
+
+;; Make sure when updating a Card's query read perms get updated
+(expect
+  #{(format "/db/%d/schema/PUBLIC/table/%d/" (data/id) (data/id :venues))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT 1"}}}]
+    ;; now change the query...
+    (db/update! Card (u/get-id card) :dataset_query {:database (data/id)
+                                                     :type     :query
+                                                     :query    {:source-table (data/id :venues)}})
+    ;; read permissions should have been updated
+    (db/select-one-field :read_permissions Card :id (u/get-id card))))
+
+;; Make sure when updating a Card but not changing query read perms do not get changed
+(expect
+  #{(format "/db/%d/native/read/" (data/id))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT 1"}}}]
+    ;; now change something *besides* the query...
+    (db/update! Card (u/get-id card) :name "Cam's super-awesome CARD")
+    ;; read permissions should *not* have been updated
+    (db/select-one-field :read_permissions Card :id (u/get-id card))))

@@ -36,6 +36,7 @@
      :features                    (mapv name (driver/features (driver/engine->driver :h2)))
      :cache_field_values_schedule "0 50 0 * * ? *"
      :metadata_sync_schedule      "0 50 * * * ? *"
+     :options                     nil
      :timezone                    $}))
 
 ;; ## GET /api/field/:id
@@ -78,7 +79,9 @@
      :position            0
      :preview_display     true
      :created_at          $
+     :database_type       "VARCHAR"
      :base_type           "type/Text"
+     :has_field_values    "list"
      :fk_target_field_id  nil
      :parent_id           nil})
   ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))

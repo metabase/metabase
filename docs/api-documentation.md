@@ -127,17 +127,20 @@ Delete a `Card`.
 
 ## `GET /api/card/`
 
-Get all the `Cards`. Option filter param `f` can be used to change the set of Cards that are returned; default is `all`,
-   but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See corresponding implementation
-   functions above for the specific behavior of each filter option. :card_index:
+Get all the `Cards`. Option filter param `f` can be used to change the set of Cards that are returned; default is
+  `all`, but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See
+  corresponding implementation functions above for the specific behavior of each filter option. :card_index:
 
-   Optionally filter cards by LABEL or COLLECTION slug. (COLLECTION can be a blank string, to signify cards with *no collection* should be returned.)
+  Optionally filter cards by LABEL or COLLECTION slug. (COLLECTION can be a blank string, to signify cards with *no
+  collection* should be returned.)
 
-   NOTES:
+  NOTES:
 
-   *  Filtering by LABEL is considered *deprecated*, as `Labels` will be removed from an upcoming version of Metabase in favor of `Collections`.
-   *  LABEL and COLLECTION params are mutually exclusive; if both are specified, LABEL will be ignored and Cards will only be filtered by their `Collection`.
-   *  If no `Collection` exists with the slug COLLECTION, this endpoint will return a 404.
+  *  Filtering by LABEL is considered *deprecated*, as `Labels` will be removed from an upcoming version of Metabase
+     in favor of `Collections`.
+  *  LABEL and COLLECTION params are mutually exclusive; if both are specified, LABEL will be ignored and Cards will
+     only be filtered by their `Collection`.
+  *  If no `Collection` exists with the slug COLLECTION, this endpoint will return a 404.
 
 ##### PARAMS:
 
@@ -161,7 +164,8 @@ Get `Card` with ID.
 
 ## `GET /api/card/embeddable`
 
-Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints and a signed JWT.
+Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
+  and a signed JWT.
 
 You must be a superuser to do this.
 
@@ -219,9 +223,9 @@ Update the set of `Labels` that apply to a `Card`.
 
 ## `POST /api/card/:card-id/public_link`
 
-Generate publically-accessible links for this Card. Returns UUID to be used in public links.
-   (If this Card has already been shared, it will return the existing public link rather than creating a new one.)
-   Public sharing must be enabled.
+Generate publically-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
+  already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
+  be enabled.
 
 You must be a superuser to do this.
 
@@ -245,7 +249,8 @@ Run the query associated with a Card.
 
 ## `POST /api/card/:card-id/query/:export-format`
 
-Run the query associated with a Card, and return its results as a file in the specified format. Note that this expects the parameters as serialized JSON in the 'parameters' parameter
+Run the query associated with a Card, and return its results as a file in the specified format. Note that this
+  expects the parameters as serialized JSON in the 'parameters' parameter
 
 ##### PARAMS:
 
@@ -258,8 +263,8 @@ Run the query associated with a Card, and return its results as a file in the sp
 
 ## `POST /api/card/collections`
 
-Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with COLLECTION_ID,
-   or remove them from any Collections by passing a `null` COLLECTION_ID.
+Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with
+  COLLECTION_ID, or remove them from any Collections by passing a `null` COLLECTION_ID.
 
 ##### PARAMS:
 
@@ -1986,7 +1991,7 @@ Fetch the current `User`.
 
 ## `POST /api/user/`
 
-Create a new `User`, or or reäctivate an existing one.
+Create a new `User`, or reactivate an existing one.
 
 You must be a superuser to do this.
 

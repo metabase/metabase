@@ -1,4 +1,5 @@
 (ns metabase.util.encryption-test
+  "Tests for encryption of Metabase DB details."
   (:require [clojure.string :as str]
             [expectations :refer :all]
             [metabase.test.util :as tu]
@@ -48,6 +49,7 @@
 
 (expect
   (some (fn [[_ _ message]]
-          (str/includes? message "Cannot decrypt encrypted details. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY? Message seems corrupt or manipulated."))
+          (str/includes? message (str "Cannot decrypt encrypted details. Have you changed or forgot to set "
+                                      "MB_ENCRYPTION_SECRET_KEY? Message seems corrupt or manipulated.")))
         (tu/with-log-messages
           (encryption/maybe-decrypt secret-2 (encryption/encrypt secret "WOW")))))

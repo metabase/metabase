@@ -1,16 +1,14 @@
 (ns metabase.test.data.presto
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
+            [metabase.driver.presto :as presto]
             [metabase.test.data.interface :as i]
-            [metabase.test.util :refer [resolve-private-vars]]
             [metabase.util :as u])
   (:import java.util.Date
            metabase.driver.presto.PrestoDriver))
-
-(resolve-private-vars metabase.driver.presto execute-presto-query! presto-type->base-type quote-name quote+combine-names)
 
 ;;; IDriverTestExtensions implementation
 
@@ -29,7 +27,7 @@
   ([db-name table-name field-name] [db-name "default" table-name field-name]))
 
 (defn- qualify+quote-name [& names]
-  (apply quote+combine-names (apply qualify-name names)))
+  (apply #'presto/quote+combine-names (apply qualify-name names)))
 
 (defn- field-base-type->dummy-value [field-type]
   ;; we need a dummy value for every base-type to make a properly typed SELECT statement
@@ -43,19 +41,21 @@
       :type/Text       "cast('' AS varchar(255))"
       :type/Date       "current_timestamp" ; this should probably be a date type, but the test data begs to differ
       :type/DateTime   "current_timestamp"
+      :type/Time       "cast(current_time as TIME)"
       "from_hex('00')") ; this might not be the best default ever
     ;; we were given a native type, map it back to a base-type and try again
-    (field-base-type->dummy-value (presto-type->base-type field-type))))
+    (field-base-type->dummy-value (#'presto/presto-type->base-type field-type))))
 
 (defn- create-table-sql [{:keys [database-name]} {:keys [table-name], :as tabledef}]
   (let [field-definitions (conj (:field-definitions tabledef) {:field-name "id", :base-type  :type/Integer})
         dummy-values      (map (comp field-base-type->dummy-value :base-type) field-definitions)
         columns           (map :field-name field-definitions)]
-    ;; Presto won't let us use the `CREATE TABLE (...)` form, but we can still do it creatively if we select the right types out of thin air
+    ;; Presto won't let us use the `CREATE TABLE (...)` form, but we can still do it creatively if we select the right
+    ;; types out of thin air
     (format "CREATE TABLE %s AS SELECT * FROM (VALUES (%s)) AS t (%s) WHERE 1 = 0"
             (qualify+quote-name database-name table-name)
-            (s/join \, dummy-values)
-            (s/join \, (map quote-name columns)))))
+            (str/join \, dummy-values)
+            (str/join \, (map #'presto/quote-name columns)))))
 
 (defn- drop-table-if-exists-sql [{:keys [database-name]} {:keys [table-name]}]
   (str "DROP TABLE IF EXISTS " (qualify+quote-name database-name table-name)))
@@ -75,13 +75,14 @@
   (let [details (database->connection-details :db dbdef)]
     (doseq [tabledef table-definitions
             :let [rows       (:rows tabledef)
-                  keyed-rows (map-indexed (fn [i row] (conj row (inc i))) rows) ; generate an ID for each row because we don't have auto increments
-                  batches    (partition 100 100 nil keyed-rows)]]               ; make 100 rows batches since we have to inline everything
-      (execute-presto-query! details (drop-table-if-exists-sql dbdef tabledef))
-      (execute-presto-query! details (create-table-sql dbdef tabledef))
+                  ;; generate an ID for each row because we don't have auto increments
+                  keyed-rows (map-indexed (fn [i row] (conj row (inc i))) rows)
+                  ;; make 100 rows batches since we have to inline everything
+                  batches    (partition 100 100 nil keyed-rows)]]
+      (#'presto/execute-presto-query! details (drop-table-if-exists-sql dbdef tabledef))
+      (#'presto/execute-presto-query! details (create-table-sql dbdef tabledef))
       (doseq [batch batches]
-        (execute-presto-query! details (insert-sql dbdef tabledef batch))))))
-
+        (#'presto/execute-presto-query! details (insert-sql dbdef tabledef batch))))))
 
 ;;; IDriverTestExtensions implementation
 
@@ -92,6 +93,6 @@
           :database->connection-details       (u/drop-first-arg database->connection-details)
           :create-db!                         (u/drop-first-arg create-db!)
           :default-schema                     (constantly "default")
-          :format-name                        (u/drop-first-arg s/lower-case)
+          :format-name                        (u/drop-first-arg str/lower-case)
           ;; FIXME Presto actually has very good timezone support
           :has-questionable-timezone-support? (constantly true)}))

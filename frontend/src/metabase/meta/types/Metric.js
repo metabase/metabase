@@ -6,8 +6,8 @@ export type MetricId = number;
 
 // TODO: incomplete
 export type Metric = {
-    name: string,
-    id: MetricId,
-    table_id: TableId,
-    is_active: bool
+  name: string,
+  id: MetricId,
+  table_id: TableId,
+  is_active: boolean,
 };

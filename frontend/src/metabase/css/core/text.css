@@ -1,137 +1,186 @@
 :root {
-  --body-text-color: #8E9BA9;
+  --body-text-color: #8e9ba9;
   --70-percent-black: #444444;
 }
 
 /* center */
-.text-centered, :local(.text-centered) { text-align: center; }
+.text-centered,
+:local(.text-centered) {
+  text-align: center;
+}
 
 @media screen and (--breakpoint-min-sm) {
-    .sm-text-centered { text-align: center; }
+  .sm-text-centered {
+    text-align: center;
+  }
 }
 
 @media screen and (--breakpoint-min-md) {
-    .md-text-centered { text-align: center; }
+  .md-text-centered {
+    text-align: center;
+  }
 }
 
 @media screen and (--breakpoint-min-lg) {
-    .lg-text-centered { text-align: center; }
+  .lg-text-centered {
+    text-align: center;
+  }
 }
 
 @media screen and (--breakpoint-min-xl) {
-    .xl-text-centered { text-align: center; }
+  .xl-text-centered {
+    text-align: center;
+  }
 }
 
 /* left */
 
-.text-left, :local(.text-left) { text-align: left; }
+.text-left,
+:local(.text-left) {
+  text-align: left;
+}
 
 @media screen and (--breakpoint-min-sm) {
-    .sm-text-left { text-align: left; }
+  .sm-text-left {
+    text-align: left;
+  }
 }
 
 @media screen and (--breakpoint-min-md) {
-    .md-text-left { text-align: left; }
+  .md-text-left {
+    text-align: left;
+  }
 }
 
 @media screen and (--breakpoint-min-lg) {
-    .lg-text-left { text-align: left; }
+  .lg-text-left {
+    text-align: left;
+  }
 }
 
 @media screen and (--breakpoint-min-xl) {
-    .xl-text-left { text-align: left; }
+  .xl-text-left {
+    text-align: left;
+  }
 }
 
 /* right */
 
-.text-right, :local(.text-right) { text-align: right; }
+.text-right,
+:local(.text-right) {
+  text-align: right;
+}
 
 @media screen and (--breakpoint-min-sm) {
-    .sm-text-right { text-align: right; }
+  .sm-text-right {
+    text-align: right;
+  }
 }
 
 @media screen and (--breakpoint-min-md) {
-    .md-text-right { text-align: right; }
+  .md-text-right {
+    text-align: right;
+  }
 }
 
 @media screen and (--breakpoint-min-lg) {
-    .lg-text-right { text-align: right; }
+  .lg-text-right {
+    text-align: right;
+  }
 }
 
 @media screen and (--breakpoint-min-xl) {
-    .xl-text-right { text-align: right; }
+  .xl-text-right {
+    text-align: right;
+  }
 }
 
-.text-uppercase, :local(.text-uppercase) {
+.text-uppercase,
+:local(.text-uppercase) {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.text-lowercase { text-transform: lowercase; }
+.text-lowercase {
+  text-transform: lowercase;
+}
 
-.text-capitalize { text-transform: capitalize; }
+.text-capitalize {
+  text-transform: capitalize;
+}
 
 /* text weight */
-.text-light  { font-weight: 300; }
-.text-normal { font-weight: 400; }
-.text-bold, :local(.text-bold)   { font-weight: 700; }
+.text-light {
+  font-weight: 300;
+}
+.text-normal {
+  font-weight: 400;
+}
+.text-bold,
+:local(.text-bold) {
+  font-weight: 700;
+}
 
 /* text style */
 
-.text-italic { font-style: italic; }
+.text-italic {
+  font-style: italic;
+}
 
 /* larger text size used for descriptions  */
-.text-body, :local(.text-body) {
+.text-body,
+:local(.text-body) {
   font-size: 1.286em;
   line-height: 1.457em;
   color: var(--body-text-color); /* TODO - is this bad? */
 }
 
-.text-paragraph, :local(.text-paragraph) {
+.text-paragraph,
+:local(.text-paragraph) {
   font-size: 1.143em;
   line-height: 1.5em;
 }
 
 .text-small {
-    font-size: 0.875em;
+  font-size: 0.875em;
 }
 
 .text-smaller {
-    font-size: 0.8em;
+  font-size: 0.8em;
 }
 
 .text-current {
-    color: currentColor;
+  color: currentColor;
 }
 
 .text-underline {
-    text-decoration: underline;
+  text-decoration: underline;
 }
 
 .text-underline-hover:hover {
-    text-decoration: underline;
+  text-decoration: underline;
 }
 
 .text-ellipsis {
-    text-overflow: ellipsis;
+  text-overflow: ellipsis;
 }
 
 .text-nowrap {
-    white-space: nowrap;
+  white-space: nowrap;
 }
 
 .text-code {
-    font-family: monospace;
-    color: #8691AC;
-    background-color: #E9F2F5;
-    border-radius: 2px;
-    padding: 0.2em 0.4em;
-    line-height: 1.4em;
-    white-space: pre;
+  font-family: monospace;
+  color: #8691ac;
+  background-color: #e9f2f5;
+  border-radius: 2px;
+  padding: 0.2em 0.4em;
+  line-height: 1.4em;
+  white-space: pre;
 }
 
 .text-monospace,
 :local(.text-monospace) {
-    font-family: Monaco, monospace;
+  font-family: Monaco, monospace;
 }
 
 .text-pre-wrap {
@@ -139,5 +188,5 @@
 }
 
 .text-measure {
-    max-width: 620px;
+  max-width: 620px;
 }

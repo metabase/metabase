@@ -1,7 +1,6 @@
 // Origin: https://github.com/flowtype/flow-typed/blob/master/definitions/npm/redux-actions_v2.x.x/flow_v0.34.x-/redux-actions_v2.x.x.js
 
-declare module 'redux-actions' {
-
+declare module "redux-actions" {
   /*
    * Use `ActionType` to get the type of the action created by a given action
    * creator. For example:
@@ -17,7 +16,6 @@ declare module 'redux-actions' {
   declare type ActionType<ActionCreator> = _ActionType<*, ActionCreator>;
   declare type _ActionType<R, Fn: (payload: *, ...rest: any[]) => R> = R;
 
-
   /*
    * To get the most from Flow type checking use a `payloadCreator` argument
    * with `createAction`. Make sure that Flow can infer the argument type of the
@@ -29,30 +27,39 @@ declare module 'redux-actions' {
    */
   declare function createAction<T, P>(
     type: T,
-    $?: empty  // hack to force Flow to not use this signature when more than one argument is given
+    $?: empty, // hack to force Flow to not use this signature when more than one argument is given
   ): (payload: P, ...rest: any[]) => { type: T, payload: P, error?: boolean };
 
   declare function createAction<T, P, P2>(
     type: T,
     payloadCreator: (_: P) => P2,
-    $?: empty
+    $?: empty,
   ): (payload: P, ...rest: any[]) => { type: T, payload: P2, error?: boolean };
 
   declare function createAction<T, P, P2, M>(
     type: T,
     payloadCreator: (_: P) => P2,
-    metaCreator: (_: P) => M
-  ): (payload: P, ...rest: any[]) => { type: T, payload: P2, error?: boolean, meta: M };
+    metaCreator: (_: P) => M,
+  ): (
+    payload: P,
+    ...rest: any[]
+  ) => { type: T, payload: P2, error?: boolean, meta: M };
 
   declare function createAction<T, P, M>(
     type: T,
     payloadCreator: null | void,
-    metaCreator: (_: P) => M
-  ): (payload: P, ...rest: any[]) => { type: T, payload: P, error?: boolean, meta: M };
+    metaCreator: (_: P) => M,
+  ): (
+    payload: P,
+    ...rest: any[]
+  ) => { type: T, payload: P, error?: boolean, meta: M };
 
   // `createActions` is quite difficult to write a type for. Maybe try not to
   // use this one?
-  declare function createActions(actionMap: Object, ...identityActions: string[]): Object;
+  declare function createActions(
+    actionMap: Object,
+    ...identityActions: string[]
+  ): Object;
   declare function createActions(...identityActions: string[]): Object;
 
   declare type Reducer<S, A> = (state: S, action: A) => S;
@@ -60,7 +67,7 @@ declare module 'redux-actions' {
   declare type ReducerMap<S, A> =
     | { next: Reducer<S, A> }
     | { throw: Reducer<S, A> }
-    | { next: Reducer<S, A>, throw: Reducer<S, A> }
+    | { next: Reducer<S, A>, throw: Reducer<S, A> };
 
   /*
    * To get full advantage from Flow, use a type annotation on the action
@@ -79,14 +86,17 @@ declare module 'redux-actions' {
   declare function handleAction<Type, State, Action: { type: Type }>(
     type: Type,
     reducer: Reducer<State, Action> | ReducerMap<State, Action>,
-    defaultState: State
+    defaultState: State,
   ): Reducer<State, Action>;
 
   declare function handleActions<State, Action>(
-    reducers: { [key: string]: Reducer<State, Action> | ReducerMap<State, Action> },
-    defaultState?: State
+    reducers: {
+      [key: string]: Reducer<State, Action> | ReducerMap<State, Action>,
+    },
+    defaultState?: State,
   ): Reducer<State, Action>;
 
-  declare function combineActions(...types: (string | Symbol | Function)[]) : string;
-
+  declare function combineActions(
+    ...types: (string | Symbol | Function)[]
+  ): string;
 }

@@ -2,6 +2,7 @@
   "Tests for /api/pulse endpoints."
   (:require [expectations :refer :all]
             [metabase
+             [email-test :as et]
              [http-client :as http]
              [middleware :as middleware]
              [util :as u]]
@@ -13,9 +14,13 @@
              [pulse :as pulse :refer [Pulse]]
              [pulse-card :refer [PulseCard]]
              [table :refer [Table]]]
-            [metabase.test.data.users :refer :all]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [users :refer :all]]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
-            [metabase.test.util :as tu]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -26,7 +31,8 @@
 
 (defn- pulse-card-details [card]
   (-> (select-keys card [:id :name :description :display])
-      (update :display name)))
+      (update :display name)
+      (assoc :include_csv false :include_xls false)))
 
 (defn- pulse-channel-details [channel]
   (select-keys channel [:schedule_type :schedule_details :channel_type :updated_at :details :pulse_id :id :enabled
@@ -47,8 +53,8 @@
 (defn- pulse-response [{:keys [created_at updated_at], :as pulse}]
   (-> pulse
       (dissoc :id)
-      (assoc :created_at (not (nil? created_at))
-             :updated_at (not (nil? updated_at)))))
+      (assoc :created_at (some? created_at)
+             :updated_at (some? updated_at))))
 
 
 ;; ## /api/pulse/* AUTHENTICATION Tests
@@ -118,6 +124,38 @@
                                                                                    :recipients    []}]
                                                                   :skip_if_empty false}))
         (update :channels remove-extra-channels-fields))))
+
+;; Create a pulse with a csv and xls
+(tt/expect-with-temp [Card [card1]
+                      Card [card2]]
+  {:name          "A Pulse"
+   :creator_id    (user->id :rasta)
+   :creator       (user-details (fetch-user :rasta))
+   :created_at    true
+   :updated_at    true
+   :cards         [(assoc (pulse-card-details card1) :include_csv true :include_xls true)
+                   (pulse-card-details card2)]
+   :channels      [(merge pulse-channel-defaults
+                          {:channel_type  "email"
+                           :schedule_type "daily"
+                           :schedule_hour 12
+                           :recipients    []})]
+   :skip_if_empty false}
+  (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
+                                                                :cards         [{:id          (:id card1)
+                                                                                 :include_csv true
+                                                                                 :include_xls true}
+                                                                                {:id          (:id card2)
+                                                                                 :include_csv false
+                                                                                 :include_xls false}]
+                                                                :channels      [{:enabled       true
+                                                                                 :channel_type  "email"
+                                                                                 :schedule_type "daily"
+                                                                                 :schedule_hour 12
+                                                                                 :schedule_day  nil
+                                                                                 :recipients    []}]
+                                                                :skip_if_empty false}))
+      (update :channels remove-extra-channels-fields)))
 
 
 ;; ## PUT /api/pulse
@@ -232,3 +270,28 @@
 (tt/expect-with-temp [Pulse [{pulse-id :id} {:alert_condition "rows"}]]
   "Not found."
   ((user->client :rasta) :get 404 (str "pulse/" pulse-id)))
+
+;; ## POST /api/pulse/test
+(expect
+  [{:ok true}
+   (et/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
+                        :body {"Daily Sad Toucans" true}})]
+  (tu/with-model-cleanup [Pulse]
+    (et/with-fake-inbox
+      (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
+        (tt/with-temp* [Database  [{database-id :id}]
+                        Table     [{table-id :id}    {:db_id database-id}]
+                        Card      [{card-id :id}     {:dataset_query {:database database-id
+                                                                      :type     "query"
+                                                                      :query    {:source-table table-id,
+                                                                                 :aggregation  {:aggregation-type "count"}}}}]]
+          [((user->client :rasta) :post 200 "pulse/test" {:name          "Daily Sad Toucans"
+                                                          :cards         [{:id card-id}]
+                                                          :channels      [{:enabled       true
+                                                                           :channel_type  "email"
+                                                                           :schedule_type "daily"
+                                                                           :schedule_hour 12
+                                                                           :schedule_day  nil
+                                                                           :recipients    [(fetch-user :rasta)]}]
+                                                          :skip_if_empty false})
+           (et/regex-email-bodies #"Daily Sad Toucans")])))))

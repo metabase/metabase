@@ -2,6 +2,7 @@
   "Tests for /api/user endpoints."
   (:require [expectations :refer :all]
             [metabase
+             [email-test :as et]
              [http-client :as http]
              [middleware :as middleware]
              [util :as u]]
@@ -73,13 +74,14 @@
      :common_name  (str user-name " " user-name)
      :is_superuser false
      :is_qbnewb    true}
-    (do ((user->client :crowberto) :post 200 "user" {:first_name user-name
-                                                     :last_name  user-name
-                                                     :email      email})
-        (u/prog1 (db/select-one [User :email :first_name :last_name :is_superuser :is_qbnewb]
-                   :email email)
-          ;; clean up after ourselves
-          (db/delete! User :email email)))))
+    (et/with-fake-inbox
+      ((user->client :crowberto) :post 200 "user" {:first_name user-name
+                                                   :last_name  user-name
+                                                   :email      email})
+      (u/prog1 (db/select-one [User :email :first_name :last_name :is_superuser :is_qbnewb]
+                              :email email)
+               ;; clean up after ourselves
+               (db/delete! User :email email)))))
 
 
 ;; Test that reactivating a disabled account works

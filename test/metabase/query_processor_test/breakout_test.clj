@@ -8,7 +8,9 @@
              [dimension :refer [Dimension]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]]
-            [metabase.query-processor.middleware.expand :as ql]
+            [metabase.query-processor.middleware
+             [add-dimension-projections :as add-dim-projections]
+             [expand :as ql]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -16,8 +18,6 @@
              [dataset-definitions :as defs]
              [datasets :as datasets]]
             [toucan.db :as db]))
-
-(tu/resolve-private-vars metabase.query-processor.middleware.add-dimension-projections create-remapped-col)
 
 ;;; single column
 (qp-expect-with-all-engines
@@ -97,7 +97,7 @@
    :cols    [(assoc (breakout-col (venues-col :category_id))
                :remapped_to "Foo")
              (aggregate-col :count)
-             (create-remapped-col "Foo" (data/format-name "category_id"))]
+             (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
    :native_form true}
   (data/with-data
     (fn []
@@ -115,7 +115,7 @@
          booleanize-native-form
          (format-rows-by [int int str]))))
 
-(datasets/expect-with-engines (engines-that-support :foreign-keys)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
   [["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
    ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]]
   (data/with-data
@@ -135,21 +135,21 @@
            rows
            (map last))]))
 
-(datasets/expect-with-engines (engines-that-support :binning)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
   [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :num-bins 20))))))
 
-(datasets/expect-with-engines (engines-that-support :binning)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
  [[0.0 1] [20.0 90] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :num-bins 3))))))
 
-(datasets/expect-with-engines (engines-that-support :binning)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
    [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) (partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
@@ -159,14 +159,14 @@
 
 ;; Currently defaults to 8 bins when the number of bins isn't
 ;; specified
-(datasets/expect-with-engines (engines-that-support :binning)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
   [[10.0 1] [30.0 90] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :default))))))
 
-(datasets/expect-with-engines (engines-that-support :binning)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
   [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
   (tu/with-temporary-setting-values [breakout-bin-width 5.0]
     (format-rows-by [(partial u/round-to-decimals 1) int]
@@ -175,7 +175,7 @@
               (ql/breakout (ql/binning-strategy $latitude :default)))))))
 
 ;; Testing bin-width
-(datasets/expect-with-engines (engines-that-support :binning)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
   [[10.0 1] [33.0 4] [34.0 57] [37.0 29] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
@@ -183,14 +183,14 @@
             (ql/breakout (ql/binning-strategy $latitude :bin-width 1))))))
 
 ;; Testing bin-width using a float
-(datasets/expect-with-engines (engines-that-support :binning)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
   [[10.0 1] [32.5 61] [37.5 29] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :bin-width 2.5))))))
 
-(datasets/expect-with-engines (engines-that-support :binning)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
   [[33.0 4] [34.0 57]]
   (tu/with-temporary-setting-values [breakout-bin-width 1.0]
     (format-rows-by [(partial u/round-to-decimals 1) int]
@@ -209,7 +209,7 @@
         (update-in [:binning_info :max_value] round-to-decimal))))
 
 ;;Validate binning info is returned with the binning-strategy
-(datasets/expect-with-engines (engines-that-support :binning)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
   (assoc (breakout-col (venues-col :latitude))
          :binning_info {:binning_strategy :bin-width, :bin_width 10.0,
                         :num_bins         4,          :min_value 10.0
@@ -221,7 +221,7 @@
       (get-in [:data :cols])
       first))
 
-(datasets/expect-with-engines (engines-that-support :binning)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
   (assoc (breakout-col (venues-col :latitude))
          :binning_info {:binning_strategy :num-bins, :bin_width 7.5,
                         :num_bins         5,         :min_value 7.5,
@@ -234,20 +234,14 @@
       first))
 
 ;;Validate binning info is returned with the binning-strategy
-(datasets/expect-with-engines (engines-that-support :binning)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
   {:status :failed
    :class Exception
    :error (format "Unable to bin field '%s' with id '%s' without a min/max value"
                   (:name (Field (data/id :venues :latitude)))
                   (data/id :venues :latitude))}
-  (let [fingerprint (-> (data/id :venues :latitude)
-                        Field
-                        :fingerprint)]
-    (try
-      (db/update! Field (data/id :venues :latitude) :fingerprint {:type {:type/Number {:min nil :max nil}}})
-      (-> (data/run-query venues
-            (ql/aggregation (ql/count))
-            (ql/breakout (ql/binning-strategy $latitude :default)))
-          (select-keys [:status :class :error]))
-      (finally
-        (db/update! Field (data/id :venues :latitude) :fingerprint fingerprint)))))
+  (tu/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
+    (-> (data/run-query venues
+                        (ql/aggregation (ql/count))
+                        (ql/breakout (ql/binning-strategy $latitude :default)))
+        (select-keys [:status :class :error]))))

@@ -3,7 +3,10 @@ import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
-import Visualization, { ERROR_MESSAGE_GENERIC, ERROR_MESSAGE_PERMISSION } from "metabase/visualizations/components/Visualization.jsx";
+import Visualization, {
+  ERROR_MESSAGE_GENERIC,
+  ERROR_MESSAGE_PERMISSION,
+} from "metabase/visualizations/components/Visualization.jsx";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
 import { getParameters, getParametersWithExtras, applyParameters } from "metabase/meta/Card";
@@ -28,7 +31,7 @@ const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 const HEADER_ICON_SIZE = 16;
 
 const HEADER_ACTION_STYLE = {
-    padding: 4
+  padding: 4,
 };
 
 export default class DashCard extends Component {
@@ -39,7 +42,7 @@ export default class DashCard extends Component {
         parameterValues: PropTypes.object.isRequired,
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
-        navigateToNewCardFromDashboard: PropTypes.func.isRequired
+    navigateToNewCardFromDashboard: PropTypes.func.isRequired,
     };
 
     async componentDidMount() {
@@ -61,18 +64,21 @@ export default class DashCard extends Component {
             dashcard,
             dashcardData,
             slowCards,
-            parameterValues,
             isEditing,
             isEditingParameter,
             onAddSeries,
             onRemove,
             navigateToNewCardFromDashboard,
             metadata,
-            dashboard
+            dashboard,
+            parameterValues
         } = this.props;
         const mainCard = {
             ...dashcard.card,
-            visualization_settings: { ...dashcard.card.visualization_settings, ...dashcard.visualization_settings }
+      visualization_settings: {
+        ...dashcard.card.visualization_settings,
+        ...dashcard.visualization_settings,
+      },
         };
         const cards = [mainCard].concat(dashcard.series || []);
         const dashboardId = dashcard.dashboard_id;
@@ -82,25 +88,24 @@ export default class DashCard extends Component {
                 ...getIn(dashcardData, [dashcard.id, card.id]),
                 card: card,
                 isSlow: slowCards[card.id],
-                isUsuallyFast: card.query_average_duration && (card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD)
+      isUsuallyFast:
+        card.query_average_duration &&
+        card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
             }));
         var cardIds = [dashcard.card.id];
         const seriesCards = dashcard.series || [];
         for(var index=0;index<seriesCards.length;index++){
             cardIds.push(seriesCards[index].id);
         }
-        const loading = !(series.length > 0 && _.every(series, (s) => s.data));
-        const expectedDuration = Math.max(...series.map((s) => s.card.query_average_duration || 0));
-        const usuallyFast = _.every(series, (s) => s.isUsuallyFast);
-        const isSlow = loading && _.some(series, (s) => s.isSlow) && (usuallyFast ? "usually-fast" : "usually-slow");
-
-        const parameterMap = dashcard && dashcard.parameter_mappings && dashcard.parameter_mappings
-            .reduce((map, mapping) => ({...map, [mapping.parameter_id]: mapping}), {});
-
-        const isMappedToAllParameters = !parameterValues || Object.keys(parameterValues)
-            .filter(parameterId => parameterValues[parameterId] !== null)
-            .every(parameterId => parameterMap[parameterId]);
-
+    const loading = !(series.length > 0 && _.every(series, s => s.data));
+    const expectedDuration = Math.max(
+      ...series.map(s => s.card.query_average_duration || 0),
+    );
+    const usuallyFast = _.every(series, s => s.isUsuallyFast);
+    const isSlow =
+      loading &&
+      _.some(series, s => s.isSlow) &&
+      (usuallyFast ? "usually-fast" : "usually-slow");
 
         const errors = series.map(s => s.error).filter(e => e);
 
@@ -116,7 +121,7 @@ export default class DashCard extends Component {
             errorIcon = "key";
         } else if (errors.length > 0) {
             if (IS_EMBED_PREVIEW) {
-                errorMessage = errors[0] && errors[0].data || ERROR_MESSAGE_GENERIC;
+        errorMessage = (errors[0] && errors[0].data) || ERROR_MESSAGE_GENERIC;
             } else {
                 errorMessage = ERROR_MESSAGE_GENERIC;
             }
@@ -125,11 +130,13 @@ export default class DashCard extends Component {
 
         return (
             <div
-                className={cx("Card bordered rounded flex flex-column hover-parent hover--visibility", {
+        className={cx(
+          "Card bordered rounded flex flex-column hover-parent hover--visibility",
+          {
                     "Card--recent": dashcard.isAdded,
-                    "Card--unmapped": !isMappedToAllParameters && !isEditing,
-                    "Card--slow": isSlow === "usually-slow"
-                })}
+            "Card--slow": isSlow === "usually-slow",
+          },
+        )}
             >
                 <Visualization
                     className="flex-full"
@@ -137,54 +144,94 @@ export default class DashCard extends Component {
                     errorIcon={errorIcon}
                     isSlow={isSlow}
                     expectedDuration={expectedDuration}
-                    series={series}
+          rawSeries={series}
                     showTitle
                     isDashboard
                     isEditing={isEditing}
-                    gridSize={this.props.isMobile ? undefined : { width: dashcard.sizeX, height: dashcard.sizeY }}
-                    actionButtons={isEditing && !isEditingParameter ?
-                        <DashCardActionButtons
-                            series={series}
-                            onRemove={onRemove}
-                            onAddSeries={onAddSeries}
-                            onReplaceAllVisualizationSettings={this.props.onReplaceAllVisualizationSettings}
-                        /> : isEmbed ? <QueryDownloadWidget
-                                             className="m1 text-grey-4-hover"
-                                             card={dashcard.card}
-                                             result={dashcardData}
-                                             dashcardId={dashcard.id}
-                                             token={dashcard.dashboard_id}
-                                             parameters = {parametersMap}
-                                         />:undefined
-                    }
-                    onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
-                    replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
+          gridSize={
+            this.props.isMobile
+              ? undefined
+              : { width: dashcard.sizeX, height: dashcard.sizeY }
+          }
+          actionButtons={
+            isEditing && !isEditingParameter ? (
+                <DashCardActionButtons
+                  series={series}
+                  onRemove={onRemove}
+                  onAddSeries={onAddSeries}
+                  onReplaceAllVisualizationSettings={this.props.onReplaceAllVisualizationSettings}
+                />)
+              : isEmbed ? (
+                <QueryDownloadWidget
+                  className="m1 text-grey-4-hover"
+                  card={dashcard.card}
+                  result={dashcardData}
+                  dashcardId={dashcard.id}
+                  token={dashcard.dashboard_id}
+                  parameters={parametersMap}
+                />)
+              : (
+                undefined
+              )
+          }
+          onUpdateVisualizationSettings={
+            this.props.onUpdateVisualizationSettings
+          }
+          replacementContent={
+            isEditingParameter && (
+              <DashCardParameterMapper dashcard={dashcard} />
+            )
+          }
                     metadata={metadata}
-                    onChangeCardAndRun={ navigateToNewCardFromDashboard ? ({ nextCard, previousCard }) => {
+          onChangeCardAndRun={
+            navigateToNewCardFromDashboard
+              ? ({ nextCard, previousCard }) => {
                         // navigateToNewCardFromDashboard needs `dashcard` for applying active filters to the query
-                        navigateToNewCardFromDashboard({ nextCard, previousCard, dashcard })
-                    } : null}
+                  navigateToNewCardFromDashboard({
+                    nextCard,
+                    previousCard,
+                    dashcard,
+                  });
+                }
+              : null
+          }
                 />
             </div>
         );
     }
 }
 
-const DashCardActionButtons = ({ series, onRemove, onAddSeries, onReplaceAllVisualizationSettings }) =>
-    <span className="DashCard-actions flex align-center" style={{ lineHeight: 1 }}>
-        { getVisualizationRaw(series).CardVisualization.supportsSeries &&
+const DashCardActionButtons = ({
+  series,
+  onRemove,
+  onAddSeries,
+  onReplaceAllVisualizationSettings,
+}) => (
+  <span
+    className="DashCard-actions flex align-center"
+    style={{ lineHeight: 1 }}
+  >
+    {getVisualizationRaw(series).CardVisualization.supportsSeries && (
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
-        }
-        { onReplaceAllVisualizationSettings &&
-            <ChartSettingsButton series={series} onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings} />
-        }
+    )}
+    {onReplaceAllVisualizationSettings &&
+      !getVisualizationRaw(series).CardVisualization.disableSettingsConfig && (
+        <ChartSettingsButton
+          series={series}
+          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
+        />
+      )}
         <RemoveButton onRemove={onRemove} />
     </span>
+);
 
-const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) =>
+const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
     <ModalWithTrigger
-        wide tall
-        triggerElement={<Icon name="gear" size={HEADER_ICON_SIZE} style={HEADER_ACTION_STYLE} />}
+    wide
+    tall
+    triggerElement={
+      <Icon name="gear" size={HEADER_ICON_SIZE} style={HEADER_ACTION_STYLE} />
+    }
         triggerClasses="text-grey-2 text-grey-4-hover cursor-pointer flex align-center flex-no-shrink mr1"
     >
         <ChartSettings
@@ -193,13 +240,20 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) =>
             isDashboard
         />
     </ModalWithTrigger>
+);
 
-const RemoveButton = ({ onRemove }) =>
-    <a className="text-grey-2 text-grey-4-hover " data-metabase-event="Dashboard;Remove Card Modal" onClick={onRemove} style={HEADER_ACTION_STYLE}>
+const RemoveButton = ({ onRemove }) => (
+  <a
+    className="text-grey-2 text-grey-4-hover "
+    data-metabase-event="Dashboard;Remove Card Modal"
+    onClick={onRemove}
+    style={HEADER_ACTION_STYLE}
+  >
         <Icon name="close" size={HEADER_ICON_SIZE} />
     </a>
+);
 
-const AddSeriesButton = ({ series, onAddSeries }) =>
+const AddSeriesButton = ({ series, onAddSeries }) => (
     <a
         data-metabase-event={"Dashboard;Edit Series Modal;open"}
         className="text-grey-2 text-grey-4-hover cursor-pointer h3 flex-no-shrink relative mr1"
@@ -208,14 +262,20 @@ const AddSeriesButton = ({ series, onAddSeries }) =>
     >
         <span className="flex align-center">
             <span className="flex">
-                <Icon className="absolute" name="add" style={{ top: 0, left: 0 }} size={HEADER_ICON_SIZE / 2} />
+        <Icon
+          className="absolute"
+          name="add"
+          style={{ top: 0, left: 0 }}
+          size={HEADER_ICON_SIZE / 2}
+        />
                 <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE} />
             </span>
             <span className="flex-no-shrink text-bold">
-                &nbsp;{ series.length > 1 ? "Edit" : "Add" }
+        &nbsp;{series.length > 1 ? "Edit" : "Add"}
             </span>
         </span>
     </a>
+);
 
 function getSeriesIconName(series) {
     try {
