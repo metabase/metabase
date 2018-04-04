@@ -235,10 +235,19 @@
 
 (defmethod related (type Table)
   [table]
-  {:segments    (segments-for-table table)
-   :metrics     (metrics-for-table table)
-   :linking-to  (linking-to table)
-   :linked-from (linked-from table)})
+  (let [linking-to  (linking-to table)
+        linked-from (linked-from table)]
+    {:segments    (segments-for-table table)
+     :metrics     (metrics-for-table table)
+     :linking-to  linking-to
+     :linked-from linked-from
+     :tables      (when (every? empty? [linking-to linked-from])
+                    (->> (db/select Table
+                           :db_id  (:db_id table)
+                           :schema (:schema table)
+                           :id     [:not= (:id table)])
+                         (filter mi/can-read?)
+                         interesting-mix))}))
 
 (defmethod related (type Dashboard)
   [dashboard]

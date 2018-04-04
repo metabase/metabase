@@ -17,22 +17,27 @@
                                        ["segment" 1]]
                                       [:metric 1]]))
 
+
 (expect
   [0.5
    0.0
    1.0]
   (tt/with-temp* [Card [{card-id-1 :id}
                         {:dataset_query {:query {:aggregation [:sum [:field-id 1]]
-                                                 :breakout [[:field-id 2]]}}}]
+                                                 :breakout [[:field-id 2]]}
+                                         :type  :query}}]
                   Card [{card-id-2 :id}
                         {:dataset_query {:query {:aggregation [:sum [:field-id 3]]
-                                                 :breakout [[:field-id 2]]}}}]
+                                                 :breakout [[:field-id 2]]}
+                                         :type  :query}}]
                   Card [{card-id-3 :id}
                         {:dataset_query {:query {:aggregation [:sum [:field-id 3]]
-                                                 :breakout [[:field-id 4]]}}}]]
+                                                 :breakout [[:field-id 4]]}
+                                         :type  :query}}]]
     (map double [(#'r/similarity (Card card-id-1) (Card card-id-2))
                  (#'r/similarity (Card card-id-1) (Card card-id-3))
                  (#'r/similarity (Card card-id-1) (Card card-id-1))])))
+
 
 ;; Create a world with 3 cards: A, B, and C with transitive similarity
 ;; (A is similar to B and B is similar to C, but A is not similar to C). Test if
