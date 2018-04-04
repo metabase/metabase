@@ -25,6 +25,7 @@
             [metabase.sync.interface :as si]
             [metabase.util :as u]
             [schema.core :as s]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db])
   (:import clojure.lang.Keyword
            java.text.SimpleDateFormat
@@ -243,7 +244,7 @@
 
 ;;; ## CONFIG
 
-(defsetting report-timezone "Connection timezone to use when executing queries. Defaults to system timezone.")
+(defsetting report-timezone (tru "Connection timezone to use when executing queries. Defaults to system timezone."))
 
 (defonce ^:private registered-drivers
   (atom {}))
