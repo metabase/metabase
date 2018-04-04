@@ -1,20 +1,14 @@
 (ns metabase.query-processor.middleware.parameters.mbql-test
   "Tests for *MBQL* parameter substitution."
   (:require [expectations :refer :all]
-            [honeysql.core :as hsql]
             [metabase
              [query-processor :as qp]
              [query-processor-test :refer [first-row format-rows-by non-timeseries-engines rows]]
              [util :as u]]
-            [metabase.driver.generic-sql :as sql]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
             [metabase.query-processor.middleware.expand :as ql]
-            [metabase.query-processor.middleware.parameters.mbql :refer :all]
+            [metabase.query-processor.middleware.parameters.mbql :as mbql-params :refer :all]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.test.data.datasets :as datasets]))
 
 (defn- expand-parameters [query]
   (expand (dissoc query :parameters) (:parameters query)))
@@ -24,7 +18,7 @@
 (expect
   {:database   1
    :type       :query
-   :query      {:filter   [:= ["field-id" 123] "666"]
+   :query      {:filter   [:= ["field-id" (data/id :venues :name)] "Cam's Toucannery"]
                 :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
@@ -32,35 +26,40 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "id"
-                                    :target ["dimension" ["field-id" 123]]
-                                    :value  "666"}]}))
+                                    :target ["dimension" ["field-id" (data/id :venues :name)]]
+                                    :value  "Cam's Toucannery"}]}))
 
 ;; multiple filters are conjoined by an "AND"
 (expect
-  {:database   1
-   :type       :query
-   :query      {:filter   ["AND" ["AND" ["AND" ["=" 456 12]] [:= ["field-id" 123] "666"]] [:= ["field-id" 456] "999"]]
-                :breakout [17]}}
+  {:database 1
+   :type     :query
+   :query    {:filter   ["AND"
+                         ["AND"
+                          ["AND"
+                           ["=" (data/id :venues :id) 12]]
+                          [:= ["field-id" (data/id :venues :name)] "Cam's Toucannery"]]
+                         [:= ["field-id" (data/id :venues :id)] 999]]
+              :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
-                      :query      {:filter   ["AND" ["=" 456 12]]
+                      :query      {:filter   ["AND" ["=" (data/id :venues :id) 12]]
                                    :breakout [17]}
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "id"
-                                    :target ["dimension" ["field-id" 123]]
-                                    :value  "666"}
+                                    :target ["dimension" ["field-id" (data/id :venues :name)]]
+                                    :value  "Cam's Toucannery"}
                                    {:hash   "def456"
                                     :name   "bar"
                                     :type   "category"
-                                    :target ["dimension" ["field-id" 456]]
-                                    :value  "999"}]}))
+                                    :target ["dimension" ["field-id" (data/id :venues :id)]]
+                                    :value  999}]}))
 
 ;; date range parameters
 (expect
   {:database   1
    :type       :query
-   :query      {:filter   ["TIME_INTERVAL" ["field-id" 123] -30 "day" {:include-current false}]
+   :query      {:filter   ["TIME_INTERVAL" ["field-id" (data/id :users :last_login)] -30 "day" {:include-current false}]
                 :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
@@ -68,13 +67,13 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"
-                                    :target ["dimension" ["field-id" 123]]
+                                    :target ["dimension" ["field-id" (data/id :users :last_login)]]
                                     :value  "past30days"}]}))
 
 (expect
   {:database   1
    :type       :query
-   :query      {:filter   ["TIME_INTERVAL" ["field-id" 123] -30 "day" {:include-current true}]
+   :query      {:filter   ["TIME_INTERVAL" ["field-id" (data/id :users :last_login)] -30 "day" {:include-current true}]
                 :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
@@ -82,13 +81,13 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"
-                                    :target ["dimension" ["field-id" 123]]
+                                    :target ["dimension" ["field-id" (data/id :users :last_login)]]
                                     :value  "past30days~"}]}))
 
 (expect
   {:database   1
    :type       :query
-   :query      {:filter   ["=" ["field-id" 123] ["relative_datetime" -1 "day"]]
+   :query      {:filter   ["=" ["field-id" (data/id :users :last_login)] ["relative_datetime" -1 "day"]]
                 :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
@@ -96,13 +95,13 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"
-                                    :target ["dimension" ["field-id" 123]]
+                                    :target ["dimension" ["field-id" (data/id :users :last_login)]]
                                     :value  "yesterday"}]}))
 
 (expect
   {:database   1
    :type       :query
-   :query      {:filter   ["BETWEEN" ["field-id" 123] "2014-05-10" "2014-05-16"]
+   :query      {:filter   ["BETWEEN" ["field-id" (data/id :users :last_login)] "2014-05-10" "2014-05-16"]
                 :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
@@ -110,14 +109,14 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"
-                                    :target ["dimension" ["field-id" 123]]
+                                    :target ["dimension" ["field-id" (data/id :users :last_login)]]
                                     :value  "2014-05-10~2014-05-16"}]}))
 
 
 
-;;; +-------------------------------------------------------------------------------------------------------+
-;;; |                                           END-TO-END TESTS                                            |
-;;; +-------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                END-TO-END TESTS                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; for some reason param substitution tests fail on Redshift & (occasionally) Crate so just don't run those for now
 (def ^:private ^:const params-test-engines (disj non-timeseries-engines :redshift :crate))
@@ -246,3 +245,12 @@
                                              :value  ["2014-06" "2015-06"]}]))]
     (-> (qp/process-query outer-query)
         :data :native_form)))
+
+;; make sure that "ID" type params get converted to numbers when appropriate
+(expect
+  [:= ["field-id" (data/id :venues :id)] 1]
+  (#'mbql-params/build-filter-clause {:type   "id"
+                                      :target ["dimension" ["field-id" (data/id :venues :id)]]
+                                      :slug   "venue_id"
+                                      :value  "1"
+                                      :name   "Venue ID"}))
