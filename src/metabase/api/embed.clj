@@ -436,10 +436,8 @@
       (dataset-api/as-format export-format
       (let [cards-id (first (csv/read-csv  (query-params :card-ids)))
             query-params (dissoc query-params :card-ids)
-        cards-data (into [] (map (fn [card-id] (card-for-signed-token token dashcard-id (Integer/parseInt card-id) query-params)) cards-id))
-            prnt (println cards-data  )
+            cards-data (into [] (map (fn [card-id] (card-for-signed-token token dashcard-id (Integer/parseInt card-id) query-params)) cards-id))
             combined (reduce combine-cards-data cards-data)
-            prnt (println combined  )
         ]
         combined
     )))
