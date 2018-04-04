@@ -205,7 +205,7 @@ export default class AccordianList extends Component {
   renderSectionIcon(section, sectionIndex) {
     if (this.props.renderSectionIcon) {
       return (
-        <span className="List-section-icon mr2">
+        <span className="List-section-icon mr1 flex align-center">
           {this.props.renderSectionIcon(section, sectionIndex)}
         </span>
       );
