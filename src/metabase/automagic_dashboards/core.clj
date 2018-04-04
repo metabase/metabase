@@ -1,7 +1,8 @@
 (ns metabase.automagic-dashboards.core
   "Automatically generate questions and dashboards based on predefined
    heuristics."
-  (:require [cheshire.core :as json]
+  (:require [buddy.core.codecs :as codecs]
+            [cheshire.core :as json]
             [clj-time
              [core :as t]
              [format :as t.format]]
@@ -75,6 +76,7 @@
   (name-postfix [query] (format " (%s)" (full-name query)))
   (url [query] (format "%sadhoc/%s" public-endpoint (-> query
                                                         json/encode
+                                                        codecs/str->bytes
                                                         codec/base64-encode)))
 
   metabase.models.card.CardInstance
