@@ -378,9 +378,9 @@ function computeXAxisMargin(chart) {
   return Math.max(0, rotatedMaxSize.width - maxSize.height); // subtract the existing height
 }
 
-function checkLabelOverlap(chart) {
+export function checkXAxisLabelOverlap(chart, selector = "g.x text") {
   const rects = [];
-  for (const elem of chart.selectAll("g.x text")[0]) {
+  for (const elem of chart.selectAll(selector)[0]) {
     rects.push(elem.getBoundingClientRect());
     if (
       rects.length > 1 &&
@@ -422,7 +422,7 @@ function computeXAxisSpacing(chart) {
 function beforeRenderComputeXAxisLabelType(chart) {
   // treat graph.x_axis.axis_enabled === true as "auto"
   if (chart.settings["graph.x_axis.axis_enabled"] === true) {
-    const overlaps = checkLabelOverlap(chart);
+    const overlaps = checkXAxisLabelOverlap(chart);
     if (overlaps) {
       if (chart.isOrdinal()) {
         const spacing = computeXAxisSpacing(chart);
