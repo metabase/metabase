@@ -451,6 +451,40 @@
             :data
             :rows)))))
 
+;; make sure DimensionValue params also work if they have a default value, even if some is passed in for some reason
+;; as part of the query (#7253)
+;; If passed in as part of the query however make sure it doesn't override what's actually in the DB
+(expect
+ [["Wow"]]
+ (tu/with-temporary-setting-values [enable-public-sharing true]
+   (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                             :type     :native
+                                             :native   {:query         "SELECT {{msg}} AS message"
+                                                        :template_tags {:msg {:id           "181da7c5"
+                                                                              :name         "msg"
+                                                                              :display_name "Message"
+                                                                              :type         "text"
+                                                                              :required     true
+                                                                              :default      "Wow"}}}}}]
+     (with-temp-public-dashboard [dash {:parameters [{:name "Message"
+                                                      :slug "msg"
+                                                      :id   "181da7c5"
+                                                      :type "category"}]}]
+       (add-card-to-dashboard! card dash
+         :parameter_mappings [{:card_id      (u/get-id card)
+                               :target       [:variable [:template-tag :msg]]
+                               :parameter_id "181da7c5"}])
+       (-> ((test-users/user->client :crowberto)
+            :get (str (dashcard-url dash card)
+                      "?parameters="
+                      (json/generate-string
+                       [{:type    :category
+                         :target  [:variable [:template-tag :msg]]
+                         :value   nil
+                         :default "Hello"}])))
+           :data
+           :rows)))))
+
 
 ;;; --------------------------- Check that parameter information comes back with Dashboard ---------------------------
 
