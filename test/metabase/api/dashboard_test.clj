@@ -133,6 +133,7 @@
                                                            :display                "table"
                                                            :query_type             nil
                                                            :dataset_query          {}
+                                                           :read_permissions       []
                                                            :visualization_settings {}
                                                            :query_average_duration nil
                                                            :in_public_dashboard    false

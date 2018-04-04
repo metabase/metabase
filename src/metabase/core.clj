@@ -38,7 +38,8 @@
             [toucan.db :as db])
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
            [java.nio.charset Charset StandardCharsets]
-           org.eclipse.jetty.server.Server))
+           org.eclipse.jetty.server.Server
+           org.eclipse.jetty.util.thread.QueuedThreadPool))
 
 ;;; CONFIG
 
@@ -71,10 +72,23 @@
           (rr/content-type json-response "application/json; charset=utf-8"))
         response))))
 
+(def ^:private jetty-instance
+  (atom nil))
+
+(defn- jetty-stats []
+  (when-let [^Server jetty-server @jetty-instance]
+    (let [^QueuedThreadPool pool (.getThreadPool jetty-server)]
+      {:min-threads  (.getMinThreads pool)
+       :max-threads  (.getMaxThreads pool)
+       :busy-threads (.getBusyThreads pool)
+       :idle-threads (.getIdleThreads pool)
+       :queue-size   (.getQueueSize pool)})))
+
 (def ^:private app
   "The primary entry point to the Ring HTTP server."
   (-> #'routes/routes                    ; the #' is to allow tests to redefine endpoints
-      mb-middleware/log-api-call
+      (mb-middleware/log-api-call
+       jetty-stats)
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
       (wrap-json-body                    ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
@@ -177,10 +191,6 @@
 
 
 ;;; ## ---------------------------------------- Jetty (Web) Server ----------------------------------------
-
-
-(def ^:private jetty-instance
-  (atom nil))
 
 (defn start-jetty!
   "Start the embedded Jetty web server."

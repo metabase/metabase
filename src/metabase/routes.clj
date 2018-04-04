@@ -37,8 +37,10 @@
 
 (defn- fallback-localization
   [locale]
-  (json/generate-string {"headers" {"language" locale}
-                         "translations" {"" {"Metabase" {"msgid" "Metabase"}}}}))
+  (json/generate-string {"headers" {"language" locale
+                                    "plural-forms" "nplurals=2; plural=(n != 1);"}
+                         "translations" {"" {"Metabase" {"msgid" "Metabase"
+                                                         "msgstr" ["Metabase"]}}}}))
 
 (defn- load-localization []
   (if (and *locale* (not= (str *locale*) "en"))

@@ -1,12 +1,12 @@
 :root {
-    --title-color: #606E7B;
-    --subtitle-color: #AAB7C3;
-    --muted-color: #DEEAF1;
-    --blue-color: #2D86D4;
+  --title-color: #606e7b;
+  --subtitle-color: #aab7c3;
+  --muted-color: #deeaf1;
+  --blue-color: #2d86d4;
 }
 
 :local(.header) {
-    composes: mt4 mb2 from "style";
-    color: var(--title-color);
-    font-size: 24px;
+  composes: mt4 mb2 from "style";
+  color: var(--title-color);
+  font-size: 24px;
 }

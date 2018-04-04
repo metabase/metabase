@@ -55,7 +55,9 @@
    native (e.g. SQL) queries. Will be one of `:write`, `:read`, or `:none`."
   [dbs]
   (for [db dbs]
-    (let [user-has-perms? (fn [path-fn] (perms/set-has-full-permissions? @api/*current-user-permissions-set* (path-fn (u/get-id db))))]
+    (let [user-has-perms? (fn [path-fn]
+                            (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                                             (path-fn (u/get-id db))))]
       (assoc db :native_permissions (cond
                                       (user-has-perms? perms/native-readwrite-path) :write
                                       (user-has-perms? perms/native-read-path)      :read
@@ -103,7 +105,8 @@
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   []
-  (as-> (db/select [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
+  (as-> (db/select [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata
+                    :read_permissions]
           :result_metadata [:not= nil] :archived false
           {:order-by [[:%lower.name :asc]]}) <>
     (filter card-database-supports-nested-queries? <>)
@@ -142,7 +145,9 @@
       include-cards?  add-virtual-tables-for-saved-cards)))
 
 (api/defendpoint GET "/"
-  "Fetch all `Databases`."
+  "Fetch all `Databases`. `include_tables` means we should hydrate the Tables belonging to each DB. `include_cards` here
+  means we should also include virtual Table entries for saved Questions, e.g. so we can easily use them as source
+  Tables in queries. Default for both is `false`."
   [include_tables include_cards]
   {include_tables (s/maybe su/BooleanString)
    include_cards  (s/maybe su/BooleanString)}
@@ -193,7 +198,7 @@
 
 (defn- db-metadata [id]
   (-> (api/read-check Database id)
-      (hydrate [:tables [:fields :target :values] :segments :metrics])
+      (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
       (update :tables (fn [tables]
                         (for [table tables
                               :when (mi/can-read? table)]

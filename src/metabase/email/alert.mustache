@@ -1,7 +1,6 @@
 {{> metabase/email/_header}}
-    <p><a href="{{questionURL}}">{{questionName}}</a> has {{alertCondition}}.</p>
     {{#firstRunOnly?}}
     <p>We’ll stop sending you alerts about this question now.</p>
     {{/firstRunOnly?}}
   {{{pulse}}}
-{{> metabase/email/_footer}}
+{{> metabase/email/_footer_pulse}}

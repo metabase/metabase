@@ -114,10 +114,11 @@ var config = module.exports = {
         new UnusedFilesWebpackPlugin({
             globOptions: {
                 ignore: [
+                   "**/types.js",
                     "**/types/*.js",
                     "**/*.spec.*",
                     "**/__support__/*.js",
-                    "public/lib/types.js",
+                    "**/__mocks__/*.js*",
                     "internal/lib/components-node.js"
                 ]
             }

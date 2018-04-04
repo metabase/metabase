@@ -9,7 +9,7 @@
             [schema.core :as s]))
 
 (def ^:private ^:const ^Float percent-valid-threshold
-  "Fields that have at least this percent of values that are satisfy some predicate (such as `u/is-email?`)
+  "Fields that have at least this percent of values that are satisfy some predicate (such as `u/email?`)
    should be given the corresponding special type (such as `:type/Email`)."
   0.95)
 

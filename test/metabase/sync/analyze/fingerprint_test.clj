@@ -8,6 +8,7 @@
             [metabase.sync.analyze.fingerprint.sample :as sample]
             [metabase.sync.interface :as i]
             [metabase.test.data :as data]
+            [metabase.test.util]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -36,7 +37,9 @@
 
 ;; a datetime field
 (expect
-  {:global {:distinct-count 618}}
+  {:global {:distinct-count 618}
+   :type   {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
+                            :latest   "2015-12-29T00:00:00.000Z"}}}
   (fingerprint (Field (data/id :checkins :date))))
 
 
@@ -76,7 +79,7 @@
     [:or
      [:and
       [:< :fingerprint_version 2]
-      [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Float"}]]
+      [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Float" "type/Share"}]]
      [:and
       [:< :fingerprint_version 1]
       [:in :base_type #{"type/ImageURL" "type/AvatarURL"}]]]]}
@@ -94,7 +97,7 @@
     [:or
      [:and
       [:< :fingerprint_version 2]
-      [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Float"}]]
+      [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Float" "type/Share"}]]
      ;; no type/Float stuff should be included for 1
      [:and
       [:< :fingerprint_version 1]
@@ -112,7 +115,7 @@
     [:or
      [:and
       [:< :fingerprint_version 4]
-      [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Float"}]]
+      [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Float" "type/Share"}]]
      [:and
       [:< :fingerprint_version 3]
       [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]

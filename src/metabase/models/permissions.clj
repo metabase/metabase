@@ -145,17 +145,20 @@
 
 (defn set-has-full-permissions?
   "Does PERMISSIONS-SET grant *full* access to object with PATH?"
+  {:style/indent 1}
   ^Boolean [permissions-set path]
   (boolean (some (u/rpartial is-permissions-for-object? path) permissions-set)))
 
 (defn set-has-partial-permissions?
   "Does PERMISSIONS-SET grant access full access to object with PATH *or* to a descendant of it?"
+  {:style/indent 1}
   ^Boolean [permissions-set path]
   (boolean (some (u/rpartial is-partial-permissions-for-object? path) permissions-set)))
 
 
 (defn ^Boolean set-has-full-permissions-for-set?
   "Do the permissions paths in PERMISSIONS-SET grant *full* access to all the object paths in OBJECT-PATHS-SET?"
+  {:style/indent 1}
   [permissions-set object-paths-set]
   {:pre [(is-permissions-set? permissions-set) (is-permissions-set? object-paths-set)]}
   (every? (partial set-has-full-permissions? permissions-set)
@@ -164,6 +167,7 @@
 (defn ^Boolean set-has-partial-permissions-for-set?
   "Do the permissions paths in PERMISSIONS-SET grant *partial* access to all the object paths in OBJECT-PATHS-SET?
    (PERMISSIONS-SET must grant partial access to *every* object in OBJECT-PATH-SETS set)."
+  {:style/indent 1}
   [permissions-set object-paths-set]
   {:pre [(is-permissions-set? permissions-set) (is-permissions-set? object-paths-set)]}
   (every? (partial set-has-partial-permissions? permissions-set)

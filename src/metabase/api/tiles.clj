@@ -97,7 +97,7 @@
   (let [output-stream (ByteArrayOutputStream.)]
     (try
       (when-not (ImageIO/write tile "png" output-stream) ; returns `true` if successful -- see JavaDoc
-        (throw (Exception. "No approprate image writer found!")))
+        (throw (Exception. "No appropriate image writer found!")))
       (.flush output-stream)
       (.toByteArray output-stream)
       (catch Throwable e

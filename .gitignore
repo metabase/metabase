@@ -53,3 +53,4 @@ coverage-summary.json
 .DS_Store
 bin/node_modules/
 *.log
+*.trace.db

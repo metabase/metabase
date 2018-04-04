@@ -343,4 +343,74 @@
       :query-params     query-params)))
 
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        FieldValues, Search, Remappings                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; -------------------------------------------------- Field Values --------------------------------------------------
+
+(api/defendpoint GET "/card/:token/field/:field-id/values"
+  "Fetch FieldValues for a Field that is referenced by an embedded Card."
+  [token field-id]
+  (let [unsigned-token (eu/unsign token)
+        card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (check-embedding-enabled-for-card card-id)
+    (public-api/card-and-field-id->values card-id field-id)))
+
+(api/defendpoint GET "/dashboard/:token/field/:field-id/values"
+  "Fetch FieldValues for a Field that is used as a param in an embedded Dashboard."
+  [token field-id]
+  (let [unsigned-token (eu/unsign token)
+        dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+    (check-embedding-enabled-for-dashboard dashboard-id)
+    (public-api/dashboard-and-field-id->values dashboard-id field-id)))
+
+
+;;; --------------------------------------------------- Searching ----------------------------------------------------
+
+(api/defendpoint GET "/card/:token/field/:field-id/search/:search-field-id"
+  "Search for values of a Field that is referenced by an embedded Card."
+  [token field-id search-field-id value limit]
+  {value su/NonBlankString
+   limit (s/maybe su/IntStringGreaterThanZero)}
+  (let [unsigned-token (eu/unsign token)
+        card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (check-embedding-enabled-for-card card-id)
+    (public-api/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
+
+(api/defendpoint GET "/dashboard/:token/field/:field-id/search/:search-field-id"
+  "Search for values of a Field that is referenced by a Card in an embedded Dashboard."
+  [token field-id search-field-id value limit]
+  {value su/NonBlankString
+   limit (s/maybe su/IntStringGreaterThanZero)}
+  (let [unsigned-token (eu/unsign token)
+        dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+    (check-embedding-enabled-for-dashboard dashboard-id)
+    (public-api/search-dashboard-fields dashboard-id field-id search-field-id value (when limit
+                                                                                      (Integer/parseInt limit)))))
+
+
+;;; --------------------------------------------------- Remappings ---------------------------------------------------
+
+(api/defendpoint GET "/card/:token/field/:field-id/remapping/:remapped-id"
+  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
+  embedded Cards."
+  [token field-id remapped-id value]
+  {value su/NonBlankString}
+  (let [unsigned-token (eu/unsign token)
+        card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (check-embedding-enabled-for-card card-id)
+    (public-api/card-field-remapped-values card-id field-id remapped-id value)))
+
+(api/defendpoint GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
+  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
+  embedded Dashboards."
+  [token field-id remapped-id value]
+  {value su/NonBlankString}
+  (let [unsigned-token (eu/unsign token)
+        dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+    (check-embedding-enabled-for-dashboard dashboard-id)
+    (public-api/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
+
+
 (api/define-routes)

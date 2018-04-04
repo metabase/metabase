@@ -2,7 +2,7 @@
 
 // Reducers needed for main application
 
-import { combineReducers } from 'redux';
+import { combineReducers } from "redux";
 
 import commonReducers from "./reducers-common";
 
@@ -39,24 +39,23 @@ import * as pulse from "metabase/pulse/reducers";
 /* xrays */
 import xray from "metabase/xray/xray";
 
-
 export default {
-    ...commonReducers,
+  ...commonReducers,
 
-    // main app reducers
-    alert,
-    dashboards,
-    dashboard,
-    home: combineReducers(home),
-    new_query,
-    pulse: combineReducers(pulse),
-    qb: combineReducers(qb),
-    questions,
-    collections,
-    labels,
-    reference,
-    xray,
-    setup: combineReducers(setup),
-    user: combineReducers(user),
-    admin,
+  // main app reducers
+  alert,
+  dashboards,
+  dashboard,
+  home: combineReducers(home),
+  new_query,
+  pulse: combineReducers(pulse),
+  qb: combineReducers(qb),
+  questions,
+  collections,
+  labels,
+  reference,
+  xray,
+  setup: combineReducers(setup),
+  user: combineReducers(user),
+  admin,
 };

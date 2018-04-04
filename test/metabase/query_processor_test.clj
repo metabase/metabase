@@ -30,15 +30,17 @@
   "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
   (set/difference datasets/all-valid-engines timeseries-engines))
 
-(defn engines-that-support
+(defn non-timeseries-engines-with-feature
   "Set of engines that support a given FEATURE."
   [feature]
   (set (for [engine non-timeseries-engines
              :when  (contains? (driver/features (driver/engine->driver engine)) feature)]
          engine)))
 
-(defn engines-that-dont-support [feature]
-  (set/difference non-timeseries-engines (engines-that-support feature)))
+(defn non-timeseries-engines-without-feature
+  "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
+  [feature]
+  (set/difference non-timeseries-engines (non-timeseries-engines-with-feature feature)))
 
 (defmacro expect-with-non-timeseries-dbs
   {:style/indent 0}
@@ -153,7 +155,9 @@
                   :name         (data/format-name "last_login")
                   :display_name "Last Login"
                   :unit         :default
-                  :fingerprint  {:global {:distinct-count 11}}})))
+                  :fingerprint  {:global {:distinct-count 11}
+                                 :type   {:type/DateTime {:earliest "2014-01-01T00:00:00.000Z"
+                                                          :latest   "2014-12-05T00:00:00.000Z"}}}})))
 
 ;; #### venues
 (defn venues-columns
@@ -228,9 +232,8 @@
                                 {:target_table_id (data/id :venues)}
                                 {})
                 :target       (target-field (venues-col :id))
-                :special_type (if (data/fks-supported?)
-                                :type/FK
-                                :type/Category)
+                :special_type (when (data/fks-supported?)
+                                :type/FK)
                 :base_type    (data/expected-base-type->actual :type/Integer)
                 :name         (data/format-name "venue_id")
                 :display_name "Venue ID"
@@ -290,9 +293,8 @@
 
 ;; TODO - maybe this needs a new name now that it also removes the results_metadata
 (defn booleanize-native-form
-  "Convert `:native_form` attribute to a boolean to make test results comparisons easier. Remove
-  `data.results_metadata` as well since it just takes a lot of space and the checksum can vary based on whether
-  encryption is enabled."
+  "Convert `:native_form` attribute to a boolean to make test results comparisons easier. Remove `data.results_metadata`
+  as well since it just takes a lot of space and the checksum can vary based on whether encryption is enabled."
   [m]
   (-> m
       (update-in [:data :native_form] boolean)
