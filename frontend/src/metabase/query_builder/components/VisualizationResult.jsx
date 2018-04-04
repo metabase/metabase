@@ -1,6 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 
-import React from "react";
+import React, { Component } from "react";
 import { t, jt } from "c-3po";
 
 import VisualizationErrorMessage from "./VisualizationErrorMessage";
@@ -8,7 +8,6 @@ import Visualization from "metabase/visualizations/components/Visualization.jsx"
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { DatasetQuery } from "metabase/meta/types/Card";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
-import { Component } from "react/lib/ReactBaseClasses";
 import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
 

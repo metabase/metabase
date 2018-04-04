@@ -54,7 +54,7 @@ export default class AggregationPopover extends Component {
     customFields: PropTypes.object,
     availableAggregations: PropTypes.array,
     // Restricts the shown options to contents of `availableActions` only
-    showOnlyProvidedAggregations: PropTypes.boolean,
+    showOnlyProvidedAggregations: PropTypes.bool,
   };
 
   componentDidUpdate() {

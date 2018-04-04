@@ -104,7 +104,7 @@ In `/etc/init.d/metabase`, replace configurable items (they look like `<some-var
       uninstall)
         uninstall
         ;;
-      retart)
+      restart)
         stop
         start
         ;;
