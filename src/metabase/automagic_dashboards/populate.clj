@@ -237,9 +237,9 @@
   ([dashboard] (create-dashboard dashboard :all))
   ([{:keys [title description groups filters cards]} n]
    (let [n             (cond
-                         (= n :all) (count cards)
+                         (= n :all)   (count cards)
                          (keyword? n) (Integer/parseInt (name n))
-                         :else n)
+                         :else        n)
          dashboard     {:name          title
                         :description   description
                         :creator_id    api/*current-user-id*
