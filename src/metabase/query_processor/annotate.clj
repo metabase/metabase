@@ -296,6 +296,13 @@
                           :remapped-from      :remapped_from})
         (dissoc :position :clause-position :parent :parent-id :table-name :database-type))))
 
+(defn- maybe-add-timezone-info [query]
+  (let [timezone-str (qputil/query-timezone query)]
+    (fn [field]
+      (if (qputil/datetime-field? field)
+        (assoc field :timezone timezone-str)
+        field))))
+
 (defn- fk-field->dest-fn
   "Fetch fk info and return a function that returns the destination Field of a given Field."
   ([fields]
@@ -337,7 +344,7 @@
 (defn- resolve-sort-and-format-columns
   "Collect the Fields referenced in INNER-QUERY, sort them according to the rules at the top of this page, format them
   as expected by the frontend, and return the results."
-  [inner-query result-keys initial-rows]
+  [{inner-query :query :as query} result-keys initial-rows]
   {:pre [(sequential? result-keys)]}
   (when (seq result-keys)
     (let [result-keys-set (set result-keys)
@@ -358,6 +365,8 @@
            (sort/sort-fields inner-query)
            ;; remove any duplicate entires
            (m/distinct-by :field-name)
+           ;; Add in timezone info to datetime columns
+           (map (maybe-add-timezone-info query))
            ;; convert them to the format expected by the frontend
            (map convert-field-to-expected-format)
            ;; add FK info
@@ -372,7 +381,7 @@
   [query {:keys [columns rows], :as results}]
   (let [row-maps (for [row rows]
                    (zipmap columns row))
-        cols    (resolve-sort-and-format-columns (:query query) (distinct columns) (take 10 row-maps))
+        cols    (resolve-sort-and-format-columns query (distinct columns) (take 10 row-maps))
         columns (mapv :name cols)]
     (assoc results
       :cols    (vec (for [col cols]

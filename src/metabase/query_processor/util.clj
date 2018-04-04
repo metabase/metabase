@@ -37,6 +37,13 @@
                     (format ":: userID: %s queryType: %s queryHash: %s"
                             executed-by query-type (codecs/bytes->hex query-hash)))))
 
+(defn query-timezone
+  "Return the timezone associated with this query. It either comes from the query itself if there is a report
+  timezone, or uses the JVM's timezone"
+  [query]
+  (or (get-in query [:settings :report-timezone])
+      (System/getProperty "user.timezone")))
+
 
 ;;; ------------------------------------------------- Normalization --------------------------------------------------
 

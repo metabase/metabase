@@ -58,15 +58,23 @@
   [engine]
   (contains? #{:oracle :redshift} engine))
 
+(defn- sad-toucan-incidents-with-full-result
+  ([unit]
+   (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
+     (data/run-query incidents
+       (ql/aggregation (ql/count))
+       (ql/breakout (ql/datetime-field $timestamp unit))
+       (ql/limit 10))))
+  ([unit tz]
+   (tu/with-temporary-setting-values [report-timezone (.getID tz)]
+     (sad-toucan-incidents-with-full-result unit))))
+
 (defn- sad-toucan-incidents-with-bucketing
   "Returns 10 sad toucan incidents grouped by `UNIT`"
   ([unit]
-   (->> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
-          (data/run-query incidents
-            (ql/aggregation (ql/count))
-            (ql/breakout (ql/datetime-field $timestamp unit))
-            (ql/limit 10)))
-        rows (format-rows-by [->long-if-number int])))
+   (->> (sad-toucan-incidents-with-full-result unit)
+        rows
+        (format-rows-by [->long-if-number int])))
   ([unit tz]
    (tu/with-temporary-setting-values [report-timezone (.getID tz)]
      (sad-toucan-incidents-with-bucketing unit))))
@@ -926,3 +934,31 @@
 (expect-with-non-timeseries-dbs-except #{:bigquery}
   {:rows 2, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day", :with-interval 2))
+
+;; Validate that the correct timezone (pacific) is returned with the timestamp
+(expect-with-non-timeseries-dbs
+  (if (supports-report-timezone? *engine*)
+    "America/Los_Angeles"
+    "UTC")
+  (-> (sad-toucan-incidents-with-full-result :default pacific-tz)
+      (get-in [:data :cols])
+      first
+      :timezone))
+
+;; Validate that the correct timezone (eastern) is returned with the timestamp
+(expect-with-non-timeseries-dbs
+  (if (supports-report-timezone? *engine*)
+    "America/New_York"
+    "UTC")
+  (-> (sad-toucan-incidents-with-full-result :default eastern-tz)
+      (get-in [:data :cols])
+      first
+      :timezone))
+
+;; With no report-timezone it should be the JVM timezone, which is UTC for tests
+(expect-with-non-timeseries-dbs
+  "UTC"
+  (-> (sad-toucan-incidents-with-full-result :default)
+      (get-in [:data :cols])
+      first
+      :timezone))

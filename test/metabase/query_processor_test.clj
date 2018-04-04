@@ -155,6 +155,7 @@
                   :name         (data/format-name "last_login")
                   :display_name "Last Login"
                   :unit         :default
+                  :timezone     "UTC"
                   :fingerprint  {:global {:distinct-count 11}
                                  :type   {:type/DateTime {:earliest "2014-01-01T00:00:00.000Z"
                                                           :latest   "2014-12-05T00:00:00.000Z"}}}})))

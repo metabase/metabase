@@ -1,10 +1,11 @@
 (ns metabase.query-processor.middleware.format-rows
   "Middleware that formats the results of a query.
    Currently, the only thing this does is convert datetime types to ISO-8601 strings in the appropriate timezone."
-  (:require [metabase.util :as u]))
+  (:require [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]))
 
-(defn- format-rows* [{:keys [report-timezone]} rows]
-  (let [timezone (or report-timezone (System/getProperty "user.timezone"))]
+(defn- format-rows* [query rows]
+  (let [timezone (qputil/query-timezone query)]
     (for [row rows]
       (for [v row]
         ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
@@ -22,9 +23,9 @@
 (defn format-rows
   "Format individual query result values as needed.  Ex: format temporal values as iso8601 strings w/ timezone."
   [qp]
-  (fn [{:keys [settings middleware] :as query}]
+  (fn [{:keys [middleware] :as query}]
     (let [results (qp query)]
       (if-not (and (:rows results)
                    (:format-rows? middleware true))
         results
-        (update results :rows (partial format-rows* settings))))))
+        (update results :rows (partial format-rows* query))))))
