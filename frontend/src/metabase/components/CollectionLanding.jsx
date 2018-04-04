@@ -43,9 +43,10 @@ const CollectionList = ({ collectionSlug }) => {
   );
 };
 
-const DefaultLanding = () => {
+const DefaultLanding = ({ collectionSlug }) => {
   return (
     <Box w="100%">
+      <CollectionList collectionSlug={collectionSlug} />
       <MetricList />
       <SegmentList />
     </Box>
@@ -55,6 +56,7 @@ const DefaultLanding = () => {
 class CollectionLanding extends React.Component {
   render() {
     const { children } = this.props;
+    const collectionSlug = this.props.params.collectionSlug
     return (
       <Box>
         <Box className="wrapper lg-wrapper--trim">
@@ -108,10 +110,9 @@ class CollectionLanding extends React.Component {
           </Flex>
         </Box>
         <Box className="relative">
-          <LandingNav collectionSlug={this.props.params.collectionSlug} />
+          <LandingNav collectionSlug={collectionSlug} />
           <Box className="wrapper lg-wrapper--trim">
-            <CollectionList collectionSlug={this.props.params.collectionSlug} />
-            {children ? children : <DefaultLanding />}
+            {children ? children : <DefaultLanding collectionSlug={collectionSlug} />}
           </Box>
         </Box>
       </Box>

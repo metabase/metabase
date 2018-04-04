@@ -76,10 +76,7 @@ export default class ProfileLink extends Component {
         >
           <div className="NavDropdown-button-layer">
             <div className="flex align-center">
-              <UserAvatar
-                user={user}
-                style={{ backgroundColor: "transparent" }}
-              />
+              <UserAvatar user={user} />
               <Icon
                 name="chevrondown"
                 className="Dropdown-chevron ml1"

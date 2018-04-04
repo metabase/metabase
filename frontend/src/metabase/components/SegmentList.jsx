@@ -42,7 +42,7 @@ class SegmentItem extends React.Component {
   render () {
     const { segment } = this.props
     return (
-      <Box>
+      <Box style={{ backgroundColor: '#F8F8FA', borderRadius: 6 }} w='100%' h={40} p={2}>
         <Flex align='center'>
           <Flex p={1} align='center' justify='center'>
             <Icon name="segment" style={{ color: normal.indigo }} />
