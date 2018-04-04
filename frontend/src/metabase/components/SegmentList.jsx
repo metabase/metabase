@@ -19,15 +19,17 @@ class SegmentList extends React.Component {
             return <Box>Loading...</Box>
           }
           return (
-            <Box>
+            <Flex>
               {segments.map(segment =>
-                <SegmentItem
-                  segment={segment}
-                  onSelectItem={onSelectItem}
-                  selectedItems={selectedItems}
-                />
+                <Box w={1/4}>
+                  <SegmentItem
+                    segment={segment}
+                    onSelectItem={onSelectItem}
+                    selectedItems={selectedItems}
+                  />
+                </Box>
               )}
-            </Box>
+            </Flex>
           )
         }}
       </SegmentListLoader>
