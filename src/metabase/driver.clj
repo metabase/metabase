@@ -25,8 +25,6 @@
             [metabase.sync.interface :as si]
             [metabase.util :as u]
             [schema.core :as s]
-            [metabase.util.i18n :refer [available-locales-with-names set-locale]]
-            [metabase.util.password :as password]
             [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db])
   (:import clojure.lang.Keyword

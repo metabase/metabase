@@ -9,8 +9,6 @@
             [hiccup.core :refer [html]]
             [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]
-            [metabase.util.i18n :refer [available-locales-with-names set-locale]]
-            [metabase.util.password :as password]
             [puppetlabs.i18n.core :refer [tru]]
             [ring.util.codec :as codec]))
 
