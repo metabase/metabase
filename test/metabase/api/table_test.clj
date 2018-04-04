@@ -662,5 +662,5 @@
 
 ;; Test related/recommended entities
 (expect
-  #{:metrics :segments :linked-from :linking-to}
+  #{:metrics :segments :linked-from :linking-to :tables}
   (-> ((user->client :crowberto) :get 200 (format "table/%s/related" (data/id :venues))) keys set))

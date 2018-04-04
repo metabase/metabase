@@ -90,11 +90,15 @@
 
 (defn- metrics-for-table
   [table]
-  (filter mi/can-read? (db/select Metric :table_id (:id table))))
+  (filter mi/can-read? (db/select Metric
+                         :table_id  (:id table)
+                         :is_active true)))
 
 (defn- segments-for-table
   [table]
-  (filter mi/can-read? (db/select Segment :table_id (:id table))))
+  (filter mi/can-read? (db/select Segment
+                         :table_id  (:id table)
+                         :is_active true)))
 
 (defn- linking-to
   [table]
@@ -103,7 +107,7 @@
          :fk_target_field_id [:not= nil])
        (map (comp Table :table_id Field))
        distinct
-       (filter mi/can-read?)
+       (filter (every-pred (comp nil? :visibility_type) mi/can-read?))
        (take max-matches)))
 
 (defn- linked-from
@@ -112,7 +116,7 @@
     (->> (db/select-field :table_id Field
            :fk_target_field_id [:in fields])
          (map Table)
-         (filter mi/can-read?)
+         (filter (every-pred (comp nil? :visibility_type) mi/can-read?))
          (take max-matches))))
 
 (defn- cards-sharing-dashboard
@@ -123,19 +127,23 @@
            :dashboard_id [:in dashboards]
            :card_id [:not= (:id card)])
          (map Card)
-         (filter mi/can-read?)
+         (filter (every-pred (comp false? :archived) mi/can-read?))
          (take max-matches))))
 
 (defn- similar-questions
   [card]
-  (->> (db/select Card :table_id (:table_id card))
+  (->> (db/select Card
+         :table_id (:table_id card)
+         :archived false)
        (filter mi/can-read?)
        (rank-by-similarity card)
        (filter (comp pos? :similarity))))
 
 (defn- canonical-metric
   [card]
-  (->> (db/select Metric :table_id (:table_id card))
+  (->> (db/select Metric
+         :table_id (:table_id card)
+         :is_active true)
        (filter (every-pred mi/can-read?
                            (comp #{(-> card
                                        :dataset_query
@@ -150,7 +158,8 @@
          :model   "Dashboard"
          :user_id api/*current-user-id*
          {:order-by [[:timestamp :desc]]})
-       (filter mi/can-read?)
+       (map Dashboard)
+       (filter (every-pred (comp false? :archived) mi/can-read?))
        (take max-serendipity-matches)))
 
 (defn- recommended-dashboards
@@ -167,16 +176,19 @@
         best             (->> cards
                               (mapcat (comp card->dashboards :id))
                               distinct
-                              (filter mi/can-read?)
+                              (map Dashboard)
+                              (filter (every-pred (comp false? :archived)
+                                                  mi/can-read?))
                               (take max-best-matches))]
-    (map Dashboard (concat best recent))))
+    (concat best recent)))
 
 (defn- recommended-collections
   [cards]
   (->> cards
        (m/distinct-by :collection_id)
        interesting-mix
-       (keep (comp Collection :collection_id))))
+       (keep (comp Collection :collection_id))
+       (filter mi/can-read?)))
 
 (defmulti
   ^{:doc "Return related entities."
@@ -243,9 +255,10 @@
      :linked-from linked-from
      :tables      (when (every? empty? [linking-to linked-from])
                     (->> (db/select Table
-                           :db_id  (:db_id table)
-                           :schema (:schema table)
-                           :id     [:not= (:id table)])
+                           :db_id           (:db_id table)
+                           :schema          (:schema table)
+                           :id              [:not= (:id table)]
+                           :visibility_type nil)
                          (filter mi/can-read?)
                          interesting-mix))}))
 
@@ -257,5 +270,5 @@
                  (mapcat (comp similar-questions))
                  (remove (set cards))
                  distinct
-                 (filter mi/can-read?)
+                 (filter (every-pred (comp false? :archived) mi/can-read?))
                  interesting-mix)}))
