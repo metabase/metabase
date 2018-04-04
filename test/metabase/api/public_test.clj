@@ -57,8 +57,9 @@
        (let [~binding (assoc dashboard# :public_uuid (:public_uuid dashboard-settings#))]
          ~@body))))
 
-(defn- add-card-to-dashboard! [card dashboard]
-  (db/insert! DashboardCard :dashboard_id (u/get-id dashboard), :card_id (u/get-id card)))
+(defn- add-card-to-dashboard! {:style/indent 2} [card dashboard & {:as kvs}]
+  (db/insert! DashboardCard (merge {:dashboard_id (u/get-id dashboard), :card_id (u/get-id card)}
+                                   kvs)))
 
 (defmacro ^:private with-temp-public-dashboard-and-card
   {:style/indent 1}
@@ -262,7 +263,7 @@
 
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
-(defn- dashcard-url-path [dash card]
+(defn- dashcard-url [dash card]
   (str "public/dashboard/" (:public_uuid dash) "/card/" (u/get-id card)))
 
 
@@ -271,14 +272,14 @@
   "An error occurred."
   (tu/with-temporary-setting-values [enable-public-sharing false]
     (with-temp-public-dashboard-and-card [dash card]
-      (http/client :get 400 (dashcard-url-path dash card)))))
+      (http/client :get 400 (dashcard-url dash card)))))
 
 ;; Check that we get a 400 if PublicDashboard doesn't exist
 (expect
   "An error occurred."
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [_ card]
-      (http/client :get 400 (dashcard-url-path {:public_uuid (UUID/randomUUID)} card)))))
+      (http/client :get 400 (dashcard-url {:public_uuid (UUID/randomUUID)} card)))))
 
 
 ;; Check that we get a 400 if PublicCard doesn't exist
@@ -286,7 +287,7 @@
   "An error occurred."
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash _]
-      (http/client :get 400 (dashcard-url-path dash Integer/MAX_VALUE)))))
+      (http/client :get 400 (dashcard-url dash Integer/MAX_VALUE)))))
 
 ;; Check that we get a 400 if the Card does exist but it's not part of this Dashboard
 (expect
@@ -294,7 +295,7 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash _]
       (tt/with-temp Card [card]
-        (http/client :get 400 (dashcard-url-path dash card))))))
+        (http/client :get 400 (dashcard-url dash card))))))
 
 ;; Check that we *cannot* execute a PublicCard via a PublicDashboard if the Card has been archived
 (expect
@@ -302,14 +303,14 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash card]
       (db/update! Card (u/get-id card), :archived true)
-      (http/client :get 400 (dashcard-url-path dash card)))))
+      (http/client :get 400 (dashcard-url dash card)))))
 
 ;; Check that we can exec a PublicCard via a PublicDashboard
 (expect
   [[100]]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash card]
-      (qp-test/rows (http/client :get 200 (dashcard-url-path dash card))))))
+      (qp-test/rows (http/client :get 200 (dashcard-url dash card))))))
 
 ;; Check that we can exec a PublicCard via a PublicDashboard with `?parameters`
 (expect
@@ -321,7 +322,7 @@
     :type    "id"}]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash card]
-      (get-in (http/client :get 200 (dashcard-url-path dash card)
+      (get-in (http/client :get 200 (dashcard-url dash card)
                            :parameters (json/encode [{:name   "Venue ID"
                                                       :slug   :venue_id
                                                       :target [:dimension (data/id :venues :id)]
@@ -333,7 +334,7 @@
  [[1]]
  (tu/with-temporary-setting-values [enable-public-sharing true]
    (with-temp-public-dashboard-and-card [dash card]
-     (-> (http/client :get 200 (dashcard-url-path dash card)
+     (-> (http/client :get 200 (dashcard-url dash card)
                       :parameters (json/encode [{:name   "Venue ID"
                                                  :slug   :venue_id
                                                  :target [:dimension (data/id :venues :id)]
@@ -345,7 +346,7 @@
  "An error occurred."
  (tu/with-temporary-setting-values [enable-public-sharing true]
    (with-temp-public-dashboard-and-card [dash card]
-     (http/client :get 400 (dashcard-url-path dash card)
+     (http/client :get 400 (dashcard-url dash card)
                   :parameters (json/encode [{:name   "Venue Name"
                                              :slug   :venue_name
                                              :target [:dimension (data/id :venues :name)]
@@ -361,7 +362,94 @@
                                                                   :card_id      (u/get-id card)
                                                                   :dashboard_id (u/get-id dash))
                                               :card_id          (u/get-id card-2)}]
-          (qp-test/rows (http/client :get 200 (dashcard-url-path dash card-2))))))))
+          (qp-test/rows (http/client :get 200 (dashcard-url dash card-2))))))))
+
+;; Make sure that parameters actually work correctly (#7212)
+(expect
+  [[50]]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                              :type     :native
+                                              :native   {:query         "SELECT {{num}} AS num"
+                                                         :template_tags {:num {:name         "num"
+                                                                               :display_name "Num"
+                                                                               :type         "number"
+                                                                               :required     true
+                                                                               :default      "1"}}}}}]
+      (with-temp-public-dashboard [dash {:parameters [{:name "Num"
+                                                       :slug "num"
+                                                       :id   "537e37b4"
+                                                       :type "category"}]}]
+        (add-card-to-dashboard! card dash
+          :parameter_mappings [{:card_id      (u/get-id card)
+                                :target       [:variable
+                                               [:template-tag :num]]
+                                :parameter_id "537e37b4"}])
+        (-> ((test-users/user->client :crowberto)
+             :get (str (dashcard-url dash card)
+                       "?parameters="
+                       (json/generate-string
+                        [{:type   :category
+                          :target [:variable [:template-tag :num]]
+                          :value  "50"}])))
+            :data
+            :rows)))))
+
+;; ...with MBQL Cards as well...
+(expect
+  [[1]]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                              :type     :query
+                                              :query    {:source-table (data/id :venues)
+                                                         :aggregation  [:count]}}}]
+      (with-temp-public-dashboard [dash {:parameters [{:name "Venue ID"
+                                                       :slug "venue_id"
+                                                       :id   "22486e00"
+                                                       :type "id"}]}]
+        (add-card-to-dashboard! card dash
+          :parameter_mappings [{:parameter_id "22486e00"
+                                :card_id      (u/get-id card)
+                                :target       [:dimension
+                                               [:field-id
+                                                (data/id :venues :id)]]}])
+        (-> ((test-users/user->client :crowberto)
+             :get (str (dashcard-url dash card)
+                       "?parameters="
+                       (json/generate-string
+                        [{:type   :id
+                          :target [:dimension [:field-id (data/id :venues :id)]]
+                          :value  "50"}])))
+            :data
+            :rows)))))
+
+;; ...and also for DateTime params
+(expect
+  [[733]]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                              :type     :query
+                                              :query    {:source-table (data/id :checkins)
+                                                         :aggregation  [:count]}}}]
+      (with-temp-public-dashboard [dash {:parameters [{:name "Date Filter"
+                                                       :slug "date_filter"
+                                                       :id   "18a036ec"
+                                                       :type "date/all-options"}]}]
+        (add-card-to-dashboard! card dash
+          :parameter_mappings [{:parameter_id "18a036ec"
+                                :card_id      (u/get-id card)
+                                :target       [:dimension
+                                               [:field-id
+                                                (data/id :checkins :date)]]}])
+        (-> ((test-users/user->client :crowberto)
+             :get (str (dashcard-url dash card)
+                       "?parameters="
+                       (json/generate-string
+                        [{:type   "date/all-options"
+                          :target [:dimension [:field-id (data/id :checkins :date)]]
+                          :value  "~2015-01-01"}])))
+            :data
+            :rows)))))
 
 
 ;;; --------------------------- Check that parameter information comes back with Dashboard ---------------------------
