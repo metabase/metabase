@@ -376,6 +376,9 @@ describe("parameters", () => {
   describe("dashboards", () => {
     let publicDashUrl = null;
     let embedDashUrl = null;
+    let dashboardId = null;
+    let sqlCardId = null;
+    let mbqlCardId = null;
 
     it("should allow creating a public/embedded Dashboard with parameters", async () => {
       // create a Dashboard
@@ -391,12 +394,7 @@ describe("parameters", () => {
           },
         ],
       });
-      /* cleanup.fn(() =>
-       *   DashboardApi.update({
-       *     id: dashboard.id,
-       *     archived: true
-       *   })
-       * );*/
+      dashboardId = dashboard.id;
 
       // create the 2 Cards we will need
       const sqlCard = await CardApi.create({
@@ -420,12 +418,7 @@ describe("parameters", () => {
           },
         },
       });
-      /* cleanup.fn(() =>
-       *   CardApi.update({
-       *     id: sqlCard.id(),
-       *     archived: true
-       *   })
-       * );*/
+      sqlCardId = sqlCard.id;
 
       const mbqlCard = await CardApi.create({
         name: "MBQL Card",
@@ -440,12 +433,7 @@ describe("parameters", () => {
           },
         },
       });
-      /* cleanup.fn(() =>
-       *   CardApi.update({
-       *     id: mbqlCard.id(),
-       *     archived: true
-       *   })
-       * );*/
+      mbqlCardId = mbqlCard.id;
 
       // add the two Cards to the Dashboard
       const sqlDashcard = await DashboardApi.addcard({
@@ -616,8 +604,23 @@ describe("parameters", () => {
         const embedUrlTestStore = await createTestStore({ embedApp: true });
         await runSharedDashboardTests(embedUrlTestStore, embedDashUrl);
       });
+      afterAll(restorePreviousLogin);
+    });
 
-      afterAll(() => restorePreviousLogin());
+    afterAll(() => {
+      // delete the Dashboard & Cards we created
+      DashboardApi.update({
+        id: dashboardId,
+        archived: true,
+      });
+      CardApi.update({
+        id: sqlCardId,
+        archived: true,
+      });
+      CardApi.update({
+        id: mbqlCardId,
+        archived: true,
+      });
     });
   });
 
