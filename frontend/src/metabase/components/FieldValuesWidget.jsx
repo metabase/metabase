@@ -7,7 +7,6 @@ import { t, jt } from "c-3po";
 import TokenField from "metabase/components/TokenField";
 import RemappedValue from "metabase/containers/RemappedValue";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Icon from "metabase/components/Icon";
 
 import AutoExpanding from "metabase/hoc/AutoExpanding";
 
@@ -204,16 +203,10 @@ export class FieldValuesWidget extends Component {
           return <EveryOptionState />;
         }
       } else if (this.isSearchable()) {
-        if (loadingState === "INIT") {
-          return alwaysShowOptions && <SearchState />;
-        } else if (loadingState === "LOADING") {
+        if (loadingState === "LOADING") {
           return <LoadingState />;
         } else if (loadingState === "LOADED") {
-          if (isAllSelected) {
-            return alwaysShowOptions && <SearchState />;
-          } else {
-            return <NoMatchState field={searchField || field} />;
-          }
+          return <NoMatchState field={searchField || field} />;
         }
       }
     }
@@ -341,14 +334,8 @@ export class FieldValuesWidget extends Component {
 }
 
 const LoadingState = () => (
-  <div className="flex layout-centered align-center" style={{ minHeight: 100 }}>
+  <div className="flex layout-centered align-center border-top" style={{ minHeight: 82 }}>
     <LoadingSpinner size={32} />
-  </div>
-);
-
-const SearchState = () => (
-  <div className="flex layout-centered align-center" style={{ minHeight: 100 }}>
-    <Icon name="search" size={35} className="text-grey-1" />
   </div>
 );
 
@@ -367,7 +354,7 @@ const EveryOptionState = () => (
 );
 
 const OptionsMessage = ({ message }) => (
-  <div className="flex layout-centered p4">{message}</div>
+  <div className="flex layout-centered p4 border-top">{message}</div>
 );
 
 export default connect(null, mapDispatchToProps)(FieldValuesWidget);
