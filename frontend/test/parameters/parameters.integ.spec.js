@@ -7,7 +7,7 @@ import {
   createTestStore,
   createDashboard,
   restorePreviousLogin,
-  waitForRequestToComplete
+  waitForRequestToComplete,
 } from "__support__/integrated_tests";
 
 import _ from "underscore";
@@ -46,13 +46,15 @@ import {
   ADD_PARAM_VALUES,
   FETCH_TABLE_METADATA,
 } from "metabase/redux/metadata";
-import { FETCH_DASHBOARD_CARD_DATA, FETCH_CARD_DATA } from "metabase/dashboard/dashboard";
+import {
+  FETCH_DASHBOARD_CARD_DATA,
+  FETCH_CARD_DATA,
+} from "metabase/dashboard/dashboard";
 import RunButton from "metabase/query_builder/components/RunButton";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import Parameters from "metabase/parameters/components/Parameters";
 import CategoryWidget from "metabase/parameters/components/widgets/CategoryWidget";
 import ParameterFieldWidget from "metabase/parameters/components/widgets/ParameterFieldWidget";
-import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 import TextWidget from "metabase/parameters/components/widgets/TextWidget.jsx";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import { LOAD_COLLECTIONS } from "metabase/questions/collections";
@@ -64,13 +66,8 @@ import ListSearchField from "metabase/components/ListSearchField";
 import * as Urls from "metabase/lib/urls";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
-import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
-import {
-  CardApi,
-  DashboardApi,
-  SettingsApi,
-} from "metabase/services";
+import { CardApi, DashboardApi, SettingsApi } from "metabase/services";
 
 const PEOPLE_TABLE_ID = 2;
 const PEOPLE_ID_FIELD_ID = 13;
@@ -385,9 +382,14 @@ describe("parameters", () => {
       const dashboard = await createDashboard({
         name: "Test Dashboard",
         parameters: [
-          {name: "Num", slug: "num", id: "537e37b4", type: "category"},
-          {name: "People ID", slug: "people_id", id: "22486e00", type: "people_id"}
-        ]
+          { name: "Num", slug: "num", id: "537e37b4", type: "category" },
+          {
+            name: "People ID",
+            slug: "people_id",
+            id: "22486e00",
+            type: "people_id",
+          },
+        ],
       });
       /* cleanup.fn(() =>
        *   DashboardApi.update({
@@ -412,11 +414,11 @@ describe("parameters", () => {
                 display_name: "Num",
                 type: "number",
                 required: true,
-                default: 1
-              }
-            }
-          }
-        }
+                default: 1,
+              },
+            },
+          },
+        },
       });
       /* cleanup.fn(() =>
        *   CardApi.update({
@@ -434,9 +436,9 @@ describe("parameters", () => {
           type: "query",
           query: {
             source_table: PEOPLE_TABLE_ID,
-            aggregation: ["count"]
-          }
-        }
+            aggregation: ["count"],
+          },
+        },
       });
       /* cleanup.fn(() =>
        *   CardApi.update({
@@ -448,11 +450,11 @@ describe("parameters", () => {
       // add the two Cards to the Dashboard
       const sqlDashcard = await DashboardApi.addcard({
         dashId: dashboard.id,
-        cardId: sqlCard.id
+        cardId: sqlCard.id,
       });
       const mbqlDashcard = await DashboardApi.addcard({
         dashId: dashboard.id,
-        cardId: mbqlCard.id
+        cardId: mbqlCard.id,
       });
 
       // wire up the params for the Cards
@@ -472,9 +474,9 @@ describe("parameters", () => {
               {
                 card_id: sqlCard.id,
                 target: ["variable", ["template-tag", "num"]],
-                parameter_id: "537e37b4"
-              }
-            ]
+                parameter_id: "537e37b4",
+              },
+            ],
           },
           {
             id: mbqlDashcard.id,
@@ -489,39 +491,43 @@ describe("parameters", () => {
               {
                 card_id: mbqlCard.id,
                 target: ["dimension", ["field-id", PEOPLE_ID_FIELD_ID]],
-                parameter_id: "22486e00"
-              }
-            ]
-          }
-        ]
+                parameter_id: "22486e00",
+              },
+            ],
+          },
+        ],
       });
 
       // make the Dashboard public + save the URL
       const publicDash = await DashboardApi.createPublicLink({
-        id: dashboard.id
+        id: dashboard.id,
       });
-      publicDashUrl = getRelativeUrlWithoutHash(Urls.publicDashboard(publicDash.uuid));
+      publicDashUrl = getRelativeUrlWithoutHash(
+        Urls.publicDashboard(publicDash.uuid),
+      );
 
       // make the Dashboard embeddable + make params editable + save the URL
       await DashboardApi.update({
         id: dashboard.id,
         embedding_params: {
-          people_id: "enabled"
+          num: "enabled",
+          people_id: "enabled",
         },
-        enable_embedding: true
+        enable_embedding: true,
       });
 
       const settings = await SettingsApi.list();
-      const secretKey = (_.findWhere(settings, { key: "embedding-secret-key" })).value;
+      const secretKey = _.findWhere(settings, { key: "embedding-secret-key" })
+        .value;
 
       const token = jwt.sign(
         {
           resource: {
-            dashboard: dashboard.id
+            dashboard: dashboard.id,
           },
           params: {},
         },
-        secretKey
+        secretKey,
       );
       embedDashUrl = Urls.embedDashboard(token);
     });
@@ -535,15 +541,46 @@ describe("parameters", () => {
         const app = mount(store.getAppContainer());
 
         // I think this means we *wait* for the Cards to load?
-        await store.waitForActions([FETCH_DASHBOARD_CARD_DATA, FETCH_CARD_DATA]);
+        await store.waitForActions([
+          FETCH_DASHBOARD_CARD_DATA,
+          FETCH_CARD_DATA,
+        ]);
 
         // We need to wait for the API requests to finish or something like that.
-        // TODO - this is different for embedded dashboards so parameterize the regex like for the Cards tests
-        // await waitForRequestToComplete("GET", /.*/);
-        await delay(5000);
+        // TODO - what's the right way to do this without using a stupid DELAY?
+        await delay(1000);
 
-        const getValueOfSqlCard  = () => app.update().find(Scalar).find(".ScalarValue").at(0).text();
-        const getValueOfMbqlCard = () => app.update().find(Scalar).find(".ScalarValue").at(1).text();
+        const getValueOfSqlCard = () =>
+          app
+            .update()
+            .find(Scalar)
+            .find(".ScalarValue")
+            .at(0)
+            .text();
+        const getValueOfMbqlCard = () =>
+          app
+            .update()
+            .find(Scalar)
+            .find(".ScalarValue")
+            .at(1)
+            .text();
+
+        const setParam = async (paramIndex, newValue) => {
+          app
+            .update()
+            .find(TextWidget)
+            .at(paramIndex)
+            .props()
+            .setValue(newValue);
+
+          // TODO - not sure what the correct way to wait for the cards to reload is
+          await store.waitForActions([
+            FETCH_DASHBOARD_CARD_DATA,
+            FETCH_CARD_DATA,
+          ]);
+          waitForRequestToComplete("GET", /.*/);
+          await delay(500);
+        };
 
         // check that initial value of SQL Card is 1
         expect(getValueOfSqlCard()).toBe("1");
@@ -551,44 +588,34 @@ describe("parameters", () => {
         // check that initial value of People Count MBQL Card is 2500 (or whatever people.count is supposed to be)
         expect(getValueOfMbqlCard()).toBe("2,500");
 
-        // now set the SQL param to '50' & wait for Dashboard to reload
-        const input = app.update().find(TextWidget).at(0).find("input");
-        setInputValue(input, "50");
-        // input.simulate('keyDown', { which: 27 });
-        input.simulate('keyUp', { which: KEYCODE_ENTER });
-        // input.simulate('blur');
-        console.log("ParameterValueWidget:", app.update().find(ParameterValueWidget).first().debug()); // NOCOMMIT
-        await store.waitForActions([FETCH_CARD_DATA]);
-        await delay(5000);
-
-        // check that value of SQL Card is updated
+        // now set the SQL param to '50' & wait for Dashboard to reload. check that value of SQL Card is updated
+        await setParam(0, "50");
         expect(getValueOfSqlCard()).toBe("50");
 
-        // TODO - now set our MBQL param to '50' & wait for Dashboard to reload
-
-        // check that value of the MBQL Card is updated
-        // expect(getValueOfMbqlCard()).toBe("1");
+        // now set our MBQL param' & wait for Dashboard to reload. check that value of the MBQL Card is updated
+        await setParam(1, "40");
+        expect(getValueOfMbqlCard()).toBe("1");
       }
 
       it("should handle parameters in public Dashboards correctly", async () => {
-        if (!publicDashUrl) throw new Error("This test fails because test setup code didn't produce a public Dashboard URL.");
+        if (!publicDashUrl)
+          throw new Error(
+            "This test fails because test setup code didn't produce a public Dashboard URL.",
+          );
 
         const publicUrlTestStore = await createTestStore({ publicApp: true });
-        await runSharedDashboardTests(
-          publicUrlTestStore,
-          publicDashUrl
-        );
+        await runSharedDashboardTests(publicUrlTestStore, publicDashUrl);
       });
 
-      /* it("should handle parameters in embedded Dashboards correctly", async () => {
-       *   if (!embedDashUrl) throw new Error("This test fails because test setup code didn't produce a embedded Dashboard URL.");
+      it("should handle parameters in embedded Dashboards correctly", async () => {
+        if (!embedDashUrl)
+          throw new Error(
+            "This test fails because test setup code didn't produce a embedded Dashboard URL.",
+          );
 
-       *   const embedUrlTestStore = await createTestStore({ embedApp: true });
-       *   await runSharedDashboardTests(
-       *     embedUrlTestStore,
-       *     embedDashUrl
-       *   );
-       * });*/
+        const embedUrlTestStore = await createTestStore({ embedApp: true });
+        await runSharedDashboardTests(embedUrlTestStore, embedDashUrl);
+      });
 
       afterAll(() => restorePreviousLogin());
     });
