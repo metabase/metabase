@@ -1,9 +1,7 @@
 (ns metabase.api.x-ray
   (:refer-clojure :exclude [compare])
   (:require [compojure.core :refer [GET POST]]
-            [metabase.api
-             [card :as card.api]
-             [common :as api]]
+            [metabase.api.common :as api]
             [metabase.feature-extraction
              [async :as async]
              [core :as fe]
@@ -98,7 +96,7 @@
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (->> query
-       card.api/adhoc-query
+       query/adhoc-query
        (x-ray (max-cost max_query_cost max_computation_cost))))
 
 (api/defendpoint GET "/compare/tables/:table1-id/:table2-id"
@@ -198,7 +196,7 @@
    max_computation_cost MaxComputationCost}
   (compare (max-cost max_query_cost max_computation_cost)
            (api/read-check Card id)
-           (card.api/adhoc-query query)))
+           (query/adhoc-query query)))
 
 (api/defendpoint POST "/compare/table/:id/query"
   "Get comparison x-ray of table and ad-hoc query."
@@ -207,7 +205,7 @@
    max_computation_cost MaxComputationCost}
   (compare (max-cost max_query_cost max_computation_cost)
            (api/read-check Table id)
-           (card.api/adhoc-query query)))
+           (query/adhoc-query query)))
 
 (api/defendpoint POST "/compare/segment/:id/query"
   "Get comparison x-ray of segment and ad-hoc query."
@@ -216,6 +214,6 @@
    max_computation_cost MaxComputationCost}
   (compare (max-cost max_query_cost max_computation_cost)
            (api/read-check Segment id)
-           (card.api/adhoc-query query)))
+           (query/adhoc-query query)))
 
 (api/define-routes)
