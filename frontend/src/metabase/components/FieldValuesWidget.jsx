@@ -334,7 +334,10 @@ export class FieldValuesWidget extends Component {
 }
 
 const LoadingState = () => (
-  <div className="flex layout-centered align-center border-top" style={{ minHeight: 82 }}>
+  <div
+    className="flex layout-centered align-center border-top"
+    style={{ minHeight: 82 }}
+  >
     <LoadingSpinner size={32} />
   </div>
 );
