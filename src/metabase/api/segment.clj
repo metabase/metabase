@@ -86,6 +86,6 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (related/related (Segment id)))
+  (-> id Segment api/read-check related/related))
 
 (api/define-routes)

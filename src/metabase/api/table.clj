@@ -322,6 +322,6 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (related/related (Table id)))
+  (-> id Table api/read-check related/related))
 
 (api/define-routes)

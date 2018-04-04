@@ -673,7 +673,7 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (related/related (Card id)))
+  (-> id Card api/read-check related/related))
 
 (api/defendpoint POST "/related"
   "Return related entities for an ad-hoc query."

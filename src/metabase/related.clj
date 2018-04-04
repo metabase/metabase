@@ -150,6 +150,7 @@
          :model   "Dashboard"
          :user_id api/*current-user-id*
          {:order-by [[:timestamp :desc]]})
+       (filter mi/can-read?)
        (take max-serendipity-matches)))
 
 (defn- recommended-dashboards
@@ -166,6 +167,7 @@
         best             (->> cards
                               (mapcat (comp card->dashboards :id))
                               distinct
+                              (filter mi/can-read?)
                               (take max-best-matches))]
     (map Dashboard (concat best recent))))
 
@@ -243,6 +245,8 @@
   (let [cards (map Card (db/select-field :card_id DashboardCard
                           :dashboard_id (:id dashboard)))]
     {:cards (->> cards
-                 (mapcat (comp (partial take max-best-matches) similar-questions))
+                 (mapcat (comp similar-questions))
                  (remove (set cards))
-                 distinct)}))
+                 distinct
+                 (filter mi/can-read?)
+                 interesting-mix)}))

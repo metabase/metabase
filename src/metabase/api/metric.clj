@@ -116,6 +116,6 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (related/related (Metric id)))
+  (-> id Metric api/read-check related/related))
 
 (api/define-routes)

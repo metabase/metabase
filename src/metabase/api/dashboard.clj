@@ -370,7 +370,7 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (related/related (Dashboard id)))
+  (-> id Dashboard api/read-check related/related))
 
 ;;; --------------------------------------------------- Transient dashboards ---------------------------------------------------
 

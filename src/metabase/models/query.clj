@@ -1,6 +1,6 @@
 (ns metabase.models.query
   (:require [metabase.db :as mdb]
-            [metabase.query-processor.util :as qputil]            
+            [metabase.query-processor.util :as qputil]
             [metabase.util.honeysql-extensions :as hx]
             [toucan
              [db :as db]
