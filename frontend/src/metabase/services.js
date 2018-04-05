@@ -138,7 +138,7 @@ export const MetabaseApi = {
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
   db_metadata: GET("/api/database/:dbId/metadata"),
-  // db_tables:                   GET("/api/database/:dbId/tables"),
+  //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(

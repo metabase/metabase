@@ -2,18 +2,18 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "c-3po";
-import { Box, Flex } from 'rebass'
+import { Box, Flex } from "rebass";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { Link } from "react-router";
 
-import { normal, saturated } from 'metabase/lib/colors'
+import { normal, saturated } from "metabase/lib/colors";
 
 import Button from "metabase/components/Button.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger"
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
@@ -50,8 +50,8 @@ class SearchBar extends React.Component {
 
   render() {
     return (
-      <Flex align='center'>
-        <Icon name='search' />
+      <Flex align="center">
+        <Icon name="search" />
         <input
           type="text"
           placeholder="Search for anything..."
@@ -142,57 +142,69 @@ export default class Navbar extends Component {
 
   renderMainNav() {
     return (
-      <Flex style={{ backgroundColor: '#FDFDFD', borderBottom: '1px solid #DCE1E4'  }} className="relative" align='center'>
+      <Flex
+        style={{
+          backgroundColor: "#FDFDFD",
+          borderBottom: "1px solid #DCE1E4",
+        }}
+        className="relative"
+        align="center"
+      >
+        <Box className="absolute top left">
+          <Link
+            to="/"
+            data-metabase-event={"Navbar;Logo"}
+            className="LogoNavItem NavItem cursor-pointer flex align-center transition-background justify-center"
+            activeClassName="NavItem--selected"
+          >
+            <LogoIcon />
+          </Link>
+        </Box>
+        <Box my={1} p={1} className="wrapper lg-wrapper--trim">
+          <SearchBar />
+        </Box>
+        <Flex className="absolute top right" align="center">
           <Box>
-            <Link
-              to="/"
-              data-metabase-event={"Navbar;Logo"}
-              className="LogoNavItem NavItem cursor-pointer flex align-center transition-background justify-center"
-              activeClassName="NavItem--selected"
-            >
-              <LogoIcon />
+            <Link to="browse">
+              <Button primary medium icon="database">
+                Explore
+              </Button>
             </Link>
           </Box>
-          <Box className="wrapper lg-wrapper--trim">
-            <SearchBar />
-          </Box>
-          <Box>
-            <PopoverWithTrigger
-              triggerElement={
-                <Button primary medium>New</Button>
-              }
-            >
-              <Box p={3} style={{ minWidth: 300 }}>
-                <Box my={2}>
-                  <Link to='question/new'>
-                    <Flex align='center' style={{ color: normal.red }}>
-                      <Icon name='beaker' />
-                      <h3>Question</h3>
-                    </Flex>
-                  </Link>
-                </Box>
-                <Box my={2}>
-                  <Flex align='center' style={{ color: normal.blue }}>
-                    <Icon name='dashboard' />
-                    <h3>Dashboard</h3>
+          <PopoverWithTrigger triggerElement={<Button medium>New</Button>}>
+            <Box p={3} style={{ minWidth: 300 }}>
+              <Box my={2}>
+                <Link to="question/new">
+                  <Flex align="center" style={{ color: normal.red }}>
+                    <Icon name="beaker" />
+                    <h3>Question</h3>
                   </Flex>
-                </Box>
-                <Box my={2}>
-                  <Flex align='center' style={{ color: saturated.yellow }}>
-                    <Icon name='pulse' />
-                    <h3>Pulse</h3>
-                  </Flex>
-                </Box>
-                <Box my={2}>
-                  <Flex align='center' style={{ color: '#93B3C9' }}>
-                    <Icon name='all' />
+                </Link>
+              </Box>
+              <Box my={2}>
+                <Flex align="center" style={{ color: normal.blue }}>
+                  <Icon name="dashboard" />
+                  <h3>Dashboard</h3>
+                </Flex>
+              </Box>
+              <Box my={2}>
+                <Flex align="center" style={{ color: saturated.yellow }}>
+                  <Icon name="pulse" />
+                  <h3>Pulse</h3>
+                </Flex>
+              </Box>
+              <Box my={2}>
+                <Link to="collections/create">
+                  <Flex align="center" style={{ color: "#93B3C9" }}>
+                    <Icon name="all" />
                     <h3>Collection</h3>
                   </Flex>
-                </Box>
+                </Link>
               </Box>
-            </PopoverWithTrigger>
-            <ProfileLink {...this.props} />
-          </Box>
+            </Box>
+          </PopoverWithTrigger>
+          <ProfileLink {...this.props} />
+        </Flex>
       </Flex>
     );
   }
