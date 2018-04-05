@@ -335,7 +335,7 @@ export class FieldValuesWidget extends Component {
 
 const LoadingState = () => (
   <div
-    className="flex layout-centered align-center border-top"
+    className="flex layout-centered align-center border-bottom"
     style={{ minHeight: 82 }}
   >
     <LoadingSpinner size={32} />
@@ -357,7 +357,7 @@ const EveryOptionState = () => (
 );
 
 const OptionsMessage = ({ message }) => (
-  <div className="flex layout-centered p4 border-top">{message}</div>
+  <div className="flex layout-centered p4 border-bottom">{message}</div>
 );
 
 export default connect(null, mapDispatchToProps)(FieldValuesWidget);
