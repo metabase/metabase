@@ -124,52 +124,57 @@ export default class PostSetupApp extends Component {
     let { candidates, sampleCandidates, isSample } = this.state;
 
     return (
-      <div className="bg-slate-extra-light full-height flex layout-centered">
-        <div style={{ maxWidth: 587 }}>
-          {!candidates ? (
-            <div>
-              <h2 className="text-centered mx4 px4">
-                {t`We’ll show you some interesting explorations of your data in
-                just a few minutes.`}
-              </h2>
-              <BorderedPanel className="my4 flex">
-                <MetabotLogo />
-                <div className="flex-full ml3 mt1">
-                  <div className="mb1">
-                    <Quotes quotes={QUOTES} period={2000} />
+      <div className="bg-slate-extra-light full-height">
+        <div className="flex full-height">
+          <div
+            style={{ maxWidth: 587 }}
+            className="ml-auto mr-auto mt-auto mb-auto"
+          >
+            {!candidates ? (
+              <div>
+                <h2 className="text-centered mx4 px4">
+                  {t`We’ll show you some interesting explorations of your data in
+                  just a few minutes.`}
+                </h2>
+                <BorderedPanel className="my4 flex">
+                  <MetabotLogo />
+                  <div className="flex-full ml3 mt1">
+                    <div className="mb1">
+                      <Quotes quotes={QUOTES} period={2000} />
+                    </div>
+                    <ThinProgressBar />
                   </div>
-                  <ThinProgressBar />
-                </div>
-              </BorderedPanel>
-              {sampleCandidates && (
-                <BorderedPanel>
-                  <ExplorePane
-                    options={sampleCandidates}
-                    title={null}
-                    description={t`This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Metabase can do for you.`}
-                  />
                 </BorderedPanel>
-              )}
+                {sampleCandidates && (
+                  <BorderedPanel>
+                    <ExplorePane
+                      options={sampleCandidates}
+                      title={null}
+                      description={t`This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Metabase can do for you.`}
+                    />
+                  </BorderedPanel>
+                )}
+              </div>
+            ) : (
+              <BorderedPanel>
+                <ExplorePane
+                  options={candidates}
+                  description={
+                    isSample
+                      ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
+                      : t`I took a look at the data you just connected, and I put together some explorations of interesting metrics I found. Hope you like them!`
+                  }
+                />
+              </BorderedPanel>
+            )}
+            <div className="m4 text-centered">
+              <Link
+                to="/"
+                className="no-decoration text-bold text-grey-3 text-grey-4-hover"
+              >
+                {t`No thanks, I’ll set things up on my own`}
+              </Link>
             </div>
-          ) : (
-            <BorderedPanel>
-              <ExplorePane
-                options={candidates}
-                description={
-                  isSample
-                    ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                    : t`I took a look at the data you just connected, and I put together some explorations of interesting metrics I found. Hope you like them!`
-                }
-              />
-            </BorderedPanel>
-          )}
-          <div className="m4 text-centered">
-            <Link
-              to="/"
-              className="no-decoration text-bold text-grey-3 text-grey-4-hover"
-            >
-              {t`No thanks, I’ll set things up on my own`}
-            </Link>
           </div>
         </div>
       </div>
