@@ -162,9 +162,9 @@ export default class GuiQueryEditor extends Component {
     }
 
     return (
-      <div className={cx("Query-section", { disabled: !enabled })}>
-        <div className="Query-filters">{filterList}</div>
-        <div className="mx2">
+      <div className={cx("Query-section Query-filters", { disabled: !enabled })}>
+        {filterList}
+        <div className="add-button">
           <PopoverWithTrigger
             id="FilterPopover"
             ref="filterPopover"
@@ -292,7 +292,7 @@ export default class GuiQueryEditor extends Component {
 
     return (
       <div
-        className={cx("Query-section Query-section-breakout", {
+        className={cx("Query-section Query-section-breakout scroll-x scroll-show flex", {
           disabled: breakoutList.length === 0,
         })}
       >
@@ -344,7 +344,7 @@ export default class GuiQueryEditor extends Component {
 
     return (
       <div
-        className="GuiBuilder-section GuiBuilder-filtered-by flex align-center"
+        className="GuiBuilder-section GuiBuilder-filtered-by flex align-center px1"
         ref="filterSection"
       >
         <span className="GuiBuilder-section-label Query-label">{t`Filtered by`}</span>
@@ -361,11 +361,13 @@ export default class GuiQueryEditor extends Component {
 
     return (
       <div
-        className="GuiBuilder-section GuiBuilder-view flex align-center px1 pr2"
+        className="GuiBuilder-section GuiBuilder-view flex align-center px1"
         ref="viewSection"
       >
         <span className="GuiBuilder-section-label Query-label">{t`View`}</span>
-        {this.renderAggregation()}
+        <div className="Query-view Query-section scroll-x scroll-show flex">
+          {this.renderAggregation()}
+        </div>  
       </div>
     );
   }
@@ -378,7 +380,7 @@ export default class GuiQueryEditor extends Component {
 
     return (
       <div
-        className="GuiBuilder-section GuiBuilder-groupedBy flex align-center px1"
+        className="GuiBuilder-section GuiBuilder-grouped-by flex align-center px1"
         ref="viewSection"
       >
         <span className="GuiBuilder-section-label Query-label">{t`Grouped By`}</span>
@@ -428,21 +430,22 @@ export default class GuiQueryEditor extends Component {
         })}
         ref="guiBuilder"
       >
-        <div className="GuiBuilder-row flex">
+        <div className="GuiBuilder-row-data flex">
           {this.renderDataSection()}
-          {this.renderFilterSection()}
         </div>
         <div className="GuiBuilder-row flex flex-full">
-          {this.renderViewSection()}
+          {this.renderFilterSection()}
+          {this.renderViewSection()}          
           {this.renderGroupedBySection()}
           <div className="flex-full" />
           {this.props.children}
-          <ExtendedOptions {...this.props} />
+          {/* <ExtendedOptions {...this.props} /> */}
         </div>
       </div>
     );
   }
 }
+
 
 export const AggregationWidget = ({
   index,
