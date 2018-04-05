@@ -30,7 +30,7 @@ const QueryDownloadWidget = ({ className, card, result, uuid, token, dashcardId,
     >
         <div className="p2" style={{ maxWidth: 320 }}>
       <h4>{t`Download full results`}</h4>
-      {result.data.rows_truncated != null && (
+      {result.data != null && result.data.rows_truncated != null && (
         <FieldSet className="my2 text-gold border-gold" legend={t`Warning`}>
           <div className="my1">{t`Your answer has a large number of rows so it could take a while to download.`}</div>
           <div>{t`The maximum download size is 1 million rows.`}</div>
