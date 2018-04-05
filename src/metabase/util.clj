@@ -817,7 +817,7 @@
                   v
                   (select-nested-keys v nested-keys))})))
 
-(defn base-64-string?
+(defn base64-string?
   "Is S a Base-64 encoded string?"
   ^Boolean [s]
   (boolean (when (string? s)
