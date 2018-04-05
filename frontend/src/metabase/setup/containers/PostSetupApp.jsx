@@ -6,6 +6,7 @@ import { Link } from "react-router";
 import ExplorePane from "metabase/components/ExplorePane";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Quotes from "metabase/components/Quotes";
+import { withBackground } from "metabase/hoc/Background";
 
 import { MetabaseApi, AutoApi } from "metabase/services";
 import _ from "underscore";
@@ -40,6 +41,7 @@ type State = {
   sampleCandidates: ?(Candidate[]),
 };
 
+@withBackground("bg-slate-extra-light")
 export default class PostSetupApp extends Component {
   props: Props;
   state: State = {
@@ -124,11 +126,11 @@ export default class PostSetupApp extends Component {
     let { candidates, sampleCandidates, isSample } = this.state;
 
     return (
-      <div className="bg-slate-extra-light full-height">
+      <div className="full-height">
         <div className="flex full-height">
           <div
             style={{ maxWidth: 587 }}
-            className="ml-auto mr-auto mt-auto mb-auto"
+            className="ml-auto mr-auto mt-auto mb-auto py2"
           >
             {!candidates ? (
               <div>
