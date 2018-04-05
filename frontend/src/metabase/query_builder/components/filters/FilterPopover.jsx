@@ -324,20 +324,20 @@ export default class FilterPopover extends Component {
             maxWidth: dimension.field().isDate() ? null : 500,
           }}
         >
-          <div className="FilterPopover-header border-bottom text-grey-3 p1 pb2 mt1 flex align-center">
-            <a
-              className="cursor-pointer text-purple-hover transition-color flex align-center"
-              onClick={this.clearField}
-            >
-              <Icon name="chevronleft" size={16} />
-              <h3 className="inline-block ml1">
-                {singularize(table.display_name)}
-              </h3>
-            </a>
-            <h3 className="mx1">-</h3>
-            <h3 className="text-default">{formatField(field)}</h3>
+          <div className="FilterPopover-header border-bottom text-grey-3 p1 flex align-center">
+            <div className="flex py1">
+              <a
+                className="cursor-pointer text-purple-hover transition-color flex align-center"
+                onClick={this.clearField}
+              >
+                <Icon name="chevronleft" size={16} />
+                <h3 className="ml1">{singularize(table.display_name)}</h3>
+              </a>
+              <h3 className="mx1">-</h3>
+              <h3 className="text-default">{formatField(field)}</h3>
+            </div>
             {isTime(field) || isDate(field) ? null : (
-              <div className="flex justify-end absolute right px1">
+              <div className="flex flex-align-right pl3">
                 <OperatorSelector
                   operator={operatorName}
                   operators={field.operators}
@@ -361,7 +361,7 @@ export default class FilterPopover extends Component {
           ) : (
             <div>{this.renderPicker(filter, field)}</div>
           )}
-          <div className="FilterPopover-footer border-top flex align-center p1 pl2">
+          <div className="FilterPopover-footer flex align-center p1 pl2">
             <FilterOptions
               filter={filter}
               onFilterChange={this.setFilter}
