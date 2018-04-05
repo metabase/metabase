@@ -79,10 +79,10 @@
        :left-margin   10
        :right-margin  10
        :top-margin    15
-       :bottom-margin 15   
+       :bottom-margin 15
        :font {
-          :size 9 
-          :family :sans-serif }} 
+          :size 9
+          :family :sans-serif}} 
       ; write the title
       [:heading {:align :center} "Results"]
       [:spacer 1]

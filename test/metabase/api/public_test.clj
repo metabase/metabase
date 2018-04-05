@@ -25,6 +25,8 @@
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream
+           [org.apache.pdfbox.pdmodel PDDocument]
+           [org.apache.pdfbox.util PDFTextStripper]
            java.util.UUID))
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
@@ -180,6 +182,18 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (http/client :get 200 (str "public/card/" uuid "/query/pdf")))))
+
+;; Check that we can get results of a PublicCard inside PDF
+(expect
+  not-empty
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (with-temp-public-card [{uuid :public_uuid}]
+      (let [in (http/client :get 200 (str "public/card/" uuid "/query/pdf") {:request-options {:as :byte-array}})]
+      (with-open [pd (PDDocument/load (ByteArrayInputStream. in))]
+        (let [stripper (PDFTextStripper.)]
+          (let [source-text (.getText stripper pd)]
+            (println source-text)
+            source-text)))))))
 
 ;; Check that we can exec a PublicCard with `?parameters`
 (expect
