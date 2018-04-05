@@ -1,3 +1,4 @@
+import _ from "underscore";
 import React, { Component } from "react";
 import styles from "./RefreshWidget.css";
 
@@ -22,12 +23,12 @@ const OPTIONS = [
 export default class RefreshWidget extends Component {
   render() {
     const { period, elapsed, onChangePeriod, className } = this.props;
-    const remaining = period - elapsed;
+    const remaining = calculateRemaining(period, elapsed);
     return (
       <PopoverWithTrigger
         ref="popover"
         triggerElement={
-          elapsed == null ? (
+          remaining == null ? (
             <Tooltip tooltip={t`Auto-refresh`}>
               <ClockIcon width={18} height={18} className={className} />
             </Tooltip>
@@ -46,7 +47,7 @@ export default class RefreshWidget extends Component {
                 width={18}
                 height={18}
                 className="text-green"
-                percent={Math.min(0.95, (period - elapsed) / period)}
+                percent={Math.min(0.95, remaining / period)}
               />
             </Tooltip>
           )
@@ -89,3 +90,8 @@ const RefreshOption = ({ name, period, selected, onClick }) => (
     <span className={styles.nameSuffix}> {name.split(" ")[1]}</span>
   </li>
 );
+
+const calculateRemaining = (period, elapsed) => {
+  const option = _.find(OPTIONS, option => period === option.period);
+  return option && option.period ? period - elapsed : null;
+};
