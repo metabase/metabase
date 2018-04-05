@@ -339,10 +339,15 @@
 ;; missing those database ids
 (defmigration ^{:author "senior", :added "0.27.0"} populate-card-database-id
   (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
-                                  (db/select [Card :dataset_query :id] :database_id [:= nil]))
+                                  (db/select [Card :dataset_query :id :name] :database_id [:= nil]))
           :when (not= db-id virtual-id)]
-    (db/update-where! Card {:id [:in (map :id cards)]}
-      :database_id db-id)))
+    (if (and (seq cards)
+             (db/exists? Database :id db-id))
+      (db/update-where! Card {:id [:in (map :id cards)]}
+                        :database_id db-id)
+      (doseq [{id :id card-name :name} cards]
+        (log/warnf "Cleaning up orphaned Question '%s', associated to a now deleted database" card-name)
+        (db/delete! Card :id id)))))
 
 ;; Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
 ;; `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
@@ -370,11 +375,26 @@
 ;; `pre-update` implementation.
 ;;
 ;; Caching these permissions will prevent 1000+ DB call API calls. See https://github.com/metabase/metabase/issues/6889
-(defmigration ^{:author "camsaul", :added "0.29.0"} populate-card-read-permissions
+;;
+;; NOTE: This used used to be
+;; (defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
+;;   (run!
+;;     (fn [card]
+;;      (db/update! Card (u/get-id card) {}))
+;;   (db/select-reducible Card :archived false, :read_permissions nil)))
+;; But due to bug https://github.com/metabase/metabase/issues/7189 was replaced
+(defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
+  (log/info "Not running migration `populate-card-read-permissions` as it has been replaced by a subsequent migration "))
+
+;; Migration from 0.28.2 above had a flaw in that passing in `{}` to the update results in
+;; the functions that do pre-insert permissions checking don't have the query dictionary to analyze
+;; and always short-circuit due to the missing query dictionary. Passing the card itself into the
+;; check mimicks how this works in-app, and appears to fix things.
+(defmigration ^{:author "salsakran", :added "0.28.3"} repopulate-card-read-permissions
   (run!
    (fn [card]
-     (db/update! Card (u/get-id card) {}))
-   (db/select-reducible Card :archived false, :read_permissions nil)))
+     (db/update! Card (u/get-id card) card))
+   (db/select-reducible Card :archived false)))
 
 ;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
 ;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no

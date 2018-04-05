@@ -68,7 +68,7 @@
                             :source "aggregation", :extra_info {}, :id nil, :target nil, :display_name "count",
                             :base_type "type/Integer", :remapped_from nil, :remapped_to nil}]
                  :rows    [[100]]}
-    :json_query {:parameters []}
+    :json_query {:parameters nil}
     :status     "completed"})
   ([results-format]
    (case results-format

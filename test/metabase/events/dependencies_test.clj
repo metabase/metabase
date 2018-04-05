@@ -6,64 +6,85 @@
              [database :refer [Database]]
              [dependency :refer [Dependency]]
              [metric :refer [Metric]]
+             [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.test.data :refer :all]
+            [metabase.test.data :as data]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
+(defn- temp-segment []
+  {:definition {:database (data/id)
+                :filter    [:= [:field-id (data/id :categories :id)] 1]}})
+
 ;; `:card-create` event
-(expect
+(tt/expect-with-temp [Segment [segment-1 (temp-segment)]
+                      Segment [segment-2 (temp-segment)]]
   #{{:dependent_on_model "Segment"
-     :dependent_on_id    2}
+     :dependent_on_id    (u/get-id segment-1)}
     {:dependent_on_model "Segment"
-     :dependent_on_id    3}}
-  (tt/with-temp Card [card {:dataset_query {:database (id)
+     :dependent_on_id    (u/get-id segment-2)}}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :query
-                                            :query    {:source_table (id :categories)
-                                                       :filter       ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["SEGMENT" 2] ["SEGMENT" 3]]}}}]
+                                            :query    {:source_table (data/id :categories)
+                                                       :filter       ["AND"
+                                                                      ["="
+                                                                       (data/id :categories :name)
+                                                                       "Toucan-friendly"]
+                                                                      ["SEGMENT" (u/get-id segment-1)]
+                                                                      ["SEGMENT" (u/get-id segment-2)]]}}}]
     (process-dependencies-event {:topic :card-create
                                  :item  card})
     (set (map (partial into {})
-              (db/select [Dependency :dependent_on_model :dependent_on_id], :model "Card", :model_id (:id card))))))
+              (db/select [Dependency :dependent_on_model :dependent_on_id]
+                :model "Card", :model_id (u/get-id card))))))
 
 ;; `:card-update` event
 (expect
   []
-  (tt/with-temp Card [card {:dataset_query {:database (id)
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :query
-                                            :query    {:source_table (id :categories)}}}]
+                                            :query    {:source_table (data/id :categories)}}}]
     (process-dependencies-event {:topic :card-create
                                  :item  card})
-    (db/select [Dependency :dependent_on_model :dependent_on_id], :model "Card", :model_id (:id card))))
+    (db/select [Dependency :dependent_on_model :dependent_on_id], :model "Card", :model_id (u/get-id card))))
 
 ;; `:metric-create` event
-(expect
+(tt/expect-with-temp [Segment [segment-1 (temp-segment)]
+                      Segment [segment-2 (temp-segment)]]
   #{{:dependent_on_model "Segment"
-     :dependent_on_id    18}
+     :dependent_on_id    (u/get-id segment-1)}
     {:dependent_on_model "Segment"
-     :dependent_on_id    35}}
+     :dependent_on_id    (u/get-id segment-2)}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [metric         {:table_id   table-id
                                             :definition {:aggregation ["count"]
-                                                         :filter      ["AND" ["SEGMENT" 18] ["SEGMENT" 35]]}}]]
+                                                         :filter      ["AND"
+                                                                       ["SEGMENT" (u/get-id segment-1)]
+                                                                       ["SEGMENT" (u/get-id segment-2)]]}}]]
     (process-dependencies-event {:topic :metric-create
                                  :item  metric})
     (set (map (partial into {})
-              (db/select [Dependency :dependent_on_model :dependent_on_id], :model "Metric", :model_id (:id metric))))))
+              (db/select [Dependency :dependent_on_model :dependent_on_id]
+                :model "Metric", :model_id (u/get-id metric))))))
 
 ;; `:card-update` event
-(expect
+(tt/expect-with-temp [Segment [segment-1 (temp-segment)]
+                      Segment [segment-2 (temp-segment)]]
   #{{:dependent_on_model "Segment"
-     :dependent_on_id    18}
+     :dependent_on_id    (u/get-id segment-1)}
     {:dependent_on_model "Segment"
-     :dependent_on_id    35}}
+     :dependent_on_id    (u/get-id segment-2)}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [metric         {:table_id   table-id
                                             :definition {:aggregation ["count"]
-                                                         :filter      ["AND" ["SEGMENT" 18] ["SEGMENT" 35]]}}]]
+                                                         :filter      ["AND"
+                                                                       ["SEGMENT" (u/get-id segment-1)]
+                                                                       ["SEGMENT" (u/get-id segment-2)]]}}]]
     (process-dependencies-event {:topic :metric-update
                                  :item  metric})
     (set (map (partial into {})
-              (db/select [Dependency :dependent_on_model :dependent_on_id], :model "Metric", :model_id (:id metric))))))
+              (db/select [Dependency :dependent_on_model :dependent_on_id]
+                :model "Metric", :model_id (u/get-id metric))))))
