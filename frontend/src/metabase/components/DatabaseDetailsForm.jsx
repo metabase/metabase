@@ -241,9 +241,6 @@ export default class DatabaseDetailsForm extends Component {
                             { engine === "bigquery" &&
                                 <span> (or <a href={AUTH_URL_PREFIXES["bigquery_with_drive"] + clientID} target='_blank'>with Google Drive permissions</a>)</span>
                             }
-                            { engine === "bigqueryjdbc" &&
-                                <span> (or <a href={AUTH_URL_PREFIXES["bigquery_with_drive"] + clientID} target='_blank'>{t`with Google Drive permissions`}</a>)</span>
-                            }
                         </div>
                     </div>);
             }
