@@ -3,6 +3,7 @@
 import d3 from "d3";
 
 import { clipPathReference } from "metabase/lib/dom";
+import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 
 const X_LABEL_MIN_SPACING = 2; // minimum space we want to leave between labels
 const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching from 45° to 90°
@@ -452,6 +453,10 @@ function beforeRenderFixMargins(chart) {
   // run before adjusting margins
   const mins = computeMinHorizontalMargins(chart);
   const xAxisMargin = computeXAxisMargin(chart);
+
+  // re-adjust Y axis ticks to account for xAxisMargin due to rotated labels
+  adjustYAxisTicksIfNeeded(chart.yAxis(), chart.height() - xAxisMargin);
+  adjustYAxisTicksIfNeeded(chart.rightYAxis(), chart.height() - xAxisMargin);
 
   // adjust the margins to fit the X and Y axis tick and label sizes, if enabled
   adjustMargin(
