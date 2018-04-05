@@ -348,7 +348,7 @@
          definitions))
 
 (defn- instantate-visualization
-  [dimensions metrics [k v]]
+  [[k v] dimensions metrics]
   (let [dimension->name (comp vector :name dimensions)
         metric->name    (comp vector first :metric metrics)]
     [k (-> v
@@ -358,14 +358,14 @@
            (u/update-when :graph.dimensions dimension->name))]))
 
 (defn- instantiate-metadata
-  [context bindings x]
-  (let [fill-template (partial fill-template :string context bindings)]
-    (-> x
-        (update :title fill-template)
-        (u/update-when :visualization (partial instantate-visualization bindings
-                                               (:metrics context)))
-        (u/update-when :description fill-template)
-        (u/update-when :text fill-template))))
+  [x context bindings]
+  (-> (walk/postwalk (fn [form]
+                       (if (string? form)
+                         (fill-template :string context bindings form)
+                         form))
+                     x)
+      (u/update-when :visualization #(instantate-visualization % bindings
+                                                               (:metrics context)))))
 
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
@@ -398,7 +398,9 @@
                                               dimensions
                                               limit
                                               order_by))]
-                  (-> (instantiate-metadata context bindings card)
+                  (-> card
+                      (assoc :metrics metrics)
+                      (instantiate-metadata context bindings)
                       (assoc :score         score
                              :dataset_query query))))))))
 
@@ -525,10 +527,10 @@
   (let [context   (->> rule
                        (make-context root)
                        (inject-root root))
-        dashboard (instantiate-metadata context {"this" root}
-                                        (-> rule
-                                            (select-keys [:title :description :groups])
-                                            (update :title str (name-postfix root))))
+        dashboard (-> rule
+                      (select-keys [:title :description :groups])
+                      (update :title str (name-postfix root))
+                      (instantiate-metadata context {"this" root}))
         filters   (->> rule
                        :dashboard_filters
                        (mapcat (comp :matches (:dimensions context))))

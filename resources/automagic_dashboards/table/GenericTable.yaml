@@ -4,7 +4,9 @@ metrics:
   - Count: ["count"]
   - CountDistinctFKs: [distinct, [dimension, FK]]
   - Sum: [sum, [dimension, GenericNumber]]
-  - Avg: [avg, [dimension, GenericNumber]]
+  - Avg:
+      metric: [avg, [dimension, GenericNumber]]
+      name: Mean of [[GenericNumber]]
 dimensions:
   - Country:
       field_type: GenericTable.Country
@@ -36,10 +38,10 @@ dimensions:
   - Timestamp:
       field_type: DateTime
       score: 60
-  - JoinDate: 
+  - JoinDate:
       field_type: GenericTable.JoinTimestamp
       score: 50
-  - CreateDate: 
+  - CreateDate:
       field_type: CreationTimestamp
       score: 80
   - FK: FK

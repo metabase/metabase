@@ -90,20 +90,35 @@
                             (map (comp colors #(mod % (count colors)) hash))
                             ensure-distinct-colors)}))))
 
+(defn- visualization-settings
+  [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]
+  (let [[display visualization-settings] visualization
+        metric-name                      (some-fn :name
+                                                  (comp str/capitalize
+                                                        name
+                                                        first
+                                                        :metric))]
+    {:display display
+     :visualization_settings
+     (-> visualization-settings
+         (merge (colorize card))
+         (cond->
+           (some :name metrics) (assoc :graph.series_labels (map metric-name metrics))
+           series_labels        (assoc :graph.series_labels series_labels)
+           x_label              (assoc :graph.x_axis.title_text x_label)
+           y_label              (assoc :graph.y_axis.title_text y_label)))}))
+
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [visualization title description dataset_query width height
-                     collection] :as card} [x y]]
-  (let [[display visualization-settings] visualization
-        card (-> {:creator_id             api/*current-user-id*
-                  :dataset_query          dataset_query
-                  :description            description
-                  :display                display
-                  :name                   title
-                  :visualization_settings (-> visualization-settings
-                                              (merge (colorize card)))
-                  :collection_id          collection
-                  :id                     (gensym)}
+  [dashboard {:keys [title description dataset_query width height collection]
+              :as card} [x y]]
+  (let [card (-> {:creator_id    api/*current-user-id*
+                  :dataset_query dataset_query
+                  :description   description
+                  :name          title
+                  :collection_id collection
+                  :id            (gensym)}
+                 (merge (visualization-settings card))
                  card/populate-query-fields)]
     (update dashboard :ordered_cards conj {:col                    y
                                            :row                    x

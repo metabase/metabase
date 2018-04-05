@@ -23,7 +23,8 @@
 (def ^:private Identifier s/Str)
 
 (def ^:private Metric {Identifier {(s/required-key :metric) MBQL
-                                   (s/required-key :score)  Score}})
+                                   (s/required-key :score)  Score
+                                   (s/optional-key :name)   s/Str}})
 
 (def ^:private Filter {Identifier {(s/required-key :filter) MBQL
                                    (s/required-key :score)  Score}})
@@ -96,7 +97,10 @@
                (s/optional-key :query)         s/Str
                (s/optional-key :width)         Width
                (s/optional-key :height)        Height
-               (s/optional-key :group)         s/Str}})
+               (s/optional-key :group)         s/Str
+               (s/optional-key :y_label)       s/Str
+               (s/optional-key :x_label)       s/Str
+               (s/optional-key :series_labels) [s/Str]}})
 
 (def ^:private Groups
   {Identifier {(s/required-key :title)       s/Str
