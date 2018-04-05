@@ -520,29 +520,18 @@ describe("public/embedded", () => {
         // TODO - what's the right way to do this without using a stupid DELAY?
         await delay(1000);
 
-        const getValueOfSqlCard = () =>
+        const getValueOfCard = index =>
           app
             .update()
             .find(Scalar)
             .find(".ScalarValue")
-            .at(0)
-            .text();
-        const getValueOfMbqlCard = () =>
-          app
-            .update()
-            .find(Scalar)
-            .find(".ScalarValue")
-            .at(1)
+            .at(index)
             .text();
 
-        const setParam = async (paramIndex, newValue) => {
-          app
-            .update()
-            .find(TextWidget)
-            .at(paramIndex)
-            .props()
-            .setValue(newValue);
+        const getValueOfSqlCard = () => getValueOfCard(0);
+        const getValueOfMbqlCard = () => getValueOfCard(1);
 
+        const waitForDashToReload = async () => {
           // TODO - not sure what the correct way to wait for the cards to reload is
           await store.waitForActions([
             FETCH_DASHBOARD_CARD_DATA,
@@ -559,11 +548,23 @@ describe("public/embedded", () => {
         expect(getValueOfMbqlCard()).toBe("2,500");
 
         // now set the SQL param to '50' & wait for Dashboard to reload. check that value of SQL Card is updated
-        await setParam(0, "50");
+        app
+          .update()
+          .find(TextWidget)
+          .first()
+          .props()
+          .setValue("50");
+        await waitForDashToReload();
         expect(getValueOfSqlCard()).toBe("50");
 
         // now set our MBQL param' & wait for Dashboard to reload. check that value of the MBQL Card is updated
-        await setParam(1, "40");
+        app
+          .update()
+          .find(ParameterFieldWidget)
+          .first()
+          .props()
+          .setValue("40");
+        await waitForDashToReload();
         expect(getValueOfMbqlCard()).toBe("1");
       }
 
