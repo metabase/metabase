@@ -164,7 +164,7 @@ export default class GuiQueryEditor extends Component {
     return (
       <div className={cx("Query-section Query-filters", { disabled: !enabled })}>
         {filterList}
-        <div className="add-button">
+        <div className="add-button-filter">
           <PopoverWithTrigger
             id="FilterPopover"
             ref="filterPopover"

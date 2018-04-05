@@ -75,7 +75,8 @@
   overflow-y: hidden;
   white-space: nowrap;
   min-height: 55px;
-  max-width: calc(100% - 50px);
+  max-width: calc(100% - 44px);
+  width: calc(100% - 44px);
   height: 100%;
 }
 
@@ -92,8 +93,12 @@
   border-radius: var(--default-border-radius);
 }
 
-.add-button {
+.add-button-filter {
   margin-left: 1rem;
+}
+
+.add-button-breakout {
+  padding-right: 2px;
 }
 
 .Query-filter.selected {
