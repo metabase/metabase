@@ -14,9 +14,6 @@ import { createSelector } from "reselect";
 import { normalize, schema } from "normalizr";
 import { getIn } from "icepick";
 
-export const entities = {};
-export const reducers = {};
-
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
 //
 // name: plural, like "questions" or "dashboards"
@@ -26,11 +23,8 @@ export const reducers = {};
 // getName: property to show as the name, defaults to `name`
 //
 
-// $FlowFixMe: doesn't know about require.context
-const req = require.context("metabase/entities/entities", true, /.*.js$/);
-const entityDefs = req.keys().map(key => req(key));
-for (const def of entityDefs) {
-  const entity = (entities[def.name] = { ...def });
+function createEntity(def) {
+  const entity = { ...def };
 
   // defaults
   if (!entity.schema) {
@@ -60,10 +54,13 @@ for (const def of entityDefs) {
 
   // ACTION CREATORS
   entity.actions = {
+    ...(def.actions || {}),
+    ...(def.objectActions || {}),
+
     create: createThunkAction(
       CREATE_ACTION,
       entityObject => async (dispatch, getState) => {
-        const statePath = ["entities", entities.name, "create"];
+        const statePath = ["entities", entity.name, "create"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
@@ -96,15 +93,11 @@ for (const def of entityDefs) {
             ),
         }),
     ),
+
     update: createThunkAction(
       UPDATE_ACTION,
       entityObject => async (dispatch, getState) => {
-        const statePath = [
-          "entities",
-          entities.name,
-          entityObject.id,
-          "update",
-        ];
+        const statePath = ["entities", entity.name, entityObject.id, "update"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
@@ -120,21 +113,17 @@ for (const def of entityDefs) {
         }
       },
     ),
+
     delete: createThunkAction(
       DELETE_ACTION,
       entityObject => async (dispatch, getState) => {
-        const statePath = [
-          "entities",
-          entities.name,
-          entityObject.id,
-          "delete",
-        ];
+        const statePath = ["entities", entity.name, entityObject.id, "delete"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           await entity.api.delete({ id: entityObject.id });
           dispatch(setRequestState({ statePath, state: "LOADED" }));
           return {
-            entities: { [entities.name]: { [entityObject.id]: null } },
+            entities: { [entity.name]: { [entityObject.id]: null } },
             result: entityObject.id,
           };
         } catch (error) {
@@ -147,15 +136,15 @@ for (const def of entityDefs) {
 
     fetchList: createThunkAction(
       FETCH_LIST_ACTION,
-      (reload = false) => (dispatch, getState) =>
+      (query = {}, reload = false) => (dispatch, getState) =>
         fetchData({
           dispatch,
           getState,
           reload,
-          requestStatePath: ["entities", entity.name + "_list"],
-          existingStatePath: ["entities", entity.name + "_list"],
+          requestStatePath: ["entities", entity.name + "_list"], // FIXME: different path depending on query?
+          existingStatePath: ["entities", entity.name + "_list"], // FIXME: different path depending on query?
           getData: async () =>
-            normalize(await entity.api.list(), [entity.schema]),
+            normalize(await entity.api.list(query), [entity.schema]),
         }),
     ),
   };
@@ -203,8 +192,16 @@ for (const def of entityDefs) {
   };
 
   // REDUCERS
-  reducers[entity.name] = handleEntities(/^metabase\/entities\//, entity.name);
-  reducers[entity.name + "_list"] = (state = null, action) => {
+
+  entity.reducers = {};
+
+  entity.reducers[entity.name] = handleEntities(
+    /^metabase\/entities\//,
+    entity.name,
+    def.reducer,
+  );
+
+  entity.reducers[entity.name + "_list"] = (state = null, action) => {
     if (action.error) {
       return state;
     }
@@ -218,8 +215,26 @@ for (const def of entityDefs) {
       return state;
     }
   };
+
+  return entity;
 }
 
-(window.Metabase = window.Metabase || {}).entities = entities;
+export const entities = {};
+export const reducers = {};
+
+// $FlowFixMe: doesn't know about require.context
+const req = require.context("metabase/entities/entities", true, /.*.js$/);
+const entityDefs = req.keys().map(key => req(key));
+for (const def of entityDefs) {
+  const entity = createEntity(def);
+  if (entity.name in entities) {
+    console.warn(`Entity with name ${entity.name} already exists!`);
+  } else {
+    entities[entity.name] = entity;
+    Object.assign(reducers, entity.reducers);
+  }
+}
 
 export default combineReducers(reducers);
+
+(window.Metabase = window.Metabase || {}).entities = entities;
