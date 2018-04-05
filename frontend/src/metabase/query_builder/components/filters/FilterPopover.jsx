@@ -336,6 +336,15 @@ export default class FilterPopover extends Component {
             </a>
             <h3 className="mx1">-</h3>
             <h3 className="text-default">{formatField(field)}</h3>
+            {isTime(field) || isDate(field) ? null : (
+              <div className="flex justify-end absolute right px1">
+                <OperatorSelector
+                  operator={operatorName}
+                  operators={field.operators}
+                  onOperatorChange={this.setOperator}
+                />
+              </div>
+            )}
           </div>
           {isTime(field) ? (
             <TimePicker
@@ -350,16 +359,7 @@ export default class FilterPopover extends Component {
               onFilterChange={this.setFilter}
             />
           ) : (
-            <div>
-              <div className="inline-block px1 pt1">
-                <OperatorSelector
-                  operator={operatorName}
-                  operators={field.operators}
-                  onOperatorChange={this.setOperator}
-                />
-              </div>
-              {this.renderPicker(filter, field)}
-            </div>
+            <div>{this.renderPicker(filter, field)}</div>
           )}
           <div className="FilterPopover-footer border-top flex align-center p1 pl2">
             <FilterOptions

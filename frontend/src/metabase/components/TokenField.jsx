@@ -587,13 +587,13 @@ export default class TokenField extends Component {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className="pl1 pt2 scroll-y scroll-show border-top"
+          className="pl1 pt1 scroll-y scroll-show border-top"
           style={{ maxHeight: 300 }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
         >
           {filteredOptions.map(option => (
-            <li key={this._value(option)}>
+            <li className="mr1" key={this._value(option)}>
               <div
                 ref={
                   this._valueIsEqual(selectedOptionValue, this._value(option))
