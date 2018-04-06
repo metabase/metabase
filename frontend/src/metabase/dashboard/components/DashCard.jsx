@@ -163,7 +163,8 @@ export default class DashCard extends Component {
                 />)
               : isEmbed ? (
                 <QueryDownloadWidget
-                  className="m1 text-brand-hover hover-child"
+                  className="m1 text-brand-hover"
+                  classNameClose="hover-child"
                   card={dashcard.card}
                   result={dashcardData}
                   dashcardId={dashcard.id}

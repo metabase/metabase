@@ -23,8 +23,3 @@
 .hover-parent:hover.hover--visibility .hover-child {
   visibility: visible;
 }
-
-.hover-disable{
-  visibility: inherit !important;
-  display: inherit !important;
-}
