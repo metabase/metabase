@@ -24,6 +24,7 @@
              table]
             [metabase.sync.interface :as si]
             [metabase.util :as u]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db])

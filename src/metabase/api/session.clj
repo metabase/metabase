@@ -19,6 +19,7 @@
             [metabase.util
              [password :as pass]
              [schema :as su]]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [throttle.core :as throttle]
             [toucan.db :as db]))
@@ -169,10 +170,10 @@
 ;; add more 3rd-party SSO options
 
 (defsetting google-auth-client-id
-  "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
+  (tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled."))
 
 (defsetting google-auth-auto-create-accounts-domain
-  "When set, allow users to sign up on their own if their Google account email address is from this domain.")
+  (tru "When set, allow users to sign up on their own if their Google account email address is from this domain."))
 
 (defn- google-auth-token-info [^String token]
   (let [{:keys [status body]} (http/post (str "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" token))]
