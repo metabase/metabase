@@ -19,11 +19,11 @@ import cx from "classnames";
 
 const EXPORT_FORMATS = ["csv", "xlsx", "json"];
 
-const QueryDownloadWidget = ({ className, card, result, uuid, token, dashcardId, parameters }) =>(
+const QueryDownloadWidget = ({ className, card, result, uuid, token, dashcardId, parameters, icon }) =>(
     <PopoverWithTrigger
         triggerElement={
       <Tooltip tooltip={t`Download full results`}>
-        <Icon title={t`Download this data`} name="downarrow" size={16} />
+        <Icon title={t`Download this data`} name={icon} size={16} />
             </Tooltip>
         }
         triggerClasses={cx(className, "text-brand-hover")}
@@ -168,10 +168,15 @@ const DashboardEmbedQueryButton = ({ className, type, dashcardId, token, card, p
     </DownloadButton>
 
 QueryDownloadWidget.propTypes = {
-    className: PropTypes.string,
-    card: PropTypes.object,
-    result: PropTypes.object,
+  className: PropTypes.string,
+  card: PropTypes.object,
+  result: PropTypes.object,
   uuid: PropTypes.string,
+  icon: PropTypes.string
+};
+
+QueryDownloadWidget.defaultProps = {
+  icon: "downarrow"
 };
 
 export default QueryDownloadWidget;

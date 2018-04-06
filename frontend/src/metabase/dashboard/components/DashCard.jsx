@@ -169,6 +169,7 @@ export default class DashCard extends Component {
                   dashcardId={dashcard.id}
                   token={dashcard.dashboard_id}
                   parameters={parametersMap}
+                  icon="download"
                 />)
               : (
                 undefined
