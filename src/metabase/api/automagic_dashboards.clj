@@ -42,7 +42,7 @@
 (api/defendpoint GET "/table/:id"
   "Return an automagic dashboard for table with id `ìd`."
   [id show]
-  (-> id Table api/check-404 (magic/automagic-dashboard {:show (keyword show)})))
+  (-> id Table api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/table/:id/:prefix/:rule"
   "Return an automagic dashboard for table with id `ìd` using rule `rule`."
@@ -50,14 +50,14 @@
   (-> id
       Table
       api/check-404
-      (magic/automagic-dashboard
+      (magic/automagic-analysis
        {:rule (load-rule "table" prefix rule)
         :show (keyword show)})))
 
 (api/defendpoint GET "/segment/:id"
   "Return an automagic dashboard analyzing segment with id `id`."
   [id show]
-  (-> id Segment api/check-404 (magic/automagic-dashboard {:show (keyword show)})))
+  (-> id Segment api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/segment/:id/:prefix/:rule"
   "Return an automagic dashboard analyzing segment with id `id`. using rule `rule`."
@@ -65,7 +65,7 @@
   (-> id
       Segment
       api/check-404
-      (magic/automagic-dashboard
+      (magic/automagic-analysis
        {:rule (load-rule "table" prefix rule)
         :show (keyword show)})))
 
@@ -75,7 +75,7 @@
   [id cell-query show]
   (-> (card.api/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
       (magic/inject-segment (-> id Card api/check-404))
-      (magic/automagic-dashboard {:show (keyword show)})))
+      (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/question/:id/cell/:cell-query/:prefix/:rule"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
@@ -83,7 +83,7 @@
   [id cell-query prefix rule show]
   (-> (card.api/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
       (magic/inject-segment (-> id Card api/check-404))
-      (magic/automagic-dashboard
+      (magic/automagic-analysis
        {:rule (load-rule "table" prefix rule)
         :show (keyword show)})))
 

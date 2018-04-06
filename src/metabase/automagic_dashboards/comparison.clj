@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
-             [core :refer [inject-segment full-name]]
+             [core :refer [inject-segment]]
              [populate :as populate]]))
 
 (defn- dashboard->cards
@@ -89,24 +89,25 @@
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
    the dataset defined by segments `left` and `right`."
   [dashboard left right]
-  (->> dashboard
-       dashboard->cards
-       (mapcat unroll-multiseries)
-       (map (juxt (partial inject-segment left)
-                  (partial inject-segment right)))
-       (reduce (fn [[dashboard row] [left right]]
-                 [(place-row dashboard row left right)
-                  (+ row (:height left))])
-               [(-> {:name        (format "Comparison of %s and %s"
-                                          (full-name left)
-                                          (full-name right))
-                     :description (format "Automatically generated comparison dashboard comparing %s and %s"
-                                          (full-name left)
-                                          (full-name right))
-                     :creator_id  api/*current-user-id*
-                     :parameters  []}
-                    (add-col-title (-> left full-name str/capitalize) 0)
-                    (add-col-title (-> right full-name str/capitalize)
-                                   (/ populate/grid-width 2)))
-                title-height])
-       first))
+  ;; (->> dashboard
+  ;;      dashboard->cards
+  ;;      (mapcat unroll-multiseries)
+  ;;      (map (juxt (partial inject-segment left)
+  ;;                 (partial inject-segment right)))
+  ;;      (reduce (fn [[dashboard row] [left right]]
+  ;;                [(place-row dashboard row left right)
+  ;;                 (+ row (:height left))])
+  ;;              [(-> {:name        (format "Comparison of %s and %s"
+  ;;                                         (full-name left)
+  ;;                                         (full-name right))
+  ;;                    :description (format "Automatically generated comparison dashboard comparing %s and %s"
+  ;;                                         (full-name left)
+  ;;                                         (full-name right))
+  ;;                    :creator_id  api/*current-user-id*
+  ;;                    :parameters  []}
+  ;;                   (add-col-title (-> left full-name str/capitalize) 0)
+  ;;                   (add-col-title (-> right full-name str/capitalize)
+  ;;                                  (/ populate/grid-width 2)))
+  ;;               title-height])
+  ;;      first)
+  )

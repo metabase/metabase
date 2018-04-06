@@ -92,12 +92,8 @@
 
 (defn- visualization-settings
   [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]
-  (let [[display visualization-settings] visualization
-        metric-name                      (some-fn :name
-                                                  (comp str/capitalize
-                                                        name
-                                                        first
-                                                        :metric))]
+  (let [metric-name (some-fn :name (comp str/capitalize name first :metric))
+        [display visualization-settings] visualization]
     {:display display
      :visualization_settings
      (-> visualization-settings

@@ -1,5 +1,5 @@
 title: Analysis of [[this]]
-table_type: GenericTable
+applies_to: GenericTable
 metrics:
 # Placeholder that will get overloaded by reference to the actual metric, so we can
 # refer to the metric in card definition.
@@ -70,7 +70,7 @@ cards:
       title: Distribution by hour of day
       visualization: bar
       metrics: this
-      dimensions: 
+      dimensions:
         - Timestamp:
             aggregation: hour-of-day
   - DayOfMonth:
@@ -78,7 +78,7 @@ cards:
       title: Distribution by day of month
       visualization: bar
       metrics: this
-      dimensions: 
+      dimensions:
         - Timestamp:
             aggregation: day-of-month
   - MonthOfYear:
@@ -94,7 +94,7 @@ cards:
       title: Distribution by quarter of year
       visualization: bar
       metrics: this
-      dimensions: 
+      dimensions:
         - Timestamp:
             aggregation: quarter-of-year
   - ByCountry:
