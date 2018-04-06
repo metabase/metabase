@@ -81,11 +81,11 @@ export default class MetricSearch extends Component {
             );
           } else {
             return (
-              <div className="mt2 flex-full flex align-center justify-center">
+              <div className="spread flex layout-centered">
                 <EmptyState
                   message={
                     <span>
-                      ${t`Defining common metrics for your team makes it even easier to ask questions`}
+                      {t`Defining common metrics for your team makes it even easier to ask questions`}
                     </span>
                   }
                   image="/app/img/metrics_illustration"

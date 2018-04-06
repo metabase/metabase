@@ -10,6 +10,7 @@ import { t } from "c-3po";
 import Parameters from "metabase/parameters/components/Parameters.jsx";
 
 import DashboardControls from "../hoc/DashboardControls";
+import { withBackground } from "metabase/hoc/Background";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -118,6 +119,7 @@ type State = {
 };
 
 @DashboardControls
+@withBackground("bg-slate-extra-light")
 export default class Dashboard extends Component {
   props: Props;
   state: State = {
