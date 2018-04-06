@@ -21,68 +21,69 @@ const EXPORT_FORMATS = ["csv", "xlsx", "json"];
 
 const QueryDownloadWidget = ({ className, card, result, uuid, token, dashcardId, parameters, icon }) =>(
     <PopoverWithTrigger
-        triggerElement={
-      <Tooltip tooltip={t`Download full results`}>
-        <Icon title={t`Download this data`} name={icon} size={16} />
-            </Tooltip>
-        }
-        triggerClasses={cx(className, "text-brand-hover")}
+      triggerElement={
+        <Tooltip tooltip={t`Download full results`}>
+          <Icon title={t`Download this data`} name={icon} size={16} />
+        </Tooltip>
+      }
+      triggerClasses={cx(className, "text-brand-hover")}
+      triggerClassesOpen="hover-disable"
     >
-        <div className="p2" style={{ maxWidth: 320 }}>
-      <h4>{t`Download full results`}</h4>
-      {result.data != null && result.data.rows_truncated != null && (
-        <FieldSet className="my2 text-gold border-gold" legend={t`Warning`}>
-          <div className="my1">{t`Your answer has a large number of rows so it could take a while to download.`}</div>
-          <div>{t`The maximum download size is 1 million rows.`}</div>
-                </FieldSet>
-      )}
-            <div className="flex flex-row mt2">
-        {EXPORT_FORMATS.map(
-          type =>
-            dashcardId && token ? (
-              <DashboardEmbedQueryButton
-                key={type}
-                type={type}
-                dashcardId={dashcardId}
-                token={token}
-                card={card}
-                parameters={parameters}
-                className="mr1 text-uppercase text-default" />
-            ) : uuid ? (
-              <PublicQueryButton
-                key={type}
-                type={type}
-                uuid={uuid}
-                result={result}
-                className="mr1 text-uppercase text-default"
-              />
-            ) : token ? (
-              <EmbedQueryButton
-                key={type}
-                type={type}
-                token={token}
-                className="mr1 text-uppercase text-default"
-              />
-            ) : card && card.id ? (
-              <SavedQueryButton
-                key={type}
-                type={type}
-                card={card}
-                result={result}
-                className="mr1 text-uppercase text-default"
-              />
-            ) : card && !card.id ? (
-              <UnsavedQueryButton
-                key={type}
-                type={type}
-                card={card}
-                result={result}
-                className="mr1 text-uppercase text-default"
-              />
-            ) : null,
-                )}
-            </div>
+      <div className="p2" style={{ maxWidth: 320 }}>
+        <h4>{t`Download full results`}</h4>
+        {result.data != null && result.data.rows_truncated != null && (
+          <FieldSet className="my2 text-gold border-gold" legend={t`Warning`}>
+            <div className="my1">{t`Your answer has a large number of rows so it could take a while to download.`}</div>
+            <div>{t`The maximum download size is 1 million rows.`}</div>
+          </FieldSet>
+        )}
+        <div className="flex flex-row mt2">
+          {EXPORT_FORMATS.map(
+            type =>
+              dashcardId && token ? (
+                <DashboardEmbedQueryButton
+                  key={type}
+                  type={type}
+                  dashcardId={dashcardId}
+                  token={token}
+                  card={card}
+                  parameters={parameters}
+                  className="mr1 text-uppercase text-default" />
+              ) : uuid ? (
+                <PublicQueryButton
+                  key={type}
+                  type={type}
+                  uuid={uuid}
+                  result={result}
+                  className="mr1 text-uppercase text-default"
+                />
+              ) : token ? (
+                <EmbedQueryButton
+                  key={type}
+                  type={type}
+                  token={token}
+                  className="mr1 text-uppercase text-default"
+                />
+              ) : card && card.id ? (
+                <SavedQueryButton
+                  key={type}
+                  type={type}
+                  card={card}
+                  result={result}
+                  className="mr1 text-uppercase text-default"
+                />
+              ) : card && !card.id ? (
+                <UnsavedQueryButton
+                  key={type}
+                  type={type}
+                  card={card}
+                  result={result}
+                  className="mr1 text-uppercase text-default"
+                />
+              ) : null,
+          )}
         </div>
+      </div>
     </PopoverWithTrigger>
 );
 
