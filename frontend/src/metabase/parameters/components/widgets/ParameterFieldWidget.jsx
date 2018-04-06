@@ -141,7 +141,8 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
             minWidth={400}
             maxWidth={400}
           />
-          <div className="flex p2 border-top">
+          {/* border between input and footer comes from border-bottom on FieldValuesWidget */}
+          <div className="flex p1">
             <Button
               primary
               className="ml-auto"
