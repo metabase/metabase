@@ -113,11 +113,12 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     } else {
       return (
         <Popover
-          tetherOptions={{
-            attachment: "top left",
-            targetAttachment: "top left",
-            targetOffset: "-15 -25",
-          }}
+          horizontalAttachments={["left", "right"]}
+          verticalAttachments={["top"]}
+          alignHorizontalEdge
+          alignVerticalEdge
+          targetOffsetY={-19}
+          targetOffsetX={33}
           hasArrow={false}
           onClose={() => focusChanged(false)}
         >
