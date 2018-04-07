@@ -8,7 +8,7 @@ import chronological from "chronological";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
-import { guessTimezone } from "metabase/lib/time";
+// import { guessTimezone } from "metabase/lib/time";
 
 import { computeTimeseriesTicksInterval } from "./timeseries";
 import { getFriendlyName } from "./utils";
@@ -91,8 +91,22 @@ export function applyChartTimeseriesXAxis(
   // setup an x-axis where the dimension is a timeseries
   let dimensionColumn = firstSeries.data.cols[0];
 
+  const timezones = _.chain(series)
+    .map(s => s.data.cols[0].timezone)
+    .filter(tz => tz)
+    .uniq()
+    .value();
+
+  if (timezones.length !== 1) {
+    console.warn(
+      "Expected dimension columns to have a single unique timezone, found:",
+      timezones,
+    );
+  }
+
   // get the data's timezone
-  let timezone = guessTimezone(xValues);
+  // let timezone = guessTimezone(xValues);
+  const timezone = timezones[0];
 
   // compute the data interval
   let dataInterval = xInterval;
