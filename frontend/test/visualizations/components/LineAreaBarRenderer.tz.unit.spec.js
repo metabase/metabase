@@ -115,7 +115,9 @@ describe("LineAreaBarRenderer-bar", () => {
             beforeAll(() => {
               setupFixture();
               onHoverChange = jest.fn();
-              renderTimeseries(element, "month", rows, { onHoverChange });
+              renderTimeseries(element, "month", reportTz, rows, {
+                onHoverChange,
+              });
               // hover each bar to trigger onHoverChange
               activateTooltips();
             });
@@ -166,7 +168,9 @@ describe("LineAreaBarRenderer-bar", () => {
             beforeAll(() => {
               setupFixture();
               onHoverChange = jest.fn();
-              renderTimeseries(element, interval, rows, { onHoverChange });
+              renderTimeseries(element, interval, reportTz, rows, {
+                onHoverChange,
+              });
               // hover each bar to trigger onHoverChange
               activateTooltips();
             });
@@ -198,7 +202,7 @@ const DEFAULT_SETTINGS = {
   "graph.colors": ["#00FF00", "#FF0000"],
 };
 
-function renderTimeseries(element, unit, rows, props = {}) {
+function renderTimeseries(element, unit, timezone, rows, props = {}) {
   lineAreaBarRenderer(element, {
     chartType: "bar",
     series: [
@@ -206,7 +210,7 @@ function renderTimeseries(element, unit, rows, props = {}) {
         card: {},
         data: {
           cols: [
-            DateTimeColumn({ name: "CREATED_AT", unit }),
+            DateTimeColumn({ name: "CREATED_AT", unit, timezone }),
             NumberColumn({ name: "count" }),
           ],
           rows,
