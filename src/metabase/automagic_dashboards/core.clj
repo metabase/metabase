@@ -650,7 +650,9 @@
           (remove (some-fn link-table? list-like-table?))
           (keep (fn [table]
                   (when-let [[dashboard rule]
-                             (->> table
+                             (->> {:entity       table
+                                   :source-table table
+                                   :database     (:db_id table)}
                                   (matching-rules rules)
                                   (keep (partial apply-rule table))
                                   first)]
