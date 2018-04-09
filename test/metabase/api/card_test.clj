@@ -556,17 +556,11 @@
      (Pulse pulse-id)]))
 
 ;; Adding an additional breakout will cause the alert to be removed
-(tt/expect-with-temp [Database
-                      [{database-id :id}]
-
-                      Table
-                      [{table-id :id} {:db_id database-id}]
-
-                      Card
+(tt/expect-with-temp [Card
                       [card {:display                :line
                              :visualization_settings {:graph.goal_value 10}
                              :dataset_query          (assoc-in
-                                                      (mbql-count-query database-id table-id)
+                                                      (mbql-count-query (data/id) (data/id :checkins))
                                                       [:query :breakout]
                                                       [["datetime-field" (data/id :checkins :date) "hour"]])}]
 
@@ -592,9 +586,9 @@
   (et/with-fake-inbox
     (et/with-expected-messages 1
       ((user->client :crowberto) :put 200 (str "card/" (u/get-id card))
-       {:dataset_query (assoc-in (mbql-count-query database-id table-id)
+       {:dataset_query (assoc-in (mbql-count-query (data/id) (data/id :checkins))
                                  [:query :breakout] [["datetime-field" (data/id :checkins :date) "hour"]
-                                                     ["datetime-field" (data/id :checkins :date) "second"]])}))
+                                                     ["datetime-field" (data/id :checkins :date) "minute"]])}))
     [(et/regex-email-bodies #"the question was edited by Crowberto Corv")
      (Pulse pulse-id)]))
 
