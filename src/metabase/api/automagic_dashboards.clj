@@ -74,7 +74,7 @@
    query `cell-querry`."
   [id cell-query show]
   (-> (card.api/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
-      (magic/inject-segment (-> id Card api/check-404))
+      (magic.comparison/inject-segment (-> id Card api/check-404))
       (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/question/:id/cell/:cell-query/:prefix/:rule"
@@ -82,7 +82,7 @@
    query `cell-querry` using rule `rule`."
   [id cell-query prefix rule show]
   (-> (card.api/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
-      (magic/inject-segment (-> id Card api/check-404))
+      (magic.comparison/inject-segment (-> id Card api/check-404))
       (magic/automagic-analysis
        {:rule (load-rule "table" prefix rule)
         :show (keyword show)})))
