@@ -2,6 +2,7 @@
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require [cheshire.core :as json]
             [compojure.core :refer [GET]]
+            [medley.core :as m]
             [metabase
              [query-processor :as qp]
              [util :as u]]
@@ -121,13 +122,78 @@
   (api/check-public-sharing-enabled)
   (dashboard-with-uuid uuid))
 
+(defn- dashboard->dashcard-param-mappings
+  "Get a sequence of all the `:parameter_mappings` for all the DashCards in this `dashboard-or-id`."
+  [dashboard-or-id]
+  (for [params (db/select-field :parameter_mappings DashboardCard
+                 :dashboard_id (u/get-id dashboard-or-id))
+        param  params
+        :when  (:parameter_id param)]
+    param))
+
+(defn- matching-dashboard-param-with-target
+  "Find an entry in `dashboard-params` that matches `target`, if one exists. Since `dashboard-params` do not themselves
+  have targets they are matched via the `dashcard-param-mappings` for the Dashboard. See `resolve-params` below for
+  more details."
+  [dashboard-params dashcard-param-mappings target]
+  (some (fn [{id :parameter_id, :as param-mapping}]
+          (when (= target (:target param-mapping))
+            ;; ...and once we find that, try to find a Dashboard `:parameters`
+            ;; entry with the same ID...
+            (m/find-first #(= (:id %) id)
+                          dashboard-params)))
+        dashcard-param-mappings))
+
 (s/defn ^:private resolve-params :- (s/maybe [{s/Keyword s/Any}])
-  [dashboard-id :- su/IntGreaterThanZero, query-params :- (s/maybe [{:slug su/NonBlankString, s/Keyword s/Any}])]
+  "Resolve the parmeters passed in to the API (`query-params`) and make sure they're actual valid parameters the
+  Dashboard with `dashboard-id`. This is done to prevent people from adding in parameters that aren't actually present
+  on the Dashboard. When successful, this will return a merged sequence based on the original `dashboard-params`, but
+  including the `:value` from the appropriate query-param.
+
+  The way we pass in parameters is complicated and silly: for public Dashboards, they're passed in as JSON-encoded
+  parameters that look something like (when decoded):
+
+      [{:type :category, :target [:variable [:template-tag :num]], :value \"50\"}]
+
+  For embedded Dashboards they're simply passed in as query parameters, e.g.
+
+      [{:num 50}]
+
+  Thus resolving the params has to take either format into account. To further complicate matters, a Dashboard's
+  `:parameters` column contains values that look something like:
+
+       [{:name \"Num\", :slug \"num\", :id \"537e37b4\", :type \"category\"}
+
+  This is sufficient to resolve slug-style params passed in to embedded Dashboards, but URL-encoded params for public
+  Dashboards do not have anything that can directly match them to a Dashboard `:parameters` entry. However, they
+  already have enough information for the query processor to handle resolving them itself; thus we simply need to make
+  sure these params are actually allowed to be used on the Dashboard. To do this, we can match them against the
+  `:parameter_mappings` for the Dashboard's DashboardCards, which look like:
+
+      [{:card_id 1, :target [:variable [:template-tag :num]], :parameter_id \"537e37b4\"}]
+
+  Thus for public Dashboards JSON-encoded style we can look for a matching Dashcard parameter mapping, based on
+  `:target`, and then find the matching Dashboard parameter, based on `:id`.
+
+  *Cries*
+
+  TODO -- Tom has mentioned this, and he is very correct -- our lives would be much easier if we just used slug-style
+  for everything, rather than the weird JSON-encoded format we use for public Dashboards. We should fix this!"
+  [dashboard-id :- su/IntGreaterThanZero, query-params :- (s/maybe [{s/Keyword s/Any}])]
   (when (seq query-params)
-    (let [slug->dashboard-param (u/key-by :slug (db/select-one-field :parameters Dashboard, :id dashboard-id))]
-      (for [{slug :slug, :as query-param} query-params
-            :let [dashboard-param (or (slug->dashboard-param slug)
-                                      (throw (Exception. (str "Invalid param: " slug))))]]
+    (let [dashboard-params        (db/select-one-field :parameters Dashboard, :id dashboard-id)
+          slug->dashboard-param   (u/key-by :slug dashboard-params)
+          dashcard-param-mappings (dashboard->dashcard-param-mappings dashboard-id)]
+      (for [{slug :slug, target :target, :as query-param} query-params
+            :let [dashboard-param
+                  (or
+                   ;; try to match by slug...
+                   (slug->dashboard-param slug)
+                   ;; ...if that fails, try to find a DashboardCard param mapping with the same target...
+                   (matching-dashboard-param-with-target dashboard-params dashcard-param-mappings target)
+                   ;; ...but if we *still* couldn't find a match, throw an Exception, because we don't want people
+                   ;; trying to inject new params
+                   (throw (Exception. (str "Invalid param: " slug))))]]
         (merge query-param dashboard-param)))))
 
 
@@ -155,7 +221,8 @@
   {parameters (s/maybe su/JSONString)}
   (api/check-public-sharing-enabled)
   (public-dashcard-results (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))
-                           card-id parameters))
+                           card-id
+                           parameters))
 
 
 (api/defendpoint GET "/oembed"
