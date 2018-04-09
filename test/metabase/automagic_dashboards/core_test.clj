@@ -5,11 +5,15 @@
              [core :refer :all :as magic]
              [rules :as rules]]
             [metabase.models
-             [field :as field]
+             [database :refer [Database]]
+             [field :as field :refer [Field]]
+             [metric :refer [Metric]]
              [table :refer [Table] :as table]
              [user :as user]]
+            [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [toucan.util.test :as tt]))
 
 (defmacro with-rasta
   "Execute body with rasta as the current user."
@@ -40,16 +44,37 @@
 
 (expect
   [:entity/UserTable :entity/GenericTable :entity/*]
-  (->> (table/map->TableInstance {:entity_type :entity/UserTable})
-       (#'magic/matching-rules (rules/load-rules "table"))
-       (map (comp first :applies_to))))
+  (let [table (table/map->TableInstance {:entity_type :entity/UserTable})]
+    (->> {:entity       table
+          :source-table table}
+         (#'magic/matching-rules (rules/load-rules "table"))
+         (map (comp first :applies_to)))))
 
 
 (expect
   true
   (with-rasta
     (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
-      (-> (keep automagic-dashboard (Table)) count pos?))))
+      (->> (Table) (map #(automagic-analysis % {})) (every? some?)))))
+
+(expect
+  true
+  (with-rasta
+    (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
+      (->> (Field) (map #(automagic-analysis % {})) (every? some?)))))
+
+(expect
+  true
+  (tt/with-temp* [Metric [{metric-id :id} {:table_id 1
+                                           :definition {:query {:aggregation ["count"]}}}]]
+    (with-rasta
+      (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
+        (->> (Metric) (map #(automagic-analysis % {})) (every? some?))))))
+
+
+(expect
+  true
+  (->> (Database 1) candidate-tables count pos?))
 
 
 ;; Identity
