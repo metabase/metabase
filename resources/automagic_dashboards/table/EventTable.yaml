@@ -9,10 +9,6 @@ dimensions:
   - Timestamp:
       field_type: DateTime
       score: 90
-  - GenericCategorySmall:
-      field_type: GenericTable.Category
-      score: 80
-      max_cardinality: 5
   - GenericCategoryMedium:
       field_type: GenericTable.Category
       score: 75
@@ -41,7 +37,6 @@ groups:
       title: General breakdowns
 dashboard_filters:
 - Timestamp
-- GenericCategorySmall
 - GenericCategoryMedium
 - Country
 - State
@@ -61,19 +56,6 @@ cards:
       filters: Last30Days
       group: Overview
   - EventsByTime:
-     title: Events by [[GenericCategorySmall]]
-     description: Count of events by [[GenericCategorySmall]] through time.
-     metrics: Count
-     dimensions:
-       - Timestamp
-       - GenericCategorySmall
-     visualization:
-       area:
-         stackable.stack_type: stacked
-     score: 100
-     group: Overview
-     width: 18
-  - EventsByTime:
       title: Events by time
       metrics: Count
       dimensions: Timestamp
@@ -82,15 +64,6 @@ cards:
       width: 18
       score: 90
 # General
-  - CountByCategorySmall:
-      title: Event count by [[GenericCategorySmall]]
-      dimensions: GenericCategorySmall
-      metrics: Count
-      visualization: row
-      score: 90
-      group: General
-      order_by:
-        - Count: descending
   - NumberDistribution:
       title: Event count by [[GenericNumber]]
       dimensions:

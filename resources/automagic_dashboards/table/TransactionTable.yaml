@@ -46,15 +46,6 @@ dimensions:
 - Cohort:
     field_type: UserTable.DateTime
     score: 80
-- ProductSmall:
-    field_type: Product
-    max_cardinality: 5
-- ProductSmall:
-    field_type: ProductTable.Name
-    max_cardinality: 5
-- ProductSmall:
-    field_type: ProductTable.Title
-    max_cardinality: 5
 - ProductMedium:
     field_type: Product
     score: 90
@@ -72,10 +63,6 @@ dimensions:
     field_type: ProductTable.Name
 - ProductLarge:
     field_type: ProductTable.Title
-- ProductCategorySmall:
-    field_type: ProductTable.Category
-    named: category
-    max_cardinality: 5
 - ProductCategoryMedium:
     field_type: ProductTable.Category
     named: category
@@ -103,9 +90,7 @@ dashboard_filters:
   - SourceMedium
   - Country
   - State
-  - ProductSmall
   - ProductMedium
-  - ProductCategorySmall
   - ProductCategoryMedium
 cards:
 # Overview
@@ -158,16 +143,6 @@ cards:
       title: Sales by product
       visualization: row
       dimensions:
-        - ProductSmall
-      metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
-      score: 90
-      group: General
-  - OrdersByProduct:
-      title: Sales by product
-      visualization: row
-      dimensions:
         - ProductMedium
       metrics: TotalOrders
       order_by:
@@ -185,16 +160,6 @@ cards:
         - TotalOrders: descending
       score: 90
       height: 8
-      group: General
-  - OrdersByProductCategory:
-      title: Sales by product category
-      visualization: row
-      dimensions:
-        - ProductCategorySmall
-      metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
-      score: 90
       group: General
   - OrdersByProductCategory:
       title: Sales by product category

@@ -71,7 +71,6 @@ dashboard_filters:
 - Timestamp
 - JoinDate
 - CreateDate
-- GenericCategorySmall
 - GenericCategoryMedium
 - Source
 - Country
@@ -130,15 +129,6 @@ cards:
       score: 80
       group: Geographical
 # General
-  - CountByCategorySmall:
-      title: Count by [[GenericCategorySmall]]
-      dimensions: GenericCategorySmall
-      metrics: Count
-      visualization: row
-      score: 90
-      group: General
-      order_by:
-        - Count: descending
   - NumberDistribution:
       title: Distribution of [[GenericNumber]]
       dimensions:
