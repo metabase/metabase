@@ -211,11 +211,11 @@
   [card-id dashboard-id]
   (api/check-404
    (or (db/exists? DashboardCard
-         :dashboard_id dashboard-id
-         :card_id      card-id)
-       (when-let [dashcard-ids (db/select-ids DashboardCard :dashboard_id dashboard-id)]
-         (db/exists? DashboardCardSeries
-           :card_id          card-id
+                       :dashboard_id dashboard-id
+                       :card_id      card-id)
+                     (when-let [dashcard-ids (db/select-ids DashboardCard :dashboard_id dashboard-id)]
+                       (db/exists? DashboardCardSeries
+                         :card_id          card-id
            :dashboardcard_id [:in dashcard-ids])))))
 
 (defn public-dashcard-results

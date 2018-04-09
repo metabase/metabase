@@ -39,7 +39,7 @@ const itemClasses = cxs({
   "> .Icon.Icon-download": {
     transform: `translateY(1px)`,
   },
-  // the history icon is wider so it needs adjustement to center it with other
+  // the history icon is wider so it needs adjustment to center it with other
   // icons
   "> .Icon.Icon-history": {
     transform: `translateX(-2px)`,
