@@ -1,10 +1,16 @@
-title: Transactions by product category
+title: Transactions by product
 applies_to: TransactionTable
 metrics:
 - TotalOrders: [count]
 dimensions:
-- ProductCategory: ProductTable.Category
+- ProductCategoryMedium:
+    field_type: ProductTable.Category
+    max_cardinality: 10
+- ProductCategoryLarge:
+    field_type: ProductTable.Category
 - Rating: ProductTable.Score
+dashboard_filters:
+- ProductCategoryMedium
 cards:
 - OrdersVsRating:
     title: Sales vs. rating
@@ -14,13 +20,23 @@ cards:
         graph.dimensions: Rating
     dimensions: Rating
     metrics: TotalOrders
-- OrdersByProductCategory:
-    title: Sales by product [[ProductCategory]] (top 10)
+    width: 12
+    height: 8
+- OrdersByProductCategoryMedium:
+    title: Sales by product [[ProductCategoryMedium]]
     visualization: row
     dimensions:
-      - ProductCategory
+      - ProductCategoryMedium
     metrics: TotalOrders
     order_by:
      - TotalOrders: descending
-    limit: 10
+    height: 8
+- OrdersByProductCategoryLarge:
+    title: Sales by product [[ProductCategoryLarge]]
+    visualization: table
+    dimensions:
+      - ProductCategoryLarge
+    metrics: TotalOrders
+    order_by:
+     - TotalOrders: descending
     height: 8

@@ -52,24 +52,24 @@
 
 
 (expect
-  true
+  false
   (with-rasta
     (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
-      (->> (Table) (map #(automagic-analysis % {})) (every? some?)))))
+      (->> (Table) (keep #(automagic-analysis % {})) empty?))))
 
 (expect
-  true
+  false
   (with-rasta
     (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
-      (->> (Field) (map #(automagic-analysis % {})) (every? some?)))))
+      (->> (Field) (keep #(automagic-analysis % {})) (every? some?)))))
 
 (expect
-  true
+  false
   (tt/with-temp* [Metric [{metric-id :id} {:table_id 1
                                            :definition {:query {:aggregation ["count"]}}}]]
     (with-rasta
       (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
-        (->> (Metric) (map #(automagic-analysis % {})) (every? some?))))))
+        (->> (Metric) (keep #(automagic-analysis % {})) empty?)))))
 
 
 (expect

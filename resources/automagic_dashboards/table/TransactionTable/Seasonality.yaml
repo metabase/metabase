@@ -1,0 +1,62 @@
+title: "Transaction seasonality"
+applies_to: TransactionTable
+metrics:
+  - Count: ["count"]
+dimensions:
+- Timestamp:
+    field_type: CreationTimestamp
+- Timestamp:
+    field_type: DateTime
+cards:
+  - CountByTimestamp:
+      title: Nuber of transactions over time
+      visualization: line
+      dimensions: Timestamp
+      metrics: Count
+      score: 100
+      width: 18
+      height: 6
+  - DayOfWeekTimestamp:
+      title: Count by [[Timestamp]] day of week
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      width: 9
+      height: 6
+      x_label: "[[Timestamp]] day of week"
+  - HourOfDayTimestamp:
+      title: Count by [[Timestamp]] hour of day
+      visualization: bar
+      dimensions:
+      - Timestamp:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      width: 9
+      height: 6
+      x_label: "[[Timestamp]] hour of day"
+  - MonthOfYearTimestamp:
+      title: Count by [[Timestamp]] month of year
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      width: 9
+      height: 6
+      x_label: "[[Timestamp]] month of year"
+  - QuarterOfYearTimestamp:
+      title: Count by [[Timestamp]] quarter of year
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      width: 9
+      height: 6
+      x_label: "[[Timestamp]] quarter of year"
