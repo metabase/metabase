@@ -4,8 +4,10 @@
              [set :as set]]
             [clojure.tools.logging :as log]
             [metabase
+             [events :as events]
              [public-settings :as public-settings]
              [util :as u]]
+            [metabase.api.card :as card.api]
             [metabase.models
              [card :as card :refer [Card]]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
@@ -226,3 +228,33 @@
         (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))))
     (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
       (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids))))
+
+(defn- save-card!
+  [card]
+  (when (:dataset_query card)
+    (db/insert! 'Card
+      (-> card
+          (update :result_metadata #(or % (-> card
+                                              :dataset_query
+                                              card.api/result-metadata-for-query)))
+          (dissoc :id)))))
+
+(defn save-transient-dashboard!
+  "Save a denormalized description of dashboard."
+  [dashboard]
+  (let [dashcards (:ordered_cards dashboard)
+        dashboard (db/insert! Dashboard
+                    (dissoc dashboard :ordered_cards :rule :related))]
+    (doseq [dashcard dashcards]
+      (let [card     (some->> dashcard :card save-card!)
+            series   (some->> dashcard :series (map save-card!))
+            dashcard (-> dashcard
+                         (dissoc :card :id :card_id)
+                         (update :parameter_mappings
+                                 (partial map #(assoc % :card_id (:id card))))
+                         (assoc :series series))]
+        (doseq [card (concat series (some-> card vector))]
+          (events/publish-event! :card-create card)
+          (hydrate card :creator :dashboard_count :labels :can_write :collection))
+        (add-dashcard! dashboard card dashcard)))
+    dashboard))

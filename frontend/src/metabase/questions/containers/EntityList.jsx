@@ -1,3 +1,4 @@
+/* @flow weak */
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
@@ -22,11 +23,11 @@ import {
   setItemSelected,
   setAllSelected,
   setArchived,
+  setFavorited,
 } from "../questions";
 import { loadLabels } from "../labels";
 import {
-  getSection,
-  getEntityIds,
+  getVisibleItems,
   getSectionLoading,
   getSectionError,
   getSearchText,
@@ -39,8 +40,7 @@ import {
 
 const mapStateToProps = (state, props) => {
   return {
-    section: getSection(state, props),
-    entityIds: getEntityIds(state, props),
+    items: getVisibleItems(state, props),
     loading: getSectionLoading(state, props),
     error: getSectionError(state, props),
 
@@ -56,10 +56,12 @@ const mapStateToProps = (state, props) => {
 };
 
 const mapDispatchToProps = {
-  setItemSelected,
-  setAllSelected,
   setSearchText,
+  setAllSelected,
+  setItemSelected,
   setArchived,
+  setFavorited,
+
   loadEntities,
   loadLabels,
 };
@@ -117,9 +119,9 @@ export default class EntityList extends Component {
     entityType: PropTypes.string.isRequired,
 
     section: PropTypes.string,
+    items: PropTypes.array.isRequired,
     loading: PropTypes.bool.isRequired,
     error: PropTypes.any,
-    entityIds: PropTypes.array.isRequired,
     searchText: PropTypes.string.isRequired,
     setSearchText: PropTypes.func.isRequired,
     visibleCount: PropTypes.number.isRequired,
@@ -130,6 +132,7 @@ export default class EntityList extends Component {
     setItemSelected: PropTypes.func.isRequired,
     setAllSelected: PropTypes.func.isRequired,
     setArchived: PropTypes.func.isRequired,
+    setFavorited: PropTypes.func.isRequired,
 
     loadEntities: PropTypes.func.isRequired,
     loadLabels: PropTypes.func.isRequired,
@@ -152,7 +155,7 @@ export default class EntityList extends Component {
   componentDidUpdate(prevProps) {
     // Scroll to the top of the list if the section changed
     // A little hacky, something like https://github.com/taion/scroll-behavior might be better
-    if (this.props.section !== prevProps.section) {
+    if (!_.isEqual(this.props.entityQuery, prevProps.entityQuery)) {
       ReactDOM.findDOMNode(this).scrollTop = 0;
     }
   }
@@ -184,7 +187,7 @@ export default class EntityList extends Component {
       loading,
       error,
       entityType,
-      entityIds,
+      items,
       searchText,
       setSearchText,
       showSearchWidget,
@@ -196,6 +199,7 @@ export default class EntityList extends Component {
       setItemSelected,
       setAllSelected,
       setArchived,
+      setFavorited,
       onChangeSection,
       showCollectionName,
       editable,
@@ -205,7 +209,7 @@ export default class EntityList extends Component {
     const section = this.getSection();
 
     const hasEntitiesInPlainState =
-      entityIds.length > 0 || section.section !== "all";
+      items.length > 0 || section.section !== "all";
 
     const showActionHeader = editable && selectedCount > 0;
     const showSearchHeader = hasEntitiesInPlainState && showSearchWidget;
@@ -249,12 +253,14 @@ export default class EntityList extends Component {
           error={error}
         >
           {() =>
-            entityIds.length > 0 ? (
+            items.length > 0 ? (
               <List
+                items={items}
                 entityType={entityType}
-                entityIds={entityIds}
                 editable={editable}
                 setItemSelected={setItemSelected}
+                setArchived={setArchived}
+                setFavorited={setFavorited}
                 onEntityClick={onEntityClick}
                 showCollectionName={showCollectionName}
               />

@@ -211,7 +211,7 @@ export default class LoginApp extends Component {
                   })}
                   disabled={!this.state.valid}
                 >
-                  Sign in
+                  {t`Sign in`}
                 </button>
                 <Link
                   to={

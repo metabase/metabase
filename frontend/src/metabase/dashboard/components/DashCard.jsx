@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-
+import { t } from "c-3po";
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
@@ -273,7 +273,7 @@ const AddSeriesButton = ({ series, onAddSeries }) => (
                 <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE} />
             </span>
             <span className="flex-no-shrink text-bold">
-        &nbsp;{series.length > 1 ? "Edit" : "Add"}
+        &nbsp;{series.length > 1 ? t`Edit` : t`Add`}
             </span>
         </span>
     </a>

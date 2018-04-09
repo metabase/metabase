@@ -1,6 +1,7 @@
 import {
   useSharedAdminLogin,
   createTestStore,
+  cleanup,
 } from "__support__/integrated_tests";
 import { click } from "__support__/enzyme_utils";
 
@@ -31,11 +32,10 @@ import * as Urls from "metabase/lib/urls";
 describe("SegmentPane", () => {
   let store = null;
   let queryBuilder = null;
-  let segment = null;
 
   beforeAll(async () => {
     useSharedAdminLogin();
-    segment = await SegmentApi.create(orders_past_300_days_segment);
+    cleanup.segment(await SegmentApi.create(orders_past_300_days_segment));
     store = await createTestStore();
 
     store.pushPath(Urls.plainQuestion());
@@ -43,12 +43,7 @@ describe("SegmentPane", () => {
     await store.waitForActions([INITIALIZE_QB]);
   });
 
-  afterAll(async () => {
-    await SegmentApi.delete({
-      segmentId: segment.id,
-      revision_message: "Please",
-    });
-  });
+  afterAll(cleanup);
 
   // NOTE: These test cases are intentionally stateful
   // (doing the whole app rendering thing in every single test case would probably slow things down)

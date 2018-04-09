@@ -282,11 +282,12 @@
   "UTC"
   (tu/db-timezone-id))
 
-
 ;; Make sure we're able to fingerprint TIME fields (#5911)
 (expect-with-engine :postgres
-  #{#metabase.models.field.FieldInstance{:name "start_time", :fingerprint {:global {:distinct-count 1}}}
-    #metabase.models.field.FieldInstance{:name "end_time",   :fingerprint {:global {:distinct-count 1}}}
+                    #{#metabase.models.field.FieldInstance{:name "start_time", :fingerprint {:global {:distinct-count 1}
+                                                                                             :type {:type/DateTime {:earliest "1970-01-01T22:00:00.000Z", :latest "1970-01-01T22:00:00.000Z"}}}}
+                      #metabase.models.field.FieldInstance{:name "end_time",   :fingerprint {:global {:distinct-count 1}
+                                                                                             :type {:type/DateTime {:earliest "1970-01-01T09:00:00.000Z", :latest "1970-01-01T09:00:00.000Z"}}}}
     #metabase.models.field.FieldInstance{:name "reason",     :fingerprint {:global {:distinct-count 1}
                                                                            :type   {:type/Text {:percent-json    0.0
                                                                                                 :percent-url     0.0

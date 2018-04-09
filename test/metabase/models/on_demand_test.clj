@@ -14,8 +14,8 @@
             [toucan.util.test :as tt]))
 
 (defn- do-with-mocked-field-values-updating
-  "Run F the function responsible for updating FieldValues bound to a mock function that instead just records
-   the names of Fields that should have been updated. Returns the set of updated Field names."
+  "Run F the function responsible for updating FieldValues bound to a mock function that instead just records the names
+  of Fields that should have been updated. Returns the set of updated Field names."
   {:style/indent 0}
   [f]
   (let [updated-field-names (atom #{})]
@@ -44,7 +44,7 @@
   (tt/with-temp* [Database [db    (:db options)]
                   Table    [table (merge {:db_id (u/get-id db)}
                                          (:table options))]
-                  Field    [field (merge {:table_id (u/get-id table), :special_type "type/Category"}
+                  Field    [field (merge {:table_id (u/get-id table), :has_field_values "list"}
                                          (:field options))]]
     (do-with-mocked-field-values-updating
       (fn [updated-field-names]
@@ -90,7 +90,7 @@
       ;; clear out the list of updated field names
       (reset! updated-field-names #{})
       ;; now Change the Field that is referenced by the Card's SQL param
-      (tt/with-temp Field [new-field {:table_id (u/get-id table), :special_type "type/Category", :name "New Field"}]
+      (tt/with-temp Field [new-field {:table_id (u/get-id table), :has_field_values "list", :name "New Field"}]
         (db/update! Card (u/get-id card)
           :dataset_query (native-query-with-template-tag new-field))))))
 
@@ -133,7 +133,7 @@
   (do-with-updated-fields-for-card {:db {:is_on_demand false}}
     (fn [{:keys [table card]}]
       ;; change the query to one referencing a different Field. Field should not get values since DB is not On-Demand
-      (tt/with-temp Field [new-field {:table_id (u/get-id table), :special_type "type/Category", :name "New Field"}]
+      (tt/with-temp Field [new-field {:table_id (u/get-id table), :has_field_values "list", :name "New Field"}]
         (db/update! Card (u/get-id card)
           :dataset_query (native-query-with-template-tag new-field))))))
 
@@ -193,9 +193,9 @@
   (do-with-updated-fields-for-dashboard {:db {:is_on_demand true}}
     (fn [{:keys [table field card dash dashcard updated-field-names]}]
       ;; create a Dashboard and add a DashboardCard with a param mapping
-      (tt/with-temp Field [new-field {:table_id     (u/get-id table)
-                                      :name         "New Field"
-                                      :special_type "type/Category"}]
+      (tt/with-temp Field [new-field {:table_id         (u/get-id table)
+                                      :name             "New Field"
+                                      :has_field_values "list"}]
         ;; clear out the list of updated Field Names
         (reset! updated-field-names #{})
         ;; ok, now update the parameter mapping to the new field. The new Field should get new values
@@ -219,6 +219,6 @@
   #{}
   (do-with-updated-fields-for-dashboard {:db {:is_on_demand false}}
     (fn [{:keys [table field card dash dashcard updated-field-names]}]
-      (tt/with-temp Field [new-field {:table_id (u/get-id table), :special_type "type/Category"}]
+      (tt/with-temp Field [new-field {:table_id (u/get-id table), :has_field_values "list"}]
         (dashboard/update-dashcards! dash
           [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))

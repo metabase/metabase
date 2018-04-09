@@ -10,6 +10,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
+             [db :as mdb]
              [config :as config]
              [driver :as driver]
              [public-settings :as public-settings]
@@ -374,6 +375,7 @@
 ;; `pre-update` implementation.
 ;;
 ;; Caching these permissions will prevent 1000+ DB call API calls. See https://github.com/metabase/metabase/issues/6889
+;;
 ;; NOTE: This used used to be
 ;; (defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
 ;;   (run!
@@ -384,14 +386,26 @@
 (defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
   (log/info "Not running migration `populate-card-read-permissions` as it has been replaced by a subsequent migration "))
 
-
 ;; Migration from 0.28.2 above had a flaw in that passing in `{}` to the update results in
 ;; the functions that do pre-insert permissions checking don't have the query dictionary to analyze
 ;; and always short-circuit due to the missing query dictionary. Passing the card itself into the
 ;; check mimicks how this works in-app, and appears to fix things.
-
 (defmigration ^{:author "salsakran", :added "0.28.3"} repopulate-card-read-permissions
   (run!
    (fn [card]
      (db/update! Card (u/get-id card) card))
    (db/select-reducible Card :archived false)))
+
+;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
+;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
+;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
+;; keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
+;; meaning of the Category special type.
+;;
+;; Since the meanings of things has changed we'll want to make sure we mark all Category fields as `list` as well so
+;; their behavior doesn't suddenly change.
+(defmigration ^{:author "camsaul", :added "0.29.0"} mark-category-fields-as-list
+  (db/update-where! Field {:has_field_values nil
+                           :special_type     (mdb/isa :type/Category)
+                           :active           true}
+    :has_field_values "list"))

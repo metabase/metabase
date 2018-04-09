@@ -6,6 +6,7 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]))
 
 (defn- valid-json?
@@ -63,8 +64,7 @@
                      :builtin     true}})
 
 (defsetting custom-geojson
-  "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US
-  State or World GeoJSON."
+  (tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.")
   :type    :json
   :default {}
   :getter  (fn [] (merge (setting/get-json :custom-geojson) builtin-geojson))

@@ -92,12 +92,13 @@
 (u/strict-extend (class Field)
   models/IModel
   (merge models/IModelDefaults
-         {:hydration-keys (constantly [:destination :field :origin])
-          :types          (constantly {:base_type       :keyword
-                                       :special_type    :keyword
-                                       :visibility_type :keyword
-                                       :description     :clob
-                                       :fingerprint     :json})
+         {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
+          :types          (constantly {:base_type        :keyword
+                                       :special_type     :keyword
+                                       :visibility_type  :keyword
+                                       :description      :clob
+                                       :has_field_values :clob
+                                       :fingerprint      :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-update     pre-update
@@ -124,9 +125,12 @@
   [{:keys [id]}]
   (db/select [FieldValues :field_id :values], :field_id id))
 
-(defn- keyed-by-field-ids
-  "Queries for `MODEL` instances related by `FIELDS`, returns a map
-  keyed by :field_id"
+(defn- select-field-id->instance
+  "Select instances of `model` related by `field_id` FK to a Field in `fields`, and return a map of Field ID -> model
+  instance. This only returns a single instance for each Field! Duplicates are discarded!
+
+    (select-field-id->instance [(Field 1) (Field 2)] FieldValues)
+    ;; -> {1 #FieldValues{...}, 2 #FieldValues{...}}"
   [fields model]
   (let [field-ids (set (map :id fields))]
     (u/key-by :field_id (when (seq field-ids)
@@ -136,7 +140,7 @@
   "Efficiently hydrate the `FieldValues` for a collection of FIELDS."
   {:batched-hydrate :values}
   [fields]
-  (let [id->field-values (keyed-by-field-ids fields FieldValues)]
+  (let [id->field-values (select-field-id->instance fields FieldValues)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -144,7 +148,7 @@
   "Efficiently hydrate the `FieldValues` for visibility_type normal FIELDS."
   {:batched-hydrate :normal_values}
   [fields]
-  (let [id->field-values (keyed-by-field-ids (filter fv/field-should-have-field-values? fields)
+  (let [id->field-values (select-field-id->instance (filter fv/field-should-have-field-values? fields)
                                              [FieldValues :id :human_readable_values :values :field_id])]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
@@ -153,9 +157,23 @@
   "Efficiently hydrate the `Dimension` for a collection of FIELDS."
   {:batched-hydrate :dimensions}
   [fields]
-  (let [id->dimensions (keyed-by-field-ids fields Dimension)]
+  ;; TODO - it looks like we obviously thought this code would return *all* of the Dimensions for a Field, not just
+  ;; one! This code is obviously wrong! It will either assoc a single Dimension or an empty vector under the
+  ;; `:dimensions` key!!!!
+  ;; TODO - consult with tom and see if fixing this will break any hacks that surely must exist in the frontend to deal
+  ;; with this
+  (let [id->dimensions (select-field-id->instance fields Dimension)]
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))
+
+(defn- is-searchable?
+  "Is this `field` a Field that you should be presented with a search widget for (to search its values)? If so, we can
+  give it a `has_field_values` value of `search`."
+  [{base-type :base_type}]
+  ;; For the time being we will consider something to be "searchable" if it's a text Field since the `starts-with`
+  ;; filter that powers the search queries (see `metabase.api.field/search-values`) doesn't work on anything else
+  (or (isa? base-type :type/Text)
+      (isa? base-type :type/TextLike)))
 
 (defn with-has-field-values
   "Infer what the value of the `has_field_values` should be for Fields where it's not set. Admins can set this to one
@@ -171,12 +189,16 @@
                                                    (:id field)))
         fields-with-fieldvalues-ids         (when (seq fields-without-has-field-values-ids)
                                               (db/select-field :field_id FieldValues
-                                                :field_id [:in fields-without-has-field-values-ids]))]
+                                                               :field_id [:in fields-without-has-field-values-ids]))]
     (for [field fields]
-      (assoc field :has_field_values (or (:has_field_values field)
-                                         (if (contains? fields-with-fieldvalues-ids (u/get-id field))
-                                           :list
-                                           :search))))))
+      (when field
+        (assoc field
+          :has_field_values (or
+                             (:has_field_values field)
+                             (cond
+                               (contains? fields-with-fieldvalues-ids (u/get-id field)) :list
+                               (is-searchable? field)                                   :search
+                               :else                                                    :none)))))))
 
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"
@@ -221,3 +243,9 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (db/select-one 'Table, :id table_id))
+
+(defn unix-timestamp?
+  "Is field a UNIX timestamp?"
+  [{:keys [base_type special_type]}]
+  (and (isa? base_type :type/Integer)
+       (isa? special_type :type/DateTime)))

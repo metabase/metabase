@@ -72,7 +72,10 @@ export class CollectionEditorForm extends Component {
         footer={<CollectionEditorFormActions {...this.props} />}
         onClose={onClose}
       >
-        <div className="NewForm ml-auto mr-auto mt4 pt2" style={{ width: 540 }}>
+        <div
+          className="NewForm ml-auto mr-auto mt4 pt2"
+          style={{ width: "100%", maxWidth: 540 }}
+        >
           <FormField displayName={t`Name`} {...fields.name}>
             <Input
               className="Form-input full"

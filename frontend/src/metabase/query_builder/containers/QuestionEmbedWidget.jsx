@@ -50,7 +50,7 @@ export default class QuestionEmbedWidget extends Component {
           updateEmbeddingParams(card, embeddingParams)
         }
         getPublicUrl={({ public_uuid }, extension) =>
-          Urls.publicCard(public_uuid, extension)
+          Urls.publicQuestion(public_uuid, extension)
         }
         extensions={["csv", "xlsx", "json"]}
       />

@@ -32,7 +32,7 @@
   "Get `Field` with ID."
   [id]
   (-> (api/read-check Field id)
-      (hydrate [:table :db] :has_field_values)))
+      (hydrate [:table :db] :has_field_values :dimensions :name_field)))
 
 (defn- clear-dimension-on-fk-change! [{{dimension-id :id dimension-type :type} :dimensions :as field}]
   (when (and dimension-id (= :external dimension-type))
@@ -150,17 +150,23 @@
 (def ^:private empty-field-values
   {:values []})
 
+(defn field->values
+  "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
+  use-cases."
+  [field]
+  (api/check-404 field)
+  (if-let [field-values (and (field-values/field-should-have-field-values? field)
+                             (field-values/create-field-values-if-needed! field))]
+    (-> field-values
+        (assoc :values (field-values/field-values->pairs field-values))
+        (dissoc :human_readable_values :created_at :updated_at :id))
+    {:values [], :field_id (:id field)}))
+
 (api/defendpoint GET "/:id/values"
   "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return all distinct
   values of the field, and a map of human-readable values defined by the user."
   [id]
-  (let [field (api/read-check Field id)]
-    (if-let [field-values (and (field-values/field-should-have-field-values? field)
-                               (field-values/create-field-values-if-needed! field))]
-      (-> field-values
-          (assoc :values (field-values/field-values->pairs field-values))
-          (dissoc :human_readable_values))
-      {:values []})))
+  (field->values (api/read-check Field id)))
 
 ;; match things like GET /field-literal%2Ccreated_at%2Ctype%2FDatetime/values
 ;; (this is how things like [field-literal,created_at,type/Datetime] look when URL-encoded)
@@ -205,8 +211,8 @@
   {value-pairs [[(s/one s/Num "value") (s/optional su/NonBlankString "human readable value")]]}
   (let [field (api/write-check Field id)]
     (api/check (field-values/field-should-have-field-values? field)
-      [400 (str "You can only update the human readable values of a mapped values of a Field whose 'special_type' "
-                "is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'.")])
+      [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
+                "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
     (if-let [field-value-id (db/select-one-id FieldValues, :field_id id)]
       (update-field-values! field-value-id value-pairs)
       (create-field-values! field value-pairs)))
@@ -253,8 +259,24 @@
     (db/select-one Field :id fk-target-field-id)
     field))
 
+(defn- search-values-query
+  "Generate the MBQL query used to power FieldValues search in `search-values` below. The actual query generated differs
+  slightly based on whether the two Fields are the same Field."
+  [field search-field value limit]
+  {:database (db-id field)
+   :type     :query
+   :query    {:source-table (table-id field)
+              :filter       [:starts-with [:field-id (u/get-id search-field)] value {:case-sensitive false}]
+              ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
+              ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
+              ;; identifiers/aliases
+              :breakout     (if (= (u/get-id field) (u/get-id search-field))
+                              [[:field-id (u/get-id field)]]
+                              [[:field-id (u/get-id field)]
+                               [:field-id (u/get-id search-field)]])
+              :limit        limit}})
 
-(s/defn ^:private search-values
+(s/defn search-values
   "Search for values of `search-field` that start with `value` (up to `limit`, if specified), and return like
 
       [<value-of-field> <matching-value-of-search-field>].
@@ -268,17 +290,16 @@
              (48 \"Maryam Douglas\"))"
   [field search-field value & [limit]]
   (let [field   (follow-fks field)
-        results (qp/process-query
-                  {:database (db-id field)
-                   :type     :query
-                   :query    {:source-table (table-id field)
-                              :filter       [:starts-with [:field-id (u/get-id search-field)] value {:case-sensitive false}]
-                              :breakout     [[:field-id (u/get-id field)]]
-                              :fields       [[:field-id (u/get-id field)]
-                                             [:field-id (u/get-id search-field)]]
-                              :limit        limit}})]
-    ;; return rows if they exist
-    (get-in results [:data :rows])))
+        results (qp/process-query (search-values-query field search-field value limit))
+        rows    (get-in results [:data :rows])]
+    ;; if the two Fields are different, we'll get results like [[v1 v2] [v1 v2]]. That is the expected format and we can
+    ;; return them as-is
+    (if-not (= (u/get-id field) (u/get-id search-field))
+      rows
+      ;; However if the Fields are both the same results will be in the format [[v1] [v1]] so we need to double the
+      ;; value to get the format the frontend expects
+      (for [[result] rows]
+        [result result]))))
 
 (api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field that match values of another Field when breaking out by the "
@@ -314,14 +335,20 @@
     ;; return first row if it exists
     (first (get-in results [:data :rows]))))
 
+(defn parse-query-param-value-for-field
+  "Parse a `value` passed as a URL query param in a way appropriate for the `field` it belongs to. E.g. for text Fields
+  the value doesn't need to be parsed; for numeric Fields we should parse it as a number."
+  [field, ^String value]
+  (if (isa? (:base_type field) :type/Number)
+    (.parse (NumberFormat/getInstance) value)
+    value))
+
 (api/defendpoint GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
   [id remapped-id, ^String value]
   (let [field          (api/read-check Field id)
         remapped-field (api/read-check Field remapped-id)
-        value          (if (isa? (:base_type field) :type/Number)
-                         (.parse (NumberFormat/getInstance) value)
-                         value)]
+        value          (parse-query-param-value-for-field field value)]
     (remapped-value field remapped-field value)))
 
 

@@ -56,64 +56,64 @@
 (def ^:private ^:const color-row-border "#EDF0F1")
 
 
-(def ^:private ^:const font-style    {:font-family "Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif"})
-(def ^:const section-style
+(defn- primary-color []
+  color-brand)
+
+(defn- font-style []
+  {:font-family "Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif"})
+
+(defn section-style
   "CSS style for a Pulse section."
-  font-style)
+  []
+  (font-style))
 
-(def ^:private ^:const header-style
-  (merge font-style {:font-size       :16px
-                     :font-weight     700
-                     :color           color-gray-4
-                     :text-decoration :none}))
+(defn- header-style []
+  (merge (font-style) {:font-size       :16px
+                       :font-weight     700
+                       :color           color-gray-4
+                       :text-decoration :none}))
 
-(def ^:private ^:const scalar-style
-  (merge font-style {:font-size   :24px
-                     :font-weight 700
-                     :color       color-brand}))
+(defn- scalar-style []
+  (merge (font-style) {:font-size   :24px
+                       :font-weight 700
+                       :color       (primary-color)}))
 
-(def ^:private ^:const bar-th-style
-  (merge font-style {:font-size       :14.22px
-                     :font-weight     700
-                     :color           color-gray-4
-                     :border-bottom   (str "1px solid " color-row-border)
-                     :padding-top     :20px
-                     :padding-bottom  :5px}))
+(defn- bar-th-style []
+  (merge (font-style) {:font-size       :14.22px
+                       :font-weight     700
+                       :color           color-gray-4
+                       :border-bottom   (str "1px solid " color-row-border)
+                       :padding-top     :20px
+                       :padding-bottom  :5px}))
+
+(defn- bar-td-style []
+  (merge (font-style) {:font-size     :16px
+                       :font-weight   400
+                       :text-align    :left
+                       :padding-right :1em
+                       :padding-top   :8px}))
 
 ;; TO-DO for @senior: apply this style to headings of numeric columns
-(def ^:private ^:const bar-th-numeric-style
-  (merge font-style {:text-align      :right
-                     :font-size       :14.22px
-                     :font-weight     700
-                     :color           color-gray-4
-                     :border-bottom   (str "1px solid " color-row-border)
-                     :padding-top     :20px
-                     :padding-bottom  :5px}))
-
-(def ^:private ^:const bar-td-style
-  (merge font-style {:font-size      :14.22px
-                     :font-weight    400
-                     :color          color-dark-gray
-                     :text-align     :left
-                     :padding-right  :1em
-                     :padding-top    :2px
-                     :padding-bottom :1px
-                     :max-width      :500px
-                     :overflow       :hidden
-                     :text-overflow  :ellipsis
-                     :border-bottom  (str "1px solid " color-row-border)}))
+(defn- bar-th-numeric-style []
+  (merge (font-style) {:text-align      :right
+                       :font-size       :14.22px
+                       :font-weight     700
+                       :color           color-gray-4
+                       :border-bottom   (str "1px solid " color-row-border)
+                       :padding-top     :20px
+                       :padding-bottom  :5px}))
 
 ;; TO-DO for @senior: apply this style to numeric cells
-(def ^:private ^:const bar-td-style-numeric
-  (merge font-style {:font-size      :14.22px
-                     :font-weight    400
-                     :color          color-dark-gray
-                     :text-align     :right
-                     :padding-right  :1em
-                     :padding-top    :2px
-                     :padding-bottom :1px
-                     :font-family    "Courier, Monospace"
-                     :border-bottom  (str "1px solid " color-row-border)}))
+(defn- bar-td-style-numeric []
+  (merge (font-style) {:font-size      :14.22px
+                       :font-weight    400
+                       :color          color-dark-gray
+                       :text-align     :right
+                       :padding-right  :1em
+                       :padding-top    :2px
+                       :padding-bottom :1px
+                       :font-family    "Courier, Monospace"
+                       :border-bottom  (str "1px solid " color-row-border)}))
 
 (def ^:private RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"
@@ -171,25 +171,39 @@
            (number-field? col-2))                                  :bar
       :else                                                        :table)))
 
+(defn- show-in-table? [{:keys [special_type visibility_type] :as column}]
+  (and (not (isa? special_type :type/Description))
+       (not (contains? #{:details-only :retired :sensitive} visibility_type))))
+
 (defn include-csv-attachment?
   "Returns true if this card and resultset should include a CSV attachment"
   [{:keys [include_csv] :as card} {:keys [cols rows] :as result-data}]
   (or (:include_csv card)
       (and (= :table (detect-pulse-card-type card result-data))
-           (or (< cols-limit (count cols))
-               (< rows-limit (count rows))))))
+           (or
+            ;; If some columns are not shown, include an attachment
+            (some (complement show-in-table?) cols)
+            ;; If there are too many rows or columns, include an attachment
+            (< cols-limit (count cols))
+            (< rows-limit (count rows))))))
 
 (defn include-xls-attachment?
   "Returns true if this card and resultset should include an XLS attachment"
   [{:keys [include_csv] :as card} result-data]
   (:include_xls card))
 
+(defn count-displayed-columns
+  "Return a count of the number of columns to be included in a table display"
+  [cols]
+  (count (filter show-in-table? cols)))
 
 ;;; # ------------------------------------------------------------ FORMATTING ------------------------------------------------------------
 
 (defrecord NumericWrapper [num-str]
   hutil/ToString
-  (to-str [_] num-str))
+  (to-str [_] num-str)
+  java.lang.Object
+  (toString [_] num-str))
 
 (defn- format-number
   [n]
@@ -291,6 +305,14 @@
   [card]
   (h (urls/card-url (:id card))))
 
+(defn- write-image
+  [^BufferedImage image ^String format-name ^ByteArrayOutputStream output-stream]
+  (try
+    (ImageIO/write image format-name output-stream)
+    (catch javax.imageio.IIOException iioex
+      (log/error iioex "Error writing image to output stream")
+      (throw iioex))))
+
 ;; ported from https://github.com/radkovo/CSSBox/blob/cssbox-4.10/src/main/java/org/fit/cssbox/demo/ImageRenderer.java
 (defn- render-to-png
   [^String html, ^ByteArrayOutputStream os, width]
@@ -317,7 +339,7 @@
       (.setLoadImages true)
       (.setLoadBackgroundImages true))
     (.createLayout content-canvas window-size)
-    (ImageIO/write (.getImage content-canvas) "png" os)))
+    (write-image (.getImage content-canvas) "png" os)))
 
 (s/defn ^:private render-html-to-png :- bytes
   [{:keys [content]} :- RenderedPulseCard
@@ -334,14 +356,14 @@
 (defn- heading-style-for-type
   [cell]
   (if (instance? NumericWrapper cell)
-    bar-th-numeric-style
-    bar-th-style))
+    (bar-th-numeric-style)
+    (bar-th-style)))
 
 (defn- row-style-for-type
   [cell]
   (if (instance? NumericWrapper cell)
-    bar-td-style-numeric
-    bar-td-style))
+    (bar-td-style-numeric)
+    (bar-td-style)))
 
 (defn- render-table
   [header+rows]
@@ -353,7 +375,7 @@
          [:th {:style (style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :60px})}
           (h header-cell)])
        (when bar-width
-         [:th {:style (style bar-td-style bar-th-style {:width (str bar-width "%")})}])]])
+         [:th {:style (style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
    [:tbody
     (map-indexed (fn [row-idx {:keys [row bar-width]}]
                    [:tr {:style (style {:color color-gray-3})}
@@ -362,7 +384,7 @@
                                     (h cell)])
                                  row)
                     (when bar-width
-                      [:td {:style (style bar-td-style {:width :99%})}
+                      [:td {:style (style (bar-td-style) {:width :99%})}
                        [:div {:style (style {:background-color color-purple
                                              :max-height       :10px
                                              :height           :10px
@@ -380,10 +402,6 @@
         (for [[col-idx {:keys [remapped_from]}] (map vector (range) cols)
               :when remapped_from]
           [remapped_from col-idx])))
-
-(defn- show-in-table? [{:keys [special_type visibility_type] :as column}]
-  (and (not (isa? special_type :type/Description))
-       (not (contains? #{:details-only :retired :sensitive} visibility_type))))
 
 (defn- query-results->header-row
   "Returns a row structure with header info from `COLS`. These values
@@ -468,16 +486,17 @@
   "Returns hiccup structures to indicate truncated results are available as an attachment"
   [render-type cols cols-limit rows rows-limit]
   (when (and (not= :inline render-type)
-             (or (< cols-limit (count cols))
+             (or (< cols-limit (count-displayed-columns cols))
                  (< rows-limit (count rows))))
-    [:div {:style (style {:color color-gray-2})}
+    [:div {:style (style {:color         color-gray-2
+                          :margin-bottom :16px})}
      "More results have been included as a file attachment"]))
 
 (s/defn ^:private render:table :- RenderedPulseCard
   [render-type timezone card {:keys [cols rows] :as data}]
   (let [table-body [:div
                     (render-table (prep-for-html-rendering timezone cols rows nil nil cols-limit))
-                    (render-truncation-warning cols-limit (count cols) rows-limit (count rows))]]
+                    (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
     {:attachments nil
      :content     (if-let [results-attached (attached-results-text render-type cols cols-limit rows rows-limit)]
                     (list results-attached table-body)
@@ -490,12 +509,12 @@
     {:attachments nil
      :content     [:div
                    (render-table (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
-                   (render-truncation-warning 2 (count cols) rows-limit (count rows))]}))
+                   (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
 (s/defn ^:private render:scalar :- RenderedPulseCard
   [timezone card {:keys [cols rows]}]
   {:attachments nil
-   :content     [:div {:style (style scalar-style)}
+   :content     [:div {:style (style (scalar-style))}
                  (h (format-cell timezone (ffirst rows) (first cols)))]})
 
 (defn- render-sparkline-to-png
@@ -524,7 +543,7 @@
                  (* 2 sparkline-dot-radius)
                  (* 2 sparkline-dot-radius)))
     (when-not (ImageIO/write image "png" os)                    ; returns `true` if successful -- see JavaDoc
-      (let [^String msg (tru "No approprate image writer found!")]
+      (let [^String msg (tru "No appropriate image writer found!")]
         (throw (Exception. msg))))
     (.toByteArray os)))
 
@@ -685,7 +704,7 @@
      :content     [:div {:style (style {:text-align :center})}
                    [:img {:style (style {:width :104px})
                           :src   (:image-src image-bundle)}]
-                   [:div {:style (style font-style
+                   [:div {:style (style (font-style)
                                         {:margin-top :8px
                                          :color      color-gray-4})}
                     "No results"]]}))
@@ -697,7 +716,7 @@
      :content     [:div {:style (style {:text-align :center})}
                    [:img {:style (style {:width :30px})
                           :src   (:image-src image-bundle)}]
-                   [:div {:style (style font-style
+                   [:div {:style (style (font-style)
                                         {:margin-top :8px
                                          :color      color-gray-4})}
                     "This question has been included as a file attachment"]]}))
@@ -705,7 +724,7 @@
 (s/defn ^:private render:unknown :- RenderedPulseCard
   [_ _]
   {:attachments nil
-   :content     [:div {:style (style font-style
+   :content     [:div {:style (style (font-style)
                                      {:color       color-gold
                                       :font-weight 700})}
                  "We were unable to display this card."
@@ -715,7 +734,7 @@
 (s/defn ^:private render:error :- RenderedPulseCard
   [_ _]
   {:attachments nil
-   :content     [:div {:style (style font-style
+   :content     [:div {:style (style (font-style)
                                      {:color       color-error
                                       :font-weight 700
                                       :padding     :16px})}
@@ -728,11 +747,14 @@
                          (external-link-image-bundle render-type))]
       {:attachments (when image-bundle
                       (image-bundle->attachment image-bundle))
-       :content     [:table {:style (style {:margin-bottom :8px
-                                            :width         :100%})}
+       :content     [:table {:style (style {:margin-bottom   :8px
+                                            :border-collapse :collapse
+                                            :width           :100%})}
                      [:tbody
                       [:tr
-                       [:td [:span {:style (style header-style)}
+                       [:td {:style (style {:padding :0
+                                            :margin  :0})}
+                        [:span {:style (style (header-style))}
                              (-> card :name h)]]
                        [:td {:style (style {:text-align :right})}
                         (when *include-buttons*
@@ -772,7 +794,7 @@
     {:attachments (merge title-attachments body-attachments)
      :content     [:a {:href   (card-href card)
                        :target "_blank"
-                       :style  (style section-style
+                       :style  (style (section-style)
                                       {:margin          :16px
                                        :margin-bottom   :16px
                                        :display         :block

@@ -238,13 +238,13 @@ describe("QueryBuilder editor bar", () => {
       await store.waitForActions([QUERY_COMPLETED]);
 
       // We can use the visible row count as we have a low number of result rows
-      expect(qb.find(".ShownRowCount").text()).toBe("Showing 14 rows");
+      expect(qb.find(".ShownRowCount").text()).toBe("Showing 6 rows");
 
       // Get the binning
       const results = getQueryResults(store.getState())[0];
       const breakoutBinningInfo = results.data.cols[0].binning_info;
       expect(breakoutBinningInfo.binning_strategy).toBe("num-bins");
-      expect(breakoutBinningInfo.bin_width).toBe(20);
+      expect(breakoutBinningInfo.bin_width).toBe(50);
       expect(breakoutBinningInfo.num_bins).toBe(8);
     });
     it("lets you change the binning strategy to 100 bins", async () => {
@@ -272,11 +272,11 @@ describe("QueryBuilder editor bar", () => {
       click(qb.find(RunButton));
       await store.waitForActions([QUERY_COMPLETED]);
 
-      expect(qb.find(".ShownRowCount").text()).toBe("Showing 253 rows");
+      expect(qb.find(".ShownRowCount").text()).toBe("Showing 105 rows");
       const results = getQueryResults(store.getState())[0];
       const breakoutBinningInfo = results.data.cols[0].binning_info;
       expect(breakoutBinningInfo.binning_strategy).toBe("num-bins");
-      expect(breakoutBinningInfo.bin_width).toBe(1);
+      expect(breakoutBinningInfo.bin_width).toBe(2.5);
       expect(breakoutBinningInfo.num_bins).toBe(100);
     });
     it("lets you disable the binning", async () => {

@@ -224,7 +224,7 @@ class GroupPermissionCell extends Component {
               {warning && (
                 <div className="absolute top right p1">
                   <Tooltip tooltip={warning} maxWidth="24em">
-                    <Icon name="warning2" className="text-slate" />
+                    <Icon name="warning" className="text-slate" />
                   </Tooltip>
                 </div>
               )}

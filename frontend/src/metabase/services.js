@@ -11,6 +11,12 @@ const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 // $FlowFixMe: Flow doesn't understand webpack loader syntax
 import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
+import type { Data, Options } from "metabase/lib/api";
+
+import type { DatabaseId } from "metabase/meta/types/Database";
+import type { Candidate } from "metabase/meta/types/Auto";
+import type { DashboardWithCards } from "metabase/meta/types/Dashboard";
+
 export const ActivityApi = {
   list: GET("/api/activity"),
   recent_views: GET("/api/activity/recent_views"),
@@ -42,7 +48,10 @@ export const CardApi = {
 
 export const DashboardApi = {
   list: GET("/api/dashboard"),
+  // creates a new empty dashboard
   create: POST("/api/dashboard"),
+  // saves a complete transient dashboard
+  save: POST("/api/dashboard/save"),
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
@@ -82,6 +91,19 @@ export const EmbedApi = {
   dashboardCardQuery: GET(
     embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
+};
+
+type $AutoApi = {
+  dashboard: ({ subPath: string }) => DashboardWithCards,
+  db_candidates: ({ id: DatabaseId }) => Candidate[],
+};
+
+export const AutoApi: $AutoApi = {
+  dashboard: GET("/api/automagic-dashboards/:subPath", {
+    // this prevents the `subPath` parameter from being URL encoded
+    raw: { subPath: true },
+  }),
+  db_candidates: GET("/api/automagic-dashboards/database/:id/candidates"),
 };
 
 export const EmailApi = {
@@ -314,5 +336,42 @@ export const GeoJSONApi = {
 export const I18NApi = {
   locale: GET("/app/locales/:locale.json"),
 };
+
+export function setPublicQuestionEndpoints(uuid: string) {
+  setFieldEndpoints("/api/public/card/:uuid", { uuid });
+}
+export function setPublicDashboardEndpoints(uuid: string) {
+  setFieldEndpoints("/api/public/dashboard/:uuid", { uuid });
+}
+export function setEmbedQuestionEndpoints(token: string) {
+  if (!IS_EMBED_PREVIEW) {
+    setFieldEndpoints("/api/embed/card/:token", { token });
+  }
+}
+export function setEmbedDashboardEndpoints(token: string) {
+  if (!IS_EMBED_PREVIEW) {
+    setFieldEndpoints("/api/embed/dashboard/:token", { token });
+  }
+}
+
+function GET_with(url: string, params: Data) {
+  return (data: Data, options?: Options) =>
+    GET(url)({ ...params, ...data }, options);
+}
+
+export function setFieldEndpoints(prefix: string, params: Data) {
+  MetabaseApi.field_values = GET_with(
+    prefix + "/field/:fieldId/values",
+    params,
+  );
+  MetabaseApi.field_search = GET_with(
+    prefix + "/field/:fieldId/search/:searchFieldId",
+    params,
+  );
+  MetabaseApi.field_remapping = GET_with(
+    prefix + "/field/:fieldId/remapping/:remappedFieldId",
+    params,
+  );
+}
 
 global.services = exports;

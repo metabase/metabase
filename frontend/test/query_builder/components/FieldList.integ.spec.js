@@ -1,7 +1,10 @@
+jest.mock("metabase/hoc/Remapped");
+
 // Important: import of integrated_tests always comes first in tests because of mocked modules
 import {
   createTestStore,
   useSharedAdminLogin,
+  cleanup,
 } from "__support__/integrated_tests";
 
 import React from "react";
@@ -41,6 +44,7 @@ describe("FieldList", () => {
   beforeAll(async () => {
     useSharedAdminLogin();
   });
+  afterAll(cleanup);
 
   it("should allow using expression as aggregation dimension", async () => {
     const store = await createTestStore();
@@ -71,6 +75,7 @@ describe("FieldList", () => {
     // TODO Atte Keinänen 6/27/17: Check why the result is wrapped in a promise that needs to be resolved manually
     const segment = await (await createSegment(orders_past_300_days_segment))
       .payload;
+    cleanup.segment(segment);
 
     const store = await createTestStore();
     await store.dispatch(fetchDatabases());

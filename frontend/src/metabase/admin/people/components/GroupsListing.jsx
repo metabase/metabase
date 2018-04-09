@@ -54,7 +54,7 @@ function DeleteGroupModal({ group, onConfirm = () => {}, onClose = () => {} }) {
   return (
     <ModalContent title={t`Remove this group?`} onClose={onClose}>
       <p className="px4 pb4">
-        {t`Are you sure? All members of this group will lose any permissions settings the have based on this group.
+        {t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
                 This can't be undone.`}
       </p>
       <div className="Form-actions">

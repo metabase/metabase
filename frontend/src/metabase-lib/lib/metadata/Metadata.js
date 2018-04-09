@@ -44,6 +44,14 @@ export default class Metadata extends Base {
     return (Object.values(this.segments): Segment[]);
   }
 
+  segment(segmentId): ?Segment {
+    return (segmentId != null && this.segments[segmentId]) || null;
+  }
+
+  metric(metricId): ?Metric {
+    return (metricId != null && this.metrics[metricId]) || null;
+  }
+
   database(databaseId): ?Database {
     return (databaseId != null && this.databases[databaseId]) || null;
   }

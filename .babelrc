@@ -19,7 +19,8 @@
           "extract": {
             "output": "locales/metabase-frontend.pot"
           },
-          "discover": ["t", "jt"]
+          "discover": ["t", "jt"],
+          "numberedExpressions": true
         }]
       ]
     }

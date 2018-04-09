@@ -16,7 +16,7 @@
              [field-values :as field-values :refer [FieldValues]]
              [table :refer [Table]]]
             [metabase.test
-             [data :refer :all]
+             [data :as data]
              [util :as tu]]
             [metabase.test.mock.util :as mock-util]
             [toucan.db :as db]
@@ -31,7 +31,8 @@
                         :base-type     :type/Integer}
                        {:name          "title"
                         :database-type "VARCHAR"
-                        :base-type     :type/Text}
+                        :base-type     :type/Text
+                        :special-type  :type/Title}
                        {:name          "studio"
                         :database-type "VARCHAR"
                         :base-type     :type/Text}}}
@@ -99,10 +100,10 @@
    :caveats                 nil
    :points_of_interest      nil
    :show_in_getting_started false
-   :entity_type             nil
+   :entity_type             :entity/GenericTable
    :entity_name             nil
    :visibility_type         nil
-   :rows                    1000
+   :rows                    nil
    :active                  true
    :created_at              true
    :updated_at              true})
@@ -147,11 +148,11 @@
                                   :base_type          :type/Text
                                   :fk_target_field_id true})
                           (merge field-defaults
-                                 {:special_type  nil
-                                  :name          "title"
+                                 {:name          "title"
                                   :display_name  "Title"
                                   :database_type "VARCHAR"
-                                  :base_type     :type/Text})]})
+                                  :base_type     :type/Text
+                                  :special_type  :type/Title})]})
    (merge table-defaults
           {:name         "studio"
            :display_name "Studio"
@@ -169,8 +170,8 @@
                                   :base_type     :type/Text})]})]
   (tt/with-temp Database [db {:engine :sync-test}]
     (sync-database! db)
-    ;; we are purposely running the sync twice to test for possible logic issues which only manifest
-    ;; on resync of a database, such as adding tables that already exist or duplicating fields
+    ;; we are purposely running the sync twice to test for possible logic issues which only manifest on resync of a
+    ;; database, such as adding tables that already exist or duplicating fields
     (sync-database! db)
     (mapv table-details (db/select Table, :db_id (u/get-id db), {:order-by [:name]}))))
 
@@ -195,11 +196,11 @@
                                  :database_type "VARCHAR"
                                  :base_type     :type/Text})
                          (merge field-defaults
-                                {:special_type  nil
-                                 :name          "title"
+                                {:name          "title"
                                  :display_name  "Title"
                                  :database_type "VARCHAR"
-                                 :base_type     :type/Text})]})
+                                 :base_type     :type/Text
+                                 :special_type  :type/Title})]})
   (tt/with-temp* [Database [db    {:engine :sync-test}]
                   Table    [table {:name   "movie"
                                    :schema "default"
@@ -252,15 +253,15 @@
      @calls-to-describe-database)))
 
 
-;; Test that we will remove field-values when they aren't appropriate.  Calling `sync-database!` below should cause
-;; them to get removed since the Field doesn't have an appropriate special type
+;; Test that we will remove field-values when they aren't appropriate. Calling `sync-database!` below should cause
+;; them to get removed since the Field isn't `has_field_values` = `list`
 (expect
   [[1 2 3]
    nil]
   (tt/with-temp* [Database [db {:engine :sync-test}]]
     (sync-database! db)
     (let [table-id (db/select-one-id Table, :schema "default", :name "movie")
-          field-id (db/select-one-id Field, :table_id table-id, :name "title")]
+          field-id (db/select-one-id Field, :table_id table-id, :name "studio")]
       (tt/with-temp FieldValues [_ {:field_id field-id
                                     :values   "[1,2,3]"}]
         (let [initial-field-values (db/select-one-field :values FieldValues, :field_id field-id)]
@@ -277,41 +278,41 @@
          :type/PK
          :type/Latitude
          :type/PK]
-  (let [get-special-type (fn [] (db/select-one-field :special_type Field, :id (id :venues :id)))]
+  (let [get-special-type (fn [] (db/select-one-field :special_type Field, :id (data/id :venues :id)))]
     [;; Special type should be :id to begin with
      (get-special-type)
      ;; Clear out the special type
-     (do (db/update! Field (id :venues :id), :special_type nil)
+     (do (db/update! Field (data/id :venues :id), :special_type nil)
          (get-special-type))
      ;; Calling sync-table! should set the special type again
-     (do (sync-table! (Table (id :venues)))
+     (do (sync-table! (Table (data/id :venues)))
          (get-special-type))
      ;; sync-table! should *not* change the special type of fields that are marked with a different type
-     (do (db/update! Field (id :venues :id), :special_type :type/Latitude)
+     (do (db/update! Field (data/id :venues :id), :special_type :type/Latitude)
          (get-special-type))
      ;; Make sure that sync-table runs set-table-pks-if-needed!
-     (do (db/update! Field (id :venues :id), :special_type nil)
-         (sync-table! (Table (id :venues)))
+     (do (db/update! Field (data/id :venues :id), :special_type nil)
+         (sync-table! (Table (data/id :venues)))
          (get-special-type))]))
 
 ;; ## FK SYNCING
 
 ;; Check that Foreign Key relationships were created on sync as we expect
 
-(expect (id :venues :id)
-  (db/select-one-field :fk_target_field_id Field, :id (id :checkins :venue_id)))
+(expect (data/id :venues :id)
+  (db/select-one-field :fk_target_field_id Field, :id (data/id :checkins :venue_id)))
 
-(expect (id :users :id)
-  (db/select-one-field :fk_target_field_id Field, :id (id :checkins :user_id)))
+(expect (data/id :users :id)
+  (db/select-one-field :fk_target_field_id Field, :id (data/id :checkins :user_id)))
 
-(expect (id :categories :id)
-  (db/select-one-field :fk_target_field_id Field, :id (id :venues :category_id)))
+(expect (data/id :categories :id)
+  (db/select-one-field :fk_target_field_id Field, :id (data/id :venues :category_id)))
 
 ;; Check that sync-table! causes FKs to be set like we'd expect
 (expect [{:special_type :type/FK, :fk_target_field_id true}
-         {:special_type nil, :fk_target_field_id false}
+         {:special_type nil,      :fk_target_field_id false}
          {:special_type :type/FK, :fk_target_field_id true}]
-  (let [field-id (id :checkins :user_id)
+  (let [field-id (data/id :checkins :user_id)
         get-special-type-and-fk-exists? (fn []
                                           (into {} (-> (db/select-one [Field :special_type :fk_target_field_id],
                                                          :id field-id)
@@ -322,15 +323,15 @@
      (do (db/update! Field field-id, :special_type nil, :fk_target_field_id nil)
          (get-special-type-and-fk-exists?))
      ;; Run sync-table and they should be set again
-     (let [table (Table (id :checkins))]
+     (let [table (Table (data/id :checkins))]
        (sync-table! table)
        (get-special-type-and-fk-exists?))]))
 
 
 ;;; ## FieldValues Syncing
 
-(let [get-field-values    (fn [] (db/select-one-field :values FieldValues, :field_id (id :venues :price)))
-      get-field-values-id (fn [] (db/select-one-id FieldValues, :field_id (id :venues :price)))]
+(let [get-field-values    (fn [] (db/select-one-field :values FieldValues, :field_id (data/id :venues :price)))
+      get-field-values-id (fn [] (db/select-one-id FieldValues, :field_id (data/id :venues :price)))]
   ;; Test that when we delete FieldValues syncing the Table again will cause them to be re-created
   (expect
     [[1 2 3 4]  ; 1
@@ -342,7 +343,7 @@
      (do (db/delete! FieldValues :id (get-field-values-id))
          (get-field-values))
      ;; 3. Now re-sync the table and make sure they're back
-     (do (sync-table! (Table (id :venues)))
+     (do (sync-table! (Table (data/id :venues)))
          (get-field-values))])
 
   ;; Test that syncing will cause FieldValues to be updated
@@ -356,12 +357,14 @@
      (do (db/update! FieldValues (get-field-values-id), :values [1 2 3])
          (get-field-values))
      ;; 3. Now re-sync the table and make sure the value is back
-     (do (sync-table! (Table (id :venues)))
+     (do (sync-table! (Table (data/id :venues)))
          (get-field-values))]))
 
-;; Make sure that if a Field's cardinality passes `low-cardinality-threshold` (currently 300)
-;; the corresponding FieldValues entry will be deleted (#3215)
-(defn- insert-range-sql [rang]
+;; Make sure that if a Field's cardinality passes `list-cardinality-threshold` (currently 100) the corresponding
+;; FieldValues entry will be deleted (#3215)
+(defn- insert-range-sql
+  "Generate SQL to insert a row for each number in `rang`."
+  [rang]
   (str "INSERT INTO blueberries_consumed (num) VALUES "
        (str/join ", " (for [n rang]
                         (str "(" n ")")))))
@@ -374,18 +377,18 @@
         (jdbc/with-db-connection [conn (sql/connection-details->spec (driver/engine->driver :h2) details)]
           (let [exec! #(doseq [statement %]
                          (jdbc/execute! conn [statement]))]
-            ;; create the `blueberries_consumed` table and insert a 100 values
+            ;; create the `blueberries_consumed` table and insert 50 values
             (exec! ["CREATE TABLE blueberries_consumed (num INTEGER NOT NULL);"
-                    (insert-range-sql (range 100))])
+                    (insert-range-sql (range 50))])
             (sync-database! db)
             (let [table-id (db/select-one-id Table :db_id (u/get-id db))
                   field-id (db/select-one-id Field :table_id table-id)]
               ;; field values should exist...
               (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
-                         100))
-              ;; ok, now insert enough rows to push the field past the `low-cardinality-threshold` and sync again,
+                         50))
+              ;; ok, now insert enough rows to push the field past the `list-cardinality-threshold` and sync again,
               ;; there should be no more field values
-              (exec! [(insert-range-sql (range 100 (+ 100 field-values/low-cardinality-threshold)))])
+              (exec! [(insert-range-sql (range 50 (+ 100 field-values/list-cardinality-threshold)))])
               (sync-database! db)
               (db/exists? FieldValues :field_id field-id))))))))
 
@@ -399,9 +402,9 @@
 (expect
   [{:min -165.374 :max -73.9533}
    {:min 10.0646 :max 40.7794}]
-  (tt/with-temp* [Database [database {:details (:details (Database (id))), :engine :h2}]
+  (tt/with-temp* [Database [database {:details (:details (Database (data/id))), :engine :h2}]
                   Table    [table    {:db_id (u/get-id database), :name "VENUES"}]]
     (sync-table! table)
     (map narrow-to-min-max
-         [(db/select-one-field :fingerprint Field, :id (id :venues :longitude))
-          (db/select-one-field :fingerprint Field, :id (id :venues :latitude))])))
+         [(db/select-one-field :fingerprint Field, :id (data/id :venues :longitude))
+          (db/select-one-field :fingerprint Field, :id (data/id :venues :latitude))])))

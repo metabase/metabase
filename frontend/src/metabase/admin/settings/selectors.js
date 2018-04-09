@@ -268,7 +268,7 @@ const SECTIONS = [
       },
       {
         key: "ldap-group-base",
-        display_name: t`"Group search base`,
+        display_name: t`Group search base`,
         type: "string",
       },
       {

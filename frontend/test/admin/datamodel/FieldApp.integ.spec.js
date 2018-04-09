@@ -189,6 +189,7 @@ describe("FieldApp", () => {
       const { store, fieldApp } = await initFieldApp({
         fieldId: CREATED_AT_ID,
       });
+
       const picker = fieldApp.find(SpecialTypeAndTargetPicker);
       const typeSelect = picker.find(Select).at(0);
       click(typeSelect);
@@ -269,7 +270,7 @@ describe("FieldApp", () => {
       await store.dispatch(
         updateField({
           ...createdAtField,
-          special_type: null,
+          special_type: "type/CreationTimestamp",
           fk_target_field_id: null,
         }),
       );
@@ -401,7 +402,7 @@ describe("FieldApp", () => {
         e: { target: document.documentElement },
       });
       await delay(300); // delay needed because of setState in FieldApp; app.update() does not work for whatever reason
-      expect(section.find(".text-danger").length).toBe(1); // warning that you should choose a column
+      expect(section.find(".text-error").length).toBe(1); // warning that you should choose a column
     });
 
     it("doesn't let you enter custom remappings for a field with string values", async () => {

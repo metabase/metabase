@@ -367,4 +367,12 @@
   (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
 
+;;; --------------------------------------------------- Transient dashboards ---------------------------------------------------
+
+(api/defendpoint POST "/save"
+  "Save a denormalized description of dashboard."
+  [:as {dashboard :body}]
+  (->> (dashboard/save-transient-dashboard! dashboard)
+       (events/publish-event! :dashboard-create)))
+
 (api/define-routes)

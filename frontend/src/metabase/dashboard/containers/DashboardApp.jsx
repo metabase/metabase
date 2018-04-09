@@ -32,7 +32,7 @@ import { parseHashOptions } from "metabase/lib/browser";
 
 const mapStateToProps = (state, props) => {
   return {
-    dashboardId: props.params.dashboardId,
+    dashboardId: props.dashboardId || props.params.dashboardId,
 
     isAdmin: getUserIsAdmin(state, props),
     isEditing: getIsEditing(state, props),
@@ -80,7 +80,7 @@ export default class DashboardApp extends Component {
   render() {
     return (
       <div>
-        <Dashboard addCardOnLoad={this.state.addCardOnLoad} {...this.props} />;
+        <Dashboard addCardOnLoad={this.state.addCardOnLoad} {...this.props} />
         {/* For rendering modal urls */}
         {this.props.children}
       </div>

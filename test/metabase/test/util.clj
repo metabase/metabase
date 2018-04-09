@@ -16,6 +16,7 @@
              [dashboard :refer [Dashboard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [database :refer [Database]]
+             [dimension :refer [Dimension]]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [permissions-group :refer [PermissionsGroup]]
@@ -154,6 +155,11 @@
                                 :engine    :yeehaw ; wtf?
                                 :is_sample false
                                 :name      (random-name)})})
+
+(u/strict-extend (class Dimension)
+  test/WithTempDefaults
+  {:with-temp-defaults (fn [_] {:name (random-name)
+                                :type "internal"})})
 
 (u/strict-extend (class Field)
   test/WithTempDefaults

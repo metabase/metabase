@@ -124,6 +124,7 @@ Integration tests use an enforced file naming convention `<test-suite-name>.inte
 Useful commands:
 ```bash
 ./bin/build version uberjar # Builds the JAR without frontend assets; run this every time you need to update the backend
+lein run refresh-integration-test-db-metadata # Scan the sample dataset and re-run sync/classification/field values caching
 yarn run test-integrated-watch # Watches for file changes and runs the tests that have changed
 yarn run test-integrated-watch -- TestFileName # Watches the files in paths that match the given (regex) string
 ```
@@ -265,7 +266,8 @@ Start up an instant cheatsheet for the project + dependencies by running
     lein instant-cheatsheet
 
 ## Internationalization
-We are an application with lots of users all over the world. To help them use Metabase in their own language, we mark all of our strings as i18n. The general workflow is:
+We are an application with lots of users all over the world. To help them use Metabase in their own language, we mark all of our strings as i18n. 
+### The general workflow for developers is:
 
 1. Tag strings in the frontend using `t` and `jt` ES6 template literals (see more details in https://c-3po.js.org/):
 
@@ -281,10 +283,16 @@ and in the backend using `trs` and related macros (see more details in https://g
 ```
 
 2. When you have added/edited tagged strings in the code, run `./bin/i18n/update-translations` to update the base `locales/metabase.pot` template and each existing `locales/LOCALE.po`
-3. To add a new translaction run `./bin/i18n/update-translation LOCALE`
-4. Edit translation in `locales/LOCALE.po`
-5. Run `./bin/i18n/build-translation-resources` to compile translations for frontend and backend
-6. Restart or rebuild Metabase
+
+### The workflow for translators in starting a new translation, or editing an existing one:
+
+1. You should run `./bin/i18n/update-translations` first to ensure the latest strings have been extracted.
+2. If you're starting a new translation or didn't run update-translations then run `./bin/i18n/update-translation LOCALE`
+3. Edit ./locales/LOCALE.po
+4. `Run ./bin/i18n/build-translation-resources`
+5. Restart or rebuild Metabase, Test, repeat 2 and 3
+6. Commit changes to ./locales/LOCALE.po and ./resources/frontend_client/app/locales/LOCALE.json
+
 
 To try it out, change your browser's language (e.x. chrome://settings/?search=language) to one of the locales to see it working. Run metabase with the `JAVA_TOOL_OPTIONS=-Duser.language=LOCALE` environment variable set to set the locale on the backend, e.x. for pulses and emails (eventually we'll also add a setting in the app)
 

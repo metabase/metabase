@@ -113,7 +113,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (db/select Segment :table_id [:in table-ids], {:order-by [[:name :asc]]}))
+      (db/select Segment :table_id [:in table-ids], :is_active true, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-metrics
@@ -122,7 +122,7 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (db/select Metric :table_id [:in table-ids], {:order-by [[:name :asc]]}))
+      (db/select Metric :table_id [:in table-ids], :is_active true, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-fields

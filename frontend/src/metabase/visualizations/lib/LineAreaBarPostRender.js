@@ -1,6 +1,13 @@
+/* @flow weak */
+
 import d3 from "d3";
 
 import { clipPathReference } from "metabase/lib/dom";
+
+const X_LABEL_MIN_SPACING = 2; // minimum space we want to leave between labels
+const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching from 45° to 90°
+const X_LABEL_HIDE_THRESHOLD = 12; // tick width breakpoint for hiding labels entirely
+const X_LABEL_MAX_LABEL_HEIGHT_RATIO = 0.7; // percent rotated labels are allowed to take
 
 // +-------------------------------------------------------------------------------------------------------------------+
 // |                                                ON RENDER FUNCTIONS                                                |
@@ -33,11 +40,11 @@ const DOT_OVERLAP_COUNT_LIMIT = 8;
 const DOT_OVERLAP_RATIO = 0.1;
 const DOT_OVERLAP_DISTANCE = 8;
 
-function onRenderEnableDots(chart, settings) {
+function onRenderEnableDots(chart) {
   let enableDots;
   const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
-  if (settings["line.marker_enabled"] != null) {
-    enableDots = !!settings["line.marker_enabled"];
+  if (chart.settings["line.marker_enabled"] != null) {
+    enableDots = !!chart.settings["line.marker_enabled"];
   } else if (dots.length > 500) {
     // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
     enableDots = false;
@@ -207,20 +214,20 @@ function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
   }
 }
 
-function onRenderHideDisabledLabels(chart, settings) {
-  if (!settings["graph.x_axis.labels_enabled"]) {
+function onRenderHideDisabledLabels(chart) {
+  if (!chart.settings["graph.x_axis.labels_enabled"]) {
     chart.selectAll(".x-axis-label").remove();
   }
-  if (!settings["graph.y_axis.labels_enabled"]) {
+  if (!chart.settings["graph.y_axis.labels_enabled"]) {
     chart.selectAll(".y-axis-label").remove();
   }
 }
 
-function onRenderHideDisabledAxis(chart, settings) {
-  if (!settings["graph.x_axis.axis_enabled"]) {
+function onRenderHideDisabledAxis(chart) {
+  if (!chart.settings["graph.x_axis.axis_enabled"]) {
     chart.selectAll(".axis.x").remove();
   }
-  if (!settings["graph.y_axis.axis_enabled"]) {
+  if (!chart.settings["graph.y_axis.axis_enabled"]) {
     chart.selectAll(".axis.y, .axis.yr").remove();
   }
 }
@@ -252,20 +259,45 @@ function onRenderSetClassName(chart, isStacked) {
   chart.svg().classed("stacked", isStacked);
 }
 
+function getXAxisRotation(chart) {
+  let match = String(chart.settings["graph.x_axis.axis_enabled"] || "").match(
+    /^rotate-(\d+)$/,
+  );
+  if (match) {
+    return parseInt(match[1], 10);
+  } else {
+    return 0;
+  }
+}
+
+function onRenderRotateAxis(chart) {
+  let degrees = getXAxisRotation(chart);
+  if (degrees !== 0) {
+    chart.selectAll("g.x text").attr("transform", function() {
+      const { width, height } = this.getBBox();
+      return (// translate left half the width so the right edge is at the tick
+        `translate(-${width / 2},${-height / 2}) ` +
+        // rotate counter-clockwise around the right edge
+        `rotate(${-degrees}, ${width / 2}, ${height})` );
+    });
+  }
+}
+
 // the various steps that get called
-function onRender(chart, settings, onGoalHover, isSplitAxis, isStacked) {
+function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderRemoveClipPath(chart);
   onRenderMoveContentToTop(chart);
   onRenderSetDotStyle(chart);
-  onRenderEnableDots(chart, settings);
+  onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
   onRenderCleanupGoal(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
-  onRenderHideDisabledLabels(chart, settings);
-  onRenderHideDisabledAxis(chart, settings);
+  onRenderHideDisabledLabels(chart);
+  onRenderHideDisabledAxis(chart);
   onRenderHideBadAxis(chart);
   onRenderDisableClickFiltering(chart);
   onRenderFixStackZIndex(chart);
   onRenderSetClassName(chart, isStacked);
+  onRenderRotateAxis(chart);
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+
@@ -273,9 +305,9 @@ function onRender(chart, settings, onGoalHover, isSplitAxis, isStacked) {
 // +-------------------------------------------------------------------------------------------------------------------+
 
 // run these first so the rest of the margin computations take it into account
-function beforeRenderHideDisabledAxesAndLabels(chart, settings) {
-  onRenderHideDisabledLabels(chart, settings);
-  onRenderHideDisabledAxis(chart, settings);
+function beforeRenderHideDisabledAxesAndLabels(chart) {
+  onRenderHideDisabledLabels(chart);
+  onRenderHideDisabledAxis(chart);
   onRenderHideBadAxis(chart);
 }
 
@@ -321,19 +353,114 @@ function computeMinHorizontalMargins(chart) {
   return min;
 }
 
-function beforeRenderFixMargins(chart, settings) {
+function computeXAxisLabelMaxSize(chart) {
+  let maxWidth = 0;
+  let maxHeight = 0;
+  chart.selectAll("g.x text").each(function() {
+    const { width, height } = this.getBBox();
+    maxWidth = Math.max(maxWidth, width);
+    maxHeight = Math.max(maxHeight, height);
+  });
+  return { width: maxWidth, height: maxHeight };
+}
+
+function rotateSize(size, rotation) {
+  return {
+    width: Math.sin(rotation * (Math.PI / 180)) * size.width,
+    height: Math.sin(rotation * (Math.PI / 180)) * size.height,
+  };
+}
+
+function computeXAxisMargin(chart) {
+  const rotation = getXAxisRotation(chart);
+  const maxSize = computeXAxisLabelMaxSize(chart);
+  const rotatedMaxSize = rotateSize(maxSize, rotation);
+  return Math.max(0, rotatedMaxSize.width - maxSize.height); // subtract the existing height
+}
+
+function checkLabelOverlap(chart) {
+  const rects = [];
+  for (const elem of chart.selectAll("g.x text")[0]) {
+    rects.push(elem.getBoundingClientRect());
+    if (
+      rects.length > 1 &&
+      rects[rects.length - 2].right + X_LABEL_MIN_SPACING >
+        rects[rects.length - 1].left
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function checkLabelHeight(chart, rotation) {
+  const rotatedMaxSize = rotateSize(
+    computeXAxisLabelMaxSize(chart),
+    rotation + 180,
+  );
+  const xAxisSize = chart.selectAll("g.y")[0][0].getBBox();
+  const ratio = Math.abs(rotatedMaxSize.width) / xAxisSize.height;
+  return ratio < X_LABEL_MAX_LABEL_HEIGHT_RATIO;
+}
+
+function computeXAxisSpacing(chart) {
+  const rects = [];
+  let minXAxisSpacing = Infinity;
+  for (const elem of chart.selectAll("g.x text")[0]) {
+    rects.push(elem.getBoundingClientRect());
+    if (rects.length > 1) {
+      const left = rects[rects.length - 2],
+        right = rects[rects.length - 1];
+      const xAxisSpacing =
+        right.left + right.width / 2 - (left.left + left.width / 2);
+      minXAxisSpacing = Math.min(minXAxisSpacing, xAxisSpacing);
+    }
+  }
+  return minXAxisSpacing;
+}
+
+function beforeRenderComputeXAxisLabelType(chart) {
+  // treat graph.x_axis.axis_enabled === true as "auto"
+  if (chart.settings["graph.x_axis.axis_enabled"] === true) {
+    const overlaps = checkLabelOverlap(chart);
+    if (overlaps) {
+      if (chart.isOrdinal()) {
+        const spacing = computeXAxisSpacing(chart);
+        if (spacing < X_LABEL_HIDE_THRESHOLD) {
+          chart.settings["graph.x_axis.axis_enabled"] = false;
+        } else if (spacing < X_LABEL_ROTATE_90_THRESHOLD) {
+          if (checkLabelHeight(chart, 90)) {
+            chart.settings["graph.x_axis.axis_enabled"] = "rotate-90";
+          } else {
+            chart.settings["graph.x_axis.axis_enabled"] = false;
+          }
+        } else {
+          if (checkLabelHeight(chart, 45)) {
+            chart.settings["graph.x_axis.axis_enabled"] = "rotate-45";
+          } else {
+            chart.settings["graph.x_axis.axis_enabled"] = false;
+          }
+        }
+      } else {
+        chart.settings["graph.x_axis.axis_enabled"] = false;
+      }
+    }
+  }
+}
+
+function beforeRenderFixMargins(chart) {
   // run before adjusting margins
   const mins = computeMinHorizontalMargins(chart);
+  const xAxisMargin = computeXAxisMargin(chart);
 
   // adjust the margins to fit the X and Y axis tick and label sizes, if enabled
   adjustMargin(
     chart,
     "bottom",
     "height",
-    X_AXIS_PADDING,
+    X_AXIS_PADDING + xAxisMargin,
     ".axis.x",
     ".x-axis-label",
-    settings["graph.x_axis.labels_enabled"],
   );
   adjustMargin(
     chart,
@@ -342,7 +469,6 @@ function beforeRenderFixMargins(chart, settings) {
     Y_AXIS_PADDING,
     ".axis.y",
     ".y-axis-label.y-label",
-    settings["graph.y_axis.labels_enabled"],
   );
   adjustMargin(
     chart,
@@ -351,7 +477,6 @@ function beforeRenderFixMargins(chart, settings) {
     Y_AXIS_PADDING,
     ".axis.yr",
     ".y-axis-label.yr-label",
-    settings["graph.y_axis.labels_enabled"],
   );
 
   // set margins to the max of the various mins
@@ -370,9 +495,10 @@ function beforeRenderFixMargins(chart, settings) {
 }
 
 // collection of function calls that get made *before* we tell the Chart to render
-function beforeRender(chart, settings) {
-  beforeRenderHideDisabledAxesAndLabels(chart, settings);
-  beforeRenderFixMargins(chart, settings);
+function beforeRender(chart) {
+  beforeRenderComputeXAxisLabelType(chart);
+  beforeRenderHideDisabledAxesAndLabels(chart);
+  beforeRenderFixMargins(chart);
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+
@@ -382,14 +508,13 @@ function beforeRender(chart, settings) {
 /// once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
 export default function lineAndBarOnRender(
   chart,
-  settings,
   onGoalHover,
   isSplitAxis,
   isStacked,
 ) {
-  beforeRender(chart, settings);
+  beforeRender(chart);
   chart.on("renderlet.on-render", () =>
-    onRender(chart, settings, onGoalHover, isSplitAxis, isStacked),
+    onRender(chart, onGoalHover, isSplitAxis, isStacked),
   );
   chart.render();
 }

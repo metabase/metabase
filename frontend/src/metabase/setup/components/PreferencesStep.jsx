@@ -103,7 +103,7 @@ export default class PreferencesStep extends Component {
               <div className="Form-field Form-offset">
                 <ul style={{ listStyle: "disc inside", lineHeight: "200%" }}>
                   <li>{jt`Metabase ${(
-                    <span style={{ fontWeight: "bold" }}>never</span>
+                    <span style={{ fontWeight: "bold" }}>{t`never`}</span>
                   )} collects anything about your data or question results.`}</li>
                   <li>{t`All collection is completely anonymous.`}</li>
                   <li

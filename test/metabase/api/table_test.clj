@@ -9,7 +9,6 @@
              [middleware :as middleware]
              [query-processor-test :as qpt]
              [sync :as sync]
-             [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
             [metabase.api.table :as table-api]
             [metabase.models
@@ -19,7 +18,6 @@
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :as table :refer [Table]]]
-            [metabase.query-processor-test :as qpt]
             [metabase.test
              [data :as data]
              [util :as tu :refer [match-$]]]
@@ -27,6 +25,7 @@
              [dataset-definitions :as defs]
              [datasets :as datasets]
              [users :refer [user->client]]]
+            [metabase.timeseries-query-processor-test.util :as tqpt]
             [toucan
              [db :as db]
              [hydrate :as hydrate]]
@@ -66,7 +65,7 @@
    :caveats                 nil
    :points_of_interest      nil
    :show_in_getting_started false
-   :entity_type             nil
+   :entity_type             "entity/GenericTable"
    :visibility_type         nil
    :db                      (db-details)
    :entity_name             nil
@@ -114,25 +113,29 @@
 (expect
   #{{:name         (data/format-name "categories")
      :display_name "Categories"
-     :rows         75
-     :id           (data/id :categories)}
+     :rows         0
+     :id           (data/id :categories)
+     :entity_type  "entity/GenericTable"}
     {:name         (data/format-name "checkins")
      :display_name "Checkins"
-     :rows         1000
-     :id           (data/id :checkins)}
+     :rows         0
+     :id           (data/id :checkins)
+     :entity_type  "entity/EventTable"}
     {:name         (data/format-name "users")
      :display_name "Users"
-     :rows         15
-     :id           (data/id :users)}
+     :rows         0
+     :id           (data/id :users)
+     :entity_type  "entity/UserTable"}
     {:name         (data/format-name "venues")
      :display_name "Venues"
-     :rows         100
-     :id           (data/id :venues)}}
+     :rows         0
+     :id           (data/id :venues)
+     :entity_type  "entity/GenericTable"}}
   (->> ((user->client :rasta) :get 200 "table")
        (filter #(= (:db_id %) (data/id))) ; prevent stray tables from affecting unit test results
        (map #(dissoc %
-                     :raw_table_id :db :created_at :updated_at :schema :entity_name :description :entity_type
-                     :visibility_type :caveats :points_of_interest :show_in_getting_started :db_id :active))
+                     :raw_table_id :db :created_at :updated_at :schema :entity_name :description :visibility_type
+                     :caveats :points_of_interest :show_in_getting_started :db_id :active))
        set))
 
 
@@ -143,7 +146,7 @@
            {:schema       "PUBLIC"
             :name         "VENUES"
             :display_name "Venues"
-            :rows         100
+            :rows         nil
             :updated_at   $
             :pk_field     (#'table/pk-field-id $$)
             :id           (data/id :venues)
@@ -183,7 +186,7 @@
                              :display_name     "ID"
                              :database_type    "BIGINT"
                              :base_type        "type/BigInteger"
-                             :has_field_values "search")
+                             :has_field_values "none")
                            (assoc (field-details (Field (data/id :categories :name)))
                              :table_id                 (data/id :categories)
                              :special_type             "type/Name"
@@ -194,7 +197,7 @@
                              :dimension_options        []
                              :default_dimension_option nil
                              :has_field_values         "list")]
-            :rows         75
+            :rows         nil
             :updated_at   $
             :id           (data/id :categories)
             :raw_table_id $
@@ -228,6 +231,7 @@
            {:schema       "PUBLIC"
             :name         "USERS"
             :display_name "Users"
+            :entity_type  "entity/UserTable"
             :fields       [(assoc (field-details (Field (data/id :users :id)))
                              :special_type     "type/PK"
                              :table_id         (data/id :users)
@@ -236,7 +240,7 @@
                              :database_type    "BIGINT"
                              :base_type        "type/BigInteger"
                              :visibility_type  "normal"
-                             :has_field_values "search")
+                             :has_field_values "none")
                            (assoc (field-details (Field (data/id :users :last_login)))
                              :table_id                 (data/id :users)
                              :name                     "LAST_LOGIN"
@@ -246,7 +250,7 @@
                              :visibility_type          "normal"
                              :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                              :default_dimension_option (var-get #'table-api/date-default-index)
-                             :has_field_values         "search")
+                             :has_field_values         "none")
                            (assoc (field-details (Field (data/id :users :name)))
                              :special_type             "type/Name"
                              :table_id                 (data/id :users)
@@ -267,7 +271,7 @@
                              :base_type        "type/Text"
                              :visibility_type  "sensitive"
                              :has_field_values "list")]
-            :rows         15
+            :rows         nil
             :updated_at   $
             :id           (data/id :users)
             :raw_table_id $
@@ -282,6 +286,7 @@
            {:schema       "PUBLIC"
             :name         "USERS"
             :display_name "Users"
+            :entity_type  "entity/UserTable"
             :fields       [(assoc (field-details (Field (data/id :users :id)))
                              :table_id         (data/id :users)
                              :special_type     "type/PK"
@@ -289,7 +294,7 @@
                              :display_name     "ID"
                              :database_type    "BIGINT"
                              :base_type        "type/BigInteger"
-                             :has_field_values "search")
+                             :has_field_values "none")
                            (assoc (field-details (Field (data/id :users :last_login)))
                              :table_id                 (data/id :users)
                              :name                     "LAST_LOGIN"
@@ -298,7 +303,7 @@
                              :base_type                "type/DateTime"
                              :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                              :default_dimension_option (var-get #'table-api/date-default-index)
-                             :has_field_values         "search")
+                             :has_field_values         "none")
                            (assoc (field-details (Field (data/id :users :name)))
                              :table_id         (data/id :users)
                              :special_type     "type/Name"
@@ -307,7 +312,7 @@
                              :database_type    "VARCHAR"
                              :base_type        "type/Text"
                              :has_field_values "list")]
-            :rows         15
+            :rows         nil
             :updated_at   $
             :id           (data/id :users)
             :raw_table_id $
@@ -335,7 +340,7 @@
 
 
 ;; ## PUT /api/table/:id
-(tt/expect-with-temp [Table [table {:rows 15}]]
+(tt/expect-with-temp [Table [table]]
   (merge (-> (table-defaults)
              (dissoc :segments :field_values :metrics)
              (assoc-in [:db :details] {:db "mem:test-data;USER=GUEST;PASSWORD=guest"}))
@@ -345,7 +350,7 @@
             :visibility_type "hidden"
             :schema          $
             :name            $
-            :rows            15
+            :rows            nil
             :display_name    "Userz"
             :pk_field        (#'table/pk-field-id $$)
             :id              $
@@ -358,7 +363,9 @@
       (dissoc ((user->client :crowberto) :get 200 (format "table/%d" (:id table)))
               :updated_at)))
 
-(tt/expect-with-temp [Table [table {:rows 15}]]
+;; see how many times sync-table! gets called when we call the PUT endpoint. It should happen when you switch from
+;; hidden -> not hidden at the spots marked below, twice total
+(tt/expect-with-temp [Table [table]]
   2
   (let [original-sync-table! sync/sync-table!
         called (atom 0)
@@ -370,11 +377,11 @@
                                                                                           :visibility_type state
                                                                                           :description     "What a nice table!"})))]
     (do (test-fun "hidden")
-        (test-fun nil)
+        (test-fun nil)         ; <- should get synced
         (test-fun "hidden")
         (test-fun "cruft")
         (test-fun "technical")
-        (test-fun nil)
+        (test-fun nil)         ; <- should get synced again
         (test-fun "technical")
         @called)))
 
@@ -400,7 +407,8 @@
                                                          {:schema       "PUBLIC"
                                                           :name         "CHECKINS"
                                                           :display_name "Checkins"
-                                                          :rows         1000
+                                                          :entity_type  "entity/EventTable"
+                                                          :rows         nil
                                                           :updated_at   $
                                                           :id           $
                                                           :raw_table_id $
@@ -410,15 +418,16 @@
                           (assoc :table_id      (data/id :users)
                                  :name          "ID"
                                  :display_name  "ID"
-                                 :database_type "BIGINT"
                                  :base_type     "type/BigInteger"
+                                 :database_type "BIGINT"
                                  :special_type  "type/PK"
                                  :table         (merge (dissoc (table-defaults) :db :segments :field_values :metrics)
                                                        (match-$ (Table (data/id :users))
                                                          {:schema       "PUBLIC"
                                                           :name         "USERS"
                                                           :display_name "Users"
-                                                          :rows         15
+                                                          :entity_type  "entity/UserTable"
+                                                          :rows         nil
                                                           :updated_at   $
                                                           :id           $
                                                           :raw_table_id $
@@ -636,7 +645,7 @@
 ;; Datetime binning options should showup whether the backend supports binning of numeric values or not
 (datasets/expect-with-engines #{:druid}
   (var-get #'table-api/datetime-dimension-indexes)
-  (timeseries-qp-test/with-flattened-dbdef
+  (tqpt/with-flattened-dbdef
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
       (dimension-options-for-field response "timestamp"))))
 

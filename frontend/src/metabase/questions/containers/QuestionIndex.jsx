@@ -27,9 +27,13 @@ import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export const CollectionEmptyState = () => (
-  <div className="flex align-center p2 mt4 bordered border-med border-brand rounded bg-grey-0 text-brand">
-    <Icon name="collection" size={32} className="mr2" />
-    <div className="flex-full">
+  <div className="flex flex-column sm-flex-row align-center p2 mt4 bordered border-med border-brand rounded bg-grey-0 text-brand">
+    <Icon
+      name="collection"
+      size={32}
+      className="mb2 sm-mr2 sm-mb0 hide sm-show"
+    />
+    <div className="flex-full text-centered sm-text-left">
       <h3>{t`Create collections for your saved questions`}</h3>
       <div className="mt1">
         {t`Collections help you organize your questions and allow you to decide who gets to see what.`}{" "}
@@ -41,7 +45,7 @@ export const CollectionEmptyState = () => (
         </a>
       </div>
     </div>
-    <Link to="/collections/create">
+    <Link to="/collections/create" className="mt2 sm-mt0">
       <Button primary>{t`Create a collection`}</Button>
     </Link>
   </div>
@@ -144,7 +148,7 @@ export class QuestionIndex extends Component {
     return (
       <div
         className={cx("relative px4", {
-          "full-height flex flex-column bg-slate-extra-light": showNoSavedQuestionsState,
+          "full-height bg-slate-extra-light": showNoSavedQuestionsState,
         })}
       >
         {/* Use loading wrapper only for displaying the loading indicator as EntityList component should always be in DOM */}
