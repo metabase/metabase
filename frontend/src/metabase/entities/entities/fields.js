@@ -132,3 +132,42 @@ export const reducer = handleActions(
   },
   {},
 );
+
+import {
+  field_visibility_types,
+  field_special_types,
+  has_field_values_options,
+} from "metabase/lib/core";
+import { TYPE } from "metabase/lib/types";
+
+export const form = {
+  fields: (values = {}) =>
+    [
+      { name: "display_name" },
+      { name: "description" },
+      {
+        name: "visibility_type",
+        type: "select",
+        options: field_visibility_types.map(type => ({
+          name: type.name,
+          value: type.id,
+        })),
+      },
+      {
+        name: "special_type",
+        type: "select",
+        options: field_special_types.map(type => ({
+          name: type.name,
+          value: type.id,
+        })),
+      },
+      values.special_type === TYPE.FK && {
+        name: "fk_target_field_id",
+      },
+      {
+        name: "has_field_values",
+        type: "select",
+        options: has_field_values_options,
+      },
+    ].filter(f => f),
+};
