@@ -3,7 +3,12 @@ description: A look at your events over time and by several categories.
 metrics:
   - Count: ["count"]
 dimensions:
-  - Timestamp: DateTime
+  - Timestamp:
+      field_type: CreationTimestamp
+      score: 100
+  - Timestamp:
+      field_type: DateTime
+      score: 90
   - GenericCategorySmall:
       field_type: GenericTable.Category
       score: 80
@@ -29,11 +34,17 @@ groups:
   - Overview:
       title: Overview
   - Periodicity:
-      title: Periodicity
+      title: Seasonal breakdown
   - Geographical:
       title: Geographical breakdown
   - General:
-      title: General distributions
+      title: General breakdowns
+dashboard_filters:
+- Timestamp
+- GenericCategorySmall
+- GenericCategoryMedium
+- Country
+- State
 cards:
 # Overview
   - Rowcount:
@@ -72,7 +83,7 @@ cards:
       score: 90
 # General
   - CountByCategorySmall:
-      title: Distribution by [[GenericCategorySmall]]
+      title: Event count by [[GenericCategorySmall]]
       dimensions: GenericCategorySmall
       metrics: Count
       visualization: row
@@ -81,7 +92,7 @@ cards:
       order_by:
         - Count: descending
   - NumberDistribution:
-      title: Distribution of [[GenericNumber]]
+      title: Event count by [[GenericNumber]]
       dimensions:
         - GenericNumber:
             aggregation: default
@@ -90,7 +101,7 @@ cards:
       score: 90
       group: General
   - CountByCategoryMedium:
-      title: Distribution by [[GenericCategoryMedium]]
+      title: Event count by [[GenericCategoryMedium]]
       dimensions: GenericCategoryMedium
       metrics: Count
       visualization: row
@@ -100,7 +111,7 @@ cards:
       order_by:
         - Count: descending
   - CountByCategoryLarge:
-      title: Distribution by [[GenericCategoryLarge]]
+      title: Event count by [[GenericCategoryLarge]]
       dimensions: GenericCategoryLarge
       metrics: Count
       visualization: table
@@ -111,7 +122,7 @@ cards:
         - Count: descending
 # Geographical
   - EventsByCountry:
-      title: Distribution by country
+      title: Event count by country
       metrics: Count
       dimensions: Country
       score: 80
@@ -121,7 +132,7 @@ cards:
           map.region: world_countries
       group: Geographical
   - EventsByState:
-      title: Distribution by state
+      title: Event count by state
       metrics: Count
       dimensions: State
       score: 70
@@ -131,7 +142,7 @@ cards:
           map.region: us_state
       group: Geographical
   - EventsByCoords:
-      title: Distribution by coordinates
+      title: Event count by coordinates
       metrics: Count
       dimensions:
         - Lat
@@ -141,7 +152,7 @@ cards:
       group: Geographical
 # Periodicity
   - DayOfWeekTimestamp:
-      title: Distribution by day of week
+      title: Event count by day of week
       visualization: bar
       dimensions:
         - Timestamp:
@@ -149,8 +160,9 @@ cards:
       metrics: Count
       score: 60
       group: Periodicity
+      x_label: day of week
   - HourOfDayTimestamp:
-      title: Distribution by hour of day
+      title: Event count by hour of day
       visualization: bar
       dimensions:
       - Timestamp:
@@ -158,8 +170,9 @@ cards:
       metrics: Count
       score: 50
       group: Periodicity
+      x_label: Hour of day
   - DayOfMonthTimestamp:
-      title: Distribution by day of month
+      title: Event count by day of month
       visualization: bar
       dimensions:
         - Timestamp:
@@ -167,8 +180,9 @@ cards:
       metrics: Count
       score: 40
       group: Periodicity
+      x_label: Day of month
   - MonthOfYearTimestamp:
-      title: Distribution by month of year
+      title: Event count by month of year
       visualization: bar
       dimensions:
         - Timestamp:
@@ -176,8 +190,9 @@ cards:
       metrics: Count
       score: 40
       group: Periodicity
+      x_label: Month of year
   - QuerterOfYearTimestamp:
-      title: Distribution by quarter of year
+      title: Event count by quarter of year
       visualization: bar
       dimensions:
         - Timestamp:
@@ -185,3 +200,4 @@ cards:
       metrics: Count
       score: 40
       group: Periodicity
+      x_label: Quarter of year

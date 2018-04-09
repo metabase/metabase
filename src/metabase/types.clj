@@ -64,6 +64,7 @@
 (derive :type/City :type/Text)
 (derive :type/State :type/Text)
 (derive :type/Country :type/Text)
+(derive :type/ZipCode :type/Text)
 
 (derive :type/Name :type/Text)
 (derive :type/Title :type/Text)

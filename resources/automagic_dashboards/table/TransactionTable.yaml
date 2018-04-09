@@ -3,29 +3,36 @@ description: Some metrics we found about your transactions.
 metrics:
 - AvgDiscount:
     metric: [/, [sum, [dimension, Discount]], [sum, [dimension, Income]]]
+    name: Average discount %
 - TotalIncome:
     metric: [sum, [dimension, Income]]
-- AvgIncome: [avg, [dimension, Income]]
+    name: Total income
+- AvgIncome:
+    metric: [avg, [dimension, Income]]
+    name: Average income per transaction
 - AvgQuantity:
     metric: [avg, [dimension, Quantity]]
-- TotalOrders: [count]
+    name: Average quantity
+- TotalOrders:
+    metric: [count]
+    name: Number of orders
 dimensions:
 - Timestamp:
     field_type: CreationTimestamp
 - Timestamp:
     field_type: DateTime
 - State:
-    field_type: UserTable.State
-- Country: UserTable.Country
+    field_type: GenericTable.State
+- Country: GenericTable.Country
 - Income: Income
 - Discount: Discount
 - Quantity:
     field_type: Quantity
 - SourceSmall:
-    field_type: UserTable.Source
+    field_type: GenericTable.Source
     max_cardinality: 10
 - Source:
-    field_type: UserTable.Source
+    field_type: GenericTable.Source
 - Cohort:
     field_type: UserTable.JoinTimestamp
     score: 100
@@ -45,6 +52,19 @@ dimensions:
 - ProductCategory:
     field_type: ProductTable.Category
     named: category
+- Long: GenericTable.Longitude
+- Lat: GenericTable.Latitude
+filters:
+  - Last30Days:
+      filter: ["time-interval", [dimension, Timestamp], -30, day]
+      score: 80
+groups:
+- Overview:
+    title: Overview
+- Geographical:
+    title: Geographical breakdown
+- General:
+    title: Transaction breakdown
 dashboard_filters:
 - Timestamp
 - Source
@@ -54,88 +74,127 @@ dashboard_filters:
 - Product
 - ProductCategory
 cards:
-- Rowcount:
-    title: Total number of transactions
-    visualization: scalar
-    metrics: TotalOrders
-    score: 30
-- IncomeByMonth:
-    visualization: line
-    title: Sales by month
-    description: Total income by month
-    dimensions: Timestamp
-    metrics:
-      - TotalIncome
-      - TotalOrders
-- AverageQuantityByMonth:
-    visualization: line
-    title: Average quantity by month
-    description: Average item quantity by month
-    dimensions: Timestamp
-    metrics:
-     - AvgQuantity
-     - AvgIncome
-- AverageDiscountByMonth:
-    visualization: line
-    title: Average discount by month
-    dimensions: Timestamp
-    metrics: AvgDiscount
-    score: 70
-- OrdersByState:
-    visualization:
-      map:
-        map.type: region
-        map.region: us_states
-    title: Sales by state
-    dimensions: State
-    metrics: TotalOrders
-- OrdersByCountry:
-    visualization:
-      map:
-        map.type: region
-        map.region: world_countries
-    title: Sales by state
-    dimensions: Country
-    metrics: TotalOrders
-- OrdersByProduct:
-    title: Sales by product (top 10)
-    visualization: row
-    dimensions:
-      - Product
-    metrics: TotalOrders
-    order_by:
-      - TotalOrders: descending
-    limit: 10
-    height: 8
-    score: 90
-- OrdersByProductCategory:
-    title: Sales by product category (top 10)
-    visualization: row
-    dimensions:
-      - ProductCategory
-    metrics: TotalOrders
-    order_by:
-      - TotalOrders: descending
-    score: 90
-    limit: 10
-    height: 8
-- OrdersBySource:
-    title: Sales by source
-    visualization:
-      area:
-        stackable.stack_type: stacked
-    dimensions:
-      - Timestamp
-      - SourceSmall
-    metrics: TotalOrders
-    score: 100
-- OrdersBySource:
-    title: Sales by source (top 10)
-    visualization: row
-    dimensions: Source
-    metrics: TotalOrders
-    order_by:
-      - TotalOrders: descending
-    limit: 10
-    score: 90
-    height: 8
+# Overview
+  - Rowcount:
+      title: Total number of transactions
+      visualization: scalar
+      metrics: TotalOrders
+      score: 100
+      group: Overview
+  - RowcountLast30Days:
+      title: Transactions in the last 30 days
+      visualization: scalar
+      metrics: TotalOrders
+      score: 100
+      filters: Last30Days
+      group: Overview
+  - IncomeByMonth:
+      visualization: line
+      title: Sales by month
+      description: Total income by month
+      dimensions: Timestamp
+      metrics:
+        - TotalIncome
+        - TotalOrders
+      width: 18
+      group: Overview
+# General
+  - AverageQuantityByMonth:
+      visualization: line
+      title: Average quantity by month
+      description: Average item quantity by month
+      dimensions: Timestamp
+      metrics: AvgQuantity
+      group: General
+  - AverageIncomeByMonth:
+      visualization: line
+      title: Average transaction income by month
+      dimensions: Timestamp
+      metrics: AvgIncome
+      group: General
+  - AverageDiscountByMonth:
+      visualization: line
+      title: Average discount by month
+      dimensions: Timestamp
+      metrics: AvgDiscount
+      score: 70
+      group: General
+  - OrdersByProduct:
+      title: Sales by product (top 10)
+      visualization: row
+      dimensions:
+        - Product
+      metrics: TotalOrders
+      order_by:
+        - TotalOrders: descending
+      limit: 10
+      height: 8
+      score: 90
+      group: General
+  - OrdersByProductCategory:
+      title: Sales by product category (top 10)
+      visualization: row
+      dimensions:
+        - ProductCategory
+      metrics: TotalOrders
+      order_by:
+        - TotalOrders: descending
+      score: 90
+      limit: 10
+      height: 8
+      group: General
+  - OrdersBySource:
+      title: Sales by source
+      visualization:
+        area:
+          stackable.stack_type: stacked
+      dimensions:
+        - Timestamp
+        - SourceSmall
+      metrics: TotalOrders
+      width: 12
+      score: 100
+      group: General
+  - OrdersBySource:
+      title: Sales by source (top 10)
+      visualization: row
+      dimensions: Source
+      metrics: TotalOrders
+      order_by:
+        - TotalOrders: descending
+      limit: 10
+      score: 90
+      height: 8
+      group: General
+# Geographical
+  - CountByCountry:
+      title: Sales by country
+      metrics: TotalOrders
+      dimensions: Country
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      group: Geographical
+  - CountByState:
+      title: Sales by state
+      metrics: TotalOrders
+      dimensions: State
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      group: Geographical
+  - CountByCoords:
+      title: Sales by coordinates
+      metrics: TotalOrders
+      dimensions:
+        - Long:
+            aggregation: default
+        - Lat:
+            aggregation: default
+      visualization: map
+      score: 80
+      group: Geographical

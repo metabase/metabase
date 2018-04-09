@@ -55,7 +55,7 @@
         (fn [acc color count]
           (if (= count 1)
             (conj acc color)
-            (concat acc [color (drop-while (conj (set acc) color) colors)])))
+            (concat acc [color (first (drop-while (conj (set acc) color) colors))])))
         [])))
 
 (defn- colorize
@@ -205,7 +205,7 @@
         start-row (cond-> start-row
                     ;; First row doesn't need empty space above
                     (pos? start-row) inc
-                    group            (+ 2))]
+                    group            (+ group-heading-height))]
     (reduce (fn [[dashboard grid] card]
               (let [xy (card-position grid start-row card)]
                 [(if (text-card? card)

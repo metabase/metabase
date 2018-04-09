@@ -99,6 +99,11 @@
   [_ form]
   form)
 
+(defn- field-isa?
+  [{:keys [base_type special_type]} t]
+  (or (isa? special_type t)
+      (isa? base_type t)))
+
 (defn- numeric-key?
   "Workaround for our leaky type system which conflates types with properties."
   [{:keys [base_type special_type name]}]
@@ -111,8 +116,7 @@
                       (if (and (string? fieldspec)
                                (rules/ga-dimension? fieldspec))
                         (comp #{fieldspec} :name)
-                        (fn [{:keys [base_type special_type fk_target_field_id]
-                              :as field}]
+                        (fn [{:keys [special_type fk_target_field_id] :as field}]
                           (cond
                             ;; This case is mostly relevant for native queries
                             (#{:type/PK :type/FK} fieldspec)
@@ -123,8 +127,7 @@
 
                             :else
                             (and (not (numeric-key? field))
-                                 (some #(isa? % fieldspec)
-                                       [special_type base_type]))))))
+                                 (field-isa? field fieldspec))))))
    :named           (fn [name-pattern]
                       (comp (->> name-pattern
                                  str/lower-case
@@ -240,6 +243,16 @@
          [:dimension identifier]
          [:aggregate-field (u/index-of #{identifier} metrics)])])))
 
+(defn merge-filters
+  "Merge MBQL filter clauses."
+  ([] [])
+  ([a] a)
+  ([a b]
+   (cond
+     (empty? a) b
+     (empty? b) a
+     :else      [:and a b])))
+
 (defn- build-query
   ([context bindings filters metrics dimensions limit order_by]
    (walk/postwalk
@@ -252,9 +265,7 @@
      :database (:database context)
      :query    (cond-> {:source_table (-> context :source-table :id)}
                  (not-empty filters)
-                 (assoc :filter (cond->> (map :filter filters)
-                                  (> (count filters) 1) (apply vector :and)
-                                  :else                 first))
+                 (assoc :filter (transduce (map :filter) merge-filters filters))
 
                  (not-empty dimensions)
                  (assoc :breakout dimensions)
@@ -315,7 +326,9 @@
   [context {:keys [metrics filters dimensions score limit order_by query] :as card}]
   (let [order_by        (build-order-by dimensions metrics order_by)
         metrics         (map (partial get (:metrics context)) metrics)
-        filters         (map (partial get (:filters context)) filters)
+        filters         (cond-> (map (partial get (:filters context)) filters)
+                          (:query-filter context)
+                          (conj {:filter (:query-filter context)}))
         score           (if query
                           score
                           (* (or (->> dimensions
@@ -360,8 +373,7 @@
                    (let [[entity-type field-type] applies_to]
                      (and (isa? table-type entity-type)
                           (or (nil? field-type)
-                              (some #(isa? % field-type)
-                                    ((juxt :base_type :special_type) entity)))))))
+                              (field-isa? entity field-type))))))
          (sort-by rule-specificity >))))
 
 (defn- linked-tables
@@ -432,7 +444,8 @@
                             :id)]
     (as-> {:source-table (assoc source-table :fields (table->fields source-table))
            :tables       (map #(assoc % :fields (table->fields %)) tables)
-           :database     (-> root :database :id)} context
+           :database     (-> root :database :id)
+           :query-filter (:query-filter root)} context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
       (assoc context :metrics (resolve-overloading context (:metrics rule)))
       (assoc context :filters (resolve-overloading context (:filters rule)))
@@ -451,21 +464,6 @@
            vals
            (apply concat)))
 
-(defn merge-filters
-  "Merge MBQL filter clauses."
-  [a b]
-  (cond
-    (empty? a) b
-    (empty? b) a
-    :else      [:and a b]))
-
-(defn inject-segment
-  "Inject filter clause into card."
-  [entity card]
-  (-> card
-      (update-in [:dataset_query :query :filter] merge-filters (:query-filter entity))
-      (update :series (partial map (partial inject-segment entity)))))
-
 (defn- apply-rule
   [root rule]
   (let [context   (make-context root rule)
@@ -476,8 +474,7 @@
         filters   (->> rule
                        :dashboard_filters
                        (mapcat (comp :matches (:dimensions context))))
-        cards     (cond->> (make-cards context rule)
-                    (:query-filter root) (map (partial inject-segment root)))]
+        cards     (make-cards context rule)]
     (when cards
       [(assoc dashboard
          :filters filters
@@ -487,6 +484,19 @@
 
 (def ^:private ^:const ^Long max-related 6)
 (def ^:private ^:const ^Long max-cards 15)
+
+(defn- indepth
+  [root rule]
+  (->> rule
+       :indepth
+       (keep (fn [indepth]
+               (when-let [[dashboard _] (apply-rule root indepth)]
+                 {:title       (:title dashboard)
+                  :description (:description dashboard)
+                  :table       (:source-table root)
+                  :url         (format "%s/%s/%s" (:url root) (:rule rule)
+                                       (:rule indepth))})))
+       (take max-related)))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
@@ -500,18 +510,7 @@
                   ;; `matching-rules` returns an `ArraySeq` (via `sort-by`) so
                   ;; `first` realises one element at a time (no chunking).
                   first))]
-    (let [indepth (->> rule
-                       :indepth
-                       (keep (fn [indepth]
-                               (when-let [[dashboard _] (apply-rule root indepth)]
-                                 {:title       (:title dashboard)
-                                  :description (:description dashboard)
-                                  :table       (:source-table root)
-                                  :url         (format "%s/%s/%s"
-                                                       (:url root)
-                                                       (:rule rule)
-                                                       (:rule indepth))})))
-                       (take max-related))]
+    (do
       (log/info (format "Applying heuristic %s to %s."
                         (:rule rule)
                         (:full-name root)))
@@ -526,7 +525,7 @@
                         (-> dashboard :context :filters u/pprint-to-str)))
       (-> (populate/create-dashboard dashboard (or show max-cards))
           (assoc :related {:tables  []
-                           :indepth indepth
+                           :indepth (indepth root rule)
                            :more    (if (and (-> dashboard
                                                  :cards
                                                  count
@@ -637,3 +636,27 @@
              :full-name    (str "field " (:display_name field))
              :url          (format "%sfield/%s" public-endpoint (:id field))
              :rules-prefix "field"}))))
+
+(defn candidate-tables
+  "Return a list of tables in database with ID `database-id` for which it makes sense
+   to generate an automagic dashboard."
+  ([database] (candidate-tables database nil))
+  ([database schema]
+   (let [rules (rules/load-rules "table")]
+     (->> (apply db/select Table
+                 (cond-> [:db_id           (:id database)
+                          :visibility_type nil]
+                   schema (concat [:schema schema])))
+          (remove (some-fn link-table? list-like-table?))
+          (keep (fn [table]
+                  (when-let [[dashboard rule]
+                             (->> table
+                                  (matching-rules rules)
+                                  (keep (partial apply-rule table))
+                                  first)]
+                    {:url         (format "%stable/%s" public-endpoint (:id table))
+                     :title       (:title dashboard)
+                     :score       (rule-specificity rule)
+                     :description (:description dashboard)
+                     :table       table})))
+          (sort-by :score >)))))

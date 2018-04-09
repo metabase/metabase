@@ -15,52 +15,138 @@ dimensions:
     score: 30
 - Source:
     field_type: Source
+- GenericNumber:
+    field_type: GenericTable.Number
+    score: 80
+- Source:
+    field_type: GenericTable.Source
+    score: 100
+- GenericCategorySmall:
+    field_type: GenericTable.Category
+    score: 80
+    max_cardinality: 5
+- GenericCategoryMedium:
+    field_type: GenericTable.Category
+    score: 75
+    max_cardinality: 10
+- GenericCategoryLarge:
+    field_type: GenericTable.Category
+    score: 70
 - State:
     field_type: State
 - Country: Country
+- Long: GenericTable.Longitude
+- Lat: GenericTable.Latitude
+# Ignore
+- Name: Name
 filters:
   - Last30Days:
       filter: ["time-interval", [dimension, JoinDate], -30, day]
+groups:
+- Overview:
+    title: Overview
+- Geographical:
+    title: Geographical breakdown
+- General:
+    title: General breakdowns
+dashboard_filters:
+- JoinDate
+- GenericCategorySmall
+- GenericCategoryMedium
+- Source
+- Country
+- State
 cards:
-- Rowcount:
-    title: Total number of users
-    visualization: scalar
-    metrics: Count
-    score: 30
-- RowcountLast30Days:
-    title: New users in the last 30 days
-    visualization: scalar
-    metrics: Count
-    score: 25
-    filters: Last30Days
-- NewUsersByMonth:
-    visualization: line
-    title: New users by month
-    description: How many new users have we acquired each month
-    dimensions: JoinDate
-    metrics: Count
-- UsersByState:
-    visualization:
-      map:
-        map.type: region
-        map.region: us_states
-    title: Users by state
-    dimensions: State
-    metrics: Count
-- UsersByCountry:
-    visualization:
-      map:
-        map.type: region
-        map.region: world_countries
-    title: Users by country
-    dimensions: Country
-    metrics: Count
-- UsersBySource:
-    title: Users by source (top 10)
-    dimensions: Source
-    metrics: Count
-    visualization: row
-    order_by:
-      - Count: descending
-    limit: 10
-    height: 8
+# Overview
+  - Rowcount:
+      title: Total number of users
+      visualization: scalar
+      metrics: Count
+      score: 100
+      group: Overview
+  - RowcountLast30Days:
+      title: New users in the last 30 days
+      visualization: scalar
+      metrics: Count
+      score: 100
+      filters: Last30Days
+      group: Overview
+  - NewUsersByMonth:
+      visualization: line
+      title: New users by month
+      description: How many new users have we acquired each month
+      dimensions: JoinDate
+      metrics: Count
+      score: 100
+      group: Overview
+# Geographical
+  - CountByCountry:
+      title: Count of users by country
+      metrics: Count
+      dimensions: Country
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      group: Geographical
+  - CountByState:
+      title: Count of users by state
+      metrics: Count
+      dimensions: State
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      group: Geographical
+  - CountByCoords:
+      title: Count of users by coordinates
+      metrics: Count
+      dimensions:
+        - Long:
+            aggregation: default
+        - Lat:
+            aggregation: default
+      visualization: map
+      score: 80
+      group: Geographical
+# General
+  - CountByCategorySmall:
+      title: Count of users by [[GenericCategorySmall]]
+      dimensions: GenericCategorySmall
+      metrics: Count
+      visualization: row
+      score: 90
+      group: General
+      order_by:
+        - Count: descending
+  - NumberDistribution:
+      title: Distribution of [[GenericNumber]]
+      dimensions:
+        - GenericNumber:
+            aggregation: default
+      metrics: Count
+      visualization: bar
+      score: 90
+      group: General
+  - CountByCategoryMedium:
+      title: Count of users by [[GenericCategoryMedium]]
+      dimensions: GenericCategoryMedium
+      metrics: Count
+      visualization: row
+      score: 80
+      height: 8
+      group: General
+      order_by:
+        - Count: descending
+  - CountByCategoryLarge:
+      title: Count of users by [[GenericCategoryLarge]]
+      dimensions: GenericCategoryLarge
+      metrics: Count
+      visualization: table
+      height: 8
+      score: 70
+      group: General
+      order_by:
+        - Count: descending

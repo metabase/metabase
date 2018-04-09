@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
-             [core :refer [inject-segment]]
+             [core :refer [merge-filters]]
              [populate :as populate]]))
 
 (defn- dashboard->cards
@@ -84,6 +84,13 @@
     (for [aggregation (-> card :dataset_query :query :aggregation)]
       (assoc-in card [:dataset_query :query :aggregation] [aggregation]))
     [card]))
+
+(defn inject-segment
+  "Inject filter clause into card."
+  [query-filter card]
+  (-> card
+      (update-in [:dataset_query :query :filter] merge-filters query-filter)
+      (update :series (partial map (partial inject-segment query-filter)))))
 
 (defn comparison-dashboard
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
