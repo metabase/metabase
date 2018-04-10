@@ -547,7 +547,7 @@ export default class TokenField extends Component {
       >
         {value.map((v, index) => (
           <li
-            key={v + index}
+            key={index}
             className={cx(
               `mt1 ml1 py1 pl2 rounded bg-grey-05`,
               multi ? "pr1" : "pr2",
