@@ -7,6 +7,20 @@ dimensions:
     field_type: CreationTimestamp
 - Timestamp:
     field_type: DateTime
+- Country: GenericTable.Country
+- State: GenericTable.State
+- Source:
+    field_type: UserTable.Source
+    max_cardinality: 10
+- ProductCategory:
+    field_type: ProductTable.Category
+    max_cardinality: 10
+dashboard_filters:
+- Source
+- Timestamp
+- State
+- Country
+- ProductCategory
 cards:
   - CountByTimestamp:
       title: Nuber of transactions over time

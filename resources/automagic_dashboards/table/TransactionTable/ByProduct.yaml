@@ -9,7 +9,20 @@ dimensions:
 - ProductCategoryLarge:
     field_type: ProductTable.Category
 - Rating: ProductTable.Score
+- Country: GenericTable.Country
+- State: GenericTable.State
+- Timestamp:
+    field_type: CreationTimestamp
+- Timestamp:
+    field_type: DateTime
+- Source:
+    field_type: UserTable.Source
+    max_cardinality: 10
 dashboard_filters:
+- Source
+- Timestamp
+- State
+- Country
 - ProductCategoryMedium
 cards:
 - OrdersVsRating:

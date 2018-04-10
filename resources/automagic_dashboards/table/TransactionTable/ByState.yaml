@@ -34,6 +34,26 @@ dimensions:
 - Cohort:
     field_type: UserTable.DateTime
     score: 80
+- Product:
+    field_type: Product
+    score: 90
+    max_cardinality: 10
+- Product:
+    field_type: ProductTable.Name
+    max_cardinality: 10
+- Product:
+    field_type: ProductTable.Title
+    max_cardinality: 10
+- ProductCategory:
+    field_type: ProductTable.Category
+    named: category
+    max_cardinality: 10
+    score: 90
+- Source:
+    field_type: GenericTable.Source
+    max_cardinality: 10
+    score: 90
+- Country: GenericTable.Country
 filters:
   - Last30Days:
       filter: ["time-interval", [dimension, Timestamp], -30, day]
@@ -47,7 +67,12 @@ groups:
 - Users:
     title: User acquisition by state
 dashboard_filters:
-- State
+  - Timestamp
+  - Source
+  - Country
+  - State
+  - Product
+  - ProductCategory
 cards:
 - TopStatesBySales:
     title: Top 10 states by sales
