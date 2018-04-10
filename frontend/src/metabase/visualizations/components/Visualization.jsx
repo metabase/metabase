@@ -59,6 +59,7 @@ type Props = {
   showTitle: boolean,
   isDashboard: boolean,
   isEditing: boolean,
+  isEditingSettings: boolean,
 
   actionButtons: Element<any>,
 

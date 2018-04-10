@@ -8,6 +8,7 @@ import "ace/ace";
 import "ace/mode-plain_text";
 import "ace/mode-javascript";
 import "ace/mode-json";
+import "ace/mode-markdown";
 
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;

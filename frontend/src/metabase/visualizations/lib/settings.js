@@ -15,6 +15,7 @@ import { isDate, isMetric, isDimension } from "metabase/lib/schema_metadata";
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput.jsx";
 import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup.jsx";
 import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric.jsx";
+import ChartSettingCode from "metabase/visualizations/components/settings/ChartSettingCode.jsx";
 import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio.jsx";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle.jsx";
@@ -27,6 +28,7 @@ const WIDGETS = {
   input: ChartSettingInput,
   inputGroup: ChartSettingInputGroup,
   number: ChartSettingInputNumeric,
+  code: ChartSettingCode,
   radio: ChartSettingRadio,
   select: ChartSettingSelect,
   toggle: ChartSettingToggle,

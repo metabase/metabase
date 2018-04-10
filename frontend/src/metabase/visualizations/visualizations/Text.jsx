@@ -64,10 +64,6 @@ export default class Text extends Component {
     "card.description": {
       dashboard: false,
     },
-    text: {
-      value: "",
-      default: "",
-    },
     "text.align_vertical": {
       section: "Display",
       title: t`Vertical Alignment`,
@@ -101,6 +97,16 @@ export default class Text extends Component {
       widget: "toggle",
       default: true,
     },
+    text: {
+      section: "Display",
+      title: t`Markdown`,
+      widget: "code",
+      props: {
+        mode: "ace/mode/markdown",
+      },
+      value: "",
+      default: "",
+    },
   };
 
   componentWillReceiveProps(newProps: VisualizationProps) {
@@ -129,10 +135,11 @@ export default class Text extends Component {
       gridSize,
       settings,
       isEditing,
+      isEditingSettings,
     } = this.props;
     let isSmall = gridSize && gridSize.width < 4;
 
-    if (isEditing) {
+    if (isEditing && !isEditingSettings) {
       return (
         <div
           className={cx(

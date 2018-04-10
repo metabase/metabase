@@ -88,6 +88,7 @@ export type VisualizationProps = {
   showTitle: boolean,
   isDashboard: boolean,
   isEditing: boolean,
+  isEditingSettings: boolean,
   actionButtons: Node,
 
   onRender: ({

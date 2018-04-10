@@ -173,8 +173,9 @@ class ChartSettings extends Component {
               <Visualization
                 className="spread"
                 rawSeries={series}
-                isEditing
                 showTitle
+                isEditing
+                isEditingSettings
                 isDashboard
                 showWarnings
                 onUpdateVisualizationSettings={this.onChangeSettings}
