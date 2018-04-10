@@ -14,7 +14,7 @@
 
 (defn- cleanup-temporary-results!
   []
-  (db/delete! 'ComputationJobResult
+  (db/simple-delete! 'ComputationJobResult
     :created_at [:< (-> (t/now)
                         (t/minus temporary-result-lifetime)
                         t.coerce/to-sql-time)]

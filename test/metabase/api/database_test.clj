@@ -460,18 +460,18 @@
                       Card [_ (assoc (card-with-mbql-query "Cum Count Card"
                                        :source-table (data/id :checkins)
                                        :aggregation  [[:cum-count]]
-                                       :breakout     [[:datetime-field [:field-id (data/id :checkins :date) :month]]])
+                                       :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :month]])
                                 :result_metadata [{:name "num_toucans"}])]]
   (saved-questions-virtual-db
     (virtual-table-for-card ok-card))
   (fetch-virtual-database))
 
-;; cum sum using old-style single aggregation syntax
+;; cum count using old-style single aggregation syntax
 (tt/expect-with-temp [Card [ok-card (ok-mbql-card)]
                       Card [_ (assoc (card-with-mbql-query "Cum Sum Card"
                                        :source-table (data/id :checkins)
-                                       :aggregation  [:cum-sum]
-                                       :breakout     [[:datetime-field [:field-id (data/id :checkins :date) :month]]])
+                                       :aggregation  [:cum-count]
+                                       :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :month]])
                                 :result_metadata [{:name "num_toucans"}])]]
   (saved-questions-virtual-db
     (virtual-table-for-card ok-card))

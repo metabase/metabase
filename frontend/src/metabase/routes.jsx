@@ -33,7 +33,6 @@ import CollectionPage from "metabase/questions/containers/CollectionPage.jsx";
 import CollectionEdit from "metabase/questions/containers/CollectionEdit.jsx";
 import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx";
 import SearchResults from "metabase/questions/containers/SearchResults.jsx";
-import EditLabels from "metabase/questions/containers/EditLabels.jsx";
 import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
 import EntityList from "metabase/questions/containers/EntityList.jsx";
 
@@ -276,10 +275,6 @@ export const getRoutes = store => (
           <Route path="create" component={CollectionCreate} />
           <Route path="permissions" component={CollectionPermissions} />
           <Route path=":collectionId" component={CollectionEdit} />
-        </Route>
-
-        <Route path="/labels">
-          <IndexRoute component={EditLabels} />
         </Route>
 
         {/* REFERENCE */}
