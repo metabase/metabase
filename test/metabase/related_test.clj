@@ -90,13 +90,13 @@
   (into {}
         (for [[k v] x]
           [k (if (sequential? v)
-               (map :id v)
+               (sort (map :id v))
                (:id v))])))
 
 (with-world
   {:table             table-id-a
-   :metrics           [metric-id-a metric-id-b]
-   :segments          [segment-id-a segment-id-b]
+   :metrics           (sort [metric-id-a metric-id-b])
+   :segments          (sort [segment-id-a segment-id-b])
    :dashboard-mates   []
    :similar-questions [card-id-b]
    :canonical-metric  metric-id-a
@@ -108,21 +108,21 @@
 (with-world
   {:table    table-id-a
    :metrics  [metric-id-b]
-   :segments [segment-id-a segment-id-b]}
+   :segments (sort [segment-id-a segment-id-b])}
   (->> ((users/user->client :crowberto) :get 200 (format "metric/%s/related" metric-id-a))
        result-mask))
 
 (with-world
   {:table       table-id-a
-   :metrics     [metric-id-a metric-id-b]
+   :metrics     (sort [metric-id-a metric-id-b])
    :segments    [segment-id-b]
    :linked-from []}
   (->> ((users/user->client :crowberto) :get 200 (format "segment/%s/related" segment-id-a))
        result-mask))
 
 (with-world
-  {:metrics     [metric-id-a metric-id-b]
-   :segments    [segment-id-a segment-id-b]
+  {:metrics     (sort [metric-id-a metric-id-b])
+   :segments    (sort [segment-id-a segment-id-b])
    :linking-to  []
    :linked-from []
    :tables      [table-id-b]}
