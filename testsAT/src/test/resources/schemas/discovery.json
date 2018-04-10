@@ -17,7 +17,6 @@
     "MB_DB_PASS": "stratio",
     "MB_DB_USER": "postgres",
     "MB_DB_HOST": "10.200.0.181",
-    "VAULT_HOSTS": "vault.service.paas.labs.stratio.com",
     "MB-INIT-ADMIN-USER": "Demo",
     "MB_DB_PORT": "1026",
     "MB_DB_DBNAME": "postgres",
@@ -42,6 +41,12 @@
       "image": "stratioclient/discovery-crossdata2:0.28.9",
       "forcePullImage": false,
       "privileged": false,
+      "parameters": [
+        {
+          "key": "volume",
+          "value": "/etc/resolv.conf:/etc/resolv.conf:ro"
+        }
+      ],
       "portMappings": [
         {
           "containerPort": 80,
@@ -88,7 +93,7 @@
     "DCOS_PACKAGE_VERSION": "0.1",
     "DCOS_PACKAGE_NAME": "discovery",
     "DCOS_PACKAGE_IS_FRAMEWORK": "false",
-    "HAPROXY_0_VHOST": "ci-public.labs.stratio.com"
+    "HAPROXY_0_VHOST": "nightlypublic.labs.stratio.com"
   },
   "acceptedResourceRoles": null,
   "ipAddress": {

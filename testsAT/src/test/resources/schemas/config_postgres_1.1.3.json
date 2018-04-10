@@ -1,0 +1,82 @@
+{
+  "service": {
+    "framework_service_name": "postgresdisc",
+    "framework_mesos_master": "master.mesos:2181",
+    "framework_zookeeper": "master.mesos:2181",
+    "framework_mesos_role": "postgresdisc",
+    "framework_service_cpus": 1,
+    "framework_service_mem": 1024,
+    "framework_service_docker_image_force_pull": true,
+    "framework_log_level": "INFO",
+    "framework_mesos_principal": "open"
+  },
+  "network_isolation": {
+    "enabled": true,
+    "framework_isolation_network_name": "stratio"
+  },
+  "availability_zones": {
+    "framework_availability_zones_number": 1,
+    "framework_availability_zone_tag": "dc"
+  },
+  "automatic_failover": {
+    "framework_lost_state_timeout_seconds": 60,
+    "framework_enable_automatic_failover": true
+  },
+  "dns_discovery": {
+    "framework_dns_type": "mesos",
+    "framework_dns_domain": "mesos",
+    "framework_consul_address": "master.mesos"
+  },
+  "docker": {
+    "framework_docker_image_force_pull": true,
+    "framework_docker_launch_retries": 5,
+    "framework_docker_retry_delay_seconds": 5
+  },
+  "security": {
+    "enable_security": true,
+    "vault": {
+      "vault_hosts": "vault.service.paas.labs.stratio.com",
+      "vault_port": 8200,
+      "enable_dynamic_auth": true,
+      "role_name": "open"
+    },
+    "paas": {
+      "framework_enable_mesos_sec": true,
+      "framework_enable_marathon_sec": true,
+      "disable_dynamic_reservation": false
+    },
+    "api": {
+      "enable_api_security": false,
+      "api_authorized_cn": "admin,zookeeper"
+    },
+    "postgresql": {
+      "postgres_security_type": "MD5"
+    }
+  },
+  "postgresql": {
+    "cpu": 0.5,
+    "memory": 256.0,
+    "high_availability": true,
+    "log_level": "INFO",
+    "disk": {
+      "data_disk": {
+        "disk_space": 256.0,
+        "disk_type": "ROOT"
+      },
+      "index_disk": {
+        "enable_disk": true,
+        "disk_space": 256.0,
+        "disk_type": "ROOT"
+      },
+      "wal_disk": {
+        "enable_disk": true,
+        "disk_space": 256.0,
+        "disk_type": "ROOT"
+      }
+    },
+    "users": {
+      "admin_user": "postgres",
+      "service_user": "serviceuser"
+    }
+  }
+}
