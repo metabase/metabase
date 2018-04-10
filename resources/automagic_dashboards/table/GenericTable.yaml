@@ -160,7 +160,7 @@ cards:
         - Count: descending
 # By Time
   - CountByJoinDate:
-      title: Newly joined over time
+      title: "[[GenericTable]] that have joined over time"
       visualization: line
       dimensions: JoinDate
       metrics: Count
@@ -174,7 +174,7 @@ cards:
       score: 90
       group: ByTime
   - CountByTimestamp:
-      title: Events over time
+      title: "[[GenericTable]] by [[Timestamp]]"
       visualization: line
       dimensions: Timestamp
       metrics: Count
@@ -208,7 +208,7 @@ cards:
       score: 90
       group: ByTime
   - DayOfWeekTimestamp:
-      title: "[[GenericTable]] per day of the week"
+      title: "[[Timestamp]] by day of the week"
       visualization: bar
       dimensions:
         - Timestamp:
@@ -216,9 +216,9 @@ cards:
       metrics: Count
       score: 60
       group: ByTime
-      x_label: "[[Timestamp]] day of week"
+      x_label: "[[Timestamp]]"
   - HourOfDayTimestamp:
-      title: "[[GenericTable]] per hour of the day"
+      title: "[[Timestamp]] by hour of the day"
       visualization: bar
       dimensions:
       - Timestamp:
@@ -228,7 +228,7 @@ cards:
       group: ByTime
       x_label: "[[Timestamp]]"
   - MonthOfYearTimestamp:
-      title: "[[GenericTable]] per month of the year"
+      title: "[[Timestamp]] by month of the year"
       visualization: bar
       dimensions:
         - Timestamp:
@@ -238,7 +238,7 @@ cards:
       group: ByTime
       x_label: "[[Timestamp]]"
   - QuarterOfYearTimestamp:
-      title: "[[GenericTable]] per quarter of the year"
+      title: "[[Timestamp]] by quarter of the year"
       visualization: bar
       dimensions:
         - Timestamp:
@@ -268,7 +268,7 @@ cards:
       group: ByTime
       x_label: Created At by hour of the day
   - DayOfMonthCreateDate:
-      title: Days of the month when new [[GenericTable]] were added
+      title: Days when new [[GenericTable]] were added
       visualization: bar
       dimensions:
         - CreateDate:
