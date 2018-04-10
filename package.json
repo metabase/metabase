@@ -59,6 +59,7 @@
     "react-transition-group": "1",
     "react-virtualized": "^9.7.2",
     "recompose": "^0.26.0",
+    "rebass": "^1.0.7",
     "redux": "^3.5.2",
     "redux-actions": "^2.0.1",
     "redux-auth-wrapper": "^1.0.0",
