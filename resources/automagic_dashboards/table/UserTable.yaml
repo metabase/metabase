@@ -86,7 +86,7 @@ cards:
           map.region: world_countries
       group: Geographical
   - CountByState:
-      title: Count of users per state
+      title: Users per state
       metrics: Count
       dimensions: State
       score: 90
@@ -97,7 +97,7 @@ cards:
           map.region: us_states
       group: Geographical
   - CountByCoords:
-      title: Count of users by coordinates
+      title: Users by coordinates
       metrics: Count
       dimensions:
         - Long:
@@ -110,7 +110,7 @@ cards:
       group: Geographical
 # General
   - NumberDistribution:
-      title: Distribution of [[GenericNumber]]
+      title: How [[GenericNumber]] is distributed
       dimensions:
         - GenericNumber:
             aggregation: default
@@ -119,7 +119,7 @@ cards:
       score: 90
       group: General
   - CountByCategoryMedium:
-      title: Count of users by [[GenericCategoryMedium]]
+      title: Users per [[GenericCategoryMedium]]
       dimensions: GenericCategoryMedium
       metrics: Count
       visualization: row
@@ -129,7 +129,7 @@ cards:
       order_by:
         - Count: descending
   - CountByCategoryLarge:
-      title: Count of users by [[GenericCategoryLarge]]
+      title: Users per [[GenericCategoryLarge]]
       dimensions: GenericCategoryLarge
       metrics: Count
       visualization: table
