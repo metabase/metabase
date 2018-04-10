@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { Link } from "react-router";
 
 import cx from "classnames";
-import { t } from "c-3po";
+import { t, jt } from "c-3po";
 import AuthScene from "../components/AuthScene.jsx";
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
@@ -95,9 +95,15 @@ export default class PasswordResetApp extends Component {
     const { resetError, resetSuccess, newUserJoining } = this.props;
     const passwordComplexity = MetabaseSettings.passwordComplexity(false);
 
+    const requestLink = (
+      <Link to="/auth/forgot_password" className="link">
+        {t`request a new reset email`}
+      </Link>
+    );
+
     if (!this.state.tokenValid) {
       return (
-        <div>
+        <div className="full-height">
           <div className="full-height bg-white flex flex-column flex-full md-layout-centered">
             <div className="wrapper">
               <div className="Login-wrapper Grid  Grid--full md-Grid--1of2">
@@ -111,8 +117,8 @@ export default class PasswordResetApp extends Component {
                 <div className="Grid-cell bordered rounded shadowed">
                   <h3 className="Login-header Form-offset mt4">{t`Whoops, that's an expired link`}</h3>
                   <p className="Form-offset mb4 mr4">
-                    {t`For security reasons, password reset links expire after a little while. If you still need
-                                        to reset your password, you can <Link to="/auth/forgot_password" className="link">request a new reset email</Link>.`}
+                    {jt`For security reasons, password reset links expire after a little while. If you still need
+                                        to reset your password, you can ${requestLink}.`}
                   </p>
                 </div>
               </div>

@@ -7,6 +7,7 @@ import styles from "./Text.css";
 import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
+import { t } from "c-3po";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
@@ -20,6 +21,13 @@ type State = {
   isShowingRenderedOutput: boolean,
   text: string,
 };
+
+const getSettingsStyle = settings => ({
+  "align-center": settings["text.align_horizontal"] === "center",
+  "align-end": settings["text.align_horizontal"] === "right",
+  "justify-center": settings["text.align_vertical"] === "middle",
+  "justify-end": settings["text.align_vertical"] === "bottom",
+});
 
 export default class Text extends Component {
   props: VisualizationProps;
@@ -38,7 +46,7 @@ export default class Text extends Component {
   static identifier = "text";
   static iconName = "text";
 
-  static disableSettingsConfig = true;
+  static disableSettingsConfig = false;
   static noHeader = true;
   static supportsSeries = false;
   static hidden = true;
@@ -50,9 +58,48 @@ export default class Text extends Component {
   }
 
   static settings = {
+    "card.title": {
+      dashboard: false,
+    },
+    "card.description": {
+      dashboard: false,
+    },
     text: {
       value: "",
       default: "",
+    },
+    "text.align_vertical": {
+      section: "Display",
+      title: t`Vertical Alignment`,
+      widget: "select",
+      props: {
+        options: [
+          { name: t`Top`, value: "top" },
+          { name: t`Middle`, value: "middle" },
+          { name: t`Bottom`, value: "bottom" },
+        ],
+      },
+      default: "top",
+    },
+    "text.align_horizontal": {
+      section: "Display",
+      title: t`Horizontal Alignment`,
+      widget: "select",
+      props: {
+        options: [
+          { name: t`Left`, value: "left" },
+          { name: t`Center`, value: "center" },
+          { name: t`Right`, value: "right" },
+        ],
+      },
+      default: "left",
+    },
+    "dashcard.background": {
+      section: "Display",
+      title: t`Show background`,
+      dashboard: true,
+      widget: "toggle",
+      default: true,
     },
   };
 
@@ -106,6 +153,7 @@ export default class Text extends Component {
               className={cx(
                 "full flex-full flex flex-column text-card-markdown",
                 styles["text-card-markdown"],
+                getSettingsStyle(settings),
               )}
               source={settings.text}
             />
@@ -136,6 +184,7 @@ export default class Text extends Component {
             className={cx(
               "full flex-full flex flex-column text-card-markdown",
               styles["text-card-markdown"],
+              getSettingsStyle(settings),
             )}
             source={settings.text}
           />
