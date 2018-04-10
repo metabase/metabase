@@ -19,18 +19,19 @@ import cx from "classnames";
 
 const EXPORT_FORMATS = ["csv", "xlsx", "json"];
 
-const QueryDownloadWidget = ({ className, card, result, uuid, token, dashcardId, parameters }) =>
+const QueryDownloadWidget = ({ className, classNameClose, card, result, uuid, token, dashcardId, parameters, icon }) =>(
     <PopoverWithTrigger
         triggerElement={
       <Tooltip tooltip={t`Download full results`}>
-        <Icon title={t`Download this data`} name="downarrow" size={16} />
+          <Icon title={t`Download this data`} name={icon} size={16} />
             </Tooltip>
         }
         triggerClasses={cx(className, "text-brand-hover")}
+      triggerClassesClose={classNameClose}
     >
         <div className="p2" style={{ maxWidth: 320 }}>
       <h4>{t`Download full results`}</h4>
-      {result.data!=null && result.data.rows_truncated != null && (
+        {result.data != null && result.data.rows_truncated != null && (
         <FieldSet className="my2 text-gold border-gold" legend={t`Warning`}>
           <div className="my1">{t`Your answer has a large number of rows so it could take a while to download.`}</div>
           <div>{t`The maximum download size is 1 million rows.`}</div>
@@ -85,7 +86,7 @@ const QueryDownloadWidget = ({ className, card, result, uuid, token, dashcardId,
             </div>
         </div>
     </PopoverWithTrigger>
-;
+);
 
 const UnsavedQueryButton = ({
   className,
@@ -170,9 +171,15 @@ const DashboardEmbedQueryButton = ({ className, type, dashcardId, token, card, p
 
 QueryDownloadWidget.propTypes = {
     className: PropTypes.string,
+  classNameClose: PropTypes.string,
     card: PropTypes.object,
     result: PropTypes.object,
   uuid: PropTypes.string,
+  icon: PropTypes.string
+};
+
+QueryDownloadWidget.defaultProps = {
+  icon: "downarrow"
 };
 
 export default QueryDownloadWidget;
