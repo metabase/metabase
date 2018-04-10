@@ -3847,6 +3847,7 @@ databaseChangeLog:
   - changeSet:
       id: 67
       author: attekei
+      comment: 'Added 0.27.0'
       changes:
         - createTable:
             tableName: computation_job
@@ -3930,6 +3931,7 @@ databaseChangeLog:
   - changeSet:
     - id: 68
     - author: sbelak
+    - comment: 'Added 0.27.0'
     - changes:
       - addColumn:
             tableName: computation_job
@@ -3966,3 +3968,92 @@ databaseChangeLog:
             tableName: pulse
             columnName: name
             columnDataType: varchar(254)
+  - changeSet:
+      id: 70
+      author: camsaul
+      comment: 'Added 0.28.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_type
+                  type: varchar(255)
+                  remarks: 'The actual type of this column in the database. e.g. VARCHAR or TEXT.'
+        # We want to enforce NOT NULL right away for all columns going forward so just put some sort of
+        # placeholder in place for existing columns.
+        - addNotNullConstraint:
+            tableName: metabase_field
+            columnName: database_type
+            columnDataType: varchar(255)
+            defaultNullValue: '?'
+  - changeSet:
+      id: 71
+      author: camsaul
+      comment: 'Added 0.28.0'
+      changes:
+        # drop the NOT NULL constraint on DashboardCard.card_id since we're now letting you add things other than Cards
+        # to Dashboards, for example static text cards
+        - dropNotNullConstraint:
+            tableName: report_dashboardcard
+            columnName: card_id
+            columnDataType: int
+  - changeSet:
+      id: 72
+      author: senior
+      comment: 'Added 0.28.0'
+      changes:
+        - addColumn:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: include_csv
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: 'True if a CSV of the data should be included for this pulse card'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: include_xls
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: 'True if a XLS of the data should be included for this pulse card'
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 73
+      author: camsaul
+      comment: 'Added 0.29.0'
+      changes:
+        # add a new 'options' (serialized JSON) column to Database to store things like whether we should default to
+        # making string searches case-insensitive
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: options
+                  type: text
+                  remarks: 'Serialized JSON containing various options like QB behavior.'
+  - changeSet:
+      id: 74
+      author: camsaul
+      comment: 'Added 0.29.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: has_field_values
+                  type: text
+                  remarks: 'Whether we have FieldValues ("list"), should ad-hoc search ("search"), disable entirely ("none"), or infer dynamically (null)"'
+  - changeSet:
+      id: 75
+      author: camsaul
+      comment: 'Added 0.28.2'
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              name: read_permissions
+              type: text
+              remarks: 'Permissions required to view this Card and run its query.'

@@ -1,1 +1,1 @@
-export const getAlerts = (state) => state.alert.alerts.result
+export const getAlerts = state => state.alert.alerts.result;

@@ -9,6 +9,7 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.models.database :refer [Database]]
             [metabase.util.honeysql-extensions :as hx]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db]))
 
 (def ^:private ^:const column->base-type
@@ -76,9 +77,9 @@
    (keyword "DOUBLE PRECISION") :type/Float})
 
 
-;; These functions for exploding / imploding the options in the connection strings are here so we can override shady options
-;; users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can replace that
-;; and make the connection read-only.
+;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
+;; options users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can
+;; replace that and make the connection read-only.
 
 (defn- connection-string->file+options
   "Explode a CONNECTION-STRING like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
@@ -123,8 +124,9 @@
 (defn- check-native-query-not-using-default-user [{query-type :type, database-id :database, :as query}]
   {:pre [(integer? database-id)]}
   (u/prog1 query
-    ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the connection string.
-    ;; We don't allow SQL execution on H2 databases for the default admin account for security reasons
+    ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
+    ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
+    ;; reasons
     (when (= (keyword query-type) :native)
       (let [{:keys [db]}   (db/select-one-field :details Database :id database-id)
             _              (assert db)
@@ -132,7 +134,9 @@
             {:strs [USER]} options]
         (when (or (s/blank? USER)
                   (= USER "sa"))        ; "sa" is the default USER
-          (throw (Exception. "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))))
+          (throw
+           (Exception.
+            (str (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))))))
 
 (defn- process-query-in-context [qp]
   (comp qp check-native-query-not-using-default-user))
@@ -200,9 +204,9 @@
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))
 
-(def ^:private date-format-str "yyyy-MM-dd HH:mm:ss.SSS zzz")
-(def ^:private h2-date-formatter (driver/create-db-time-formatter date-format-str))
-(def ^:private h2-db-time-query (format "select formatdatetime(current_timestamp(),'%s') AS VARCHAR" date-format-str))
+(def ^:private date-format-str   "yyyy-MM-dd HH:mm:ss.SSS zzz")
+(def ^:private h2-date-formatters (driver/create-db-time-formatters date-format-str))
+(def ^:private h2-db-time-query  (format "select formatdatetime(current_timestamp(),'%s') AS VARCHAR" date-format-str))
 
 (defrecord H2Driver []
   clojure.lang.Named
@@ -218,7 +222,7 @@
                                                            :required     true}])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :process-query-in-context          (u/drop-first-arg process-query-in-context)
-          :current-db-time                   (driver/make-current-db-time-fn h2-date-formatter h2-db-time-query)})
+          :current-db-time                   (driver/make-current-db-time-fn h2-db-time-query h2-date-formatters)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

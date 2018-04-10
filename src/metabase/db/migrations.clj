@@ -1,8 +1,8 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them.
-   These migrations are all ran once when Metabase is first launched, except when transferring data from an existing H2 database.
-   When data is transferred from an H2 database, migrations will already have been run against that data; thus, all of these migrations
-   need to be repeatable, e.g.:
+  These migrations are all ran once when Metabase is first launched, except when transferring data from an existing
+  H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
+  thus, all of these migrations need to be repeatable, e.g.:
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
@@ -10,6 +10,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
+             [db :as mdb]
              [config :as config]
              [driver :as driver]
              [public-settings :as public-settings]
@@ -19,8 +20,9 @@
              [activity :refer [Activity]]
              [card :refer [Card]]
              [dashboard-card :refer [DashboardCard]]
-             [database :refer [Database]]
+             [database :refer [Database virtual-id]]
              [field :refer [Field]]
+             [humanization :as humanization]
              [permissions :as perms :refer [Permissions]]
              [permissions-group :as perm-group]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
@@ -54,7 +56,8 @@
 (def ^:private data-migrations (atom []))
 
 (defmacro ^:private defmigration
-  "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that `data-migrations` atom."
+  "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that
+  `data-migrations` atom."
   [migration-name & body]
   `(do (defn- ~migration-name [] ~@body)
        (swap! data-migrations conj #'~migration-name)))
@@ -69,9 +72,9 @@
   (log/info "Finished running data migrations."))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                       MIGRATIONS                                                       |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   MIGRATIONS                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Upgrade for the `Card` model when `:database_id`, `:table_id`, and `:query_type` were added and needed populating.
 ;;
@@ -150,9 +153,9 @@
       :visibility_type "normal")))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                     PERMISSIONS v1                                                     |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 PERMISSIONS v1                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Add users to default permissions groups. This will cause the groups to be created if needed as well.
 (defmigration ^{:author "camsaul", :added "0.20.0"} add-users-to-default-permissions-groups
@@ -179,7 +182,8 @@
         :group_id (:id (perm-group/admin))
         :object   "/"))))
 
-;; add existing databases to default permissions groups. default and metabot groups have entries for each individual DB
+;; add existing databases to default permissions groups. default and metabot groups have entries for each individual
+;; DB
 (defmigration ^{:author "camsaul", :added "0.20.0"} add-databases-to-magic-permissions-groups
   (let [db-ids (db/select-ids Database)]
     (doseq [{group-id :id} [(perm-group/all-users)
@@ -191,9 +195,9 @@
           :group_id group-id)))))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                    NEW TYPE SYSTEM                                                     |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                NEW TYPE SYSTEM                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ^:const old-special-type->new-type
     {"avatar"                 "type/AvatarURL"
@@ -240,9 +244,9 @@
   (doseq [[_ t] old-base-type->new-type]
     (assert (isa? (keyword t) :type/*))))
 
-;; migrate all of the old base + special types to the new ones.
-;; This also takes care of any types that are already correct other than the fact that they're missing :type/ in the front.
-;; This was a bug that existed for a bit in 0.20.0-SNAPSHOT but has since been corrected
+;; migrate all of the old base + special types to the new ones.  This also takes care of any types that are already
+;; correct other than the fact that they're missing :type/ in the front.  This was a bug that existed for a bit in
+;; 0.20.0-SNAPSHOT but has since been corrected
 (defmigration ^{:author "camsaul", :added "0.20.0"} migrate-field-types
   (doseq [[old-type new-type] old-special-type->new-type]
     ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
@@ -259,24 +263,28 @@
     (db/update-where! 'Field {:base_type (name (keyword new-type))}
       :base_type new-type)))
 
-;; if there were invalid field types in the database anywhere fix those so the new stricter validation logic doesn't blow up
+;; if there were invalid field types in the database anywhere fix those so the new stricter validation logic doesn't
+;; blow up
 (defmigration ^{:author "camsaul", :added "0.20.0"} fix-invalid-field-types
   (db/update-where! 'Field {:base_type [:not-like "type/%"]}
     :base_type "type/*")
   (db/update-where! 'Field {:special_type [:not-like "type/%"]}
     :special_type nil))
 
-;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.
-;; (`site-url` used to be stored internally as `-site-url`; this was confusing, see #4188 for details)
-;; This has the side effect of making sure the `site-url` has no trailing slashes (as part of the magic setter fn; this was fixed as part of #4123)
+;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.  (`site-url` used to be stored
+;; internally as `-site-url`; this was confusing, see #4188 for details) This has the side effect of making sure the
+;; `site-url` has no trailing slashes (as part of the magic setter fn; this was fixed as part of #4123)
 (defmigration ^{:author "camsaul", :added "0.23.0"} copy-site-url-setting-and-remove-trailing-slashes
   (when-let [site-url (db/select-one-field :value Setting :key "-site-url")]
     (public-settings/site-url site-url)))
 
 
-;;; ------------------------------------------------------------ Migrating QueryExecutions ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Migrating QueryExecutions                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; We're copying over data from the legacy `query_queryexecution` table to the new `query_execution` table; see #4522 and #4531 for details
+;; We're copying over data from the legacy `query_queryexecution` table to the new `query_execution` table; see #4522
+;; and #4531 for details
 
 ;; model definition for the old table to facilitate the data copying process
 (models/defmodel ^:private ^:deprecated LegacyQueryExecution :query_queryexecution)
@@ -301,8 +309,8 @@
 
 ;; Migrate entries from the old query execution table to the new one. This might take a few minutes
 (defmigration ^{:author "camsaul", :added "0.23.0"} migrate-query-executions
-  ;; migrate the most recent 100,000 entries
-  ;; make sure the DB doesn't get snippy by trying to insert too many records at once. Divide the INSERT statements into chunks of 1,000
+  ;; migrate the most recent 100,000 entries. Make sure the DB doesn't get snippy by trying to insert too many records
+  ;; at once. Divide the INSERT statements into chunks of 1,000
   (binding [query-execution/*validate-context* false]
     (doseq [chunk (partition-all 1000 (db/select LegacyQueryExecution {:limit 100000, :order-by [[:id :desc]]}))]
       (db/insert-many! QueryExecution
@@ -329,8 +337,75 @@
 ;; There was a bug (#5998) preventing database_id from being persisted with
 ;; native query type cards. This migration populates all of the Cards
 ;; missing those database ids
-(defmigration ^{:author "senior", :added "0.26.1"} populate-card-database-id
+(defmigration ^{:author "senior", :added "0.27.0"} populate-card-database-id
   (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
-                                  (db/select [Card :dataset_query :id] :database_id [:= nil]))]
-    (db/update-where! Card {:id [:in (map :id cards)]}
-      :database_id db-id)))
+                                  (db/select [Card :dataset_query :id :name] :database_id [:= nil]))
+          :when (not= db-id virtual-id)]
+    (if (and (seq cards)
+             (db/exists? Database :id db-id))
+      (db/update-where! Card {:id [:in (map :id cards)]}
+                        :database_id db-id)
+      (doseq [{id :id card-name :name} cards]
+        (log/warnf "Cleaning up orphaned Question '%s', associated to a now deleted database" card-name)
+        (db/delete! Card :id id)))))
+
+;; Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
+;; `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
+;; was replaced by the `humanization-strategy` Setting, which (at the time of this writing) allows for a choice
+;; between three options: advanced, simple, or none. Migrate any values of the old Setting, if set, to the new one.
+(defmigration ^{:author "camsaul", :added "0.28.0"} migrate-humanization-setting
+  (when-let [enable-advanced-humanization-str (db/select-one-field :value Setting, :key "enable-advanced-humanization")]
+    (when (seq enable-advanced-humanization-str)
+      ;; if an entry exists for the old Setting, it will be a boolean string, either "true" or "false". Try inserting
+      ;; a record for the new setting with the appropriate new value. This might fail if for some reason
+      ;; humanization-strategy has been set already, or enable-advanced-humanization has somehow been set to an
+      ;; invalid value. In that case, fail silently.
+      (u/ignore-exceptions
+        (humanization/humanization-strategy (if (Boolean/parseBoolean enable-advanced-humanization-str)
+                                              "advanced"
+                                              "simple"))))
+    ;; either way, delete the old value from the DB since we'll never be using it again.
+    ;; use `simple-delete!` because `Setting` doesn't have an `:id` column :(
+    (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
+
+;; for every Card in the DB, pre-calculate the read permissions required to read the Card/run its query and save them
+;; under the new `read_permissions` column. Calculating read permissions is too expensive to do on the fly for Cards,
+;; since it requires parsing their queries and expanding things like FKs or Segment/Metric macros. Simply calling
+;; `update!` on each Card will cause it to be saved with updated `read_permissions` as a side effect of Card's
+;; `pre-update` implementation.
+;;
+;; Caching these permissions will prevent 1000+ DB call API calls. See https://github.com/metabase/metabase/issues/6889
+;;
+;; NOTE: This used used to be
+;; (defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
+;;   (run!
+;;     (fn [card]
+;;      (db/update! Card (u/get-id card) {}))
+;;   (db/select-reducible Card :archived false, :read_permissions nil)))
+;; But due to bug https://github.com/metabase/metabase/issues/7189 was replaced
+(defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
+  (log/info "Not running migration `populate-card-read-permissions` as it has been replaced by a subsequent migration "))
+
+;; Migration from 0.28.2 above had a flaw in that passing in `{}` to the update results in
+;; the functions that do pre-insert permissions checking don't have the query dictionary to analyze
+;; and always short-circuit due to the missing query dictionary. Passing the card itself into the
+;; check mimicks how this works in-app, and appears to fix things.
+(defmigration ^{:author "salsakran", :added "0.28.3"} repopulate-card-read-permissions
+  (run!
+   (fn [card]
+     (db/update! Card (u/get-id card) card))
+   (db/select-reducible Card :archived false)))
+
+;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
+;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
+;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
+;; keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
+;; meaning of the Category special type.
+;;
+;; Since the meanings of things has changed we'll want to make sure we mark all Category fields as `list` as well so
+;; their behavior doesn't suddenly change.
+(defmigration ^{:author "camsaul", :added "0.29.0"} mark-category-fields-as-list
+  (db/update-where! Field {:has_field_values nil
+                           :special_type     (mdb/isa :type/Category)
+                           :active           true}
+    :has_field_values "list"))

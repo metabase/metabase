@@ -1,11 +1,9 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure
-             [pprint :as pprint]
-             [string :as s]]
+  (:require [cheshire.core :as json]
+            [clojure.pprint :as pprint]
             [clojure.tools.logging :as log]
-            environ.core
             [medley.core :as m]
             [metabase
              [config :as config]
@@ -22,31 +20,79 @@
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models
-             [user :refer [User]]
-             [setting :as setting]]
+             [setting :as setting]
+             [user :refer [User]]]
             [metabase.util.i18n :refer [set-locale]]
-            [puppetlabs.i18n.core :refer [trs locale-negotiator]]
+            [puppetlabs.i18n.core :refer [locale-negotiator]]
             [ring.adapter.jetty :as ring-jetty]
             [ring.middleware
              [cookies :refer [wrap-cookies]]
              [gzip :refer [wrap-gzip]]
-             [json :refer [wrap-json-body wrap-json-response]]
+             [json :refer [wrap-json-body]]
              [keyword-params :refer [wrap-keyword-params]]
              [params :refer [wrap-params]]
              [session :refer [wrap-session]]]
+            [ring.util
+             [io :as rui]
+             [response :as rr]]
             [toucan.db :as db])
-  (:import org.eclipse.jetty.server.Server))
+  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
+           [java.nio.charset Charset StandardCharsets]
+           org.eclipse.jetty.server.Server
+           org.eclipse.jetty.util.thread.QueuedThreadPool))
 
 ;;; CONFIG
+
+;; TODO - why not just put this in `metabase.middleware` with *all* of our other custom middleware. Also, what's the
+;; difference between this and `streaming-json-response`?
+(defn- streamed-json-response
+  "Write `RESPONSE-SEQ` to a PipedOutputStream as JSON, returning the connected PipedInputStream"
+  [response-seq options]
+  (rui/piped-input-stream
+   (fn [^OutputStream output-stream]
+     (with-open [output-writer   (OutputStreamWriter. ^OutputStream output-stream ^Charset StandardCharsets/UTF_8)
+                 buffered-writer (BufferedWriter. output-writer)]
+       (json/generate-stream response-seq buffered-writer)))))
+
+(defn- wrap-streamed-json-response
+  "Similar to ring.middleware/wrap-json-response in that it will serialize the response's body to JSON if it's a
+  collection. Rather than generating a string it will stream the response using a PipedOutputStream.
+
+  Accepts the following options (same as `wrap-json-response`):
+
+  :pretty            - true if the JSON should be pretty-printed
+  :escape-non-ascii  - true if non-ASCII characters should be escaped with \\u"
+  [handler & [{:as opts}]]
+  (fn [request]
+    (let [response (handler request)]
+      (if-let [json-response (and (coll? (:body response))
+                                  (update-in response [:body] streamed-json-response opts))]
+        (if (contains? (:headers json-response) "Content-Type")
+          json-response
+          (rr/content-type json-response "application/json; charset=utf-8"))
+        response))))
+
+(def ^:private jetty-instance
+  (atom nil))
+
+(defn- jetty-stats []
+  (when-let [^Server jetty-server @jetty-instance]
+    (let [^QueuedThreadPool pool (.getThreadPool jetty-server)]
+      {:min-threads  (.getMinThreads pool)
+       :max-threads  (.getMaxThreads pool)
+       :busy-threads (.getBusyThreads pool)
+       :idle-threads (.getIdleThreads pool)
+       :queue-size   (.getQueueSize pool)})))
 
 (def ^:private app
   "The primary entry point to the Ring HTTP server."
   (-> #'routes/routes                    ; the #' is to allow tests to redefine endpoints
-      mb-middleware/log-api-call
+      (mb-middleware/log-api-call
+       jetty-stats)
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
       (wrap-json-body                    ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
-      wrap-json-response                 ; middleware to automatically serialize suitable objects as JSON in responses
+      wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
       wrap-keyword-params                ; converts string keys in :params to keyword keys
       wrap-params                        ; parses GET and POST params as :query-params/:form-params and both as :params
       mb-middleware/bind-current-user    ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
@@ -146,10 +192,6 @@
 
 ;;; ## ---------------------------------------- Jetty (Web) Server ----------------------------------------
 
-
-(def ^:private jetty-instance
-  (atom nil))
-
 (defn start-jetty!
   "Start the embedded Jetty web server."
   []
@@ -182,12 +224,34 @@
     (.stop ^Server @jetty-instance)
     (reset! jetty-instance nil)))
 
+(defn- wrap-with-asterisk [strings-to-wrap]
+  ;; Adding 4 extra asterisks so that we account for the leading asterisk and space, and add two more after the end of the sentence
+  (let [string-length (+ 4 (apply max (map count strings-to-wrap)))]
+    (str (apply str (repeat string-length \* ))
+         "\n"
+         "*\n"
+         (apply str (map #(str "* " % "\n") strings-to-wrap))
+         "*\n"
+         (apply str (repeat string-length \* )))))
+
+(defn- check-jdk-version []
+  (let [java-spec-version (System/getProperty "java.specification.version")]
+    ;; Note for java 7, this is 1.7, but newer versions drop the 1. Java 9 just returns "9" here.
+    (when (= "1.7" java-spec-version)
+      (let [java-version (System/getProperty "java.version")
+            deprecation-messages [(str "DEPRECATION WARNING: You are currently running JDK '" java-version "'. "
+                                       "Support for Java 7 has been deprecated and will be dropped from a future release.")
+                                  (str "See the operation guide for more information: https://metabase.com/docs/latest/operations-guide/start.html.")]]
+        (binding [*out* *err*]
+          (println (wrap-with-asterisk deprecation-messages))
+          (log/warn deprecation-messages))))))
 
 ;;; ## ---------------------------------------- Normal Start ----------------------------------------
 
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
+    (check-jdk-version)
     ;; launch embedded webserver async
     (start-jetty!)
     ;; run our initialization process
@@ -200,86 +264,9 @@
       (log/error "Metabase Initialization FAILED: " (.getMessage e))
       (System/exit 1))))
 
-;;; ---------------------------------------- Special Commands ----------------------------------------
-
-(defn ^:command migrate
-  "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."
-  [direction]
-  (mdb/migrate! (keyword direction)))
-
-(defn ^:command load-from-h2
-  "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars."
-  ([]
-   (load-from-h2 nil))
-  ([h2-connection-string]
-   (require 'metabase.cmd.load-from-h2)
-   (binding [mdb/*disable-data-migrations* true]
-     ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
-
-(defn ^:command profile
-  "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
-  []
-  ;; override env var that would normally make Jetty block forever
-  (intern 'environ.core 'env (assoc environ.core/env :mb-jetty-join "false"))
-  (u/profile "start-normally" (start-normally)))
-
-(defn ^:command reset-password
-  "Reset the password for a user with EMAIL-ADDRESS."
-  [email-address]
-  (require 'metabase.cmd.reset-password)
-  ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
-
-(defn ^:command help
-  "Show this help message listing valid Metabase commands."
-  []
-  (println "Valid commands are:")
-  (doseq [[symb varr] (sort (ns-interns 'metabase.core))
-          :when       (:command (meta varr))]
-    (println symb (s/join " " (:arglists (meta varr))))
-    (println "\t" (:doc (meta varr))))
-  (println "\nSome other commands you might find useful:\n")
-  (println "java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db")
-  (println "\tOpen an SQL shell for the Metabase H2 DB"))
-
-(defn ^:command version
-  "Print version information about Metabase and the current system."
-  []
-  (println "Metabase version:" config/mb-version-info)
-  (println "\nOS:"
-           (System/getProperty "os.name")
-           (System/getProperty "os.version")
-           (System/getProperty "os.arch"))
-  (println "\nJava version:"
-           (System/getProperty "java.vm.name")
-           (System/getProperty "java.version"))
-  (println "\nCountry:" (System/getProperty "user.country"))
-  (println "System timezone:" (System/getProperty "user.timezone"))
-  (println "Language:" (System/getProperty "user.language"))
-  (println "File encoding:" (System/getProperty "file.encoding")))
-
-(defn ^:command api-documentation
-  "Generate a markdown file containing documentation for all API endpoints. This is written to a file called `docs/api-documentation.md`."
-  []
-  (require 'metabase.cmd.endpoint-dox)
-  ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
-
-
-(defn- cmd->fn [command-name]
-  (or (when (seq command-name)
-        (when-let [varr (ns-resolve 'metabase.core (symbol command-name))]
-          (when (:command (meta varr))
-            @varr)))
-      (do (println (u/format-color 'red "Unrecognized command: %s" command-name))
-          (help)
-          (System/exit 1))))
-
-(defn- run-cmd [cmd & args]
-  (try (apply (cmd->fn cmd) args)
-       (catch Throwable e
-         (.printStackTrace e)
-         (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
-         (System/exit 1)))
-  (System/exit 0))
+(defn- run-cmd [cmd args]
+  (require 'metabase.cmd)
+  ((resolve 'metabase.cmd/run-cmd) cmd args))
 
 
 ;;; ---------------------------------------- App Entry Point ----------------------------------------
@@ -288,5 +275,5 @@
   "Launch Metabase in standalone mode."
   [& [cmd & args]]
   (if cmd
-    (apply run-cmd cmd args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
-    (start-normally)))       ; with no command line args just start Metabase normally
+    (run-cmd cmd args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
+    (start-normally))) ; with no command line args just start Metabase normally

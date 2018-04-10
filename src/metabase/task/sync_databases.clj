@@ -18,35 +18,34 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.database.DatabaseInstance
-           [org.quartz CronTrigger JobDetail JobKey TriggerKey]))
+           [org.quartz CronTrigger DisallowConcurrentExecution JobDetail JobKey TriggerKey]))
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                       JOB LOGIC                                                        |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   JOB LOGIC                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate job-context->database :- DatabaseInstance
+(s/defn ^:private job-context->database :- DatabaseInstance
   "Get the Database referred to in JOB-CONTEXT. Guaranteed to return a valid Database."
   [job-context]
   (Database (u/get-id (get (qc/from-job-data job-context) "db-id"))))
 
-
-(jobs/defjob SyncAndAnalyzeDatabase [job-context]
+;; The DisallowConcurrentExecution on the two defrecords below attaches an annotation to the generated class that will
+;; constrain the job execution to only be one at a time. Other triggers wanting the job to run will misfire.
+(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} SyncAndAnalyzeDatabase [job-context]
   (let [database (job-context->database job-context)]
     (sync-metadata/sync-db-metadata! database)
     ;; only run analysis if this is a "full sync" database
     (when (:is_full_sync database)
       (analyze/analyze-db! database))))
 
-
-(jobs/defjob UpdateFieldValues [job-context]
+(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} UpdateFieldValues [job-context]
   (let [database (job-context->database job-context)]
     (when (:is_full_sync database)
       (field-values/update-field-values! (job-context->database job-context)))))
 
-
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                             TASK INFO AND GETTER FUNCTIONS                                             |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         TASK INFO AND GETTER FUNCTIONS                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private TaskInfo
   "One-off schema for information about the various sync tasks we run for a DB."
@@ -54,118 +53,139 @@
    :db-schedule-column s/Keyword
    :job-class          Class})
 
+(s/def ^:private sync-analyze-task-info :- TaskInfo
+  {:key                :sync-and-analyze
+   :db-schedule-column :metadata_sync_schedule
+   :job-class          SyncAndAnalyzeDatabase})
 
-(def ^:private task-infos
-  "Maps containing info about the different independent sync tasks we schedule for each DB."
-  [{:key                :sync-and-analyze
-    :db-schedule-column :metadata_sync_schedule
-    :job-class          SyncAndAnalyzeDatabase}
-   {:key                :update-field-values
-    :db-schedule-column :cache_field_values_schedule
-    :job-class          UpdateFieldValues}])
+(s/def ^:private field-values-task-info :- TaskInfo
+  {:key                :update-field-values
+   :db-schedule-column :cache_field_values_schedule
+   :job-class          UpdateFieldValues})
 
 
-;; These getter functions are not strictly neccesary but are provided primarily so we can get some extra validation by using them
+;; These getter functions are not strictly neccesary but are provided primarily so we can get some extra validation by
+;; using them
 
-(s/defn ^:private ^:always-validate job-key :- JobKey
+(s/defn ^:private job-key :- JobKey
   "Return an appropriate string key for the job described by TASK-INFO for DATABASE-OR-ID."
-  [database :- DatabaseInstance, task-info :- TaskInfo]
-  (jobs/key (format "metabase.task.%s.job.%d" (name (:key task-info)) (u/get-id database))))
+  [task-info :- TaskInfo]
+  (jobs/key (format "metabase.task.%s.job" (name (:key task-info)))))
 
-(s/defn ^:private ^:always-validate trigger-key :- TriggerKey
+(s/defn ^:private trigger-key :- TriggerKey
   "Return an appropriate string key for the trigger for TASK-INFO and DATABASE-OR-ID."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/get-id database))))
 
-(s/defn ^:private ^:always-validate cron-schedule :- cron-util/CronScheduleString
+(s/defn ^:private cron-schedule :- cron-util/CronScheduleString
   "Fetch the appropriate cron schedule string for DATABASE and TASK-INFO."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (get database (:db-schedule-column task-info)))
 
-(s/defn ^:private ^:always-validate job-class :- Class
+(s/defn ^:private job-class :- Class
   "Get the Job class for TASK-INFO."
   [task-info :- TaskInfo]
   (:job-class task-info))
 
-(s/defn ^:private ^:always-validate description :- s/Str
+(s/defn ^:private trigger-description :- s/Str
   "Return an appropriate description string for a job/trigger for Database described by TASK-INFO."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (format "%s Database %d" (name (:key task-info)) (u/get-id database)))
 
+(s/defn ^:private job-description :- s/Str
+  "Return an appropriate description string for a job"
+  [task-info :- TaskInfo]
+  (format "%s for all databases" (name (:key task-info))))
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                DELETING TASKS FOR A DB                                                 |
-;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate delete-task!
-  "Cancel a single sync job for DATABASE-OR-ID and TASK-INFO."
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            DELETING TASKS FOR A DB                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(s/defn ^:private delete-task!
+  "Cancel a single sync task for DATABASE-OR-ID and TASK-INFO."
   [database :- DatabaseInstance, task-info :- TaskInfo]
-  (let [job-key     (job-key database task-info)
-        trigger-key (trigger-key database task-info)]
-    (log/debug (u/format-color 'red "Unscheduling task for Database %d: job: %s; trigger: %s" (u/get-id database) (.getName job-key) (.getName trigger-key)))
-    (task/delete-task! job-key trigger-key)))
+  (let [trigger-key (trigger-key database task-info)]
+    (log/debug (u/format-color 'red "Unscheduling task for Database %d: trigger: %s"
+                               (u/get-id database) (.getName trigger-key)))
+    (task/delete-trigger! trigger-key)))
 
-(s/defn ^:always-validate unschedule-tasks-for-db!
+(s/defn unschedule-tasks-for-db!
   "Cancel *all* scheduled sync and FieldValues caching tassks for DATABASE-OR-ID."
   [database :- DatabaseInstance]
-  (doseq [task-info task-infos]
-    (delete-task! database task-info)))
+  (delete-task! database sync-analyze-task-info)
+  (delete-task! database field-values-task-info))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                             (RE)SCHEDULING TASKS FOR A DB                                              |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         (RE)SCHEDULING TASKS FOR A DB                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate job :- JobDetail
-  "Build a Quartz Job for DATABASE and TASK-INFO."
-  [database :- DatabaseInstance, task-info :- TaskInfo]
+(s/defn ^:private job :- JobDetail
+  "Build a durable Quartz Job for TASK-INFO. Durable in Quartz allows the job to exist even if there are no triggers
+  for it."
+  [task-info :- TaskInfo]
   (jobs/build
-   (jobs/with-description (description database task-info))
+   (jobs/with-description (job-description task-info))
    (jobs/of-type (job-class task-info))
-   (jobs/using-job-data {"db-id" (u/get-id database)})
-   (jobs/with-identity (job-key database task-info))))
+   (jobs/with-identity (job-key task-info))
+   (jobs/store-durably)))
 
-(s/defn ^:private ^:always-validate trigger :- CronTrigger
+(s/def ^:private sync-analyze-job (job sync-analyze-task-info))
+(s/def ^:private field-values-job (job field-values-task-info))
+
+(s/defn ^:private trigger :- CronTrigger
   "Build a Quartz Trigger for DATABASE and TASK-INFO."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (triggers/build
-   (triggers/with-description (description database task-info))
+   (triggers/with-description (trigger-description database task-info))
    (triggers/with-identity (trigger-key database task-info))
+   (triggers/using-job-data {"db-id" (u/get-id database)})
+   (triggers/for-job (job-key task-info))
    (triggers/start-now)
    (triggers/with-schedule
      (cron/schedule
       (cron/cron-schedule (cron-schedule database task-info))
-      ;; drop tasks if they start to back up
-      (cron/with-misfire-handling-instruction-do-nothing)))))
+      ;; If we miss a trigger, try again at the next opportunity, but only try it once. If we miss two triggers in a
+      ;; row (i.e. more than an hour goes by) then the job should still execute, but drop the additional occurrences
+      ;; of the same trigger (i.e. no need to run the job 3 times because it was missed three times, once is all we
+      ;; need)
+      (cron/with-misfire-handling-instruction-fire-and-proceed)))))
 
-
-(s/defn ^:private ^:always-validate schedule-task-for-db!
+(s/defn ^:private schedule-tasks-for-db!
   "Schedule a new Quartz job for DATABASE and TASK-INFO."
-  [database :- DatabaseInstance, task-info :- TaskInfo]
-  (let [job     (job database task-info)
-        trigger (trigger database task-info)]
-    (log/debug (u/format-color 'green "Scheduling task for Database %d: job: %s; trigger: %s" (u/get-id database) (.getName (.getKey job)) (.getName (.getKey trigger))))
-    (task/schedule-task! job trigger)))
-
-
-(s/defn ^:always-validate schedule-tasks-for-db!
-  "Schedule all the different sync jobs we have for DATABASE.
-   Unschedules any existing jobs."
   [database :- DatabaseInstance]
-  ;; unschedule any tasks that might already be scheduled
-  (unschedule-tasks-for-db! database)
-  ;; now (re)schedule all the tasks
-  (doseq [task-info task-infos]
-    (schedule-task-for-db! database task-info)))
+  (let [sync-trigger (trigger database sync-analyze-task-info)
+        fv-trigger   (trigger database field-values-task-info)]
+
+    ;; unschedule any tasks that might already be scheduled
+    (unschedule-tasks-for-db! database)
+
+    (log/debug
+     (u/format-color 'green "Scheduling sync/analyze and field-values task for database %d: trigger: %s and trigger: %s"
+                     (u/get-id database) (.getName (.getKey sync-trigger))
+                     (u/get-id database) (.getName (.getKey fv-trigger))))
+
+    ;; now (re)schedule all the tasks
+    (task/add-trigger! sync-trigger)
+    (task/add-trigger! fv-trigger)))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                  TASK INITIALIZATION                                                   |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              TASK INITIALIZATION                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- job-init
+  "Separated from `task-init` primarily as it's useful in testing. Adds the sync and field-values job that all of the
+  triggers will use"
+  []
+  (task/add-job! sync-analyze-job)
+  (task/add-job! field-values-job))
 
 (defn task-init
   "Automatically called during startup; start the jobs for syncing/analyzing and updating FieldValues for all
-   Databases."
+  Databases."
   []
+  (job-init)
   (doseq [database (db/select Database)]
     (schedule-tasks-for-db! database)))

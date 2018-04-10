@@ -1,16 +1,17 @@
 :root {
   --input-border-color: #d9d9d9;
-  --input-border-active-color: #4E82C0;
+  --input-border-active-color: #4e82c0;
   --input-border-radius: 4px;
 }
 
-.input, :local(.input) {
+.input,
+:local(.input) {
   color: var(--dark-color);
   font-size: 1.12em;
   padding: 0.75rem 0.75rem;
   border: 1px solid var(--input-border-color);
   border-radius: var(--input-border-radius);
-  transition: border .3s linear;
+  transition: border 0.3s linear;
 }
 
 /* React doesn't receive events from IE11:s input clear button so don't show it */
@@ -25,10 +26,11 @@
 }
 
 .input--focus,
-.input:focus, :local(.input):focus {
+.input:focus,
+:local(.input):focus {
   outline: none;
   border: 1px solid var(--input-border-active-color);
-  transition: border .3s linear;
+  transition: border 0.3s linear;
   color: #222;
 }
 
@@ -41,7 +43,7 @@
 }
 
 .input:disabled {
-  opacity: .5;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -53,4 +55,3 @@
 .input[type="search"] {
   -webkit-appearance: none;
 }
-

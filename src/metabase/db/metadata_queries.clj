@@ -24,7 +24,8 @@
 (defn- field-query [{table-id :table_id} query]
   {:pre [(integer? table-id)]}
   (qp-query (db/select-one-field :db_id Table, :id table-id)
-            ;; this seeming useless `merge` statement IS in fact doing something important. `ql/query` is a threading macro for building queries. Do not remove
+            ;; this seeming useless `merge` statement IS in fact doing something important. `ql/query` is a threading
+            ;; macro for building queries. Do not remove
             (ql/query (merge query)
                       (ql/source-table table-id))))
 
@@ -47,7 +48,7 @@
   ([field]
    ;; fetch up to one more value than allowed for FieldValues. e.g. if the max is 100 distinct values fetch up to 101.
    ;; That way we will know if we're over the limit
-   (field-distinct-values field (inc field-values/low-cardinality-threshold)))
+   (field-distinct-values field (inc field-values/list-cardinality-threshold)))
   ([field max-results]
    {:pre [(integer? max-results)]}
    (mapv first (field-query field (-> {}

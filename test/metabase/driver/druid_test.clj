@@ -7,9 +7,8 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :refer [rows rows+column-names]]
-             [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
-            metabase.driver.druid
+            [metabase.driver.druid :as druid]
             [metabase.models
              [field :refer [Field]]
              [metric :refer [Metric]]
@@ -19,8 +18,8 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets :refer [expect-with-engine]]
-            [toucan.util.test :as tt])
-  (:import metabase.driver.druid.DruidDriver))
+            [metabase.timeseries-query-processor-test.util :as tqpt]
+            [toucan.util.test :as tt]))
 
 ;;; table-rows-sample
 (datasets/expect-with-engine :druid
@@ -64,22 +63,22 @@
          (sort-by first)
          (take 5))))
 
-(def ^:const ^:private ^String native-query-1
+(def ^:private ^String native-query-1
   (json/generate-string
     {:intervals   ["1900-01-01/2100-01-01"]
      :granularity :all
      :queryType   :select
      :pagingSpec  {:threshold 2}
      :dataSource  :checkins
-     :dimensions  [:venue_price
-                   :venue_name
+     :dimensions  [:id
                    :user_name
-                   :id]
+                   :venue_price
+                   :venue_name]
      :metrics     [:count]}))
 
 (defn- process-native-query [query]
   (datasets/with-engine :druid
-    (timeseries-qp-test/with-flattened-dbdef
+    (tqpt/with-flattened-dbdef
       (-> (qp/process-query {:native   {:query query}
                              :type     :native
                              :database (data/id)})
@@ -107,7 +106,7 @@
 
 
 ;; make sure we can run a native :timeseries query. This was throwing an Exception -- see #3409
-(def ^:const ^:private ^String native-query-2
+(def ^:private ^String native-query-2
   (json/generate-string
     {:intervals    ["1900-01-01/2100-01-01"]
      :granularity  {:type     :period
@@ -128,7 +127,7 @@
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
 (defmacro ^:private druid-query {:style/indent 0} [& body]
-  `(timeseries-qp-test/with-flattened-dbdef
+  `(tqpt/with-flattened-dbdef
      (qp/process-query {:database (data/id)
                         :type     :query
                         :query    (data/query ~'checkins
@@ -305,7 +304,7 @@
   [["2" 1231.0]
    ["3"  346.0]
    ["4" 197.0]]
-  (timeseries-qp-test/with-flattened-dbdef
+  (tqpt/with-flattened-dbdef
     (tt/with-temp Metric [metric {:definition {:aggregation [:sum [:field-id (data/id :checkins :venue_price)]]
                                                :filter      [:> [:field-id (data/id :checkins :venue_price)] 1]}}]
       (rows (qp/process-query
@@ -332,3 +331,22 @@
       (driver/can-connect-with-details? engine details :rethrow-exceptions))
        (catch Exception e
          (.getMessage e))))
+
+;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
+;; everything works correctly together
+(datasets/expect-with-engine :druid
+  [false ;; Ensure the query promise hasn't fired yet
+   false ;; Ensure the cancellation promise hasn't fired yet
+   true  ;; Was query called?
+   false ;; Cancel should not have been called yet
+   true  ;; Cancel should have been called now
+   true  ;; The paused query can proceed now
+   ]
+  (tu/call-with-paused-query
+   (fn [query-thunk called-query? called-cancel? pause-query]
+     (future
+       ;; stub out the query and delete functions so that we know when one is called vs. the other
+       (with-redefs [druid/do-query (fn [details query] (deliver called-query? true) @pause-query)
+                     druid/DELETE   (fn [url] (deliver called-cancel? true))]
+         (data/run-query checkins
+           (ql/aggregation (ql/count))))))))

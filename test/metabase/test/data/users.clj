@@ -10,7 +10,7 @@
             [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo))
 
-;;; ------------------------------------------------------------ User Definitions ------------------------------------------------------------
+;;; ------------------------------------------------ User Definitions ------------------------------------------------
 
 ;; ## Test Users
 ;;
@@ -44,7 +44,7 @@
 (def ^:private ^:const usernames
   (set (keys user->info)))
 
-;;; ------------------------------------------------------------ Test User Fns ------------------------------------------------------------
+;;; ------------------------------------------------- Test User Fns --------------------------------------------------
 
 (defn- wait-for-initiailization
   "Wait up to MAX-WAIT-SECONDS (default: 30) for Metabase to finish initializing.
@@ -58,7 +58,8 @@
      (when-not (init-status/complete?)
        (when (<= max-wait-seconds 0)
          (throw (Exception. "Metabase still hasn't finished initializing.")))
-       (printf "Metabase is not yet initialized, waiting 1 second (max wait remaining: %d seconds)...\n" max-wait-seconds)
+       (println (format "Metabase is not yet initialized, waiting 1 second (max wait remaining: %d seconds)...\n"
+                        max-wait-seconds))
        (Thread/sleep 1000)
        (recur (dec max-wait-seconds))))))
 
@@ -130,7 +131,8 @@
   (or (@tokens username)
       (u/prog1 (http/authenticate (user->credentials username))
         (swap! tokens assoc username <>))
-      (throw (Exception. (format "Authentication failed for %s with credentials %s" username (user->credentials username))))))
+      (throw (Exception. (format "Authentication failed for %s with credentials %s"
+                                 username (user->credentials username))))))
 
 (defn- client-fn [username & args]
   (try
@@ -155,6 +157,7 @@
 
 (defn ^:deprecated delete-temp-users!
   "Delete all users besides the 4 persistent test users.
-   This is a HACK to work around tests that don't properly clean up after themselves; one day we should be able to remove this. (TODO)"
+  This is a HACK to work around tests that don't properly clean up after themselves; one day we should be able to
+  remove this. (TODO)"
   []
   (db/delete! User :id [:not-in (map user->id [:crowberto :lucky :rasta :trashbird])]))

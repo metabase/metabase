@@ -19,15 +19,28 @@
   ([^Histogram histogram] histogram)
   ([^Histogram histogram x] (impl/insert-categorical! histogram (when x 1) x)))
 
-(defn histogram-aggregated
-  "Transducer that summarizes preaggregated data with a histogram."
-  [fx fw]
+(defn map->histogram
+  "Transducer that summarizes preaggregated numerical data with a histogram."
+  [fbin fcount]
   (fn
     ([] (impl/create))
     ([^Histogram histogram] histogram)
     ([^Histogram histogram e]
-     (let [x (fx e)]
-       (impl/insert-categorical! histogram (when x (fw e)) x)))))
+     (impl/insert-bin! histogram {:mean  (fbin e)
+                                  :count (-> e fcount double)}))))
+
+(defn map->histogram-categorical
+  "Transducer that summarizes preaggregated categorical data with a histogram."
+  [fbin fcount]
+  (fn
+    ([] (impl/create :group-types [:categorical]))
+    ([^Histogram histogram] histogram)
+    ([^Histogram histogram e]
+     (let [[bin count] ((juxt fbin (comp double fcount)) e)]
+       (impl/insert-bin! histogram {:mean  1.0
+                                    :count count
+                                    :target {:counts        {bin count}
+                                             :missing-count 0.0}})))))
 
 (def ^{:arglists '([^Histogram histogram])} categorical?
   "Returns true if given histogram holds categorical values."
@@ -73,7 +86,7 @@
 (defn equidistant-bins
   "Split histogram into `bin-width` wide bins. If `bin-width` is not given use
    `optimal-bin-width` to calculate optimal width. Optionally takes `min` and
-   `max` and projects histogram into that interval rather than hisogram bounds."
+   `max` and projects histogram into that interval rather than histogram bounds."
   ([^Histogram histogram]
    (if (categorical? histogram)
      (-> histogram impl/bins first :target :counts)

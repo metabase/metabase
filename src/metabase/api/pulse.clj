@@ -18,6 +18,7 @@
              [pulse-channel :refer [channel-types]]]
             [metabase.pulse.render :as render]
             [metabase.util.schema :as su]
+            [metabase.util.urls :as urls]
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
@@ -49,7 +50,7 @@
    channels      (su/non-empty [su/Map])
    skip_if_empty s/Bool}
   (check-card-read-permissions cards)
-  (api/check-500 (pulse/create-pulse! name api/*current-user-id* (map u/get-id cards) channels skip_if_empty)))
+  (api/check-500 (pulse/create-pulse! name api/*current-user-id* (map pulse/create-card-ref cards) channels skip_if_empty)))
 
 
 (api/defendpoint GET "/:id"
@@ -70,7 +71,7 @@
   (check-card-read-permissions cards)
   (pulse/update-pulse! {:id             id
                         :name           name
-                        :cards          (map u/get-id cards)
+                        :cards          (map pulse/create-card-ref cards)
                         :channels       channels
                         :skip-if-empty? skip_if_empty})
   (pulse/retrieve-pulse id))
@@ -114,7 +115,7 @@
                                                                             :card-id     id})]
     {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title*   true
                                                                             render/*include-buttons* true]
-                                                                    (render/render-pulse-card (p/defaulted-timezone card) card result))]])}))
+                                                                    (render/render-pulse-card-for-display (p/defaulted-timezone card) card result))]])}))
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."
@@ -126,11 +127,14 @@
         data      (:data result)
         card-type (render/detect-pulse-card-type card data)
         card-html (html (binding [render/*include-title* true]
-                          (render/render-pulse-card (p/defaulted-timezone card) card result)))]
+                          (render/render-pulse-card-for-display (p/defaulted-timezone card) card result)))]
     {:id              id
      :pulse_card_type card-type
      :pulse_card_html card-html
-     :row_count       (:row_count result)}))
+     :pulse_card_name (:name card)
+     :pulse_card_url  (urls/card-url (:id card))
+     :row_count       (:row_count result)
+     :col_count       (count (:cols (:data result)))}))
 
 (api/defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a `Card` with ID."

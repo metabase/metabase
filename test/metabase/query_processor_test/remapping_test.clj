@@ -1,12 +1,13 @@
 (ns metabase.query-processor-test.remapping-test
   "Tests for the remapping results"
-  (:require [metabase.query-processor.middleware.expand :as ql]
-            [metabase.query-processor-test :refer :all]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.test.util :as tu]))
-
-(tu/resolve-private-vars metabase.query-processor.middleware.add-dimension-projections create-remapped-col)
+  (:require [metabase.query-processor-test :refer :all]
+            [metabase.query-processor.middleware
+             [add-dimension-projections :as add-dimension-projections]
+             [expand :as ql]]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data.datasets :as datasets]))
 
 (qp-expect-with-all-engines
   {:rows  [["20th Century Cafe" 12 "Café Sweets"]
@@ -18,7 +19,7 @@
              "Foo"]
    :cols    [(venues-col :name)
              (assoc (venues-col :category_id) :remapped_to "Foo")
-             (create-remapped-col "Foo" (data/format-name "category_id"))]
+             (#'add-dimension-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
    :native_form true}
   (data/with-data
     (data/create-venue-category-remapping "Foo")
@@ -51,7 +52,7 @@
                    (fn [rows]
                      (map #(mapv % col-indexes) rows))))))
 
-(datasets/expect-with-engines (engines-that-support :foreign-keys)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
   {:rows   [["20th Century Cafe" 2 "Café"]
             ["25°" 2 "Burger"]
             ["33 Taps" 2 "Bar"]

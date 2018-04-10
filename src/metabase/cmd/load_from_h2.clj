@@ -61,12 +61,11 @@
 
 (defn- println-ok [] (println (color/green "[OK]")))
 
-;;; ------------------------------------------------------------ Loading Data ------------------------------------------------------------
+;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
 (def ^:private entities
-  "Entities in the order they should be serialized/deserialized.
-   This is done so we make sure that we load load instances of entities before others
-   that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
+  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load load
+  instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
   [Database
    User
    Setting
@@ -102,7 +101,8 @@
    Dimension
    ComputationJob
    ComputationJobResult
-   ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed above this line)
+   ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
+   ;; above this line)
    DataMigrations])
 
 
@@ -115,7 +115,8 @@
   (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) (:name entity))) ; TODO - I don't think the print+flush is working as intended :/
   (flush)
   (let [ks         (keys (first objs))
-        ;; 1) `:sizeX` and `:sizeY` come out of H2 as `:sizex` and `:sizey` because of automatic lowercasing; fix the names of these before putting into the new DB
+        ;; 1) `:sizeX` and `:sizeY` come out of H2 as `:sizex` and `:sizey` because of automatic lowercasing; fix the
+        ;;    names of these before putting into the new DB
         ;; 2) Need to wrap the column names in quotes because Postgres automatically lowercases unquoted identifiers
         quote-char (case (config/config-kw :mb-db-type)
                      :postgres \"
@@ -125,7 +126,8 @@
                                              :sizex :sizeX
                                              :sizey :sizeY
                                              k)) quote-char))]
-    ;; The connection closes prematurely on occasion when we're inserting thousands of rows at once. Break into smaller chunks so connection stays alive
+    ;; The connection closes prematurely on occasion when we're inserting thousands of rows at once. Break into
+    ;; smaller chunks so connection stays alive
     (doseq [chunk (partition-all 300 objs)]
       (print (color/blue \.))
       (flush)
@@ -148,12 +150,17 @@
       (insert-entity! target-db-conn e rows))))
 
 
-;;; ------------------------------------------------------------ Enabling / Disabling Constraints ------------------------------------------------------------
+;;; ---------------------------------------- Enabling / Disabling Constraints ----------------------------------------
 
 (defn- disable-db-constraints:postgres! [target-db-conn]
-  ;; make all of our FK constraints deferrable. This only works on Postgres 9.4+ (December 2014)!
-  ;; (There's no pressing reason to turn these back on at the conclusion of this script. It makes things more complicated since it doesn't work if done inside the same transaction.)
-  (doseq [{constraint :constraint_name, table :table_name} (jdbc/query target-db-conn ["SELECT * FROM information_schema.table_constraints WHERE constraint_type = 'FOREIGN KEY'"])]
+  ;; make all of our FK constraints deferrable. This only works on Postgres 9.4+ (December 2014)! (There's no pressing
+  ;; reason to turn these back on at the conclusion of this script. It makes things more complicated since it doesn't
+  ;; work if done inside the same transaction.)
+  (doseq [{constraint :constraint_name, table :table_name} (jdbc/query
+                                                            target-db-conn
+                                                            [(str "SELECT * "
+                                                                  "FROM information_schema.table_constraints "
+                                                                  "WHERE constraint_type = 'FOREIGN KEY'")])]
     (jdbc/execute! target-db-conn [(format "ALTER TABLE \"%s\" ALTER CONSTRAINT \"%s\" DEFERRABLE" table constraint)]))
   ;; now enable constraint deferring for the duration of the transaction
   (jdbc/execute! target-db-conn ["SET CONSTRAINTS ALL DEFERRED"]))
@@ -181,7 +188,7 @@
     (println-ok)))
 
 
-;;; ------------------------------------------------------------ Fixing Postgres Sequence Values ------------------------------------------------------------
+;;; ---------------------------------------- Fixing Postgres Sequence Values -----------------------------------------
 
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
@@ -197,18 +204,19 @@
               :when (not (contains? entities-without-autoinc-ids e))
               :let  [table-name (name (:table e))
                      seq-name   (str table-name "_id_seq")
-                     sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val" seq-name (name table-name))]]
+                     sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val"
+                                        seq-name (name table-name))]]
         (jdbc/db-query-with-resultset target-db-conn [sql] :val))
       (println-ok))))
 
 
-;;; ------------------------------------------------------------ Public Fns ------------------------------------------------------------
+;;; --------------------------------------------------- Public Fns ---------------------------------------------------
 
 (defn load-from-h2!
-  "Transfer data from existing H2 database to the newly created (presumably MySQL or Postgres) DB specified by env vars.
-   Intended as a tool for upgrading from H2 to a 'real' Database.
+  "Transfer data from existing H2 database to the newly created (presumably MySQL or Postgres) DB specified by env
+  vars. Intended as a tool for upgrading from H2 to a 'real' Database.
 
-   Defaults to using `@metabase.db/db-file` as the connection string."
+  Defaults to using `@metabase.db/db-file` as the connection string."
   [h2-connection-string-or-nil]
   (mdb/setup-db!)
   (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-details)]

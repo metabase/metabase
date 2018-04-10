@@ -100,24 +100,24 @@
   (host-port-up? "nosuchhost" 8005))
 
 
-;;; ## tests for IS-URL?
+;;; ## tests for URL?
 
-(expect true (is-url? "http://google.com"))
-(expect true (is-url? "https://google.com"))
-(expect true (is-url? "https://amazon.co.uk"))
-(expect true (is-url? "http://google.com?q=my-query&etc"))
-(expect true (is-url? "http://www.cool.com"))
-(expect true (is-url? "http://localhost/"))
-(expect true (is-url? "http://localhost:3000"))
-(expect true (is-url? "https://www.mapbox.com/help/data/stations.geojson"))
-(expect true (is-url? "http://www.cool.com:3000"))
-(expect true (is-url? "http://localhost:3000/auth/reset_password/144_f98987de-53ca-4335-81da-31bb0de8ea2b#new"))
-(expect false (is-url? "google.com"))                      ; missing protocol
-(expect false (is-url? "ftp://metabase.com"))              ; protocol isn't HTTP/HTTPS
-(expect false (is-url? "http://metabasecom"))              ; no period / TLD
-(expect false (is-url? "http://.com"))                     ; no domain
-(expect false (is-url? "http://google."))                  ; no TLD
-(expect false (is-url? "http:/"))                          ; nil .getAuthority needs to be handled or NullPointerException
+(expect true (url? "http://google.com"))
+(expect true (url? "https://google.com"))
+(expect true (url? "https://amazon.co.uk"))
+(expect true (url? "http://google.com?q=my-query&etc"))
+(expect true (url? "http://www.cool.com"))
+(expect true (url? "http://localhost/"))
+(expect true (url? "http://localhost:3000"))
+(expect true (url? "https://www.mapbox.com/help/data/stations.geojson"))
+(expect true (url? "http://www.cool.com:3000"))
+(expect true (url? "http://localhost:3000/auth/reset_password/144_f98987de-53ca-4335-81da-31bb0de8ea2b#new"))
+(expect false (url? "google.com"))                      ; missing protocol
+(expect false (url? "ftp://metabase.com"))              ; protocol isn't HTTP/HTTPS
+(expect false (url? "http://metabasecom"))              ; no period / TLD
+(expect false (url? "http://.com"))                     ; no domain
+(expect false (url? "http://google."))                  ; no TLD
+(expect false (url? "http:/"))                          ; nil .getAuthority needs to be handled or NullPointerException
 
 ;;; ## tests for RPARTIAL
 
@@ -204,12 +204,12 @@
   (select-nested-keys {} [:c]))
 
 
-;;; tests for base-64-string?
-(expect (base-64-string? "ABc"))
-(expect (base-64-string? "ABc/+asdasd=="))
-(expect false (base-64-string? 100))
-(expect false (base-64-string? "<<>>"))
-(expect false (base-64-string? "{\"a\": 10}"))
+;;; tests for base64-string?
+(expect (base64-string? "ABc"))
+(expect (base64-string? "ABc/+asdasd=="))
+(expect false (base64-string? 100))
+(expect false (base64-string? "<<>>"))
+(expect false (base64-string? "{\"a\": 10}"))
 
 
 ;;; tests for `occurances-of-substring`
@@ -243,12 +243,28 @@
     :present #{:a :b :c}
     :non-nil #{:d :e :f}))
 
-(expect
-  [-2 -1 0 1 2 3 0 3]
-  (map order-of-magnitude [0.01 0.5 4 12 444 1023 0 -1444]))
 
-(expect
-  [{:foo 2}
-   {:foo 2 :bar 3}]
-  [(update-when {:foo 2} :bar inc)
-   (update-when {:foo 2 :bar 2} :bar inc)])
+;;; tests for `order-of-magnitude`
+(expect -2 (order-of-magnitude 0.01))
+(expect -1 (order-of-magnitude 0.5))
+(expect 0  (order-of-magnitude 4))
+(expect 1  (order-of-magnitude 12))
+(expect 2  (order-of-magnitude 444))
+(expect 3  (order-of-magnitude 1023))
+(expect 0  (order-of-magnitude 0))
+(expect 3  (order-of-magnitude -1444))
+
+
+;;; tests for `update-when` and `update-in-when`
+(expect {:foo 2}        (update-when {:foo 2} :bar inc))
+(expect {:foo 2 :bar 3} (update-when {:foo 2 :bar 2} :bar inc))
+
+(expect {:foo 2}        (update-in-when {:foo 2} [:foo :bar] inc))
+(expect {:foo {:bar 3}} (update-in-when {:foo {:bar 2}} [:foo :bar] inc))
+
+
+;;; tests for `index-of`
+(expect 2   (index-of pos? [-1 0 2 3]))
+(expect nil (index-of pos? [-1 0 -2 -3]))
+(expect nil (index-of pos? nil))
+(expect nil (index-of pos? []))
