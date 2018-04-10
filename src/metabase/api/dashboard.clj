@@ -18,6 +18,7 @@
              [query :as query :refer [Query]]
              [revision :as revision]]
             [metabase.query-processor.util :as qp-util]
+            [metabase.related :as related]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -366,6 +367,10 @@
   (api/check-embedding-enabled)
   (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Dashboard api/read-check related/related))
 
 ;;; --------------------------------------------------- Transient dashboards ---------------------------------------------------
 
