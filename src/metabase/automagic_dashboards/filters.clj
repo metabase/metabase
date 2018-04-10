@@ -83,14 +83,15 @@
 (defn- score
   [{:keys [base_type special_type fingerprint] :as field}]
   (cond-> 0
-    (some-> fingerprint :global :distinct-count (< 10)) inc
-    (some-> fingerprint :global :distinct-count (> 20)) dec
-    ((descendants :type/Category) special_type)         inc
-    (field/unix-timestamp? field)                       inc
-    (isa? base_type :type/DateTime)                     inc
-    ((descendants :type/DateTime) special_type)         inc
-    (isa? special_type :type/CreationTimestamp)         inc
-    (#{:type/State :type/Country} special_type)         inc))
+    (some-> fingerprint :global :distinct-count (#(< 1 % 10))) inc
+    (some-> fingerprint :global :distinct-count (> 20))        dec
+    (some-> fingerprint :global :distinct-count (< 2))         dec
+    ((descendants :type/Category) special_type)                inc
+    (field/unix-timestamp? field)                              inc
+    (isa? base_type :type/DateTime)                            inc
+    ((descendants :type/DateTime) special_type)                inc
+    (isa? special_type :type/CreationTimestamp)                inc
+    (#{:type/State :type/Country} special_type)                inc))
 
 (defn add-filters
   "Add up to `max-filters` filters to dashboard `dashboard`. Takes an optional
