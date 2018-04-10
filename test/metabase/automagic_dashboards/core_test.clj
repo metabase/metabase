@@ -61,7 +61,7 @@
   false
   (with-rasta
     (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
-      (->> (Field) (keep #(automagic-analysis % {})) (every? some?)))))
+      (->> (Field) (keep #(automagic-analysis % {})) empty?))))
 
 (expect
   false
