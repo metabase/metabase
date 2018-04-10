@@ -1,0 +1,40 @@
+{
+  "Service": {
+    "cpus": 1,
+    "name": "discovery",
+    "instances": 1,
+    "mem": 2048,
+    "virtualhost": "nightlypublic.labs.stratio.com",
+    "force_pull_image": true
+  },
+  "Security": {
+    "vault_host": "vault.service.paas.labs.stratio.com",
+    "vault_port": 8200,
+    "instance_app_role": "open",
+    "vault_token": ""
+  },
+  "Network": {
+    "network_segmentation": true,
+    "network_name": "stratio"
+  },
+  "Datastore": {
+    "host": "127.0.0.1",
+    "port": 5432,
+    "user": "postgres",
+    "database": "discovery",
+    "type": "postgres",
+    "password": "stratio"
+  },
+  "Discovery": {
+    "usermail": "demo@stratio.com",
+    "user": "Demo",
+    "password": "123456",
+    "path": "/services/metabase"
+  },
+  "Armadillo": {
+    "user": "vnd.bbva.user-id"
+  },
+  "Crossdata": {
+    "tenant_name": "crossdata-1"
+  }
+}
