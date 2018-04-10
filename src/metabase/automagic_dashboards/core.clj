@@ -649,16 +649,18 @@
                    schema (concat [:schema schema])))
           (remove (some-fn link-table? list-like-table?))
           (keep (fn [table]
-                  (when-let [[dashboard rule]
-                             (->> {:entity       table
-                                   :source-table table
-                                   :database     (:db_id table)}
-                                  (matching-rules rules)
-                                  (keep (partial apply-rule table))
-                                  first)]
-                    {:url         (format "%stable/%s" public-endpoint (:id table))
-                     :title       (:title dashboard)
-                     :score       (rule-specificity rule)
-                     :description (:description dashboard)
-                     :table       table})))
+                  (let [root {:entity       table
+                              :source-table table
+                              :database     (-> table :db_id Database)
+                              :rules-prefix "table"}]
+                    (when-let [[dashboard rule]
+                               (->> root
+                                    (matching-rules rules)
+                                    (keep (partial apply-rule root))
+                                    first)]
+                      {:url         (format "%stable/%s" public-endpoint (:id table))
+                       :title       (:title dashboard)
+                       :score       (rule-specificity rule)
+                       :description (:description dashboard)
+                       :table       table}))))
           (sort-by :score >)))))

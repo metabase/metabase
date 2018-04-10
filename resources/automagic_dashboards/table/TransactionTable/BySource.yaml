@@ -13,10 +13,11 @@ dimensions:
     field_type: CreationTimestamp
 - Timestamp:
     field_type: DateTime
-- Source: UserTable.Source
-- SourceSmall:
+- SourceMedium:
     field_type: UserTable.Source
     max_cardinality: 10
+- SourceLarge:
+    field_type: UserTable.Source
 - Income: Income
 - Quantity:
     field_type: Quantity
@@ -46,6 +47,9 @@ groups:
     title: Financial
 - UserAcquisition:
     title: User acquisition
+dashboard_filters:
+- SourceMedium
+- SourceLarge
 cards:
 - OrdersBySourceTimeseries:
     title: Sales by source
@@ -54,51 +58,47 @@ cards:
         stackable.stack_type: stacked
     dimensions:
       - Timestamp
-      - SourceSmall
+      - SourceMedium
     metrics: TotalOrders
     width: 18
     score: 100
     height: 8
 - OrderBySource:
     group: Financial
-    title: Total orders by source (top 10)
+    title: Total orders by source
     visualization: row
-    dimensions: Source
+    dimensions: SourceLarge
     metrics: TotalOrders
     order_by:
       - TotalOrders: descending
-    limit: 10
     score: 80
     height: 8
 - IncomeBySource:
     group: Financial
-    title: Total income by source (top 10)
+    title: Total income by source
     visualization: row
-    dimensions: Source
+    dimensions: SourceMedium
     metrics: TotalIncome
     order_by:
       - TotalIncome: descending
-    limit: 10
     score: 80
     height: 8
 - AvgQuantityBySource:
     group: Financial
-    title: Average qunatity by source (top 10)
+    title: Average qunatity by source
     visualization: row
-    dimensions: Source
+    dimensions: SourceMedium
     metrics: AvgQuantity
-    limit: 10
     order_by:
       - AvgQuantity: descending
     score: 80
     height: 8
 - AvgIncomeBySource:
    group: Financial
-   title: Average income by source (top 10)
+   title: Average income by source
    visualization: row
-   dimensions: Source
+   dimensions: SourceMedium
    metrics: AvgIncome
-   limit: 10
    order_by:
      - AvgIncome: descending
    score: 80
@@ -106,10 +106,9 @@ cards:
 - UsersBySource:
     group: UserAcquisition
     visualization: row
-    title: Number of users by source (top 10)
-    dimensions: Source
+    title: Number of users by source
+    dimensions: SourceMedium
     metrics: TotalUsers
-    limit: 10
     order_by:
       - TotalUsers: descending
     score: 90
@@ -117,12 +116,62 @@ cards:
 - NewUsersBySource:
     group: UserAcquisition
     visualization: row
-    title: New users in the last 30 days by source (top 10)
-    dimensions: Source
+    title: New users in the last 30 days by source
+    dimensions: SourceMedium
     metrics: TotalUsers
     filters: NewUsers
     score: 90
-    limit: 10
+    height: 8
+    order_by:
+      - TotalUsers: descending
+- IncomeBySource:
+    group: Financial
+    title: Total income by source
+    visualization: table
+    dimensions: SourceLarge
+    metrics: TotalIncome
+    order_by:
+      - TotalIncome: descending
+    score: 80
+    height: 8
+- AvgQuantityBySource:
+    group: Financial
+    title: Average qunatity by source
+    visualization: table
+    dimensions: SourceLarge
+    metrics: AvgQuantity
+    order_by:
+      - AvgQuantity: descending
+    score: 80
+    height: 8
+- AvgIncomeBySource:
+   group: Financial
+   title: Average income by source
+   visualization: table
+   dimensions: SourceLarge
+   metrics: AvgIncome
+   order_by:
+     - AvgIncome: descending
+   score: 80
+   height: 8
+- UsersBySource:
+    group: UserAcquisition
+    visualization: table
+    title: Number of users by source
+    dimensions: SourceLarge
+    metrics: TotalUsers
+    order_by:
+      - TotalUsers: descending
+    score: 90
+    height: 8
+- NewUsersBySource:
+    group: UserAcquisition
+    visualization: table
+    title: New users in the last 30 days by source
+    dimensions: SourceLarge
+    metrics: TotalUsers
+    filters: NewUsers
+    score: 90
     height: 8
     order_by:
       - TotalUsers: descending
