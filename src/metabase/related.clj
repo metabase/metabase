@@ -88,17 +88,22 @@
   (let [[best rest] (split-at max-best-matches matches)]
     (concat best (->> rest shuffle (take max-serendipity-matches)))))
 
+(def ^:private ^{:arglists '([candidates])} filter-visible
+  (partial filter (every-pred (comp nil? :visibility_type)
+                              (comp (some-fn nil? false?) :archived)
+                              mi/can-read?)))
+
 (defn- metrics-for-table
   [table]
-  (filter mi/can-read? (db/select Metric
-                         :table_id  (:id table)
-                         :is_active true)))
+  (filter-visible (db/select Metric
+                    :table_id  (:id table)
+                    :is_active true)))
 
 (defn- segments-for-table
   [table]
-  (filter mi/can-read? (db/select Segment
-                         :table_id  (:id table)
-                         :is_active true)))
+  (filter-visible (db/select Segment
+                    :table_id  (:id table)
+                    :is_active true)))
 
 (defn- linking-to
   [table]
@@ -107,35 +112,37 @@
          :fk_target_field_id [:not= nil])
        (map (comp Table :table_id Field))
        distinct
-       (filter (every-pred (comp nil? :visibility_type) mi/can-read?))
+       filter-visible
        (take max-matches)))
 
 (defn- linked-from
   [table]
-  (let [fields (db/select-field :id Field :table_id (:id table))]
+  (if-let [fields (not-empty (db/select-field :id Field :table_id (:id table)))]
     (->> (db/select-field :table_id Field
            :fk_target_field_id [:in fields])
          (map Table)
-         (filter (every-pred (comp nil? :visibility_type) mi/can-read?))
-         (take max-matches))))
+         filter-visible
+         (take max-matches))
+    []))
 
 (defn- cards-sharing-dashboard
   [card]
-  (when-let [dashboards (not-empty (db/select-field :dashboard_id DashboardCard
+  (if-let [dashboards (not-empty (db/select-field :dashboard_id DashboardCard
                                      :card_id (:id card)))]
     (->> (db/select-field :card_id DashboardCard
            :dashboard_id [:in dashboards]
            :card_id [:not= (:id card)])
          (map Card)
-         (filter (every-pred (comp false? :archived) mi/can-read?))
-         (take max-matches))))
+         filter-visible
+         (take max-matches))
+    []))
 
 (defn- similar-questions
   [card]
   (->> (db/select Card
          :table_id (:table_id card)
          :archived false)
-       (filter mi/can-read?)
+       filter-visible
        (rank-by-similarity card)
        (filter (comp pos? :similarity))))
 
@@ -144,13 +151,10 @@
   (->> (db/select Metric
          :table_id (:table_id card)
          :is_active true)
-       (filter (every-pred mi/can-read?
-                           (comp #{(-> card
-                                       :dataset_query
-                                       :query
-                                       :aggregation)}
-                                 :aggregation :definition)))
-       first))
+       filter-visible
+       (m/find-first (comp #{(-> card :dataset_query :query :aggregation)}
+                           :aggregation
+                           :definition))))
 
 (defn- recently-modified-dashboards
   []
@@ -159,7 +163,7 @@
          :user_id api/*current-user-id*
          {:order-by [[:timestamp :desc]]})
        (map Dashboard)
-       (filter (every-pred (comp false? :archived) mi/can-read?))
+       filter-visible
        (take max-serendipity-matches)))
 
 (defn- recommended-dashboards
@@ -177,8 +181,7 @@
                               (mapcat (comp card->dashboards :id))
                               distinct
                               (map Dashboard)
-                              (filter (every-pred (comp false? :archived)
-                                                  mi/can-read?))
+                              filter-visible
                               (take max-best-matches))]
     (concat best recent)))
 
@@ -188,7 +191,7 @@
        (m/distinct-by :collection_id)
        interesting-mix
        (keep (comp Collection :collection_id))
-       (filter (every-pred (comp false? :archived) mi/can-read?))))
+       filter-visible))
 
 (defmulti
   ^{:doc "Return related entities."
@@ -253,14 +256,14 @@
      :metrics     (metrics-for-table table)
      :linking-to  linking-to
      :linked-from linked-from
-     :tables      (when (every? empty? [linking-to linked-from])
-                    (->> (db/select Table
-                           :db_id           (:db_id table)
-                           :schema          (:schema table)
-                           :id              [:not= (:id table)]
-                           :visibility_type nil)
-                         (filter mi/can-read?)
-                         interesting-mix))}))
+     :tables      (->> (db/select Table
+                         :db_id           (:db_id table)
+                         :schema          (:schema table)
+                         :id              [:not= (:id table)]
+                         :visibility_type nil)
+                       (remove (set (concat linking-to linked-from)))
+                       filter-visible
+                       interesting-mix)}))
 
 (defmethod related (type Dashboard)
   [dashboard]
@@ -270,5 +273,5 @@
                  (mapcat (comp similar-questions))
                  (remove (set cards))
                  distinct
-                 (filter (every-pred (comp false? :archived) mi/can-read?))
+                 filter-visible
                  interesting-mix)}))
