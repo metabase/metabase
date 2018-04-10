@@ -45,21 +45,21 @@
 (defmacro ^:private with-world
   [& body]
   `(tt/expect-with-temp [Database  [{~'database-id :id}]
-                        Table      [{~'table-id-a :id} {:db_id ~'database-id}]
-                        Table      [{~'table-id-b :id} {:db_id ~'database-id}]
-                        Collection [{~'collection-id :id}]
-                        Metric     [{~'metric-id-a :id} {:table_id ~'table-id-a
-                                                       :definition {:source_table ~'table-id-a
-                                                                    :aggregation [:sum [:field-id 1]]}}]
-                        Metric     [{~'metric-id-b :id} {:table_id ~'table-id-a
-                                                       :definition {:source_table ~'table-id-a
-                                                                    :aggregation [:count]}}]
-                        Segment    [{~'segment-id-a :id} {:table_id ~'table-id-a
-                                                        :definition {:source_table ~'table-id-a
-                                                                     :filter [:not= [:field-id 1] nil]}}]
-                        Segment    [{~'segment-id-b :id} {:table_id ~'table-id-a
-                                                        :definition {:source_table ~'table-id-a
-                                                                     :filter [:not= [:field-id 2] nil]}}]
+                         Table      [{~'table-id-a :id} {:db_id ~'database-id}]
+                         Table      [{~'table-id-b :id} {:db_id ~'database-id}]
+                         Collection [{~'collection-id :id}]
+                         Metric     [{~'metric-id-a :id} {:table_id ~'table-id-a
+                                                          :definition {:source_table ~'table-id-a
+                                                                       :aggregation [:sum [:field-id 1]]}}]
+                         Metric     [{~'metric-id-b :id} {:table_id ~'table-id-a
+                                                          :definition {:source_table ~'table-id-a
+                                                                       :aggregation [:count]}}]
+                         Segment    [{~'segment-id-a :id} {:table_id ~'table-id-a
+                                                           :definition {:source_table ~'table-id-a
+                                                                        :filter [:not= [:field-id 1] nil]}}]
+                         Segment    [{~'segment-id-b :id} {:table_id ~'table-id-a
+                                                           :definition {:source_table ~'table-id-a
+                                                                        :filter [:not= [:field-id 3] nil]}}]
                          Card       [{~'card-id-a :id :as ~'card-a}
                                      {:table_id      ~'table-id-a
                                       :dataset_query {:type :query
