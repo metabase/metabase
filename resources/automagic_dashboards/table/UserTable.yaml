@@ -54,7 +54,7 @@ dashboard_filters:
 cards:
 # Overview
   - Rowcount:
-      title: Total number of users
+      title: Total users
       visualization: scalar
       metrics: Count
       score: 100
@@ -68,15 +68,15 @@ cards:
       group: Overview
   - NewUsersByMonth:
       visualization: line
-      title: New users by month
-      description: How many new users have we acquired each month
+      title: New users per month
+      description: How many new users we've acquired each month
       dimensions: JoinDate
       metrics: Count
       score: 100
       group: Overview
 # Geographical
   - CountByCountry:
-      title: Count of users by country
+      title: Count of users per country
       metrics: Count
       dimensions: Country
       score: 90
@@ -86,17 +86,18 @@ cards:
           map.region: world_countries
       group: Geographical
   - CountByState:
-      title: Count of users by state
+      title: Users per state
       metrics: Count
       dimensions: State
       score: 90
+      height: 8
       visualization:
         map:
           map.type: region
           map.region: us_states
       group: Geographical
   - CountByCoords:
-      title: Count of users by coordinates
+      title: Users by coordinates
       metrics: Count
       dimensions:
         - Long:
@@ -105,10 +106,11 @@ cards:
             aggregation: default
       visualization: map
       score: 80
+      height: 8
       group: Geographical
 # General
   - NumberDistribution:
-      title: Distribution of [[GenericNumber]]
+      title: How [[GenericNumber]] is distributed
       dimensions:
         - GenericNumber:
             aggregation: default
@@ -117,7 +119,7 @@ cards:
       score: 90
       group: General
   - CountByCategoryMedium:
-      title: Count of users by [[GenericCategoryMedium]]
+      title: Users per [[GenericCategoryMedium]]
       dimensions: GenericCategoryMedium
       metrics: Count
       visualization: row
@@ -127,7 +129,7 @@ cards:
       order_by:
         - Count: descending
   - CountByCategoryLarge:
-      title: Count of users by [[GenericCategoryLarge]]
+      title: Users per [[GenericCategoryLarge]]
       dimensions: GenericCategoryLarge
       metrics: Count
       visualization: table
