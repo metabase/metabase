@@ -54,7 +54,7 @@ dashboard_filters:
 cards:
 # Overview
   - Rowcount:
-      title: Total number of users
+      title: Total users
       visualization: scalar
       metrics: Count
       score: 100
@@ -68,15 +68,15 @@ cards:
       group: Overview
   - NewUsersByMonth:
       visualization: line
-      title: New users by month
-      description: How many new users have we acquired each month
+      title: New users per month
+      description: How many new users we've acquired each month
       dimensions: JoinDate
       metrics: Count
       score: 100
       group: Overview
 # Geographical
   - CountByCountry:
-      title: Count of users by country
+      title: Count of users per country
       metrics: Count
       dimensions: Country
       score: 90
@@ -86,10 +86,11 @@ cards:
           map.region: world_countries
       group: Geographical
   - CountByState:
-      title: Count of users by state
+      title: Count of users per state
       metrics: Count
       dimensions: State
       score: 90
+      height: 8
       visualization:
         map:
           map.type: region
@@ -105,6 +106,7 @@ cards:
             aggregation: default
       visualization: map
       score: 80
+      height: 8
       group: Geographical
 # General
   - NumberDistribution:
