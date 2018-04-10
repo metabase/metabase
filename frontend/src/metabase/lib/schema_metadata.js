@@ -312,8 +312,8 @@ const DEFAULT_OPERATORS = [
 // ordered list of operators and metadata per type
 const OPERATORS_BY_TYPE_ORDERED = {
   [NUMBER]: [
-    { name: "=", verboseName: t`Equal` },
-    { name: "!=", verboseName: t`Not equal` },
+    { name: "=", verboseName: t`Equal to` },
+    { name: "!=", verboseName: t`Not equal to` },
     { name: ">", verboseName: t`Greater than` },
     { name: "<", verboseName: t`Less than` },
     { name: "BETWEEN", verboseName: t`Between` },
@@ -367,8 +367,8 @@ const OPERATORS_BY_TYPE_ORDERED = {
 };
 
 const MORE_VERBOSE_NAMES = {
-  equal: "is equal to",
-  "not equal": "is not equal to",
+  "equal to": "is equal to",
+  "not equal to": "is not equal to",
   before: "is before",
   after: "is after",
   "not empty": "is not empty",
