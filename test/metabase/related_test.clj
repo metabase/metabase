@@ -1,15 +1,11 @@
 (ns metabase.related-test
   (:require [expectations :refer :all]
-            [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
-             [database :refer [Database]]
              [metric :refer [Metric]]
-             [segment :refer [Segment]]
-             [table :refer [Table]]]
-            [metabase.related :refer :all :as r]
-            [metabase.test.util :as tu]
+             [segment :refer [Segment]]]
+            [metabase.related :as r :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.users :as users]
             [toucan.util.test :as tt]))
