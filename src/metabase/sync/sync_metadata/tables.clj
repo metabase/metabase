@@ -128,11 +128,12 @@
             (for [table changed-tables]
               (sync-util/name-for-logging (table/map->TableInstance table))))
   (doseq [{schema :schema, table-name :name, description :description} changed-tables]
-    (db/update-where! Table {:db_id       (u/get-id database)
-                             :schema      schema
-                             :name        table-name
-                             :description nil}
-                      :description description)))
+    (when-not (str/blank? description)
+      (db/update-where! Table {:db_id       (u/get-id database)
+                               :schema      schema
+                               :name        table-name
+                               :description nil}
+                        :description description))))
 
 
 (s/defn ^:private db-metadata :- #{i/DatabaseMetadataTable}
