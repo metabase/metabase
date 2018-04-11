@@ -103,6 +103,14 @@ class AutomaticDashboardApp extends React.Component {
       setParameterValue,
       location,
     } = this.props;
+    const relatedCount =
+      (dashboard &&
+        dashboard.related &&
+        Object.values(dashboard.related).reduce(
+          (acc, list) => acc + list.length,
+          0,
+        )) ||
+      0;
     return (
       <div className="flex">
         <div className="flex-full overflow-x-hidden">
@@ -138,12 +146,11 @@ class AutomaticDashboardApp extends React.Component {
             <Dashboard {...this.props} />
           </div>
         </div>
-        {dashboard &&
-          dashboard.related && (
-            <div className="Layout-sidebar flex-no-shrink">
-              <SuggestionsSidebar related={dashboard.related} />
-            </div>
-          )}
+        {relatedCount > 0 && (
+          <div className="Layout-sidebar flex-no-shrink">
+            <SuggestionsSidebar related={dashboard.related} />
+          </div>
+        )}
       </div>
     );
   }
