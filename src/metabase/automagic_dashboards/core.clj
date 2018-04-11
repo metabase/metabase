@@ -237,12 +237,12 @@
   [dimensions metrics order-by]
   (let [dimensions (set dimensions)]
     (for [[identifier ordering] (map first order-by)]
-      [(if (= ordering "ascending")
-         :asc
-         :desc)
-       (if (dimensions identifier)
-         [:dimension identifier]
-         [:aggregate-field (u/index-of #{identifier} metrics)])])))
+      [(if (dimensions identifier)
+          [:dimension identifier]
+          [:aggregation (u/index-of #{identifier} metrics)])
+        (if (= ordering "ascending")
+          :ascending
+          :descending)])))
 
 (defn merge-filters
   "Merge MBQL filter clauses."
