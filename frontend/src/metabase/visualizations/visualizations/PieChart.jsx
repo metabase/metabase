@@ -161,7 +161,7 @@ export default class PieChart extends Component {
           key: "Other",
           value: otherTotal,
           percentage: otherTotal / total,
-          color: "gray",
+          color: colors.normal.grey1,
         };
         slices.push(otherSlice);
       }
@@ -182,6 +182,16 @@ export default class PieChart extends Component {
     ]);
     let legendColors = slices.map(slice => slice.color);
 
+    // no non-zero slices
+    if (slices.length === 0) {
+      otherSlice = {
+        value: 1,
+        color: colors.normal.grey1,
+        noHover: true,
+      };
+      slices.push(otherSlice);
+    }
+
     const pie = d3.layout
       .pie()
       .sort(null)
@@ -192,35 +202,40 @@ export default class PieChart extends Component {
       .outerRadius(OUTER_RADIUS)
       .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
 
-    const hoverForIndex = (index, event) => ({
-      index,
-      event: event && event.nativeEvent,
-      data:
-        slices[index] === otherSlice
-          ? others.map(o => ({
-              key: formatDimension(o.key, false),
-              value: formatMetric(o.value, false),
-            }))
-          : [
-              {
-                key: getFriendlyName(cols[dimensionIndex]),
-                value: formatDimension(slices[index].key),
-              },
-              {
-                key: getFriendlyName(cols[metricIndex]),
-                value: formatMetric(slices[index].value),
-              },
-            ].concat(
-              showPercentInTooltip
-                ? [
-                    {
-                      key: "Percentage",
-                      value: formatPercent(slices[index].percentage),
-                    },
-                  ]
-                : [],
-            ),
-    });
+    function hoverForIndex(index, event) {
+      const slice = slices[index];
+      if (!slice || slice.noHover) {
+        return null;
+      } else if (slice === otherSlice) {
+        return {
+          index,
+          event: event && event.nativeEvent,
+          data: others.map(o => ({
+            key: formatDimension(o.key, false),
+            value: formatMetric(o.value, false),
+          })),
+        };
+      } else {
+        return {
+          index,
+          event: event && event.nativeEvent,
+          data: [
+            {
+              key: getFriendlyName(cols[dimensionIndex]),
+              value: formatDimension(slice.key),
+            },
+            {
+              key: getFriendlyName(cols[metricIndex]),
+              value: formatMetric(slice.value),
+            },
+            showPercentInTooltip && {
+              key: "Percentage",
+              value: formatPercent(slice.percentage),
+            },
+          ].filter(d => d),
+        };
+      }
+    }
 
     let value, title;
     if (

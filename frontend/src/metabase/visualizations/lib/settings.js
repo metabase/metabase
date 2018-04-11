@@ -99,17 +99,17 @@ function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
   }
 }
 
-export function getDefaultDimensionAndMetric([{ data: { cols, rows } }]) {
-  const type = getChartTypeFromData(cols, rows, false);
+export function getDefaultDimensionAndMetric([{ data }]) {
+  const type = data && getChartTypeFromData(data.cols, data.rows, false);
   if (type === DIMENSION_METRIC) {
     return {
-      dimension: cols[0].name,
-      metric: cols[1].name,
+      dimension: data.cols[0].name,
+      metric: data.cols[1].name,
     };
   } else if (type === DIMENSION_DIMENSION_METRIC) {
     return {
       dimension: null,
-      metric: cols[2].name,
+      metric: data.cols[2].name,
     };
   } else {
     return {
