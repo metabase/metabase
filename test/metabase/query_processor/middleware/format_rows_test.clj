@@ -8,7 +8,7 @@
              [dataset-definitions :as defs]
              [datasets :refer [*engine*]]]))
 
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :presto}
+(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :presto :sparksql}
   (if (= :sqlite *engine*)
     [[1 "Plato Yeshua" "2014-04-01 00:00:00" "08:30:00"]
      [2 "Felipinho Asklepios" "2014-12-05 00:00:00" "15:15:00"]
@@ -27,7 +27,7 @@
            (ql/limit 5)))
        qpt/rows))
 
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :presto}
+(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :presto :sparksql}
   (cond
     (= :sqlite *engine*)
     [[1 "Plato Yeshua" "2014-04-01 00:00:00" "08:30:00"]
