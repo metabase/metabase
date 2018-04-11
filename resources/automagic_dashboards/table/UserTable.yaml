@@ -35,6 +35,8 @@ dimensions:
 - Lat: GenericTable.Latitude
 # Ignore
 - Name: Name
+- Birthday: Birthday
+- ZIP: ZipCode
 filters:
   - Last30Days:
       filter: ["time-interval", [dimension, JoinDate], -30, day]

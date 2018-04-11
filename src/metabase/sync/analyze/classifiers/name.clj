@@ -92,7 +92,8 @@
    [#"stars"              number-type      :type/Score]
    [#"description"        text-type        :type/Description]
    [#"title"              text-type        :type/Title]
-   [#"comment"            text-type        :type/Comment]])
+   [#"comment"            text-type        :type/Comment]
+   [#"birthday"           timestamp-type   :type/Birthday]])
 
 ;; Check that all the pattern tuples are valid
 (when-not config/is-prod?
@@ -130,6 +131,7 @@
    [#"account"      :entity/UserTable]
    [#"people"       :entity/UserTable]
    [#"person"       :entity/UserTable]
+   [#"employee"     :entity/UserTable]
    [#"event"        :entity/EventTable]
    [#"checkin"      :entity/EventTable]
    [#"log"          :entity/EventTable]

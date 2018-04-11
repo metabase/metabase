@@ -46,6 +46,9 @@ dimensions:
   - FK: FK
   - Long: GenericTable.Longitude
   - Lat: GenericTable.Latitude
+# ignore
+  - Birthday: Birthday
+  - ZIP: ZipCode
 filters:
   - Last30Days:
       filter: ["time-interval", [dimension, CreateDate], -30, day]
