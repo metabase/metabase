@@ -1,5 +1,5 @@
 title: Analysis of [[this]]
-applies_to: GenericTable.*
+applies_to: GenericTable.State
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]
 - Avg: [avg, [dimension, GenericNumber]]
@@ -37,16 +37,38 @@ groups:
 cards:
   - Distribution:
       title: Distribution of [[this]]
-      visualization: bar
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
       metrics: Count
       dimensions: this
       group: Overview
-      width: 12
+  - Top5:
+      title: Top 5 [[this]]
+      visualization: row
+      metrics: Count
+      dimensions: this
+      limit: 5
+      order_by:
+        - Count: descending
+      group: Overview
+  - Bottom5:
+      title: Bottom 5 [[this]]
+      visualization: row
+      metrics: Count
+      dimensions: this
+      limit: 5
+      order_by:
+        - Count: ascending
+      group: Overview
   - ByNumber:
-      title: "[[GenericNumber]] by [[this]]"
-      visualization: line
+      title: "Sum of [[GenericNumber]] by [[this]]"
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
       metrics:
       - Sum
-      - Avg
       dimensions: this
       group: Breakdowns

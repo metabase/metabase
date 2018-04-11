@@ -40,11 +40,8 @@
                      (field/unix-timestamp? field))))))
 
 (defn- build-fk-map
-  [tables field]
-  (->> (db/select Field
-         :fk_target_field_id [:not= nil]
-         :table_id [:in tables])
-       field/with-targets
+  [fks field]
+  (->> fks
        (filter (comp #{(:table_id field)} :table_id :target))
        (group-by :table_id)
        (keep (fn [[_ [fk & fks]]]
@@ -83,15 +80,18 @@
 (defn- score
   [{:keys [base_type special_type fingerprint] :as field}]
   (cond-> 0
-    (some-> fingerprint :global :distinct-count (#(< 1 % 10))) inc
-    (some-> fingerprint :global :distinct-count (> 20))        dec
-    (some-> fingerprint :global :distinct-count (< 2))         dec
-    ((descendants :type/Category) special_type)                inc
-    (field/unix-timestamp? field)                              inc
-    (isa? base_type :type/DateTime)                            inc
-    ((descendants :type/DateTime) special_type)                inc
-    (isa? special_type :type/CreationTimestamp)                inc
-    (#{:type/State :type/Country} special_type)                inc))
+    (some-> fingerprint :global :distinct-count (< 10)) inc
+    (some-> fingerprint :global :distinct-count (> 20)) dec
+    ((descendants :type/Category) special_type)         inc
+    (field/unix-timestamp? field)                       inc
+    (isa? base_type :type/DateTime)                     inc
+    ((descendants :type/DateTime) special_type)         inc
+    (isa? special_type :type/CreationTimestamp)         inc
+    (#{:type/State :type/Country} special_type)         inc))
+
+(def ^:private ^{:arglists '([dimensions])} remove-unqualified
+  (partial remove (fn [{:keys [fingerprint]}]
+                    (some-> fingerprint :global :distinct-count (< 2)))))
 
 (defn add-filters
   "Add up to `max-filters` filters to dashboard `dashboard`. Takes an optional
@@ -102,26 +102,29 @@
         :orderd_cards
         candidates-for-filtering
         (add-filters dashboard max-filters)))
-  ([dashboard  dimensions max-filters]
-   (->> dimensions
-        (sort-by score >)
-        (take max-filters)
-        (map #(->> %
-                   (build-fk-map (keep (comp :table_id :card)
-                                       (:ordered_cards dashboard)))
-                   (assoc % :fk-map)))
-        (reduce
-         (fn [dashboard candidate]
-           (let [filter-id     (-> candidate hash str)
-                 dashcards     (:ordered_cards dashboard)
-                 dashcards-new (map #(add-filter % filter-id candidate) dashcards)]
-             ;; Only add filters that apply to all cards.
-             (if (= (count dashcards) (count dashcards-new))
-               (-> dashboard
-                   (assoc :ordered_cards dashcards-new)
-                   (update :parameters conj {:id   filter-id
-                                             :type (filter-type candidate)
-                                             :name (:display_name candidate)
-                                             :slug (:name candidate)}))
-               dashboard)))
-         dashboard))))
+  ([dashboard dimensions max-filters]
+   (let [fks (->> (db/select Field
+                    :fk_target_field_id [:not= nil]
+                    :table_id [:in (keep (comp :table_id :card)
+                                         (:ordered_cards dashboard))])
+                  field/with-targets)]
+     (->> dimensions
+          remove-unqualified
+          (sort-by score >)
+          (take max-filters)
+          (map #(assoc % :fk-map (build-fk-map fks %)))
+          (reduce
+           (fn [dashboard candidate]
+             (let [filter-id     (-> candidate hash str)
+                   dashcards     (:ordered_cards dashboard)
+                   dashcards-new (map #(add-filter % filter-id candidate) dashcards)]
+               ;; Only add filters that apply to all cards.
+               (if (= (count dashcards) (count dashcards-new))
+                 (-> dashboard
+                     (assoc :ordered_cards dashcards-new)
+                     (update :parameters conj {:id   filter-id
+                                               :type (filter-type candidate)
+                                               :name (:display_name candidate)
+                                               :slug (:name candidate)}))
+                 dashboard)))
+           dashboard)))))

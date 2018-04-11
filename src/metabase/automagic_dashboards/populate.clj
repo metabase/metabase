@@ -127,14 +127,16 @@
 
 (defn add-text-card
   "Add a text card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [text width height]} [x y]]
+  [dashboard {:keys [text width height visualization-settings]} [x y]]
   (update dashboard :ordered_cards conj
           {:creator_id             api/*current-user-id*
-           :visualization_settings {:text         text
-                                    :virtual_card {:name                   nil
-                                                   :display                :text
-                                                   :dataset_query          nil
-                                                   :visualization_settings {}}}
+           :visualization_settings (merge
+                                    {:text         text
+                                     :virtual_card {:name                   nil
+                                                    :display                :text
+                                                    :dataset_query          nil
+                                                    :visualization_settings {}}}
+                                    visualization-settings)
            :col                    y
            :row                    x
            :sizeX                  width
@@ -214,9 +216,11 @@
                  (fill-grid grid xy card)]))
             (if group
               (let [xy   [(- start-row 2) 0]
-                    card {:text   (format "# %s" (:title group))
-                          :width  (* 2  default-card-width)
-                          :height group-heading-height}]
+                    card {:text                   (format "# %s" (:title group))
+                          :width                  (* 2  default-card-width)
+                          :height                 group-heading-height
+                          :visualization-settings {:dashcard.background false
+                                                   :text.align_vertical :center}}]
                 [(add-text-card dashboard card xy)
                  (fill-grid grid xy card)])
               [dashboard grid])

@@ -116,14 +116,15 @@
                       (if (and (string? fieldspec)
                                (rules/ga-dimension? fieldspec))
                         (comp #{fieldspec} :name)
-                        (fn [{:keys [special_type fk_target_field_id] :as field}]
+                        (fn [{:keys [special_type target] :as field}]
                           (cond
                             ;; This case is mostly relevant for native queries
                             (#{:type/PK :type/FK} fieldspec)
                             (isa? special_type fieldspec)
 
-                            fk_target_field_id
-                            (recur (Field fk_target_field_id))
+                            target
+                            (recur target)
+
 
                             :else
                             (and (not (numeric-key? field))
@@ -236,12 +237,12 @@
   [dimensions metrics order-by]
   (let [dimensions (set dimensions)]
     (for [[identifier ordering] (map first order-by)]
-      [(if (= ordering "ascending")
-         :asc
-         :desc)
-       (if (dimensions identifier)
-         [:dimension identifier]
-         [:aggregate-field (u/index-of #{identifier} metrics)])])))
+      [(if (dimensions identifier)
+          [:dimension identifier]
+          [:aggregation (u/index-of #{identifier} metrics)])
+        (if (= ordering "ascending")
+          :ascending
+          :descending)])))
 
 (defn merge-filters
   "Merge MBQL filter clauses."
@@ -381,28 +382,12 @@
    If there are multiple FKs pointing to the same table, multiple entries will
    be returned."
   [table]
-  (map (fn [{:keys [id fk_target_field_id]}]
-         (-> fk_target_field_id Field :table_id Table (assoc :link id)))
-       (db/select [Field :id :fk_target_field_id]
-         :table_id (:id table)
-         :fk_target_field_id [:not= nil])))
-
-(defn- link-table?
-  "Is the table comprised only of foregin keys and maybe a primary key?"
-  [table]
-  (zero? (db/count Field
-           ;; :not-in returns false if field is nil, hence the workaround.
-           {:where [:and [:= :table_id (:id table)]
-                         [:or [:not-in :special_type ["type/FK" "type/PK"]]
-                              [:= :special_type nil]]]})))
-
-(defn- list-like-table?
-  "Is the table comprised of only primary key and single field?"
-  [table]
-  (= 1 (db/count Field
-         ;; :not-in returns false if field is nil, hence the workaround.
-         {:where [:and [:= :table_id (:id table)]
-                  [:not= :special_type "type/PK"]]})))
+  (->> (db/select Field
+         :table_id           (:id table)
+         :fk_target_field_id [:not= nil])
+       field/with-targets
+       (map (fn [{:keys [id target]}]
+              (-> target field/table (assoc :link id))))))
 
 (defmulti
   ^{:private  true
@@ -440,11 +425,12 @@
         table->fields (comp (->> (db/select Field
                                    :table_id        [:in (map :id tables)]
                                    :visibility_type "normal")
+                                 field/with-targets
                                  (group-by :table_id))
                             :id)]
     (as-> {:source-table (assoc source-table :fields (table->fields source-table))
            :tables       (map #(assoc % :fields (table->fields %)) tables)
-           :database     (-> root :database :id)
+           :database     (:database root)
            :query-filter (:query-filter root)} context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
       (assoc context :metrics (resolve-overloading context (:metrics rule)))
@@ -555,7 +541,7 @@
    (merge opts
           {:entity       table
            :source-table table
-           :database     (-> table :db_id Database)
+           :database     (:db_id table)
            :full-name    (str "table " (:display_name table))
            :url          (format "%stable/%s" public-endpoint (:id table))
            :rules-prefix "table"})))
@@ -568,7 +554,7 @@
      (merge opts
             {:entity       segment
              :source-table table
-             :database     (-> table :db_id Database)
+             :database     (:db_id table)
              :query-filter (-> segment :definition :filter)
              :full-name    full-name
              :name-postfix (format " (%s)" full-name)
@@ -582,7 +568,7 @@
      (merge opts
             {:entity       metric
              :source-table table
-             :database     (-> table :db_id Database)
+             :database     (:db_id table)
              :full-name    (str "metric " (:name metric))
              :url          (format "%smetric/%s" public-endpoint (:id metric))
              :rules-prefix "metric"}))))
@@ -596,7 +582,7 @@
        (merge opts
               {:entity       card
                :source-table table
-               :database     (-> table :db_id Database)
+               :database     (:db_id table)
                :query-filter (-> card :dataset_query :query :filter)
                :full-name    full-name
                :name-postfix (format " (%s)" full-name)
@@ -613,7 +599,7 @@
        (merge opts
               {:entity       query
                :source-table table
-               :database     (-> table :db_id Database)
+               :database     (:db_id table)
                :query-filter (-> query :dataset_query :query :filter)
                :full-name    full-name
                :name-postfix (format " (%s)" full-name)
@@ -632,10 +618,27 @@
      (merge opts
             {:entity       field
              :source-table table
-             :database     (-> table :db_id Database)
+             :database     (:db_id table)
              :full-name    (str "field " (:display_name field))
              :url          (format "%sfield/%s" public-endpoint (:id field))
              :rules-prefix "field"}))))
+
+(defn- link-table?
+  "Is the table comprised only of foregin keys and maybe a primary key?"
+  [table]
+  (zero? (db/count Field
+           ;; :not-in returns false if field is nil, hence the workaround.
+           {:where [:and [:= :table_id (:id table)]
+                         [:or [:not-in :special_type ["type/FK" "type/PK"]]
+                              [:= :special_type nil]]]})))
+
+(defn- list-like-table?
+  "Is the table comprised of only primary key and single field?"
+  [table]
+  (= 1 (db/count Field
+         ;; :not-in returns false if field is nil, hence the workaround.
+         {:where [:and [:= :table_id (:id table)]
+                  [:not= :special_type "type/PK"]]})))
 
 (defn candidate-tables
   "Return a list of tables in database with ID `database-id` for which it makes sense
@@ -651,7 +654,7 @@
           (keep (fn [table]
                   (let [root {:entity       table
                               :source-table table
-                              :database     (-> table :db_id Database)
+                              :database     (:db_id table)
                               :rules-prefix "table"}]
                     (when-let [[dashboard rule]
                                (->> root

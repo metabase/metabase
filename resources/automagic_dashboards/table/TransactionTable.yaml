@@ -114,7 +114,7 @@ cards:
       dimensions: Timestamp
       metrics:
         - TotalIncome
-        - TotalOrdersf
+        - TotalOrders
       width: 18
       height: 6
       group: Overview
