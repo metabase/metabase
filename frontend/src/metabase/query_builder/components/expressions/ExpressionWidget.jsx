@@ -54,7 +54,7 @@ export default class ExpressionWidget extends Component {
               onError={errorMessage => this.setState({ error: errorMessage })}
             />
             <p className="h5 text-grey-5">
-              {t`Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal &minus; Cost.`}
+              {t`Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal - Cost.`}
               &nbsp;<a
                 className="link"
                 target="_blank"
