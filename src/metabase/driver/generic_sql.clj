@@ -323,7 +323,7 @@
          (merge {:name   (:table_name  table)
                  :schema (:table_schem table)}
                 (let [remarks (:remarks table)]
-                  (when (not (str/blank? remarks))
+                  (when-not (str/blank? remarks)
                     {:description remarks}))))))
 
 (defn- database-type->base-type

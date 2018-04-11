@@ -236,7 +236,7 @@
                         (and (not (:special_type field)) new-special-type)))]
       ;; update special type if one came back from DB metadata but Field doesn't currently have one
       (db/update! Field (u/get-id field)
-                  (merge {:base_type   (:base-type db-field)}
+                  (merge {:base_type (:base-type db-field)}
                          (when-not (:special_type field)
                            {:special_type new-special-type})))
       ;; now recursively do the same for any nested fields

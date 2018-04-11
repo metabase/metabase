@@ -109,10 +109,10 @@
      *  `:db`     - Return details for connecting specifically to the DB.")
 
   (create-db! [this, ^DatabaseDefinition database-definition]
-              [this, ^DatabaseDefinition database-definition, ^Boolean skip-drop-db]
+              [this, ^DatabaseDefinition database-definition, ^Boolean skip-drop-db?]
     "Create a new database from DATABASE-DEFINITION, including adding tables, fields, and foreign key constraints,
      and add the appropriate data. This method should drop existing databases with the same name if applicable,
-     unless the skip-drop-db arg is true. This is to workaround a scenario where the postgres driver terminates
+     unless the skip-drop-db? arg is true. This is to workaround a scenario where the postgres driver terminates
      the connection before dropping the DB and causes some tests to fail.
      (This refers to creating the actual *DBMS* database itself, *not* a Metabase `Database` object.)")
 

@@ -119,12 +119,12 @@
                                 (if (map? base-type)
                                   (:native base-type)
                                   (field-base-type->sql-type driver base-type))
-                                (inline-column-comment-sql driver field-comment))))
+                                (or (inline-column-comment-sql driver field-comment) ""))))
                  (interpose ", ")
                  (apply str))
             pk-field-name (pk-sql-type driver)
             pk-field-name
-            (inline-table-comment-sql driver table-comment))))
+            (or (inline-table-comment-sql driver table-comment) ""))))
 
 (defn- default-drop-table-if-exists-sql [driver {:keys [database-name]} {:keys [table-name]}]
   (format "DROP TABLE IF EXISTS %s;" (qualify+quote-name driver database-name table-name)))
@@ -149,34 +149,30 @@
 (defn standard-inline-column-comment-sql
   "Generic inline COMMENT that driver can mixin if supported."
   [_ field-comment]
-  (if field-comment
-    (format "COMMENT '%s'" field-comment)
-    (str "")))
+  (when (seq field-comment)
+    (format "COMMENT '%s'" field-comment)))
 
 (defn standard-standalone-column-comment-sql
   "Generic standalone COMMENT that driver can mixin if supported."
   [driver {:keys [database-name]} {:keys [table-name]} {:keys [field-name field-comment]}]
-  (if field-comment
+  (when (seq field-comment)
     (format "COMMENT ON COLUMN %s IS '%s';"
       (qualify+quote-name driver database-name table-name field-name)
-      field-comment)
-    (str "")))
+      field-comment)))
 
 (defn standard-inline-table-comment-sql
   "Generic inline COMMENT that driver can mixin if supported."
   [_ table-comment]
-  (if table-comment
-    (format "COMMENT '%s'" table-comment)
-    (str "")))
+  (when (seq table-comment)
+    (format "COMMENT '%s'" table-comment)))
 
 (defn standard-standalone-table-comment-sql
   "Generic standalone COMMENT that driver can mixin if supported."
   [driver {:keys [database-name]} {:keys [table-name table-comment]}]
-  (if table-comment
+  (when (seq table-comment)
     (format "COMMENT ON TABLE %s IS '%s';"
       (qualify+quote-name driver database-name table-name)
-      table-comment)
-    (str "")))
+      table-comment)))
 
 (defn- default-qualified-name-components
   ([_ db-name]                       [db-name])
@@ -320,10 +316,10 @@
 (def DefaultsMixin
   "Default implementations for methods marked *Optional* in `IGenericSQLTestExtensions`."
   {:add-fk-sql                    default-add-fk-sql
-   :inline-column-comment-sql     (constantly "")
-   :standalone-column-comment-sql (constantly "")
-   :inline-table-comment-sql      (constantly "")
-   :standalone-table-comment-sql  (constantly "")
+   :inline-column-comment-sql     (constantly nil)
+   :standalone-column-comment-sql (constantly nil)
+   :inline-table-comment-sql      (constantly nil)
+   :standalone-table-comment-sql  (constantly nil)
    :create-db-sql                 default-create-db-sql
    :create-table-sql              default-create-table-sql
    :database->spec                default-database->spec
@@ -355,8 +351,8 @@
 (defn- create-db!
   ([driver database-definition]
     (create-db! driver database-definition false))
-  ([driver {:keys [table-definitions], :as dbdef} skip-drop-db]
-    (if-not skip-drop-db
+  ([driver {:keys [table-definitions], :as dbdef} skip-drop-db?]
+    (when-not skip-drop-db?
       ;; Exec SQL for creating the DB
       (execute-sql! driver :server dbdef (str (drop-db-if-exists-sql driver dbdef) ";\n"
                                               (create-db-sql driver dbdef))))
