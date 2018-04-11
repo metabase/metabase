@@ -12,8 +12,7 @@
             [metabase.test.util :as tu]
             [metabase.test.data :as data]
             [metabase.test.data.users :as users]
-            [toucan.util.test :as tt]
-            [toucan.db :as db]))
+            [toucan.util.test :as tt]))
 
 (expect
   #{[:field-id 1] [:metric 1] ["FIELD-ID" 2] ["segment" 1]}
