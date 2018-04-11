@@ -15,17 +15,13 @@
              [field-values :refer [FieldValues] :as fv]
              [interface :as mi]
              [table :as table :refer [Table]]]
+            [metabase.related :as related]
             [metabase.sync.field-values :as sync-field-values]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
-
-;; TODO - I don't think this is used for anything any more
-(def ^:private ^:deprecated TableEntityType
-  "Schema for a valid table entity type."
-  (apply s/enum (map name table/entity-types)))
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
@@ -54,7 +50,7 @@
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
                    show_in_getting_started], :as body} :body}]
   {display_name            (s/maybe su/NonBlankString)
-   entity_type             (s/maybe TableEntityType)
+   entity_type             (s/maybe s/Any)
    visibility_type         (s/maybe TableVisibilityType)
    description             (s/maybe su/NonBlankString)
    caveats                 (s/maybe su/NonBlankString)
@@ -318,5 +314,9 @@
     (db/simple-delete! FieldValues :id [:in field-ids]))
   {:status :success})
 
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Table api/read-check related/related))
 
 (api/define-routes)

@@ -103,7 +103,7 @@ export default class ParameterValueWidget extends Component {
     if (parameterType.search(/date/) !== -1) return "calendar";
     if (parameterType.search(/location/) !== -1) return "location";
     if (parameterType.search(/id/) !== -1) return "label";
-    return "clipboard";
+    return "label";
   }
 
   state = { isFocused: false };

@@ -2,9 +2,7 @@
   (:require [buddy.core.codecs :as codecs]
             [cheshire.core :as json]
             [compojure.core :refer [GET POST]]
-            [metabase.api
-             [card :as card.api]
-             [common :as api]]
+            [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [core :as magic]
              [comparison :as magic.comparison]
@@ -15,7 +13,7 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
-             [query :refer [Query]]
+             [query :refer [Query] :as query]
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [ring.util.codec :as codec]
@@ -65,7 +63,7 @@
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry`."
   [id cell-query]
-  (-> (card.api/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
+  (-> (query/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
       (magic/inject-segment (-> id Card api/check-404))
       magic/automagic-dashboard))
 
@@ -73,7 +71,7 @@
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry` using rule `rule`."
   [id cell-query prefix rule]
-  (-> (card.api/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
+  (-> (query/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
       (magic/inject-segment (-> id Card api/check-404))
       (magic/automagic-dashboard (rules/load-rule (str prefix "/" rule ".yaml")))))
 
@@ -97,7 +95,7 @@
   [query]
   (-> query
       decode-base64-json
-      card.api/adhoc-query
+      query/adhoc-query
       magic/automagic-analysis))
 
 (def ^:private valid-comparison-pair?
@@ -127,7 +125,7 @@
 (defmethod ->segment :adhoc
   [{:keys [query name]}]
   (-> query
-      card.api/adhoc-query
+      query/adhoc-query
       (assoc :name name)))
 
 (api/defendpoint POST "/compare"

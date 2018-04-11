@@ -15,7 +15,7 @@
 ;;; |                                                     SHARED                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- field-form->id
+(defn field-form->id
   "Expand a `field-id` or `fk->` FORM and return the ID of the Field it references.
 
      (field-form->id [:field-id 100])  ; -> 100"

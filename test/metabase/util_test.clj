@@ -204,12 +204,12 @@
   (select-nested-keys {} [:c]))
 
 
-;;; tests for base-64-string?
-(expect (base-64-string? "ABc"))
-(expect (base-64-string? "ABc/+asdasd=="))
-(expect false (base-64-string? 100))
-(expect false (base-64-string? "<<>>"))
-(expect false (base-64-string? "{\"a\": 10}"))
+;;; tests for base64-string?
+(expect (base64-string? "ABc"))
+(expect (base64-string? "ABc/+asdasd=="))
+(expect false (base64-string? 100))
+(expect false (base64-string? "<<>>"))
+(expect false (base64-string? "{\"a\": 10}"))
 
 
 ;;; tests for `occurances-of-substring`

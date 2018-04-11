@@ -1,5 +1,6 @@
 (ns metabase.models.query
   (:require [metabase.db :as mdb]
+            [metabase.query-processor.util :as qputil]
             [metabase.util.honeysql-extensions :as hx]
             [toucan
              [db :as db]
@@ -56,3 +57,30 @@
           (or (update-rolling-average-execution-time! query-hash execution-time-ms)
               ;; rethrow e if updating an existing average execution time failed
               (throw e))))))
+
+
+(defn- native-query? [query-type]
+  (or (= query-type "native")
+      (= query-type :native)))
+
+(defn query->database-and-table-ids
+  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card. Handles queries that use
+   other queries as their source (ones that come in with a `:source-table` like `card__100`) recursively, as well as
+   normal queries."
+  [outer-query]
+  (let [database-id  (qputil/get-normalized outer-query :database)
+        query-type   (qputil/get-normalized outer-query :type)
+        source-table (qputil/get-in-normalized outer-query [:query :source-table])]
+    (cond
+      (native-query? query-type) {:database-id database-id, :table-id nil}
+      (integer? source-table)    {:database-id database-id, :table-id source-table}
+      (string? source-table)     (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
+                                   (db/select-one ['Card [:table_id :table-id] [:database_id :database-id]]
+                                     :id (Integer/parseInt card-id))))))
+
+(defn adhoc-query
+  "Wrap query map into a Query object (mostly to fascilitate type dispatch)."
+  [query]
+  (->> {:dataset_query query}
+       (merge (query->database-and-table-ids query))
+       map->QueryInstance))

@@ -73,7 +73,7 @@
      (try
        (decrypt secret-key s)
        (catch Throwable e
-         (if (u/base-64-string? s)
+         (if (u/base64-string? s)
            ;; if we can't decrypt `s`, but it *is* encrypted, log an error message and return `nil`
            (log/error "Cannot decrypt encrypted details. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?" (.getMessage e))
            ;; otherwise return S without decrypting. It's probably not decrypted in the first place
