@@ -10,8 +10,10 @@
              [table :refer [Table]]]
             [metabase.related :refer :all :as r]
             [metabase.test.util :as tu]
+            [metabase.test.data :as data]
             [metabase.test.data.users :as users]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [toucan.db :as db]))
 
 (expect
   #{[:field-id 1] [:metric 1] ["FIELD-ID" 2] ["segment" 1]}
@@ -26,17 +28,23 @@
    0.0
    1.0]
   (tt/with-temp* [Card [{card-id-1 :id}
-                        {:dataset_query {:query {:aggregation [:sum [:field-id 1]]
-                                                 :breakout [[:field-id 2]]}
-                                         :type  :query}}]
+                        {:dataset_query {:query {:source_table (data/id :venues)
+                                                 :aggregation [:sum [:field-id (data/id :venues :price)]]
+                                                 :breakout [[:field-id (data/id :venues :category_id)]]}
+                                         :type  :query
+                                         :database (data/id)}}]
                   Card [{card-id-2 :id}
-                        {:dataset_query {:query {:aggregation [:sum [:field-id 3]]
-                                                 :breakout [[:field-id 2]]}
-                                         :type  :query}}]
+                        {:dataset_query {:query {:source_table (data/id :venues)
+                                                 :aggregation [:sum [:field-id (data/id :venues :longitude)]]
+                                                 :breakout [[:field-id (data/id :venues :category_id)]]}
+                                         :type  :query
+                                         :database (data/id)}}]
                   Card [{card-id-3 :id}
-                        {:dataset_query {:query {:aggregation [:sum [:field-id 3]]
-                                                 :breakout [[:field-id 4]]}
-                                         :type  :query}}]]
+                        {:dataset_query {:query {:source_table (data/id :venues)
+                                                 :aggregation [:sum [:field-id (data/id :venues :longitude)]]
+                                                 :breakout [[:field-id (data/id :venues :latitude)]]}
+                                         :type  :query
+                                         :database (data/id)}}]]
     (map double [(#'r/similarity (Card card-id-1) (Card card-id-2))
                  (#'r/similarity (Card card-id-1) (Card card-id-3))
                  (#'r/similarity (Card card-id-1) (Card card-id-1))])))
@@ -44,45 +52,42 @@
 
 (defmacro ^:private with-world
   [& body]
-  `(tt/expect-with-temp [Database  [{~'database-id :id}]
-                         Table      [{~'table-id-a :id} {:db_id ~'database-id}]
-                         Table      [{~'table-id-b :id} {:db_id ~'database-id}]
-                         Collection [{~'collection-id :id}]
-                         Metric     [{~'metric-id-a :id} {:table_id ~'table-id-a
-                                                          :definition {:source_table ~'table-id-a
-                                                                       :aggregation [:sum [:field-id 1]]}}]
-                         Metric     [{~'metric-id-b :id} {:table_id ~'table-id-a
-                                                          :definition {:source_table ~'table-id-a
+  `(tt/expect-with-temp [Collection [{~'collection-id :id}]
+                         Metric     [{~'metric-id-a :id} {:table_id (data/id :venues)
+                                                          :definition {:source_table (data/id :venues)
+                                                                       :aggregation [:sum [:field-id (data/id :venues :price)]]}}]
+                         Metric     [{~'metric-id-b :id} {:table_id (data/id :venues)
+                                                          :definition {:source_table (data/id :venues)
                                                                        :aggregation [:count]}}]
-                         Segment    [{~'segment-id-a :id} {:table_id ~'table-id-a
-                                                           :definition {:source_table ~'table-id-a
-                                                                        :filter [:not= [:field-id 1] nil]}}]
-                         Segment    [{~'segment-id-b :id} {:table_id ~'table-id-a
-                                                           :definition {:source_table ~'table-id-a
-                                                                        :filter [:not= [:field-id 3] nil]}}]
+                         Segment    [{~'segment-id-a :id} {:table_id (data/id :venues)
+                                                           :definition {:source_table (data/id :venues)
+                                                                        :filter [:not= [:field-id (data/id :venues :category_id)] nil]}}]
+                         Segment    [{~'segment-id-b :id} {:table_id (data/id :venues)
+                                                           :definition {:source_table (data/id :venues)
+                                                                        :filter [:not= [:field-id (data/id :venues :name)] nil]}}]
                          Card       [{~'card-id-a :id :as ~'card-a}
-                                     {:table_id      ~'table-id-a
+                                     {:table_id (data/id :venues)
                                       :dataset_query {:type :query
-                                                      :database ~'database-id
-                                                      :query {:source_table ~'table-id-a
-                                                              :aggregation [:sum [:field-id 1]]
-                                                              :breakout [[:field-id 2]]}}}]
+                                                      :database (data/id)
+                                                      :query {:source_table (data/id :venues)
+                                                              :aggregation [:sum [:field-id (data/id :venues :price)]]
+                                                              :breakout [[:field-id (data/id :venues :category_id)]]}}}]
                          Card       [{~'card-id-b :id :as ~'card-b}
-                                     {:table_id      ~'table-id-a
+                                     {:table_id (data/id :venues)
                                       :collection_id ~'collection-id
                                       :dataset_query {:type :query
-                                                      :source_table ~'table-id-a
-                                                      :database ~'database-id
-                                                      :query {:aggregation [:sum [:field-id 3]]
-                                                              :breakout [[:field-id 2]]}}}]
+                                                      :database (data/id)
+                                                      :query {:source_table (data/id :venues)
+                                                              :aggregation [:sum [:field-id (data/id :venues :longitude)]]
+                                                              :breakout [[:field-id (data/id :venues :category_id)]]}}}]
                          Card       [{card-id-c :id :as ~'card-c}
-                                     {:table_id      ~'table-id-a
+                                     {:table_id (data/id :venues)
                                       :dataset_query {:type :query
-                                                      :source_table ~'table-id-a
-                                                      :database ~'database-id
-                                                      :query {:aggregation [:sum [:field-id 3]]
-                                                              :breakout [[:field-id 4]
-                                                                         [:field-id 5]]}}}]]
+                                                      :database (data/id)
+                                                      :query {:source_table (data/id :venues)
+                                                              :aggregation [:sum [:field-id (data/id :venues :longitude)]]
+                                                              :breakout [[:field-id (data/id :venues :name)]
+                                                                         [:field-id (data/id :venues :latitude)]]}}}]]
      ~@body))
 
 (defn- result-mask
@@ -94,7 +99,7 @@
                (:id v))])))
 
 (with-world
-  {:table             table-id-a
+  {:table             (data/id :venues)
    :metrics           (sort [metric-id-a metric-id-b])
    :segments          (sort [segment-id-a segment-id-b])
    :dashboard-mates   []
@@ -106,27 +111,27 @@
        result-mask))
 
 (with-world
-  {:table    table-id-a
+  {:table    (data/id :venues)
    :metrics  [metric-id-b]
    :segments (sort [segment-id-a segment-id-b])}
   (->> ((users/user->client :crowberto) :get 200 (format "metric/%s/related" metric-id-a))
        result-mask))
 
 (with-world
-  {:table       table-id-a
+  {:table       (data/id :venues)
    :metrics     (sort [metric-id-a metric-id-b])
    :segments    [segment-id-b]
-   :linked-from []}
+   :linked-from [(data/id :checkins)]}
   (->> ((users/user->client :crowberto) :get 200 (format "segment/%s/related" segment-id-a))
        result-mask))
 
 (with-world
   {:metrics     (sort [metric-id-a metric-id-b])
    :segments    (sort [segment-id-a segment-id-b])
-   :linking-to  []
-   :linked-from []
-   :tables      [table-id-b]}
-  (->> ((users/user->client :crowberto) :get 200 (format "table/%s/related" table-id-a))
+   :linking-to  [(data/id :categories)]
+   :linked-from [(data/id :checkins)]
+   :tables      [(data/id :users)]}
+  (->> ((users/user->client :crowberto) :get 200 (format "table/%s/related" (data/id :venues)))
        result-mask))
 
 
