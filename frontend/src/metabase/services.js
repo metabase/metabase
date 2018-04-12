@@ -109,6 +109,7 @@ export const AutoApi: $AutoApi = {
 export const EmailApi = {
   updateSettings: PUT("/api/email"),
   sendTest: POST("/api/email/test"),
+  clear: DELETE("/api/email"),
 };
 
 export const SlackApi = {
