@@ -295,7 +295,7 @@
 
 (defmacro ^:private with-resource
   [[name path] & body]
-  `(when-let [uri# ]
+  `(when-let [uri# ~path]
      (let [[fs# path#] (-> uri# .toString (str/split #"!" 2))]
        (if path#
          (with-open [fs# (-> fs#
