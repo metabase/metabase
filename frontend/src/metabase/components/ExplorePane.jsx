@@ -79,6 +79,7 @@ export class ExplorePane extends React.Component {
         {schemaNames &&
           schemaNames.length > 1 && (
             <div className="px4 inline-block mb4">
+              <div className="pb1 text-paragraph">Here's the schema I looked at:</div>
               <Select
                 value={schemaName}
                 onChange={e =>
@@ -103,10 +104,10 @@ export class ExplorePane extends React.Component {
         )}
         {hasMore && (
           <div
-            className="border-top cursor-pointer flex layout-centered text-grey-2 px2 pt2 mt2"
+            className="border-top cursor-pointer text-brand-hover flex layout-centered text-grey-2 px2 pt2 mt4"
             onClick={() => this.setState({ visibleItems: visibleItems + 4 })}
           >
-            <Icon name="chevrondown" size={24} />
+            <Icon name="chevrondown" size={20} />
           </div>
         )}
       </div>
