@@ -67,7 +67,11 @@
 (defn fields
   "Return the `FIELDS` belonging to a single TABLE."
   [{:keys [id]}]
-  (db/select Field, :table_id id :visibility_type [:not= "retired"], {:order-by [[:position :asc] [:name :asc]]}))
+  (db/select Field
+    :table_id        id
+    :active          true
+    :visibility_type [:not= "retired"]
+    {:order-by [[:position :asc] [:name :asc]]}))
 
 (defn metrics
   "Retrieve the `Metrics` for a single TABLE."
@@ -132,6 +136,7 @@
   (with-objects :fields
     (fn [table-ids]
       (db/select Field
+        :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]
         {:order-by [[:position :asc] [:name :asc]]}))
