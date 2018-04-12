@@ -10,14 +10,15 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [kixi.stats.core :as stats]
+            [kixi.stats
+             [core :as stats]
+             [math :as math]]
             [medley.core :as m]
             [metabase.automagic-dashboards
              [populate :as populate]
              [rules :as rules]]
             [metabase.models
              [card :as card :refer [Card]]
-             [database :refer [Database]]
              [field :refer [Field] :as field]
              [metric :refer [Metric]]
              [query :refer [Query]]
@@ -451,13 +452,17 @@
            vals
            (apply concat)))
 
+(defn- make-dashboard
+  [root rule context]
+  (-> rule
+      (select-keys [:title :description :groups])
+      (update :title str (:name-postfix root))
+      (instantiate-metadata context {"this" (:entity root)})))
+
 (defn- apply-rule
   [root rule]
   (let [context   (make-context root rule)
-        dashboard (-> rule
-                      (select-keys [:title :description :groups])
-                      (update :title str (:name-postfix root))
-                      (instantiate-metadata context {"this" (:entity root)}))
+        dashboard (make-dashboard root rule context)
         filters   (->> rule
                        :dashboard_filters
                        (mapcat (comp :matches (:dimensions context))))
@@ -624,26 +629,27 @@
              :url          (format "%sfield/%s" public-endpoint (:id field))
              :rules-prefix "field"}))))
 
-(defn- link-table?
-  "Is the table comprised only of foregin keys and maybe a primary key?"
+(defn- enhanced-table-stats
   [table]
-  (zero? (db/count Field
-           ;; :not-in returns false if field is nil, hence the workaround.
-           {:where [:and [:= :table_id (:id table)]
-                         [:or [:not-in :special_type ["type/FK" "type/PK"]]
-                              [:= :special_type nil]]]})))
+  (let [field-types (db/select-field :special_type Field :table_id (:id table))]
+    (assoc table :stats {:num-fields  (count field-types)
+                         :list-like?  (= (count (remove #{:type/PK} field-types)) 1)
+                         :link-table? (every? #{:type/FK :type/PK} field-types)})))
 
-(defn- list-like-table?
-  "Is the table comprised of only primary key and single field?"
-  [table]
-  (= 1 (db/count Field
-         ;; :not-in returns false if field is nil, hence the workaround.
-         {:where [:and [:= :table_id (:id table)]
-                  [:not= :special_type "type/PK"]]})))
+(def ^:private ^:const ^Long max-candidate-tables
+  "Maximal number of tables shown per schema."
+  10)
 
 (defn candidate-tables
   "Return a list of tables in database with ID `database-id` for which it makes sense
-   to generate an automagic dashboard."
+   to generate an automagic dashboard. Results are grouped by schema and ranked
+   acording to interestingness (both schemas and tables within each schema). Each
+   schema contains up to `max-candidate-tables` tables.
+
+   Tables are ranked based on how specific rule has been used, and the number of
+   fields.
+   Schemes are ranked based on the number of distinct entity types and the
+   interestingness of tables they contain (see above)."
   ([database] (candidate-tables database nil))
   ([database schema]
    (let [rules (rules/load-rules "table")]
@@ -651,20 +657,35 @@
                  (cond-> [:db_id           (:id database)
                           :visibility_type nil]
                    schema (concat [:schema schema])))
-          (remove (some-fn link-table? list-like-table?))
-          (keep (fn [table]
-                  (let [root {:entity       table
-                              :source-table table
-                              :database     (:db_id table)
-                              :rules-prefix "table"}]
-                    (when-let [[dashboard rule]
-                               (->> root
-                                    (matching-rules rules)
-                                    (keep (partial apply-rule root))
-                                    first)]
-                      {:url         (format "%stable/%s" public-endpoint (:id table))
-                       :title       (:title dashboard)
-                       :score       (rule-specificity rule)
-                       :description (:description dashboard)
-                       :table       table}))))
+          (map enhanced-table-stats)
+          (remove (comp (some-fn :link-table? :list-like-table?) :stats))
+          (map (fn [table]
+                 (let [root      {:entity       table
+                                  :source-table table
+                                  :database     (:db_id table)
+                                  :rules-prefix "table"}
+                       rule      (->> root
+                                      (matching-rules rules)
+                                      first)
+                       dashboard (make-dashboard root rule {})]
+                   {:url         (format "%stable/%s" public-endpoint (:id table))
+                    :title       (:title dashboard)
+                    :score       (+ (math/sq (rule-specificity rule))
+                                    (math/log (-> table :stats :num-fields)))
+                    :description (:description dashboard)
+                    :table       table
+                    :rule        (:rule rule)})))
+          (group-by (comp :schema :table))
+          (map (fn [[schema tables]]
+                 (let [tables (->> tables
+                                   (sort-by :score >)
+                                   (take max-candidate-tables))]
+                   {:tables tables
+                    :schema schema
+                    :score  (+ (math/sq (transduce (m/distinct-by :rule)
+                                                   stats/count
+                                                   tables))
+                               (math/sqrt (transduce (map (comp math/sq :score))
+                                                     stats/mean
+                                                     tables)))})))
           (sort-by :score >)))))
