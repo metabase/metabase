@@ -27,7 +27,7 @@ const OUTER_RADIUS = 50; // within 100px canvas
 const INNER_RADIUS_RATIO = 3 / 5;
 
 const PAD_ANGLE = Math.PI / 180 * 1; // 1 degree in radians
-const SLICE_THRESHOLD = 1 / 360; // 1 degree in percentage
+const SLICE_THRESHOLD = 0.025; // approx 1 degree in percentage
 const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
 const PERCENT_REGEX = /percent/i;
@@ -82,6 +82,7 @@ export default class PieChart extends Component {
       section: "Display",
       title: t`Minimum slice percentage`,
       widget: "number",
+      default: SLICE_THRESHOLD * 100,
     },
   };
 
