@@ -65,11 +65,11 @@ groups:
 - Singletons:
     title: Fields with only a single value
 - ByTime:
-    title: Breakdown by time
+    title: "[[GenericTable]] across time"
 - Geographical:
     title: Geographical breakdown
 - General:
-    title: General breakdowns
+    title: How [[GenericTable]] are distributed
 dashboard_filters:
 - Timestamp
 - JoinDate
@@ -133,7 +133,7 @@ cards:
       group: Geographical
 # General
   - NumberDistribution:
-      title: How [[GenericNumber]] is distributed
+      title: How [[GenericTable]] are distributed across [[GenericNumber]]
       dimensions:
         - GenericNumber:
             aggregation: default

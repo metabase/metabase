@@ -1,4 +1,5 @@
-title: Transactions by country
+title: Transactions per country
+description: A deeper look at how different countries are performing for you.
 applies_to: TransactionTable
 metrics:
 - TotalIncome:
@@ -63,7 +64,7 @@ groups:
 - Top10:
     title: Top performers
 - Transactions:
-    title: Transaction breakdown by country
+    title: Transactions per country
 - Users:
     title: User acquisition by country
 dashboard_filters:
@@ -75,7 +76,7 @@ dashboard_filters:
   - ProductCategory
 cards:
 - TopCountrysBySales:
-    title: Top 10 countrys by sales
+    title: Top 10 countries by sales
     visualization: row
     dimensions: Country
     metrics: TotalOrders
@@ -86,7 +87,7 @@ cards:
     height: 8
     group: Top10
 - TopCountrysBySalesLast30Days:
-    title: Top 10 countrys by sales in the last 30 days
+    title: Top 10 countries by sales in the last 30 days
     visualization: row
     dimensions: Country
     metrics: TotalOrders
@@ -102,7 +103,7 @@ cards:
       map:
         map.type: region
         map.region: world_countries
-    title: Sales by country
+    title: Sales per country
     dimensions: Country
     metrics: TotalOrders
     score: 90
@@ -112,7 +113,7 @@ cards:
       map:
         map.type: region
         map.region: world_countries
-    title: Average quantity by country
+    title: Average quantity per country
     dimensions: Country
     metrics: AvgQuantity
     score: 90
@@ -122,7 +123,7 @@ cards:
       map:
         map.type: region
         map.region: world_countries
-    title: Income by country
+    title: Income per country
     dimensions: Country
     metrics: TotalIncome
     score: 90
@@ -132,7 +133,7 @@ cards:
       map:
         map.type: region
         map.region: world_countries
-    title: Average Income by country
+    title: Average income per country
     dimensions: Country
     metrics: AvgIncome
     score: 90
@@ -142,7 +143,7 @@ cards:
       map:
         map.type: region
         map.region: world_countries
-    title: Number of users by country
+    title: Users in each country
     dimensions: Country
     metrics: TotalUsers
     score: 90
@@ -152,7 +153,7 @@ cards:
       map:
         map.type: region
         map.region: world_countries
-    title: New users in the last 30 days by country
+    title: New users per country in the last 30 days
     dimensions: Country
     metrics: TotalUsers
     filters: NewUsers

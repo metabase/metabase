@@ -1,4 +1,5 @@
-title: Analysis of [[this]]
+title: A look at the [[this]] field
+description: How [[this]] is distributed.
 applies_to: GenericTable.State
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]
@@ -33,10 +34,10 @@ groups:
   - Overview:
       title: Overview
   - Breakdowns:
-      title: Breakdowns
+      title: Different numbers per state
 cards:
   - Distribution:
-      title: Distribution of [[this]]
+      title: "[[GenericTable]] per [[this]]"
       visualization:
         map:
           map.type: region
@@ -63,7 +64,7 @@ cards:
         - Count: ascending
       group: Overview
   - ByNumber:
-      title: "Sum of [[GenericNumber]] by [[this]]"
+      title: "Sum of [[GenericNumber]] per [[this]]"
       visualization:
         map:
           map.type: region

@@ -1,4 +1,5 @@
 title: Transactions by state
+description: Which US states are bringing you the most business.
 applies_to: TransactionTable
 metrics:
 - TotalIncome:
@@ -61,11 +62,11 @@ filters:
       filter: ["time-interval", [dimension, Cohort], -30, day]
 groups:
 - Top10:
-    title: Top performers
+    title: States that are performing best
 - Transactions:
-    title: Transaction breakdown by state
+    title: Transactions per state
 - Users:
-    title: User acquisition by state
+    title: Where you've acquired your users
 dashboard_filters:
   - Timestamp
   - Source
@@ -102,7 +103,7 @@ cards:
       map:
         map.type: region
         map.region: us_states
-    title: Sales by state
+    title: Sales per state
     dimensions: State
     metrics: TotalOrders
     score: 90
@@ -112,7 +113,7 @@ cards:
       map:
         map.type: region
         map.region: us_states
-    title: Average quantity by state
+    title: Average quantity per state
     dimensions: State
     metrics: AvgQuantity
     score: 90
@@ -122,7 +123,7 @@ cards:
       map:
         map.type: region
         map.region: us_states
-    title: Income by state
+    title: Income per state
     dimensions: State
     metrics: TotalIncome
     score: 90
@@ -132,7 +133,7 @@ cards:
       map:
         map.type: region
         map.region: us_states
-    title: Average Income by state
+    title: Average income per state
     dimensions: State
     metrics: AvgIncome
     score: 90
@@ -142,7 +143,7 @@ cards:
       map:
         map.type: region
         map.region: us_states
-    title: Number of users by state
+    title: Users per state
     dimensions: State
     metrics: TotalUsers
     score: 90
@@ -152,7 +153,7 @@ cards:
       map:
         map.type: region
         map.region: us_states
-    title: New users in the last 30 days by state
+    title: New users per state in the last 30 days
     dimensions: State
     metrics: TotalUsers
     filters: NewUsers

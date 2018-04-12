@@ -1,4 +1,5 @@
-title: Analysis of [[this]]
+title: A look at the [[this]] field
+description: Which countries are represented the most and least.
 applies_to: GenericTable.Country
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]
@@ -33,7 +34,7 @@ groups:
   - Overview:
       title: Overview
   - Breakdowns:
-      title: Breakdowns
+      title: "How different numbers are distributed across [[this]]"
 cards:
   - Distribution:
       title: Distribution of [[this]]

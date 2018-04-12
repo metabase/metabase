@@ -3,12 +3,12 @@ applies_to: GenericTable
 
 dimensions:
   - Number1:
-      field_type: Number      
+      field_type: Number
   - Number2:
       field_type: Number
 cards:
 - Correlation:
-    title: Correlation between [[Number1]] and [[Number2]]
+    title: How [[Number1]] is correlated with [[Number2]]
     visualization: scatter
     dimensions:
       - Number1:

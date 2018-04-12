@@ -1,4 +1,4 @@
-title: Analysis of [[this]]
+title: A look at your [[this]] metric
 applies_to: GenericTable
 metrics:
 # Placeholder that will get overloaded by reference to the actual metric, so we can
@@ -33,15 +33,15 @@ dimensions:
       field_type: GenericTable.ZipCode
 groups:
   - Periodicity:
-      title: Periodicity breakdown
+      title: "[[this]] over time"
   - Geographical:
-      title: Geographical breakdown
+      title: "[[this]] by location"
   - Categories:
-      title: Distribution over categories
+      title: How [[this]] is distributed across different categories
   - Numbers:
-      title: Distribution over numbers
+      title: How [[this]] is distributed across different numbers
   - LargeCategories:
-      title: Distribution over high-cardinality categories
+      title: Top and bottom [[this]] per other categories
 dashboard_filters:
   - Timestamp
   - State
@@ -52,14 +52,14 @@ dashboard_filters:
 cards:
   - ByTime:
       group: Periodicity
-      title: Distribution over time
+      title: Over time
       visualization: line
       metrics: this
       dimensions: Timestamp
       width: 18
   - DayOfWeek:
       group: Periodicity
-      title: Distribution by day of week
+      title: "[[this]] per day of the week"
       visualization: bar
       metrics: this
       dimensions:
@@ -67,7 +67,7 @@ cards:
             aggregation: day-of-week
   - HourOfDay:
       group: Periodicity
-      title: Distribution by hour of day
+      title: "[[this]] per hour of the day"
       visualization: bar
       metrics: this
       dimensions:
@@ -75,7 +75,7 @@ cards:
             aggregation: hour-of-day
   - DayOfMonth:
       group: Periodicity
-      title: Distribution by day of month
+      title: "[[this]] per day of the month"
       visualization: bar
       metrics: this
       dimensions:
@@ -83,7 +83,7 @@ cards:
             aggregation: day-of-month
   - MonthOfYear:
       group: Periodicity
-      title: Distribution by month of year
+      title: "[[this]] per month of the year"
       visualization: bar
       metrics: this
       dimensions:
@@ -91,7 +91,7 @@ cards:
             aggregation: month-of-year
   - QuerterOfYear:
       group: Periodicity
-      title: Distribution by quarter of year
+      title: "[[this]] per quarter of the year"
       visualization: bar
       metrics: this
       dimensions:
@@ -99,7 +99,7 @@ cards:
             aggregation: quarter-of-year
   - ByCountry:
       group: Geographical
-      title: Distribution by country
+      title: "[[this]] per country"
       metrics: this
       dimensions: Country
       visualization:
@@ -108,7 +108,7 @@ cards:
           map.region: world_countries
   - ByState:
       group: Geographical
-      title: Distribution by state
+      title: "[[this]] per state"
       metrics: this
       dimensions: State
       visualization:
@@ -117,13 +117,13 @@ cards:
           map.region: us_states
   - ByNumber:
       group: Numbers
-      title: Distribution by [[GenericNumber]]
+      title: How [[this]] is distributed across [[GenericNumber]]
       metrics: this
       dimensions: GenericNumber
       visualization: bar
   - ByCategoryMedium:
       group: Categories
-      title: Distribution by [[GenericCategoryMedium]]
+      title: "[[this]] per [[GenericCategoryMedium]]"
       metrics: this
       dimensions: GenericCategoryMedium
       visualization: row
@@ -132,7 +132,7 @@ cards:
       height: 8
   - ByCategoryAndTime:
       group: Categories
-      title: Distribution by [[GenericCategorySmall]] over time
+      title: "[[this]] per [[GenericCategorySmall]] over time"
       metrics: this
       dimensions:
         - GenericCategorySmall
@@ -142,7 +142,7 @@ cards:
           stackable.stack_type: stacked
   - ByCategorySmall:
       group: Categories
-      title: Distribution by [[GenericCategorySmall]]
+      title: "[[this]] per [[GenericCategorySmall]]"
       metrics: this
       dimensions: GenericCategorySmall
       visualization: row
@@ -150,7 +150,7 @@ cards:
         this: descending
   - ByCategoryLargeTop:
       group: LargeCategories
-      title: Distribution by [[GenericCategoryLarge]] (top 5)
+      title: "[[this]] per [[GenericCategoryLarge]], top 5"
       metrics: this
       dimensions: GenericCategoryLarge
       visualization: row
@@ -159,7 +159,7 @@ cards:
       limit: 5
   - ByCategoryLargeBottom:
       group: LargeCategories
-      title: Distribution by [[GenericCategoryLarge]] (bottom 5)
+      title: "[[this]] per [[GenericCategoryLarge]], bottom 5"
       metrics: this
       dimensions: GenericCategoryLarge
       visualization: row

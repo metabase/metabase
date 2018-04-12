@@ -81,9 +81,9 @@ groups:
   - Overview:
       title: Overview
   - Geographical:
-      title: Geographical breakdown
+      title: Where these transactions happened
   - General:
-      title: Transaction breakdown
+      title: How these transactions are distributed
 dashboard_filters:
   - Timestamp
   - SourceSmall
@@ -110,7 +110,7 @@ cards:
   - IncomeByMonth:
       visualization: line
       title: Sales per month
-      description: Total income perf month
+      description: Total income per month
       dimensions: Timestamp
       metrics:
         - TotalIncome

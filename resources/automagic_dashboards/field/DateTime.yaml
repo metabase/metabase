@@ -1,4 +1,5 @@
-title: Analysis of [[this]]
+title: A look at the [[this]] field
+description: How [[this]] is distributed, and how different numbers change across it.
 applies_to: GenericTable.DateTime
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]
@@ -27,12 +28,12 @@ groups:
   - Overview:
       title: Overview
   - Breakdowns:
-      title: Breakdowns
+      title: Different numbers across [[this]]
   - Seasonality:
-      title: Seasonality
+      title: How [[this]] is distributed
 cards:
   - Distribution:
-      title: Distribution of [[this]]
+      title: "[[GenericTable]] by [[this]]"
       visualization: line
       metrics: Count
       dimensions: this
@@ -48,7 +49,7 @@ cards:
       width: 9
       group: Breakdowns
   - ByCategory:
-      title: "[[GenericCategoryMedium]] by [[this]]"
+      title: "Count of [[GenericCategoryMedium]] by [[this]]"
       visualization: area
       metrics: Count
       dimensions:
