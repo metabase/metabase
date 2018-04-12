@@ -1,6 +1,7 @@
 (ns metabase.automagic-dashboards.rules
   "Validation, transformation to cannonical form, and loading of heuristics."
-  (:require [clojure.string :as str]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.automagic-dashboards.populate :as populate]
             [metabase.types]
@@ -9,7 +10,8 @@
             [schema
              [coerce :as sc]
              [core :as s]]
-            [yaml.core :as yaml]))
+            [yaml.core :as yaml])
+  (:import java.nio.file.Path))
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
@@ -268,27 +270,54 @@
                              (->entity table-type)
                              (->type table-type))])))}))
 
-(def ^:private rules-dir "resources/automagic_dashboards/")
+(def ^:private rules-dir "automagic_dashboards/")
 
 (def ^:private ^{:arglists '([f])} file->table-type
-  (comp (partial re-find #".+(?=\.yaml)") (memfn ^java.io.File getName)))
+  (comp (partial re-find #".+(?=\.yaml)") str (memfn ^Path getFileName)))
 
 (def ^:private ^{:arglists '([f])} file->parent-dir
-  (comp last #(str/split % #"/") (memfn ^java.io.File getParent)))
+  (comp last #(str/split % #"/") str (memfn ^Path getParent)))
 
 (declare load-rules)
+
+(defmacro ^:private with-resource
+  [[name path] & body]
+  `(when-let [uri# (some-> ~path io/resource .toURI)]
+     (let [[fs# path#] (-> uri# .toString (str/split #"!" 2))]
+       (if path#
+         (with-open [fs# (-> fs#
+                             java.net.URI/create
+                             (java.nio.file.FileSystems/newFileSystem {}))]
+           (let [~name (.getPath fs# path#)]
+             ~@body))
+         (let [~name (java.nio.file.Paths/get uri#)]
+           ~@body)))))
+
+(defmacro ^:private with-resource
+  [[name path] & body]
+  `(when-let [uri# ]
+     (let [[fs# path#] (-> uri# .toString (str/split #"!" 2))]
+       (if path#
+         (with-open [fs# (-> fs#
+                             java.net.URI/create
+                             (java.nio.file.FileSystems/newFileSystem {}))]
+           (let [~name (.getPath fs# path#)]
+             ~@body))
+         (let [~name (java.nio.file.Paths/get uri#)]
+           ~@body)))))
 
 (defn load-rule
   "Load and validate rule from file `f`."
   [f]
-  (let [^java.io.File f (if (string? f)
-                          (java.io.File. (str rules-dir f))
-                          f)]
+  (if (string? f)
+    (with-resource [f (str rules-dir f)]
+      (load-rule f))
     (try
       (-> f
+          .toUri
           slurp
           yaml/parse-string
-          (assoc :rule    (file->table-type f))
+          (assoc :rule (file->table-type f))
           (update :applies_to #(or % (file->table-type f)))
           rules-validator
           (assoc :indepth (load-rules (format "%s/%s"
@@ -296,7 +325,7 @@
                                               (file->table-type f)))))
       (catch Exception e
         (log/error (format "Error parsing %s:\n%s"
-                           (.getName f)
+                           (.getFileName f)
                            (or (some-> e
                                        ex-data
                                        (select-keys [:error :value])
@@ -307,11 +336,13 @@
 (defn load-rules
   "Load and validate all rules in dir."
   [dir]
-  (->> (str rules-dir dir)
-       clojure.java.io/file
-       .listFiles
-       (filter (memfn ^java.io.File isFile))
-       (keep load-rule)))
+  (if (string? dir)
+    (with-resource [dir (str rules-dir dir)]
+      (load-rules dir))
+    (->> dir
+         java.nio.file.Files/newDirectoryStream
+         (filter #(str/ends-with? (.toString ^Path %) ".yaml"))
+         (keep load-rule))))
 
 (defn -main
   "Entry point for lein task `validate-automagic-dashboards`"
