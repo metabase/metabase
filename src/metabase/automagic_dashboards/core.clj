@@ -17,17 +17,63 @@
              [rules :as rules]]
             [metabase.models
              [card :as card :refer [Card]]
-             [database :refer [Database]]
              [field :refer [Field] :as field]
              [metric :refer [Metric]]
              [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.related :as related]
             [metabase.util :as u]
             [ring.util.codec :as codec]
             [toucan.db :as db]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
+
+(defmulti ^{:private  true
+            :arglists '([entity])}
+  ->root type)
+
+(defmethod ->root (type Table)
+  [table]
+  {:entity       table
+   :source-table table
+   :database     (:db_id table)
+   :full-name    (str "table " (:display_name table))
+   :url          (format "%stable/%s" public-endpoint (:id table))
+   :rules-prefix "table"})
+
+(defmethod ->root (type Segment)
+  [segment]
+  (let [table     (-> segment :table_id Table)
+        full-name (str "segment " (:name segment))]
+    {:entity       segment
+     :source-table table
+     :database     (:db_id table)
+     :query-filter (-> segment :definition :filter)
+     :full-name    full-name
+     :name-postfix (format " (%s)" full-name)
+     :url          (format "%ssegment/%s" public-endpoint (:id segment))
+     :rules-prefix "table"}))
+
+(defmethod ->root (type Metric)
+  [metric]
+  (let [table (-> metric :table_id Table)]
+    {:entity       metric
+     :source-table table
+     :database     (:db_id table)
+     :full-name    (str "metric " (:name metric))
+     :url          (format "%smetric/%s" public-endpoint (:id metric))
+     :rules-prefix "metric"}))
+
+(defmethod ->root (type Field)
+  [field]
+  (let [table (field/table field)]
+    {:entity       field
+     :source-table table
+     :database     (:db_id table)
+     :full-name    (str "field " (:display_name field))
+     :url          (format "%sfield/%s" public-endpoint (:id field))
+     :rules-prefix "field"}))
 
 (defmulti
   ^{:doc "Get a reference for a given model to be injected into a template
@@ -451,13 +497,17 @@
            vals
            (apply concat)))
 
+(defn- make-dashboard
+  [root rule context]
+  (-> rule
+      (select-keys [:title :description :groups])
+      (update :title str (:name-postfix root))
+      (instantiate-metadata context {"this" (:entity root)})))
+
 (defn- apply-rule
   [root rule]
   (let [context   (make-context root rule)
-        dashboard (-> rule
-                      (select-keys [:title :description :groups])
-                      (update :title str (:name-postfix root))
-                      (instantiate-metadata context {"this" (:entity root)}))
+        dashboard (make-dashboard root rule context)
         filters   (->> rule
                        :dashboard_filters
                        (mapcat (comp :matches (:dimensions context))))
@@ -472,6 +522,29 @@
 (def ^:private ^:const ^Long max-related 6)
 (def ^:private ^:const ^Long max-cards 15)
 
+(defn- ->related-entity
+  [entity]
+  (let [root      (->root entity)
+        rule      (->> root
+                       (matching-rules (rules/load-rules (:rules-prefix root)))
+                       first)
+        dashboard (make-dashboard root rule {:tables [(:source-table root)]})]
+    {:url         (:url root)
+     :title       (:title dashboard)
+     :description (:description dashboard)}))
+
+(defn- others
+  ([root] (others max-related root))
+  ([n root]
+   (let [recommendations (-> root :entity related/related)]
+     (->> (reduce (fn [acc selector]
+                    (concat acc (-> selector recommendations rules/ensure-seq)))
+                  []
+                  [:table :segments :metrics :linking-to :linked-from :tables
+                   :fields])
+          (take n)
+          (map ->related-entity)))))
+
 (defn- indepth
   [root rule]
   (->> rule
@@ -480,10 +553,15 @@
                (when-let [[dashboard _] (apply-rule root indepth)]
                  {:title       (:title dashboard)
                   :description (:description dashboard)
-                  :table       (:source-table root)
                   :url         (format "%s/%s/%s" (:url root) (:rule rule)
                                        (:rule indepth))})))
        (take max-related)))
+
+(defn- related
+  [root rule]
+  (let [indepth (indepth root rule)]
+    {:indepth indepth
+     :tables  (take (- max-related (count indepth)) (others root))}))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
@@ -511,19 +589,18 @@
                         (-> dashboard :context :metrics u/pprint-to-str)
                         (-> dashboard :context :filters u/pprint-to-str)))
       (-> (populate/create-dashboard dashboard (or show max-cards))
-          (assoc :related {:tables  []
-                           :indepth (indepth root rule)
-                           :more    (if (and (-> dashboard
-                                                 :cards
-                                                 count
-                                                 (> max-cards))
-                                             (not= show :all))
-                                      [{:title       "Show more"
-                                        :description nil
-                                        :table       (:source-table root)
-                                        :url         (format "%s#show=all"
-                                                             (:url root))}]
-                                      [])})))
+          (assoc :related (-> (related root rule)
+                              (assoc :more (if (and (-> dashboard
+                                                        :cards
+                                                        count
+                                                        (> max-cards))
+                                                    (not= show :all))
+                                             [{:title       "Show more"
+                                               :description nil
+                                               :table       (:source-table root)
+                                               :url         (format "%s#show=all"
+                                                                    (:url root))}]
+                                             []))))))
     (log/info (format "Skipping %s: no cards fully match bound dimensions."
                       (:full-name root)))))
 
@@ -532,47 +609,21 @@
 
 (defmulti
   ^{:doc "Create a transient dashboard analyzing given entity."
-   :arglists '([entity opts])}
+    :arglists '([entity opts])}
   automagic-analysis (fn [entity _]
                        (type entity)))
 
 (defmethod automagic-analysis (type Table)
   [table opts]
-  (automagic-dashboard
-   (merge opts
-          {:entity       table
-           :source-table table
-           :database     (:db_id table)
-           :full-name    (str "table " (:display_name table))
-           :url          (format "%stable/%s" public-endpoint (:id table))
-           :rules-prefix "table"})))
+  (automagic-dashboard (merge opts (->root table))))
 
 (defmethod automagic-analysis (type Segment)
   [segment opts]
-  (let [table     (-> segment :table_id Table)
-        full-name (str "segment " (:name segment))]
-    (automagic-dashboard
-     (merge opts
-            {:entity       segment
-             :source-table table
-             :database     (:db_id table)
-             :query-filter (-> segment :definition :filter)
-             :full-name    full-name
-             :name-postfix (format " (%s)" full-name)
-             :url          (format "%ssegment/%s" public-endpoint (:id segment))
-             :rules-prefix "table"}))))
+  (automagic-dashboard (merge opts (->root segment))))
 
 (defmethod automagic-analysis (type Metric)
   [metric opts]
-  (let [table (-> metric :table_id Table)]
-    (automagic-dashboard
-     (merge opts
-            {:entity       metric
-             :source-table table
-             :database     (:db_id table)
-             :full-name    (str "metric " (:name metric))
-             :url          (format "%smetric/%s" public-endpoint (:id metric))
-             :rules-prefix "metric"}))))
+  (automagic-dashboard (merge opts (->root metric))))
 
 (defmethod automagic-analysis (type Card)
   [card opts]
@@ -614,15 +665,7 @@
 
 (defmethod automagic-analysis (type Field)
   [field opts]
-  (let [table (field/table field)]
-    (automagic-dashboard
-     (merge opts
-            {:entity       field
-             :source-table table
-             :database     (:db_id table)
-             :full-name    (str "field " (:display_name field))
-             :url          (format "%sfield/%s" public-endpoint (:id field))
-             :rules-prefix "field"}))))
+  (automagic-dashboard (merge opts (->root field))))
 
 (defn- link-table?
   "Is the table comprised only of foregin keys and maybe a primary key?"
@@ -653,10 +696,7 @@
                    schema (concat [:schema schema])))
           (remove (some-fn link-table? list-like-table?))
           (keep (fn [table]
-                  (let [root {:entity       table
-                              :source-table table
-                              :database     (:db_id table)
-                              :rules-prefix "table"}]
+                  (let [root (->root table)]
                     (when-let [[dashboard rule]
                                (->> root
                                     (matching-rules rules)

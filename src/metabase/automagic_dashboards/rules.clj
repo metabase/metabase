@@ -222,7 +222,8 @@
         x
         {identifier {k definition}}))))
 
-(defn- ensure-seq
+(defn ensure-seq
+  "Wrap `x` into a vector if it is not already a sequence."
   [x]
   (if (or (sequential? x) (nil? x))
     x
