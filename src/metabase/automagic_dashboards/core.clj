@@ -10,7 +10,9 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [kixi.stats.core :as stats]
+            [kixi.stats
+             [core :as stats]
+             [math :as math]]
             [medley.core :as m]
             [metabase.automagic-dashboards
              [populate :as populate]
@@ -643,9 +645,7 @@
    to generate an automagic dashboard."
   ([database] (candidate-tables database nil))
   ([database schema]
-   (let [rules                      (rules/load-rules "table")
-         interestingness-comparator (juxt (comp - :score)
-                                          (comp - :num-fields :stats :table))]
+   (let [rules (rules/load-rules "table")]
      (->> (apply db/select Table
                  (cond-> [:db_id           (:id database)
                           :visibility_type nil]
@@ -663,13 +663,22 @@
                        dashboard (make-dashboard root rule {})]
                    {:url         (format "%stable/%s" public-endpoint (:id table))
                     :title       (:title dashboard)
-                    :score       (rule-specificity rule)
+                    :score       (+ (math/sq (rule-specificity rule))
+                                    (math/log (-> table :stats :num-fields)))
                     :description (:description dashboard)
-                    :table       table})))
+                    :table       table
+                    :rule        (:rule rule)})))
           (group-by (comp :schema :table))
           (map (fn [[schema tables]]
-                 {:tables (->> tables
-                               (sort-by interestingness-comparator)
-                               (take max-candidate-tables))
-                  :schema schema}))
-          (sort-by (comp interestingness-comparator first :tables))))))
+                 (let [tables (->> tables
+                                   (sort-by :score >)
+                                   (take max-candidate-tables))]
+                   {:tables tables
+                    :schema schema
+                    :score  (+ (math/sq (transduce (m/distinct-by :rule)
+                                                   stats/count
+                                                   tables))
+                               (math/sqrt (transduce (map (comp math/sq :score))
+                                                     stats/mean
+                                                     tables)))})))
+          (sort-by :score >)))))
