@@ -29,7 +29,7 @@ Now we’ve entered a new mode where we’ll need to wire up each card on our da
 So here’s what we’re doing — when we pick a month and year with our new filter, the filter needs to know which field in the card to filter on. For example, if we have a `Total Orders` card, and each order has a `Date Ordered` as well as a `Date Delivered`, we have to pick which of those fields to filter — do we want to see all the orders *placed* in January, or do we want to see all the orders *delivered* in January? So, for each card on our dashboard, we’ll pick a date field to connect to the filter. If one of your cards says there aren’t any valid fields, that just means that card doesn’t contain any fields that match the kind of filter you chose.
 
 #### Filtering SQL-based cards
-**Important:** note that if your dashboard includes saved questions that were created using the SQL/native query editor, you'll need to add a bit of additional markup to your query in order to use a dashboard filter on them. [Using SQL parameters](13-sql-parameters.md)
+**Important:** note that if your dashboard includes saved questions that were created using the SQL/native query editor, you'll need to [add a bit of additional markup to your query](13-sql-parameters.md) to add a "field filter variable" in order to use a dashboard filter with your SQL/native questions.
 
 ![Select fields](images/dashboard-filters/04-select-fields.png)
 
