@@ -30,10 +30,9 @@ import type { Candidate } from "metabase/meta/types/Auto";
 
 type Props = {
   params: {
-    databaseId: ?number,
+    databaseId?: number,
   },
 };
-
 type State = {
   databaseId: ?number,
   isSample: ?boolean,
@@ -138,7 +137,7 @@ export default class PostSetupApp extends Component {
                   {t`We’ll show you some interesting explorations of your data in
                   just a few minutes.`}
                 </h2>
-                <BorderedPanel className="my4 flex">
+                <BorderedPanel className="p4 my4 flex">
                   <MetabotLogo />
                   <div className="flex-full ml3 mt1">
                     <div className="mb1">
@@ -150,7 +149,7 @@ export default class PostSetupApp extends Component {
                 {sampleCandidates && (
                   <BorderedPanel>
                     <ExplorePane
-                      options={sampleCandidates}
+                      candidates={sampleCandidates}
                       title={null}
                       description={t`This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Metabase can do for you.`}
                     />
@@ -160,7 +159,7 @@ export default class PostSetupApp extends Component {
             ) : (
               <BorderedPanel>
                 <ExplorePane
-                  options={candidates}
+                  candidates={candidates}
                   description={
                     isSample
                       ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
@@ -186,7 +185,7 @@ export default class PostSetupApp extends Component {
 
 const BorderedPanel = ({ className, style, children }) => (
   <div
-    className={cx("bordered rounded shadowed bg-white p4", className)}
+    className={cx("bordered rounded shadowed bg-white", className)}
     style={style}
   >
     {children}
