@@ -293,19 +293,6 @@
          (let [~name (java.nio.file.Paths/get uri#)]
            ~@body)))))
 
-(defmacro ^:private with-resource
-  [[name path] & body]
-  `(when-let [uri# ~path]
-     (let [[fs# path#] (-> uri# .toString (str/split #"!" 2))]
-       (if path#
-         (with-open [fs# (-> fs#
-                             java.net.URI/create
-                             (java.nio.file.FileSystems/newFileSystem {}))]
-           (let [~name (.getPath fs# path#)]
-             ~@body))
-         (let [~name (java.nio.file.Paths/get uri#)]
-           ~@body)))))
-
 (defn load-rule
   "Load and validate rule from file `f`."
   [f]
