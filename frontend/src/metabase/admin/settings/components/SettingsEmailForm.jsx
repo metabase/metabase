@@ -165,6 +165,12 @@ export default class SettingsEmailForm extends Component {
     );
   }
 
+  clear = () => {
+    this.props.clearEmailSettings().then(() => {
+      this.setState({ formData: {} });
+    });
+  };
+
   updateEmailSettings(e) {
     e.preventDefault();
 
@@ -273,7 +279,11 @@ export default class SettingsEmailForm extends Component {
               {emailButtonText}
             </Button>
           ) : null}
-          <Button className="ml1" onClick={this.props.clearEmailSettings}>
+          <Button
+            className="ml1"
+            onClick={() => this.clear()}
+            disabled={disabled}
+          >
             {t`Clear`}
           </Button>
           {formErrors && formErrors.message ? (
