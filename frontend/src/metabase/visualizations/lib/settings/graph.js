@@ -160,6 +160,9 @@ export const LINE_SETTINGS = {
     section: "Display",
     title: t`Show point markers on lines`,
     widget: "toggle",
+    props: {
+      includeAuto: true,
+    },
   },
 };
 

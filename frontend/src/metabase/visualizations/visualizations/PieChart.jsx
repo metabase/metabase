@@ -71,6 +71,9 @@ export default class PieChart extends Component {
       section: "Display",
       title: t`Show legend`,
       widget: "toggle",
+      props: {
+        includeAuto: true,
+      },
     },
     "pie.show_legend_perecent": {
       section: "Display",
