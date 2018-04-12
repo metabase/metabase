@@ -29,6 +29,9 @@ const ROW_HEIGHT = 30;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 
+// HACK: used to get react-draggable to reset after a drag
+let DRAG_COUNTER = 0;
+
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
@@ -244,6 +247,15 @@ export default class TableInteractive extends Component {
     setTimeout(() => this.recomputeGridSize(), 1);
   }
 
+  onColumnReorder(columnIndex: number, newColumnIndex: number) {
+    const { settings, onUpdateVisualizationSettings } = this.props;
+    const columns = settings["table.columns"].slice(); // copy since splice mutates
+    columns.splice(newColumnIndex, 0, columns.splice(columnIndex, 1)[0]);
+    onUpdateVisualizationSettings({
+      "table.columns": columns,
+    });
+  }
+
   cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
     const {
       data,
@@ -269,7 +281,11 @@ export default class TableInteractive extends Component {
     return (
       <div
         key={key}
-        style={style}
+        style={{
+          ...style,
+          // use computed left if dragging
+          left: this.getColumnLeft(style, columnIndex),
+        }}
         className={cx("TableInteractive-cellWrapper", {
           "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
           "TableInteractive-cellWrapper--lastColumn":
@@ -299,6 +315,62 @@ export default class TableInteractive extends Component {
     );
   };
 
+  getDragColNewIndex(data) {
+    const { columnPositions, dragColNewIndex, dragColStyle } = this.state;
+    if (data.x < 0) {
+      const left = dragColStyle.left + data.x;
+      const index = _.findIndex(columnPositions, p => left < p.center);
+      if (index >= 0) {
+        return index;
+      }
+    } else if (data.x > 0) {
+      const right = dragColStyle.left + dragColStyle.width + data.x;
+      const index = _.findLastIndex(columnPositions, p => right > p.center);
+      if (index >= 0) {
+        return index;
+      }
+    }
+    return dragColNewIndex;
+  }
+
+  getColumnPositions() {
+    let left = 0;
+    return this.props.data.cols.map((col, index) => {
+      const width = this.getColumnWidth({ index });
+      const pos = {
+        left,
+        right: left + width,
+        center: left + width / 2,
+        width,
+      };
+      left += width;
+      return pos;
+    });
+  }
+
+  getNewColumnLefts(dragColNewIndex) {
+    const { dragColIndex, columnPositions } = this.state;
+    const { cols } = this.props.data;
+    const indexes = cols.map((col, index) => index);
+    indexes.splice(dragColNewIndex, 0, indexes.splice(dragColIndex, 1)[0]);
+    let left = 0;
+    const lefts = indexes.map(index => {
+      const thisLeft = left;
+      left += columnPositions[index].width;
+      return { index, left: thisLeft };
+    });
+    lefts.sort((a, b) => a.index - b.index);
+    return lefts.map(p => p.left);
+  }
+
+  getColumnLeft(style, index) {
+    const { dragColNewIndex, dragColNewLefts } = this.state;
+    if (dragColNewIndex != null && dragColNewLefts) {
+      return dragColNewLefts[index];
+    }
+    return style.left;
+  }
+
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
     const {
       sort,
@@ -325,6 +397,8 @@ export default class TableInteractive extends Component {
       clicked = { column };
     }
 
+    const isDragging = this.state.dragColIndex === columnIndex;
+
     const isClickable =
       onVisualizationClick && visualizationIsClickable(clicked);
     const isSortable = isClickable && column.source;
@@ -334,77 +408,126 @@ export default class TableInteractive extends Component {
     const isSorted =
       sort && sort[0] && sort[0][0] && sort[0][0][1] === column.id;
     const isAscending = sort && sort[0] && sort[0][1] === "ascending";
-
     return (
-      <div
-        key={key}
-        style={{
-          ...style,
-          overflow: "visible" /* ensure resize handle is visible */,
+      <Draggable
+        /* needs to be index+name+counter so Draggable resets after each drag */
+        key={columnIndex + column.name + DRAG_COUNTER}
+        axis="x"
+        onStart={(e, d) => {
+          this.setState({
+            columnPositions: this.getColumnPositions(),
+            dragColIndex: columnIndex,
+            dragColStyle: style,
+            dragColNewIndex: columnIndex,
+          });
         }}
-        className={cx(
-          "TableInteractive-cellWrapper TableInteractive-headerCellData",
-          {
-            "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-            "TableInteractive-cellWrapper--lastColumn":
-              columnIndex === cols.length - 1,
-            "TableInteractive-headerCellData--sorted": isSorted,
-            "cursor-pointer": isClickable,
-            "justify-end": isRightAligned,
-          },
-        )}
-        // use onMouseUp instead of onClick since we can stopPropation when resizing headers
-        onMouseUp={
-          isClickable
-            ? e => {
-                onVisualizationClick({ ...clicked, element: e.currentTarget });
-              }
-            : undefined
-        }
+        onDrag={(e, data) => {
+          const newIndex = this.getDragColNewIndex(data);
+          if (newIndex !== this.state.dragColNewIndex) {
+            this.setState({
+              dragColNewIndex: newIndex,
+              dragColNewLefts: this.getNewColumnLefts(newIndex),
+            });
+          }
+        }}
+        onStop={(e, d) => {
+          DRAG_COUNTER++;
+          const { dragColIndex, dragColNewIndex } = this.state;
+          if (dragColIndex !== dragColNewIndex) {
+            this.onColumnReorder(dragColIndex, dragColNewIndex);
+          }
+          this.setState({
+            columnPositions: null,
+            dragColIndex: null,
+            dragColStyle: null,
+            dragColNewIndex: null,
+            dragColNewLefts: null,
+          });
+        }}
       >
-        <div className="cellData">
-          {isSortable &&
-            isRightAligned && (
-              <Icon
-                className="Icon mr1"
-                name={isAscending ? "chevronup" : "chevrondown"}
-                size={8}
-              />
-            )}
-          {columnTitle}
-          {isSortable &&
-            !isRightAligned && (
-              <Icon
-                className="Icon ml1"
-                name={isAscending ? "chevronup" : "chevrondown"}
-                size={8}
-              />
-            )}
-        </div>
-        <Draggable
-          axis="x"
-          bounds={{ left: RESIZE_HANDLE_WIDTH }}
-          position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
-          onStop={(e, { x }) => {
-            // prevent onVisualizationClick from being fired
-            e.stopPropagation();
-            this.onColumnResize(columnIndex, x);
+        <div
+          key={key}
+          style={{
+            ...style,
+            overflow: "visible" /* ensure resize handle is visible */,
+            // use computed left if dragging, except for the dragged header
+            left: isDragging
+              ? style.left
+              : this.getColumnLeft(style, columnIndex),
           }}
+          className={cx(
+            "TableInteractive-cellWrapper TableInteractive-headerCellData",
+            {
+              "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+              "TableInteractive-cellWrapper--lastColumn":
+                columnIndex === cols.length - 1,
+              "TableInteractive-cellWrapper--active": isDragging,
+              "TableInteractive-headerCellData--sorted": isSorted,
+              "cursor-pointer": isClickable,
+              "justify-end": isRightAligned,
+            },
+          )}
+          // use onMouseUp instead of onClick since we can stopPropation when resizing headers
+          onMouseUp={
+            isClickable
+              ? e => {
+                  onVisualizationClick({
+                    ...clicked,
+                    element: e.currentTarget,
+                  });
+                }
+              : undefined
+          }
         >
-          <div
-            className="bg-brand-hover bg-brand-active"
-            style={{
-              zIndex: 99,
-              position: "absolute",
-              width: RESIZE_HANDLE_WIDTH,
-              top: 0,
-              bottom: 0,
-              left: -RESIZE_HANDLE_WIDTH - 1,
-              cursor: "ew-resize",
+          <div className="cellData">
+            {isSortable &&
+              isRightAligned && (
+                <Icon
+                  className="Icon mr1"
+                  name={isAscending ? "chevronup" : "chevrondown"}
+                  size={8}
+                />
+              )}
+            {columnTitle}
+            {isSortable &&
+              !isRightAligned && (
+                <Icon
+                  className="Icon ml1"
+                  name={isAscending ? "chevronup" : "chevrondown"}
+                  size={8}
+                />
+              )}
+          </div>
+          <Draggable
+            axis="x"
+            bounds={{ left: RESIZE_HANDLE_WIDTH }}
+            position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
+            onStart={e => {
+              e.stopPropagation();
+              this.setState({ dragColIndex: columnIndex });
             }}
-          />
-        </Draggable>
-      </div>
+            onStop={(e, { x }) => {
+              // prevent onVisualizationClick from being fired
+              e.stopPropagation();
+              this.onColumnResize(columnIndex, x);
+              this.setState({ dragColIndex: null });
+            }}
+          >
+            <div
+              className="bg-brand-hover bg-brand-active"
+              style={{
+                zIndex: 99,
+                position: "absolute",
+                width: RESIZE_HANDLE_WIDTH,
+                top: 0,
+                bottom: 0,
+                left: -RESIZE_HANDLE_WIDTH - 1,
+                cursor: "ew-resize",
+              }}
+            />
+          </Draggable>
+        </div>
+      </Draggable>
     );
   };
 
@@ -439,6 +562,8 @@ export default class TableInteractive extends Component {
             className={cx(className, "TableInteractive relative", {
               "TableInteractive--pivot": this.props.isPivoted,
               "TableInteractive--ready": this.state.contentWidths,
+              // no hover if we're dragging a column
+              "TableInteractive--noHover": this.state.dragColIndex != null,
             })}
           >
             <canvas
