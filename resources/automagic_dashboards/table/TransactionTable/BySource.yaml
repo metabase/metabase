@@ -1,4 +1,5 @@
 title: Transactions by source
+description: A look into where most of your traffic is coming from.
 applies_to: TransactionTable
 metrics:
 - TotalIncome:
@@ -128,7 +129,7 @@ cards:
 - UsersBySource:
     group: UserAcquisition
     visualization: row
-    title: Number of users by source
+    title: Number of users per source
     dimensions: SourceMedium
     metrics: TotalUsers
     order_by:
@@ -138,7 +139,7 @@ cards:
 - NewUsersBySource:
     group: UserAcquisition
     visualization: row
-    title: New users in the last 30 days by source
+    title: New users per source in the last 30 days
     dimensions: SourceMedium
     metrics: TotalUsers
     filters: NewUsers
@@ -148,7 +149,7 @@ cards:
       - TotalUsers: descending
 - IncomeBySource:
     group: Financial
-    title: Total income by source
+    title: Total income per source
     visualization: table
     dimensions: SourceLarge
     metrics: TotalIncome
@@ -158,7 +159,7 @@ cards:
     height: 8
 - AvgQuantityBySource:
     group: Financial
-    title: Average qunatity by source
+    title: Average qunatity per source
     visualization: table
     dimensions: SourceLarge
     metrics: AvgQuantity
@@ -168,7 +169,7 @@ cards:
     height: 8
 - AvgIncomeBySource:
    group: Financial
-   title: Average income by source
+   title: Average income per source
    visualization: table
    dimensions: SourceLarge
    metrics: AvgIncome
@@ -179,7 +180,7 @@ cards:
 - UsersBySource:
     group: UserAcquisition
     visualization: table
-    title: Number of users by source
+    title: Users per source
     dimensions: SourceLarge
     metrics: TotalUsers
     order_by:
@@ -189,7 +190,7 @@ cards:
 - NewUsersBySource:
     group: UserAcquisition
     visualization: table
-    title: New users in the last 30 days by source
+    title: New users per source in the last 30
     dimensions: SourceLarge
     metrics: TotalUsers
     filters: NewUsers

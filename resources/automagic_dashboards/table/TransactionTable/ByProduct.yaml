@@ -1,4 +1,5 @@
-title: Transactions by product
+title: Transactions by products
+description: How your different products are performing.
 applies_to: TransactionTable
 metrics:
 - TotalOrders: [count]
@@ -36,7 +37,7 @@ cards:
     width: 12
     height: 8
 - OrdersByProductCategoryMedium:
-    title: Sales by product [[ProductCategoryMedium]]
+    title: Sales per product [[ProductCategoryMedium]]
     visualization: row
     dimensions:
       - ProductCategoryMedium
@@ -45,7 +46,7 @@ cards:
      - TotalOrders: descending
     height: 8
 - OrdersByProductCategoryLarge:
-    title: Sales by product [[ProductCategoryLarge]]
+    title: Sales per product [[ProductCategoryLarge]]
     visualization: table
     dimensions:
       - ProductCategoryLarge

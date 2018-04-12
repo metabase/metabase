@@ -65,11 +65,11 @@ groups:
 - Singletons:
     title: Fields with only a single value
 - ByTime:
-    title: Breakdown by time
+    title: "[[GenericTable]] across time"
 - Geographical:
     title: Geographical breakdown
 - General:
-    title: General breakdowns
+    title: How [[GenericTable]] and their metrics are distributed
 dashboard_filters:
 - Timestamp
 - JoinDate

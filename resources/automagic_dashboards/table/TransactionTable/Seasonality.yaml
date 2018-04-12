@@ -1,4 +1,5 @@
-title: "Transaction seasonality"
+title: "Transactions across time"
+description: Whether or not there are any patterns to when your transactions happen.
 applies_to: TransactionTable
 metrics:
   - Count: ["count"]
@@ -23,7 +24,7 @@ dashboard_filters:
 - ProductCategory
 cards:
   - CountByTimestamp:
-      title: Nuber of transactions over time
+      title: Transactions over time
       visualization: line
       dimensions: Timestamp
       metrics: Count
@@ -31,7 +32,7 @@ cards:
       width: 18
       height: 6
   - DayOfWeekTimestamp:
-      title: Count by [[Timestamp]] day of week
+      title: Transactions per day of the week
       visualization: bar
       dimensions:
         - Timestamp:
@@ -40,9 +41,9 @@ cards:
       score: 60
       width: 9
       height: 6
-      x_label: "[[Timestamp]] day of week"
+      x_label: "[[Timestamp]] by day of week"
   - HourOfDayTimestamp:
-      title: Count by [[Timestamp]] hour of day
+      title: Transactions per hour of the day
       visualization: bar
       dimensions:
       - Timestamp:
@@ -51,9 +52,9 @@ cards:
       score: 50
       width: 9
       height: 6
-      x_label: "[[Timestamp]] hour of day"
+      x_label: "[[Timestamp]] by hour of day"
   - MonthOfYearTimestamp:
-      title: Count by [[Timestamp]] month of year
+      title: Transactions per month of the year
       visualization: bar
       dimensions:
         - Timestamp:
@@ -62,9 +63,9 @@ cards:
       score: 40
       width: 9
       height: 6
-      x_label: "[[Timestamp]] month of year"
+      x_label: "[[Timestamp]] by month of year"
   - QuarterOfYearTimestamp:
-      title: Count by [[Timestamp]] quarter of year
+      title: Transactions per quarter of the year
       visualization: bar
       dimensions:
         - Timestamp:
@@ -73,4 +74,4 @@ cards:
       score: 40
       width: 9
       height: 6
-      x_label: "[[Timestamp]] quarter of year"
+      x_label: "[[Timestamp]] by quarter of year"

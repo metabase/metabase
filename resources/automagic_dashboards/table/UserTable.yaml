@@ -44,9 +44,9 @@ groups:
 - Overview:
     title: Overview
 - Geographical:
-    title: Geographical breakdown
+    title: Where your users are
 - General:
-    title: General breakdowns
+    title: How your users are distributed across different categories
 dashboard_filters:
 - JoinDate
 - GenericCategoryMedium

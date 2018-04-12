@@ -1,4 +1,4 @@
-title: Interesting metrics about [[EventTable]]
+title: "[[EventTable]]"
 description: A look at your events over time and by several categories.
 metrics:
   - Count: ["count"]
@@ -30,11 +30,11 @@ groups:
   - Overview:
       title: Overview
   - Periodicity:
-      title: Seasonal breakdown
+      title: Events over time
   - Geographical:
-      title: Geographical breakdown
+      title: Where these events are happening
   - General:
-      title: General breakdowns
+      title: Events by different categories
 dashboard_filters:
 - Timestamp
 - GenericCategoryMedium
