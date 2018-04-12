@@ -91,6 +91,9 @@ Another option is custom remapping, which is currently only possible for numeric
 
 ![Remapping form](./images/remapping/custom-mapping.png)
 
+### Picking the filter interface for a fields
+…
+
 
 ---
 
