@@ -65,7 +65,7 @@
 
 (expect
   false
-  (tt/with-temp* [Metric [{metric-id :id} {:table_id 1
+  (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
                                            :definition {:query {:aggregation ["count"]}}}]]
     (with-rasta
       (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
@@ -73,8 +73,8 @@
 
 
 (expect
-  true
-  (->> (Database 1) candidate-tables count pos?))
+  4
+  (->> (Database (data/id)) candidate-tables count))
 
 
 ;; Identity
