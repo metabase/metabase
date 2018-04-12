@@ -39,18 +39,19 @@
 
 (defn- optimal-datetime-resolution
   [field]
-  (let [[earliest latest] (->> field
-                               :fingerprint
-                               :type
-                               :type/DateTime
-                               ((juxt :earliest :latest))
-                               (map t.format/parse))]
+  (if-let [[earliest latest] (some->> field
+                                      :fingerprint
+                                      :type
+                                      :type/DateTime
+                                      ((juxt :earliest :latest))
+                                      (map t.format/parse))]
     (condp > (t/in-hours (t/interval earliest latest))
       3               :minute
       (* 24 7)        :hour
       (* 24 30 6)     :day
       (* 24 30 12 10) :month
-      :year)))
+      :year)
+    :month))
 
 (defmethod ->reference [:mbql (type Field)]
   [_ {:keys [fk_target_field_id id link aggregation base_type fingerprint] :as field}]

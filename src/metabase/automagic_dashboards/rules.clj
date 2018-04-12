@@ -278,58 +278,67 @@
 (def ^:private ^{:arglists '([f])} file->parent-dir
   (comp last #(str/split % #"/") str (memfn ^Path getParent)))
 
-(declare load-rules)
-
-(defmacro ^:private with-resource
-  [[name path] & body]
-  `(when-let [uri# (some-> ~path io/resource .toURI)]
+(defmacro ^:private with-resources
+  [name & body]
+  `(let [uri# (-> rules-dir io/resource .toURI)]
      (let [[fs# path#] (-> uri# .toString (str/split #"!" 2))]
        (if path#
-         (with-open [fs# (-> fs#
-                             java.net.URI/create
-                             (java.nio.file.FileSystems/newFileSystem {}))]
-           (let [~name (.getPath fs# path#)]
-             ~@body))
-         (let [~name (java.nio.file.Paths/get uri#)]
+         (with-open [~name (-> fs#
+                               java.net.URI/create
+                               (java.nio.file.FileSystems/newFileSystem {}))]
+           ~@body)
+         (let [~name (java.nio.file.FileSystems/getDefault)]
            ~@body)))))
+
+(defn- resource-path
+  [fs path]
+  (when-let [path (some->> path (str rules-dir) io/resource)]
+    (let [path (if (-> path str (str/starts-with? "jar"))
+                 (-> path str (str/split #"!" 2) second)
+                 (.getPath path))]
+      (.getPath fs path (into-array String [])))))
+
+(declare load-rules)
 
 (defn load-rule
   "Load and validate rule from file `f`."
-  [f]
-  (if (string? f)
-    (with-resource [f (str rules-dir f)]
-      (load-rule f))
-    (try
-      (-> f
-          .toUri
-          slurp
-          yaml/parse-string
-          (assoc :rule (file->table-type f))
-          (update :applies_to #(or % (file->table-type f)))
-          rules-validator
-          (assoc :indepth (load-rules (format "%s/%s"
-                                              (file->parent-dir f)
-                                              (file->table-type f)))))
-      (catch Exception e
-        (log/error (format "Error parsing %s:\n%s"
-                           (.getFileName f)
-                           (or (some-> e
-                                       ex-data
-                                       (select-keys [:error :value])
-                                       u/pprint-to-str)
-                               e)))
-        nil))))
+  ([f]
+   (with-resources fs
+     (some->> f (resource-path fs) (load-rule fs))))
+  ([fs ^Path f]
+   (try
+     (-> f
+         .toUri
+         slurp
+         yaml/parse-string
+         (assoc :rule (file->table-type f))
+         (update :applies_to #(or % (file->table-type f)))
+         rules-validator
+         (assoc :indepth (load-rules fs (format "%s/%s"
+                                                (file->parent-dir f)
+                                                (file->table-type f)))))
+     (catch Exception e
+       (log/error (format "Error parsing %s:\n%s"
+                          (.getFileName f)
+                          (or (some-> e
+                                      ex-data
+                                      (select-keys [:error :value])
+                                      u/pprint-to-str)
+                              e)))
+       nil))))
 
 (defn load-rules
   "Load and validate all rules in dir."
-  [dir]
-  (if (string? dir)
-    (with-resource [dir (str rules-dir dir)]
-      (load-rules dir))
-    (->> dir
-         java.nio.file.Files/newDirectoryStream
-         (filter #(str/ends-with? (.toString ^Path %) ".yaml"))
-         (keep load-rule))))
+  ([dir]
+   (with-resources fs
+     (load-rules fs dir)))
+  ([fs dir]
+   (when-let [dir (resource-path fs dir)]
+     (with-open [ds (java.nio.file.Files/newDirectoryStream dir)]
+       (->> ds
+            (filter #(str/ends-with? (.toString ^Path %) ".yaml"))
+            (keep (partial load-rule fs))
+            doall)))))
 
 (defn -main
   "Entry point for lein task `validate-automagic-dashboards`"

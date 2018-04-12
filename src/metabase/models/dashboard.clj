@@ -240,12 +240,14 @@
 (defn- save-card!
   [card]
   (when (:dataset_query card)
-    (db/insert! 'Card
-      (-> card
-          (update :result_metadata #(or % (-> card
-                                              :dataset_query
-                                              result-metadata-for-query)))
-          (dissoc :id)))))
+    (let [card (db/insert! 'Card
+                 (-> card
+                     (update :result_metadata #(or % (-> card
+                                                         :dataset_query
+                                                         result-metadata-for-query)))
+                     (dissoc :id)))]
+      (events/publish-event! :card-create card)
+      (hydrate card :creator :dashboard_count :labels :can_write :collection))))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of dashboard."
@@ -261,8 +263,5 @@
                          (update :parameter_mappings
                                  (partial map #(assoc % :card_id (:id card))))
                          (assoc :series series))]
-        (doseq [card (concat series (some-> card vector))]
-          (events/publish-event! :card-create card)
-          (hydrate card :creator :dashboard_count :labels :can_write :collection))
         (add-dashcard! dashboard card dashcard)))
     dashboard))
