@@ -69,7 +69,7 @@ groups:
 - Geographical:
     title: Geographical breakdown
 - General:
-    title: How [[GenericTable]] and their metrics are distributed
+    title: How [[GenericTable]] are distributed
 dashboard_filters:
 - Timestamp
 - JoinDate
@@ -133,7 +133,7 @@ cards:
       group: Geographical
 # General
   - NumberDistribution:
-      title: How [[GenericNumber]] is distributed
+      title: How [[GenericTable]] are distributed across [[GenericNumber]]
       dimensions:
         - GenericNumber:
             aggregation: default
