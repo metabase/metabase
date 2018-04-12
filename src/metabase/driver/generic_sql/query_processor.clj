@@ -32,6 +32,8 @@
   Each nested query increments this counter by 1."
   0)
 
+(def ^:private source-table-alias "t1")
+
 ;; register the function "distinct-count" with HoneySQL
 ;; (hsql/format :%distinct-count.x) -> "count(distinct x)"
 (defmethod hformat/fn-handler "distinct-count" [_ field]
@@ -72,6 +74,21 @@
      (nth (:aggregation query) index)
      (recur index (:source-query query) (dec aggregation-level)))))
 
+(defn resolve-table-alias [{:keys [schema-name table-name special-type field-name] :as field}]
+  (let [source-table (or (get-in *query* [:query :source-table])
+                         (get-in *query* [:query :source-query :source-table]) )]
+    (if (and (= schema-name (:schema source-table))
+             (= table-name (:name source-table)))
+      (-> (assoc field :schema-name nil)
+          (assoc :table-name source-table-alias))
+      (if-let [matching-join-table (->> (get-in *query* [:query :join-tables])
+                                        (filter #(and (= schema-name (:schema %))
+                                                      (= table-name (:table-name %))))
+                                        first)]
+        (-> (assoc field :schema-name nil)
+            (assoc :table-name (:join-alias matching-join-table)))
+        field))))
+
 (defmulti ^{:doc          (str "Return an appropriate HoneySQL form for an object. Dispatches off both driver and object "
                                "classes making this easy to override in any places needed for a given driver.")
             :arglists     '([driver x])
@@ -95,8 +112,9 @@
   (->honeysql driver (expression-with-name expression-name)))
 
 (defmethod ->honeysql [Object Field]
-  [driver {:keys [schema-name table-name special-type field-name]}]
-  (let [field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
+  [driver field-before-aliasing]
+  (let [{:keys [schema-name table-name special-type field-name]} (resolve-table-alias field-before-aliasing)
+        field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
     (cond
       (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
       (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp driver field :milliseconds)
@@ -288,8 +306,8 @@
   (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
     (let [honeysql-form (h/merge-left-join honeysql-form
                           [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
-                          [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
-                              (hx/qualify-and-escape-dots join-alias                      (:field-name pk-field))])]
+                          [:= (hx/qualify-and-escape-dots source-table-alias (:field-name source-field))
+                              (hx/qualify-and-escape-dots join-alias         (:field-name pk-field))])]
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))
@@ -318,9 +336,26 @@
       (h/limit items)
       (h/offset (* items (dec page)))))
 
+(defn apply-page-using-row-number-for-offset
+  "Apply `page` clause to HONEYSQL-FROM, using row_number() for drivers that do not support offsets"
+  [driver honeysql-form {{:keys [items page]} :page}]
+  (let [offset (* (dec page) items)]
+    (if (zero? offset)
+      ;; if there's no offset we can simply use limit
+      (h/limit honeysql-form items)
+      ;; if we need to do an offset we have to do nesting to generate a row number and where on that
+      (let [over-clause (format "row_number() OVER (%s)"
+                                (first (hsql/format (select-keys honeysql-form [:order-by])
+                                                    :allow-dashed-names? true
+                                                    :quoting (:quote-style driver))))]
+        (-> (apply h/select (map last (:select honeysql-form)))
+            (h/from (h/merge-select honeysql-form [(hsql/raw over-clause) :__rownum__]))
+            (h/where [:> :__rownum__ offset])
+            (h/limit items))))))
+
 (defn- apply-source-table [honeysql-form {{table-name :name, schema :schema} :source-table}]
   {:pre [table-name]}
-  (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
+  (h/from honeysql-form [(hx/qualify-and-escape-dots schema table-name) source-table-alias]))
 
 (declare apply-clauses)
 
@@ -498,7 +533,10 @@
            second)             ; so just return the part of the exception that is relevant
       (.getMessage e)))
 
-(defn- do-with-try-catch {:style/indent 0} [f]
+(defn do-with-try-catch
+  "Tries to run the function `f`, catching and printing exception chains if SQLException is thrown,
+   and rethrowing the exception as an Exception with a nicely formatted error message."
+  {:style/indent 0} [f]
   (try (f)
        (catch SQLException e
          (log/error (jdbc/print-sql-exception-chain e))

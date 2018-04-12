@@ -209,9 +209,9 @@
                   :filter       [:= [:field-literal (data/format-name :id) :type/Integer] 1]}})))
 
 (def ^:private ^:const ^String venues-source-sql
-  (str "(SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
-       "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
-       "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" FROM \"PUBLIC\".\"VENUES\") \"source\""))
+  (str "(SELECT \"t1\".\"ID\" AS \"ID\", \"t1\".\"NAME\" AS \"NAME\", "
+       "\"t1\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", \"t1\".\"LATITUDE\" AS \"LATITUDE\", "
+       "\"t1\".\"LONGITUDE\" AS \"LONGITUDE\", \"t1\".\"PRICE\" AS \"PRICE\" FROM \"PUBLIC\".\"VENUES\" \"t1\") \"source\""))
 
 ;; make sure that dots in field literal identifiers get escaped so you can't reference fields from other tables using them
 (expect
@@ -242,10 +242,10 @@
 ;; e.g. the ORDER BY in the source-query should refer the 'stddev' aggregation, NOT the 'avg' aggregation
 (expect
   {:query (str "SELECT avg(\"stddev\") AS \"avg\" FROM ("
-                   "SELECT STDDEV(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
-                   "FROM \"PUBLIC\".\"VENUES\" "
-                   "GROUP BY \"PUBLIC\".\"VENUES\".\"PRICE\" "
-                   "ORDER BY \"stddev\" DESC, \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
+                   "SELECT STDDEV(\"t1\".\"ID\") AS \"stddev\", \"t1\".\"PRICE\" AS \"PRICE\" "
+                   "FROM \"PUBLIC\".\"VENUES\" \"t1\" "
+                   "GROUP BY \"t1\".\"PRICE\" "
+                   "ORDER BY \"stddev\" DESC, \"t1\".\"PRICE\" ASC"
                ") \"source\"")
    :params nil}
   (qp/query->native

@@ -386,11 +386,11 @@
 ;; End-to-end check: make sure everything works as expected when we run an actual query
 (expect-with-engine :postgres
   {:rows        [["Rasta" "good bird" "toucan"]]
-   :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
-                              " \"public\".\"birds\".\"status\" AS \"status\","
-                              " \"public\".\"birds\".\"type\" AS \"type\" "
-                              "FROM \"public\".\"birds\" "
-                              "WHERE \"public\".\"birds\".\"type\" = CAST(? AS \"bird type\") "
+   :native_form {:query  (str "SELECT \"t1\".\"name\" AS \"name\","
+                              " \"t1\".\"status\" AS \"status\","
+                              " \"t1\".\"type\" AS \"type\" "
+                              "FROM \"public\".\"birds\" \"t1\" "
+                              "WHERE \"t1\".\"type\" = CAST(? AS \"bird type\") "
                               "LIMIT 10")
                  :params ["toucan"]}}
   (do-with-enums-db
