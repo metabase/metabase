@@ -642,7 +642,14 @@
 
 (defn candidate-tables
   "Return a list of tables in database with ID `database-id` for which it makes sense
-   to generate an automagic dashboard."
+   to generate an automagic dashboard. Results are grouped by schema and ranked
+   acording to interestingness (both schemas and tables within each schema). Each
+   schema contains up to `max-candidate-tables` tables.
+
+   Tables are ranked based on how specific rule has been used, and the number of
+   fields.
+   Schemes are ranked based on the number of distinct entity types and the
+   interestingness of tables they contain (see above)."
   ([database] (candidate-tables database nil))
   ([database schema]
    (let [rules (rules/load-rules "table")]
