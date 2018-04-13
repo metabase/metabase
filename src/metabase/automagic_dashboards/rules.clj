@@ -11,7 +11,8 @@
              [coerce :as sc]
              [core :as s]]
             [yaml.core :as yaml])
-  (:import java.nio.file.Path))
+  (:import java.nio.file.Path java.nio.file.FileSystems java.nio.file.FileSystem
+           java.nio.file.Files ))
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
@@ -61,8 +62,8 @@
   (isa? t :entity/*))
 
 (def ^:private TableType (s/constrained s/Keyword table-type?))
-(def ^:private FieldType (s/either (s/constrained s/Str ga-dimension?)
-                                   (s/constrained s/Keyword field-type?)))
+(def ^:private FieldType (s/cond-pre (s/constrained s/Str ga-dimension?)
+                                     (s/constrained s/Keyword field-type?)))
 
 (def ^:private AppliesTo (s/either [FieldType]
                                    [TableType]
@@ -120,7 +121,7 @@
   (mapcat (comp k val first) cards))
 
 (def ^:private DimensionForm
-  [(s/one (s/constrained (s/either s/Str s/Keyword)
+  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword)
                          (comp #{"dimension"} str/lower-case name))
           "dimension")
    (s/one s/Str "identifier")
@@ -284,15 +285,16 @@
   `(let [uri# (-> rules-dir io/resource .toURI)]
      (let [[fs# path#] (-> uri# .toString (str/split #"!" 2))]
        (if path#
-         (with-open [~identifier (-> fs#
-                                     java.net.URI/create
-                                     (java.nio.file.FileSystems/newFileSystem {}))]
+         (with-open [^FileSystem ~identifier
+                     (-> fs#
+                         java.net.URI/create
+                         (FileSystems/newFileSystem (java.util.HashMap.)))]
            ~@body)
-         (let [~identifier (java.nio.file.FileSystems/getDefault)]
+         (let [~identifier (FileSystems/getDefault)]
            ~@body)))))
 
 (defn- resource-path
-  [fs path]
+  [^FileSystem fs path]
   (when-let [path (some->> path (str rules-dir) io/resource)]
     (let [path (if (-> path str (str/starts-with? "jar"))
                  (-> path str (str/split #"!" 2) second)
@@ -335,7 +337,7 @@
      (load-rules fs dir)))
   ([fs dir]
    (when-let [dir (resource-path fs dir)]
-     (with-open [ds (java.nio.file.Files/newDirectoryStream dir)]
+     (with-open [ds (Files/newDirectoryStream dir)]
        (->> ds
             (filter #(str/ends-with? (.toString ^Path %) ".yaml"))
             (keep (partial load-rule fs))

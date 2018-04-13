@@ -35,7 +35,7 @@ dimensions:
 - Lat: GenericTable.Latitude
 # Ignore
 - Name: Name
-- Birthday: Birthday
+- Birthdate: Birthdate
 - ZIP: ZipCode
 filters:
   - Last30Days:
