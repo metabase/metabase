@@ -10,13 +10,13 @@ import Select, { Option } from "metabase/components/Select";
 import { t } from "c-3po";
 import _ from "underscore";
 
-import type { Candidate } from "metabase/meta/types/Auto";
+import type { DatabaseCandidates, Candidate } from "metabase/meta/types/Auto";
 
 const DEFAULT_TITLE = t`Hi, Metabot here.`;
 const DEFAULT_DESCRIPTION = "";
 
 type Props = {
-  candidates?: ?(Candidate[]),
+  candidates?: ?DatabaseCandidates,
   title?: ?string,
   description?: ?string,
 };
@@ -43,20 +43,15 @@ export class ExplorePane extends React.Component {
     let { schemaName, visibleItems } = this.state;
 
     let schemaNames;
+    let tables;
     let hasMore = false;
-    if (candidates) {
-      const candidatesBySchema =
-        candidates &&
-        _.groupBy(
-          candidates,
-          candidate => candidate.table && candidate.table.schema,
-        );
-      schemaNames = Object.keys(candidatesBySchema || {});
+    if (candidates && candidates.length > 0) {
+      schemaNames = candidates.map(schema => schema.schema);
       if (schemaName == null) {
         schemaName = schemaNames[0];
       }
-      candidates = candidatesBySchema[schemaName].slice(0, visibleItems);
-      hasMore = visibleItems < candidatesBySchema[schemaName].length;
+      const schema = _.findWhere(candidates, { schema: schemaName });
+      tables = (schema && schema.tables) || [];
     }
 
     return (
@@ -79,7 +74,9 @@ export class ExplorePane extends React.Component {
         {schemaNames &&
           schemaNames.length > 1 && (
             <div className="px4 inline-block mb4">
-              <div className="pb1 text-paragraph">Here's the schema I looked at:</div>
+              <div className="pb1 text-paragraph">
+                Here's the schema I looked at:
+              </div>
               <Select
                 value={schemaName}
                 onChange={e =>
@@ -97,9 +94,9 @@ export class ExplorePane extends React.Component {
               </Select>
             </div>
           )}
-        {candidates && (
+        {tables && (
           <div className="px4">
-            <ExploreList candidates={candidates} />
+            <ExploreList candidates={tables} />
           </div>
         )}
         {hasMore && (

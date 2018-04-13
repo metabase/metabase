@@ -75,6 +75,13 @@ const mapStateToProps = (state, props) => ({
 @connect(mapStateToProps, { addUndo, createUndo })
 @DashboardData
 class AutomaticDashboardApp extends React.Component {
+  componentDidUpdate(prevProps) {
+    // scroll to the top when the pathname changes
+    if (prevProps.location.pathname !== this.props.location.pathname) {
+      window.scrollTo(0, 0);
+    }
+  }
+
   save = async () => {
     const { dashboard, addUndo, createUndo } = this.props;
     // remove the transient id before trying to save

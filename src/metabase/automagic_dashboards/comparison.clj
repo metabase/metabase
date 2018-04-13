@@ -85,12 +85,12 @@
 ;;       (assoc-in card [:dataset_query :query :aggregation] [aggregation]))
 ;;     [card]))
 
-(defn inject-segment
-  "Inject filter clause into card."
-  [query-filter card]
-  (-> card
-      (update-in [:dataset_query :query :filter] merge-filters query-filter)
-      (update :series (partial map (partial inject-segment query-filter)))))
+;; (defn- inject-segment
+;;   "Inject filter clause into card."
+;;   [query-filter card]
+;;   (-> card
+;;       (update-in [:dataset_query :query :filter] merge-filters query-filter)
+;;       (update :series (partial map (partial inject-segment query-filter)))))
 
 (defn comparison-dashboard
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of

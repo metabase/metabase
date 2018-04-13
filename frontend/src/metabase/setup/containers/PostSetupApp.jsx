@@ -26,7 +26,7 @@ const QUOTES = [
   t`Metabot is feeling pretty good about all this…`,
 ];
 
-import type { Candidate } from "metabase/meta/types/Auto";
+import type { DatabaseCandidates } from "metabase/meta/types/Auto";
 
 type Props = {
   params: {
@@ -36,8 +36,8 @@ type Props = {
 type State = {
   databaseId: ?number,
   isSample: ?boolean,
-  candidates: ?(Candidate[]),
-  sampleCandidates: ?(Candidate[]),
+  candidates: ?DatabaseCandidates,
+  sampleCandidates: ?DatabaseCandidates,
 };
 
 @withBackground("bg-slate-extra-light")

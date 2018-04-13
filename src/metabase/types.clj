@@ -90,7 +90,7 @@
 
 (derive :type/CreationTimestamp :type/DateTime)
 (derive :type/JoinTimestamp :type/DateTime)
-(derive :type/Birthday :type/DateTime)
+(derive :type/Birthdate :type/Date)
 
 
 ;;; Other

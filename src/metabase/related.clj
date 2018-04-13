@@ -25,7 +25,7 @@
                                                 max-serendipity-matches))
 
 (def ^:private ContextBearingForm
-  [(s/one (s/constrained (s/either s/Str s/Keyword)
+  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword)
                          (comp #{:field-id :metric :segment :fk->}
                                qp.util/normalize-token))
           "head")

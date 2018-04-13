@@ -201,7 +201,7 @@ export const field_special_types = [
     section: t`Common`,
   },
   {
-    id: TYPE.Birthday,
+    id: TYPE.Birthdate,
     name: t`Birthday`,
     section: t`Common`,
   },
