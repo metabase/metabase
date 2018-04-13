@@ -2,7 +2,6 @@
   (:require [clojure.string :as str]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
-             [core :refer [merge-filters]]
              [populate :as populate]]))
 
 ;; (defn- dashboard->cards
