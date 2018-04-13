@@ -116,7 +116,7 @@ export const ExploreList = ({ candidates }: { candidates: Candidate[] }) => (
   <ol className="Grid Grid--1of2 Grid--gutters">
     {candidates &&
       candidates.map((option, index) => (
-        <li className="Grid-cell" key={index}>
+        <li className="Grid-cell mb1" key={index}>
           <ExploreOption option={option} />
         </li>
       ))}
@@ -124,14 +124,21 @@ export const ExploreList = ({ candidates }: { candidates: Candidate[] }) => (
 );
 
 export const ExploreOption = ({ option }: { option: Candidate }) => (
-  <Link to={option.url} className="link flex align-center text-bold">
+  <Link to={option.url} className="flex align-center text-bold no-decoration">
     <div
-      className="bg-grey-0 flex align-center rounded mr1 p2 justify-center text-gold"
+      className="bg-grey-0 flex align-center rounded mr2 p2 justify-center text-gold"
       style={{ width: 48, height: 48 }}
     >
       <Icon name="bolt" size={24} className="flex-no-shrink" />
     </div>
-    <span>{option.title}</span>
+    <div>
+      <div className="link">{option.title}</div>
+      {option.description && (
+        <div className="text-grey-4 text-small" style={{ marginTop: "0.25em" }}>
+          {option.description}
+        </div>
+      )}
+    </div>
   </Link>
 );
 
