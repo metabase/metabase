@@ -48,9 +48,10 @@
   [original-model :- FieldOrTableInstance, updated-model :- FieldOrTableInstance]
   (assert (= (type original-model) (type updated-model)))
   (let [[_ values-to-set] (data/diff original-model updated-model)]
-    (log/debug (format "Based on classification, updating these values of %s: %s"
-                       (sync-util/name-for-logging original-model)
-                       values-to-set))
+    (when (seq values-to-set)
+      (log/debug (format "Based on classification, updating these values of %s: %s"
+                         (sync-util/name-for-logging original-model)
+                         values-to-set)))
     ;; Check that we're not trying to set anything that we're not allowed to
     (doseq [k (keys values-to-set)]
       (when-not (contains? values-that-can-be-set k)
