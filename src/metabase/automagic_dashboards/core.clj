@@ -403,7 +403,10 @@
                                               order_by))]
                   (-> card
                       (assoc :metrics metrics)
-                      (instantiate-metadata context bindings)
+                      (instantiate-metadata context (->> metrics
+                                                         (map :name)
+                                                         (zipmap (:metrics card))
+                                                         (merge bindings)))
                       (assoc :score         score
                              :dataset_query query))))))))
 
@@ -442,23 +445,24 @@
   inject-root (fn [_ entity] (type entity)))
 
 (defmethod inject-root (type Field)
-  [context entity]
+  [context field]
   (update context :dimensions
           (fn [dimensions]
             (->> dimensions
                  (keep (fn [[identifier definition]]
                          (when-let [matches (->> definition
                                                  :matches
-                                                 (remove (comp #{(:id entity)} :id))
+                                                 (remove (comp #{(:id field)} :id))
                                                  not-empty)]
                            [identifier (assoc definition :matches matches)])))
-                 (concat [["this" {:matches [entity]
+                 (concat [["this" {:matches [field]
                                    :score   rules/max-score}]])
                  (into {})))))
 
 (defmethod inject-root (type Metric)
-  [context entity]
-  (update context :metrics assoc "this" {:metric (->reference :mbql entity)
+  [context metric]
+  (update context :metrics assoc "this" {:metric (->reference :mbql metric)
+                                         :name   (:name metric)
                                          :score  rules/max-score}))
 
 (defmethod inject-root :default

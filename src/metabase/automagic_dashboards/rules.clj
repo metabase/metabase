@@ -280,15 +280,15 @@
   (comp last #(str/split % #"/") str (memfn ^Path getParent)))
 
 (defmacro ^:private with-resources
-  [name & body]
+  [identifier & body]
   `(let [uri# (-> rules-dir io/resource .toURI)]
      (let [[fs# path#] (-> uri# .toString (str/split #"!" 2))]
        (if path#
-         (with-open [~name (-> fs#
-                               java.net.URI/create
-                               (java.nio.file.FileSystems/newFileSystem {}))]
+         (with-open [~identifier (-> fs#
+                                     java.net.URI/create
+                                     (java.nio.file.FileSystems/newFileSystem {}))]
            ~@body)
-         (let [~name (java.nio.file.FileSystems/getDefault)]
+         (let [~identifier (java.nio.file.FileSystems/getDefault)]
            ~@body)))))
 
 (defn- resource-path
