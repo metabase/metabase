@@ -210,7 +210,7 @@ function getSetting(settingDefs, id, vizSettings, series) {
       return (vizSettings[id] = settingDef.default);
     }
   } catch (e) {
-    console.error("Error getting setting", id, e);
+    console.warn("Error getting setting", id, e);
   }
   return (vizSettings[id] = undefined);
 }
