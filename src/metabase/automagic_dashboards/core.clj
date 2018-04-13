@@ -22,6 +22,7 @@
              [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses]]
             [metabase.related :as related]
             [metabase.util :as u]
             [ring.util.codec :as codec]
@@ -291,16 +292,6 @@
           :ascending
           :descending)])))
 
-(defn merge-filters
-  "Merge MBQL filter clauses."
-  ([] [])
-  ([a] a)
-  ([a b]
-   (cond
-     (empty? a) b
-     (empty? b) a
-     :else      [:and a b])))
-
 (defn- build-query
   ([context bindings filters metrics dimensions limit order_by]
    (walk/postwalk
@@ -313,7 +304,9 @@
      :database (:database context)
      :query    (cond-> {:source_table (-> context :source-table :id)}
                  (not-empty filters)
-                 (assoc :filter (transduce (map :filter) merge-filters filters))
+                 (assoc :filter (transduce (map :filter)
+                                           merge-filter-clauses
+                                           filters))
 
                  (not-empty dimensions)
                  (assoc :breakout dimensions)
@@ -635,10 +628,10 @@
     (let [table     (-> card :table_id Table)
           full-name (str "question " (:name card))]
       (automagic-dashboard
-       (merge (update opts :query-filter merge-filters (-> card
-                                                           :dataset_query
-                                                           :query
-                                                           :filter))
+       (merge (update opts :query-filter merge-filter-clauses (-> card
+                                                                  :dataset_query
+                                                                  :query
+                                                                  :filter))
               {:entity       card
                :source-table table
                :database     (:db_id table)
@@ -654,9 +647,9 @@
     (let [table     (-> query :table-id Table)
           full-name (str "ad-hoc question " (:name query))]
       (automagic-dashboard
-       (merge (update opts :query-filter merge-filters (-> query
-                                                           :dataset_query
-                                                           :query
+       (merge (update opts :query-filter merge-filter-clauses (-> query
+                                                                  :dataset_query
+                                                                  :query
                                                            :filter))
               {:entity       query
                :source-table table
