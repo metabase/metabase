@@ -1,5 +1,5 @@
-title: "Transactions across time"
-description: Whether or not there are any patterns to when your transactions happen.
+title: "A closer look at [[GenericTable]] over time"
+description: Whether or not there are any patterns to when they happen.
 applies_to: TransactionTable
 metrics:
   - Count: ["count"]

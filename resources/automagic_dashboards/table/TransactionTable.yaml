@@ -1,4 +1,4 @@
-title: Transactions
+title: "It looks like your [[GenericTable]] table has transactions, so here's a look at them"
 description: Some metrics we found about your transactions.
 metrics:
 - AvgDiscount:
@@ -193,6 +193,7 @@ cards:
         - SourceSmall
       metrics: TotalOrders
       width: 12
+      height: 8
       score: 100
       group: General
   - OrdersBySource:
@@ -213,7 +214,6 @@ cards:
       order_by:
         - TotalOrders: descending
       score: 90
-      height: 8
       group: General
 # Geographical
   - CountByCountry:
@@ -231,6 +231,8 @@ cards:
       metrics: TotalOrders
       dimensions: State
       score: 90
+      height: 10
+      width: 7
       visualization:
         map:
           map.type: region
@@ -246,4 +248,6 @@ cards:
             aggregation: default
       visualization: map
       score: 80
+      height: 10
+      width: 11
       group: Geographical

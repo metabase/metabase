@@ -1,5 +1,5 @@
 title: A look at the [[this]] field
-description: How [[this]] is distributed.
+description: How [[this]] is distributed, and how different numbers are represented per state.
 applies_to: GenericTable.State
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]

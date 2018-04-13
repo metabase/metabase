@@ -1,4 +1,4 @@
-title: Transactions by products
+title: "Here's a breakdown of your [[GenericTable]] per product"
 description: How your different products are performing.
 applies_to: TransactionTable
 metrics:

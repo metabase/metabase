@@ -1,5 +1,5 @@
-title: "[[GenericTable]] x-ray"
-description: Potentially interesting metrics about [[GenericTable]] by things like time, place, and category.
+title: "A quick look at your [[GenericTable]] table"
+description: Some potentially interesting things about time, place, and categories.
 metrics:
   - Count: ["count"]
   - CountDistinctFKs: [distinct, [dimension, FK]]
@@ -67,7 +67,7 @@ groups:
 - ByTime:
     title: "[[GenericTable]] across time"
 - Geographical:
-    title: Geographical breakdown
+    title: Where your [[GenericTable]] are
 - General:
     title: How [[GenericTable]] are distributed
 dashboard_filters:
