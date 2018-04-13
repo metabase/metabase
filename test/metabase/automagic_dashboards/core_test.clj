@@ -74,7 +74,7 @@
 
 (expect
   4
-  (->> (Database (data/id)) candidate-tables count))
+  (->> (Database (data/id)) candidate-tables first :tables count))
 
 
 ;; Identity
