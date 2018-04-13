@@ -22,7 +22,7 @@ When you select a saved question, Metabase will show you a preview of how it’l
 
 As of Metabase 0.29, you can now include tables in your pulses. They'll be capped to 10 columns and 20 rows, and for emailed pulses the rest of the results will be included automatically as a file attachment, with a limit of 2,000 rows.
 
-![Table in pulse]()
+![Table in pulse](images/pulses/table.png)
 
 #### Attaching a .csv or .xls with results
 You can also optionally include the results of a saved question in an emailed pulse as a .csv or .xls file attachment. Just click the paperclip icon on an included saved question to add the attachment. Click the paperclip again to remove the attachment.

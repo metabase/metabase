@@ -65,7 +65,7 @@ As of Metabase 0.29, we've greatly improved how filtering works with fields that
 
 Fields with fewer than 100 distinct values will have a filterable list of options.
 
-![List]()
+![List](images/dashboard-filters/list.png)
 
 In both cases, you can pick one or multiple selections for your filter.
 
@@ -73,7 +73,7 @@ In both cases, you can pick one or multiple selections for your filter.
 
 If Metabase somehow picked the wrong behavior for your field, admins can go to the Data Model section of the admin panel and click on the gear icon by the field in question to manually choose between a list, a search box, or just a plain input box.
 
-![Options](images/dashboard-filters/list.png)
+![Search options](images/dashboard-filters/search-options.png)
 
 ### Best practices
 
