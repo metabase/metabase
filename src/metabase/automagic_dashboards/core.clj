@@ -635,11 +635,13 @@
     (let [table     (-> card :table_id Table)
           full-name (str "question " (:name card))]
       (automagic-dashboard
-       (merge opts
+       (merge (update opts :query-filter merge-filters (-> card
+                                                           :dataset_query
+                                                           :query
+                                                           :filter))
               {:entity       card
                :source-table table
                :database     (:db_id table)
-               :query-filter (-> card :dataset_query :query :filter)
                :full-name    full-name
                :name-postfix (format " (%s)" full-name)
                :url          (format "%squestion/%s" public-endpoint (:id card))
@@ -652,11 +654,13 @@
     (let [table     (-> query :table-id Table)
           full-name (str "ad-hoc question " (:name query))]
       (automagic-dashboard
-       (merge opts
+       (merge (update opts :query-filter merge-filters (-> query
+                                                           :dataset_query
+                                                           :query
+                                                           :filter))
               {:entity       query
                :source-table table
                :database     (:db_id table)
-               :query-filter (-> query :dataset_query :query :filter)
                :full-name    full-name
                :name-postfix (format " (%s)" full-name)
                :url          (format "%sadhoc/%s" public-endpoint

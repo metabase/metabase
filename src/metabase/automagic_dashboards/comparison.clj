@@ -85,7 +85,7 @@
 ;;       (assoc-in card [:dataset_query :query :aggregation] [aggregation]))
 ;;     [card]))
 
-(defn inject-segment
+(defn- inject-segment
   "Inject filter clause into card."
   [query-filter card]
   (-> card
