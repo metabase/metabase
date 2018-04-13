@@ -1,7 +1,8 @@
 (ns metabase.sync.util
   "Utility functions and macros to abstract away some common patterns and operations across the sync processes, such
   as logging start/end messages."
-  (:require [clojure.math.numeric-tower :as math]
+  (:require [buddy.core.hash :as buddy-hash]
+            [clojure.math.numeric-tower :as math]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
@@ -12,6 +13,8 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.interface :as qpi]
             [metabase.sync.interface :as i]
+            [ring.util.codec :as codec]
+            [taoensso.nippy :as nippy]
             [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -246,3 +249,13 @@
   i/FieldInstance
   (name-for-logging [{field-name :name, id :id}]
     (format "Field %s '%s'" (or id "") field-name)))
+
+(defn calculate-hash
+  "Calculate a cryptographic hash on `clj-data` and return that hash as a string"
+  [clj-data]
+  (->> clj-data
+       ;; Serialize the sorted list to bytes that can be hashed
+       nippy/fast-freeze
+       buddy-hash/md5
+       ;; Convert the hash bytes to a string for storage/comparison with the hash in the database
+       codec/base64-encode))
