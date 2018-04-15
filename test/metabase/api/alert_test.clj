@@ -110,7 +110,7 @@
        ~@body)))
 
 (defn- rasta-new-alert-email [body-map]
-  (et/email-to :rasta {:subject "You setup an alert",
+  (et/email-to :rasta {:subject "You set up an alert",
                        :body (merge {"https://metabase.com/testmb" true,
                                      "My question" true}
                                     body-map)}))
