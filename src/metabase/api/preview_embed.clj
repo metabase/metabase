@@ -4,7 +4,8 @@
 
    1.  Require admin access
    2.  Ignore the values of `:enabled_embedding` for Cards/Dashboards
-   3.  Ignore the `:embed_params` whitelist for Card/Dashboards, instead using a field called `:_embedding_params` in the JWT token itself.
+   3.  Ignore the `:embed_params` whitelist for Card/Dashboards, instead using a field called `:_embedding_params` in
+       the JWT token itself.
 
    Refer to the documentation for those endpoints for further details."
   (:require [compojure.core :refer [GET]]

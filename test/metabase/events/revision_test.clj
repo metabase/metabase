@@ -33,6 +33,7 @@
    :creator_id             (:creator_id card)
    :database_id            (id)
    :dataset_query          (:dataset_query card)
+   :read_permissions       (vec (:read_permissions card))
    :description            nil
    :display                "table"
    :enable_embedding       false

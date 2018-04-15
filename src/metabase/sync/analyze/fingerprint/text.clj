@@ -5,7 +5,7 @@
             [metabase.util :as u]
             [schema.core :as s]))
 
-(s/defn ^:private ^:always-validate average-length :- (s/constrained Double #(>= % 0))
+(s/defn ^:private average-length :- (s/constrained Double #(>= % 0))
   "Return the average length of VALUES."
   [values :- i/FieldSample]
   (let [total-length (reduce + (for [value values]
@@ -13,7 +13,7 @@
     (/ (double total-length)
        (double (count values)))))
 
-(s/defn ^:private ^:always-validate percent-satisfying-predicate :- i/Percent
+(s/defn ^:private percent-satisfying-predicate :- i/Percent
   "Return the percentage of VALUES that satisfy PRED."
   [pred :- (s/pred fn?), values :- i/FieldSample]
   (let [total-count    (count values)
@@ -30,10 +30,10 @@
      (or (map? parsed-json)
          (sequential? parsed-json)))))
 
-(s/defn ^:always-validate text-fingerprint :- i/TextFingerprint
+(s/defn text-fingerprint :- i/TextFingerprint
   "Generate a fingerprint containing information about values that belong to a `:type/Text` Field."
   [values :- i/FieldSample]
   {:percent-json   (percent-satisfying-predicate valid-serialized-json? values)
-   :percent-url    (percent-satisfying-predicate u/is-url? values)
-   :percent-email  (percent-satisfying-predicate u/is-email? values)
+   :percent-url    (percent-satisfying-predicate u/url? values)
+   :percent-email  (percent-satisfying-predicate u/email? values)
    :average-length (average-length values)})

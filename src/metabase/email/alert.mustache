@@ -1,0 +1,6 @@
+{{> metabase/email/_header}}
+    {{#firstRunOnly?}}
+    <p>We’ll stop sending you alerts about this question now.</p>
+    {{/firstRunOnly?}}
+  {{{pulse}}}
+{{> metabase/email/_footer_pulse}}

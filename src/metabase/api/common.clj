@@ -1,6 +1,10 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [clojure.string :as s]
+  (:require [cheshire.core :as json]
+            [clojure.core.async :as async]
+            [clojure.core.async.impl.protocols :as async-proto]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes]]
             [medley.core :as m]
@@ -9,11 +13,19 @@
              [util :as u]]
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
-            [toucan.db :as db]))
+            [ring.util
+             [io :as rui]
+             [response :as rr]]
+            [ring.core.protocols :as protocols]
+            [ring.util.response :as response]
+            [schema.core :as s]
+            [toucan.db :as db])
+  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
+           [java.nio.charset Charset StandardCharsets]))
 
 (declare check-403 check-404)
 
-;;; ------------------------------------------------------------ DYNAMIC VARIABLES ------------------------------------------------------------
+;;; ----------------------------------------------- DYNAMIC VARIABLES ------------------------------------------------
 ;; These get bound by middleware for each HTTP request.
 
 (def ^:dynamic ^Integer *current-user-id*
@@ -34,15 +46,17 @@
   (atom #{}))
 
 
-;;; ------------------------------------------------------------ Precondition checking helper fns  ------------------------------------------------------------
+;;; ---------------------------------------- Precondition checking helper fns ----------------------------------------
 
 (defn check
   "Assertion mechanism for use inside API functions.
-   Checks that TEST is true, or throws an `ExceptionInfo` with STATUS-CODE and MESSAGE.
+  Checks that TEST is true, or throws an `ExceptionInfo` with STATUS-CODE and MESSAGE.
 
-   MESSAGE can be either a plain string error message, or a map including the key `:message` and any additional details, such as an `:error_code`.
+  MESSAGE can be either a plain string error message, or a map including the key `:message` and any additional
+  details, such as an `:error_code`.
 
-  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated.
+  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is
+  generated.
 
   `check` can be called with the form
 
@@ -56,6 +70,7 @@
 
     (check test1 code1 message1
            test2 code2 message2)"
+  {:style/indent 1}
   ([tst code-or-code-message-pair & rest-args]
    (let [[[code message] rest-args] (if (vector? code-or-code-message-pair)
                                       [code-or-code-message-pair rest-args]
@@ -80,7 +95,8 @@
   (check-403 *is-superuser?*))
 
 
-;;; #### checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions w/ relevant error messages.
+;; checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions
+;; w/ relevant error messages.
 
 (defn throw-invalid-param-exception
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
@@ -91,13 +107,15 @@
 
 (defn checkp
   "Assertion mechanism for use inside API functions that validates individual input params.
-   Checks that TEST is true, or throws an `ExceptionInfo` with FIELD-NAME and MESSAGE.
+  Checks that TEST is true, or throws an `ExceptionInfo` with FIELD-NAME and MESSAGE.
 
-  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated.
+  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is
+  generated.
 
   `checkp` can be called with the form
 
       (checkp test field-name message)"
+  {:style/indent 1}
   ([tst field-name message]
    (when-not tst
      (throw-invalid-param-exception (str field-name) message))))
@@ -136,7 +154,7 @@
   (checkp-with (partial contains? valid-values-set) symb value (str "must be one of: " valid-values-set)))
 
 
-;;; ------------------------------------------------------------ api-let, api->, etc. ------------------------------------------------------------
+;;; ---------------------------------------------- api-let, api->, etc. ----------------------------------------------
 
 ;; The following all work exactly like the corresponding Clojure versions
 ;; but take an additional arg at the beginning called RESPONSE-PAIR.
@@ -150,7 +168,7 @@
 
     (api-let [404 \"Not found.\"] [user @*current-user*]
       (:id user))"
-  {:arglists '([[status-code message] [binding test] & body])}
+  {:arglists '([[status-code message] [binding test] & body]), :style/indent 2}
   [response-pair [binding test & more] & body]
   (if (seq more)
     `(api-let ~response-pair ~[binding test]
@@ -162,74 +180,89 @@
              ~@more]
          ~@body))))
 
-(defmacro api->
-  "If TEST is true, thread the result using `->` through BODY.
-
-    (api-> [404 \"Not found\"] @*current-user*
-      :id)"
-  [response-pair tst & body]
-  `(api-let ~response-pair [result# ~tst]
-     (-> result#
-         ~@body)))
-
-(defmacro api->>
-  "Like `api->`, but threads result using `->>`."
-  [response-pair tst & body]
-  `(api-let ~response-pair [result# ~tst]
-     (->> result#
-          ~@body)))
-
 
 ;;; ### GENERIC RESPONSE HELPERS
 ;; These are basically the same as the `api-` versions but with RESPONSE-PAIR already bound
 
 ;; #### GENERIC 400 RESPONSE HELPERS
-(def ^:private ^:const generic-400 [400 "Invalid Request."])
-(defn     check-400 "Throw a `400` if ARG is `false` or `nil`, otherwise return as-is."                     [arg]    (check arg generic-400))
-(defmacro let-400   "Bind a form as with `let`; throw a 400 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-400 ~@body))
-(defmacro ->400     "If form is `nil` or `false`, throw a 400; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-400 ~@body))
-(defmacro ->>400    "If form is `nil` or `false`, throw a 400; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-400 ~@body))
+(def ^:private generic-400
+  [400 "Invalid Request."])
+
+(defn check-400
+  "Throw a `400` if ARG is `false` or `nil`, otherwise return as-is."
+  [arg]
+  (check arg generic-400))
+
+(defmacro let-400
+  "Bind a form as with `let`; throw a 400 if it is `nil` or `false`."
+  {:style/indent 1}
+  [& body]
+  `(api-let ~generic-400 ~@body))
 
 ;; #### GENERIC 404 RESPONSE HELPERS
-(def ^:private ^:const generic-404 [404 "Not found."])
-(defn     check-404 "Throw a `404` if ARG is `false` or `nil`, otherwise return as-is."                     [arg]    (check arg generic-404))
-(defmacro let-404   "Bind a form as with `let`; throw a 404 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-404 ~@body))
-(defmacro ->404     "If form is `nil` or `false`, throw a 404; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-404 ~@body))
-(defmacro ->>404    "If form is `nil` or `false`, throw a 404; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-404 ~@body))
+(def ^:private generic-404
+  [404 "Not found."])
+
+(defn check-404
+  "Throw a `404` if ARG is `false` or `nil`, otherwise return as-is."
+  [arg]
+  (check arg generic-404))
+
+(defmacro let-404
+  "Bind a form as with `let`; throw a 404 if it is `nil` or `false`."
+  {:style/indent 1}
+  [& body]
+  `(api-let ~generic-404 ~@body))
 
 ;; #### GENERIC 403 RESPONSE HELPERS
 ;; If you can't be bothered to write a custom error message
-(def ^:private ^:const generic-403 [403 "You don't have permissions to do that."])
-(defn     check-403 "Throw a `403` if ARG is `false` or `nil`, otherwise return as-is."                     [arg]     (check arg generic-403))
-(defmacro let-403   "Bind a form as with `let`; throw a 403 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-403 ~@body))
-(defmacro ->403     "If form is `nil` or `false`, throw a 403; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-403 ~@body))
-(defmacro ->>403    "If form is `nil` or `false`, throw a 403; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-403 ~@body))
+(def ^:private generic-403
+  [403 "You don't have permissions to do that."])
+
+(defn check-403
+  "Throw a `403` if ARG is `false` or `nil`, otherwise return as-is."
+  [arg]
+  (check arg generic-403))
+(defmacro let-403
+  "Bind a form as with `let`; throw a 403 if it is `nil` or `false`."
+  {:style/indent 1}
+  [& body]
+  `(api-let ~generic-403 ~@body))
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
-(def ^:private ^:const generic-500 [500 "Internal server error."])
-(defn     check-500 "Throw a `500` if ARG is `false` or `nil`, otherwise return as-is."                     [arg]    (check arg generic-500))
-(defmacro let-500   "Bind a form as with `let`; throw a 500 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-500 ~@body))
-(defmacro ->500     "If form is `nil` or `false`, throw a 500; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-500 ~@body))
-(defmacro ->>500    "If form is `nil` or `false`, throw a 500; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-500 ~@body))
+(def ^:private generic-500
+  [500 "Internal server error."])
+
+(defn check-500
+  "Throw a `500` if ARG is `false` or `nil`, otherwise return as-is."
+  [arg]
+  (check arg generic-500))
+
+(defmacro let-500
+  "Bind a form as with `let`; throw a 500 if it is `nil` or `false`."
+  {:style/indent 1}
+  [& body]
+  `(api-let   ~generic-500 ~@body))
 
 (def ^:const generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
 
 
-;;; ------------------------------------------------------------ DEFENDPOINT AND RELATED FUNCTIONS ------------------------------------------------------------
+;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
 
-   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via `Integer/parseInt`
+   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
+      `Integer/parseInt`
    -  converts ROUTE from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
    -  sequentially applies specified annotation functions on args to validate them.
-   -  executes BODY inside a `try-catch` block that handles exceptions; if exception is an instance of `ExceptionInfo` and includes a `:status-code`,
-      that code will be returned
+   -  executes BODY inside a `try-catch` block that handles exceptions; if exception is an instance of `ExceptionInfo`
+      and includes a `:status-code`, that code will be returned
    -  automatically calls `wrap-response-if-needed` on the result of BODY
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below)
       will automatically include the function in the generated `defroutes` form.
@@ -246,7 +279,8 @@
     (when-not docstr
       (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (ns-name *ns*) fn-name)))
     `(def ~(vary-meta fn-name assoc
-                      ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document their API error messages
+                      ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
+                      ;; their API error messages
                       :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
                       :is-endpoint? true)
        (~method ~route ~args
@@ -265,13 +299,13 @@
                      symb)]
     `(defroutes ~(vary-meta 'routes assoc :doc (format "Ring routes for %s:\n%s"
                                                        (-> (ns-name *ns*)
-                                                           (s/replace #"^metabase\." "")
-                                                           (s/replace #"\." "/"))
+                                                           (str/replace #"^metabase\." "")
+                                                           (str/replace #"\." "/"))
                                                        (u/pprint-to-str (concat api-routes additional-routes))))
        ~@additional-routes ~@api-routes)))
 
 
-;;; ------------------------------------------------------------ PERMISSIONS CHECKING HELPER FNS ------------------------------------------------------------
+;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------
 
 (defn read-check
   "Check whether we can read an existing OBJ, or ENTITY with ID.
@@ -301,8 +335,115 @@
   ([entity id & other-conditions]
    (write-check (apply db/select-one entity :id id other-conditions))))
 
+;;; --------------------------------------------------- STREAMING ----------------------------------------------------
 
-;;; ------------------------------------------------------------ OTHER HELPER FNS ------------------------------------------------------------
+(def ^:private ^:const streaming-response-keep-alive-interval-ms
+  "Interval between sending newline characters to keep Heroku from terminating requests like queries that take a long
+  time to complete."
+  (* 1 1000))
+
+;; Handle ring response maps that contain a core.async chan in the :body key:
+;;
+;; {:status 200
+;;  :body (async/chan)}
+;;
+;; and send strings (presumibly \n) as heartbeats to the client until the real results (a seq) is received, then
+;; stream that to the client
+(extend-protocol protocols/StreamableResponseBody
+  clojure.core.async.impl.channels.ManyToManyChannel
+  (write-body-to-stream [output-queue _ ^OutputStream output-stream]
+    (log/debug (u/format-color 'green "starting streaming request"))
+    (with-open [out (io/writer output-stream)]
+      (loop [chunk (async/<!! output-queue)]
+        (cond
+          (char? chunk)
+          (do
+            (try
+              (.write out (str chunk))
+              (.flush out)
+              (catch org.eclipse.jetty.io.EofException e
+                (log/info e (u/format-color 'yellow "connection closed, canceling request"))
+                (async/close! output-queue)
+                (throw e)))
+            (recur (async/<!! output-queue)))
+
+          ;; An error has occurred, let the user know
+          (instance? Exception chunk)
+          (json/generate-stream {:error (.getMessage ^Exception chunk)} out)
+
+          ;; We've recevied the response, write it to the output stream and we're done
+          (seq chunk)
+          (json/generate-stream chunk out)
+
+          ;;chunk is nil meaning the output channel has been closed
+          :else
+          out)))))
+
+(def ^:private InvokeWithKeepAliveSchema
+  {;; Channel that contains any number of newlines followed by the results of the invoked query thunk
+   :output-channel  (s/protocol async-proto/Channel)
+   ;; This channel will have an exception if that error condition is hit before the first heartbeat time, if a
+   ;; heartbeat has been sent, this channel is closed and its no longer useful
+   :error-channel   (s/protocol async-proto/Channel)
+   ;; Future that is invoking the query thunk. This is mainly useful for testing metadata to see if the future has been
+   ;; cancelled or was completed successfully
+   :response-future java.util.concurrent.Future})
+
+(s/defn ^:private invoke-thunk-with-keepalive :- InvokeWithKeepAliveSchema
+  "This function does the heavy lifting of invoking `query-thunk` on a background thread and returning it's results
+  along with a heartbeat while waiting for the results. This function returns a map that includes the relevate
+  execution information, see `InvokeWithKeepAliveSchema` for more information"
+  [query-thunk]
+  (let [response-chan (async/chan 1)
+        output-chan   (async/chan 1)
+        error-chan    (async/chan 1)
+        response-fut  (future
+                        (try
+                          (async/>!! response-chan (query-thunk))
+                          (catch Exception e
+                            (async/>!! error-chan e)
+                            (async/>!! response-chan e))
+                          (finally
+                            (async/close! error-chan))))]
+    (async/go-loop []
+      (let [[response-or-timeout c] (async/alts!! [response-chan (async/timeout streaming-response-keep-alive-interval-ms)])]
+        (if response-or-timeout
+          ;; We have a response since it's non-nil, write the results and close, we're done
+          (do
+            ;; If output-chan is closed, it's already too late, nothing else we need to do
+            (async/>!! output-chan response-or-timeout)
+            (async/close! output-chan))
+          (do
+            ;; We don't have a result yet, but enough time has passed, let's assume it's not an error
+            (async/close! error-chan)
+            ;; a newline padding character as it's harmless and will allow us to check if the client is connected. If
+            ;; sending this character fails because the connection is closed, the chan will then close.  Newlines are
+            ;; no-ops when reading JSON which this depends upon.
+            (log/debug (u/format-color 'blue "Response not ready, writing one byte & sleeping..."))
+            (if (async/>!! output-chan \newline)
+              ;; Success put the channel, wait and see if we get the response next time
+              (recur)
+              ;; The channel is closed, client has given up, we should give up too
+              (future-cancel response-fut))))))
+    {:output-channel  output-chan
+     :error-channel   error-chan
+     :response-future response-fut}))
+
+(defn cancellable-json-response
+  "Invokes `cancellable-thunk` in a future. If there's an immediate exception, throw it. If there's not an immediate
+  exception, return a ring response with a channel. The channel will potentially include newline characters before the
+  full response is delivered as a keepalive to the client. Eventually the results of `cancellable-thunk` will be put
+  to the channel"
+  [cancellable-thunk]
+  (let [{:keys [output-channel error-channel]} (invoke-thunk-with-keepalive cancellable-thunk)]
+    ;; If there's an immediate exception, it will be in `error-chan`, if not, `error-chan` will close and we'll assume
+    ;; the response is a success
+    (if-let [ex (async/<!! error-channel)]
+      (throw ex)
+      (assoc (response/response output-channel)
+        :content-type "applicaton/json"))))
+
+;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
 
 (defn check-public-sharing-enabled
   "Check that the `public-sharing-enabled` Setting is `true`, or throw a `400`."

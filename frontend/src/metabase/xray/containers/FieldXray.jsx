@@ -1,178 +1,189 @@
 /* @flow */
-import React, { Component } from 'react'
+import React, { Component } from "react";
 
-import { connect } from 'react-redux'
-import title from 'metabase/hoc/Title'
-import { Link } from 'react-router'
-
-import { isDate } from 'metabase/lib/schema_metadata'
-import { fetchXray, initialize } from 'metabase/xray/xray'
+import { connect } from "react-redux";
+import title from "metabase/hoc/Title";
+import { Link } from "react-router";
+import { t } from "c-3po";
+import { isDate } from "metabase/lib/schema_metadata";
+import { fetchFieldXray, initialize } from "metabase/xray/xray";
 import {
-    getLoadingStatus,
-    getError,
-    getFeatures
-} from 'metabase/xray/selectors'
+  getLoadingStatus,
+  getError,
+  getFeatures,
+  getIsAlreadyFetched,
+} from "metabase/xray/selectors";
 
-import {
-    ROBOTS,
-    STATS_OVERVIEW,
-    VALUES_OVERVIEW
-} from 'metabase/xray/stats'
+import { ROBOTS, STATS_OVERVIEW, VALUES_OVERVIEW } from "metabase/xray/stats";
 
-import Icon from 'metabase/components/Icon'
-import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
-import CostSelect from 'metabase/xray/components/CostSelect'
-import StatGroup from 'metabase/xray/components/StatGroup'
-import Histogram from 'metabase/xray/Histogram'
-import { Heading, XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
+import Icon from "metabase/components/Icon";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CostSelect from "metabase/xray/components/CostSelect";
+import StatGroup from "metabase/xray/components/StatGroup";
+import Histogram from "metabase/xray/Histogram";
+import { Heading, XRayPageWrapper } from "metabase/xray/components/XRayLayout";
 
-import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
+import { xrayLoadingMessages } from "metabase/xray/utils";
 
-import Periodicity from 'metabase/xray/components/Periodicity'
-import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
+import Periodicity from "metabase/xray/components/Periodicity";
+import LoadingAnimation from "metabase/xray/components/LoadingAnimation";
 
-import type { Field } from 'metabase/meta/types/Field'
-import type { Table } from 'metabase/meta/types/Table'
+import type { Field } from "metabase/meta/types/Field";
+import type { Table } from "metabase/meta/types/Table";
+import { Insights } from "metabase/xray/components/Insights";
 
 type Props = {
-    fetchXray: () => void,
-    initialize: () => {},
-    isLoading: boolean,
-    xray: {
-        table: Table,
-        field: Field,
-        histogram: {
-            value: {}
-        }
+  fetchFieldXray: () => void,
+  initialize: () => {},
+  isLoading: boolean,
+  isAlreadyFetched: boolean,
+  features: {
+    model: Field,
+    table: Table,
+    histogram: {
+      value: {},
     },
-    params: {
-        cost: string,
-        fieldId: number
-    },
-    error: {}
-}
+    insights: [],
+  },
+  params: {
+    cost: string,
+    fieldId: number,
+  },
+  error: {},
+};
 
 const mapStateToProps = state => ({
-    xray: getFeatures(state),
-    isLoading: getLoadingStatus(state),
-    error: getError(state)
-})
+  features: getFeatures(state),
+  isLoading: getLoadingStatus(state),
+  isAlreadyFetched: getIsAlreadyFetched(state),
+  error: getError(state),
+});
 
 const mapDispatchToProps = {
-    initialize,
-    fetchXray
-}
+  initialize,
+  fetchFieldXray,
+};
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ xray }) => xray && xray.field.display_name || "Field")
+@title(({ features }) => (features && features.model.display_name) || t`Field`)
 class FieldXRay extends Component {
-    props: Props
+  props: Props;
 
-    componentWillMount () {
-        this.props.initialize()
-        this.fetch()
+  componentWillMount() {
+    this.props.initialize();
+    this.fetch();
+  }
+
+  componentWillUnmount() {
+    // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
+    // for all xray types and if switching to different kind of xray (= rendering different React container)
+    // without resetting the state fails because `state.xray.xray` subproperty lookups fail
+    this.props.initialize();
+  }
+
+  fetch() {
+    const { params, fetchFieldXray } = this.props;
+    fetchFieldXray(params.fieldId, params.cost);
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    if (prevProps.params.cost !== this.props.params.cost) {
+      this.fetch();
     }
+  }
 
-    componentWillUnmount() {
-        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
-        // for all xray types and if switching to different kind of xray (= rendering different React container)
-        // without resetting the state fails because `state.xray.xray` subproperty lookups fail
-        this.props.initialize();
-    }
+  render() {
+    const { features, params, isLoading, isAlreadyFetched, error } = this.props;
 
-    fetch() {
-        const { params, fetchXray } = this.props
-        fetchXray('field', params.fieldId, params.cost)
-    }
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading || !isAlreadyFetched}
+        error={error}
+        noBackground
+        loadingMessages={xrayLoadingMessages}
+        loadingScenes={[<LoadingAnimation />]}
+      >
+        {() => (
+          <XRayPageWrapper>
+            <div className="full">
+              <div className="my3 flex align-center">
+                <div className="full">
+                  <Link
+                    className="my2 px2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration rounded shadowed"
+                    to={`/xray/table/${features.table.id}/approximate`}
+                  >
+                    {features.table.display_name}
+                  </Link>
+                  <div className="mt2 flex align-center">
+                    <h1 className="flex align-center">
+                      {features.model.display_name}
+                      <Icon
+                        name="chevronright"
+                        className="mx1 text-grey-3"
+                        size={16}
+                      />
+                      <span className="text-grey-3">{t`X-ray`}</span>
+                    </h1>
+                    <div className="ml-auto flex align-center">
+                      <h3 className="mr2 text-grey-3">{t`Fidelity`}</h3>
+                      <CostSelect
+                        xrayType="field"
+                        id={features.model.id}
+                        currentCost={params.cost}
+                      />
+                    </div>
+                  </div>
+                  <p className="mt1 text-paragraph text-measure">
+                    {features.model.description}
+                  </p>
+                </div>
+              </div>
+              {features["insights"] && (
+                <div className="mt4">
+                  <Heading heading="Takeaways" />
+                  <Insights features={features} />
+                </div>
+              )}
+              <div className="mt4">
+                <Heading heading={t`Distribution`} />
+                <div className="bg-white bordered shadowed">
+                  <div className="lg-p4">
+                    <div style={{ height: 300 }}>
+                      {features.histogram.value && (
+                        <Histogram histogram={features.histogram.value} />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-    componentDidUpdate (prevProps: Props) {
-        if(prevProps.params.cost !== this.props.params.cost) {
-            this.fetch()
-        }
-    }
+              {isDate(features.model) && <Periodicity xray={features} />}
 
-    render () {
-        const { xray, params, isLoading, error } = this.props
+              <StatGroup
+                heading={t`Values overview`}
+                xray={features}
+                stats={VALUES_OVERVIEW}
+              />
 
-        return (
-            <LoadingAndErrorWrapper
-                loading={isLoading || !hasXray(xray)}
-                error={error}
-                noBackground
-                loadingMessages={xrayLoadingMessages}
-                loadingScenes={[<LoadingAnimation />]}
-            >
-                { () =>
-                    <XRayPageWrapper>
-                        <div className="full">
-                            <div className="my3 flex align-center">
-                                <div className="full">
-                                    <Link
-                                        className="my2 px2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration rounded shadowed"
-                                        to={`/xray/table/${xray.table.id}/approximate`}
-                                    >
-                                        {xray.table.display_name}
-                                    </Link>
-                                    <div className="mt2 flex align-center">
-                                        <h1 className="flex align-center">
-                                            {xray.field.display_name}
-                                            <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
-                                            <span className="text-grey-3">X-ray</span>
-                                        </h1>
-                                        <div className="ml-auto flex align-center">
-                                            <h3 className="mr2 text-grey-3">Fidelity</h3>
-                                            <CostSelect
-                                                xrayType='field'
-                                                id={xray.field.id}
-                                                currentCost={params.cost}
-                                            />
-                                        </div>
-                                    </div>
-                                    <p className="mt1 text-paragraph text-measure">
-                                        {xray.field.description}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="mt4">
-                                <Heading heading="Distribution" />
-                                <div className="bg-white bordered shadowed">
-                                    <div className="lg-p4">
-                                        <div style={{ height: 300 }}>
-                                            { xray.histogram.value &&
-                                                <Histogram histogram={xray.histogram.value} />
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+              <StatGroup
+                heading={t`Statistical overview`}
+                xray={features}
+                showDescriptions
+                stats={STATS_OVERVIEW}
+              />
 
-                            { isDate(xray.field) && <Periodicity xray={xray} /> }
-
-                            <StatGroup
-                                heading="Values overview"
-                                xray={xray}
-                                stats={VALUES_OVERVIEW}
-                            />
-
-                            <StatGroup
-                                heading="Statistical overview"
-                                xray={xray}
-                                showDescriptions
-                                stats={STATS_OVERVIEW}
-                            />
-
-                            <StatGroup
-                                heading="Robots"
-                                xray={xray}
-                                showDescriptions
-                                stats={ROBOTS}
-                            />
-                        </div>
-                    </XRayPageWrapper>
-                }
-            </LoadingAndErrorWrapper>
-        )
-    }
+              <StatGroup
+                heading={t`Robots`}
+                xray={features}
+                showDescriptions
+                stats={ROBOTS}
+              />
+            </div>
+          </XRayPageWrapper>
+        )}
+      </LoadingAndErrorWrapper>
+    );
+  }
 }
 
-export default FieldXRay
+export default FieldXRay;

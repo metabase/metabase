@@ -1,5 +1,6 @@
 (ns metabase.sync.util
-  "Utility functions and macros to abstract away some common patterns and operations across the sync processes, such as logging start/end messages."
+  "Utility functions and macros to abstract away some common patterns and operations across the sync processes, such
+  as logging start/end messages."
   (:require [clojure.math.numeric-tower :as math]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -13,30 +14,34 @@
             [metabase.sync.interface :as i]
             [toucan.db :as db]))
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                              SYNC OPERATION "MIDDLEWARE"                                               |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          SYNC OPERATION "MIDDLEWARE"                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; When using the `sync-operation` macro below the BODY of the macro will be executed in the context of several different
-;; functions below that do things like prevent duplicate operations from being ran simultaneously and taking care of
-;; things like event publishing, error handling, and logging.
+;; When using the `sync-operation` macro below the BODY of the macro will be executed in the context of several
+;; different functions below that do things like prevent duplicate operations from being ran simultaneously and taking
+;; care of things like event publishing, error handling, and logging.
 ;;
-;; These basically operate in a middleware pattern, where the various different steps take a function, and return a new function
-;; that will execute the original in whatever context or with whatever side effects appropriate for that step.
+;; These basically operate in a middleware pattern, where the various different steps take a function, and return a
+;; new function that will execute the original in whatever context or with whatever side effects appropriate for that
+;; step.
 
 
 ;; This looks something like {:sync #{1 2}, :cache #{2 3}} when populated.
 ;; Key is a type of sync operation, e.g. `:sync` or `:cache`; vals are sets of DB IDs undergoing that operation.
-;; TODO - as @salsakran mentioned it would be nice to do this via the DB so we could better support multi-instance setups in the future
+;;
+;; TODO - as @salsakran mentioned it would be nice to do this via the DB so we could better support multi-instance
+;; setups in the future
 (defonce ^:private operation->db-ids (atom {}))
 
 (defn with-duplicate-ops-prevented
-  "Run F in a way that will prevent it from simultaneously being ran more for a single database more than once for a given OPERATION.
-   This prevents duplicate sync-like operations from taking place for a given DB, e.g. if a user hits the `Sync` button in the admin panel multiple times.
+  "Run F in a way that will prevent it from simultaneously being ran more for a single database more than once for a
+  given OPERATION. This prevents duplicate sync-like operations from taking place for a given DB, e.g. if a user hits
+  the `Sync` button in the admin panel multiple times.
 
-     ;; Only one `sync-db!` for `database-id` will be allowed at any given moment; duplicates will be ignored
-     (with-duplicate-ops-prevented :sync database-id
-       #(sync-db! database-id))"
+    ;; Only one `sync-db!` for `database-id` will be allowed at any given moment; duplicates will be ignored
+    (with-duplicate-ops-prevented :sync database-id
+      #(sync-db! database-id))"
   {:style/indent 2}
   [operation database-or-id f]
   (fn []
@@ -53,8 +58,8 @@
 
 
 (defn- with-sync-events
-  "Publish events related to beginning and ending a sync-like process, e.g. `:sync-database` or `:cache-values`, for a DATABASE-ID.
-   F is executed between the logging of the two events."
+  "Publish events related to beginning and ending a sync-like process, e.g. `:sync-database` or `:cache-values`, for a
+  DATABASE-ID. F is executed between the logging of the two events."
   ;; we can do everyone a favor and infer the name of the individual begin and sync events
   ([event-name-prefix database-or-id f]
    (with-sync-events
@@ -85,11 +90,14 @@
     (let [start-time (System/nanoTime)]
       (log/info (u/format-color 'magenta "STARTING: %s" message))
       (f)
-      (log/info (u/format-color 'magenta "FINISHED: %s (%s)" message (u/format-nanoseconds (- (System/nanoTime) start-time)))))))
+      (log/info (u/format-color 'magenta "FINISHED: %s (%s)"
+                  message
+                  (u/format-nanoseconds (- (System/nanoTime) start-time)))))))
 
 
 (defn- with-db-logging-disabled
-  "Disable all QP and DB logging when running BODY. (This should be done for *all* sync-like processes to avoid cluttering the logs.)"
+  "Disable all QP and DB logging when running BODY. (This should be done for *all* sync-like processes to avoid
+  cluttering the logs.)"
   {:style/indent 0}
   [f]
   (fn []
@@ -99,7 +107,8 @@
 
 (defn- sync-in-context
   "Pass the sync operation defined by BODY to the DATABASE's driver's implementation of `sync-in-context`.
-   This method is used to do things like establish a connection or other driver-specific steps needed for sync operations."
+   This method is used to do things like establish a connection or other driver-specific steps needed for sync
+  operations."
   {:style/indent 1}
   [database f]
   (fn []
@@ -138,20 +147,21 @@
              (partial do-with-error-handling f))))))))
 
 (defmacro sync-operation
-  "Perform the operations in BODY as a sync operation, which wraps the code in several special macros that do things like
-   error handling, logging, duplicate operation prevention, and event publishing.
-   Intended for use with the various top-level sync operations, such as `sync-metadata` or `analyze`."
+  "Perform the operations in BODY as a sync operation, which wraps the code in several special macros that do things
+  like error handling, logging, duplicate operation prevention, and event publishing. Intended for use with the
+  various top-level sync operations, such as `sync-metadata` or `analyze`."
   {:style/indent 3}
   [operation database message & body]
   `(do-sync-operation ~operation ~database ~message (fn [] ~@body)))
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                  EMOJI PROGRESS METER                                                  |
-;;; +------------------------------------------------------------------------------------------------------------------------+
 
-;; This is primarily provided because it makes sync more fun to look at. The functions below make it fairly simple to log a
-;; progress bar with a corresponding emoji when iterating over a sequence of objects during sync, e.g. syncing all the Tables
-;; in a given Database.
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              EMOJI PROGRESS METER                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; This is primarily provided because it makes sync more fun to look at. The functions below make it fairly simple to
+;; log a progress bar with a corresponding emoji when iterating over a sequence of objects during sync, e.g. syncing
+;; all the Tables in a given Database.
 
 (def ^:private ^:const ^Integer emoji-meter-width 50)
 
@@ -178,32 +188,37 @@
 
      (emoji-progress-bar 10 40)
        -> \"[************······································] 😒   25%"
-  [completed total]
+  [completed total log-every-n]
   (let [percent-done (float (/ completed total))
         filleds      (int (* percent-done emoji-meter-width))
         blanks       (- emoji-meter-width filleds)]
-    (str "["
-         (str/join (repeat filleds "*"))
-         (str/join (repeat blanks "·"))
-         (format "] %s  %3.0f%%" (u/emoji (percent-done->emoji percent-done)) (* percent-done 100.0)))))
+    (when (or (zero? (mod completed log-every-n))
+              (= completed total))
+      (str "["
+           (str/join (repeat filleds "*"))
+           (str/join (repeat blanks "·"))
+           (format "] %s  %3.0f%%" (u/emoji (percent-done->emoji percent-done)) (* percent-done 100.0))))))
 
 (defmacro with-emoji-progress-bar
   "Run BODY with access to a function that makes using our amazing emoji-progress-bar easy like Sunday morning.
-   Calling the function will return the approprate string output for logging and automatically increment an internal counter as needed.
-     (with-emoji-progress-bar [progress-bar 10]
-       (dotimes [i 10]
-         (println (progress-bar))))"
+  Calling the function will return the approprate string output for logging and automatically increment an internal
+  counter as needed.
+
+    (with-emoji-progress-bar [progress-bar 10]
+      (dotimes [i 10]
+        (println (progress-bar))))"
   {:style/indent 1}
   [[emoji-progress-fn-binding total-count] & body]
   `(let [finished-count#            (atom 0)
          total-count#               ~total-count
-         ~emoji-progress-fn-binding (fn [] (emoji-progress-bar (swap! finished-count# inc) total-count#))]
+         log-every-n#               (Math/ceil (/ total-count# 10))
+         ~emoji-progress-fn-binding (fn [] (emoji-progress-bar (swap! finished-count# inc) total-count# log-every-n#))]
      ~@body))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                              OTHER SYNC UTILITY FUNCTIONS                                              |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn db->sync-tables
   "Return all the Tables that should go through the sync processes for DATABASE-OR-ID."
@@ -211,8 +226,8 @@
   (db/select Table, :db_id (u/get-id database-or-id), :active true, :visibility_type nil))
 
 
-;; The `name-for-logging` function is used all over the sync code to make sure we have easy access to consistently formatted
-;; descriptions of various objects.
+;; The `name-for-logging` function is used all over the sync code to make sure we have easy access to consistently
+;; formatted descriptions of various objects.
 
 (defprotocol ^:private INameForLogging
   (name-for-logging [this]

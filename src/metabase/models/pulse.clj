@@ -1,5 +1,6 @@
 (ns metabase.models.pulse
   (:require [clojure.set :as set]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase
              [db :as mdb]
@@ -10,7 +11,8 @@
              [card :refer [Card]]
              [interface :as i]
              [pulse-card :refer [PulseCard]]
-             [pulse-channel :as pulse-channel :refer [PulseChannel]]]
+             [pulse-channel :as pulse-channel :refer [PulseChannel]]
+             [pulse-channel-recipient :refer [PulseChannelRecipient]]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -76,31 +78,117 @@
 (defn ^:hydrate cards
   "Return the `Cards` associated with this PULSE."
   [{:keys [id]}]
-  (db/select [Card :id :name :description :display]
-    :archived false
-    (mdb/join [Card :id] [PulseCard :card_id])
-    (db/qualify PulseCard :pulse_id) id
-    {:order-by [[(db/qualify PulseCard :position) :asc]]}))
-
+  (map #(models/do-post-select Card %)
+       (db/query
+        {:select    [:c.id :c.name :c.description :c.display :pc.include_csv :pc.include_xls]
+         :from      [[Pulse :p]]
+         :join      [[PulseCard :pc] [:= :p.id :pc.pulse_id]
+                     [Card :c] [:= :c.id :pc.card_id]]
+         :where     [:and
+                     [:= :p.id id]
+                     [:= :c.archived false]]
+         :order-by [[:pc.position :asc]]})))
 
 ;;; ------------------------------------------------------------ Pulse Fetching Helper Fns ------------------------------------------------------------
+
+(defn- hydrate-pulse [pulse]
+  (-> pulse
+      (hydrate :creator :cards [:channels :recipients])
+      (m/dissoc-in [:details :emails])))
+
+(defn- remove-alert-fields [pulse]
+  (dissoc pulse :alert_condition :alert_above_goal :alert_first_only))
 
 (defn retrieve-pulse
   "Fetch a single `Pulse` by its ID value."
   [id]
   {:pre [(integer? id)]}
-  (-> (Pulse id)
-      (hydrate :creator :cards [:channels :recipients])
-      (m/dissoc-in [:details :emails])))
+  (-> (db/select-one Pulse {:where [:and
+                                    [:= :id id]
+                                    [:= :alert_condition nil]]})
+      hydrate-pulse
+      remove-alert-fields))
 
+(defn retrieve-pulse-or-alert
+  "Fetch an alert or pulse by its ID value."
+  [id]
+  {:pre [(integer? id)]}
+  (-> (db/select-one Pulse {:where [:= :id id]})
+      hydrate-pulse))
+
+(defn- pulse->alert
+  "Convert a pulse to an alert"
+  [pulse]
+  (-> pulse
+      (assoc :card (first (:cards pulse)))
+      (dissoc :cards)))
+
+(defn retrieve-alert
+  "Fetch a single alert by its pulse `ID` value."
+  [id]
+  {:pre [(integer? id)]}
+  (-> (db/select-one Pulse {:where [:and
+                                    [:= :id id]
+                                    [:not= :alert_condition nil]]})
+      hydrate-pulse
+      pulse->alert))
+
+(defn retrieve-alerts
+  "Fetch all alerts"
+  []
+  (for [pulse (db/select Pulse, {:where [:not= :alert_condition nil]
+                                 :order-by [[:name :asc]]})]
+
+    (-> pulse
+        hydrate-pulse
+        pulse->alert)))
 
 (defn retrieve-pulses
   "Fetch all `Pulses`."
   []
-  (for [pulse (-> (db/select Pulse, {:order-by [[:name :asc]]})
-                  (hydrate :creator :cards [:channels :recipients]))]
-    (m/dissoc-in pulse [:details :emails])))
+  (for [pulse (db/select Pulse, {:where [:= :alert_condition nil]
+                                 :order-by [[:name :asc]]} )]
+    (-> pulse
+        hydrate-pulse
+        remove-alert-fields)))
 
+(defn- query-as [model query]
+  (db/do-post-select model (db/query query)))
+
+(defn retrieve-user-alerts-for-card
+  "Find all alerts for `CARD-ID` that `USER-ID` is set to receive"
+  [card-id user-id]
+  (map (comp pulse->alert hydrate-pulse)
+       (query-as Pulse
+                 {:select [:p.*]
+                  :from   [[Pulse :p]]
+                  :join   [[PulseCard :pc] [:= :p.id :pc.pulse_id]
+                           [PulseChannel :pchan] [:= :pchan.pulse_id :p.id]
+                           [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]
+                  :where  [:and
+                           [:not= :p.alert_condition nil]
+                           [:= :pc.card_id card-id]
+                           [:= :pcr.user_id user-id]]})))
+
+(defn retrieve-alerts-for-card
+  "Find all alerts for `CARD-IDS`, used for admin users"
+  [& card-ids]
+  (when (seq card-ids)
+    (map (comp pulse->alert hydrate-pulse)
+         (query-as Pulse
+                   {:select [:p.*]
+                    :from   [[Pulse :p]]
+                    :join   [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
+                    :where  [:and
+                             [:not= :p.alert_condition nil]
+                             [:in :pc.card_id card-ids]]}))))
+
+(defn create-card-ref
+  "Create a card reference from a card or id"
+  [card]
+  {:id          (u/get-id card)
+   :include_csv (get card :include_csv false)
+   :include_xls (get card :include_xls false)})
 
 ;;; ------------------------------------------------------------ Other Persistence Functions ------------------------------------------------------------
 
@@ -111,16 +199,20 @@
    *  If an ID in CARD-IDS has no corresponding existing `PulseCard` object, one will be created.
    *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
    *  All cards will be updated with a `position` according to their place in the collection of CARD-IDS"
-  {:arglists '([pulse card-ids])}
-  [{:keys [id]} card-ids]
+  {:arglists '([pulse card-refs])}
+  [{:keys [id]} card-refs]
   {:pre [(integer? id)
-         (sequential? card-ids)
-         (every? integer? card-ids)]}
+         (sequential? card-refs)
+         (every? map? card-refs)]}
   ;; first off, just delete any cards associated with this pulse (we add them again below)
   (db/delete! PulseCard :pulse_id id)
   ;; now just insert all of the cards that were given to us
-  (when (seq card-ids)
-    (let [cards (map-indexed (fn [i card-id] {:pulse_id id, :card_id card-id, :position i}) card-ids)]
+  (when (seq card-refs)
+    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls]}]
+                               {:pulse_id    id, :card_id     card-id,
+                                :position    i   :include_csv include_csv,
+                                :include_xls include_xls})
+                             card-refs)]
       (db/insert-many! PulseCard cards))))
 
 
@@ -166,6 +258,15 @@
     (doseq [[channel-type] pulse-channel/channel-types]
       (handle-channel channel-type))))
 
+(defn- create-notification [pulse card-ids channels]
+  (db/transaction
+    (let [{:keys [id] :as pulse} (db/insert! Pulse pulse)]
+      ;; add card-ids to the Pulse
+      (update-pulse-cards! pulse card-ids)
+      ;; add channels to the Pulse
+      (update-pulse-channels! pulse channels)
+      id)))
+
 
 (defn create-pulse!
   "Create a new `Pulse` by inserting it into the database along with all associated pieces of data such as:
@@ -177,21 +278,38 @@
          (integer? creator-id)
          (sequential? card-ids)
          (seq card-ids)
-         (every? integer? card-ids)
+         (every? map? card-ids)
          (coll? channels)
          (every? map? channels)]}
-  (db/transaction
-    (let [{:keys [id] :as pulse} (db/insert! Pulse
-                                   :creator_id creator-id
-                                   :name pulse-name
-                                   :skip_if_empty skip-if-empty?)]
-      ;; add card-ids to the Pulse
-      (update-pulse-cards! pulse card-ids)
-      ;; add channels to the Pulse
-      (update-pulse-channels! pulse channels)
-      ;; return the full Pulse (and record our create event)
-      (events/publish-event! :pulse-create (retrieve-pulse id)))))
+  (let [id (create-notification {:creator_id    creator-id
+                                 :name          pulse-name
+                                 :skip_if_empty skip-if-empty?}
+                                card-ids channels)]
+    ;; return the full Pulse (and record our create event)
+    (events/publish-event! :pulse-create (retrieve-pulse id))))
 
+(defn create-alert!
+  "Creates a pulse with the correct fields specified for an alert"
+  [alert creator-id card-id channels]
+  (let [id (-> alert
+               (assoc :skip_if_empty true :creator_id creator-id)
+               (create-notification [card-id] channels))]
+    ;; return the full Pulse (and record our create event)
+    (events/publish-event! :alert-create (retrieve-alert id))))
+
+(defn update-notification!
+  "Updates the pulse/alert and updates the related channels"
+  [{:keys [id name cards channels skip-if-empty?] :as pulse}]
+  (db/transaction
+    ;; update the pulse itself
+    (db/update-non-nil-keys! Pulse id (-> pulse
+                                          (select-keys [:name :alert_condition :alert_above_goal :alert_first_only])
+                                          (assoc :skip_if_empty skip-if-empty?)))
+    ;; update cards (only if they changed). Order for the cards is important which is why we're not using select-field
+    (when (not= cards (map :card_id (db/select [PulseCard :card_id], :pulse_id id, {:order-by [[:position :asc]]})))
+      (update-pulse-cards! pulse cards))
+    ;; update channels
+    (update-pulse-channels! pulse channels)))
 
 (defn update-pulse!
   "Update an existing `Pulse`, including all associated data such as: `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
@@ -202,17 +320,43 @@
          (string? name)
          (sequential? cards)
          (> (count cards) 0)
-         (every? integer? cards)
+         (every? map? cards)
          (coll? channels)
          (every? map? channels)]}
-  (db/transaction
-    ;; update the pulse itself
-    (db/update! Pulse id, :name name, :skip_if_empty skip-if-empty?)
-    ;; update cards (only if they changed). Order for the cards is important which is why we're not using select-field
-    (when (not= cards (map :card_id (db/select [PulseCard :card_id], :pulse_id id, {:order-by [[:position :asc]]})))
-      (update-pulse-cards! pulse cards))
-    ;; update channels
-    (update-pulse-channels! pulse channels)
-    ;; fetch the fully updated pulse and return it (and fire off an event)
-    (->> (retrieve-pulse id)
-         (events/publish-event! :pulse-update))))
+  (update-notification! pulse)
+  ;; fetch the fully updated pulse and return it (and fire off an event)
+  (->> (retrieve-pulse id)
+       (events/publish-event! :pulse-update)))
+
+(defn update-alert!
+  "Updates the given `ALERT` and returns it"
+  [{:keys [id card] :as alert}]
+  (-> alert
+      (assoc :skip-if-empty? true :cards [card])
+      (dissoc :card)
+      update-notification!)
+  ;; fetch the fully updated pulse and return it (and fire off an event)
+  (->> (retrieve-alert id)
+       (events/publish-event! :pulse-update)))
+
+(defn unsubscribe-from-alert
+  "Removes `USER-ID` from `PULSE-ID`"
+  [pulse-id user-id]
+  (let [[result] (db/execute! {:delete-from PulseChannelRecipient
+                               ;; The below select * clause is required for the query to work on MySQL (PG and H2 work
+                               ;; without it). MySQL will fail if the delete has an implicit join. By wrapping the
+                               ;; query in a select *, it forces that query to use a temp table rather than trying to
+                               ;; make the join directly, which works in MySQL, PG and H2
+                               :where [:= :id {:select [:*]
+                                               :from [[{:select [:pcr.id]
+                                                         :from [[PulseChannelRecipient :pcr]]
+                                                         :join [[PulseChannel :pchan] [:= :pchan.id :pcr.pulse_channel_id]
+                                                                [Pulse :p] [:= :p.id :pchan.pulse_id]]
+                                                         :where [:and
+                                                                 [:= :p.id pulse-id]
+                                                                 [:not= :p.alert_condition nil]
+                                                                 [:= :pcr.user_id user-id]]} "r"]]}]})]
+    (when (zero? result)
+      (log/warnf "Failed to remove user-id '%s' from pulse-id '%s'" user-id pulse-id))
+
+    result))

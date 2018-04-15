@@ -1,5 +1,5 @@
 :root {
-  --select-arrow-bg-color: #CACACA;
+  --select-arrow-bg-color: #cacaca;
   --select-border-color: #d9d9d9;
   --select-bg-color: #fff;
   --select-text-color: #777;
@@ -15,7 +15,7 @@
 /* custom arrows */
 .Select:before,
 .Select:after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   right: 1em;
@@ -26,18 +26,18 @@
 
 /* arrow pointing up */
 .Select:before {
-  margin-top: -.25rem;
-  border-left: .3rem solid transparent;
-  border-right: .3rem solid transparent;
-  border-bottom: .3rem solid var(--select-arrow-bg-color);
+  margin-top: -0.25rem;
+  border-left: 0.3rem solid transparent;
+  border-right: 0.3rem solid transparent;
+  border-bottom: 0.3rem solid var(--select-arrow-bg-color);
 }
 
 /* arrow pointing down */
 .Select:after {
-  margin-top:  .2rem;
-  border-left: .3rem solid transparent;
-  border-right: .3rem solid transparent;
-  border-top: .3rem solid var(--select-arrow-bg-color);
+  margin-top: 0.2rem;
+  border-left: 0.3rem solid transparent;
+  border-right: 0.3rem solid transparent;
+  border-top: 0.3rem solid var(--select-arrow-bg-color);
 }
 
 .Select select {
@@ -53,46 +53,46 @@
 
   border-radius: var(--select-border-radius);
   -webkit-appearance: none;
-     -moz-appearance: none;
+  -moz-appearance: none;
 
-   box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 .Select--blue select {
-    color: rgb(78,146,223);
-    border-color: rgb(195,216,241);
-    background-color: rgb(227,238,249);
+  color: rgb(78, 146, 223);
+  border-color: rgb(195, 216, 241);
+  background-color: rgb(227, 238, 249);
 }
 .Select--blue:after {
-    border-top: .3rem solid rgb(78,146,223);
+  border-top: 0.3rem solid rgb(78, 146, 223);
 }
 .Select--blue:before {
-    border-bottom: .3rem solid rgb(78,146,223);
+  border-bottom: 0.3rem solid rgb(78, 146, 223);
 }
 
 .Select--purple select {
-    color: rgb(168,138,195);
-    border-color: rgb(203,186,219);
-    background-color: rgb(231,223,239);
+  color: rgb(168, 138, 195);
+  border-color: rgb(203, 186, 219);
+  background-color: rgb(231, 223, 239);
 }
 .Select--purple:after {
-    border-top: .3rem solid rgb(168,138,195);
+  border-top: 0.3rem solid rgb(168, 138, 195);
 }
 .Select--purple:before {
-    border-bottom: .3rem solid rgb(168,138,195);
+  border-bottom: 0.3rem solid rgb(168, 138, 195);
 }
 
 .Select--small select {
-    padding: 0.25rem 1.5rem 0.25rem 0.5rem;
-    font-size: 0.7em;
-    line-height: 1.5em;
+  padding: 0.25rem 1.5rem 0.25rem 0.5rem;
+  font-size: 0.7em;
+  line-height: 1.5em;
 }
 .Select--small:after {
-    margin-top: -.1rem;
-    right: 0.5em;
+  margin-top: -0.1rem;
+  right: 0.5em;
 }
 .Select--small:before {
-    border-bottom: none;
+  border-bottom: none;
 }
 
 .Select select:focus {

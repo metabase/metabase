@@ -37,7 +37,11 @@
    :preview_display    true
    :created_at         true})
 
-
+(def pulse-channel-defaults
+  {:schedule_frame nil
+   :schedule_hour  nil
+   :schedule_day   nil
+   :enabled        true})
 
 ;; This is just a fake implementation that just swoops in and returns somewhat-correct looking results for different
 ;; queries we know will get ran as part of sync

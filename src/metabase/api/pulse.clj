@@ -18,6 +18,7 @@
              [pulse-channel :refer [channel-types]]]
             [metabase.pulse.render :as render]
             [metabase.util.schema :as su]
+            [metabase.util.urls :as urls]
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
@@ -33,9 +34,11 @@
                   can-write?)]
     (assoc pulse :read_only (not can-write?))))
 
-
-(defn- check-card-read-permissions [cards]
-  (doseq [{card-id :id} cards]
+(defn check-card-read-permissions
+  "Users can only create a pulse for `CARDS` they have access to"
+  [cards]
+  (doseq [card cards
+          :let [card-id (u/get-id card)]]
     (assert (integer? card-id))
     (api/read-check Card card-id)))
 
@@ -47,7 +50,7 @@
    channels      (su/non-empty [su/Map])
    skip_if_empty s/Bool}
   (check-card-read-permissions cards)
-  (api/check-500 (pulse/create-pulse! name api/*current-user-id* (map u/get-id cards) channels skip_if_empty)))
+  (api/check-500 (pulse/create-pulse! name api/*current-user-id* (map pulse/create-card-ref cards) channels skip_if_empty)))
 
 
 (api/defendpoint GET "/:id"
@@ -68,7 +71,7 @@
   (check-card-read-permissions cards)
   (pulse/update-pulse! {:id             id
                         :name           name
-                        :cards          (map u/get-id cards)
+                        :cards          (map pulse/create-card-ref cards)
                         :channels       channels
                         :skip-if-empty? skip_if_empty})
   (pulse/retrieve-pulse id))
@@ -78,6 +81,7 @@
   "Delete a `Pulse`."
   [id]
   (api/let-404 [pulse (Pulse id)]
+    (api/write-check Pulse id)
     (db/delete! Pulse :id id)
     (events/publish-event! :pulse-delete (assoc pulse :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
@@ -106,24 +110,31 @@
   "Get HTML rendering of a `Card` with ID."
   [id]
   (let [card   (api/read-check Card id)
-        result (qp/process-query-and-save-execution! (:dataset_query card) {:executed-by api/*current-user-id*, :context :pulse, :card-id id})]
-    {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title* true
+        result (qp/process-query-and-save-execution! (:dataset_query card) {:executed-by api/*current-user-id*
+                                                                            :context     :pulse
+                                                                            :card-id     id})]
+    {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title*   true
                                                                             render/*include-buttons* true]
-                                                                    (render/render-pulse-card (p/defaulted-timezone card) card result))]])}))
+                                                                    (render/render-pulse-card-for-display (p/defaulted-timezone card) card result))]])}))
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."
   [id]
   (let [card      (api/read-check Card id)
-        result    (qp/process-query-and-save-execution! (:dataset_query card) {:executed-by api/*current-user-id*, :context :pulse, :card-id id})
+        result    (qp/process-query-and-save-execution! (:dataset_query card) {:executed-by api/*current-user-id*
+                                                                               :context     :pulse
+                                                                               :card-id     id})
         data      (:data result)
         card-type (render/detect-pulse-card-type card data)
         card-html (html (binding [render/*include-title* true]
-                          (render/render-pulse-card (p/defaulted-timezone card) card result)))]
+                          (render/render-pulse-card-for-display (p/defaulted-timezone card) card result)))]
     {:id              id
      :pulse_card_type card-type
      :pulse_card_html card-html
-     :row_count       (:row_count result)}))
+     :pulse_card_name (:name card)
+     :pulse_card_url  (urls/card-url (:id card))
+     :row_count       (:row_count result)
+     :col_count       (count (:cols (:data result)))}))
 
 (api/defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a `Card` with ID."

@@ -8,23 +8,23 @@ import CollectionEditorForm from "./CollectionEditorForm.jsx";
 import { saveCollection } from "../collections";
 
 const mapStateToProps = (state, props) => ({
-    error: state.collections.error,
-    collection: state.collections.collection,
+  error: state.collections.error,
+  collection: state.collections.collection,
 });
 
 const mapDispatchToProps = {
-    saveCollection,
-    onClose: () => push("/questions")
-}
+  saveCollection,
+  onClose: () => push("/questions"),
+};
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class CollectionEdit extends Component {
-    render() {
-        return (
-            <CollectionEditorForm
-                {...this.props}
-                onSubmit={this.props.saveCollection}
-            />
-        );
-    }
+  render() {
+    return (
+      <CollectionEditorForm
+        {...this.props}
+        onSubmit={this.props.saveCollection}
+      />
+    );
+  }
 }

@@ -35,8 +35,8 @@
   (-> (into {} segment)
       (dissoc :id :table_id)
       (update :creator #(into {} %))
-      (assoc :created_at (not (nil? created_at))
-             :updated_at (not (nil? updated_at)))))
+      (assoc :created_at (some? created_at)
+             :updated_at (some? updated_at))))
 
 
 ;; ## /api/segment/* AUTHENTICATION Tests
@@ -363,9 +363,9 @@
 
 
 ;;; GET /api/segement/
-(tt/expect-with-temp [Segment [segment-1]
-                      Segment [segment-2]
-                      Segment [_          {:is_active false}]] ; inactive segments shouldn't show up
+(tt/expect-with-temp [Segment [segment-1 {:name "Segment 1"}]
+                      Segment [segment-2 {:name "Segment 2"}]
+                      Segment [_         {:is_active false}]] ; inactive segments shouldn't show up
   (tu/mappify (hydrate [segment-1
                         segment-2] :creator))
   ((user->client :rasta) :get 200 "segment/"))
@@ -380,3 +380,9 @@
       :revision_message "WOW HOW COOL"
       :definition       {}})
     true))
+
+;; Test related/recommended entities
+(expect
+  #{:table :metrics :segments :linked-from}
+  (tt/with-temp* [Segment [{segment-id :id}]]
+    (-> ((user->client :crowberto) :get 200 (format "segment/%s/related" segment-id)) keys set)))

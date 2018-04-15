@@ -7,8 +7,11 @@
              [pulse-card :refer :all]
              [pulse-channel :refer :all]
              [pulse-channel-recipient :refer :all]]
-            [metabase.test.data :refer :all]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
+            [metabase.test.mock.util :refer [pulse-channel-defaults]]
             [metabase.util :as u]
             [toucan
              [db :as db]
@@ -40,7 +43,6 @@
                            (-> (dissoc channel :id :pulse_id :created_at :updated_at)
                                (m/dissoc-in [:details :emails])))))))
 
-
 ;; retrieve-pulse
 ;; this should cover all the basic Pulse attributes
 (expect
@@ -49,16 +51,16 @@
    :name          "Lodi Dodi"
    :cards         [{:name        "Test Card"
                     :description nil
-                    :display     :table}]
-   :channels      [{:enabled        true
-                    :schedule_type  :daily
-                    :schedule_hour  15
-                    :schedule_frame nil
-                    :channel_type   :email
-                    :details        {:other "stuff"}
-                    :schedule_day   nil
-                    :recipients     [{:email "foo@bar.com"}
-                                     (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]}]
+                    :display     :table
+                    :include_csv false
+                    :include_xls false}]
+   :channels      [(merge pulse-channel-defaults
+                          {:schedule_type  :daily
+                           :schedule_hour  15
+                           :channel_type   :email
+                           :details        {:other "stuff"}
+                           :recipients     [{:email "foo@bar.com"}
+                                            (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})]
    :skip_if_empty false}
   (tt/with-temp* [Pulse        [{pulse-id :id}               {:name "Lodi Dodi"}]
                   PulseChannel [{channel-id :id :as channel} {:pulse_id pulse-id
@@ -88,7 +90,7 @@
                   Card  [{card-id-2 :id} {:name "card2"}]
                   Card  [{card-id-3 :id} {:name "card3"}]]
     (let [upd-cards! (fn [cards]
-                       (update-pulse-cards! {:id pulse-id} cards)
+                       (update-pulse-cards! {:id pulse-id} (map create-card-ref cards))
                        (set (for [card-id (db/select-field :card_id PulseCard, :pulse_id pulse-id)]
                               (db/select-one-field :name Card, :id card-id))))]
       [(upd-cards! [])
@@ -99,14 +101,12 @@
 
 ;; update-pulse-channels!
 (expect
-  {:enabled       true
-   :channel_type  :email
-   :schedule_type :daily
-   :schedule_hour 4
-   :schedule_day  nil
-   :schedule_frame nil
-   :recipients    [{:email "foo@bar.com"}
-                   (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]}
+  (merge pulse-channel-defaults
+         {:channel_type  :email
+          :schedule_type :daily
+          :schedule_hour 4
+          :recipients    [{:email "foo@bar.com"}
+                          (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
   (tt/with-temp Pulse [{:keys [id]}]
     (update-pulse-channels! {:id id} [{:enabled       true
                                        :channel_type  :email
@@ -123,27 +123,27 @@
 (expect
   {:creator_id    (user->id :rasta)
    :name          "Booyah!"
-   :channels      [{:enabled        true
-                    :schedule_type  :daily
-                    :schedule_hour  18
-                    :schedule_frame nil
-                    :channel_type   :email
-                    :recipients     [{:email "foo@bar.com"}]
-                    :schedule_day   nil}]
+   :channels      [(merge pulse-channel-defaults
+                          {:schedule_type  :daily
+                           :schedule_hour  18
+                           :channel_type   :email
+                           :recipients     [{:email "foo@bar.com"}]})]
    :cards         [{:name        "Test Card"
                     :description nil
-                    :display     :table}]
+                    :display     :table
+                    :include_csv false
+                    :include_xls false}]
    :skip_if_empty false}
   (tt/with-temp Card [{:keys [id]} {:name "Test Card"}]
-    (create-pulse-then-select! "Booyah!"
-                               (user->id :rasta)
-                               [id]
-                               [{:channel_type  :email
-                                 :schedule_type :daily
-                                 :schedule_hour 18
-                                 :recipients    [{:email "foo@bar.com"}]}]
-                               false)))
-
+    (tu/with-model-cleanup [Pulse]
+      (create-pulse-then-select! "Booyah!"
+                                 (user->id :rasta)
+                                 [(create-card-ref id)]
+                                 [{:channel_type  :email
+                                   :schedule_type :daily
+                                   :schedule_hour 18
+                                   :recipients    [{:email "foo@bar.com"}]}]
+                                 false))))
 ;; update-pulse!
 ;; basic update.  we are testing several things here
 ;;  1. ability to update the Pulse name
@@ -157,18 +157,20 @@
    :name          "We like to party"
    :cards         [{:name        "Bar Card"
                     :description nil
-                    :display     :bar}
+                    :display     :bar
+                    :include_csv false
+                    :include_xls false}
                    {:name        "Test Card"
                     :description nil
-                    :display     :table}]
-   :channels      [{:enabled        true
-                    :schedule_type  :daily
-                    :schedule_hour  18
-                    :schedule_frame nil
-                    :channel_type   :email
-                    :schedule_day   nil
-                    :recipients     [{:email "foo@bar.com"}
-                                     (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]}]
+                    :display     :table
+                    :include_csv false
+                    :include_xls false}]
+   :channels      [(merge pulse-channel-defaults
+                          {:schedule_type  :daily
+                           :schedule_hour  18
+                           :channel_type   :email
+                           :recipients     [{:email "foo@bar.com"}
+                                            (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]})]
    :skip_if_empty false}
   (tt/with-temp* [Pulse [{pulse-id :id}]
                   Card  [{card-id-1 :id} {:name "Test Card"}]
@@ -176,7 +178,7 @@
     (update-pulse-then-select! {:id             pulse-id
                                 :name           "We like to party"
                                 :creator_id     (user->id :crowberto)
-                                :cards          [card-id-2 card-id-1]
+                                :cards          (mapv create-card-ref [card-id-2 card-id-1])
                                 :channels       [{:channel_type  :email
                                                   :schedule_type :daily
                                                   :schedule_hour 18

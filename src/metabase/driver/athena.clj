@@ -312,7 +312,6 @@
           :current-datetime-fn       (constantly :%now)
           :date                      (u/drop-first-arg metabase.driver.presto/date)
           :excluded-schemas          (constantly #{"default"})
-          :prepare-value             (u/drop-first-arg presto/prepare-value)
           :quote-style               (constantly :ansi)
           :string-length-fn          (u/drop-first-arg presto/string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg presto/unix-timestamp->timestamp)}))

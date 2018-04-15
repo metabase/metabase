@@ -1,5 +1,6 @@
 (ns metabase.test.data.datasets
-  "Interface + implementations for loading test datasets for different drivers, and getting information about the dataset's tables, fields, etc."
+  "Interface + implementations for loading test datasets for different drivers, and getting information about the
+  dataset's tables, fields, etc."
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
@@ -10,7 +11,8 @@
                       [plugins :as plugins])
             [metabase.test.data.interface :as i]))
 
-;; When running tests, we need to make sure plugins (i.e., the Oracle JDBC driver) are loaded because otherwise the Oracle driver won't show up in the list of valid drivers below
+;; When running tests, we need to make sure plugins (i.e., the Oracle JDBC driver) are loaded because otherwise the
+;; Oracle driver won't show up in the list of valid drivers below
 (plugins/load-plugins!)
 
 (driver/find-and-load-drivers!)
@@ -86,6 +88,7 @@
   "Bind `*engine*` and `*driver*` as appropriate for ENGINE and execute F, a function that takes no args."
   {:style/indent 1}
   [engine f]
+  {:pre [(keyword? engine)]}
   (binding [*engine* engine
             *driver* (engine->driver engine)]
     (f)))
@@ -120,7 +123,8 @@
        ~@body)))
 
 (defmacro expect-with-engine
-  "Generate a unit test that only runs if we're currently testing against ENGINE, and that binds `*driver*` to the driver for ENGINE."
+  "Generate a unit test that only runs if we're currently testing against ENGINE, and that binds `*driver*` to the
+  driver for ENGINE."
   {:style/indent 1}
   [engine expected actual]
   `(when-testing-engine ~engine
@@ -129,8 +133,8 @@
        (with-engine ~engine ~actual))))
 
 (defmacro expect-with-engines
-  "Generate unit tests for all datasets in ENGINES; each test will only run if we're currently testing the corresponding dataset.
-   `*driver*` is bound to the current dataset inside each test."
+  "Generate unit tests for all datasets in ENGINES; each test will only run if we're currently testing the
+  corresponding dataset. `*driver*` is bound to the current dataset inside each test."
   {:style/indent 1}
   [engines expected actual]
   ;; Make functions to get expected/actual so the code is only compiled one time instead of for every single driver
@@ -146,8 +150,9 @@
                 (do-with-engine ~engine ~a)))))))
 
 (defmacro expect-with-all-engines
-  "Generate unit tests for all valid datasets; each test will only run if we're currently testing the corresponding dataset.
-  `*driver*` is bound to the current dataset inside each test."
+  "Generate unit tests for all valid datasets; each test will only run if we're currently testing the corresponding
+  dataset. `*driver*` is bound to the current dataset inside each test."
+  {:style/indent 0}
   [expected actual]
   `(expect-with-engines all-valid-engines ~expected ~actual))
 

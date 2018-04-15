@@ -4,6 +4,7 @@
              [set :as set]]
             [clojure.tools.logging :as log]
             [metabase
+             [events :as events]
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.models
@@ -13,45 +14,58 @@
              [interface :as i]
              [params :as params]
              [revision :as revision]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.interface :as qpi]
             [metabase.models.revision.diff :refer [build-sentence]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
              [models :as models]]))
 
-;;; ---------------------------------------- Perms Checking ----------------------------------------
+;;; ------------------------------------------------- Perms Checking -------------------------------------------------
 
 (defn- dashcards->cards [dashcards]
   (when (seq dashcards)
     (for [dashcard dashcards
+          :when    (:card dashcard) ; skip over ones that are cardless, e.g. text-only DashCards
           card     (cons (:card dashcard) (:series dashcard))]
       card)))
 
-(defn- can-read? [dashboard]
-  ;; if Dashboard is already hydrated no need to do it a second time
-  (let [cards (or (dashcards->cards (:ordered_cards dashboard))
-                  (dashcards->cards (-> (db/select [DashboardCard :id :card_id], :dashboard_id (u/get-id dashboard))
-                                        (hydrate :card :series))))]
-    (or (empty? cards)
-        (some i/can-read? cards))))
+(defn- can-read? [{public-uuid :public_uuid, :as dashboard}]
+  (or
+   ;; if the Dashboard is shared publicly then there is simply no need to check permissions for it because people
+   ;; can see it already!!!
+   (and (public-settings/enable-public-sharing)
+        (some? public-uuid))
+   ;; if Dashboard is already hydrated no need to do it a second time
+   (let [cards (or (dashcards->cards (:ordered_cards dashboard))
+                   (dashcards->cards (-> (db/select [DashboardCard :id :card_id]
+                                           :dashboard_id (u/get-id dashboard)
+                                           :card_id      [:not= nil]) ; skip text-only Cards
+                                         (hydrate [:card :in_public_dashboard] :series))))]
+     (or (empty? cards)
+         (some i/can-read? cards)))))
 
 
-;;; ---------------------------------------- Hydration ----------------------------------------
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn ordered-cards
   "Return the `DashboardCards` associated with DASHBOARD, in the order they were created."
   {:hydrate :ordered_cards}
-  [dashboard]
+  [dashboard-or-id]
   (db/do-post-select DashboardCard
-    (db/query {:select   [:dashcard.*]
-               :from     [[DashboardCard :dashcard]]
-               :join     [[Card :card] [:= :dashcard.card_id :card.id]]
-               :where    [:and [:= :dashcard.dashboard_id (u/get-id dashboard)]
-                               [:= :card.archived false]]
-               :order-by [[:dashcard.created_at :asc]]})))
+    (db/query {:select    [:dashcard.*]
+               :from      [[DashboardCard :dashcard]]
+               :left-join [[Card :card] [:= :dashcard.card_id :card.id]]
+               :where     [:and
+                           [:= :dashcard.dashboard_id (u/get-id dashboard-or-id)]
+                           [:or
+                            [:= :card.archived false]
+                            [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
+               :order-by  [[:dashcard.created_at :asc]]})))
 
 
-;;; ---------------------------------------- Entity & Lifecycle ----------------------------------------
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Dashboard :report_dashboard)
 
@@ -79,7 +93,7 @@
           :can-write? can-read?}))
 
 
-;;; ## ---------------------------------------- REVISIONS ----------------------------------------
+;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (defn serialize-dashboard
   "Serialize a `Dashboard` for use in a `Revision`."
@@ -189,11 +203,11 @@
    for example updating FieldValues for On-Demand DBs.
    Returns newly created DashboardCard."
   {:style/indent 2}
-  [dashboard-or-id card-or-id & [dashcard-options]]
+  [dashboard-or-id card-or-id-or-nil & [dashcard-options]]
   (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
         dashboard-card      (-> (assoc dashcard-options
                                   :dashboard_id (u/get-id dashboard-or-id)
-                                  :card_id      (u/get-id card-or-id))
+                                  :card_id      (when card-or-id-or-nil (u/get-id card-or-id-or-nil)))
                                 ;; if :series info gets passed in make sure we pass it along as a sequence of IDs
                                 (update :series #(filter identity (map u/get-id %))))]
     (u/prog1 (dashboard-card/create-dashboard-card! dashboard-card)
@@ -215,3 +229,40 @@
         (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))))
     (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
       (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids))))
+
+
+(defn- result-metadata-for-query
+  "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return."
+  [query]
+  (binding [qpi/*disable-qp-logging* true]
+    (get-in (qp/process-query query) [:data :results_metadata :columns])))
+
+(defn- save-card!
+  [card]
+  (when (:dataset_query card)
+    (db/insert! 'Card
+      (-> card
+          (update :result_metadata #(or % (-> card
+                                              :dataset_query
+                                              result-metadata-for-query)))
+          (dissoc :id)))))
+
+(defn save-transient-dashboard!
+  "Save a denormalized description of dashboard."
+  [dashboard]
+  (let [dashcards (:ordered_cards dashboard)
+        dashboard (db/insert! Dashboard
+                    (dissoc dashboard :ordered_cards :rule :related))]
+    (doseq [dashcard dashcards]
+      (let [card     (some->> dashcard :card save-card!)
+            series   (some->> dashcard :series (map save-card!))
+            dashcard (-> dashcard
+                         (dissoc :card :id :card_id)
+                         (update :parameter_mappings
+                                 (partial map #(assoc % :card_id (:id card))))
+                         (assoc :series series))]
+        (doseq [card (concat series (some-> card vector))]
+          (events/publish-event! :card-create card)
+          (hydrate card :creator :dashboard_count :labels :can_write :collection))
+        (add-dashcard! dashboard card dashcard)))
+    dashboard))

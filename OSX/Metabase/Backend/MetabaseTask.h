@@ -16,6 +16,10 @@
 
 - (void)launch;
 
+/// Remove the task termination handler that pops up the 'Task died unexpectedly' alert.
+/// For cases when we want to kill the Metabase task without freaking the user out, e.g. for Reset Password
+- (void)disableTerminationAlert;
+
 - (NSUInteger)port;
 
 @end

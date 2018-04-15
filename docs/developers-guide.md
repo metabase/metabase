@@ -4,6 +4,7 @@
 *  [How to set up a development environment](#development-environment)
 *  [How to run the Metabase Server](#development-server-quick-start)
 *  [How to contribute back to the Metabase project](#contributing)
+*  [How to add support in Metabase for other languages](#internationalization)
 
 
 # Contributing
@@ -14,6 +15,11 @@ For significant feature additions, it is expected that discussion will have take
 
 We don't like getting sued, so before merging any pull request, we'll need each person contributing code to sign a Contributor License Agreement [here](https://docs.google.com/a/metabase.com/forms/d/1oV38o7b9ONFSwuzwmERRMi9SYrhYeOrkbmNaq9pOJ_E/viewform)
 
+# Development on Windows
+
+The development scripts are designed for Linux/Mac environment, so we recommend using the latest Windows 10 version with [WSL (Windows Subsystem for Linux)](https://msdn.microsoft.com/en-us/commandline/wsl/about) and [Ubuntu on Windows](https://www.microsoft.com/store/p/ubuntu/9nblggh4msv6). The Ubuntu Bash shell works well for both backend and frontend development.
+
+If you have problems with your development environment, make sure that you are not using any development commands outside the Bash shell. As an example, Node dependencies installed in normal Windows environment will not work inside Ubuntu Bash environment.
 
 # Install Prerequisites
 
@@ -24,6 +30,7 @@ These are the set of tools which are required in order to complete any build of 
 3. [Yarn package manager for Node.js](https://yarnpkg.com/)
 3. [Leiningen (http://leiningen.org/)](http://leiningen.org/)
 
+If you are developing on Windows, make sure to use Ubuntu on Windows and follow instructions for Ubuntu/Linux instead of installing ordinary Windows versions.
 
 # Build Metabase
 
@@ -70,13 +77,6 @@ Start the frontend build process with
 
     yarn run build-hot
 
-Caveat - Yarn does not properly support `build-hot` on Windows 8/10. You will need to manually build the frontend client with
-    
-    yarn run build
-
-This will get you a full development server running on port :3000 by default.
-
-
 ## Frontend development
 We use these technologies for our FE build process to allow us to use modules, es6 syntax, and css variables.
 
@@ -114,7 +114,7 @@ All frontend tests are located in `frontend/test` directory. Run all frontend te
 ./bin/build version uberjar && yarn run test
 ```
 
-which will first build the backend JAR and then run integration, unit and Karma browser tests in sequence. 
+which will first build the backend JAR and then run integration, unit and Karma browser tests in sequence.
 
 ### Jest integration tests
 Integration tests simulate realistic sequences of user interactions. They render a complete DOM tree using [Enzyme](http://airbnb.io/enzyme/docs/api/index.html) and use temporary backend instances for executing API calls.
@@ -124,6 +124,7 @@ Integration tests use an enforced file naming convention `<test-suite-name>.inte
 Useful commands:
 ```bash
 ./bin/build version uberjar # Builds the JAR without frontend assets; run this every time you need to update the backend
+lein run refresh-integration-test-db-metadata # Scan the sample dataset and re-run sync/classification/field values caching
 yarn run test-integrated-watch # Watches for file changes and runs the tests that have changed
 yarn run test-integrated-watch -- TestFileName # Watches the files in paths that match the given (regex) string
 ```
@@ -132,7 +133,7 @@ The way integration tests are written is a little unconventional so here is an e
 
 ```
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore,
 } from "__support__/integrated_tests";
 import {
@@ -149,12 +150,11 @@ describe("Query builder", () => {
     beforeAll(async () => {
         // Usually you want to test stuff where user is already logged in
         // so it is convenient to login before any test case.
-        // Remember `await` here!
-        await login()
+        useSharedAdminLogin()
     })
 
     it("should let you run a new query", async () => {
-        // Create a superpowered Redux store. 
+        // Create a superpowered Redux store.
         // Remember `await` here!
         const store = await createTestStore()
 
@@ -194,17 +194,17 @@ You can also skim through [`__support__/integrated_tests.js`](https://github.com
 
 ### Jest unit tests
 
-Unit tests are focused around isolated parts of business logic. 
+Unit tests are focused around isolated parts of business logic.
 
 Unit tests use an enforced file naming convention `<test-suite-name>.unit.js` to separate them from integration tests.
 
 ```
-yarn run jest-test # Run all tests at once
-yarn run jest-test-watch # Watch for file changes
+yarn run test-unit # Run all tests at once
+yarn run test-unit-watch # Watch for file changes
 ```
 
 ### Karma browser tests
-If you need to test code which uses browser APIs that are only available in real browsers, you can add a Karma test to `frontend/test/legacy-karma` directory. 
+If you need to test code which uses browser APIs that are only available in real browsers, you can add a Karma test to `frontend/test/legacy-karma` directory.
 
 ```
 yarn run test-karma # Run all tests once
@@ -264,6 +264,38 @@ You'll probably want to tell Emacs to store customizations in a different file. 
 Start up an instant cheatsheet for the project + dependencies by running
 
     lein instant-cheatsheet
+
+## Internationalization
+We are an application with lots of users all over the world. To help them use Metabase in their own language, we mark all of our strings as i18n. 
+### The general workflow for developers is:
+
+1. Tag strings in the frontend using `t` and `jt` ES6 template literals (see more details in https://c-3po.js.org/):
+
+```javascript
+const someString = t`Hello ${name}!`;
+const someJSX = <div>{ jt`Hello ${name}` }</div>
+```
+
+and in the backend using `trs` and related macros (see more details in https://github.com/puppetlabs/clj-i18n):
+
+```clojure
+(trs "Hello {0}!" name)
+```
+
+2. When you have added/edited tagged strings in the code, run `./bin/i18n/update-translations` to update the base `locales/metabase.pot` template and each existing `locales/LOCALE.po`
+
+### The workflow for translators in starting a new translation, or editing an existing one:
+
+1. You should run `./bin/i18n/update-translations` first to ensure the latest strings have been extracted.
+2. If you're starting a new translation or didn't run update-translations then run `./bin/i18n/update-translation LOCALE`
+3. Edit ./locales/LOCALE.po
+4. `Run ./bin/i18n/build-translation-resources`
+5. Restart or rebuild Metabase, Test, repeat 2 and 3
+6. Commit changes to ./locales/LOCALE.po and ./resources/frontend_client/app/locales/LOCALE.json
+
+
+To try it out, change your browser's language (e.x. chrome://settings/?search=language) to one of the locales to see it working. Run metabase with the `JAVA_TOOL_OPTIONS=-Duser.language=LOCALE` environment variable set to set the locale on the backend, e.x. for pulses and emails (eventually we'll also add a setting in the app)
+
 
 ## License
 

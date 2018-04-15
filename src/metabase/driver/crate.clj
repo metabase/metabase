@@ -64,15 +64,16 @@
   (let [columns (jdbc/query
                  (sql/db->jdbc-connection-spec database)
                  [(format "select column_name, data_type as type_name
-                            from information_schema.columns
-                            where table_name like '%s' and table_schema like '%s'
-                            and data_type != 'object_array'" name schema)])] ; clojure jdbc can't handle fields of type "object_array" atm
+                           from information_schema.columns
+                           where table_name like '%s' and table_schema like '%s'
+                           and data_type != 'object_array'" name schema)])] ; clojure jdbc can't handle fields of type "object_array" atm
     (set (for [{:keys [column_name type_name]} columns]
-           {:name      column_name
-            :custom    {:column-type type_name}
-            :base-type (or (column->base-type (keyword type_name))
-                           (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*." type_name))
-                               :type/*))}))))
+           {:name          column_name
+            :custom        {:column-type type_name}
+            :database-type type_name
+            :base-type     (or (column->base-type (keyword type_name))
+                               (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*." type_name))
+                                   :type/*))}))))
 
 (defn- add-table-pks
   [^DatabaseMetaData metadata, table]
@@ -97,7 +98,7 @@
   clojure.lang.Named
   (getName [_] "Crate"))
 
-(def ^:private crate-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSSSSSZ"))
+(def ^:private crate-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSSSSSZ"))
 (def ^:private crate-db-time-query "select DATE_FORMAT(current_timestamp, '%Y-%m-%d %H:%i:%S.%fZ')")
 
 (u/strict-extend CrateDriver
@@ -110,7 +111,7 @@
                                          :display-name "Hosts"
                                          :default      "localhost:5432/"}])
           :features        (comp (u/rpartial disj :foreign-keys) sql/features)
-          :current-db-time (driver/make-current-db-time-fn crate-date-formatter crate-db-time-query)})
+          :current-db-time (driver/make-current-db-time-fn crate-db-time-query crate-date-formatters)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg connection-details->spec)
