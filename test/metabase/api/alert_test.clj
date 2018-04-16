@@ -132,26 +132,27 @@
                                     body-map)}))
 
 (defn- default-alert [card]
-  {:id                true
-   :name              nil
-   :creator_id        true
-   :creator           (user-details :rasta)
-   :created_at        true
-   :updated_at        true
-   :card              (pulse-card-details card)
-   :alert_condition   "rows"
-   :alert_first_only  false
-   :alert_above_goal  nil
-   :channels          [(merge pulse-channel-defaults
-                              {:channel_type  "email"
-                               :schedule_type "hourly"
-                               :schedule_hour nil
-                               :recipients    [(recipient-details :rasta)]
-                               :updated_at    true,
-                               :pulse_id      true,
-                               :id            true,
-                               :created_at    true})]
-   :skip_if_empty     true})
+  {:id               true
+   :name             nil
+   :creator_id       true
+   :creator          (user-details :rasta)
+   :created_at       true
+   :updated_at       true
+   :card             (pulse-card-details card)
+   :alert_condition  "rows"
+   :alert_first_only false
+   :alert_above_goal nil
+   :channels         [(merge pulse-channel-defaults
+                             {:channel_type  "email"
+                              :schedule_type "hourly"
+                              :schedule_hour nil
+                              :recipients    [(recipient-details :rasta)]
+                              :updated_at    true,
+                              :pulse_id      true,
+                              :id            true,
+                              :created_at    true})]
+   :skip_if_empty    true
+   :collection_id    false})
 
 ;; Check creation of a new rows alert with email notification
 (tt/expect-with-temp [Card [card1 {:name "My question"}]]

@@ -5,13 +5,13 @@
             [medley.core :as m]
             [metabase
              [email :as email]
-             [events :as events]
-             [util :as u]]
+             [events :as events]]
             [metabase.api
              [common :as api]
              [pulse :as pulse-api]]
             [metabase.email.messages :as messages]
             [metabase.models
+             [collection :as collection]
              [interface :as mi]
              [pulse :as pulse :refer [Pulse]]]
             [metabase.util.schema :as su]
@@ -42,7 +42,7 @@
   (s/enum "rows" "goal"))
 
 (defn- only-alert-keys [request]
-  (select-keys request [:alert_condition :alert_first_only :alert_above_goal]))
+  (select-keys request [:alert_condition :alert_first_only :alert_above_goal :collection_id]))
 
 (defn- email-channel [alert]
   (m/find-first #(= :email (:channel_type %)) (:channels alert)))
@@ -113,14 +113,18 @@
     card))
 
 (api/defendpoint POST "/"
-  "Create a new alert (`Pulse`)"
-  [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal] :as req} :body}]
+  "Create a new Alert (`Pulse`)"
+  [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal collection_id] :as req} :body}]
   {alert_condition   AlertConditions
    alert_first_only  s/Bool
    alert_above_goal  (s/maybe s/Bool)
    card              su/Map
-   channels          (su/non-empty [su/Map])}
+   channels          (su/non-empty [su/Map])
+   collection_id     (s/maybe su/IntGreaterThanZero)}
+  ;; do various perms checks as needed
   (pulse-api/check-card-read-permissions [card])
+  (collection/check-write-perms-for-collection collection_id)
+  ;; ok, now create the Alert
   (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/create-card-ref)
         new-alert (api/check-500
                    (-> req
@@ -128,7 +132,7 @@
                        (pulse/create-alert! api/*current-user-id* alert-card channels)))]
 
     (notify-new-alert-created! new-alert)
-
+    ;; return our new Alert
     new-alert))
 
 (defn- recipient-ids [{:keys [channels] :as alert}]
@@ -149,14 +153,20 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Alert` with ID."
-  [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels] :as req} :body}]
+  [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels collection_id]
+            :as   req} :body}]
   {alert_condition  AlertConditions
    alert_first_only s/Bool
    alert_above_goal (s/maybe s/Bool)
    card             su/Map
-   channels         (su/non-empty [su/Map])}
+   channels         (su/non-empty [su/Map])
+   collection_id    (s/maybe su/IntGreaterThanZero)}
+  ;; fethc the existing Alert in the DB
   (let [old-alert     (pulse/retrieve-alert id)
+        ;; check permissions as needed
         _             (check-alert-update-permissions old-alert)
+        _             (collection/check-allowed-to-change-collection old-alert collection_id)
+        ;; ok, now update the
         updated-alert (-> req
                           only-alert-keys
                           (assoc :id id :card (pulse/create-card-ref card) :channels channels)
@@ -193,7 +203,7 @@
       ;; No need to unsubscribe if we're just going to delete the Pulse
       (db/delete! Pulse :id id)
       ;; There are other receipieints, remove current user only
-      (pulse/unsubscribe-from-alert id api/*current-user-id*))
+      (pulse/unsubscribe-from-alert! id api/*current-user-id*))
 
     (when (email/email-configured?)
       (messages/send-you-unsubscribed-alert-email! alert @api/*current-user*))

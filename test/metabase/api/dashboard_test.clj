@@ -90,6 +90,7 @@
 (def ^:private ^:const dashboard-defaults
   {:archived                false
    :caveats                 nil
+   :collection_id           nil
    :created_at              true ; assuming you call dashboard-response on the results
    :description             nil
    :embedding_params        nil

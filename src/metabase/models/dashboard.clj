@@ -9,6 +9,7 @@
              [util :as u]]
             [metabase.models
              [card :as card :refer [Card]]
+             [collection :as collection]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
              [field-values :as field-values]
              [interface :as i]
@@ -31,12 +32,17 @@
           card     (cons (:card dashcard) (:series dashcard))]
       card)))
 
-(defn- can-read? [{public-uuid :public_uuid, :as dashboard}]
+(defn- can-read-or-write?
+  [{public-uuid :public_uuid, collection-id :collection_id, :as dashboard} read-or-write]
   (or
-   ;; if the Dashboard is shared publicly then there is simply no need to check permissions for it because people
-   ;; can see it already!!!
-   (and (public-settings/enable-public-sharing)
+   ;; if the Dashboard is shared publicly then there is simply no need to check *read* permissions for it because
+   ;; people can see it already!!!
+   (and (= read-or-write :read)
+        (public-settings/enable-public-sharing)
         (some? public-uuid))
+   ;; otherwise if the Dashboard is in a Collection then use Collection permissions
+   (when collection-id
+     (collection/perms-objects-set collection-id read-or-write))
    ;; if Dashboard is already hydrated no need to do it a second time
    (let [cards (or (dashcards->cards (:ordered_cards dashboard))
                    (dashcards->cards (-> (db/select [DashboardCard :id :card_id]
@@ -44,7 +50,10 @@
                                            :card_id      [:not= nil]) ; skip text-only Cards
                                          (hydrate [:card :in_public_dashboard] :series))))]
      (or (empty? cards)
-         (some i/can-read? cards)))))
+         (some (case read-or-write
+                 :read  i/can-read?
+                 :write i/can-write?)
+               cards)))))
 
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
@@ -89,8 +98,8 @@
           :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
-         {:can-read?  can-read?
-          :can-write? can-read?}))
+         {:can-read?  #(can-read-or-write? % :read)
+          :can-write? #(can-read-or-write? % :write)}))
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------

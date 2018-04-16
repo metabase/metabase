@@ -2,7 +2,7 @@
   (:require [clojure
              [data :as data]
              [string :as str]]
-            [metabase.api.common :refer [*current-user-id*]]
+            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*] :as api]
             [metabase.models
              [collection-revision :as collection-revision :refer [CollectionRevision]]
              [interface :as i]
@@ -189,3 +189,25 @@
   ([ks new-value]
    {:pre [(sequential? ks)]}
    (update-graph! (assoc-in (graph) (cons :groups ks) new-value))))
+
+
+;;; ------------------------------------------- Perms Checking Helper Fns --------------------------------------------
+
+(defn check-write-perms-for-collection
+  "Check that we have write permissions for Collection with `collection-id`, or throw a 403 Exception. If
+  `collection-id` is `nil`, this check is skipped."
+  [collection-or-id]
+  (when collection-or-id
+    (api/check-403 (perms/set-has-full-permissions? @*current-user-permissions-set*
+                     (perms/collection-readwrite-path collection-or-id)))))
+
+(defn check-allowed-to-change-collection
+  "If we're changing the `collection_id` of an `object`, make sure we have write permissions for the new Collection, and
+  throw a 403 if not. If `collection-id` is `nil`, or hasn't changed from the original `object`, this check does
+  nothing."
+  [object collection-or-id]
+  ;; TODO - what about when someone wants to *unset* the Collection? We should tweak this check to handle that case as
+  ;; well
+  (when (and collection-or-id
+             (not= (u/get-id collection-or-id) (:collection_id object)))
+    (check-write-perms-for-collection collection-or-id)))

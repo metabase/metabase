@@ -13,15 +13,11 @@
              [util :as u]]
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
-            [ring.util
-             [io :as rui]
-             [response :as rr]]
             [ring.core.protocols :as protocols]
             [ring.util.response :as response]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
-           [java.nio.charset Charset StandardCharsets]))
+  (:import java.io.OutputStream))
 
 (declare check-403 check-404)
 
@@ -442,6 +438,7 @@
       (throw ex)
       (assoc (response/response output-channel)
         :content-type "applicaton/json"))))
+
 
 ;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
 

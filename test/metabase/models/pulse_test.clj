@@ -22,46 +22,54 @@
   [username]
   (dissoc (fetch-user username) :date_joined :last_login))
 
+(defn- remove-uneeded-pulse-keys [pulse]
+  (-> pulse
+      (dissoc :id :creator :created_at :updated_at)
+      (update :cards (fn [cards]
+                       (for [card cards]
+                         (dissoc card :id))))
+      (update :channels (fn [channels]
+                          (for [channel channels]
+                            (-> (dissoc channel :id :pulse_id :created_at :updated_at)
+                                (m/dissoc-in [:details :emails])))))))
 ;; create a channel then select its details
 (defn- create-pulse-then-select!
   [name creator cards channels skip-if-empty?]
-  (let [{:keys [cards channels] :as pulse} (create-pulse! name creator cards channels skip-if-empty?)]
-    (-> pulse
-        (dissoc :id :creator :created_at :updated_at)
-        (assoc :cards (mapv #(dissoc % :id) cards))
-        (assoc :channels (for [channel channels]
-                           (-> (dissoc channel :id :pulse_id :created_at :updated_at)
-                               (m/dissoc-in [:details :emails])))))))
+  (-> (create-pulse! cards channels
+        {:name          name
+         :creator_id    (u/get-id creator)
+         :skip_if_empty skip-if-empty?})
+      remove-uneeded-pulse-keys))
 
 (defn- update-pulse-then-select!
   [pulse]
-  (let [{:keys [cards channels] :as pulse} (update-pulse! pulse)]
-    (-> pulse
-        (dissoc :id :creator :pulse_id :created_at :updated_at)
-        (assoc :cards (mapv #(dissoc % :id) cards))
-        (assoc :channels (for [channel channels]
-                           (-> (dissoc channel :id :pulse_id :created_at :updated_at)
-                               (m/dissoc-in [:details :emails])))))))
+  (-> (update-pulse! pulse)
+      remove-uneeded-pulse-keys))
+
+(def ^:private pulse-defaults
+  {:skip_if_empty false
+   :collection_id nil})
 
 ;; retrieve-pulse
 ;; this should cover all the basic Pulse attributes
 (expect
-  {:creator_id    (user->id :rasta)
-   :creator       (user-details :rasta)
-   :name          "Lodi Dodi"
-   :cards         [{:name        "Test Card"
-                    :description nil
-                    :display     :table
-                    :include_csv false
-                    :include_xls false}]
-   :channels      [(merge pulse-channel-defaults
-                          {:schedule_type  :daily
-                           :schedule_hour  15
-                           :channel_type   :email
-                           :details        {:other "stuff"}
-                           :recipients     [{:email "foo@bar.com"}
-                                            (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})]
-   :skip_if_empty false}
+  (merge
+   pulse-defaults
+   {:creator_id (user->id :rasta)
+    :creator    (user-details :rasta)
+    :name       "Lodi Dodi"
+    :cards      [{:name        "Test Card"
+                  :description nil
+                  :display     :table
+                  :include_csv false
+                  :include_xls false}]
+    :channels   [(merge pulse-channel-defaults
+                        {:schedule_type :daily
+                         :schedule_hour 15
+                         :channel_type  :email
+                         :details       {:other "stuff"}
+                         :recipients    [{:email "foo@bar.com"}
+                                         (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})]})
   (tt/with-temp* [Pulse        [{pulse-id :id}               {:name "Lodi Dodi"}]
                   PulseChannel [{channel-id :id :as channel} {:pulse_id pulse-id
                                                               :details  {:other  "stuff"
@@ -121,19 +129,20 @@
 ;; create-pulse!
 ;; simple example with a single card
 (expect
-  {:creator_id    (user->id :rasta)
-   :name          "Booyah!"
-   :channels      [(merge pulse-channel-defaults
-                          {:schedule_type  :daily
-                           :schedule_hour  18
-                           :channel_type   :email
-                           :recipients     [{:email "foo@bar.com"}]})]
-   :cards         [{:name        "Test Card"
-                    :description nil
-                    :display     :table
-                    :include_csv false
-                    :include_xls false}]
-   :skip_if_empty false}
+  (merge
+   pulse-defaults
+   {:creator_id (user->id :rasta)
+    :name       "Booyah!"
+    :channels   [(merge pulse-channel-defaults
+                        {:schedule_type :daily
+                         :schedule_hour 18
+                         :channel_type  :email
+                         :recipients    [{:email "foo@bar.com"}]})]
+    :cards      [{:name        "Test Card"
+                  :description nil
+                  :display     :table
+                  :include_csv false
+                  :include_xls false}]})
   (tt/with-temp Card [{:keys [id]} {:name "Test Card"}]
     (tu/with-model-cleanup [Pulse]
       (create-pulse-then-select! "Booyah!"
@@ -153,25 +162,26 @@
 ;;  5. ability to create new channels
 ;;  6. ability to update cards and ensure proper ordering
 (expect
-  {:creator_id    (user->id :rasta)
-   :name          "We like to party"
-   :cards         [{:name        "Bar Card"
-                    :description nil
-                    :display     :bar
-                    :include_csv false
-                    :include_xls false}
-                   {:name        "Test Card"
-                    :description nil
-                    :display     :table
-                    :include_csv false
-                    :include_xls false}]
-   :channels      [(merge pulse-channel-defaults
-                          {:schedule_type  :daily
-                           :schedule_hour  18
-                           :channel_type   :email
-                           :recipients     [{:email "foo@bar.com"}
-                                            (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]})]
-   :skip_if_empty false}
+  (merge
+   pulse-defaults
+   {:creator_id (user->id :rasta)
+    :name       "We like to party"
+    :cards      [{:name        "Bar Card"
+                  :description nil
+                  :display     :bar
+                  :include_csv false
+                  :include_xls false}
+                 {:name        "Test Card"
+                  :description nil
+                  :display     :table
+                  :include_csv false
+                  :include_xls false}]
+    :channels   [(merge pulse-channel-defaults
+                        {:schedule_type :daily
+                         :schedule_hour 18
+                         :channel_type  :email
+                         :recipients    [{:email "foo@bar.com"}
+                                         (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]})]})
   (tt/with-temp* [Pulse [{pulse-id :id}]
                   Card  [{card-id-1 :id} {:name "Test Card"}]
                   Card  [{card-id-2 :id} {:name "Bar Card", :display :bar}]]

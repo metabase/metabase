@@ -4057,3 +4057,41 @@ databaseChangeLog:
               name: read_permissions
               type: text
               remarks: 'Permissions required to view this Card and run its query.'
+  - changeSet:
+      id: 79
+      author: camsaul
+      comment: 'Added 1.0'
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              name: collection_id
+              type: int
+              remarks: 'Optional ID of Collection this Dashboard belongs to.'
+              constraints:
+                references: collection(id)
+                foreignKeyName: fk_dashboard_collection_id
+              # TODO - if someone deletes a collection, what should happen to the Dashboards that are in it? Should they
+              # get deleted as well? Or should collection_id be cleared, effectively putting them in the so-called
+              # "root" collection?
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_dashboard_collection_id
+            columns:
+              - column:
+                  name: collection_id
+        - addColumn:
+            tableName: pulse
+            columns:
+              name: collection_id
+              type: int
+              remarks: 'Options ID of Collection this Pulse belongs to.'
+              constraints:
+                references: collection(id)
+                foreignKeyName: fk_pulse_collection_id
+        - createIndex:
+            tableName: pulse
+            indexName: idx_pulse_collection_id
+            columns:
+              - column:
+                  name: collection_id

@@ -48,6 +48,7 @@
      :creator       (user-details (db/select-one 'User :id (:creator_id pulse)))
      :cards         (map pulse-card-details (:cards pulse))
      :channels      (map pulse-channel-details (:channels pulse))
+     :collection_id $
      :skip_if_empty $}))
 
 (defn- pulse-response [{:keys [created_at updated_at], :as pulse}]
@@ -99,20 +100,25 @@
   (for [channel channels]
     (dissoc channel :id :pulse_id :created_at :updated_at)))
 
+(def ^:private pulse-defaults
+  {:created_at    true
+   :updated_at    true
+   :skip_if_empty false
+   :collection_id nil})
+
 (tt/expect-with-temp [Card [card1]
                       Card [card2]]
-  {:name          "A Pulse"
-   :creator_id    (user->id :rasta)
-   :creator       (user-details (fetch-user :rasta))
-   :created_at    true
-   :updated_at    true
-   :cards         (mapv pulse-card-details [card1 card2])
-   :channels      [(merge pulse-channel-defaults
-                          {:channel_type   "email"
-                           :schedule_type  "daily"
-                           :schedule_hour  12
-                           :recipients     []})]
-   :skip_if_empty false}
+  (merge
+   pulse-defaults
+   {:name       "A Pulse"
+    :creator_id (user->id :rasta)
+    :creator    (user-details (fetch-user :rasta))
+    :cards      (mapv pulse-card-details [card1 card2])
+    :channels   [(merge pulse-channel-defaults
+                        {:channel_type  "email"
+                         :schedule_type "daily"
+                         :schedule_hour 12
+                         :recipients    []})]})
   (tu/with-model-cleanup [Pulse]
     (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
                                                                   :cards         [{:id (:id card1)} {:id (:id card2)}]
@@ -128,19 +134,18 @@
 ;; Create a pulse with a csv and xls
 (tt/expect-with-temp [Card [card1]
                       Card [card2]]
-  {:name          "A Pulse"
-   :creator_id    (user->id :rasta)
-   :creator       (user-details (fetch-user :rasta))
-   :created_at    true
-   :updated_at    true
-   :cards         [(assoc (pulse-card-details card1) :include_csv true :include_xls true)
-                   (pulse-card-details card2)]
-   :channels      [(merge pulse-channel-defaults
-                          {:channel_type  "email"
-                           :schedule_type "daily"
-                           :schedule_hour 12
-                           :recipients    []})]
-   :skip_if_empty false}
+  (merge
+   pulse-defaults
+   {:name       "A Pulse"
+    :creator_id (user->id :rasta)
+    :creator    (user-details (fetch-user :rasta))
+    :cards      [(assoc (pulse-card-details card1) :include_csv true :include_xls true)
+                 (pulse-card-details card2)]
+    :channels   [(merge pulse-channel-defaults
+                        {:channel_type  "email"
+                         :schedule_type "daily"
+                         :schedule_hour 12
+                         :recipients    []})]})
   (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
                                                                 :cards         [{:id          (:id card1)
                                                                                  :include_csv true
@@ -190,18 +195,17 @@
 
 (tt/expect-with-temp [Pulse [pulse]
                       Card  [card]]
-  {:name          "Updated Pulse"
-   :creator_id    (user->id :rasta)
-   :creator       (user-details (fetch-user :rasta))
-   :created_at    true
-   :updated_at    true
-   :cards         [(pulse-card-details card)]
-   :channels      [(merge pulse-channel-defaults
-                          {:channel_type  "slack"
-                           :schedule_type "hourly"
-                           :details       {:channels "#general"}
-                           :recipients    []})]
-   :skip_if_empty false}
+  (merge
+   pulse-defaults
+   {:name       "Updated Pulse"
+    :creator_id (user->id :rasta)
+    :creator    (user-details (fetch-user :rasta))
+    :cards      [(pulse-card-details card)]
+    :channels   [(merge pulse-channel-defaults
+                        {:channel_type  "slack"
+                         :schedule_type "hourly"
+                         :details       {:channels "#general"}
+                         :recipients    []})]})
   (-> (pulse-response ((user->client :rasta) :put 200 (format "pulse/%d" (:id pulse))
                        {:name          "Updated Pulse"
                         :cards         [{:id (:id card)}]

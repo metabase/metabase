@@ -6,9 +6,10 @@
              [common :as api]]
             [metabase.models
              [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
              [collection :as collection :refer [Collection]]
              [interface :as mi]
-             [pulse :as pulse]]
+             [pulse :as pulse :refer [Pulse]]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -31,11 +32,16 @@
     (hydrate collections :can_write)))
 
 (api/defendpoint GET "/:id"
-  "Fetch a specific (non-archived) Collection, including cards that belong to it."
-  [id]
-  ;; TODO - hydrate the `:cards` that belong to this Collection
-  (assoc (api/read-check Collection id, :archived false)
-    :cards (db/select Card, :collection_id id, :archived false)))
+  "Fetch a specific (non-archived) Collection, including objects of a specific `model` that belong to it."
+  [id model]
+  {model (s/maybe (s/enum "cards" "dashboards" "pulses" "all"))}
+  (let [model (or (keyword model)
+                  :cards)]
+    (assoc (api/read-check Collection id, :archived false)
+      model (case model
+              :cards      (db/select Card,      :collection_id id, :archived false)
+              :dashboards (db/select Dashboard, :collection_id id, :archived false)
+              :pulses     (db/select Pulse,     :collection_id id)))))
 
 (api/defendpoint POST "/"
   "Create a new Collection."
