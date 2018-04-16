@@ -708,7 +708,7 @@
                        rule      (->> root
                                       (matching-rules rules)
                                       first)
-                       dashboard (make-dashboard root rule {})]
+                       dashboard (make-dashboard root rule {:tables [table]})]
                    {:url         (format "%stable/%s" public-endpoint (:id table))
                     :title       (:title dashboard)
                     :score       (+ (math/sq (rule-specificity rule))

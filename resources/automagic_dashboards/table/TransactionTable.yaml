@@ -1,4 +1,4 @@
-title: "It looks like your [[GenericTable]] table has transactions, so here's a look at them"
+title: "It looks like your [[this]] table has transactions, so here's a look at them"
 description: Some metrics we found about your transactions.
 metrics:
 - AvgDiscount:

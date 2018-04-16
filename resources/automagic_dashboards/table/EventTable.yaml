@@ -1,4 +1,4 @@
-title: "A summary of the events in your [[EventTable]] table"
+title: "A summary of the events in your [[this]] table"
 description: A look at your events over time and by several categories.
 metrics:
   - Count: ["count"]
