@@ -217,10 +217,10 @@
             (if group
               (let [xy   [(- start-row 2) 0]
                     card {:text                   (format "# %s" (:title group))
-                          :width                  (* 2  default-card-width)
+                          :width                  grid-width
                           :height                 group-heading-height
                           :visualization-settings {:dashcard.background false
-                                                   :text.align_vertical :center}}]
+                                                   :text.align_vertical :bottom}}]
                 [(add-text-card dashboard card xy)
                  (fill-grid grid xy card)])
               [dashboard grid])
