@@ -145,7 +145,7 @@
                          [(-> field :table_id Table :display_name)
                           (:display_name field)]
                          [(:display_name field)])
-             :field-id (:id field)
+             :field_id (:id field)
              :type     (filter-type field)
              :value    rhs
              :op       op}))))))
