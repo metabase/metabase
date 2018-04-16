@@ -250,15 +250,17 @@
 (defn create-dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard :all))
-  ([{:keys [title description groups filters cards]} n]
+  ([{:keys [title transient_title description groups filters cards refinements]} n]
    (let [n             (cond
                          (= n :all)   (count cards)
                          (keyword? n) (Integer/parseInt (name n))
                          :else        n)
-         dashboard     {:name          title
-                        :description   description
-                        :creator_id    api/*current-user-id*
-                        :parameters    []}
+         dashboard     {:name              title
+                        :transient_name    (or transient_title title)
+                        :transient_filters (magic.filters/applied-filters refinements)
+                        :description       description
+                        :creator_id        api/*current-user-id*
+                        :parameters        []}
          collection    (:id (automagic-collection))
          cards         (shown-cards n cards)
          [dashboard _] (->> cards

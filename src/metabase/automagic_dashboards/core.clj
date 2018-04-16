@@ -41,20 +41,18 @@
   {:entity       table
    :source-table table
    :database     (:db_id table)
-   :full-name    (str "table " (:display_name table))
+   :full-name    (str (:display_name table) " table" )
    :url          (format "%stable/%s" public-endpoint (:id table))
    :rules-prefix "table"})
 
 (defmethod ->root (type Segment)
   [segment]
-  (let [table     (-> segment :table_id Table)
-        full-name (str "segment " (:name segment))]
+  (let [table (-> segment :table_id Table) ]
     {:entity       segment
      :source-table table
      :database     (:db_id table)
      :query-filter (-> segment :definition :filter)
-     :full-name    full-name
-     :name-postfix (format " (%s)" full-name)
+     :full-name    (str (:name segment) " segment")
      :url          (format "%ssegment/%s" public-endpoint (:id segment))
      :rules-prefix "table"}))
 
@@ -64,7 +62,7 @@
     {:entity       metric
      :source-table table
      :database     (:db_id table)
-     :full-name    (str "metric " (:name metric))
+     :full-name    (str (:name metric) "metric")
      :url          (format "%smetric/%s" public-endpoint (:id metric))
      :rules-prefix "metric"}))
 
@@ -74,7 +72,7 @@
     {:entity       field
      :source-table table
      :database     (:db_id table)
-     :full-name    (str "field " (:display_name field))
+     :full-name    (str (:display_name field) "field ")
      :url          (format "%sfield/%s" public-endpoint (:id field))
      :rules-prefix "field"}))
 
@@ -477,7 +475,8 @@
     (as-> {:source-table (assoc source-table :fields (table->fields source-table))
            :tables       (map #(assoc % :fields (table->fields %)) tables)
            :database     (:database root)
-           :query-filter (:query-filter root)} context
+           :query-filter (merge-filter-clauses (:query-filter root)
+                                               (:refinements root))} context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
       (assoc context :metrics (resolve-overloading context (:metrics rule)))
       (assoc context :filters (resolve-overloading context (:filters rule)))
@@ -497,11 +496,16 @@
            (apply concat)))
 
 (defn- make-dashboard
-  [root rule context]
-  (-> rule
-      (select-keys [:title :description :groups])
-      (update :title str (:name-postfix root))
-      (instantiate-metadata context {"this" (:entity root)})))
+  ([root rule]
+   (make-dashboard root rule {:tables [(:source-table root)]}))
+  ([root rule context]
+   (-> rule
+       (select-keys [:title :description :groups :transient_title])
+       (cond->
+           (not (instance? (type Table) (:entity root)))
+         (assoc :title (str "Here's a closer look at your " (:full-name root))))
+       (instantiate-metadata context {"this" (:entity root)})
+       (assoc :refinements (:refinements root)))))
 
 (defn- apply-rule
   [root rule]
@@ -527,9 +531,9 @@
         rule      (->> root
                        (matching-rules (rules/load-rules (:rules-prefix root)))
                        first)
-        dashboard (make-dashboard root rule {:tables [(:source-table root)]})]
+        dashboard (make-dashboard root rule)]
     {:url         (:url root)
-     :title       (:title dashboard)
+     :title       (:full-name root)
      :description (:description dashboard)}))
 
 (defn- others
@@ -627,18 +631,14 @@
 (defmethod automagic-analysis (type Card)
   [card opts]
   (if (table-like? card)
-    (let [table     (-> card :table_id Table)
-          full-name (str "question " (:name card))]
+    (let [table (-> card :table_id Table)]
       (automagic-dashboard
-       (merge (update opts :query-filter merge-filter-clauses (-> card
-                                                                  :dataset_query
-                                                                  :query
-                                                                  :filter))
+       (merge opts
               {:entity       card
                :source-table table
+               :query-filter (-> card :dataset_query :query :filter)
                :database     (:db_id table)
-               :full-name    full-name
-               :name-postfix (format " (%s)" full-name)
+               :full-name    (str  (:name card) " question")
                :url          (format "%squestion/%s" public-endpoint (:id card))
                :rules-prefix "table"})))
     nil))
@@ -646,18 +646,19 @@
 (defmethod automagic-analysis (type Query)
   [query opts]
   (if (table-like? query)
-    (let [table     (-> query :table-id Table)
-          full-name (str "ad-hoc question " (:name query))]
+    (let [table (-> query :table-id Table)]
       (automagic-dashboard
-       (merge (update opts :query-filter merge-filter-clauses (-> query
-                                                                  :dataset_query
-                                                                  :query
-                                                           :filter))
+       (merge (update opts :refinements merge-filter-clauses (-> query
+                                                                 :dataset_query
+                                                                 :query
+                                                                 :filter))
               {:entity       query
                :source-table table
                :database     (:db_id table)
-               :full-name    full-name
-               :name-postfix (format " (%s)" full-name)
+               :full-name    (->> [(:name query) "ad-hoc question"]
+                                  (filter some?)
+                                  (str/join " ")
+                                  str/capitalize)
                :url          (format "%sadhoc/%s" public-endpoint
                                      (-> query
                                          json/encode
@@ -701,16 +702,13 @@
           (map enhanced-table-stats)
           (remove (comp (some-fn :link-table? :list-like-table?) :stats))
           (map (fn [table]
-                 (let [root      {:entity       table
-                                  :source-table table
-                                  :database     (:db_id table)
-                                  :rules-prefix "table"}
+                 (let [root      (->root table)
                        rule      (->> root
                                       (matching-rules rules)
                                       first)
-                       dashboard (make-dashboard root rule {:tables [table]})]
+                       dashboard (make-dashboard root rule)]
                    {:url         (format "%stable/%s" public-endpoint (:id table))
-                    :title       (:title dashboard)
+                    :title       (:full-name root)
                     :score       (+ (math/sq (rule-specificity rule))
                                     (math/log (-> table :stats :num-fields)))
                     :description (:description dashboard)

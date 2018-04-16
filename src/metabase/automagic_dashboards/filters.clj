@@ -1,6 +1,8 @@
 (ns metabase.automagic-dashboards.filters
   (:require [clojure.string :as str]
-            [metabase.models.field :refer [Field] :as field]
+            [metabase.models
+             [field :refer [Field] :as field]
+             [table :refer [Table]]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -17,21 +19,17 @@
   (complement (s/checker FieldIdForm)))
 
 (defn collect-field-references
-  "Collect all field references (`[:field-id]` or `[:fk->]` forms) in `:breakout` and
-   `:fields` sections of a card's query."
-  [card]
-  (->> card
-       :dataset_query
-       :query
-       ((juxt :breakout :fields))
-       (tree-seq sequential? identity)
-       (filter field-form?)
-       (map last)))
+  "Collect all field references (`[:field-id]` or `[:fk->]` forms) from a given form."
+  [form]
+  (->> form
+       (tree-seq (some-fn sequential? map?) identity)
+       (filter field-form?)))
 
 (defn- candidates-for-filtering
   [cards]
   (->> cards
        (mapcat collect-field-references)
+       (map last)
        distinct
        (map Field)
        (filter (fn [{:keys [base_type special_type] :as field}]
@@ -69,6 +67,7 @@
       mappings                (update dashcard :parameter_mappings concat mappings))))
 
 (defn- filter-type
+  "Return filter type for a given field."
   [{:keys [base_type special_type] :as field}]
   (cond
     (isa? base_type :type/DateTime)    "date/all-options"
@@ -128,3 +127,24 @@
                                                :slug (:name candidate)}))
                  dashboard)))
            dashboard)))))
+
+(defn applied-filters
+  "Extract fields and their values from MBQL filter clauses."
+  [filter-clause]
+  (println filter-clause)
+  (when filter-clause
+    (if (-> filter-clause first qp.util/normalize-token (#{:and :not :or}))
+      (mapcat applied-filters (rest filter-clause))
+      (let [[_ lhs rhs & _] filter-clause]
+        (for [field-reference (collect-field-references lhs)]
+          (let [field (-> field-reference last Field)]
+            {:field    (if (-> field-reference
+                               first
+                               qp.util/normalize-token
+                               (= :fk->))
+                         [(-> field :table_id Table :display_name)
+                          (:display_name field)]
+                         [(:display_name field)])
+             :field-id (:id field)
+             :type     (filter-type field)
+             :value    rhs}))))))

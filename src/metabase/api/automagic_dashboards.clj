@@ -74,8 +74,8 @@
   (-> id
       Card
       api/check-404
-      (magic/automagic-analysis {:show         (keyword show)
-                                 :query-filter (decode-base64-json cell-query)})))
+      (magic/automagic-analysis {:show        (keyword show)
+                                 :refinements (decode-base64-json cell-query)})))
 
 (api/defendpoint GET "/question/:id/cell/:cell-query/:prefix/:rule"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
@@ -84,9 +84,9 @@
   (-> id
       Card
       api/check-404
-      (magic/automagic-analysis {:show         (keyword show)
-                                 :rule         (load-rule "table" prefix rule)
-                                 :query-filter (decode-base64-json cell-query)})))
+      (magic/automagic-analysis {:show        (keyword show)
+                                 :rule        (load-rule "table" prefix rule)
+                                 :refinements (decode-base64-json cell-query)})))
 
 (api/defendpoint GET "/metric/:id"
   "Return an automagic dashboard analyzing metric with id `id`."
@@ -118,8 +118,8 @@
         cell-query (decode-base64-json cell-query)]
     (-> query
         query/adhoc-query
-        (magic/automagic-analysis {:show         (keyword show)
-                                   :query-filter cell-query}))))
+        (magic/automagic-analysis {:show        (keyword show)
+                                   :refinements cell-query}))))
 
 (def ^:private valid-comparison-pair?
   #{["segment" "segment"]
