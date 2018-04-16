@@ -163,7 +163,7 @@ export default class PostSetupApp extends Component {
                   description={
                     isSample
                       ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                      : t`I took a look at the data you just connected, and I put together some explorations of interesting metrics I found. Hope you like them!`
+                      : t`I took a look at the data you just connected, and I have some explorations of interesting thing I found. Hope you like them!`
                   }
                 />
               </BorderedPanel>
