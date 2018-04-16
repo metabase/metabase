@@ -205,8 +205,6 @@
   [dashboard grid group cards]
   (let [start-row (bottom-row grid)
         start-row (cond-> start-row
-                    ;; First row doesn't need empty space above
-                    (pos? start-row) inc
                     group            (+ group-heading-height))]
     (reduce (fn [[dashboard grid] card]
               (let [xy (card-position grid start-row card)]
@@ -217,10 +215,10 @@
             (if group
               (let [xy   [(- start-row 2) 0]
                     card {:text                   (format "# %s" (:title group))
-                          :width                  (* 2  default-card-width)
+                          :width                  grid-width
                           :height                 group-heading-height
                           :visualization-settings {:dashcard.background false
-                                                   :text.align_vertical :center}}]
+                                                   :text.align_vertical :bottom}}]
                 [(add-text-card dashboard card xy)
                  (fill-grid grid xy card)])
               [dashboard grid])

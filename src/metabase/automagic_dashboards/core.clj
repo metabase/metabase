@@ -108,12 +108,12 @@
                     :else              [:field-id id])]
     (cond
       (isa? base_type :type/DateTime)
-      [:datetime-field reference (or aggregation (optimal-datetime-resolution field))]
+      [:datetime-field reference (or aggregation
+                                     (optimal-datetime-resolution field))]
 
       (and aggregation
            ; We don't handle binning on non-analyzed fields gracefully
-           (or (not (isa? base_type :type/Number))
-               (-> fingerprint :type :type/Number :min)))
+           (-> fingerprint :type :type/Number :min))
       [:binning-strategy reference aggregation]
 
       :else
@@ -145,7 +145,9 @@
 
 (defmethod ->reference :default
   [_ form]
-  form)
+  (or (cond-> form
+        (map? form) :name)
+      form))
 
 (defn- field-isa?
   [{:keys [base_type special_type]} t]
@@ -476,7 +478,7 @@
            :tables       (map #(assoc % :fields (table->fields %)) tables)
            :database     (:database root)
            :query-filter (merge-filter-clauses (:query-filter root)
-                                               (:refinements root))} context
+                                               (:cell-query root))} context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
       (assoc context :metrics (resolve-overloading context (:metrics rule)))
       (assoc context :filters (resolve-overloading context (:filters rule)))
@@ -501,11 +503,8 @@
   ([root rule context]
    (-> rule
        (select-keys [:title :description :groups :transient_title])
-       (cond->
-           (not (instance? (type Table) (:entity root)))
-         (assoc :title (str "Here's a closer look at your " (:full-name root))))
        (instantiate-metadata context {"this" (:entity root)})
-       (assoc :refinements (:refinements root)))))
+       (assoc :refinements (:cell-query root)))))
 
 (defn- apply-rule
   [root rule]
@@ -568,44 +567,42 @@
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [rule show rules-prefix] :as root}]
-  (if-let [[dashboard rule]
-           (if rule
-             (apply-rule root rule)
-             (->> root
-                  (matching-rules (rules/load-rules rules-prefix))
-                  (keep (partial apply-rule root))
-                  ;; `matching-rules` returns an `ArraySeq` (via `sort-by`) so
-                  ;; `first` realises one element at a time (no chunking).
-                  first))]
-    (do
-      (log/info (format "Applying heuristic %s to %s."
-                        (:rule rule)
-                        (:full-name root)))
-      (log/info (format "Dimensions bindings:\n%s"
-                        (->> dashboard
-                             :context
-                             :dimensions
-                             (m/map-vals #(update % :matches (partial map :name)))
-                             u/pprint-to-str)))
-      (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
-                        (-> dashboard :context :metrics u/pprint-to-str)
-                        (-> dashboard :context :filters u/pprint-to-str)))
-      (-> (populate/create-dashboard dashboard (or show max-cards))
-          (assoc :related (-> (related root rule)
-                              (assoc :more (if (and (-> dashboard
-                                                        :cards
-                                                        count
-                                                        (> max-cards))
-                                                    (not= show :all))
-                                             [{:title       "Show more"
-                                               :description nil
-                                               :table       (:source-table root)
-                                               :url         (format "%s#show=all"
-                                                                    (:url root))}]
-                                             []))))))
-    (log/info (format "Skipping %s: no cards fully match bound dimensions."
-                      (:full-name root)))))
+  [{:keys [rule show rules-prefix query-filter cell-query full-name] :as root}]
+  (let [[dashboard rule] (if rule
+                           (apply-rule root rule)
+                           (->> root
+                                (matching-rules (rules/load-rules rules-prefix))
+                                (keep (partial apply-rule root))
+                                ;; `matching-rules` returns an `ArraySeq`
+                                ;; (via `sort-by`) so `first` realises one element
+                                ;; at a time (no chunking).
+                                first))]
+    (log/info (format "Applying heuristic %s to %s." (:rule rule) full-name))
+    (log/info (format "Dimensions bindings:\n%s"
+                      (->> dashboard
+                           :context
+                           :dimensions
+                           (m/map-vals #(update % :matches (partial map :name)))
+                           u/pprint-to-str)))
+    (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
+                      (-> dashboard :context :metrics u/pprint-to-str)
+                      (-> dashboard :context :filters u/pprint-to-str)))
+    (-> (cond-> dashboard
+          (or query-filter cell-query)
+          (assoc :title (str "Here's a closer look at your " full-name)))
+        (populate/create-dashboard (or show max-cards))
+        (assoc :related (-> (related root rule)
+                            (assoc :more (if (and (-> dashboard
+                                                      :cards
+                                                      count
+                                                      (> max-cards))
+                                                  (not= show :all))
+                                           [{:title       "Show more"
+                                             :description nil
+                                             :table       (:source-table root)
+                                             :url         (format "%s#show=all"
+                                                                  (:url root))}]
+                                           [])))))))
 
 (def ^:private ^{:arglists '([card])} table-like?
   (comp empty? :aggregation :query :dataset_query))
@@ -628,39 +625,49 @@
   [metric opts]
   (automagic-dashboard (merge opts (->root metric))))
 
+(def ^:private ^{:arglists '([x])} endocde-base64-json
+  (comp codec/base64-encode codecs/str->bytes json/encode))
+
 (defmethod automagic-analysis (type Card)
-  [card opts]
-  (if (table-like? card)
+  [card {:keys [cell-query] :as opts}]
+  (if (or (table-like? card)
+          cell-query)
     (let [table (-> card :table_id Table)]
       (automagic-dashboard
        (merge opts
-              {:entity       card
+              {:entity       table
                :source-table table
                :query-filter (-> card :dataset_query :query :filter)
                :database     (:db_id table)
                :full-name    (str (:name card) " question")
-               :url          (format "%squestion/%s" public-endpoint (:id card))
+               :url          (if cell-query
+                               (format "%squestion/%s/cell/%s" public-endpoint
+                                       (:id card)
+                                       (endocde-base64-json cell-query))
+                               (format "%squestion/%s" public-endpoint (:id card)))
                :rules-prefix "table"})))
     nil))
 
 (defmethod automagic-analysis (type Query)
-  [query opts]
-  (if (table-like? query)
+  [query {:keys [cell-query] :as opts}]
+  (if (or (table-like? query)
+          (:cell-query opts))
     (let [table (-> query :table-id Table)]
       (automagic-dashboard
-       (merge (update opts :refinements merge-filter-clauses (-> query
-                                                                 :dataset_query
-                                                                 :query
-                                                                 :filter))
-              {:entity       query
+       (merge (update opts :cell-query merge-filter-clauses (-> query
+                                                                :dataset_query
+                                                                :query
+                                                                :filter))
+              {:entity       table
                :source-table table
                :database     (:db_id table)
                :full-name    (:display_name table)
-               :url          (format "%sadhoc/%s" public-endpoint
-                                     (-> query
-                                         json/encode
-                                         codecs/str->bytes
-                                         codec/base64-encode))
+               :url          (if cell-query
+                               (format "%sadhoc/%s/cell/%s" public-endpoint
+                                       (endocde-base64-json query)
+                                       (endocde-base64-json cell-query))
+                               (format "%sadhoc/%s" public-endpoint
+                                                   (endocde-base64-json query)))
                :rules-prefix "table"})))
     nil))
 
