@@ -1,5 +1,5 @@
 title: "A quick look at your [[GenericTable]] table"
-description: An overview of [[GenericTable]] and how it's distributed across time, place, and categories.
+description: An overview of your [[GenericTable]] table and how it's distributed across time, place, and categories.
 metrics:
   - Count: ["count"]
   - CountDistinctFKs: [distinct, [dimension, FK]]

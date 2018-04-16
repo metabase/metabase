@@ -62,7 +62,7 @@
     {:entity       metric
      :source-table table
      :database     (:db_id table)
-     :full-name    (str (:name metric) "metric")
+     :full-name    (str (:name metric) " metric")
      :url          (format "%smetric/%s" public-endpoint (:id metric))
      :rules-prefix "metric"}))
 
