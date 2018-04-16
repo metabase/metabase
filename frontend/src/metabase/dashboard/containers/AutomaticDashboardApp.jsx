@@ -139,7 +139,7 @@ const TransientTitle = ({ dashboard }) =>
   ) : null;
 
 const TransientFilters = ({ filters }) => (
-  <div className="mt1 flex align-center text-grey-3 text-bold">
+  <div className="mt1 flex align-center text-grey-4 text-bold">
     {filters.map((filter, index) => (
       <TransientFilter key={index} filter={filter} />
     ))}
