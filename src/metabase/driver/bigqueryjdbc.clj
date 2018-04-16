@@ -41,14 +41,7 @@
 ;;; ----------------------------------------------------- Client -----------------------------------------------------
 
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
-  (.build (doto (Bigquery$Builder.
-                 google/http-transport
-                 google/json-factory
-                 (reify HttpRequestInitializer
-                   (initialize [this httpRequest]
-                     (.initialize credential httpRequest)
-                     (.setConnectTimeout httpRequest 0)
-                     (.setReadTimeout httpRequest 0))))
+  (.build (doto (Bigquery$Builder. google/http-transport google/json-factory credential)
             (.setApplicationName google/application-name))))
 
 (def ^:private ^{:arglists '([database])} ^GoogleCredential database->credential
@@ -129,13 +122,11 @@
   ([^Bigquery client, ^String project-id, ^String query-string]
    {:pre [client (seq project-id) (seq query-string)]}
    (let [request (doto (QueryRequest.)
-                   (.setTimeoutMs (* query-timeout-seconds 10000))
+                   (.setTimeoutMs (* query-timeout-seconds 100000))
                    ;; if the query contains a `#standardSQL` directive then use Standard SQL instead of legacy SQL
                    (.setUseLegacySql (str/includes? (str/lower-case query-string) "#legacysql"))
-                  (prn query-string)
-                  (prn "-- After Regex Replace --")
-                  (prn (str/replace (str/replace (str/replace query-string #"\[[^]]+\.[^]]+\.([^]]+)\]" "$1") "[" "`") "]" "`"))
-                   (.setQuery (str/replace (str/replace (str/replace query-string #"\[[^]]+\.[^]]+\.([^]]+)\]" "$1") "[" "`") "]" "`")))]
+                   (log/info query-string)
+                   (.setQuery query-string ))]
      (google/execute (.query (.jobs client) project-id request)))))
 
 (def ^:private ^java.util.TimeZone default-timezone
@@ -217,7 +208,7 @@
   (hx/->timestamp (microseconds->str format-str timestamp)))
 
 (defn- fetch-day [timestamp]
-  (hx/->timestamp (hsql/call :safe-cast timestamp :timestamp)))
+  (hsql/call :timestamp_trunc (hsql/call :safe-cast timestamp :timestamp) :day))
 
 ;; register the safe_cast function with HoneySQL
 (defmethod hformat/fn-handler "safe-cast" [_ expr type-to-cast]
@@ -272,14 +263,20 @@
 (defn- honeysql-form [outer-query]
   (sqlqp/build-honeysql-form driver outer-query))
 
+(defn replace-query-content [sql]
+  (log/info sql)
+  (str/replace (str/replace (str/replace (str/replace sql "[." "[") #"\[[^]]+\.[^]]+\.([^]]+)\]" "$1") "[" "") "]" ""))
+
 (defn- honeysql-form->sql ^String [honeysql-form]
   {:pre [(map? honeysql-form)]}
   ;; replace identifiers like [shakespeare].[word] with ones like [shakespeare.word] since that's hat BigQuery expects
+  ;; then replace it with ones like `shakespear.word` since that's BigQuery Standard SQL
   (let [[sql & args] (sql/honeysql-form->sql+args driver honeysql-form)
         sql          (str/replace (hx/unescape-dots sql) #"\]\.\[" ".")]
+        ; sql (hx/unescape-dots sql)]
     (assert (empty? args)
       "BigQuery statements can't be parameterized!")
-    sql))
+    (replace-query-content sql)))
 
 (defn- post-process-mbql [schema table-name {:keys [columns rows]}]
   ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset
@@ -301,7 +298,7 @@
           sql           (honeysql-form->sql honeysql-form)]
       {:query      sql
        :table-name table-name
-       :mbql?      true})))
+       :mbql?      false})))
 
 (defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, params :params, :keys [schema table-name mbql?]} :native, :as outer-query}]
   (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
@@ -329,11 +326,10 @@
   [_ date]
   (hsql/call :timestamp (hx/literal (u/date->iso-8601 date))))
 
-
 (defn- field->alias [{:keys [^String schema-name, ^String field-name, ^String table-name, ^Integer index, field], :as this}]
   {:pre [(map? this) (or field
                          index
-                         (and (seq schema-name) (seq field-name) (seq table-name))
+                         (and (seq field-name) (seq table-name))
                          (log/error "Don't know how to alias: " this))]}
   (cond
     field (recur field) ; type/DateTime
@@ -342,7 +338,7 @@
                   (if (= ag-type :distinct)
                     :count
                     ag-type)))
-    :else (str schema-name \. table-name \. field-name)))
+    :else (str field-name)))
 
 ;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is
 ;; currently only used for SQL params so it's not a huge deal at this point
@@ -430,7 +426,7 @@
 
 
 (defn- field->breakout-identifier [field]
-  (hsql/raw (str \[ (field->alias field) \])))
+  (hsql/raw (str (field->alias field))))
 
 (defn- apply-breakout [driver honeysql-form {breakout-fields :breakout, fields-fields :fields}]
   (-> honeysql-form
@@ -442,14 +438,40 @@
                                             :when (not (contains? (set fields-fields) field))]
                                         (sqlqp/as driver (sqlqp/->honeysql driver field) field)))))
 
-(defn- apply-join-tables
-  "Copy of the Generic SQL implementation of `apply-join-tables`, but prepends schema (dataset-id) to join-alias."
+; (defn- apply-join-tables
+;   "Copy of the Generic SQL implementation of `apply-join-tables`, but prepends schema (dataset-id) to join-alias."
+;   [honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
+;   (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
+;     (let [honeysql-form (h/merge-left-join honeysql-form
+;                           [(hx/qualify-and-escape-dots schema table-name) (hx/qualify-and-escape-dots schema join-alias)]
+;                           [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
+;                               (hx/qualify-and-escape-dots schema join-alias               (:field-name pk-field))])]
+;       (if (seq more)
+;         (recur honeysql-form more)
+;         honeysql-form))))
+
+(defn print-test [value]
+  (prn "PRINTING THIS VARIABLE >>>>> " value)
+  value)
+
+(defn- apply-breakout [driver honeysql-form {breakout-fields :breakout, fields-fields :fields}]
+  (-> honeysql-form
+      ;; Group by all the breakout fields
+      ((partial apply h/group)  (map field->breakout-identifier breakout-fields))
+      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
+      ;; twice, or HoneySQL will barf
+      ((partial apply h/merge-select) (for [field breakout-fields
+                                            :when (not (contains? (set fields-fields) field))]
+                                        (sqlqp/as driver (sqlqp/->honeysql driver field) field)))))
+
+(defn apply-join-tables
+  "Apply expanded query `join-tables` clause to HONEYSQL-FORM. Default implementation of `apply-join-tables` for SQL drivers."
   [honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
   (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
     (let [honeysql-form (h/merge-left-join honeysql-form
-                          [(hx/qualify-and-escape-dots schema table-name) (hx/qualify-and-escape-dots schema join-alias)]
+                          [(hx/qualify-and-escape-dots schema table-name) (print-test join-alias)]
                           [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
-                              (hx/qualify-and-escape-dots schema join-alias               (:field-name pk-field))])]
+                              (hx/qualify-and-escape-dots join-alias                      (:field-name pk-field))])]
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))
@@ -572,15 +594,14 @@
 
                  sql/ISQLDriver
                  (merge (sql/ISQLDriverDefaultsMixin)
-                        {:apply-aggregation         apply-aggregation
-                         :apply-breakout            apply-breakout
-                         :apply-join-tables         (u/drop-first-arg apply-join-tables)
-                         :apply-order-by            (u/drop-first-arg apply-order-by)
-                         :column->base-type         (sql/pattern-based-column->base-type pattern->type)
+                        {:column->base-type         (sql/pattern-based-column->base-type pattern->type)
                          :connection-details->spec  (u/drop-first-arg connection-details->spec)
                          :current-datetime-fn       (constantly :%current_timestamp)
                          :date                      (u/drop-first-arg date)
+                         :apply-join-tables         (u/drop-first-arg apply-join-tables)
+                         :apply-breakout            apply-breakout
                          :field->alias              (u/drop-first-arg field->alias)
+                        ;  :field->alias              (constantly nil)
                          :field->identifier         (u/drop-first-arg field->identifier)
                          ;; we want identifiers quoted [like].[this] initially (we have to convert them to [like.this] before
                          ;; executing)
