@@ -1,4 +1,4 @@
-title: "An exploration of [[GenericTable]] per source"
+title: "[[GenericTable]] per source"
 description: Where most of your traffic is coming from.
 applies_to: TransactionTable
 metrics:
