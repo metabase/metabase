@@ -38,11 +38,11 @@ groups:
   - Geographical:
       title: "[[this]] by location"
   - Categories:
-      title: How [[this]] is distributed across different categories
+      title: How [[this]] is distributed
   - Numbers:
       title: How [[this]] is distributed across different numbers
   - LargeCategories:
-      title: Top and bottom [[this]] per other categories
+      title: Top and bottom [[this]]
 dashboard_filters:
   - Timestamp
   - State

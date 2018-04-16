@@ -1,4 +1,4 @@
-title: "Here's an overview of your [[this]] table"
+title: "Here's an overview of your [[GenericTable]] table"
 description: An exploration of your users to get you started.
 metrics:
 - Count:
@@ -46,7 +46,7 @@ groups:
 - Geographical:
     title: Where your users are
 - General:
-    title: How your users are distributed across different categories
+    title: How your users are distributed
 dashboard_filters:
 - JoinDate
 - GenericCategoryMedium
