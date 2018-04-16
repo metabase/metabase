@@ -205,8 +205,6 @@
   [dashboard grid group cards]
   (let [start-row (bottom-row grid)
         start-row (cond-> start-row
-                    ;; First row doesn't need empty space above
-                    (pos? start-row) inc
                     group            (+ group-heading-height))]
     (reduce (fn [[dashboard grid] card]
               (let [xy (card-position grid start-row card)]
