@@ -41,7 +41,7 @@
   {:entity       table
    :source-table table
    :database     (:db_id table)
-   :full-name    (str (:display_name table) " table" )
+   :full-name    (:display_name table)
    :url          (format "%stable/%s" public-endpoint (:id table))
    :rules-prefix "table"})
 
@@ -655,7 +655,7 @@
               {:entity       query
                :source-table table
                :database     (:db_id table)
-               :full-name    (str (:display_name table) " table" )
+               :full-name    (:display_name table)
                :url          (format "%sadhoc/%s" public-endpoint
                                      (-> query
                                          json/encode
