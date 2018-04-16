@@ -61,10 +61,12 @@ filters:
   - NewUsers:
       filter: ["time-interval", [dimension, Cohort], -30, day]
 groups:
+- Overview:
+    title: Transactions per source over time
 - Financial:
-    title: Financial
+    title: Orders and income per source
 - UserAcquisition:
-    title: User acquisition
+    title: Where users are coming from
 dashboard_filters:
 - SourceMedium
 - SourceLarge
@@ -75,7 +77,8 @@ dashboard_filters:
 - ProductCategory
 cards:
 - OrdersBySourceTimeseries:
-    title: Sales by source
+    group: Overview
+    title: Transactions per source
     visualization:
       area:
         stackable.stack_type: stacked
@@ -88,7 +91,7 @@ cards:
     height: 8
 - OrderBySource:
     group: Financial
-    title: Total orders by source
+    title: Total orders per source
     visualization: row
     dimensions: SourceLarge
     metrics: TotalOrders
@@ -98,7 +101,7 @@ cards:
     height: 8
 - IncomeBySource:
     group: Financial
-    title: Total income by source
+    title: Total income per source
     visualization: row
     dimensions: SourceMedium
     metrics: TotalIncome
@@ -108,7 +111,7 @@ cards:
     height: 8
 - AvgQuantityBySource:
     group: Financial
-    title: Average qunatity by source
+    title: Average quantity per source
     visualization: row
     dimensions: SourceMedium
     metrics: AvgQuantity
@@ -118,7 +121,7 @@ cards:
     height: 8
 - AvgIncomeBySource:
    group: Financial
-   title: Average income by source
+   title: Average income per source
    visualization: row
    dimensions: SourceMedium
    metrics: AvgIncome
