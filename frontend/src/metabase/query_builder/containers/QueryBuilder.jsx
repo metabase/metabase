@@ -168,14 +168,17 @@ export default class QueryBuilder extends Component {
     ) {
       // the browser forward/back button was pressed
       this.props.popState(nextProps.location);
-    } else if (
-      nextProps.location.action === "PUSH" &&
-      getURL(nextProps.location) !== getURL(this.props.location) &&
-      nextProps.question &&
-      getURL(nextProps.location) !== nextProps.question.getUrl()
-    ) {
-      // a link to a different qb url was clicked
-      this.props.initializeQB(nextProps.location, nextProps.params);
+      // NOTE: Tom Robinson 4/16/2018: disabled for now. this is to enable links
+      // from qb to other qb questions but it's also triggering when changing
+      // the display type
+      // } else if (
+      //   nextProps.location.action === "PUSH" &&
+      //   getURL(nextProps.location) !== getURL(this.props.location) &&
+      //   nextProps.question &&
+      //   getURL(nextProps.location) !== nextProps.question.getUrl()
+      // ) {
+      //   // a link to a different qb url was clicked
+      //   this.props.initializeQB(nextProps.location, nextProps.params);
     } else if (
       this.props.location.hash !== "#?tutorial" &&
       nextProps.location.hash === "#?tutorial"
