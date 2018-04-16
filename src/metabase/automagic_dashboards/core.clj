@@ -108,12 +108,12 @@
                     :else              [:field-id id])]
     (cond
       (isa? base_type :type/DateTime)
-      [:datetime-field reference (or aggregation (optimal-datetime-resolution field))]
+      [:datetime-field reference (or aggregation
+                                     (optimal-datetime-resolution field))]
 
       (and aggregation
            ; We don't handle binning on non-analyzed fields gracefully
-           (or (not (isa? base_type :type/Number))
-               (-> fingerprint :type :type/Number :min)))
+           (-> fingerprint :type :type/Number :min))
       [:binning-strategy reference aggregation]
 
       :else
