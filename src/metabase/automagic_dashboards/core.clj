@@ -655,9 +655,7 @@
               {:entity       query
                :source-table table
                :database     (:db_id table)
-               :full-name    (->> [(:name query) "ad-hoc question"]
-                                  (filter some?)
-                                  (str/join " "))
+               :full-name    (str (:display_name table) " table" )
                :url          (format "%sadhoc/%s" public-endpoint
                                      (-> query
                                          json/encode
