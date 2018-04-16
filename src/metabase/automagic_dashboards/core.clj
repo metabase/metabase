@@ -533,7 +533,7 @@
                        first)
         dashboard (make-dashboard root rule)]
     {:url         (:url root)
-     :title       (:full-name root)
+     :title       (-> root :full-name str/capitalize)
      :description (:description dashboard)}))
 
 (defn- others
@@ -638,7 +638,7 @@
                :source-table table
                :query-filter (-> card :dataset_query :query :filter)
                :database     (:db_id table)
-               :full-name    (str  (:name card) " question")
+               :full-name    (str (:name card) " question")
                :url          (format "%squestion/%s" public-endpoint (:id card))
                :rules-prefix "table"})))
     nil))
@@ -657,8 +657,7 @@
                :database     (:db_id table)
                :full-name    (->> [(:name query) "ad-hoc question"]
                                   (filter some?)
-                                  (str/join " ")
-                                  str/capitalize)
+                                  (str/join " "))
                :url          (format "%sadhoc/%s" public-endpoint
                                      (-> query
                                          json/encode

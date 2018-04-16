@@ -135,7 +135,7 @@
   (when filter-clause
     (if (-> filter-clause first qp.util/normalize-token (#{:and :not :or}))
       (mapcat applied-filters (rest filter-clause))
-      (let [[_ lhs rhs & _] filter-clause]
+      (let [[op lhs rhs & _] filter-clause]
         (for [field-reference (collect-field-references lhs)]
           (let [field (-> field-reference last Field)]
             {:field    (if (-> field-reference
@@ -147,4 +147,5 @@
                          [(:display_name field)])
              :field-id (:id field)
              :type     (filter-type field)
-             :value    rhs}))))))
+             :value    rhs
+             :op       op}))))))
