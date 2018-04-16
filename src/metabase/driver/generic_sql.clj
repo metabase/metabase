@@ -46,14 +46,15 @@
   ;; `HONEYSQL-FORM`. Most drivers can use the default implementations for all of these methods, but some may need to
   ;; override one or more (e.g. SQL Server needs to override the behavior of `apply-limit`, since T-SQL uses `TOP`
   ;; instead of `LIMIT`).
-  (apply-aggregation [this honeysql-form, ^Map query] "*OPTIONAL*.")
-  (apply-breakout    [this honeysql-form, ^Map query] "*OPTIONAL*.")
-  (apply-fields      [this honeysql-form, ^Map query] "*OPTIONAL*.")
-  (apply-filter      [this honeysql-form, ^Map query] "*OPTIONAL*.")
-  (apply-join-tables [this honeysql-form, ^Map query] "*OPTIONAL*.")
-  (apply-limit       [this honeysql-form, ^Map query] "*OPTIONAL*.")
-  (apply-order-by    [this honeysql-form, ^Map query] "*OPTIONAL*.")
-  (apply-page        [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-source-table [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-aggregation  [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-breakout     [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-fields       [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-filter       [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-join-tables  [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-limit        [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-order-by     [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-page         [this honeysql-form, ^Map query] "*OPTIONAL*.")
 
   (column->base-type ^clojure.lang.Keyword [this, ^Keyword column-type]
     "Given a native DB column type, return the corresponding `Field` `base-type`.")
@@ -389,6 +390,7 @@
   {:active-tables        fast-active-tables
    ;; don't resolve the vars yet so during interactive dev if the underlying impl changes we won't have to reload all
    ;; the drivers
+   :apply-source-table   (resolve 'metabase.driver.generic-sql.query-processor/apply-source-table)
    :apply-aggregation    (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation)
    :apply-breakout       (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout)
    :apply-fields         (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)

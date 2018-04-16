@@ -156,3 +156,12 @@
   [table :- i/TableInstance]
   (when-let [fields (fields-to-fingerprint table)]
     (fingerprint-table! table fields)))
+
+(s/defn fingerprint-fields-for-db!
+  "Invokes `fingerprint-fields!` on every table in `database`"
+  [database :- i/DatabaseInstance
+   tables :- [i/TableInstance]
+   log-progress-fn]
+  (doseq [table tables]
+    (fingerprint-fields! table)
+    (log-progress-fn "fingerprint-fields" table)))
