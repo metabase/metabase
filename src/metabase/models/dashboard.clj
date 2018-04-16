@@ -257,7 +257,7 @@
            (map (fn [{:keys [field op value]}]
                   (format "%s %s %s" (str/join " " field) op value)))
            (str/join "\n")
-           (str "Applied filters:\n")))
+           (str "Filtered by:\n")))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of dashboard."
