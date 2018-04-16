@@ -22,7 +22,6 @@ import { getCard, getQuestion } from "metabase/query_builder/selectors";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import Radio from "metabase/components/Radio";
 import { LOAD_COLLECTIONS } from "metabase/questions/collections";
-import { CardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 import VisualizationSettings from "metabase/query_builder/components/VisualizationSettings";
 import Popover from "metabase/components/Popover";
@@ -40,7 +39,6 @@ const timeBreakoutQuestion = Question.create({
   .setDisplayName("Time breakout question");
 
 describe("Query Builder visualization logic", () => {
-  let questionId = null;
   let savedTimeBreakoutQuestion = null;
   let app;
 
