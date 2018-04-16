@@ -25,8 +25,6 @@
 
 (def ^:private Show (s/maybe (s/enum "all")))
 
-(def ^:private Rule s/Str)
-
 (def ^:private Prefix (->> ["table" "metric" "field"]
                            (mapcat rules/load-rules)
                            (filter :indepth)
