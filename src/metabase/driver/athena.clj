@@ -2,6 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [clojure
+             [set :as set]
              [string :as string]
              [walk :as walk]]
             [honeysql
@@ -24,8 +25,12 @@
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
 
-  (:import [java.sql DriverManager]
+  (:import [java.sql DriverManager ResultSet]
            [java.util Properties]))
+
+(defrecord AthenaDriver []
+  clojure.lang.Named
+  (getName [_] "Athena"))
 
 (comment
  ; for REPL testing
@@ -34,7 +39,7 @@
 
 (defn- describe-database->clj
   "Workaround for wrong getColumnCount response by the driver"
-  [rs]
+  [^ResultSet rs]
   (-> rs
       (.getString 1)
       (string/split #"\t")
@@ -42,7 +47,7 @@
       ((fn [[name type]] {:name name :type type}))))
 
 (defn- describe-all-database->clj
-  [rs]
+  [^ResultSet rs]
   (loop [result [] more (.next rs)]
     (if-not more
       (->> result
@@ -113,18 +118,6 @@
               {:name database_name :schema nil}))
        (set)))
 
-(defn- get-tables-from-db [driver db database]
-  (->> (run-query db (str "SHOW TABLES IN " (:name database)))
-       (map (fn [{:keys [tab_name]}]
-              {:name tab_name
-               :schema (:name database)}))))
-
-(defn- get-tables-from-dbs [driver db databases]
-  (->> databases
-       (map #(get-tables-from-db driver db %))
-       (flatten)
-       (set)))
-
 (defn- get-tables [driver database databases]
   (->> databases
        (map (fn [{:keys [name] :as table}]
@@ -155,9 +148,9 @@
    :fields (describe-table-fields db table)})
 
 (defn- execute-query
-  [driver {:keys [database settings], query :native, :as outer-query}]
+  [driver {:keys [database settings], {sql :query, params :params} :native, :as outer-query}]
   (let [final-query (str "-- " (qputil/query->remark outer-query) "\n"
-                               (unprepare/unprepare (concat [(:query query)] (:params query)) :quote-escape "'"))
+                               (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp))
         results (run-query database final-query {})
         columns (into [] (keys (first results)))
         rows (->> results
@@ -165,16 +158,6 @@
                   (map #(into [] %)))]
     {:columns columns
      :rows rows}))
-
-(defn- string-length-fn [field-key]
-  (hsql/call :char_length field-key))
-
-(defn- unqualify-honey-fields [form-str form-length fields]
-  (mapv (fn [[f v]]
-          (if (string/starts-with? (str f) form-str)
-            [(keyword (subs (str f) form-length)) v]
-            [f v]))
-        fields))
 
 (defn- unqualify-query
   "Another workaround for incompatible SQL implementation : Remove qualify select"
@@ -240,38 +223,6 @@
       {:query  athena-sql
        :params args})))
 
-(defn- quote-name [nm]
-  (str \" (string/replace nm "\"" "\"\"") \"))
-
-(defn- quote+combine-names [& names]
-  (string/join \. (map quote-name names)))
-
-(defn- field-avg-length [{field-name :name, :as field}]
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT cast(round(avg(length(%s))) AS integer) FROM %s WHERE %s IS NOT NULL"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            (quote-name field-name))
-        result     (run-query {:details details :engine :athena} sql {})
-        v (:_col0 (first result))]
-    (or v 0)))
-
-(defn- field-percent-urls [{field-name :name, :as field}]
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT cast(count_if(url_extract_host(%s) <> '') AS double) / cast(count(*) AS double) FROM %s WHERE %s IS NOT NULL"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            (quote-name field-name))
-        result            (run-query {:details details :engine :athena} sql {})
-        v (:_col0 (first result))]
-    (if (= v "NaN") 0.0 v)))
-
-(defrecord AthenaDriver []
-  clojure.lang.Named
-  (getName [_] "Athena"))
-
 (u/strict-extend AthenaDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
@@ -300,7 +251,13 @@
                                          :placeholder  "*******"
                                          :required     true}]))
           :execute-query             execute-query
-          :features                  (constantly #{:basic-aggregations :standard-deviation-aggregations :native-parameters})
+          :features                  (constantly (set/union #{:basic-aggregations
+                                                              :standard-deviation-aggregations
+                                                              :expressions
+                                                              :native-parameters
+                                                              :expression-aggregations
+                                                              :binning
+                                                              :native-query-params}))
           :mbql->native mbql->native
           :table-rows-seq (constantly nil)})
   sql/ISQLDriver
