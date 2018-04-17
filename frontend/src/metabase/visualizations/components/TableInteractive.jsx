@@ -59,6 +59,17 @@ type Props = VisualizationProps & {
 type State = {
   columnWidths: number[],
   contentWidths: ?(number[]),
+
+  dragColIndex?: ?number,
+  dragColStyle?: ?{ [key: string]: any },
+  dragColNewLefts?: ?(number[]),
+  dragColNewIndex?: ?number,
+  columnPositions?: ?({
+    left: number,
+    right: number,
+    center: number,
+    width: number,
+  }[]),
 };
 
 type CellRendererProps = {
@@ -83,6 +94,7 @@ export default class TableInteractive extends Component {
 
   header: GridComponent;
   grid: GridComponent;
+  headerRefs: HTMLElement[];
 
   constructor(props: Props) {
     super(props);
@@ -92,6 +104,7 @@ export default class TableInteractive extends Component {
       contentWidths: null,
     };
     this.columnHasResized = {};
+    this.headerRefs = [];
   }
 
   static propTypes = {
@@ -314,19 +327,21 @@ export default class TableInteractive extends Component {
     );
   };
 
-  getDragColNewIndex(data) {
+  getDragColNewIndex(data: { x: number }) {
     const { columnPositions, dragColNewIndex, dragColStyle } = this.state;
-    if (data.x < 0) {
-      const left = dragColStyle.left + data.x;
-      const index = _.findIndex(columnPositions, p => left < p.center);
-      if (index >= 0) {
-        return index;
-      }
-    } else if (data.x > 0) {
-      const right = dragColStyle.left + dragColStyle.width + data.x;
-      const index = _.findLastIndex(columnPositions, p => right > p.center);
-      if (index >= 0) {
-        return index;
+    if (dragColStyle) {
+      if (data.x < 0) {
+        const left = dragColStyle.left + data.x;
+        const index = _.findIndex(columnPositions, p => left < p.center);
+        if (index >= 0) {
+          return index;
+        }
+      } else if (data.x > 0) {
+        const right = dragColStyle.left + dragColStyle.width + data.x;
+        const index = _.findLastIndex(columnPositions, p => right > p.center);
+        if (index >= 0) {
+          return index;
+        }
       }
     }
     return dragColNewIndex;
@@ -347,14 +362,16 @@ export default class TableInteractive extends Component {
     });
   }
 
-  getNewColumnLefts(dragColNewIndex) {
+  getNewColumnLefts(dragColNewIndex: number) {
     const { dragColIndex, columnPositions } = this.state;
     const { cols } = this.props.data;
     const indexes = cols.map((col, index) => index);
+    // $FlowFixMe: inner indexes.splice should always return an index
     indexes.splice(dragColNewIndex, 0, indexes.splice(dragColIndex, 1)[0]);
     let left = 0;
     const lefts = indexes.map(index => {
       const thisLeft = left;
+      // $FlowFixMe: we know columnPositions[index] isn't null because onDrag is called after onStart
       left += columnPositions[index].width;
       return { index, left: thisLeft };
     });
@@ -362,7 +379,7 @@ export default class TableInteractive extends Component {
     return lefts.map(p => p.left);
   }
 
-  getColumnLeft(style, index) {
+  getColumnLeft(style: any, index: number) {
     const { dragColNewIndex, dragColNewLefts } = this.state;
     if (dragColNewIndex != null && dragColNewLefts) {
       return dragColNewLefts[index];
@@ -422,7 +439,7 @@ export default class TableInteractive extends Component {
         }}
         onDrag={(e, data) => {
           const newIndex = this.getDragColNewIndex(data);
-          if (newIndex !== this.state.dragColNewIndex) {
+          if (newIndex != null && newIndex !== this.state.dragColNewIndex) {
             this.setState({
               dragColNewIndex: newIndex,
               dragColNewLefts: this.getNewColumnLefts(newIndex),
@@ -430,10 +447,22 @@ export default class TableInteractive extends Component {
           }
         }}
         onStop={(e, d) => {
-          DRAG_COUNTER++;
           const { dragColIndex, dragColNewIndex } = this.state;
-          if (dragColIndex !== dragColNewIndex) {
+          DRAG_COUNTER++;
+          if (
+            dragColIndex != null &&
+            dragColNewIndex != null &&
+            dragColIndex !== dragColNewIndex
+          ) {
             this.onColumnReorder(dragColIndex, dragColNewIndex);
+          } else if (Math.abs(d.x) + Math.abs(d.y) < 5) {
+            // in setTimeout since headers will be rerendered due to DRAG_COUNTER changing
+            setTimeout(() => {
+              onVisualizationClick({
+                ...clicked,
+                element: this.headerRefs[columnIndex],
+              });
+            });
           }
           this.setState({
             columnPositions: null,
@@ -445,7 +474,7 @@ export default class TableInteractive extends Component {
         }}
       >
         <div
-          key={key}
+          ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,
             overflow: "visible" /* ensure resize handle is visible */,

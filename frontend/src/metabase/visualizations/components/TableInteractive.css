@@ -92,5 +92,5 @@
 
 .TableInteractive .TableInteractive-cellWrapper.tether-enabled {
   background-color: var(--brand-color);
-  color: white;
+  color: white !important;
 }
