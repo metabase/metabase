@@ -5,9 +5,11 @@
              [core :refer :all :as magic]
              [rules :as rules]]
             [metabase.models
+             [card :refer [Card]]
              [database :refer [Database]]
              [field :as field :refer [Field]]
              [metric :refer [Metric]]
+             [query :as query]
              [table :refer [Table] :as table]
              [user :as user]]
             [metabase.test.data :as data]
@@ -51,16 +53,22 @@
          (map (comp first :applies_to)))))
 
 
+(defmacro ^:private with-dashboard-cleanup
+  [& body]
+  `(tu/with-model-cleanup [(quote ~'Card) (quote ~'Dashboard) (quote ~'Collection)
+                           (quote ~'DashboardCard)]
+     ~@body))
+
 (expect
   false
   (with-rasta
-    (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
+    (with-dashboard-cleanup
       (->> (Table) (keep #(automagic-analysis % {})) empty?))))
 
 (expect
   false
   (with-rasta
-    (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
+    (with-dashboard-cleanup
       (->> (Field) (keep #(automagic-analysis % {})) empty?))))
 
 (expect
@@ -68,7 +76,58 @@
   (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
                                            :definition {:query {:aggregation ["count"]}}}]]
     (with-rasta
-      (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
+      (with-dashboard-cleanup
+        (->> (Metric) (keep #(automagic-analysis % {})) empty?)))))
+
+(expect
+  true
+  (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
+                                                               :source_table (data/id :venues)}
+                                                       :type :query
+                                                       :database (data/id)}}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> card-id Card (automagic-analysis {}) some?)))))
+
+(expect
+  true
+  (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
+                                                               :source_table (data/id :venues)}
+                                                       :type :query
+                                                       :database (data/id)}}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> card-id Card (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]}) some?)))))
+
+(expect
+  true
+  (with-rasta
+    (with-dashboard-cleanup
+      (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
+                                          :source_table (data/id :venues)}
+                                  :type :query
+                                  :database (data/id)})]
+        (-> q (automagic-analysis {}) some?)))))
+
+(expect
+  true
+  (with-rasta
+    (with-dashboard-cleanup
+      (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
+                                          :source_table (data/id :venues)}
+                                  :type :query
+                                  :database (data/id)})]
+        (-> q (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]}) some?)))))
+
+
+(expect
+  false
+  (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
+                                           :dataset_que {:query {:aggregation ["count"]}}}]]
+    (with-rasta
+      (with-dashboard-cleanup
         (->> (Metric) (keep #(automagic-analysis % {})) empty?)))))
 
 
