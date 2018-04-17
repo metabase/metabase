@@ -123,15 +123,6 @@
 
 
 (expect
-  false
-  (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
-                                           :dataset_que {:query {:aggregation ["count"]}}}]]
-    (with-rasta
-      (with-dashboard-cleanup
-        (->> (Metric) (keep #(automagic-analysis % {})) empty?)))))
-
-
-(expect
   4
   (->> (Database (data/id)) candidate-tables first :tables count))
 

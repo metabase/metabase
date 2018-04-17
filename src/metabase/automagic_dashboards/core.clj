@@ -32,8 +32,9 @@
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
-(defmulti ^{:private  true
-            :arglists '([entity])}
+(defmulti
+  ^{:private  true
+    :arglists '([entity])}
   ->root type)
 
 (defmethod ->root (type Table)
