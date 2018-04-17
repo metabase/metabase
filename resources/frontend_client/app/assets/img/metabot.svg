@@ -1,31 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="50px" height="49px" viewBox="0 0 50 49" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-    <!-- Generator: Sketch 49.1 (51147) - http://www.bohemiancoding.com/sketch -->
-    <title>Artboard 2</title>
-    <desc>Created with Sketch.</desc>
-    <defs>
-        <rect id="path-1" x="0" y="0" width="46" height="33" rx="9"></rect>
-    </defs>
-    <g id="Artboard-2" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-        <path d="M30.0979004,4.25805664 L25.3833008,20.2277832" id="Path-4" stroke="#E0E8ED" stroke-width="2"></path>
-        <g id="Group-10" transform="translate(2.000000, 14.000000)">
-            <mask id="mask-2" fill="white">
-                <use xlink:href="#path-1"></use>
-            </mask>
-            <use id="Mask" fill="#E0E8ED" xlink:href="#path-1"></use>
-            <rect id="Mask-Copy" fill="#FFFFFF" opacity="0.237205616" mask="url(#mask-2)" x="-2" y="1" width="46" height="31" rx="8"></rect>
-        </g>
-        <circle id="Oval-9" fill="#FFFFFF" cx="35" cy="27" r="8"></circle>
-        <circle id="Oval-9-Copy" fill="#FFFFFF" cx="15" cy="27" r="8"></circle>
-        <g id="Group-5" transform="translate(10.000000, 22.000000)" fill="#509EE3">
-            <circle id="Oval-11" cx="5" cy="5" r="5"></circle>
-        </g>
-        <g id="Group-6" transform="translate(30.000000, 22.000000)" fill="#509EE3">
-            <circle id="Oval-11-Copy" cx="5" cy="5" r="5"></circle>
-        </g>
-        <circle id="Oval-3-Copy" fill="#509EE3" cx="30" cy="4" r="4"></circle>
-        <rect id="Rectangle-4" fill="#509EE3" x="0" y="22" width="2" height="11"></rect>
-        <rect id="Rectangle-4-Copy-3" fill="#509EE3" x="48" y="22" width="2" height="11"></rect>
-        <path d="M21,38 C21,38 23.3333333,38 28,38 C28,39.9329966 26.4329966,41.5 24.5,41.5 C22.5670034,41.5 21,39.9329966 21,38 Z" id="Combined-Shape-Copy" fill="#509EE3"></path>
+<svg width="50" height="35" viewBox="0 0 50 35" xmlns="http://www.w3.org/2000/svg">
+    <title>metabot</title>
+    <g fill="none" fill-rule="evenodd">
+        <rect fill="#509EE3" width="50" height="35" rx="4"/>
+        <rect fill="#D0E5F7" x="3" y="3" width="44" height="25" rx="2"/>
+        <ellipse fill="#509EE3" cx="14.83" cy="11.5" rx="1.83" ry="2.5"/>
+        <ellipse fill="#509EE3" cx="34.83" cy="11.5" rx="1.83" ry="2.5"/>
+        <path d="M19.416 16.561c.716 2.638 2.633 3.956 5.751 3.956 3.119 0 4.908-1.318 5.368-3.956" stroke="#509EE3" stroke-width="2"/>
+        <rect fill="#F9D45C" x="44" y="30" width="2" height="2" rx="1"/>
+        <rect fill="#A8C987" x="40" y="30" width="2" height="2" rx="1"/>
     </g>
 </svg>

@@ -1,4 +1,4 @@
-title: Google Analytics
+title: Here's an overview of your Google Analytics data
 description: Some interesting metrics about your GA stats to get you started.
 metrics:
   - Sessions:
@@ -37,7 +37,7 @@ dimensions:
       field_type: ga:source
 groups:
 - SessionsBreakdown:
-    title: Session breakdown
+    title: Sessions overview
 cards:
   - SessionsOverTime:
       title: Sessions per day

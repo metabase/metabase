@@ -14,7 +14,9 @@
 (expect "ga:foo"  (#'rules/->type "ga:foo"))
 (expect :type/Foo (#'rules/->type "Foo"))
 
-(expect true (every? some? (load-rules)))
+(expect true (every? some? (load-rules "table")))
+(expect true (every? some? (load-rules "metrics")))
+(expect true (every? some? (load-rules "fields")))
 
 (expect true  (dimension-form? [:dimension "Foo"]))
 (expect true  (dimension-form? ["dimension" "Foo"]))
