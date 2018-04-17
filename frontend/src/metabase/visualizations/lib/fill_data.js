@@ -99,4 +99,5 @@ export default function fillMissingValuesInDatas(
       datas = fillMissingValues(datas, xValues, fillValue);
     }
   }
+  return datas;
 }

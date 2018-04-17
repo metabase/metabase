@@ -44,14 +44,7 @@ export class Dashboard extends Component {
         className={cx("Dashboard p1 flex-full")}
         loading={!dashboard}
       >
-        {() => (
-          <DashboardGrid
-            {...this.props}
-            className={"spread"}
-            // Don't allow clicking titles on public dashboards
-            navigateToNewCardFromDashboard={null}
-          />
-        )}
+        {() => <DashboardGrid {...this.props} className={"spread"} />}
       </LoadingAndErrorWrapper>
     );
   }

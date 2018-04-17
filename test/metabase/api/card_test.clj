@@ -687,10 +687,10 @@
 
 (defn- do-with-temp-native-card {:style/indent 0} [f]
   (tt/with-temp* [Database  [{database-id :id} {:details (:details (Database (id))), :engine :h2}]
-                  Table     [{table-id :id} {:db_id database-id, :name "CATEGORIES"}]
-                  Card      [card {:dataset_query {:database database-id
-                                                   :type     :native
-                                                   :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
+                  Table     [{table-id :id}    {:db_id database-id, :name "CATEGORIES"}]
+                  Card      [card              {:dataset_query {:database database-id
+                                                                :type     :native
+                                                                :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
     ;; delete all permissions for this DB
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     (f database-id card)))
@@ -1066,3 +1066,9 @@
     (tt/with-temp Card [card {:enable_embedding true}]
       (for [card ((user->client :crowberto) :get 200 "card/embeddable")]
         (m/map-vals boolean (select-keys card [:name :id]))))))
+
+;; Test related/recommended entities
+(expect
+  #{:table :metrics :segments :dashboard-mates :similar-questions :canonical-metric :dashboards :collections}
+  (tt/with-temp* [Card [{card-id :id}]]
+    (-> ((user->client :crowberto) :get 200 (format "card/%s/related" card-id)) keys set)))

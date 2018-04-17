@@ -90,21 +90,13 @@
   (x-ray (max-cost max_query_cost max_computation_cost)
          (api/read-check Segment id)))
 
-(defn- adhoc-query
-  [{:keys [database], :as query}]
-  (when-not (= database database/virtual-id)
-    (api/read-check Database database))
-  (->> {:dataset_query query}
-       (merge (card/query->database-and-table-ids query))
-       query/map->QueryInstance))
-
 (api/defendpoint POST "/query"
   "X-ray a query."
   [max_query_cost max_computation_cost :as {query :body}]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (->> query
-       adhoc-query
+       query/adhoc-query
        (x-ray (max-cost max_query_cost max_computation_cost))))
 
 (api/defendpoint GET "/compare/tables/:table1-id/:table2-id"
@@ -204,7 +196,7 @@
    max_computation_cost MaxComputationCost}
   (compare (max-cost max_query_cost max_computation_cost)
            (api/read-check Card id)
-           (adhoc-query query)))
+           (query/adhoc-query query)))
 
 (api/defendpoint POST "/compare/table/:id/query"
   "Get comparison x-ray of table and ad-hoc query."
@@ -213,7 +205,7 @@
    max_computation_cost MaxComputationCost}
   (compare (max-cost max_query_cost max_computation_cost)
            (api/read-check Table id)
-           (adhoc-query query)))
+           (query/adhoc-query query)))
 
 (api/defendpoint POST "/compare/segment/:id/query"
   "Get comparison x-ray of segment and ad-hoc query."
@@ -222,6 +214,6 @@
    max_computation_cost MaxComputationCost}
   (compare (max-cost max_query_cost max_computation_cost)
            (api/read-check Segment id)
-           (adhoc-query query)))
+           (query/adhoc-query query)))
 
 (api/define-routes)

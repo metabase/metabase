@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
 import MetabaseSettings from "metabase/lib/settings";
-import VisualizationErrorMessage from "./VisualizationErrorMessage";
+import ErrorMessage from "metabase/components/ErrorMessage";
 
 const EmailAdmin = () => {
   const adminEmail = MetabaseSettings.adminEmail();
@@ -40,7 +40,7 @@ class VisualizationError extends Component {
       // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
       if (duration > 15 * 1000) {
         return (
-          <VisualizationErrorMessage
+          <ErrorMessage
             type="timeout"
             title={t`Your question took too long`}
             message={t`We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.`}
@@ -49,7 +49,7 @@ class VisualizationError extends Component {
         );
       } else {
         return (
-          <VisualizationErrorMessage
+          <ErrorMessage
             type="serverError"
             title={t`We're experiencing server issues`}
             message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}

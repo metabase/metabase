@@ -488,7 +488,7 @@
   (let [results ((test-users/user->client username) :post "dataset"
                  {:database (u/get-id db)
                   :type     :native
-                  :native   {:query "SELECT COUNT(*) FROM VENUES;"}})]
+                  :native   {:query "SELECT COUNT(*) FROM VENUES"}})]
     (if (string? results)
       results
       (or (:error results)

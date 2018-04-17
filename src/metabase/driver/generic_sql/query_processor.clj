@@ -318,7 +318,10 @@
       (h/limit items)
       (h/offset (* items (dec page)))))
 
-(defn- apply-source-table [honeysql-form {{table-name :name, schema :schema} :source-table}]
+(defn apply-source-table
+  "Apply `source-table` clause to `honeysql-form`. Default implementation of `apply-source-table` for SQL drivers.
+  Override as needed."
+  [_ honeysql-form {{table-name :name, schema :schema} :source-table}]
   {:pre [table-name]}
   (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
 
@@ -338,7 +341,7 @@
   ;;    will get swapped around and  we'll be left with old version of the function that nobody implements
   ;; 2) This is a vector rather than a map because the order the clauses get handled is important for some drivers.
   ;;    For example, Oracle needs to wrap the entire query in order to apply its version of limit (`WHERE ROWNUM`).
-  [:source-table (u/drop-first-arg apply-source-table)
+  [:source-table #'sql/apply-source-table
    :source-query apply-source-query
    :aggregation  #'sql/apply-aggregation
    :breakout     #'sql/apply-breakout
@@ -498,7 +501,11 @@
            second)             ; so just return the part of the exception that is relevant
       (.getMessage e)))
 
-(defn- do-with-try-catch {:style/indent 0} [f]
+(defn do-with-try-catch
+  "Tries to run the function `f`, catching and printing exception chains if SQLException is thrown,
+  and rethrowing the exception as an Exception with a nicely formatted error message."
+  {:style/indent 0}
+  [f]
   (try (f)
        (catch SQLException e
          (log/error (jdbc/print-sql-exception-chain e))

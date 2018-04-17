@@ -595,10 +595,10 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
     settings["graph.x_axis.scale"] = "ordinal";
   }
 
-  const datas = getDatas(props, warn);
+  let datas = getDatas(props, warn);
   const xAxisProps = getXAxisProps(props, datas);
 
-  fillMissingValuesInDatas(props, xAxisProps, datas);
+  datas = fillMissingValuesInDatas(props, xAxisProps, datas);
 
   if (isScalarSeries) xAxisProps.xValues = datas.map(data => data[0][0]); // TODO - what is this for?
 
