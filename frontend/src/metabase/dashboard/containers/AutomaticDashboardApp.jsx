@@ -160,7 +160,7 @@ const TransientFilter = ({ filter }) => (
         />
       ) : null,
     ])}
-    <span> is {filter.value}</span>
+    <span> {filter.value}</span>
   </div>
 );
 
