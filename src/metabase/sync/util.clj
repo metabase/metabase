@@ -188,14 +188,16 @@
 
      (emoji-progress-bar 10 40)
        -> \"[************······································] 😒   25%"
-  [completed total]
+  [completed total log-every-n]
   (let [percent-done (float (/ completed total))
         filleds      (int (* percent-done emoji-meter-width))
         blanks       (- emoji-meter-width filleds)]
-    (str "["
-         (str/join (repeat filleds "*"))
-         (str/join (repeat blanks "·"))
-         (format "] %s  %3.0f%%" (u/emoji (percent-done->emoji percent-done)) (* percent-done 100.0)))))
+    (when (or (zero? (mod completed log-every-n))
+              (= completed total))
+      (str "["
+           (str/join (repeat filleds "*"))
+           (str/join (repeat blanks "·"))
+           (format "] %s  %3.0f%%" (u/emoji (percent-done->emoji percent-done)) (* percent-done 100.0))))))
 
 (defmacro with-emoji-progress-bar
   "Run BODY with access to a function that makes using our amazing emoji-progress-bar easy like Sunday morning.
@@ -209,7 +211,8 @@
   [[emoji-progress-fn-binding total-count] & body]
   `(let [finished-count#            (atom 0)
          total-count#               ~total-count
-         ~emoji-progress-fn-binding (fn [] (emoji-progress-bar (swap! finished-count# inc) total-count#))]
+         log-every-n#               (Math/ceil (/ total-count# 10))
+         ~emoji-progress-fn-binding (fn [] (emoji-progress-bar (swap! finished-count# inc) total-count# log-every-n#))]
      ~@body))
 
 

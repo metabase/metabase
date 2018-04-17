@@ -25,7 +25,7 @@ function getNumTicks(axis) {
 
 /// adjust the number of ticks to display on the y Axis based on its height in pixels. Since y axis ticks
 /// are all the same height there's no need to do fancy measurement like we do below for the x axis.
-function adjustYAxisTicksIfNeeded(axis, axisHeightPixels) {
+export function adjustYAxisTicksIfNeeded(axis, axisHeightPixels) {
   const MIN_PIXELS_PER_TICK = 32;
 
   const numTicks = getNumTicks(axis);

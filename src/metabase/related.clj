@@ -15,6 +15,7 @@
              [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.query-processor.util :as qp.util]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -24,17 +25,17 @@
                                                 max-serendipity-matches))
 
 (def ^:private ContextBearingForm
-  [(s/one (s/constrained (s/either s/Str s/Keyword)
-                         (comp #{"field-id" "metric" "segment" "fk->"}
-                               str/lower-case
-                               name))
+  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword)
+                         (comp #{:field-id :metric :segment :fk->}
+                               qp.util/normalize-token))
           "head")
    s/Any])
 
 (defn- collect-context-bearing-forms
   [form]
   (into #{}
-    (remove (s/checker ContextBearingForm))
+        (comp (remove (s/checker ContextBearingForm))
+              (map #(update % 0 qp.util/normalize-token)))
     (tree-seq sequential? identity form)))
 
 (defmulti
@@ -58,6 +59,10 @@
 (defmethod definition (type Segment)
   [segment]
   (-> segment :definition :filter))
+
+(defmethod definition (type Field)
+  [field]
+  [[:field-id (:id field)]])
 
 (defn similarity
   "How similar are entities `a` and `b` based on a structural comparison of their
@@ -88,10 +93,12 @@
   (let [[best rest] (split-at max-best-matches matches)]
     (concat best (->> rest shuffle (take max-serendipity-matches)))))
 
-(def ^:private ^{:arglists '([candidates])} filter-visible
-  (partial filter (every-pred (comp nil? :visibility_type)
-                              (comp (some-fn nil? false?) :archived)
-                              mi/can-read?)))
+(def ^:private ^{:arglists '([entities])} filter-visible
+  (partial filter (fn [{:keys [archived visibility_type] :as entity}]
+                    (and (or (nil? visibility_type)
+                             (= (name visibility_type) "normal"))
+                         (not archived)
+                         (mi/can-read? entity)))))
 
 (defn- metrics-for-table
   [table]
@@ -264,6 +271,26 @@
                        (remove (set (concat linking-to linked-from)))
                        filter-visible
                        interesting-mix)}))
+
+(defmethod related (type Field)
+  [field]
+  (let [table (Table (:table_id field))]
+    {:table    table
+     :segments (->> table
+                    segments-for-table
+                    (rank-by-similarity field)
+                    interesting-mix)
+     :metrics  (->> table
+                    metrics-for-table
+                    (rank-by-similarity field)
+                    (filter (comp pos? :similarity))
+                    interesting-mix)
+     :fields   (->> (db/select Field
+                      :table_id        (:id table)
+                      :id              [:not= (:id field)]
+                      :visibility_type "normal")
+                    filter-visible
+                    interesting-mix)}))
 
 (defmethod related (type Dashboard)
   [dashboard]

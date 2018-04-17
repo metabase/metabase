@@ -2,6 +2,8 @@ import React, { Component } from "react";
 import { t } from "c-3po";
 import Icon from "metabase/components/Icon.jsx";
 
+// TODO: port to ErrorMessage for more consistent style
+
 export default class Unauthorized extends Component {
   render() {
     return (

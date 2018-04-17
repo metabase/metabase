@@ -5,11 +5,15 @@
              [core :refer :all :as magic]
              [rules :as rules]]
             [metabase.models
-             [field :as field]
+             [database :refer [Database]]
+             [field :as field :refer [Field]]
+             [metric :refer [Metric]]
              [table :refer [Table] :as table]
              [user :as user]]
+            [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [toucan.util.test :as tt]))
 
 (defmacro with-rasta
   "Execute body with rasta as the current user."
@@ -40,16 +44,37 @@
 
 (expect
   [:entity/UserTable :entity/GenericTable :entity/*]
-  (->> (table/map->TableInstance {:entity_type :entity/UserTable})
-       (#'magic/matching-rules (rules/load-rules))
-       (map :table_type)))
+  (let [table (table/map->TableInstance {:entity_type :entity/UserTable})]
+    (->> {:entity       table
+          :source-table table}
+         (#'magic/matching-rules (rules/load-rules "table"))
+         (map (comp first :applies_to)))))
 
 
 (expect
-  true
+  false
   (with-rasta
     (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
-      (-> (keep automagic-dashboard (Table)) count pos?))))
+      (->> (Table) (keep #(automagic-analysis % {})) empty?))))
+
+(expect
+  false
+  (with-rasta
+    (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
+      (->> (Field) (keep #(automagic-analysis % {})) empty?))))
+
+(expect
+  false
+  (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
+                                           :definition {:query {:aggregation ["count"]}}}]]
+    (with-rasta
+      (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
+        (->> (Metric) (keep #(automagic-analysis % {})) empty?)))))
+
+
+(expect
+  4
+  (->> (Database (data/id)) candidate-tables first :tables count))
 
 
 ;; Identity
@@ -102,3 +127,34 @@
       (#'magic/most-specific-definition)
       first
       key))
+
+
+(expect
+  :month
+  (#'magic/optimal-datetime-resolution
+   {:fingerprint {:type {:type/DateTime {:earliest "2015"
+                                         :latest   "2017"}}}}))
+
+(expect
+  :day
+  (#'magic/optimal-datetime-resolution
+   {:fingerprint {:type {:type/DateTime {:earliest "2017-01-01"
+                                         :latest   "2017-03-04"}}}}))
+
+(expect
+  :year
+  (#'magic/optimal-datetime-resolution
+   {:fingerprint {:type {:type/DateTime {:earliest "2005"
+                                         :latest   "2017"}}}}))
+
+(expect
+  :hour
+  (#'magic/optimal-datetime-resolution
+   {:fingerprint {:type {:type/DateTime {:earliest "2017-01-01"
+                                         :latest   "2017-01-02"}}}}))
+
+(expect
+  :minute
+  (#'magic/optimal-datetime-resolution
+   {:fingerprint {:type {:type/DateTime {:earliest "2017-01-01T00:00:00"
+                                         :latest   "2017-01-01T00:02:00"}}}}))
