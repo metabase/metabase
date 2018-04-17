@@ -32,16 +32,21 @@
     (hydrate collections :can_write)))
 
 (api/defendpoint GET "/:id"
-  "Fetch a specific (non-archived) Collection, including objects of a specific `model` that belong to it."
+  "Fetch a specific (non-archived) Collection, including objects of a specific `model` that belong to it. If `model` is
+  unspecified, it will return objects of all types."
   [id model]
-  {model (s/maybe (s/enum "cards" "dashboards" "pulses" "all"))}
-  (let [model (or (keyword model)
-                  :cards)]
-    (assoc (api/read-check Collection id, :archived false)
-      model (case model
-              :cards      (db/select Card,      :collection_id id, :archived false)
-              :dashboards (db/select Dashboard, :collection_id id, :archived false)
-              :pulses     (db/select Pulse,     :collection_id id)))))
+  {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
+  (let [return? (if-not model
+                  (constantly true)
+                  (partial = model))]
+    (merge
+     (api/read-check Collection id, :archived false)
+     (when (return? "cards")
+       {:cards (db/select Card, :collection_id id, :archived false)})
+     (when (return? "dashboards")
+       {:dashboards (db/select Dashboard, :collection_id id, :archived false)})
+     (when (return? "pulses")
+       {:pulses (db/select Pulse, :collection_id id)}))))
 
 (api/defendpoint POST "/"
   "Create a new Collection."
