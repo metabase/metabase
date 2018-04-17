@@ -262,7 +262,9 @@
 (defn applied-filters
   "Extract fields and their values from MBQL filter clauses."
   [filter-clause]
-  (for [{field-reference :field value :value} (humanize-filter-value filter-clause)]
+  (for [{field-reference :field value :value} (some->> filter-clause
+                                                       not-empty
+                                                       humanize-filter-value)]
     (let [field (field-reference->field field-reference)]
       {:field    (if (-> field-reference
                          first
