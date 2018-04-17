@@ -171,6 +171,7 @@ export default class PieChart extends Component {
     }
 
     // increase "other" slice so it's barely visible
+    // $FlowFixMe
     if (otherSlice && otherSlice.percentage < OTHER_SLICE_MIN_PERCENTAGE) {
       otherSlice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
     }
@@ -229,11 +230,16 @@ export default class PieChart extends Component {
               key: getFriendlyName(cols[metricIndex]),
               value: formatMetric(slice.value),
             },
-            showPercentInTooltip && {
-              key: "Percentage",
-              value: formatPercent(slice.percentage),
-            },
-          ].filter(d => d),
+          ].concat(
+            showPercentInTooltip && slice.percentage != null
+              ? [
+                  {
+                    key: "Percentage",
+                    value: formatPercent(slice.percentage),
+                  },
+                ]
+              : [],
+          ),
         };
       }
     }
