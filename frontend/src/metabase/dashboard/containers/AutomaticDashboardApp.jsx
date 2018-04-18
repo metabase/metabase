@@ -22,6 +22,8 @@ import { addUndo, createUndo } from "metabase/redux/undo";
 import { DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 
+import { getParameterIconName } from "metabase/meta/Parameter";
+
 import { dissoc } from "icepick";
 
 const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
@@ -148,7 +150,7 @@ const TransientFilters = ({ filters }) => (
 
 const TransientFilter = ({ filter }) => (
   <div className="mr3">
-    <Icon name={filter.icon} size={12} className="mr1" />
+    <Icon name={getParameterIconName(filter.type)} size={12} className="mr1" />
     {filter.field.map((str, index) => [
       <span key={"name" + index}>{str}</span>,
       index !== filter.field.length - 1 ? (
