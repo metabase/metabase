@@ -11,13 +11,18 @@ class CollectionItemsLoader extends React.Component {
   };
 
   componentWillMount() {
-    const { params } = this.props;
-    let collectionId = 2;
-    this._loadCollectionItems(collectionId);
+    this._loadCollectionItems(this.props.collectionId);
   }
 
-  async _loadCollectionItems(collectionId = 2) {
+  componentWillUpdate(nextProps) {
+    if (this.props.collectionId !== nextProps.collectionId) {
+      this._loadCollectionItems(nextProps.collectionId);
+    }
+  }
+
+  async _loadCollectionItems(collectionId) {
     try {
+      console.log("Loading collections for ", collectionId);
       this.setState({ loading: true });
       const { cards, dashboards, pulses } = await CollectionsApi.get({
         id: collectionId,

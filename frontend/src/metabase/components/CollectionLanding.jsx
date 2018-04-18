@@ -4,6 +4,8 @@ import { Link } from "react-router";
 
 import * as Urls from "metabase/lib/urls";
 
+import { CollectionsApi } from "metabase/services";
+
 import Icon from "metabase/components/Icon";
 import CollectionListLoader from "metabase/components/CollectionListLoader";
 import CollectionItemsLoader from "metabase/components/CollectionItemsLoader";
@@ -49,26 +51,27 @@ const CollectionList = ({ collectionSlug }) => {
   );
 };
 
-const DefaultLanding = ({ collectionSlug }) => {
+const DefaultLanding = ({ currentCollection, collectionSlug }) => {
   return (
     <Box w="100%">
       {// HACK for now to only show the colleciton list on the root
       // colleciton until we have a notion of nested collections
       !collectionSlug && <CollectionList />}
-      <CollectionItemsLoader>
+      <CollectionItemsLoader collectionId={currentCollection.id}>
         {({ dashboards, loading, error }) => {
           if (loading) {
             return <Box>Loading...</Box>;
           }
           return (
             <Box>
-              {dashboards.map(dashboard => (
-                <Box>
-                  <Link to={Urls.dashboard(dashboard.id)}>
-                    {dashboard.name}
-                  </Link>
-                </Box>
-              ))}
+              {dashboards &&
+                dashboards.map(dashboard => (
+                  <Box>
+                    <Link to={Urls.dashboard(dashboard.id)}>
+                      {dashboard.name}
+                    </Link>
+                  </Box>
+                ))}
             </Box>
           );
         }}
@@ -78,9 +81,30 @@ const DefaultLanding = ({ collectionSlug }) => {
 };
 
 class CollectionLanding extends React.Component {
+  state = {
+    collections: [],
+  };
+  componentWillMount() {
+    this._loadCollections();
+  }
+  /* quick hack to look up collection information for slug matching,
+   * this will eventually happen in redux land */
+  async _loadCollections() {
+    try {
+      const collections = await CollectionsApi.list();
+      this.setState({ collections });
+    } catch (error) {}
+  }
   render() {
     const { children } = this.props;
     const collectionSlug = this.props.params.collectionSlug;
+    if (!this.state.collections) {
+      return <Box>Loading...</Box>;
+    }
+    /* TODO - this will live in redux land  */
+    const currentCollection =
+      this.state.collections.filter(c => c.slug === collectionSlug)[0] || {};
+    console.log("currentCollection", currentCollection);
     return (
       <Box>
         <Box className="wrapper lg-wrapper--trim">
@@ -91,14 +115,12 @@ class CollectionLanding extends React.Component {
                 <Flex>
                   <Link to="/">Metabase, Inc</Link>
                 </Flex>
-                {this.props.params.collectionSlug && (
+                {currentCollection && (
                   <Flex align="center">
                     <Icon name="chevronright" className="ml2 mr2" />
                     <Flex>
-                      <Link
-                        to={`/collections/${this.props.params.collectionSlug}`}
-                      >
-                        {this.props.params.collectionSlug}
+                      <Link to={`/collections/${currentCollection.slug}`}>
+                        {currentCollection.name}
                       </Link>
                     </Flex>
                   </Flex>
@@ -141,7 +163,10 @@ class CollectionLanding extends React.Component {
             {children ? (
               children
             ) : (
-              <DefaultLanding collectionSlug={collectionSlug} />
+              <DefaultLanding
+                currentCollection={currentCollection}
+                collectionSlug={collectionSlug}
+              />
             )}
           </Box>
         </Box>
