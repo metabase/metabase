@@ -474,10 +474,11 @@ export default class StructuredQuery extends AtomicQuery {
 
   /**
    * @returns @type {Segment}s that can be used as filters.
-   * TODO: exclude used segments
    */
   filterSegmentOptions(): Segment[] {
-    return this.table().segments.filter(sgmt => sgmt.is_active === true);
+    return this.table().segments.filter(
+      sgmt => sgmt.is_active === true && !this.segments().includes(sgmt),
+    );
   }
 
   /**

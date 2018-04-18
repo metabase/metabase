@@ -151,93 +151,14 @@ export class Dashboards extends Component {
     const noResultsFound = filteredDashboards.length === 0;
 
     return (
-      <LoadingAndErrorWrapper
-        loading={isLoading}
-        className={cx("relative px4 full-height", {
-          "flex flex-full flex-column": noDashboardsCreated,
-        })}
-        noBackground
-      >
+      <LoadingAndErrorWrapper loading={isLoading} className="block full">
         {modalOpen ? this.renderCreateDashboardModal() : null}
-        <div className="flex align-center pt4 pb1">
-          <TitleAndDescription title={t`Dashboards`} />
 
-          <div className="flex-align-right cursor-pointer text-grey-5">
-            <Link to="/dashboards/archive">
-              <Icon
-                name="viewArchive"
-                className="mr2 text-brand-hover"
-                tooltip={t`View the archive`}
-                size={20}
-              />
-            </Link>
-
-            {!noDashboardsCreated && (
-              <Icon
-                name="add"
-                className="text-brand-hover"
-                tooltip={t`Add new dashboard`}
-                size={20}
-                onClick={this.showCreateDashboard}
-              />
-            )}
-          </div>
-        </div>
-        {noDashboardsCreated ? (
-          <div className="mt2 flex-full flex align-center justify-center">
-            <EmptyState
-              message={
-                <span>{jt`Put the charts and graphs you look at ${(
-                  <br />
-                )}frequently in a single, handy place.`}</span>
-              }
-              image="/app/img/dashboard_illustration"
-              action={t`Create a dashboard`}
-              onActionClick={this.showCreateDashboard}
-              className="mt2"
-              imageClassName="mln2"
-            />
-          </div>
-        ) : (
-          <div>
-            <div className="flex-full flex align-center pb1">
-              <SearchHeader
-                searchText={searchText}
-                setSearchText={text => this.setState({ searchText: text })}
-              />
-              <div className="flex-align-right">
-                <ListFilterWidget
-                  items={SECTIONS.filter(item => item.id !== "archived")}
-                  activeItem={section}
-                  onChange={this.updateSection}
-                />
-              </div>
-            </div>
-            {noResultsFound ? (
-              <div className="flex justify-center">
-                <EmptyState
-                  message={
-                    <div className="mt4">
-                      <h3 className="text-grey-5">{t`No results found`}</h3>
-                      <p className="text-grey-4">{t`Try adjusting your filter to find what you’re looking for.`}</p>
-                    </div>
-                  }
-                  image="/app/img/empty_dashboard"
-                  imageHeight="210px"
-                  action={t`Create a dashboard`}
-                  imageClassName="mln2"
-                  smallDescription
-                />
-              </div>
-            ) : (
-              <DashboardList
-                dashboards={filteredDashboards}
-                setFavorited={this.props.setFavorited}
-                setArchived={this.props.setArchived}
-              />
-            )}
-          </div>
-        )}
+        <DashboardList
+          dashboards={filteredDashboards}
+          setFavorited={this.props.setFavorited}
+          setArchived={this.props.setArchived}
+        />
       </LoadingAndErrorWrapper>
     );
   }

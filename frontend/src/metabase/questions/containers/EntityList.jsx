@@ -229,13 +229,6 @@ export default class EntityList extends Component {
                 setArchived={setArchived}
                 labels={labels}
               />
-            ) : showSearchHeader ? (
-              <div style={{ marginLeft: "10px" }}>
-                <SearchHeader
-                  searchText={searchText}
-                  setSearchText={setSearchText}
-                />
-              </div>
             ) : null}
             {showEntityFilterWidget &&
               hasEntitiesInPlainState && (

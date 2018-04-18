@@ -2,14 +2,18 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "c-3po";
+import { Box, Flex } from "rebass";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { Link } from "react-router";
 
+import { normal, saturated } from "metabase/lib/colors";
+
+import Button from "metabase/components/Button.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
-import * as Urls from "metabase/lib/urls";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
@@ -23,22 +27,6 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
   onChangeLocation: push,
-};
-
-const BUTTON_PADDING_STYLES = {
-  navButton: {
-    paddingLeft: "1.0rem",
-    paddingRight: "1.0rem",
-    paddingTop: "0.75rem",
-    paddingBottom: "0.75rem",
-  },
-
-  newQuestion: {
-    paddingLeft: "1.0rem",
-    paddingRight: "1.0rem",
-    paddingTop: "0.75rem",
-    paddingBottom: "0.75rem",
-  },
 };
 
 const AdminNavItem = ({ name, path, currentPath }) => (
@@ -55,20 +43,29 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
-const MainNavLink = ({ to, name, eventName, icon }) => (
-  <Link
-    to={to}
-    data-metabase-event={`NavBar;${eventName}`}
-    style={BUTTON_PADDING_STYLES.navButton}
-    className={
-      "NavItem cursor-pointer flex-full text-white text-bold no-decoration flex align-center px2 transition-background"
-    }
-    activeClassName="NavItem--selected"
-  >
-    <Icon name={icon} className="md-hide" />
-    <span className="hide md-show">{name}</span>
-  </Link>
-);
+class SearchBar extends React.Component {
+  state = {
+    active: false,
+  };
+
+  render() {
+    return (
+      <Flex align="center">
+        <Icon name="search" />
+        <input
+          type="text"
+          placeholder="Search for anything..."
+          className="input bg-transparent borderless"
+          onClick={() => this.setState({ active: true })}
+          style={{
+            width: this.state.active ? 600 : 320,
+            maxWidth: 600,
+          }}
+        />
+      </Flex>
+    );
+  }
+}
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
@@ -145,67 +142,70 @@ export default class Navbar extends Component {
 
   renderMainNav() {
     return (
-      <nav className="Nav relative bg-brand">
-        <ul className="md-pl4 flex align-center md-pr1">
-          <li>
-            <Link
-              to="/"
-              data-metabase-event={"Navbar;Logo"}
-              className="LogoNavItem NavItem cursor-pointer text-white flex align-center transition-background justify-center"
-              activeClassName="NavItem--selected"
-            >
-              <LogoIcon dark={true} />
+      <Flex
+        style={{
+          backgroundColor: "#FDFDFD",
+          borderBottom: "1px solid #DCE1E4",
+        }}
+        className="relative"
+        align="center"
+      >
+        <Box className="absolute top left">
+          <Link
+            to="/"
+            data-metabase-event={"Navbar;Logo"}
+            className="LogoNavItem NavItem cursor-pointer flex align-center transition-background justify-center"
+            activeClassName="NavItem--selected"
+          >
+            <LogoIcon />
+          </Link>
+        </Box>
+        <Box my={1} p={1} className="wrapper lg-wrapper--trim">
+          <SearchBar />
+        </Box>
+        <Flex className="absolute top right" align="center">
+          <Box>
+            <Link to="browse">
+              <Button primary medium icon="database">
+                Explore
+              </Button>
             </Link>
-          </li>
-          <li className="md-pl3 hide xs-show">
-            <MainNavLink
-              to="/dashboards"
-              name={t`Dashboards`}
-              eventName="Dashboards"
-              icon="dashboard"
-            />
-          </li>
-          <li className="md-pl1 hide xs-show">
-            <MainNavLink
-              to="/questions"
-              name={t`Questions`}
-              eventName="Questions"
-              icon="all"
-            />
-          </li>
-          <li className="md-pl1 hide xs-show">
-            <MainNavLink
-              to="/pulse"
-              name={t`Pulses`}
-              eventName="Pulses"
-              icon="pulse"
-            />
-          </li>
-          <li className="md-pl1 hide xs-show">
-            <MainNavLink
-              to="/reference/guide"
-              name={t`Data Reference`}
-              eventName="DataReference"
-              icon="reference"
-            />
-          </li>
-          <li className="md-pl3 hide sm-show">
-            <Link
-              to={Urls.newQuestion()}
-              data-metabase-event={"Navbar;New Question"}
-              style={BUTTON_PADDING_STYLES.newQuestion}
-              className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all"
-            >
-              {t`New Question`}
-            </Link>
-          </li>
-          <li className="flex-align-right transition-background hide sm-show">
-            <div className="inline-block text-white">
-              <ProfileLink {...this.props} />
-            </div>
-          </li>
-        </ul>
-      </nav>
+          </Box>
+          <PopoverWithTrigger triggerElement={<Button medium>New</Button>}>
+            <Box p={3} style={{ minWidth: 300 }}>
+              <Box my={2}>
+                <Link to="question/new">
+                  <Flex align="center" style={{ color: normal.red }}>
+                    <Icon name="beaker" />
+                    <h3>Question</h3>
+                  </Flex>
+                </Link>
+              </Box>
+              <Box my={2}>
+                <Flex align="center" style={{ color: normal.blue }}>
+                  <Icon name="dashboard" />
+                  <h3>Dashboard</h3>
+                </Flex>
+              </Box>
+              <Box my={2}>
+                <Flex align="center" style={{ color: saturated.yellow }}>
+                  <Icon name="pulse" />
+                  <h3>Pulse</h3>
+                </Flex>
+              </Box>
+              <Box my={2}>
+                <Link to="collections/create">
+                  <Flex align="center" style={{ color: "#93B3C9" }}>
+                    <Icon name="all" />
+                    <h3>Collection</h3>
+                  </Flex>
+                </Link>
+              </Box>
+            </Box>
+          </PopoverWithTrigger>
+          <ProfileLink {...this.props} />
+        </Flex>
+      </Flex>
     );
   }
 
