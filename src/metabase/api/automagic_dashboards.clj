@@ -17,30 +17,42 @@
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [tru]]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
-(def ^:private Show (s/maybe (s/enum "all")))
+(def ^:private Show
+  (su/with-api-error-message (s/maybe (s/enum "all"))
+    (tru "invalid show value")))
 
-(def ^:private Prefix (->> ["table" "metric" "field"]
-                           (mapcat rules/load-rules)
-                           (filter :indepth)
-                           (map :rule)
-                           (apply s/enum)))
+(def ^:private Prefix
+  (su/with-api-error-message
+      (->> ["table" "metric" "field"]
+           (mapcat rules/load-rules)
+           (filter :indepth)
+           (map :rule)
+           (apply s/enum))
+    (tru "invalid value for prefix")))
 
-(def ^:private Rule (->> ["table" "metric" "field"]
-                         (mapcat rules/load-rules)
-                         (mapcat :indepth)
-                         (map :rule)
-                         (apply s/enum)))
+(def ^:private Rule
+  (su/with-api-error-message
+      (->> ["table" "metric" "field"]
+           (mapcat rules/load-rules)
+           (mapcat :indepth)
+           (map :rule)
+           (apply s/enum))
+    (tru "invalid value for rule name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp json/decode codecs/bytes->str codec/base64-decode))
 
-(def ^:private Base64EncodedJSON (s/pred decode-base64-json))
+(def ^:private Base64EncodedJSON
+  (su/with-api-error-message
+      (s/pred decode-base64-json "valid base64 encoded json")
+    (tru "value couldn''t be parsed as base64 encoded JSON")))
 
 
 (defn- load-rule
