@@ -185,7 +185,7 @@
        (assoc :creator (user-details :crowberto))
        (assoc-in [:card :include_csv] true)
        (update-in [:channels 0] merge {:schedule_hour 12, :schedule_type "daily", :recipients (set (map recipient-details [:rasta :crowberto]))}))
-   (merge (et/email-to :crowberto {:subject "You setup an alert",
+   (merge (et/email-to :crowberto {:subject "You set up an alert",
                                    :body {"https://metabase.com/testmb" true,
                                           "My question" true
                                           "now getting alerts" false
