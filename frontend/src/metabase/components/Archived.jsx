@@ -2,6 +2,9 @@ import React from "react";
 import EmptyState from "metabase/components/EmptyState";
 import Link from "metabase/components/Link";
 import { t } from "c-3po";
+
+// TODO: port to ErrorMessage for more consistent style
+
 const Archived = ({ entityName, linkTo }) => (
   <div className="full-height flex justify-center align-center">
     <EmptyState

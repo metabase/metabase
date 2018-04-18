@@ -125,3 +125,21 @@
    setting) entitiy type of TABLE."
   [table :- i/TableInstance]
   (save-model-updates! table (name/infer-entity-type table)))
+
+(s/defn classify-tables-for-db!
+  "Classify all tables found in a given database"
+  [database :- i/DatabaseInstance
+   tables :- [i/TableInstance]
+   log-progress-fn]
+  (doseq [table tables]
+    (classify-table! table)
+    (log-progress-fn "clasify-tables" table)))
+
+(s/defn classify-fields-for-db!
+  "Classify all fields found in a given database"
+  [database :- i/DatabaseInstance
+   tables :- [i/TableInstance]
+   log-progress-fn]
+  (doseq [table tables]
+    (classify-fields! table)
+    (log-progress-fn "classify-fields" table)))

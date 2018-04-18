@@ -16,13 +16,36 @@
              [query :refer [Query] :as query]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.util.schema :as su]
             [ring.util.codec :as codec]
+            [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
+(def ^:private Show (s/maybe (s/enum "all")))
+
+(def ^:private Prefix (->> ["table" "metric" "field"]
+                           (mapcat rules/load-rules)
+                           (filter :indepth)
+                           (map :rule)
+                           (apply s/enum)))
+
+(def ^:private Rule (->> ["table" "metric" "field"]
+                         (mapcat rules/load-rules)
+                         (mapcat :indepth)
+                         (map :rule)
+                         (apply s/enum)))
+
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp json/decode codecs/bytes->str codec/base64-decode))
+
+(def ^:private Base64EncodedJSON (s/pred decode-base64-json))
+
+
+(defn- load-rule
+  [entity prefix rule]
+  (rules/load-rule (format "%s/%s/%s.yaml" entity prefix rule)))
 
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
@@ -31,72 +54,114 @@
       api/check-404
       magic/candidate-tables))
 
+
 ;; ----------------------------------------- API Endpoints for viewing a transient dashboard ----------------
 
 (api/defendpoint GET "/table/:id"
   "Return an automagic dashboard for table with id `ìd`."
-  [id]
-  (-> id Table api/check-404 magic/automagic-dashboard))
+  [id show]
+  {show Show}
+  (-> id Table api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/table/:id/:prefix/:rule"
   "Return an automagic dashboard for table with id `ìd` using rule `rule`."
-  [id prefix rule]
-  (->> id
-       Table
-       api/check-404
-       (magic/automagic-dashboard (rules/load-rule (str prefix "/" rule ".yaml")))))
+  [id prefix rule show]
+  {show   Show
+   prefix Prefix
+   rule   Rule}
+  (-> id
+      Table
+      api/check-404
+      (magic/automagic-analysis
+       {:rule (load-rule "table" prefix rule)
+        :show (keyword show)})))
 
 (api/defendpoint GET "/segment/:id"
   "Return an automagic dashboard analyzing segment with id `id`."
-  [id]
-  (-> id Segment api/check-404 magic/automagic-dashboard))
+  [id show]
+  {show Show}
+  (-> id Segment api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/segment/:id/:prefix/:rule"
   "Return an automagic dashboard analyzing segment with id `id`. using rule `rule`."
-  [id prefix rule]
+  [id prefix rule show]
+  {show   Show
+   prefix Prefix
+   rule   Rule}
   (-> id
       Segment
       api/check-404
-      (magic/automagic-dashboard (rules/load-rule (str prefix "/" rule ".yaml")))))
+      (magic/automagic-analysis
+       {:rule (load-rule "table" prefix rule)
+        :show (keyword show)})))
 
 (api/defendpoint GET "/question/:id/cell/:cell-query"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry`."
-  [id cell-query]
-  (-> (query/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
-      (magic/inject-segment (-> id Card api/check-404))
-      magic/automagic-dashboard))
+  [id cell-query show]
+  {show       Show
+   cell-query Base64EncodedJSON}
+  (-> id
+      Card
+      api/check-404
+      (magic/automagic-analysis {:show       (keyword show)
+                                 :cell-query (decode-base64-json cell-query)})))
 
 (api/defendpoint GET "/question/:id/cell/:cell-query/:prefix/:rule"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry` using rule `rule`."
-  [id cell-query prefix rule]
-  (-> (query/adhoc-query {:query {:filter (decode-base64-json cell-query)}})
-      (magic/inject-segment (-> id Card api/check-404))
-      (magic/automagic-dashboard (rules/load-rule (str prefix "/" rule ".yaml")))))
+  [id cell-query prefix rule show]
+  {show       Show
+   prefix     Prefix
+   rule       Rule
+   cell-query Base64EncodedJSON}
+  (-> id
+      Card
+      api/check-404
+      (magic/automagic-analysis {:show       (keyword show)
+                                 :rule       (load-rule "table" prefix rule)
+                                 :cell-query (decode-base64-json cell-query)})))
 
 (api/defendpoint GET "/metric/:id"
   "Return an automagic dashboard analyzing metric with id `id`."
-  [id]
-  (-> id Metric api/check-404 magic/automagic-analysis))
+  [id show]
+  {show Show}
+  (-> id Metric api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/field/:id"
   "Return an automagic dashboard analyzing field with id `id`."
-  [id]
-  (-> id Field api/check-404 magic/automagic-analysis))
+  [id show]
+  {show Show}
+  (-> id Field api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/question/:id"
   "Return an automagic dashboard analyzing question with id `id`."
-  [id]
-  (-> id Card api/check-404 magic/automagic-analysis))
+  [id show]
+  {show Show}
+  (-> id Card api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/adhoc/:query"
   "Return an automagic dashboard analyzing ad hoc query."
-  [query]
+  [query show]
+  {show  Show
+   query Base64EncodedJSON}
   (-> query
       decode-base64-json
       query/adhoc-query
-      magic/automagic-analysis))
+      (magic/automagic-analysis {:show (keyword show)})))
+
+(api/defendpoint GET "/adhoc/:query/cell/:cell-query"
+  "Return an automagic dashboard analyzing ad hoc query."
+  [query cell-query show]
+  {show       Show
+   query      Base64EncodedJSON
+   cell-query Base64EncodedJSON}
+  (let [query      (decode-base64-json query)
+        cell-query (decode-base64-json cell-query)]
+    (-> query
+        query/adhoc-query
+        (magic/automagic-analysis {:show       (keyword show)
+                                   :cell-query cell-query}))))
 
 (def ^:private valid-comparison-pair?
   #{["segment" "segment"]
