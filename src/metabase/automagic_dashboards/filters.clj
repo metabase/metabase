@@ -68,6 +68,11 @@
       mappings                (update dashcard :parameter_mappings concat mappings))))
 
 
+(def ^:private ^{:arglists '([field])} periodic-datetime?
+  (comp #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year
+          :month-of-year :quarter-of-year}
+        :unit))
+
 (defn- datetime?
   [field]
   (and (not (periodic-datetime? field))
@@ -135,10 +140,6 @@
                  dashboard)))
            dashboard)))))
 
-(def ^:private ^{:arglists '([field])} periodic-datetime?
-  (comp #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year
-          :month-of-year :quarter-of-year}
-        :unit))
 
 (def ^:private date-formatter (t.format/formatter "MMMM d, YYYY"))
 (def ^:private datetime-formatter (t.format/formatter "EEEE, MMMM d, YYYY h:mm a"))
