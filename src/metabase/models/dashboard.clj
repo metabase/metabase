@@ -254,8 +254,8 @@
   [applied-filters]
   (some->> applied-filters
            not-empty
-           (map (fn [{:keys [field op value]}]
-                  (format "%s %s %s" (str/join " " field) op value)))
+           (map (fn [{:keys [field value]}]
+                  (format "%s %s" (str/join " " field) value)))
            (str/join "\n")
            (str "Filtered by:\n")))
 
