@@ -2,8 +2,11 @@ import React from "react";
 import { Box, Flex, Heading, Subhead } from "rebass";
 import { Link } from "react-router";
 
+import * as Urls from "metabase/lib/urls";
+
 import Icon from "metabase/components/Icon";
 import CollectionListLoader from "metabase/components/CollectionListLoader";
+import CollectionItemsLoader from "metabase/components/CollectionItemsLoader";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import SegmentList from "metabase/components/SegmentList";
@@ -54,8 +57,24 @@ const DefaultLanding = ({ collectionSlug }) => {
   return (
     <Box w="100%">
       <CollectionList collectionSlug={collectionSlug} />
-      <MetricList />
-      <SegmentList />
+      <CollectionItemsLoader>
+        {({ dashboards, loading, error }) => {
+          if (loading) {
+            return <Box>Loading...</Box>;
+          }
+          return (
+            <Box>
+              {dashboards.map(dashboard => (
+                <Box>
+                  <Link to={Urls.dashboard(dashboard.id)}>
+                    {dashboard.name}
+                  </Link>
+                </Box>
+              ))}
+            </Box>
+          );
+        }}
+      </CollectionItemsLoader>
     </Box>
   );
 };
