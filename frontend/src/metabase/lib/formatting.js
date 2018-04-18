@@ -31,6 +31,8 @@ export type FormattingOptions = {
   majorWidth?: number,
   type?: "axis" | "cell" | "tooltip",
   jsx?: boolean,
+  // render links for type/URLs, type/Email, etc
+  rich?: boolean,
   // number options:
   comma?: boolean,
   compact?: boolean,
@@ -297,9 +299,12 @@ export function formatTimeValue(value: Value) {
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
 const EMAIL_WHITELIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
-export function formatEmail(value: Value, { jsx }: FormattingOptions = {}) {
+export function formatEmail(
+  value: Value,
+  { jsx, rich }: FormattingOptions = {},
+) {
   const email = String(value);
-  if (jsx && EMAIL_WHITELIST_REGEX.test(email)) {
+  if (jsx && rich && EMAIL_WHITELIST_REGEX.test(email)) {
     return <ExternalLink href={"mailto:" + email}>{email}</ExternalLink>;
   } else {
     return email;
@@ -309,9 +314,9 @@ export function formatEmail(value: Value, { jsx }: FormattingOptions = {}) {
 // based on https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L25
 const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i;
 
-export function formatUrl(value: Value, { jsx }: FormattingOptions = {}) {
+export function formatUrl(value: Value, { jsx, rich }: FormattingOptions = {}) {
   const url = String(value);
-  if (jsx && URL_WHITELIST_REGEX.test(url)) {
+  if (jsx && rich && URL_WHITELIST_REGEX.test(url)) {
     return (
       <ExternalLink className="link link--wrappable" href={url}>
         {url}
