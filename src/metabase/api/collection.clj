@@ -11,6 +11,7 @@
              [interface :as mi]
              [pulse :as pulse :refer [Pulse]]]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -31,22 +32,34 @@
     (filter mi/can-read? collections)
     (hydrate collections :can_write)))
 
+(defn- objects-in-collection [model collection-id-or-nil]
+  (let [return? (if-not model
+                  (constantly true)
+                  (partial = model))]
+    (merge
+     (when (return? "cards")
+       {:cards (db/select [Card :name :id], :collection_id collection-id-or-nil, :archived false)})
+     (when (return? "dashboards")
+       {:dashboards (db/select [Dashboard :name :id], :collection_id collection-id-or-nil, :archived false)})
+     (when (return? "pulses")
+       {:pulses (db/select [Pulse :name :id], :collection_id collection-id-or-nil)}))))
+
 (api/defendpoint GET "/:id"
   "Fetch a specific (non-archived) Collection, including objects of a specific `model` that belong to it. If `model` is
   unspecified, it will return objects of all types."
   [id model]
   {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
-  (let [return? (if-not model
-                  (constantly true)
-                  (partial = model))]
-    (merge
-     (api/read-check Collection id, :archived false)
-     (when (return? "cards")
-       {:cards (db/select Card, :collection_id id, :archived false)})
-     (when (return? "dashboards")
-       {:dashboards (db/select Dashboard, :collection_id id, :archived false)})
-     (when (return? "pulses")
-       {:pulses (db/select Pulse, :collection_id id)}))))
+  (merge
+   (api/read-check Collection id, :archived false)
+   (objects-in-collection model id)))
+
+(api/defendpoint GET "/root"
+  "Fetch objects in the 'root' Collection. (The 'root' Collection doesn't actually exist at this point, so this just
+  returns objects that aren't in *any* Collection."
+  [model]
+  {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
+  (assoc (objects-in-collection model nil)
+    :name (tru "Root Collection")))
 
 (api/defendpoint POST "/"
   "Create a new Collection."
