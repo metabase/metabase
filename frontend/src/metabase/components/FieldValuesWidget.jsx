@@ -19,6 +19,7 @@ import { stripId } from "metabase/lib/formatting";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type { FieldId } from "metabase/meta/types/Field";
 import type { Value } from "metabase/meta/types/Dataset";
+import type { FormattingOptions } from "metabase/lib/formatting";
 import type { LayoutRendererProps } from "metabase/components/TokenField";
 
 const MAX_SEARCH_RESULTS = 100;
@@ -40,6 +41,7 @@ type Props = {
   maxResults: number,
   style?: { [key: string]: string | number },
   placeholder?: string,
+  formatOptions?: FormattingOptions,
   maxWidth?: number,
   minWidth?: number,
   alwaysShowOptions?: boolean,
@@ -72,6 +74,7 @@ export class FieldValuesWidget extends Component {
     maxResults: MAX_SEARCH_RESULTS,
     alwaysShowOptions: true,
     style: {},
+    formatOptions: {},
     maxWidth: 500,
   };
 
@@ -221,6 +224,7 @@ export class FieldValuesWidget extends Component {
       multi,
       autoFocus,
       color,
+      formatOptions,
     } = this.props;
     const { loadingState } = this.state;
 
@@ -281,7 +285,9 @@ export class FieldValuesWidget extends Component {
             <RemappedValue
               value={value}
               column={field}
+              {...formatOptions}
               round={false}
+              compact={false}
               autoLoad={true}
             />
           )}
@@ -291,6 +297,7 @@ export class FieldValuesWidget extends Component {
               column={field}
               round={false}
               autoLoad={false}
+              {...formatOptions}
             />
           )}
           layoutRenderer={props => (

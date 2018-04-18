@@ -17,11 +17,6 @@
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
-;; TODO - I don't think this is used for anything anymore
-(def ^:const ^:deprecated entity-types
-  "Valid values for `Table.entity_type` (field may also be `nil`)."
-  #{:person :event :photo :place})
-
 (def ^:const visibility-types
   "Valid values for `Table.visibility_type` (field may also be `nil`).
    (Basically any non-nil value is a reason for hiding the table.)"

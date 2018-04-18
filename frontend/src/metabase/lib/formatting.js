@@ -49,6 +49,7 @@ const PRECISION_NUMBER_FORMATTER = d3.format(".2r");
 const FIXED_NUMBER_FORMATTER = d3.format(",.f");
 const FIXED_NUMBER_FORMATTER_NO_COMMA = d3.format(".f");
 const DECIMAL_DEGREES_FORMATTER = d3.format(".08f");
+const DECIMAL_DEGREES_FORMATTER_COMPACT = d3.format(".02f");
 const BINNING_DEGREES_FORMATTER = (value, binWidth) => {
   return d3.format(`.0${decimalCount(binWidth)}f`)(value);
 };
@@ -111,7 +112,9 @@ export function formatCoordinate(
 
   const formattedValue = binWidth
     ? BINNING_DEGREES_FORMATTER(value, binWidth)
-    : DECIMAL_DEGREES_FORMATTER(value);
+    : options.compact
+      ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
+      : DECIMAL_DEGREES_FORMATTER(value);
   return formattedValue + "°" + direction;
 }
 
