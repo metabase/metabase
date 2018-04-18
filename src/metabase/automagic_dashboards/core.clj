@@ -569,15 +569,14 @@
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
   [{:keys [rule show rules-prefix query-filter cell-query full-name] :as root}]
-  (let [[dashboard rule] (if rule
-                           (apply-rule root rule)
-                           (->> root
-                                (matching-rules (rules/load-rules rules-prefix))
-                                (keep (partial apply-rule root))
-                                ;; `matching-rules` returns an `ArraySeq`
-                                ;; (via `sort-by`) so `first` realises one element
-                                ;; at a time (no chunking).
-                                first))]
+  (when-let [[dashboard rule] (if rule
+                                (apply-rule root rule)
+                                (->> root
+                                     (matching-rules (rules/load-rules rules-prefix))
+                                     (keep (partial apply-rule root))
+                                     ;; `matching-rules` returns an `ArraySeq` (via `sort-by`) so
+                                     ;; `first` realises one element at a time (no chunking).
+                                     first))]
     (log/info (format "Applying heuristic %s to %s." (:rule rule) full-name))
     (log/info (format "Dimensions bindings:\n%s"
                       (->> dashboard
@@ -702,7 +701,9 @@
    (let [rules (rules/load-rules "table")]
      (->> (apply db/select Table
                  (cond-> [:db_id           (:id database)
-                          :visibility_type nil]
+                          :visibility_type nil
+                          :entity_type     [:not= nil]] ; only consider tables that have alredy
+                                                        ; been analyzed
                    schema (concat [:schema schema])))
           (map enhanced-table-stats)
           (remove (comp (some-fn :link-table? :list-like-table?) :stats))
