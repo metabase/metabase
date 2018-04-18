@@ -44,6 +44,7 @@ import EntityList from "metabase/questions/containers/EntityList.jsx";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
+import PulseMoveModal from "metabase/pulse/components/PulseMoveModal";
 import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
@@ -387,7 +388,10 @@ export const getRoutes = store => (
       <Route path="/pulse" title={t`Pulses`}>
         <IndexRoute component={PulseListApp} />
         <Route path="create" component={PulseEditApp} />
-        <Route path=":pulseId" component={PulseEditApp} />
+        <Route path=":pulseId">
+          <IndexRoute component={PulseEditApp} />
+          <ModalRoute path="move" modal={PulseMoveModal} />
+        </Route>
       </Route>
 
       {/* USER */}

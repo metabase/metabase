@@ -24,16 +24,25 @@ class CollectionItemsLoader extends React.Component {
     try {
       console.log("Loading collections for ", collectionId);
       this.setState({ loading: true });
-      const { cards, dashboards, pulses } = await CollectionsApi.get({
-        id: collectionId,
-      });
-
-      this.setState({
-        cards,
-        dashboards,
-        pulses,
-        loading: false,
-      });
+      if (collectionId) {
+        const { cards, dashboards, pulses } = await CollectionsApi.get({
+          id: collectionId,
+        });
+        this.setState({
+          cards,
+          dashboards,
+          pulses,
+          loading: false,
+        });
+      } else {
+        const { cards, dashboards, pulses } = await CollectionsApi.getRoot();
+        this.setState({
+          cards,
+          dashboards,
+          pulses,
+          loading: false,
+        });
+      }
     } catch (error) {
       this.setState({
         loading: false,
@@ -44,12 +53,14 @@ class CollectionItemsLoader extends React.Component {
 
   render() {
     const { cards, dashboards, pulses, loading, error } = this.state;
+    const unified = cards.concat(dashboards, pulses);
     return this.props.children({
       cards,
       dashboards,
       pulses,
       loading,
       error,
+      unified,
     });
   }
 }

@@ -74,6 +74,8 @@ export const CollectionsApi = {
   list: GET("/api/collection"),
   create: POST("/api/collection"),
   get: GET("/api/collection/:id"),
+  // Temporary route for getting things not in a collection
+  getRoot: GET("/api/collection/root"),
   update: PUT("/api/collection/:id"),
   delete: DELETE("/api/collection/:id"),
   graph: GET("/api/collection/graph"),

@@ -58,20 +58,38 @@ const DefaultLanding = ({ currentCollection, collectionSlug }) => {
       // colleciton until we have a notion of nested collections
       !collectionSlug && <CollectionList />}
       <CollectionItemsLoader collectionId={currentCollection.id}>
-        {({ dashboards, loading, error }) => {
+        {({ dashboards, cards, pulses, loading, error }) => {
           if (loading) {
             return <Box>Loading...</Box>;
           }
           return (
             <Box>
-              {dashboards &&
-                dashboards.map(dashboard => (
-                  <Box>
-                    <Link to={Urls.dashboard(dashboard.id)}>
-                      {dashboard.name}
-                    </Link>
-                  </Box>
-                ))}
+              <Box>
+                {dashboards &&
+                  dashboards.map(dashboard => (
+                    <Box>
+                      <Link to={Urls.dashboard(dashboard.id)}>
+                        {dashboard.name}
+                      </Link>
+                    </Box>
+                  ))}
+              </Box>
+              <Box>
+                {pulses &&
+                  pulses.map(pulse => (
+                    <Box>
+                      <Link to={Urls.pulse(pulse.id)}>{pulse.name}</Link>
+                    </Box>
+                  ))}
+              </Box>
+              <Box>
+                {cards &&
+                  cards.map(card => (
+                    <Box>
+                      <Link to={Urls.question(card.id)}>{card.name}</Link>
+                    </Box>
+                  ))}
+              </Box>
             </Box>
           );
         }}
