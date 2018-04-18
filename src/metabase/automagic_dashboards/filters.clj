@@ -131,7 +131,6 @@
 (defn applied-filters
   "Extract fields and their values from MBQL filter clauses."
   [filter-clause]
-  (println filter-clause)
   (when filter-clause
     (if (-> filter-clause first qp.util/normalize-token (#{:and :not :or}))
       (mapcat applied-filters (rest filter-clause))
