@@ -15,6 +15,7 @@
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (defmacro with-rasta
@@ -120,6 +121,32 @@
                                   :type :query
                                   :database (data/id)})]
         (-> q (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]}) some?)))))
+
+
+(expect
+  [true true]
+  (tt/with-temp* [Table [{table-id :id}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (let [table               (Table table-id)
+              not-analyzed-result (automagic-analysis table {})
+              analyzed-result     (-> table
+                                      (assoc :entity_type :entity/GenericTable)
+                                      (automagic-analysis {}))]
+          [(nil? not-analyzed-result) (some? analyzed-result)])))))
+
+(expect
+  true
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [{table-id :id} {:db_id db-id}]
+                  Field    [{} {:table_id table-id}]
+                  Field    [{} {:table_id table-id}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (let [database           (Database db-id)
+              not-analyzed-count (count (candidate-tables database))]
+          (db/update! Table table-id :entity_type :entity/GenericTable)
+          (= (inc not-analyzed-count) (count (candidate-tables database))))))))
 
 
 (expect
