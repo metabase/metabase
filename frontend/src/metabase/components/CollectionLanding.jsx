@@ -22,10 +22,6 @@ const CollectionList = ({ collectionSlug }) => {
           if (loading) {
             return <Box>Loading...</Box>;
           }
-          let collectionList = collections;
-          if (collectionSlug) {
-            collectionList.reverse();
-          }
           return (
             <Flex wrap>
               {collections.map(collection => (
@@ -56,7 +52,9 @@ const CollectionList = ({ collectionSlug }) => {
 const DefaultLanding = ({ collectionSlug }) => {
   return (
     <Box w="100%">
-      <CollectionList collectionSlug={collectionSlug} />
+      {// HACK for now to only show the colleciton list on the root
+      // colleciton until we have a notion of nested collections
+      !collectionSlug && <CollectionList />}
       <CollectionItemsLoader>
         {({ dashboards, loading, error }) => {
           if (loading) {

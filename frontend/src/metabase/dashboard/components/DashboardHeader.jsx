@@ -295,6 +295,17 @@ export default class DashboardHeader extends Component {
       );
     }
 
+    buttons.push(
+      <Tooltip tooltip={t`Move dashboard`}>
+        <Link
+          to={location.pathname + "/move"}
+          data-metabase-event={"Dashboard;Move"}
+        >
+          <Icon className="text-brand-hover" name="move" size={18} />
+        </Link>
+      </Tooltip>,
+    );
+
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
         <Tooltip tooltip={t`Edit dashboard`}>

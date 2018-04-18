@@ -35,6 +35,7 @@ const LandingNav = props => {
           <Icon name="dashboard" size={ICON_SIZE} />
         </Link>
       </Box>
+      {/*
       <Box>
         <Link to="metrics" style={linkStyle} activeStyle={activeStyle}>
           <Icon name="insight" size={ICON_SIZE} />
@@ -45,6 +46,7 @@ const LandingNav = props => {
           <Icon name="segment" size={ICON_SIZE} />
         </Link>
       </Box>
+      */}
       <Box>
         <Link to="pulse" style={linkStyle} activeStyle={activeStyle}>
           <Icon name="pulse" size={ICON_SIZE} />

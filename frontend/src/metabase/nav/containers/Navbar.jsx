@@ -150,7 +150,7 @@ export default class Navbar extends Component {
         className="relative"
         align="center"
       >
-        <Box className="absolute top left">
+        <Box className="">
           <Link
             to="/"
             data-metabase-event={"Navbar;Logo"}
@@ -161,13 +161,13 @@ export default class Navbar extends Component {
           </Link>
         </Box>
         <Box my={1} p={1} className="wrapper lg-wrapper--trim">
-          <SearchBar />
+          {/* <SearchBar /> */}
         </Box>
-        <Flex className="absolute top right" align="center">
-          <Box>
-            <Link to="browse">
-              <Button primary medium icon="database">
-                Explore
+        <Flex className="ml-auto" align="center">
+          <Box mx={1}>
+            <Link to="reference">
+              <Button primary medium icon="document">
+                Reference
               </Button>
             </Link>
           </Box>
@@ -203,6 +203,11 @@ export default class Navbar extends Component {
               </Box>
             </Box>
           </PopoverWithTrigger>
+          <Box mx={1}>
+            <Link to="activity">
+              <Icon name="alert" />
+            </Link>
+          </Box>
           <ProfileLink {...this.props} />
         </Flex>
       </Flex>

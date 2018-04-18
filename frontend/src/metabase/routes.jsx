@@ -114,6 +114,7 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx"
 import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
 import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
 import { DashboardHistoryModal } from "metabase/dashboard/components/DashboardHistoryModal";
+import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import CollectionLanding from "metabase/components/CollectionLanding";
@@ -249,6 +250,7 @@ export const getRoutes = store => (
           component={DashboardApp}
         >
           <ModalRoute path="history" modal={DashboardHistoryModal} />
+          <ModalRoute path="move" modal={DashboardMoveModal} />
         </Route>
 
         <Route path="/question">
