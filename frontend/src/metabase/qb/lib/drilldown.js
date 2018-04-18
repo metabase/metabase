@@ -46,7 +46,7 @@ const DEFAULT_DRILL_DOWN_PROGRESSIONS = [
   [CategoryDrillDown(TYPE.City), LatLonDrillDown(0.1)],
   // LatLon drill downs
   [
-    LatLonDrillDown(30),
+    LatLonDrillDown(binWidth => binWidth >= 20),
     LatLonDrillDown(10),
     LatLonDrillDown(1),
     LatLonDrillDown(0.1),
