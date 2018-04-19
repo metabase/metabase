@@ -13,6 +13,8 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
 
+import HomepageApp from "metabase/home/containers/HomepageApp";
+
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
 import LoginApp from "metabase/auth/containers/LoginApp.jsx";
@@ -244,6 +246,8 @@ export const getRoutes = store => (
           path="collections/:collectionSlug"
           component={CollectionLanding}
         />
+
+        <Route path="activity" component={HomepageApp} />
 
         <Route
           path="dashboard/:dashboardId"
