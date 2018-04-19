@@ -161,12 +161,22 @@ Object {
         "binning-strategy",
         null,
         "bin-width",
+        0.1,
+      ],
+      "name": "Bin every 0.1 degrees",
+      "type": "type/Coordinate",
+    },
+    "22": Object {
+      "mbql": Array [
+        "binning-strategy",
+        null,
+        "bin-width",
         1,
       ],
       "name": "Bin every 1 degree",
       "type": "type/Coordinate",
     },
-    "22": Object {
+    "23": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -176,7 +186,7 @@ Object {
       "name": "Bin every 10 degrees",
       "type": "type/Coordinate",
     },
-    "23": Object {
+    "24": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -184,16 +194,6 @@ Object {
         20,
       ],
       "name": "Bin every 20 degrees",
-      "type": "type/Coordinate",
-    },
-    "24": Object {
-      "mbql": Array [
-        "binning-strategy",
-        null,
-        "bin-width",
-        50,
-      ],
-      "name": "Bin every 50 degrees",
       "type": "type/Coordinate",
     },
     "25": Object {
@@ -1271,12 +1271,22 @@ Object {
         "binning-strategy",
         null,
         "bin-width",
+        0.1,
+      ],
+      "name": "Bin every 0.1 degrees",
+      "type": "type/Coordinate",
+    },
+    "22": Object {
+      "mbql": Array [
+        "binning-strategy",
+        null,
+        "bin-width",
         1,
       ],
       "name": "Bin every 1 degree",
       "type": "type/Coordinate",
     },
-    "22": Object {
+    "23": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -1286,7 +1296,7 @@ Object {
       "name": "Bin every 10 degrees",
       "type": "type/Coordinate",
     },
-    "23": Object {
+    "24": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -1294,16 +1304,6 @@ Object {
         20,
       ],
       "name": "Bin every 20 degrees",
-      "type": "type/Coordinate",
-    },
-    "24": Object {
-      "mbql": Array [
-        "binning-strategy",
-        null,
-        "bin-width",
-        50,
-      ],
-      "name": "Bin every 50 degrees",
       "type": "type/Coordinate",
     },
     "25": Object {
@@ -1932,6 +1932,16 @@ Object {
             "binning-strategy",
             null,
             "bin-width",
+            0.1,
+          ],
+          "name": "Bin every 0.1 degrees",
+          "type": "type/Coordinate",
+        },
+        Object {
+          "mbql": Array [
+            "binning-strategy",
+            null,
+            "bin-width",
             1,
           ],
           "name": "Bin every 1 degree",
@@ -1955,16 +1965,6 @@ Object {
             20,
           ],
           "name": "Bin every 20 degrees",
-          "type": "type/Coordinate",
-        },
-        Object {
-          "mbql": Array [
-            "binning-strategy",
-            null,
-            "bin-width",
-            50,
-          ],
-          "name": "Bin every 50 degrees",
           "type": "type/Coordinate",
         },
         Object {
@@ -2034,6 +2034,16 @@ Object {
             "binning-strategy",
             null,
             "bin-width",
+            0.1,
+          ],
+          "name": "Bin every 0.1 degrees",
+          "type": "type/Coordinate",
+        },
+        Object {
+          "mbql": Array [
+            "binning-strategy",
+            null,
+            "bin-width",
             1,
           ],
           "name": "Bin every 1 degree",
@@ -2057,16 +2067,6 @@ Object {
             20,
           ],
           "name": "Bin every 20 degrees",
-          "type": "type/Coordinate",
-        },
-        Object {
-          "mbql": Array [
-            "binning-strategy",
-            null,
-            "bin-width",
-            50,
-          ],
-          "name": "Bin every 50 degrees",
           "type": "type/Coordinate",
         },
         Object {
@@ -2481,12 +2481,22 @@ Object {
         "binning-strategy",
         null,
         "bin-width",
+        0.1,
+      ],
+      "name": "Bin every 0.1 degrees",
+      "type": "type/Coordinate",
+    },
+    "22": Object {
+      "mbql": Array [
+        "binning-strategy",
+        null,
+        "bin-width",
         1,
       ],
       "name": "Bin every 1 degree",
       "type": "type/Coordinate",
     },
-    "22": Object {
+    "23": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -2496,7 +2506,7 @@ Object {
       "name": "Bin every 10 degrees",
       "type": "type/Coordinate",
     },
-    "23": Object {
+    "24": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -2504,16 +2514,6 @@ Object {
         20,
       ],
       "name": "Bin every 20 degrees",
-      "type": "type/Coordinate",
-    },
-    "24": Object {
-      "mbql": Array [
-        "binning-strategy",
-        null,
-        "bin-width",
-        50,
-      ],
-      "name": "Bin every 50 degrees",
       "type": "type/Coordinate",
     },
     "25": Object {
@@ -3329,12 +3329,22 @@ Object {
         "binning-strategy",
         null,
         "bin-width",
+        0.1,
+      ],
+      "name": "Bin every 0.1 degrees",
+      "type": "type/Coordinate",
+    },
+    "22": Object {
+      "mbql": Array [
+        "binning-strategy",
+        null,
+        "bin-width",
         1,
       ],
       "name": "Bin every 1 degree",
       "type": "type/Coordinate",
     },
-    "22": Object {
+    "23": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -3344,7 +3354,7 @@ Object {
       "name": "Bin every 10 degrees",
       "type": "type/Coordinate",
     },
-    "23": Object {
+    "24": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -3352,16 +3362,6 @@ Object {
         20,
       ],
       "name": "Bin every 20 degrees",
-      "type": "type/Coordinate",
-    },
-    "24": Object {
-      "mbql": Array [
-        "binning-strategy",
-        null,
-        "bin-width",
-        50,
-      ],
-      "name": "Bin every 50 degrees",
       "type": "type/Coordinate",
     },
     "25": Object {
