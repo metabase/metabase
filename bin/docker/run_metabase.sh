@@ -11,7 +11,7 @@ fi
 # AWS Elastic Beanstalk w/ RDS
 if [ ! -z "$RDS_HOSTNAME" ]; then
     # EEK: this is a bit fragile.  if user picks a non-standard port for their db we are screwed :(
-    if [ "$MB_DB_PORT" == "3306" ]; then
+    if [ "$RDS_PORT" == "3306" ]; then
         export MB_DB_TYPE=mysql
     else
         export MB_DB_TYPE=postgres
@@ -22,6 +22,7 @@ if [ ! -z "$RDS_HOSTNAME" ]; then
     export MB_DB_PASS=$RDS_PASSWORD
     export MB_DB_HOST=$RDS_HOSTNAME
     export MB_DB_PORT=$RDS_PORT
+    export MB_DB_SSL=true
 fi
 
 

@@ -12,6 +12,13 @@ RUN apk add --update java-cacerts && \
     ln -s /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib/security/cacerts && \
     rm -rf /tmp/* /var/cache/apk/*
 
+# add amazon rds certs
+ADD https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem /app/
+RUN keytool -noprompt -import -trustcacerts -alias aws-rds \
+  -file /app/rds-combined-ca-bundle.pem \
+  -keystore /usr/lib/jvm/java-1.8-openjdk/jre/lib/security/cacerts \
+  -keypass changeit -storepass changeit
+
 # add Metabase jar
 COPY ./metabase.jar /app/
 
