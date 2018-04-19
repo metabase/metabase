@@ -77,17 +77,19 @@
                :h2       {:type     :h2                               ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
                           :db       @db-file}
                :mysql    {:type     :mysql
-                          :host     (config/config-str :mb-db-host)
-                          :port     (config/config-int :mb-db-port)
-                          :dbname   (config/config-str :mb-db-dbname)
-                          :user     (config/config-str :mb-db-user)
-                          :password (config/config-str :mb-db-pass)}
+                          :host     (config/config-str  :mb-db-host)
+                          :port     (config/config-int  :mb-db-port)
+                          :dbname   (config/config-str  :mb-db-dbname)
+                          :user     (config/config-str  :mb-db-user)
+                          :password (config/config-str  :mb-db-pass)
+                          :ssl      (config/config-bool :mb-db-ssl)}
                :postgres {:type     :postgres
-                          :host     (config/config-str :mb-db-host)
-                          :port     (config/config-int :mb-db-port)
-                          :dbname   (config/config-str :mb-db-dbname)
-                          :user     (config/config-str :mb-db-user)
-                          :password (config/config-str :mb-db-pass)}))))
+                          :host     (config/config-str  :mb-db-host)
+                          :port     (config/config-int  :mb-db-port)
+                          :dbname   (config/config-str  :mb-db-dbname)
+                          :user     (config/config-str  :mb-db-user)
+                          :password (config/config-str  :mb-db-pass)
+                          :ssl      (config/config-bool :mb-db-ssl)}))))
 
 (defn jdbc-details
   "Takes our own MB details map and formats them properly for connection details for JDBC."
