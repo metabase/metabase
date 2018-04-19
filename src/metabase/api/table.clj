@@ -50,7 +50,7 @@
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
                    show_in_getting_started], :as body} :body}]
   {display_name            (s/maybe su/NonBlankString)
-   entity_type             (s/maybe s/Any)
+   entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
    description             (s/maybe su/NonBlankString)
    caveats                 (s/maybe su/NonBlankString)
