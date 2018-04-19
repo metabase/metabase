@@ -43,6 +43,7 @@ export class Dashboard extends Component {
       <LoadingAndErrorWrapper
         className={cx("Dashboard p1 flex-full")}
         loading={!dashboard}
+        noBackground
       >
         {() => <DashboardGrid {...this.props} className={"spread"} />}
       </LoadingAndErrorWrapper>
