@@ -599,7 +599,7 @@
                                                       count
                                                       (> max-cards))
                                                   (not= show :all))
-                                           [{:title       "Show more"
+                                           [{:title       "Show more about this"
                                              :description nil
                                              :table       (:source-table root)
                                              :url         (format "%s#show=all"
