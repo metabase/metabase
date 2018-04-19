@@ -12,7 +12,7 @@ import Icon from "metabase/components/Icon";
 import cxs from "cxs";
 import { t } from "c-3po";
 
-import { Dashboard } from "./Dashboard";
+import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import Parameters from "metabase/parameters/components/Parameters";
 

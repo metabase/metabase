@@ -1,5 +1,7 @@
 /* @flow */
 
+// TODO: merge with metabase/dashboard/components/Dashboard.jsx
+
 import React, { Component } from "react";
 import cx from "classnames";
 
