@@ -46,7 +46,7 @@
   "Create a new `Pulse`."
   [:as {{:keys [name cards channels skip_if_empty collection_id]} :body}]
   {name          su/NonBlankString
-   cards         (su/non-empty [su/Map])
+   cards         (su/non-empty [pulse/CardRef])
    channels      (su/non-empty [su/Map])
    skip_if_empty (s/maybe s/Bool)
    collection_id (s/maybe su/IntGreaterThanZero)}
@@ -56,7 +56,7 @@
   (collection/check-write-perms-for-collection collection_id)
   ;; ok, now create the Pulse
   (api/check-500
-   (pulse/create-pulse! (map pulse/create-card-ref cards) channels
+   (pulse/create-pulse! (map pulse/card->ref cards) channels
      {:name          name
       :creator_id    api/*current-user-id*
       :skip_if_empty skip_if_empty
@@ -69,14 +69,13 @@
   (api/read-check (pulse/retrieve-pulse id)))
 
 
-
 (api/defendpoint PUT "/:id"
   "Update a Pulse with `id`."
-  [id :as {{:keys [name cards channels skip_if_empty collection_id]} :body}]
-  {name          su/NonBlankString
-   cards         (su/non-empty [su/Map])
-   channels      (su/non-empty [su/Map])
-   skip_if_empty s/Bool
+  [id :as {{:keys [name cards channels skip_if_empty collection_id], :as pulse} :body}]
+  {name          (s/maybe su/NonBlankString)
+   cards         (s/maybe (su/non-empty [pulse/CardRef]))
+   channels      (s/maybe (su/non-empty [su/Map]))
+   skip_if_empty (s/maybe s/Bool)
    collection_id (s/maybe su/IntGreaterThanZero)}
   ;; do various perms checks
   (api/write-check Pulse id)
@@ -84,12 +83,8 @@
   (when collection_id
     (collection/check-allowed-to-change-collection (db/select-one [Pulse :collection_id] :id id) collection_id))
   ;; ok, now update the Pulse
-  (pulse/update-pulse! {:id             id
-                        :name           name
-                        :cards          (map pulse/create-card-ref cards)
-                        :channels       channels
-                        :skip-if-empty? skip_if_empty
-                        :collection-id  collection_id})
+  (pulse/update-pulse! (assoc (select-keys pulse [:name :cards :channels :skip_if_empty :collection_id])
+                         :id id))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
@@ -171,7 +166,7 @@
   "Test send an unsaved pulse."
   [:as {{:keys [name cards channels skip_if_empty] :as body} :body}]
   {name          su/NonBlankString
-   cards         (su/non-empty [su/Map])
+   cards         (su/non-empty [pulse/CardRef])
    channels      (su/non-empty [su/Map])
    skip_if_empty s/Bool}
   (check-card-read-permissions cards)

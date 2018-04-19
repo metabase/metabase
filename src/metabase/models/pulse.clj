@@ -63,7 +63,6 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-;; TODO - rename this to 'Notification'
 (models/defmodel Pulse :pulse)
 
 (defn- pre-delete [{:keys [id]}]
@@ -88,7 +87,7 @@
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn ^:hydrate channels
-  "Return the `PulseChannels` associated with this PULSE."
+  "Return the PulseChannels associated with this PULSE."
   [{:keys [id]}]
   (db/select PulseChannel, :pulse_id id))
 
@@ -108,68 +107,80 @@
          :order-by [[:pc.position :asc]]})))
 
 
-;;; ------------------------------------------- Pulse Fetching Helper Fns --------------------------------------------
+;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
-(defn- hydrate-pulse [pulse]
-  (-> pulse
+(def AlertConditions
+  "Schema for valid values of `:alert_condition` for Alerts."
+  (s/enum "rows" "goal"))
+
+(def CardRef
+  "Schema for the map we use to internally represent the fact that a Card is in a Notification and the details about its
+  presence there."
+  (su/with-api-error-message {:id          su/IntGreaterThanZero
+                              :include_csv s/Bool
+                              :include_xls s/Bool}
+    "value must be a map with the keys `id`, `include_csv`, and `include_xls`."))
+
+
+;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
+
+(defn- hydrate-notification [notification]
+  (-> notification
       (hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
-(defn- remove-alert-fields [pulse]
-  (dissoc pulse :alert_condition :alert_above_goal :alert_first_only))
+(defn- notification->pulse
+  "Take a generic `Notification`, and put it in the standard Pulse format the frontend expects. This really just
+  consists of removing associated `Alert` columns."
+  [notification]
+  (dissoc notification :alert_condition :alert_above_goal :alert_first_only))
 
 ;; TODO - do we really need this function? Why can't we just use `db/select` and `hydrate` like we do for everything
 ;; else?
 (defn retrieve-pulse
-  "Fetch a single `Pulse` by its ID value."
-  [id]
-  {:pre [(integer? id)]}
-  (-> (db/select-one Pulse :id id, :alert_condition nil)
-      hydrate-pulse
-      remove-alert-fields))
+  "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert coulmns, since this is a
+  *Pulse* and they will all be unset."
+  [pulse-or-id]
+  (-> (db/select-one Pulse :id (u/get-id pulse-or-id), :alert_condition nil)
+      hydrate-notification
+      notification->pulse))
 
-(defn retrieve-pulse-or-alert
-  "Fetch an alert or pulse by its ID value."
-  [id]
-  {:pre [(integer? id)]}
-  (-> (db/select-one Pulse {:where [:= :id id]})
-      hydrate-pulse))
+(defn retrieve-notification
+  "Fetch an Alert or Pulse, and do the 'standard' hydrations."
+  [notification-or-id]
+  (-> (Pulse (u/get-id notification-or-id))
+      hydrate-notification))
 
-(defn- pulse->alert
-  "Convert a pulse to an alert"
-  [pulse]
-  (-> pulse
-      (assoc :card (first (:cards pulse)))
+(defn- notification->alert
+  "Take a generic `Notification` and put it in the standard `Alert` format the frontend expects. This really just
+  consists of collapsing `:cards` into a `:card` key with whatever the first Card is."
+  [notification]
+  (-> notification
+      (assoc :card (first (:cards notification)))
       (dissoc :cards)))
 
 (defn retrieve-alert
-  "Fetch a single alert by its pulse `ID` value."
-  [id]
-  {:pre [(integer? id)]}
-  (-> (db/select-one Pulse {:where [:and
-                                    [:= :id id]
-                                    [:not= :alert_condition nil]]})
-      hydrate-pulse
-      pulse->alert))
+  "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
+  [alert-or-id]
+  (-> (db/select-one Pulse, :id (u/get-id alert-or-id), :alert_condition [:not= nil])
+      hydrate-notification
+      notification->alert))
 
 (defn retrieve-alerts
-  "Fetch all alerts"
+  "Fetch all Alerts."
   []
-  (for [pulse (db/select Pulse, {:where [:not= :alert_condition nil]
-                                 :order-by [[:name :asc]]})]
-
-    (-> pulse
-        hydrate-pulse
-        pulse->alert)))
+  (for [alert (db/select Pulse, :alert_condition [:not= nil], {:order-by [[:%lower.name :asc]]})]
+    (-> alert
+        hydrate-notification
+        notification->alert)))
 
 (defn retrieve-pulses
   "Fetch all `Pulses`."
   []
-  (for [pulse (db/select Pulse, {:where [:= :alert_condition nil]
-                                 :order-by [[:name :asc]]} )]
+  (for [pulse (db/select Pulse, :alert_condition nil, {:order-by [[:%lower.name :asc]]})]
     (-> pulse
-        hydrate-pulse
-        remove-alert-fields)))
+        hydrate-notification
+        notification->pulse)))
 
 (defn- query-as [model query]
   (db/do-post-select model (db/query query)))
@@ -177,7 +188,7 @@
 (defn retrieve-user-alerts-for-card
   "Find all alerts for `CARD-ID` that `USER-ID` is set to receive"
   [card-id user-id]
-  (map (comp pulse->alert hydrate-pulse)
+  (map (comp notification->alert hydrate-notification)
        (query-as Pulse
                  {:select [:p.*]
                   :from   [[Pulse :p]]
@@ -189,11 +200,11 @@
                            [:= :pc.card_id card-id]
                            [:= :pcr.user_id user-id]]})))
 
-(defn retrieve-alerts-for-card
+(defn retrieve-alerts-for-cards
   "Find all alerts for `CARD-IDS`, used for admin users"
   [& card-ids]
   (when (seq card-ids)
-    (map (comp pulse->alert hydrate-pulse)
+    (map (comp notification->alert hydrate-notification)
          (query-as Pulse
                    {:select [:p.*]
                     :from   [[Pulse :p]]
@@ -202,9 +213,9 @@
                              [:not= :p.alert_condition nil]
                              [:in :pc.card_id card-ids]]}))))
 
-(defn create-card-ref
+(s/defn card->ref :- CardRef
   "Create a card reference from a card or id"
-  [card]
+  [card :- su/Map]
   {:id          (u/get-id card)
    :include_csv (get card :include_csv false)
    :include_xls (get card :include_xls false)})
@@ -212,25 +223,24 @@
 
 ;;; ------------------------------------------ Other Persistence Functions -------------------------------------------
 
-(defn update-pulse-cards!
-  "Update the `PulseCards` for a given PULSE.
-   CARD-IDS should be a definitive collection of *all* IDs of cards for the pulse in the desired order.
+(s/defn update-notification-cards!
+  "Update the PulseCards for a given `notification-or-id`.
+   `card-refs` should be a definitive collection of *all* Cards for the Notification in the desired order. They should
+  have keys like `id`, `include_csv`, and `include_xls`.
 
-   *  If an ID in CARD-IDS has no corresponding existing `PulseCard` object, one will be created.
+   *  If a Card ID in `card-refs` has no corresponding existing `PulseCard` object, one will be created.
    *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
-   *  All cards will be updated with a `position` according to their place in the collection of CARD-IDS"
-  {:arglists '([pulse card-refs])}
-  [{:keys [id]} card-refs]
-  {:pre [(integer? id)
-         (sequential? card-refs)
-         (every? map? card-refs)]}
+   *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
+  [notification-or-id, card-refs :- (s/maybe [CardRef])]
   ;; first off, just delete any cards associated with this pulse (we add them again below)
-  (db/delete! PulseCard :pulse_id id)
+  (db/delete! PulseCard :pulse_id (u/get-id notification-or-id))
   ;; now just insert all of the cards that were given to us
   (when (seq card-refs)
     (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls]}]
-                               {:pulse_id    id, :card_id     card-id,
-                                :position    i   :include_csv include_csv,
+                               {:pulse_id    (u/get-id notification-or-id)
+                                :card_id     card-id
+                                :position    i
+                                :include_csv include_csv
                                 :include_xls include_xls})
                              card-refs)]
       (db/insert-many! PulseCard cards))))
@@ -238,11 +248,11 @@
 
 (defn- create-update-delete-channel!
   "Utility function which determines how to properly update a single pulse channel."
-  [pulse-id new-channel existing-channel]
+  [notification-or-id new-channel existing-channel]
   ;; NOTE that we force the :id of the channel being updated to the :id we *know* from our
-  ;;      existing list of `PulseChannels` pulled from the db to ensure we affect the right record
+  ;;      existing list of PulseChannels pulled from the db to ensure we affect the right record
   (let [channel (when new-channel (assoc new-channel
-                                    :pulse_id       pulse-id
+                                    :pulse_id       (u/get-id notification-or-id)
                                     :id             (:id existing-channel)
                                     :channel_type   (keyword (:channel_type new-channel))
                                     :schedule_type  (keyword (:schedule_type new-channel))
@@ -257,45 +267,44 @@
       ;; 4. NOT in channels, NOT in db-channels = NO-OP
       :else nil)))
 
-(defn update-pulse-channels!
-  "Update the `PulseChannels` for a given PULSE.
+(s/defn update-notification-channels!
+  "Update the PulseChannels for a given `notification-or-id`.
    CHANNELS should be a definitive collection of *all* of the channels for the the pulse.
 
    * If a channel in the list has no existing `PulseChannel` object, one will be created.
    * If an existing `PulseChannel` has no corresponding entry in CHANNELS, it will be deleted.
    * All previously existing channels will be updated with their most recent information."
-  {:arglists '([pulse channels])}
-  [{:keys [id]} channels]
-  {:pre [(integer? id)
-         (coll? channels)
-         (every? map? channels)]}
+  [notification-or-id, channels :- [su/Map]]
   (let [new-channels   (group-by (comp keyword :channel_type) channels)
-        old-channels   (group-by (comp keyword :channel_type) (db/select PulseChannel :pulse_id id))
-        handle-channel #(create-update-delete-channel! id (first (get new-channels %)) (first (get old-channels %)))]
+        old-channels   (group-by (comp keyword :channel_type) (db/select PulseChannel
+                                                                :pulse_id (u/get-id notification-or-id)))
+        handle-channel #(create-update-delete-channel! (u/get-id notification-or-id)
+                                                       (first (get new-channels %))
+                                                       (first (get old-channels %)))]
     (assert (zero? (count (get new-channels nil)))
       "Cannot have channels without a :channel_type attribute")
     ;; for each of our possible channel types call our handler function
     (doseq [[channel-type] pulse-channel/channel-types]
       (handle-channel channel-type))))
 
-(defn- create-notification-and-add-cards-and-channels!
-  "Create a new pulse with the properties specified in `pulse`; add the `cards` to the Pulse and add the Pulse to
-  `channels`. Returns the `id` of the newly created Pulse."
-  [pulse cards channels]
+(s/defn ^:private create-notification-and-add-cards-and-channels!
+  "Create a new pulse with the properties specified in `notification`; add the `card-refs` to the Notification and add the
+  Notification to `channels`. Returns the `id` of the newly created Notification."
+  [notification, card-refs :- (s/maybe [CardRef]), channels]
   (db/transaction
-    (let [pulse (db/insert! Pulse pulse)]
+    (let [notification (db/insert! Pulse notification)]
       ;; add card-ids to the Pulse
-      (update-pulse-cards! pulse cards)
+      (update-notification-cards! notification card-refs)
       ;; add channels to the Pulse
-      (update-pulse-channels! pulse channels)
+      (update-notification-channels! notification channels)
       ;; now return the ID
-      (u/get-id pulse))))
+      (u/get-id notification))))
 
 (s/defn create-pulse!
-  "Create a new `Pulse` by inserting it into the database along with all associated pieces of data such as:
-  `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
+  "Create a new Pulse by inserting it into the database along with all associated pieces of data such as:
+  PulseCards, PulseChannels, and PulseChannelRecipients.
 
-   Returns the newly created `Pulse`, or throws an Exception."
+   Returns the newly created Pulse, or throws an Exception."
   {:style/indent 2}
   [cards    :- [{s/Keyword s/Any}]
    channels :- [{s/Keyword s/Any}]
@@ -316,54 +325,70 @@
     ;; return the full Pulse (and record our create event)
     (events/publish-event! :alert-create (retrieve-alert id))))
 
-(defn update-notification!
-  "Updates the pulse/alert and updates the related channels"
-  [{:keys [id name cards channels skip-if-empty? collection-id] :as pulse}]
-  (db/transaction
-    ;; update the pulse itself
-    (db/update-non-nil-keys! Pulse id (-> pulse
-                                          (select-keys [:name :alert_condition :alert_above_goal :alert_first_only])
-                                          (assoc :skip_if_empty skip-if-empty?
-                                                 :collection_id collection-id)))
-    ;; update cards (only if they changed). Order for the cards is important which is why we're not using select-field
-    (when (not= cards (map :card_id (db/select [PulseCard :card_id], :pulse_id id, {:order-by [[:position :asc]]})))
-      (update-pulse-cards! pulse cards))
-    ;; update channels
-    (update-pulse-channels! pulse channels)))
+(s/defn ^:private notification-or-id->existing-card-refs :- [CardRef]
+  [notification-or-id]
+  (db/select [PulseCard [:card_id :id] :include_csv :include_xls]
+    :pulse_id (u/get-id notification-or-id)
+    {:order-by [[:position :asc]]}))
+
+(s/defn ^:private card-refs-have-changed? :- s/Bool
+  [notification-or-id, new-card-refs :- [CardRef]]
+  (not= (notification-or-id->existing-card-refs notification-or-id)
+        new-card-refs))
+
+(s/defn ^:private update-notification-cards-if-changed! [notification-or-id new-card-refs]
+  (when (card-refs-have-changed? notification-or-id new-card-refs)
+    (update-notification-cards! notification-or-id new-card-refs)))
+
+(s/defn update-notification!
+  "Update the supplied keys in a `notification`."
+  [notification :- {:id                                su/IntGreaterThanZero
+                    (s/optional-key :name)             su/NonBlankString
+                    (s/optional-key :alert_condition)  AlertConditions
+                    (s/optional-key :alert_above_goal) s/Bool
+                    (s/optional-key :alert_first_only) s/Bool
+                    (s/optional-key :skip_if_empty)    s/Bool
+                    (s/optional-key :collection_id)    su/IntGreaterThanZero
+                    (s/optional-key :cards)            [CardRef]
+                    (s/optional-key :channels)         [su/Map]}]
+  (db/update! Pulse (u/get-id notification)
+    (u/select-non-nil-keys notification
+                           [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :collection_id]))
+  ;; update Cards if the 'refs' have changed
+  (update-notification-cards-if-changed! notification (map card->ref (:cards notification)))
+  ;; update channels as needed
+  (update-notification-channels! notification (:channels notification)))
 
 (s/defn update-pulse!
-  "Update an existing `Pulse`, including all associated data such as: `PulseCards`, `PulseChannels`, and
-  `PulseChannelRecipients`.
+  "Update an existing Pulse, including all associated data such as: PulseCards, PulseChannels, and
+  PulseChannelRecipients.
 
-  Returns the updated `Pulse` or throws an Exception."
-  [pulse :- {:id                              su/IntGreaterThanZero
-             :name                            su/NonBlankString
-             :cards                           (su/non-empty [{s/Keyword s/Any}])
-             :channels                        [{s/Keyword s/Any}]
-             (s/optional-key :collection-id)  (s/maybe su/IntGreaterThanZero)
-             (s/optional-key :skip-if-empty?) s/Bool
-             ;; everything else gets ignored
-             s/Keyword                        s/Any}]
+  Returns the updated Pulse or throws an Exception."
+  [pulse]
   (update-notification! pulse)
   ;; fetch the fully updated pulse and return it (and fire off an event)
   (->> (retrieve-pulse (u/get-id pulse))
        (events/publish-event! :pulse-update)))
 
+(defn- alert->notification
+  "Convert an 'Alert` back into the generic 'Notification' format."
+  [{:keys [card cards], :as alert}]
+  (-> alert
+      (assoc :skip_if_empty true, :cards [(card->ref (or card (first cards)))])
+      (dissoc :card)))
+
 ;; TODO - why do we make sure to strictly validate everything when we create a PULSE but not when we create an ALERT?
 (defn update-alert!
   "Updates the given `ALERT` and returns it"
-  [{:keys [id card] :as alert}]
-  (-> alert
-      (assoc :skip-if-empty? true :cards [card])
-      (dissoc :card)
-      update-notification!)
+  [alert]
+  (update-notification! (alert->notification alert))
   ;; fetch the fully updated pulse and return it (and fire off an event)
-  (->> (retrieve-alert id)
+  (->> (retrieve-alert (u/get-id alert))
        (events/publish-event! :pulse-update)))
 
 (defn unsubscribe-from-alert!
-  "Unsubscribe a User with `user-id` from Pulse with `pulse-id`."
-  [pulse-id user-id]
+  "Unsubscribe a User with `user-id` from an Alert with `alert-id`."
+  [alert-id user-id]
   (let [[result] (db/execute! {:delete-from PulseChannelRecipient
                                ;; The below select * clause is required for the query to work on MySQL (PG and H2 work
                                ;; without it). MySQL will fail if the delete has an implicit join. By wrapping the
@@ -375,10 +400,10 @@
                                                          :join [[PulseChannel :pchan] [:= :pchan.id :pcr.pulse_channel_id]
                                                                 [Pulse :p] [:= :p.id :pchan.pulse_id]]
                                                          :where [:and
-                                                                 [:= :p.id pulse-id]
+                                                                 [:= :p.id alert-id]
                                                                  [:not= :p.alert_condition nil]
                                                                  [:= :pcr.user_id user-id]]} "r"]]}]})]
     (when (zero? result)
-      (log/warnf "Failed to remove user-id '%s' from pulse-id '%s'" user-id pulse-id))
+      (log/warnf "Failed to remove user-id '%s' from alert-id '%s'" user-id alert-id))
 
     result))

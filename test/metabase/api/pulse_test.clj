@@ -8,6 +8,7 @@
              [util :as u]]
             [metabase.models
              [card :refer [Card]]
+             [collection :refer [Collection]]
              [database :refer [Database]]
              [permissions :as perms]
              [permissions-group :as perms-group]
@@ -62,38 +63,51 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "pulse"))
-(expect (get middleware/response-unauthentic :body) (http/client :put 401 "pulse/13"))
+(expect (:body middleware/response-unauthentic) (http/client :get 401 "pulse"))
+(expect (:body middleware/response-unauthentic) (http/client :put 401 "pulse/13"))
 
 
 ;; ## POST /api/pulse
 
-(expect {:errors {:name "value must be a non-blank string."}}
+(expect
+  {:errors {:name "value must be a non-blank string."}}
   ((user->client :rasta) :post 400 "pulse" {}))
 
-(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
+(expect
+  {:errors {:cards (str "value must be an array. Each value must be a map with the keys `id`, `include_csv`, and "
+                        "`include_xls`. The array cannot be empty.")}}
   ((user->client :rasta) :post 400 "pulse" {:name "abc"}))
 
-(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
+(expect
+  {:errors {:cards (str "value must be an array. Each value must be a map with the keys `id`, `include_csv`, and "
+                        "`include_xls`. The array cannot be empty.")}}
   ((user->client :rasta) :post 400 "pulse" {:name  "abc"
                                             :cards "foobar"}))
 
-(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
+(expect
+  {:errors {:cards (str "value must be an array. Each value must be a map with the keys `id`, `include_csv`, and "
+                        "`include_xls`. The array cannot be empty.")}}
   ((user->client :rasta) :post 400 "pulse" {:name  "abc"
                                             :cards ["abc"]}))
 
-(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+(expect
+  {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name "abc"
-                                            :cards [{:id 100} {:id 200}]}))
+                                            :cards [{:id 100, :include_csv false, :include_xls false}
+                                                    {:id 200, :include_csv false, :include_xls false}]}))
 
-(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+(expect
+  {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name    "abc"
-                                            :cards   [{:id 100} {:id 200}]
+                                            :cards   [{:id 100, :include_csv false, :include_xls false}
+                                                      {:id 200, :include_csv false, :include_xls false}]
                                             :channels "foobar"}))
 
-(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+(expect
+  {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name     "abc"
-                                            :cards    [{:id 100} {:id 200}]
+                                            :cards    [{:id 100, :include_csv false, :include_xls false}
+                                                       {:id 200, :include_csv false, :include_xls false}]
                                             :channels ["abc"]}))
 
 (defn- remove-extra-channels-fields [channels]
@@ -121,7 +135,12 @@
                          :recipients    []})]})
   (tu/with-model-cleanup [Pulse]
     (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
-                                                                  :cards         [{:id (:id card1)} {:id (:id card2)}]
+                                                                  :cards         [{:id          (u/get-id card1)
+                                                                                   :include_csv false
+                                                                                   :include_xls false}
+                                                                                  {:id          (u/get-id card2)
+                                                                                   :include_csv false
+                                                                                   :include_xls false}]
                                                                   :channels      [{:enabled       true
                                                                                    :channel_type  "email"
                                                                                    :schedule_type "daily"
@@ -165,33 +184,36 @@
 
 ;; ## PUT /api/pulse
 
-(expect {:errors {:name "value must be a non-blank string."}}
-  ((user->client :rasta) :put 400 "pulse/1" {}))
+(expect
+  {:errors {:name "value may be nil, or if non-nil, value must be a non-blank string."}}
+  ((user->client :rasta) :put 400 "pulse/1" {:name 123}))
 
-(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "pulse/1" {:name "abc"}))
+(expect
+  {:errors {:cards (str "value may be nil, or if non-nil, value must be an array. Each value must be a map with the "
+                        "keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}}
+  ((user->client :rasta) :put 400 "pulse/1" {:cards 123}))
 
-(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "pulse/1" {:name  "abc"
-                                             :cards "foobar"}))
+(expect
+  {:errors {:cards (str "value may be nil, or if non-nil, value must be an array. Each value must be a map with the "
+                        "keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}}
+  ((user->client :rasta) :put 400 "pulse/1" {:cards "foobar"}))
 
-(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "pulse/1" {:name  "abc"
-                                             :cards ["abc"]}))
+(expect
+  {:errors {:cards (str "value may be nil, or if non-nil, value must be an array. Each value must be a map with the "
+                        "keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}}
+  ((user->client :rasta) :put 400 "pulse/1" {:cards ["abc"]}))
 
-(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "pulse/1" {:name "abc"
-                                             :cards [{:id 100} {:id 200}]}))
+(expect
+  {:errors {:channels "value may be nil, or if non-nil, value must be an array. Each value must be a map. The array cannot be empty."}}
+  ((user->client :rasta) :put 400 "pulse/1" {:channels 123}))
 
-(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "pulse/1" {:name    "abc"
-                                             :cards   [{:id 100} {:id 200}]
-                                             :channels "foobar"}))
+(expect
+  {:errors {:channels "value may be nil, or if non-nil, value must be an array. Each value must be a map. The array cannot be empty."}}
+  ((user->client :rasta) :put 400 "pulse/1" {:channels "foobar"}))
 
-(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "pulse/1" {:name     "abc"
-                                             :cards    [{:id 100} {:id 200}]
-                                             :channels ["abc"]}))
+(expect
+  {:errors {:channels "value may be nil, or if non-nil, value must be an array. Each value must be a map. The array cannot be empty."}}
+  ((user->client :rasta) :put 400 "pulse/1" {:channels ["abc"]}))
 
 (tt/expect-with-temp [Pulse [pulse]
                       Card  [card]]
@@ -206,9 +228,11 @@
                          :schedule_type "hourly"
                          :details       {:channels "#general"}
                          :recipients    []})]})
-  (-> (pulse-response ((user->client :rasta) :put 200 (format "pulse/%d" (:id pulse))
+  (-> (pulse-response ((user->client :rasta) :put 200 (format "pulse/%d" (u/get-id pulse))
                        {:name          "Updated Pulse"
-                        :cards         [{:id (:id card)}]
+                        :cards         [{:id          (u/get-id card)
+                                         :include_csv false
+                                         :include_xls false}]
                         :channels      [{:enabled       true
                                          :channel_type  "slack"
                                          :schedule_type "hourly"
@@ -219,13 +243,22 @@
                         :skip_if_empty false}))
       (update :channels remove-extra-channels-fields)))
 
+;; Can we update *just* the Collection ID of a Pulse?
+(expect
+  (tt/with-temp* [Pulse      [pulse]
+                  Collection [collection]]
+    ((user->client :crowberto) :put 200 (str "pulse/" (u/get-id pulse))
+     {:collection_id (u/get-id collection)})
+    (= (db/select-one-field :collection_id Pulse :id (u/get-id pulse))
+       (u/get-id collection))))
+
 
 ;; ## DELETE /api/pulse/:id
 (expect
   nil
   (tt/with-temp Pulse [pulse]
-    ((user->client :rasta) :delete 204 (format "pulse/%d" (:id pulse)))
-    (pulse/retrieve-pulse (:id pulse))))
+    ((user->client :rasta) :delete 204 (format "pulse/%d" (u/get-id pulse)))
+    (pulse/retrieve-pulse (u/get-id pulse))))
 
 ;; Check that a rando isn't allowed to delete a pulse
 (expect
@@ -268,7 +301,7 @@
 ;; ## GET /api/pulse/:id
 (tt/expect-with-temp [Pulse [pulse]]
   (pulse-details pulse)
-  ((user->client :rasta) :get 200 (str "pulse/" (:id pulse))))
+  ((user->client :rasta) :get 200 (str "pulse/" (u/get-id pulse))))
 
 ;; ## GET /api/pulse/:id on an alert should 404
 (tt/expect-with-temp [Pulse [{pulse-id :id} {:alert_condition "rows"}]]
@@ -279,7 +312,7 @@
 (expect
   [{:ok true}
    (et/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
-                        :body {"Daily Sad Toucans" true}})]
+                        :body    {"Daily Sad Toucans" true}})]
   (tu/with-model-cleanup [Pulse]
     (et/with-fake-inbox
       (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
@@ -290,7 +323,9 @@
                                                                       :query    {:source-table table-id,
                                                                                  :aggregation  {:aggregation-type "count"}}}}]]
           [((user->client :rasta) :post 200 "pulse/test" {:name          "Daily Sad Toucans"
-                                                          :cards         [{:id card-id}]
+                                                          :cards         [{:id          card-id
+                                                                           :include_csv false
+                                                                           :include_xls false}]
                                                           :channels      [{:enabled       true
                                                                            :channel_type  "email"
                                                                            :schedule_type "daily"

@@ -35,11 +35,8 @@
   "Fetch all questions for the given question (`Card`) id"
   [id]
   (add-read-only-flag (if api/*is-superuser?*
-                        (pulse/retrieve-alerts-for-card id)
+                        (pulse/retrieve-alerts-for-cards id)
                         (pulse/retrieve-user-alerts-for-card id api/*current-user-id*))))
-
-(def ^:private AlertConditions
-  (s/enum "rows" "goal"))
 
 (defn- only-alert-keys [request]
   (select-keys request [:alert_condition :alert_first_only :alert_above_goal :collection_id]))
@@ -115,17 +112,17 @@
 (api/defendpoint POST "/"
   "Create a new Alert (`Pulse`)"
   [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal collection_id] :as req} :body}]
-  {alert_condition   AlertConditions
+  {alert_condition   pulse/AlertConditions
    alert_first_only  s/Bool
    alert_above_goal  (s/maybe s/Bool)
-   card              su/Map
+   card              pulse/CardRef
    channels          (su/non-empty [su/Map])
    collection_id     (s/maybe su/IntGreaterThanZero)}
   ;; do various perms checks as needed
   (pulse-api/check-card-read-permissions [card])
   (collection/check-write-perms-for-collection collection_id)
   ;; ok, now create the Alert
-  (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/create-card-ref)
+  (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/card->ref)
         new-alert (api/check-500
                    (-> req
                        only-alert-keys
@@ -155,10 +152,10 @@
   "Update a `Alert` with ID."
   [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels collection_id]
             :as   req} :body}]
-  {alert_condition  AlertConditions
+  {alert_condition  pulse/AlertConditions
    alert_first_only s/Bool
    alert_above_goal (s/maybe s/Bool)
-   card             su/Map
+   card             pulse/CardRef
    channels         (su/non-empty [su/Map])
    collection_id    (s/maybe su/IntGreaterThanZero)}
   ;; fethc the existing Alert in the DB
@@ -169,7 +166,7 @@
         ;; ok, now update the
         updated-alert (-> req
                           only-alert-keys
-                          (assoc :id id :card (pulse/create-card-ref card) :channels channels)
+                          (assoc :id id :card (pulse/card->ref card) :channels channels)
                           pulse/update-alert!)]
 
     ;; Only admins can update recipients
