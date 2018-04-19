@@ -53,14 +53,19 @@ class CollectionItemsLoader extends React.Component {
 
   render() {
     const { cards, dashboards, pulses, loading, error } = this.state;
-    const unified = cards.concat(dashboards, pulses);
+    const allItems = cards
+      .map(c => ({ ...c, type: "card" }))
+      .concat(
+        dashboards.map(d => ({ ...d, type: "dashboard" })),
+        pulses.map(p => ({ ...p, type: "pulse" })),
+      );
     return this.props.children({
       cards,
       dashboards,
       pulses,
       loading,
       error,
-      unified,
+      allItems,
     });
   }
 }

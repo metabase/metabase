@@ -3,6 +3,7 @@ import { Box, Flex, Heading, Subhead } from "rebass";
 import { Link } from "react-router";
 
 import * as Urls from "metabase/lib/urls";
+import { normal } from "metabase/lib/colors";
 
 import { CollectionsApi } from "metabase/services";
 
@@ -11,8 +12,8 @@ import CollectionListLoader from "metabase/components/CollectionListLoader";
 import CollectionItemsLoader from "metabase/components/CollectionItemsLoader";
 import EntityMenu from "metabase/components/EntityMenu";
 
-import SegmentList from "metabase/components/SegmentList";
-import MetricList from "metabase/components/MetricList";
+//import SegmentList from "metabase/components/SegmentList";
+//import MetricList from "metabase/components/MetricList";
 
 import LandingNav from "metabase/components/LandingNav";
 
@@ -51,52 +52,82 @@ const CollectionList = ({ collectionSlug }) => {
   );
 };
 
-const DefaultLanding = ({ currentCollection, collectionSlug }) => {
+const ItemCard = ({ children, background }) => {
   return (
-    <Box w="100%">
-      {// HACK for now to only show the colleciton list on the root
-      // colleciton until we have a notion of nested collections
-      !collectionSlug && <CollectionList />}
-      <CollectionItemsLoader collectionId={currentCollection.id}>
-        {({ dashboards, cards, pulses, loading, error }) => {
-          if (loading) {
-            return <Box>Loading...</Box>;
-          }
-          return (
-            <Box>
-              <Box>
-                {dashboards &&
-                  dashboards.map(dashboard => (
-                    <Box>
-                      <Link to={Urls.dashboard(dashboard.id)}>
-                        {dashboard.name}
-                      </Link>
-                    </Box>
-                  ))}
-              </Box>
-              <Box>
-                {pulses &&
-                  pulses.map(pulse => (
-                    <Box>
-                      <Link to={Urls.pulse(pulse.id)}>{pulse.name}</Link>
-                    </Box>
-                  ))}
-              </Box>
-              <Box>
-                {cards &&
-                  cards.map(card => (
-                    <Box>
-                      <Link to={Urls.question(card.id)}>{card.name}</Link>
-                    </Box>
-                  ))}
-              </Box>
-            </Box>
-          );
-        }}
-      </CollectionItemsLoader>
+    <Box
+      style={{
+        backgroundColor: background ? background : "#F8F8FA",
+        border: "1px solid #EEF0f1",
+        borderRadius: 6,
+        height: 140,
+      }}
+      className="text-brand-hover"
+      p={2}
+    >
+      <Flex direction="column" style={{ height: "100%" }}>
+        {children}
+      </Flex>
     </Box>
   );
 };
+
+class DefaultLanding extends React.Component {
+  _renderItem(item) {
+    switch (item.type) {
+      case "card":
+        return (
+          <Link to={Urls.question(item.id)}>
+            <ItemCard>
+              <Icon name="beaker" />
+              <h3 className="mt-auto">{item.name}</h3>
+            </ItemCard>
+          </Link>
+        );
+      case "dashboard":
+        return (
+          <Link to={Urls.dashboard(item.id)}>
+            <ItemCard background="white">
+              <Icon name="dashboard" color={normal.blue} />
+              <h3 className="mt-auto">{item.name}</h3>
+            </ItemCard>
+          </Link>
+        );
+      case "pulse":
+        return (
+          <Flex direction="column">
+            <ItemCard>
+              <Icon name="pulse" color={normal.yellow} />
+              <h3 className="mt-auto">{item.name}</h3>
+            </ItemCard>
+          </Flex>
+        );
+    }
+  }
+  render() {
+    const { currentCollection, collectionSlug } = this.props;
+    return (
+      <Box w="100%">
+        {// HACK for now to only show the colleciton list on the root
+        // colleciton until we have a notion of nested collections
+        !collectionSlug && <CollectionList />}
+        <CollectionItemsLoader collectionId={currentCollection.id}>
+          {({ dashboards, cards, pulses, loading, error, allItems }) => {
+            if (loading) {
+              return <Box>Loading...</Box>;
+            }
+            return (
+              <Flex wrap>
+                {allItems.map(item => (
+                  <Box w={1 / 4}>{this._renderItem(item)}</Box>
+                ))}
+              </Flex>
+            );
+          }}
+        </CollectionItemsLoader>
+      </Box>
+    );
+  }
+}
 
 class CollectionLanding extends React.Component {
   state = {
