@@ -1,14 +1,14 @@
 import { normalize } from "normalizr";
 import { createThunkAction, fetchData } from "metabase/lib/redux";
 import { MetabaseApi } from "metabase/services";
-import { FieldSchema, TableSchema } from "metabase/schema";
+import { TableSchema } from "metabase/schema";
 import _ from "underscore";
 
 // DEFINITION
 
 export const name = "tables";
 export const path = "/api/table";
-export const schema = FieldSchema;
+export const schema = TableSchema;
 
 // OBJECT ACTIONS
 
@@ -44,4 +44,10 @@ export const objectActions = {
         reload,
       }),
   ),
+};
+
+// FORMS
+
+export const form = {
+  fields: [{ name: "name" }, { name: "description", type: "text" }],
 };
