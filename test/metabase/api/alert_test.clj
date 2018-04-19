@@ -70,32 +70,32 @@
 
 (expect
   {:errors {:alert_first_only "value must be a boolean."}}
-  ((user->client :rasta) :post 400 "alert" {:alert_condition   "rows"}))
+  ((user->client :rasta) :post 400 "alert" {:alert_condition "rows"}))
 
 (expect
-  {:errors {:card "value must be a map."}}
-  ((user->client :rasta) :post 400 "alert" {:alert_condition   "rows"
-                                            :alert_first_only  false}))
-
-(expect
-  {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :post 400 "alert" {:alert_condition   "rows"
-                                            :alert_first_only  false
-                                            :card              {:id 100}}))
+  {:errors {:card "value must be a map with the keys `id`, `include_csv`, and `include_xls`."}}
+  ((user->client :rasta) :post 400 "alert" {:alert_condition  "rows"
+                                            :alert_first_only false}))
 
 (expect
   {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :post 400 "alert" {:alert_condition   "rows"
-                                            :alert_first_only  false
-                                            :card              {:id 100}
-                                            :channels          "foobar"}))
+  ((user->client :rasta) :post 400 "alert" {:alert_condition  "rows"
+                                            :alert_first_only false
+                                            :card             {:id 100, :include_csv false, :include_xls false}}))
 
 (expect
   {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :post 400 "alert" {:alert_condition   "rows"
-                                            :alert_first_only  false
-                                            :card              {:id 100}
-                                            :channels          ["abc"]}))
+  ((user->client :rasta) :post 400 "alert" {:alert_condition  "rows"
+                                            :alert_first_only false
+                                            :card             {:id 100, :include_csv false, :include_xls false}
+                                            :channels         "foobar"}))
+
+(expect
+  {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+  ((user->client :rasta) :post 400 "alert" {:alert_condition  "rows"
+                                            :alert_first_only false
+                                            :card             {:id 100, :include_csv false, :include_xls false}
+                                            :channels         ["abc"]}))
 
 (defmacro ^:private with-test-email [& body]
   `(tu/with-temporary-setting-values [~'site-url "https://metabase.com/testmb"]
@@ -163,15 +163,15 @@
   (with-alert-setup
     [(et/with-expected-messages 1
        ((alert-client :rasta) :post 200 "alert"
-        {:card              {:id (:id card1)}
-         :alert_condition   "rows"
-         :alert_first_only  false
-         :channels          [{:enabled       true
-                              :channel_type  "email"
-                              :schedule_type "daily"
-                              :schedule_hour 12
-                              :schedule_day  nil
-                              :recipients    []}]}))
+        {:card             {:id (u/get-id card1), :include_csv false, :include_xls false}
+         :alert_condition  "rows"
+         :alert_first_only false
+         :channels         [{:enabled       true
+                             :channel_type  "email"
+                             :schedule_type "daily"
+                             :schedule_hour 12
+                             :schedule_day  nil
+                             :recipients    []}]}))
      (et/regex-email-bodies #"https://metabase.com/testmb"
                             #"has any results"
                             #"My question")]))
@@ -185,29 +185,31 @@
   [(-> (default-alert card1)
        (assoc :creator (user-details :crowberto))
        (assoc-in [:card :include_csv] true)
-       (update-in [:channels 0] merge {:schedule_hour 12, :schedule_type "daily", :recipients (set (map recipient-details [:rasta :crowberto]))}))
+       (update-in [:channels 0] merge {:schedule_hour 12
+                                       :schedule_type "daily"
+                                       :recipients    (set (map recipient-details [:rasta :crowberto]))}))
    (merge (et/email-to :crowberto {:subject "You setup an alert",
-                                   :body {"https://metabase.com/testmb" true,
-                                          "My question" true
-                                          "now getting alerts" false
-                                          "confirmation that your alert" true}})
-          (rasta-added-to-alert-email {"My question" true
-                                       "now getting alerts" true
+                                   :body    {"https://metabase.com/testmb"  true,
+                                             "My question"                  true
+                                             "now getting alerts"           false
+                                             "confirmation that your alert" true}})
+          (rasta-added-to-alert-email {"My question"                  true
+                                       "now getting alerts"           true
                                        "confirmation that your alert" false}))]
 
   (with-alert-setup
     [(et/with-expected-messages 2
        (-> ((alert-client :crowberto) :post 200 "alert"
-            {:card              {:id (:id card1)}
-             :alert_condition   "rows"
-             :alert_first_only  false
-             :channels          [{:enabled       true
-                                  :channel_type  "email"
-                                  :schedule_type "daily"
-                                  :schedule_hour 12
-                                  :schedule_day  nil
-                                  :details       {:emails nil}
-                                  :recipients    (mapv fetch-user [:crowberto :rasta])}]})
+            {:card             {:id (u/get-id card1), :include_csv false, :include_xls false}
+             :alert_condition  "rows"
+             :alert_first_only false
+             :channels         [{:enabled       true
+                                 :channel_type  "email"
+                                 :schedule_type "daily"
+                                 :schedule_hour 12
+                                 :schedule_day  nil
+                                 :details       {:emails nil}
+                                 :recipients    (mapv fetch-user [:crowberto :rasta])}]})
            setify-recipient-emails))
      (et/regex-email-bodies #"https://metabase.com/testmb"
                             #"now getting alerts"
@@ -217,21 +219,21 @@
 ;; Check creation of a below goal alert
 (expect
   (rasta-new-alert-email {"goes below its goal" true})
-  (tt/with-temp* [Card [card1 {:name "My question"
+  (tt/with-temp* [Card [card1 {:name    "My question"
                                :display "line"}]]
     (with-alert-setup
       (et/with-expected-messages 1
         ((user->client :rasta) :post 200 "alert"
-         {:card              {:id (:id card1)}
-          :alert_condition   "goal"
-          :alert_above_goal  false
-          :alert_first_only  false
-          :channels          [{:enabled       true
-                               :channel_type  "email"
-                               :schedule_type "daily"
-                               :schedule_hour 12
-                               :schedule_day  nil
-                               :recipients    []}]}))
+         {:card             {:id (u/get-id card1), :include_csv false, :include_xls false}
+          :alert_condition  "goal"
+          :alert_above_goal false
+          :alert_first_only false
+          :channels         [{:enabled       true
+                              :channel_type  "email"
+                              :schedule_type "daily"
+                              :schedule_hour 12
+                              :schedule_day  nil
+                              :recipients    []}]}))
       (et/regex-email-bodies #"https://metabase.com/testmb"
                              #"goes below its goal"
                              #"My question"))))
@@ -239,21 +241,21 @@
 ;; Check creation of a above goal alert
 (expect
   (rasta-new-alert-email {"meets its goal" true})
-  (tt/with-temp* [Card [card1 {:name "My question"
-                              :display "bar"}]]
+  (tt/with-temp* [Card [card1 {:name    "My question"
+                               :display "bar"}]]
     (with-alert-setup
       (et/with-expected-messages 1
         ((user->client :rasta) :post 200 "alert"
-         {:card              {:id (:id card1)}
-          :alert_condition   "goal"
-          :alert_above_goal  true
-          :alert_first_only  false
-          :channels          [{:enabled       true
-                               :channel_type  "email"
-                               :schedule_type "daily"
-                               :schedule_hour 12
-                               :schedule_day  nil
-                               :recipients    []}]}))
+         {:card             {:id (u/get-id card1), :include_csv false, :include_xls false}
+          :alert_condition  "goal"
+          :alert_above_goal true
+          :alert_first_only false
+          :channels         [{:enabled       true
+                              :channel_type  "email"
+                              :schedule_type "daily"
+                              :schedule_hour 12
+                              :schedule_day  nil
+                              :recipients    []}]}))
       (et/regex-email-bodies #"https://metabase.com/testmb"
                              #"meets its goal"
                              #"My question"))))
@@ -270,51 +272,51 @@
 
 (expect
   {:errors {:alert_first_only "value must be a boolean."}}
-  ((user->client :rasta) :put 400 "alert/1" {:alert_condition   "rows"}))
+  ((user->client :rasta) :put 400 "alert/1" {:alert_condition "rows"}))
 
 (expect
-  {:errors {:card "value must be a map."}}
-  ((user->client :rasta) :put 400 "alert/1" {:alert_condition   "rows"
-                                             :alert_first_only  false}))
+  {:errors {:card "value must be a map with the keys `id`, `include_csv`, and `include_xls`."}}
+  ((user->client :rasta) :put 400 "alert/1" {:alert_condition  "rows"
+                                             :alert_first_only false}))
 
 (expect
-  {:errors {:card "value must be a map."}}
-  ((user->client :rasta) :put 400 "alert/1" {:alert_condition   "rows"
-                                             :alert_first_only  false
-                                             :card              "foobar"}))
-
-(expect
-  {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "alert/1" {:alert_condition   "rows"
-                                             :alert_first_only  false
-                                             :card              {:id 100}}))
+  {:errors {:card "value must be a map with the keys `id`, `include_csv`, and `include_xls`."}}
+  ((user->client :rasta) :put 400 "alert/1" {:alert_condition  "rows"
+                                             :alert_first_only false
+                                             :card             "foobar"}))
 
 (expect
   {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "alert/1" {:alert_condition   "rows"
-                                             :alert_first_only  false
-                                             :card              {:id 100}
-                                             :channels          "foobar"}))
+  ((user->client :rasta) :put 400 "alert/1" {:alert_condition  "rows"
+                                             :alert_first_only false
+                                             :card             {:id 100, :include_csv false, :include_xls false}}))
 
 (expect
   {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "alert/1" {:name              "abc"
-                                             :alert_condition   "rows"
-                                             :alert_first_only  false
-                                             :card              {:id 100}
-                                             :channels          ["abc"]}))
+  ((user->client :rasta) :put 400 "alert/1" {:alert_condition  "rows"
+                                             :alert_first_only false
+                                             :card             {:id 100, :include_csv false, :include_xls false}
+                                             :channels         "foobar"}))
+
+(expect
+  {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+  ((user->client :rasta) :put 400 "alert/1" {:name             "abc"
+                                             :alert_condition  "rows"
+                                             :alert_first_only false
+                                             :card             {:id 100, :include_csv false, :include_xls false}
+                                             :channels         ["abc"]}))
 
 (defn- default-alert-req
   ([card pulse-card]
    (default-alert-req card pulse-card {} []))
   ([card pulse-card alert-map users]
-   (merge {:card              {:id (u/get-id card)}
-           :alert_condition   "rows"
-           :alert_first_only  false
-           :channels          [(if (seq users)
-                                 (default-email-channel (u/get-id pulse-card) users)
-                                 (default-email-channel (u/get-id pulse-card)))]
-           :skip_if_empty     false}
+   (merge {:card             {:id (u/get-id card), :include_csv false, :include_xls false}
+           :alert_condition  "rows"
+           :alert_first_only false
+           :channels         [(if (seq users)
+                                (default-email-channel (u/get-id pulse-card) users)
+                                (default-email-channel (u/get-id pulse-card)))]
+           :skip_if_empty    false}
           alert-map)))
 
 (defn- default-pulse-row []
@@ -363,7 +365,7 @@
                       PulseChannelRecipient [{pcr-id :id}  {:user_id          (user->id :rasta)
                                                             :pulse_channel_id pc-id}]]
   (merge (default-alert card)
-         {:alert_first_only true, :alert_above_goal true, :alert_condition  "goal"})
+         {:alert_first_only true, :alert_above_goal true, :alert_condition "goal"})
 
   (tu/with-model-cleanup [Pulse]
     ((alert-client :crowberto) :put 200 (format "alert/%d" pulse-id)
@@ -419,9 +421,9 @@
 ;; Non-admin users can't edit alerts they didn't create
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp* [Pulse [{pulse-id :id} {:alert_condition   "rows"
-                                         :alert_first_only  false
-                                         :creator_id        (user->id :crowberto)}]
+  (tt/with-temp* [Pulse [{pulse-id :id} {:alert_condition  "rows"
+                                         :alert_first_only false
+                                         :creator_id       (user->id :crowberto)}]
                   Card  [{card-id :id :as card}]
                   PulseCard             [_             {:pulse_id pulse-id
                                                         :card_id  card-id
@@ -436,9 +438,9 @@
 ;; Non-admin users can't edit alerts if they're not in the recipient list
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp* [Pulse [{pulse-id :id} {:alert_condition   "rows"
-                                         :alert_first_only  false
-                                         :creator_id        (user->id :rasta)}]
+  (tt/with-temp* [Pulse [{pulse-id :id} {:alert_condition  "rows"
+                                         :alert_first_only false
+                                         :creator_id       (user->id :rasta)}]
                   Card  [{card-id :id :as card}]
                   PulseCard             [_             {:pulse_id pulse-id
                                                         :card_id  card-id
@@ -460,11 +462,11 @@
 
 ;; Basic test covering the /alert/question/:id call for a user
 (tt/expect-with-temp [Card                 [{card-id :id :as card}  (basic-alert-query)]
-                      Pulse                [{pulse-id :id} {:alert_condition   "rows"
-                                                            :alert_first_only  false
-                                                            :alert_above_goal  nil
-                                                            :skip_if_empty     true
-                                                            :name              nil}]
+                      Pulse                [{pulse-id :id} {:alert_condition  "rows"
+                                                            :alert_first_only false
+                                                            :alert_above_goal nil
+                                                            :skip_if_empty    true
+                                                            :name             nil}]
                       PulseCard             [_             {:pulse_id pulse-id
                                                             :card_id  card-id
                                                             :position 0}]
@@ -482,10 +484,10 @@
 (expect
   [1 0]
   (tt/with-temp* [Card                 [{card-id :id}  (basic-alert-query)]
-                  Pulse                [{pulse-id :id} {:alert_condition   "rows"
-                                                        :alert_first_only  false
-                                                        :alert_above_goal  true
-                                                        :creator_id        (user->id :rasta)}]
+                  Pulse                [{pulse-id :id} {:alert_condition  "rows"
+                                                        :alert_first_only false
+                                                        :alert_above_goal true
+                                                        :creator_id       (user->id :rasta)}]
                   PulseCard             [_             {:pulse_id pulse-id
                                                         :card_id  card-id
                                                         :position 0}]
@@ -504,10 +506,10 @@
 (expect
   [1 2]
   (tt/with-temp* [Card                 [{card-id :id}  (basic-alert-query)]
-                  Pulse                [{pulse-id-1 :id} {:alert_condition   "rows"
-                                                          :alert_first_only  false
-                                                          :alert_above_goal  false
-                                                          :creator_id        (user->id :rasta)}]
+                  Pulse                [{pulse-id-1 :id} {:alert_condition  "rows"
+                                                          :alert_first_only false
+                                                          :alert_above_goal false
+                                                          :creator_id       (user->id :rasta)}]
                   PulseCard             [_               {:pulse_id pulse-id-1
                                                           :card_id  card-id
                                                           :position 0}]
@@ -515,10 +517,10 @@
                   PulseChannelRecipient [_               {:user_id          (user->id :rasta)
                                                           :pulse_channel_id pc-id-1}]
                   ;; A separate admin created alert
-                  Pulse                [{pulse-id-2 :id} {:alert_condition   "rows"
-                                                          :alert_first_only  false
-                                                          :alert_above_goal  false
-                                                          :creator_id        (user->id :crowberto)}]
+                  Pulse                [{pulse-id-2 :id} {:alert_condition  "rows"
+                                                          :alert_first_only false
+                                                          :alert_above_goal false
+                                                          :creator_id       (user->id :crowberto)}]
                   PulseCard             [_               {:pulse_id pulse-id-2
                                                           :card_id  card-id
                                                           :position 0}]
@@ -550,8 +552,8 @@
    #{"crowberto@metabase.com"}
    (rasta-unsubscribe-email {"Foo" true})]
   (tt/with-temp* [Card                 [{card-id :id}  (basic-alert-query)]
-                  Pulse                [{pulse-id :id} {:alert_condition   "rows"
-                                                        :alert_first_only  false}]
+                  Pulse                [{pulse-id :id} {:alert_condition  "rows"
+                                                        :alert_first_only false}]
                   PulseCard             [_             {:pulse_id pulse-id
                                                         :card_id  card-id
                                                         :position 0}]
@@ -626,7 +628,7 @@
   [1
    1 ;;<-- Alert should not be deleted
    (et/email-to :rasta {:subject "You’ve been unsubscribed from an alert",
-                        :body    {"https://metabase.com/testmb" true,
+                        :body    {"https://metabase.com/testmb"          true,
                                   "letting you know that Crowberto Corv" true}})]
   (tt/with-temp* [Card                 [{card-id :id :as card}  (basic-alert-query)]
                   Pulse                [{pulse-id :id}          {:alert_condition  "rows"
@@ -656,7 +658,7 @@
   [1
    1 ;;<-- Alert should not be deleted
    (et/email-to :rasta {:subject "Crowberto Corv added you to an alert",
-                        :body    {"https://metabase.com/testmb" true,
+                        :body    {"https://metabase.com/testmb"    true,
                                   "now getting alerts about .*Foo" true}})]
   (tt/with-temp* [Card                 [{card-id :id :as card}  (basic-alert-query)]
                   Pulse                [{pulse-id :id}          {:alert_condition  "rows"
@@ -713,9 +715,9 @@
 (expect
   [1 "You don't have permissions to do that."]
   (tt/with-temp* [Card                 [{card-id :id}  (basic-alert-query)]
-                  Pulse                [{pulse-id :id} {:alert_condition   "rows"
-                                                        :alert_first_only  false
-                                                        :creator_id        (user->id :rasta)}]
+                  Pulse                [{pulse-id :id} {:alert_condition  "rows"
+                                                        :alert_first_only false
+                                                        :creator_id       (user->id :rasta)}]
                   PulseCard             [_             {:pulse_id pulse-id
                                                         :card_id  card-id
                                                         :position 0}]
@@ -730,9 +732,9 @@
 (expect
   [1 nil 0]
   (tt/with-temp* [Card                 [{card-id :id}  (basic-alert-query)]
-                  Pulse                [{pulse-id :id} {:alert_condition   "rows"
-                                                        :alert_first_only  false
-                                                        :creator_id        (user->id :crowberto)}]
+                  Pulse                [{pulse-id :id} {:alert_condition  "rows"
+                                                        :alert_first_only false
+                                                        :creator_id       (user->id :crowberto)}]
                   PulseCard             [_             {:pulse_id pulse-id
                                                         :card_id  card-id
                                                         :position 0}]
@@ -754,9 +756,9 @@
   [1 nil 0
    (rasta-deleted-email {})]
   (tt/with-temp*  [Card                 [{card-id :id}  (basic-alert-query)]
-                   Pulse                [{pulse-id :id} {:alert_condition   "rows"
-                                                         :alert_first_only  false
-                                                         :creator_id        (user->id :rasta)}]
+                   Pulse                [{pulse-id :id} {:alert_condition  "rows"
+                                                         :alert_first_only false
+                                                         :creator_id       (user->id :rasta)}]
                    PulseCard             [_             {:pulse_id pulse-id
                                                          :card_id  card-id
                                                          :position 0}]
@@ -776,12 +778,12 @@
    (merge
     (rasta-deleted-email {"Crowberto Corv unsubscribed you from alerts" false})
     (et/email-to :lucky {:subject "You’ve been unsubscribed from an alert",
-                         :body {"Crowberto Corv deleted an alert" false
-                                "Crowberto Corv unsubscribed you from alerts" true}}))]
+                         :body    {"Crowberto Corv deleted an alert"             false
+                                   "Crowberto Corv unsubscribed you from alerts" true}}))]
   (tt/with-temp*  [Card                 [{card-id :id}  (basic-alert-query)]
-                   Pulse                [{pulse-id :id} {:alert_condition   "rows"
-                                                         :alert_first_only  false
-                                                         :creator_id        (user->id :rasta)}]
+                   Pulse                [{pulse-id :id} {:alert_condition  "rows"
+                                                         :alert_first_only false
+                                                         :creator_id       (user->id :rasta)}]
                    PulseCard             [_             {:pulse_id pulse-id
                                                          :card_id  card-id
                                                          :position 0}]
@@ -802,9 +804,9 @@
 (expect
   [1 nil 0 {}]
   (tt/with-temp* [Card                 [{card-id :id}  (basic-alert-query)]
-                  Pulse                [{pulse-id :id} {:alert_condition   "rows"
-                                                        :alert_first_only  false
-                                                        :creator_id        (user->id :crowberto)}]
+                  Pulse                [{pulse-id :id} {:alert_condition  "rows"
+                                                        :alert_first_only false
+                                                        :creator_id       (user->id :crowberto)}]
                   PulseCard             [_             {:pulse_id pulse-id
                                                         :card_id  card-id
                                                         :position 0}]

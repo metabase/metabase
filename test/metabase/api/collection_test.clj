@@ -66,7 +66,7 @@
 ;; check that cards are returned with the collections detail endpoint
 (tt/expect-with-temp [Collection [collection]
                       Card       [card        {:collection_id (u/get-id collection)}]]
-  (tu/obj->json->obj (assoc collection :cards [card]))
+  (tu/obj->json->obj (assoc collection :cards [(select-keys card [:name :id])], :dashboards [], :pulses []))
   (tu/obj->json->obj ((user->client :crowberto) :get 200 (str "collection/" (u/get-id collection)))))
 
 ;; check that collections detail doesn't return archived collections

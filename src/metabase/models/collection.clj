@@ -64,10 +64,11 @@
                                   (assert-unique-slug <>))))))
 
 (defn- pre-delete [collection]
-  ;; unset the collection_id for Cards in this collection. This is mostly for the sake of tests since IRL we shouldn't
-  ;; be deleting collections, but rather archiving them instead
-  (db/update-where! 'Card {:collection_id (u/get-id collection)}
-    :collection_id nil))
+  ;; unset the collection_id for Cards/Pulses in this collection. This is mostly for the sake of tests since IRL we
+  ;; shouldn't be deleting Collections, but rather archiving them instead
+  (doseq [model ['Card 'Pulse]]
+    (db/update-where! model {:collection_id (u/get-id collection)}
+      :collection_id nil)))
 
 (defn perms-objects-set
   "Return the required set of permissions to READ-OR-WRITE COLLECTION-OR-ID."

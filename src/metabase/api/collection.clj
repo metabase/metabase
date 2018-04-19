@@ -90,7 +90,7 @@
                      archived))
     (when (and (not (:archived collection-before-update))
                archived)
-      (when-let [alerts (seq (apply pulse/retrieve-alerts-for-card (db/select-ids Card, :collection_id id)))]
+      (when-let [alerts (seq (apply pulse/retrieve-alerts-for-cards (db/select-ids Card, :collection_id id)))]
         ;; When a collection is archived, all of it's cards are also marked as archived, but this is down in the model
         ;; layer which will not cause the archive notification code to fire. This will delete the relevant alerts and
         ;; notify the users just as if they had be archived individually via the card API

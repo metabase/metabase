@@ -86,28 +86,28 @@
                                                (m/dissoc-in [:details :emails]))))))))
 
 
-;; update-pulse-cards!
+;; update-notification-cards!
 (expect
-  [#{}
+  [nil
    #{"card1"}
    #{"card2"}
    #{"card2" "card1"}
    #{"card1" "card3"}]
-  (tt/with-temp* [Pulse [{pulse-id :id}]
-                  Card  [{card-id-1 :id} {:name "card1"}]
-                  Card  [{card-id-2 :id} {:name "card2"}]
-                  Card  [{card-id-3 :id} {:name "card3"}]]
+  (tt/with-temp* [Pulse [pulse]
+                  Card  [card-1 {:name "card1"}]
+                  Card  [card-2 {:name "card2"}]
+                  Card  [card-3 {:name "card3"}]]
     (let [upd-cards! (fn [cards]
-                       (update-pulse-cards! {:id pulse-id} (map create-card-ref cards))
-                       (set (for [card-id (db/select-field :card_id PulseCard, :pulse_id pulse-id)]
-                              (db/select-one-field :name Card, :id card-id))))]
+                       (update-notification-cards! pulse (map card->ref cards))
+                       (when-let [card-ids (seq (db/select-field :card_id PulseCard, :pulse_id (u/get-id pulse)))]
+                         (db/select-field :name Card, :id [:in card-ids])))]
       [(upd-cards! [])
-       (upd-cards! [card-id-1])
-       (upd-cards! [card-id-2])
-       (upd-cards! [card-id-2 card-id-1])
-       (upd-cards! [card-id-1 card-id-3])])))
+       (upd-cards! [card-1])
+       (upd-cards! [card-2])
+       (upd-cards! [card-2 card-1])
+       (upd-cards! [card-1 card-3])])))
 
-;; update-pulse-channels!
+;; update-notification-channels!
 (expect
   (merge pulse-channel-defaults
          {:channel_type  :email
@@ -116,7 +116,7 @@
           :recipients    [{:email "foo@bar.com"}
                           (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
   (tt/with-temp Pulse [{:keys [id]}]
-    (update-pulse-channels! {:id id} [{:enabled       true
+    (update-notification-channels! {:id id} [{:enabled       true
                                        :channel_type  :email
                                        :schedule_type :daily
                                        :schedule_hour 4
@@ -143,11 +143,11 @@
                   :display     :table
                   :include_csv false
                   :include_xls false}]})
-  (tt/with-temp Card [{:keys [id]} {:name "Test Card"}]
+  (tt/with-temp Card [card {:name "Test Card"}]
     (tu/with-model-cleanup [Pulse]
       (create-pulse-then-select! "Booyah!"
                                  (user->id :rasta)
-                                 [(create-card-ref id)]
+                                 [(card->ref card)]
                                  [{:channel_type  :email
                                    :schedule_type :daily
                                    :schedule_hour 18
@@ -182,19 +182,18 @@
                          :channel_type  :email
                          :recipients    [{:email "foo@bar.com"}
                                          (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]})]})
-  (tt/with-temp* [Pulse [{pulse-id :id}]
-                  Card  [{card-id-1 :id} {:name "Test Card"}]
-                  Card  [{card-id-2 :id} {:name "Bar Card", :display :bar}]]
-    (update-pulse-then-select! {:id             pulse-id
-                                :name           "We like to party"
-                                :creator_id     (user->id :crowberto)
-                                :cards          (mapv create-card-ref [card-id-2 card-id-1])
-                                :channels       [{:channel_type  :email
-                                                  :schedule_type :daily
-                                                  :schedule_hour 18
-                                                  :recipients    [{:email "foo@bar.com"}
-                                                                  {:id (user->id :crowberto)}]}]
-                                :skip-if-empty? false})))
+  (tt/with-temp* [Pulse [pulse]
+                  Card  [card-1 {:name "Test Card"}]
+                  Card  [card-2 {:name "Bar Card", :display :bar}]]
+    (update-pulse-then-select! {:id            (u/get-id pulse)
+                                :name          "We like to party"
+                                :cards         (map card->ref [card-2 card-1])
+                                :channels      [{:channel_type  :email
+                                                 :schedule_type :daily
+                                                 :schedule_hour 18
+                                                 :recipients    [{:email "foo@bar.com"}
+                                                                 {:id (user->id :crowberto)}]}]
+                                :skip_if_empty false})))
 
 ;; make sure fetching a Pulse doesn't return any archived cards
 (expect
