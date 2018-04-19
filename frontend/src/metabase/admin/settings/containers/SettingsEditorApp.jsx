@@ -59,6 +59,7 @@ export default class SettingsEditorApp extends Component {
     updateSlackSettings: PropTypes.func.isRequired,
     updateLdapSettings: PropTypes.func.isRequired,
     sendTestEmail: PropTypes.func.isRequired,
+    clearEmailSettings: PropTypes.func.isRequired,
   };
 
   componentWillMount() {
@@ -132,6 +133,7 @@ export default class SettingsEditorApp extends Component {
           elements={activeSection.settings}
           updateEmailSettings={this.props.updateEmailSettings}
           sendTestEmail={this.props.sendTestEmail}
+          clearEmailSettings={this.props.clearEmailSettings}
         />
       );
     } else if (activeSection.name === "Setup") {

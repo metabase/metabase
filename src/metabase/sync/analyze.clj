@@ -54,16 +54,26 @@
 ;; newly re-fingerprinted Fields, because we'll know to skip the ones from last time since their value of
 ;; `last_analyzed` is not `nil`.
 
+(s/defn ^:private update-last-analyzed!
+  [tables :- [i/TableInstance]]
+  (when-let [ids (seq (map u/get-id tables))]
+    ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
+    (db/update-where! Field {:table_id            [:in ids]
+                             :fingerprint_version i/latest-fingerprint-version
+                             :last_analyzed       nil}
+      :last_analyzed (u/new-sql-timestamp))))
 
 (s/defn ^:private update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
   [table :- i/TableInstance]
-  ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
-  (db/update-where! Field {:table_id            (u/get-id table)
-                           :fingerprint_version i/latest-fingerprint-version
-                           :last_analyzed       nil}
-    :last_analyzed (u/new-sql-timestamp)))
+  (update-last-analyzed! [table]))
 
+(s/defn ^:private update-fields-last-analyzed-for-db!
+  "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
+  [database :- i/DatabaseInstance
+   tables :- [i/TableInstance]]
+  ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
+  (update-last-analyzed! tables))
 
 (s/defn analyze-table!
   "Perform in-depth analysis for a TABLE."
@@ -75,6 +85,11 @@
   (classify/classify-table! table)
   (update-fields-last-analyzed! table))
 
+(defn- maybe-log-progress [progress-bar-fn]
+  (fn [step table]
+    (let [progress-bar-result (progress-bar-fn)]
+      (when progress-bar-result
+        (log/info (u/format-color 'blue "%s Analyzed %s %s" step progress-bar-result (sync-util/name-for-logging table)))))))
 
 (s/defn analyze-db!
   "Perform in-depth analysis on the data for all Tables in a given DATABASE.
@@ -83,7 +98,9 @@
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)]
-      (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
-        (doseq [table tables]
-          (analyze-table! table)
-          (log/info (u/format-color 'blue "%s Analyzed %s" (emoji-progress-bar) (sync-util/name-for-logging table))))))))
+      (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 3 (count tables)))]
+        (let [log-progress-fn (maybe-log-progress emoji-progress-bar)]
+          (fingerprint/fingerprint-fields-for-db! database tables log-progress-fn)
+          (classify/classify-fields-for-db! database tables log-progress-fn)
+          (classify/classify-tables-for-db! database tables log-progress-fn)
+          (update-fields-last-analyzed-for-db! database tables))))))

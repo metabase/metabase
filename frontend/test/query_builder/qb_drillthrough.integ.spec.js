@@ -212,7 +212,7 @@ describe("QueryBuilder", () => {
         // Should have visualization type set to Pin map (temporary workaround until we have polished heat maps)
         const card = getCard(store.getState());
         expect(card.display).toBe("map");
-        expect(card.visualization_settings).toEqual({ "map.type": "pin" });
+        expect(card.visualization_settings).toEqual({ "map.type": "grid" });
       });
 
       it("works for Count of rows aggregation and FK Latitude Auto binned breakout", async () => {

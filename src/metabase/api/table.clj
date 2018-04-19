@@ -50,7 +50,7 @@
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
                    show_in_getting_started], :as body} :body}]
   {display_name            (s/maybe su/NonBlankString)
-   entity_type             (s/maybe s/Any)
+   entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
    description             (s/maybe su/NonBlankString)
    caveats                 (s/maybe su/NonBlankString)
@@ -117,10 +117,10 @@
                        :mbql (apply vector "binning-strategy" nil params)
                        :type "type/Coordinate"})
                     [default-entry
+                     ["Bin every 0.1 degrees" ["bin-width" 0.1]]
                      ["Bin every 1 degree" ["bin-width" 1.0]]
                      ["Bin every 10 degrees" ["bin-width" 10.0]]
-                     ["Bin every 20 degrees" ["bin-width" 20.0]]
-                     ["Bin every 50 degrees" ["bin-width" 50.0]]])
+                     ["Bin every 20 degrees" ["bin-width" 20.0]]])
               {:name "Don't bin"
                :mbql nil
                :type "type/Coordinate"})))))

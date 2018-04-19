@@ -31,6 +31,8 @@ export type FormattingOptions = {
   majorWidth?: number,
   type?: "axis" | "cell" | "tooltip",
   jsx?: boolean,
+  // render links for type/URLs, type/Email, etc
+  rich?: boolean,
   // number options:
   comma?: boolean,
   compact?: boolean,
@@ -47,6 +49,7 @@ const PRECISION_NUMBER_FORMATTER = d3.format(".2r");
 const FIXED_NUMBER_FORMATTER = d3.format(",.f");
 const FIXED_NUMBER_FORMATTER_NO_COMMA = d3.format(".f");
 const DECIMAL_DEGREES_FORMATTER = d3.format(".08f");
+const DECIMAL_DEGREES_FORMATTER_COMPACT = d3.format(".02f");
 const BINNING_DEGREES_FORMATTER = (value, binWidth) => {
   return d3.format(`.0${decimalCount(binWidth)}f`)(value);
 };
@@ -109,7 +112,9 @@ export function formatCoordinate(
 
   const formattedValue = binWidth
     ? BINNING_DEGREES_FORMATTER(value, binWidth)
-    : DECIMAL_DEGREES_FORMATTER(value);
+    : options.compact
+      ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
+      : DECIMAL_DEGREES_FORMATTER(value);
   return formattedValue + "°" + direction;
 }
 
@@ -250,36 +255,22 @@ export function formatTimeWithUnit(
         ...options,
         majorWidth: 0,
       });
+    case "minute-of-hour":
+      return m.format("m");
     case "hour-of-day": // 12 AM
-      return moment()
-        .hour(value)
-        .format("h A");
+      return m.format("h A");
     case "day-of-week": // Sunday
-      return (
-        moment()
-          // $FlowFixMe:
-          .day(value - 1)
-          .format(getDayFormat(options))
-      );
+      return m.format(getDayFormat(options));
     case "day-of-month":
-      return moment()
-        .date(value)
-        .format("D");
+      return m.format("D");
+    case "day-of-year":
+      return m.format("DDD");
     case "week-of-year": // 1st
-      return moment()
-        .week(value)
-        .format("wo");
+      return m.format("wo");
     case "month-of-year": // January
-      return (
-        moment()
-          // $FlowFixMe:
-          .month(value - 1)
-          .format(getMonthFormat(options))
-      );
+      return m.format(getMonthFormat(options));
     case "quarter-of-year": // January
-      return moment()
-        .quarter(value)
-        .format("[Q]Q");
+      return m.format("[Q]Q");
     default:
       return m.format("LLLL");
   }
@@ -297,9 +288,12 @@ export function formatTimeValue(value: Value) {
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
 const EMAIL_WHITELIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
-export function formatEmail(value: Value, { jsx }: FormattingOptions = {}) {
+export function formatEmail(
+  value: Value,
+  { jsx, rich }: FormattingOptions = {},
+) {
   const email = String(value);
-  if (jsx && EMAIL_WHITELIST_REGEX.test(email)) {
+  if (jsx && rich && EMAIL_WHITELIST_REGEX.test(email)) {
     return <ExternalLink href={"mailto:" + email}>{email}</ExternalLink>;
   } else {
     return email;
@@ -309,9 +303,9 @@ export function formatEmail(value: Value, { jsx }: FormattingOptions = {}) {
 // based on https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L25
 const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i;
 
-export function formatUrl(value: Value, { jsx }: FormattingOptions = {}) {
+export function formatUrl(value: Value, { jsx, rich }: FormattingOptions = {}) {
   const url = String(value);
-  if (jsx && URL_WHITELIST_REGEX.test(url)) {
+  if (jsx && rich && URL_WHITELIST_REGEX.test(url)) {
     return (
       <ExternalLink className="link link--wrappable" href={url}>
         {url}

@@ -8,6 +8,7 @@
              [field-values :as field-values :refer [FieldValues]]
              [table :refer [Table]]]
             [metabase.query-processor :as qp]
+            [metabase.related :as related]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -351,5 +352,9 @@
         value          (parse-query-param-value-for-field field value)]
     (remapped-value field remapped-field value)))
 
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Field api/read-check related/related))
 
 (api/define-routes)

@@ -388,11 +388,7 @@ const guessVisualization = (card: CardObject, tableMetadata: Table) => {
         card.display = "line";
       } else if (_.all(breakoutFields, isCoordinate)) {
         card.display = "map";
-        // NOTE Atte Keinänen 8/2/17: Heat/grid maps disabled in the first merged version of binning
-        // Currently show a pin map instead of heat map for double coordinate breakout
-        // This way the binning drill-through works in a somewhat acceptable way (although it is designed for heat maps)
-        card.visualization_settings["map.type"] = "pin";
-        // card.visualization_settings["map.type"] = "grid";
+        card.visualization_settings["map.type"] = "grid";
       } else {
         card.display = "bar";
       }

@@ -5,6 +5,7 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
+import { Link } from "react-router";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -45,6 +46,9 @@ const SECTIONS = {
   },
   distribution: {
     icon: "bar",
+  },
+  auto: {
+    icon: "bolt",
   },
 };
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
@@ -187,14 +191,33 @@ export const ChartClickAction = ({
   action: any,
   isLastItem: any,
   handleClickAction: any,
-}) => (
-  <div
-    className={cx("text-brand-hover cursor-pointer", {
-      pr2: isLastItem,
-      pr4: !isLastItem,
-    })}
-    onClick={() => handleClickAction(action)}
-  >
-    {action.title}
-  </div>
-);
+}) => {
+  const className = cx(
+    "text-brand-hover cursor-pointer no-decoration",
+    isLastItem ? "pr2" : "pr4",
+  );
+  // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
+  // for now since on dashboards currently they need to go through
+  // navigateToNewCardFromDashboard to merge in parameters.,
+  // Also need to sort out proper logic in QueryBuilder's componentWillReceiveProps
+  // if (action.question) {
+  //   return (
+  //     <Link to={action.question().getUrl()} className={className}>
+  //       {action.title}
+  //     </Link>
+  //   );
+  // } else
+  if (action.url) {
+    return (
+      <Link to={action.url()} className={className}>
+        {action.title}
+      </Link>
+    );
+  } else {
+    return (
+      <div className={className} onClick={() => handleClickAction(action)}>
+        {action.title}
+      </div>
+    );
+  }
+};

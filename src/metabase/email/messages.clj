@@ -319,7 +319,7 @@
 (defn send-new-alert-email!
   "Send out the initial 'new alert' email to the `CREATOR` of the alert"
   [{:keys [creator] :as alert}]
-  (send-email! creator "You setup an alert" new-alert-template
+  (send-email! creator "You set up an alert" new-alert-template
                (default-alert-context alert alert-condition-text)))
 
 (defn send-you-unsubscribed-alert-email!
