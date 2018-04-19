@@ -217,3 +217,10 @@ export function parameterToMBQLFilter(
     }
   }
 }
+
+export function getParameterIconName(parameterType) {
+  if (parameterType.search(/date/) !== -1) return "calendar";
+  if (parameterType.search(/location/) !== -1) return "location";
+  if (parameterType.search(/id/) !== -1) return "label";
+  return "label";
+}
