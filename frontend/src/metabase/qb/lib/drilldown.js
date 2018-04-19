@@ -16,9 +16,9 @@ import { getIn } from "icepick";
 const CategoryDrillDown = type => [field => isa(field.special_type, type)];
 const DateTimeDrillDown = unit => [["datetime-field", isDate, unit]];
 
-const LatLonDrillDown = (...args) => [
-  ["binning-strategy", isLatitude, ...args],
-  ["binning-strategy", isLongitude, ...args],
+const LatLonDrillDown = (binningStrategy, binWidth) => [
+  ["binning-strategy", isLatitude, binningStrategy, binWidth],
+  ["binning-strategy", isLongitude, binningStrategy, binWidth],
 ];
 
 /**
@@ -56,12 +56,12 @@ const DEFAULT_DRILL_DOWN_PROGRESSIONS = [
   ],
   // LatLon drill downs
   [
-    LatLonDrillDown("bin-width", binWidth => binWidth >= 20), //
+    LatLonDrillDown("bin-width", (binWidth: number) => binWidth >= 20), //
     LatLonDrillDown("bin-width", 10),
   ],
   [
     LatLonDrillDown("bin-width", () => true), //
-    LatLonDrillDown("bin-width", previous => previous / 10),
+    LatLonDrillDown("bin-width", (binWidth: number) => binWidth / 10),
   ],
   // generic num-bins drill down
   [
@@ -76,7 +76,7 @@ const DEFAULT_DRILL_DOWN_PROGRESSIONS = [
         "binning-strategy",
         isAny,
         "bin-width",
-        (previous: number) => previous / 10,
+        (binWidth: number) => binWidth / 10,
       ],
     ],
   ],
