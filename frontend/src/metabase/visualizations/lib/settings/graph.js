@@ -264,6 +264,7 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.x_axis._is_histogram": {
     getDefault: ([{ data: { cols } }], vizSettings) =>
+      // matches binned numeric columns, and date extracts like day-of-week, etc
       cols[0].binning_info != null || /^\w+-of-\w+$/.test(cols[0].unit),
   },
   "graph.x_axis.scale": {
