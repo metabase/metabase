@@ -20,6 +20,7 @@
             [metabase.models
              [card :as card :refer [Card]]
              [field :refer [Field] :as field]
+             [interface :as mi]
              [metric :refer [Metric]]
              [query :refer [Query]]
              [segment :refer [Segment]]
@@ -433,7 +434,8 @@
          :fk_target_field_id [:not= nil])
        field/with-targets
        (map (fn [{:keys [id target]}]
-              (-> target field/table (assoc :link id))))))
+              (-> target field/table (assoc :link id))))
+       (filter mi/can-read?)))
 
 (defmulti
   ^{:private  true
@@ -705,6 +707,7 @@
                           :entity_type     [:not= nil]] ; only consider tables that have alredy
                                                         ; been analyzed
                    schema (concat [:schema schema])))
+          (filter mi/can-read?)
           (map enhanced-table-stats)
           (remove (comp (some-fn :link-table? :list-like-table?) :stats))
           (map (fn [table]
