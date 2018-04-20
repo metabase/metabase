@@ -18,8 +18,10 @@ import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import Parameters from "metabase/parameters/components/Parameters";
 
-import { getMetadata } from "metabase/selectors/metadata";
 import { addUndo, createUndo } from "metabase/redux/undo";
+
+import { getMetadata } from "metabase/selectors/metadata";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
@@ -32,6 +34,7 @@ const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
   `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
 
 const mapStateToProps = (state, props) => ({
+  isAdmin: getUserIsAdmin(state),
   metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
 });
@@ -73,6 +76,7 @@ class AutomaticDashboardApp extends React.Component {
       parameterValues,
       setParameterValue,
       location,
+      isAdmin,
     } = this.props;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
     const more = dashboard && dashboard.related && dashboard.related["more"];
@@ -93,13 +97,15 @@ class AutomaticDashboardApp extends React.Component {
                     <TransientFilters filters={dashboard.transient_filters} />
                   )}
               </div>
-              <ActionButton
-                className="ml-auto Button--success"
-                borderless
-                actionFn={this.save}
-              >
-                Save this
-              </ActionButton>
+              {isAdmin && (
+                <ActionButton
+                  className="ml-auto Button--success"
+                  borderless
+                  actionFn={this.save}
+                >
+                  Save this
+                </ActionButton>
+              )}
             </div>
           </div>
 
