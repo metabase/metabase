@@ -14,14 +14,10 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.test.data
-             [generic-sql :as sql-test-data]
-             h2
-             [interface :as tdi]]
+            [metabase.test.data.interface :as tdi]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]
-             ]
+             [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
 
 (defn- with-test-db-before-and-after-dropping-a-column
