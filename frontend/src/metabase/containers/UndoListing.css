@@ -7,10 +7,11 @@
 :local(.undo) {
   composes: mt2 p2 from "style";
   composes: bordered rounded shadowed from "style";
-  composes: bg-white from "style";
   composes: relative from "style";
   composes: flex align-center from "style";
   width: 320px;
+  background-color: #2e353b;
+  color: white;
 }
 
 :local(.actions) {
@@ -30,14 +31,14 @@
   color: var(--grey-3);
 }
 
-.UndoListing-enter {
-}
-.UndoListing-enter.UndoListing-enter-active {
-}
-.UndoListing-leave {
-  opacity: 1;
-}
+/* enter and exit initial and final state */
+.UndoListing-enter,
 .UndoListing-leave.UndoListing-leave-active {
   opacity: 0.01;
   transition: opacity 300ms ease-in;
+}
+
+.UndoListing-leave,
+.UndoListing-enter.UndoListing-enter-active {
+  opacity: 1;
 }
