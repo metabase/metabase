@@ -146,7 +146,7 @@ const getParameterFieldValuesByFieldId = (state, props) => {
   // NOTE Atte Keinänen 9/14/17: Reading the state directly instead of using `getFields` selector
   // because `getMetadata` doesn't currently work with fields of public dashboards
   return (
-    _.chain(getIn(state, ["metadata", "fields"]))
+    _.chain(getIn(state, ["entities", "fields"]))
       // SQL template tags provide `field_id` instead of `field_ids`
       .pick(...(props.parameter.field_ids || [props.parameter.field_id]))
       .mapObject(getFieldValues)

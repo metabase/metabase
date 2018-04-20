@@ -21,16 +21,19 @@ import { TYPE } from "metabase/lib/types";
 
 // ADDITIONAL OBJECT ACTIONS
 
-const FETCH_FIELD_VALUES = "metabase/entities/fields/FETCH_FIELD_VALUES";
-const UPDATE_FIELD_VALUES = "metabase/entities/fields/UPDATE_FIELD_VALUES";
-const DELETE_FIELD_DIMENSION = "metabase/metadata/DELETE_FIELD_DIMENSION";
-const UPDATE_FIELD_DIMENSION = "metabase/metadata/UPDATE_FIELD_DIMENSION";
-const ADD_REMAPPINGS = "metabase/entities/fields/ADD_REMAPPINGS";
+export const FETCH_FIELD_VALUES = "metabase/entities/fields/FETCH_FIELD_VALUES";
+export const UPDATE_FIELD_VALUES =
+  "metabase/entities/fields/UPDATE_FIELD_VALUES";
+export const DELETE_FIELD_DIMENSION =
+  "metabase/metadata/DELETE_FIELD_DIMENSION";
+export const UPDATE_FIELD_DIMENSION =
+  "metabase/metadata/UPDATE_FIELD_DIMENSION";
+export const ADD_REMAPPINGS = "metabase/entities/fields/ADD_REMAPPINGS";
 
 // ADDITIONAL OTHER ACTIONS
 
-const ADD_PARAM_VALUES = "metabase/entities/fields/ADD_PARAM_VALUES";
-const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
+export const ADD_PARAM_VALUES = "metabase/entities/fields/ADD_PARAM_VALUES";
+export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 
 export default createEntity({
   name: "fields",

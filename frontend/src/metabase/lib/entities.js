@@ -36,7 +36,8 @@ type EntityDefinition = {
   reducer?: Reducer,
   objectActions?: { [name: string]: any },
 };
-type Entity = {
+
+export type Entity = {
   name: EntityName,
   api: {
     list: APIMethod,

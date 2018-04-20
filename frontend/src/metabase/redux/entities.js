@@ -1,13 +1,14 @@
 /* @flow */
 
 import { combineEntities } from "metabase/lib/entities";
+import type { Entity } from "metabase/lib/entities";
 
-// $FlowFixMe: doesn't know about require.context
-const req = require.context("metabase/entities", true, /.*.js$/);
+import * as entitiesMap from "metabase/entities";
 
-export const { entities, reducers, reducer } = combineEntities(
-  req.keys().map(key => req(key).default),
-);
+// $FlowFixMe
+const entitiesArray: Entity[] = Object.values(entitiesMap);
+
+export const { entities, reducers, reducer } = combineEntities(entitiesArray);
 export default reducer;
 
 (window.Metabase = window.Metabase || {}).entities = entities;

@@ -7,7 +7,7 @@ import { MetabaseApi } from "metabase/services";
 import { TableSchema } from "metabase/schema";
 
 // OBJECT ACTIONS
-const FETCH_TABLE_METADATA = "metabase/entities/FETCH_TABLE_METADATA";
+export const FETCH_TABLE_METADATA = "metabase/entities/FETCH_TABLE_METADATA";
 
 export default createEntity({
   name: "tables",

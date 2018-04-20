@@ -77,7 +77,7 @@ const initialState = {
       groups,
     },
   },
-  metadata: normalizedMetadata,
+  entities: normalizedMetadata,
 };
 
 var state = initialState;
