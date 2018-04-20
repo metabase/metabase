@@ -1,4 +1,5 @@
-title: "A quick look at your [[GenericTable]] table"
+title: "A look at your [[GenericTable]] table"
+transient_title: "Here's a quick look at your [[GenericTable]] table"
 description: An overview of your [[GenericTable]] table and how it's distributed across time, place, and categories.
 metrics:
   - Count: ["count"]
@@ -63,7 +64,7 @@ groups:
 - Overview:
     title: Overview
 - Singletons:
-    title: Fields with only a single value
+    title: These are the same for all your [[this]]
 - ByTime:
     title: "[[GenericTable]] across time"
 - Geographical:
@@ -86,6 +87,8 @@ cards:
       metrics: Count
       score: 100
       group: Overview
+      width: 5
+      height: 3
   - RowcountLast30Days:
       title: New [[GenericTable]] in the last 30 days
       visualization: scalar
@@ -93,12 +96,16 @@ cards:
       score: 100
       filters: Last30Days
       group: Overview
+      width: 5
+      height: 3
   - DistinctFKCounts:
       title: Distinct [[FK]]
       visualization: scalar
       metrics: CountDistinctFKs
       score: 100
       group: Overview
+      width: 5
+      height: 3
 # Geographical
   - CountByCountry:
       title: "[[GenericTable]] per country"

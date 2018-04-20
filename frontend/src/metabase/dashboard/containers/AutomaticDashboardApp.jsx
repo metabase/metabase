@@ -7,12 +7,14 @@ import { Link } from "react-router";
 
 import { withBackground } from "metabase/hoc/Background";
 import ActionButton from "metabase/components/ActionButton";
+import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 
 import cxs from "cxs";
 import { t } from "c-3po";
+import _ from "underscore";
 
-import { Dashboard } from "./Dashboard";
+import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import Parameters from "metabase/parameters/components/Parameters";
 
@@ -72,17 +74,14 @@ class AutomaticDashboardApp extends React.Component {
       setParameterValue,
       location,
     } = this.props;
-    const relatedCount =
-      (dashboard &&
-        dashboard.related &&
-        Object.values(dashboard.related).reduce(
-          (acc, list) => acc + list.length,
-          0,
-        )) ||
-      0;
+    // pull out "more" related items for displaying as a button at the bottom of the dashboard
+    const more = dashboard && dashboard.related && dashboard.related["more"];
+    const related = dashboard && _.omit(dashboard.related, "more");
+    const hasSidebar = _.any(related || {}, list => list.length > 0);
+
     return (
-      <div className="flex">
-        <div className="flex-full overflow-x-hidden">
+      <div className="relative">
+        <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
           <div className="bg-white border-bottom py2">
             <div className="wrapper flex align-center">
               <Icon name="bolt" className="text-gold mr2" size={24} />
@@ -122,10 +121,19 @@ class AutomaticDashboardApp extends React.Component {
               )}
             <Dashboard {...this.props} />
           </div>
+          {more && (
+            <div className="flex justify-end px4 pb4">
+              {more.map(item => (
+                <Link to={item.url} className="ml2">
+                  <Button iconRight="chevronright">{item.title}</Button>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
-        {relatedCount > 0 && (
-          <div className="Layout-sidebar flex-no-shrink">
-            <SuggestionsSidebar related={dashboard.related} />
+        {hasSidebar && (
+          <div className="Layout-sidebar absolute top right bottom">
+            <SuggestionsSidebar related={related} />
           </div>
         )}
       </div>
