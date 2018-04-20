@@ -62,7 +62,7 @@ filters:
       score: 80
 groups:
 - Overview:
-    title: Overview
+    title: Summary
 - Singletons:
     title: These are the same for all your [[this]]
 - ByTime:
@@ -80,64 +80,6 @@ dashboard_filters:
 - Country
 - State
 cards:
-# Overview
-  - Rowcount:
-      title: Total [[GenericTable]]
-      visualization: scalar
-      metrics: Count
-      score: 100
-      group: Overview
-      width: 5
-      height: 3
-  - RowcountLast30Days:
-      title: New [[GenericTable]] in the last 30 days
-      visualization: scalar
-      metrics: Count
-      score: 100
-      filters: Last30Days
-      group: Overview
-      width: 5
-      height: 3
-  - DistinctFKCounts:
-      title: Distinct [[FK]]
-      visualization: scalar
-      metrics: CountDistinctFKs
-      score: 100
-      group: Overview
-      width: 5
-      height: 3
-# Geographical
-  - CountByCountry:
-      title: "[[GenericTable]] per country"
-      metrics: Count
-      dimensions: Country
-      score: 90
-      visualization:
-        map:
-          map.type: region
-          map.region: world_countries
-      group: Geographical
-  - CountByState:
-      title: "[[GenericTable]] per state"
-      metrics: Count
-      dimensions: State
-      score: 90
-      visualization:
-        map:
-          map.type: region
-          map.region: us_states
-      group: Geographical
-  - CountByCoords:
-      title: "[[GenericTable]] by coordinates"
-      metrics: Count
-      dimensions:
-        - Long:
-            aggregation: default
-        - Lat:
-            aggregation: default
-      visualization: map
-      score: 80
-      group: Geographical
 # General
   - NumberDistribution:
       title: How [[GenericTable]] are distributed across [[GenericNumber]]
@@ -168,6 +110,39 @@ cards:
       group: General
       order_by:
         - Count: descending
+# Geographical
+  - CountByCountry:
+      title: "[[GenericTable]] per country"
+      metrics: Count
+      dimensions: Country
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      group: Geographical
+      height: 6
+  - CountByState:
+      title: "[[GenericTable]] per state"
+      metrics: Count
+      dimensions: State
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      group: Geographical
+      height: 6
+  - CountByCoords:
+      title: "[[GenericTable]] by coordinates"
+      metrics: Count
+      dimensions:
+        - Long
+        - Lat
+      visualization: map
+      score: 80
+      group: Geographical
+      height: 6
 # By Time
   - CountByJoinDate:
       title: "[[GenericTable]] that have joined over time"
@@ -367,4 +342,23 @@ cards:
       height: 3
       width: 3
       group: Singletons
-      x_label: ""
+# Overview
+  - Rowcount:
+      title: Total [[GenericTable]]
+      visualization: scalar
+      metrics: Count
+      score: 100
+      group: Overview
+  - RowcountLast30Days:
+      title: New [[GenericTable]] in the last 30 days
+      visualization: scalar
+      metrics: Count
+      score: 100
+      filters: Last30Days
+      group: Overview
+  - DistinctFKCounts:
+      title: Distinct [[FK]]
+      visualization: scalar
+      metrics: CountDistinctFKs
+      score: 100
+      group: Overview

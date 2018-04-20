@@ -81,6 +81,8 @@ cards:
       metrics: Count
       score: 100
       group: Overview
+      width: 18
+      height: 7
 # Geographical
   - CountByCountry:
       title: Count of users per country
