@@ -131,10 +131,8 @@ cards:
       title: "[[GenericTable]] by coordinates"
       metrics: Count
       dimensions:
-        - Long:
-            aggregation: default
-        - Lat:
-            aggregation: default
+        - Long
+        - Lat
       visualization: map
       score: 80
       group: Geographical
