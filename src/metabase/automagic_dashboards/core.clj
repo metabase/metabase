@@ -430,9 +430,9 @@
          :table_id           (:id table)
          :fk_target_field_id [:not= nil])
        field/with-targets
+       (filter (comp mi/can-read? :target))
        (map (fn [{:keys [id target]}]
-              (-> target field/table (assoc :link id))))
-       (filter mi/can-read?)))
+              (-> target field/table (assoc :link id))))))
 
 (defmulti
   ^{:private  true
