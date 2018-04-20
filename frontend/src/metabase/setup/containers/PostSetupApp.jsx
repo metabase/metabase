@@ -5,6 +5,7 @@ import React, { Component } from "react";
 import { Link } from "react-router";
 import ExplorePane from "metabase/components/ExplorePane";
 import MetabotLogo from "metabase/components/MetabotLogo";
+import ThinProgressBar from "metabase/components/ThinProgressBar"
 import Quotes from "metabase/components/Quotes";
 import { withBackground } from "metabase/hoc/Background";
 
@@ -189,18 +190,5 @@ const BorderedPanel = ({ className, style, children }) => (
     style={style}
   >
     {children}
-  </div>
-);
-
-const ThinProgressBar = () => (
-  <div className="bg-brand" style={{ height: 6, borderRadius: 99 }}>
-    <div
-      style={{
-        backgroundColor: "black",
-        opacity: 0.15,
-        height: 6,
-        width: 52,
-      }}
-    />
   </div>
 );
