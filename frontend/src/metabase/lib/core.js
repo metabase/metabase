@@ -205,11 +205,6 @@ export const field_special_types = [
     name: t`Birthday`,
     section: t`Common`,
   },
-  {
-    id: TYPE.ID,
-    name: t`ID`,
-    section: t`Common`,
-  },
 ];
 
 export const field_special_types_map = field_special_types.reduce(

@@ -156,9 +156,12 @@
   (or (isa? special_type t)
       (isa? base_type t)))
 
-(def ^:private ^{:arglists '([field])} numeric-key?
+(defn- numeric-key?
   "Workaround for our leaky type system which conflates types with properties."
-  (comp #{:type/PK :type/FK :type/ID} :special_type))
+  [{:keys [base_type special_type name]}]
+  (and (isa? base_type :type/Number)
+       (or (#{:type/PK :type/FK} special_type)
+           (-> name str/lower-case (= "id")))))
 
 (def ^:private field-filters
   {:fieldspec       (fn [fieldspec]

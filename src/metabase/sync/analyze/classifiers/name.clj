@@ -94,9 +94,7 @@
    [#"title"                       text-type        :type/Title]
    [#"comment"                     text-type        :type/Comment]
    [#"birthda(?:te|y)"             timestamp-type   :type/Birthdate]
-   [#"(?:te|y)(?:_?)or(?:_?)birth" timestamp-type   :type/Birthdate]
-   [#"^id_"                        int-or-text-type :type/ID]
-   [#"_id$"                        int-or-text-type :type/ID]])
+   [#"(?:te|y)(?:_?)or(?:_?)birth" timestamp-type   :type/Birthdate]])
 
 ;; Check that all the pattern tuples are valid
 (when-not config/is-prod?
