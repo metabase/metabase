@@ -59,11 +59,11 @@ Once you’ve added a filter to your dashboard, just click on it to select a val
 
 ### Choosing between a dropdown or autocomplete for your filter
 
-As of Metabase 0.29, we've greatly improved how filtering works with fields that have lots of values. If the field you're using for a filter has more than 100 unique values, you'll now automatically see a search box with autocomplete suggestions.
+Picking selections for a filter with lots of options is easier than ever before. If the field you're using for a filter has more than 100 unique values, you'll now automatically see a search box with autocomplete suggestions.
 
 ![Autocomplete](images/dashboard-filters/autocomplete.png)
 
-Fields with fewer than 100 distinct values will have a filterable list of options.
+Fields with fewer than 100 distinct values will have display a list of all the options.
 
 ![List](images/dashboard-filters/list.png)
 
