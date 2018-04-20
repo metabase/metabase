@@ -150,7 +150,7 @@
 
 
 (expect
-  4
+  (db/count Table :db_id (data/id))
   (->> (Database (data/id)) candidate-tables first :tables count))
 
 
