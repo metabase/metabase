@@ -182,10 +182,12 @@ export default class Navbar extends Component {
                 </Link>
               </Box>
               <Box my={2}>
-                <Flex align="center" style={{ color: normal.blue }}>
-                  <Icon name="dashboard" />
-                  <h3>Dashboard</h3>
-                </Flex>
+                <Link to="dashboard/new">
+                  <Flex align="center" style={{ color: normal.blue }}>
+                    <Icon name="dashboard" />
+                    <h3>Dashboard</h3>
+                  </Flex>
+                </Link>
               </Box>
               <Box my={2}>
                 <Flex align="center" style={{ color: saturated.yellow }}>
