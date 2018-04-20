@@ -156,12 +156,15 @@
   (or (isa? special_type t)
       (isa? base_type t)))
 
-(defn- numeric-key?
+(defn- key-col?
   "Workaround for our leaky type system which conflates types with properties."
   [{:keys [base_type special_type name]}]
   (and (isa? base_type :type/Number)
        (or (#{:type/PK :type/FK} special_type)
-           (-> name str/lower-case (= "id")))))
+           (let [name (str/lower-case name)]
+             (or (= name "id")
+                 (str/starts-with? name "id_")
+                 (str/ends-with? name "_id"))))))
 
 (def ^:private field-filters
   {:fieldspec       (fn [fieldspec]
@@ -177,9 +180,8 @@
                             target
                             (recur target)
 
-
                             :else
-                            (and (not (numeric-key? field))
+                            (and (not (key-col? field))
                                  (field-isa? field fieldspec))))))
    :named           (fn [name-pattern]
                       (comp (->> name-pattern
