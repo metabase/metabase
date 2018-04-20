@@ -32,6 +32,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     return [];
   }
   const { column } = clicked;
+  const pivotField = isDate(column) ? column : dateField;
 
   return ["sum", "count"]
     .map(getAggregator)
@@ -52,7 +53,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
               : [aggregator.short],
           )
           .pivot([
-            ["datetime-field", getFieldRefFromColumn(dateField), "as", "day"],
+            ["datetime-field", getFieldRefFromColumn(pivotField), "as", "day"],
           ]),
     }));
 };
