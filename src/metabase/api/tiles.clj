@@ -7,7 +7,8 @@
              [query-processor :as qp]
              [util :as u]]
             [metabase.api.common :as api]
-            [metabase.util.schema :as su])
+            [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [tru]])
   (:import java.awt.Color
            java.awt.image.BufferedImage
            java.io.ByteArrayOutputStream
@@ -97,7 +98,7 @@
   (let [output-stream (ByteArrayOutputStream.)]
     (try
       (when-not (ImageIO/write tile "png" output-stream) ; returns `true` if successful -- see JavaDoc
-        (throw (Exception. "No appropriate image writer found!")))
+        (throw (Exception. (str (tru "No appropriate image writer found!")))))
       (.flush output-stream)
       (.toByteArray output-stream)
       (catch Throwable e
