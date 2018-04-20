@@ -1479,6 +1479,25 @@ export const clickedFKValue = {
   value: 43,
 };
 
+export const clickedDateTimeValue = {
+  column: {
+    ...metadata.fields[ORDERS_CREATED_DATE_FIELD_ID],
+    source: "fields",
+  },
+  value: "2018-01-01T00:00:00.000Z",
+};
+
+export const clickedMetric = {
+  column: {
+    name: "count",
+    display_name: "count",
+    base_type: "type/Integer",
+    special_type: "type/Number",
+    source: "aggregation",
+  },
+  value: 42,
+};
+
 export const tableMetadata = metadata.tables[ORDERS_TABLE_ID];
 
 export function makeQuestion(fn = (card, state) => ({ card, state })) {

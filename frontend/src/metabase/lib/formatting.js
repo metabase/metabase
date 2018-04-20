@@ -255,36 +255,22 @@ export function formatTimeWithUnit(
         ...options,
         majorWidth: 0,
       });
+    case "minute-of-hour":
+      return m.format("m");
     case "hour-of-day": // 12 AM
-      return moment()
-        .hour(value)
-        .format("h A");
+      return m.format("h A");
     case "day-of-week": // Sunday
-      return (
-        moment()
-          // $FlowFixMe:
-          .day(value - 1)
-          .format(getDayFormat(options))
-      );
+      return m.format(getDayFormat(options));
     case "day-of-month":
-      return moment()
-        .date(value)
-        .format("D");
+      return m.format("D");
+    case "day-of-year":
+      return m.format("DDD");
     case "week-of-year": // 1st
-      return moment()
-        .week(value)
-        .format("wo");
+      return m.format("wo");
     case "month-of-year": // January
-      return (
-        moment()
-          // $FlowFixMe:
-          .month(value - 1)
-          .format(getMonthFormat(options))
-      );
+      return m.format(getMonthFormat(options));
     case "quarter-of-year": // January
-      return moment()
-        .quarter(value)
-        .format("[Q]Q");
+      return m.format("[Q]Q");
     default:
       return m.format("LLLL");
   }
