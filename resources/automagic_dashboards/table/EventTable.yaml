@@ -49,6 +49,8 @@ cards:
       metrics: Count
       score: 30
       group: Overview
+      width: 5
+      height: 3
   - RowcountLast30Days:
       title: Events in the last 30 days
       visualization: scalar
@@ -56,6 +58,8 @@ cards:
       score: 25
       filters: Last30Days
       group: Overview
+      width: 5
+      height: 3
   - EventsByTime:
       title: Events over time
       metrics: Count

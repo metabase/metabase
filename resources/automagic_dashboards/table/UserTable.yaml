@@ -62,6 +62,8 @@ cards:
       metrics: Count
       score: 100
       group: Overview
+      width: 5
+      height: 3
   - RowcountLast30Days:
       title: New users in the last 30 days
       visualization: scalar
@@ -69,6 +71,8 @@ cards:
       score: 100
       filters: Last30Days
       group: Overview
+      width: 5
+      height: 3
   - NewUsersByMonth:
       visualization: line
       title: New users per month
