@@ -20,7 +20,7 @@ When you select a saved question, Metabase will show you a preview of how it’l
 
 ![Behold! The metamorphosis.](images/pulses/04-transformation.png)
 
-As of Metabase 0.29, you can now include tables in your pulses. They'll be capped to 10 columns and 20 rows, and for emailed pulses the rest of the results will be included automatically as a file attachment, with a limit of 2,000 rows.
+Now you can include tables in your pulses as well. They'll be capped to 10 columns and 20 rows, and for emailed pulses the rest of the results will be included automatically as a file attachment, with a limit of 2,000 rows.
 
 ![Table in pulse](images/pulses/table.png)
 
