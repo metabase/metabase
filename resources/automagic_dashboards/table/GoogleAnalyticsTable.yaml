@@ -37,26 +37,24 @@ dimensions:
   - Source:
       field_type: ga:source
 groups:
+- Overview:
+    title: Summary
 - SessionsBreakdown:
-    title: Sessions overview
+    title: Sessions in the last 30 days
 cards:
   - SessionsOverTime:
-      title: Sessions per day
-      description: Total sessions over time
-      metrics: Sessions
+      title: Sessions and unique users per day, last 30 days
+      description: How many total sessions vs. how many individual users you had each day in the last 30 days.
+      metrics:
+        - Sessions
+        - 1DayActiveUsers
       dimensions: Day
       filters: Last30Days
       visualization: line
       score: 100
       width: 18
-  - 1DayDAUOverTime:
-      title: Daily active users
-      description: The number of unique users per day
-      metrics: 1DayActiveUsers
-      dimensions: Day
-      filters: Last30Days
-      visualization: line
-      score: 85
+      height: 7
+      group: Overview
   # I don't know if I can do this, but I'd like to have a multi-metric card here
   # made up of two scalars, new user sessions and returning user sessions, so that
   # it's displayed as a bar chart.
