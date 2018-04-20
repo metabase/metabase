@@ -120,6 +120,7 @@
 
 (derive :type/Special :type/*)
 
+(derive :type/ID :type/Special)
 (derive :type/FK :type/Special)
 (derive :type/PK :type/Special)
 
