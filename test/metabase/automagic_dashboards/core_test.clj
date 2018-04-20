@@ -151,7 +151,8 @@
 
 (expect
   (db/count Table :db_id (data/id))
-  (->> (Database (data/id)) candidate-tables first :tables count))
+  (with-rasta
+    (->> (Database (data/id)) candidate-tables first :tables count)))
 
 
 ;; Identity
