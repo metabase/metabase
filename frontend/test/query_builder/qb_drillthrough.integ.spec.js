@@ -186,10 +186,10 @@ describe("QueryBuilder", () => {
           .find("td");
         expect(firstRowCells.length).toBe(2);
 
-        expect(firstRowCells.first().text()).toBe("AA");
+        expect(firstRowCells.first().text()).toBe("AK");
 
         const countCell = firstRowCells.last();
-        expect(countCell.text()).toBe("233");
+        expect(countCell.text()).toBe("474");
         click(countCell.children().first());
 
         // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
@@ -239,10 +239,10 @@ describe("QueryBuilder", () => {
           .find("td");
         expect(firstRowCells.length).toBe(2);
 
-        expect(firstRowCells.first().text()).toBe("90° S  –  80° S");
+        expect(firstRowCells.first().text()).toBe("20° N  –  30° N");
 
         const countCell = firstRowCells.last();
-        expect(countCell.text()).toBe("701");
+        expect(countCell.text()).toBe("579");
         click(countCell.children().first());
 
         // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
