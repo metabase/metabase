@@ -42,6 +42,10 @@ const mapStateToProps = (state, props) => ({
 @connect(mapStateToProps, { addUndo, createUndo })
 @DashboardData
 class AutomaticDashboardApp extends React.Component {
+  state = {
+    savedDashboardId: null,
+  };
+
   componentDidUpdate(prevProps) {
     // scroll to the top when the pathname changes
     if (prevProps.location.pathname !== this.props.location.pathname) {
@@ -67,6 +71,7 @@ class AutomaticDashboardApp extends React.Component {
         action: null,
       }),
     );
+    this.setState({ savedDashboardId: newDashboard.id });
   };
 
   render() {
@@ -78,6 +83,7 @@ class AutomaticDashboardApp extends React.Component {
       location,
       isAdmin,
     } = this.props;
+    const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
     const more = dashboard && dashboard.related && dashboard.related["more"];
     const related = dashboard && _.omit(dashboard.related, "more");
@@ -97,15 +103,18 @@ class AutomaticDashboardApp extends React.Component {
                     <TransientFilters filters={dashboard.transient_filters} />
                   )}
               </div>
-              {isAdmin && (
+              {savedDashboardId != null ? (
+                <Button className="ml-auto" disabled>{t`Saved`}</Button>
+              ) : isAdmin ? (
                 <ActionButton
-                  className="ml-auto Button--success"
+                  className="ml-auto"
+                  success
                   borderless
                   actionFn={this.save}
                 >
-                  Save this
+                  {t`Save this`}
                 </ActionButton>
-              )}
+              ) : null}
             </div>
           </div>
 
