@@ -1,6 +1,6 @@
 
 ## Sharing updates with pulses
-The Pulses feature in Metabase gives you the ability to automatically send regular updates to your teammates to help everyone keep track of changes to the metrics that matter to you most. You can deliver a ulse via email or [Slack](https://slack.com/), on the schedule of your choice.
+The Pulses feature in Metabase gives you the ability to automatically send regular updates to your teammates to help everyone keep track of changes to the metrics that matter to you most. You can deliver a pulse via email or [Slack](https://slack.com/), on the schedule of your choice.
 
 Click the `Pulses` link in the top menu to view all of your pulses, and click `Create a pulse` to make a new one.
 
