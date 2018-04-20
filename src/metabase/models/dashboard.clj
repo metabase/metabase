@@ -256,8 +256,8 @@
            not-empty
            (map (fn [{:keys [field value]}]
                   (format "%s %s" (str/join " " field) value)))
-           (str/join "\n")
-           (str "Filtered by:\n")))
+           (str/join ", ")
+           (str "Filtered by: ")))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of dashboard."
@@ -267,12 +267,9 @@
                     (-> dashboard
                         (dissoc :ordered_cards :rule :related :transient_name
                                 :transient_filters)
-                        (update :description #(->> dashboard
-                                                   :transient_filters
-                                                   applied-filters-blurb
-                                                   (vector %)
-                                                   (filter some?)
-                                                   (str/join "\n\n")))))]
+                        (assoc :description (->> dashboard
+                                                 :transient_filters
+                                                 applied-filters-blurb))))]
     (doseq [dashcard dashcards]
       (let [card     (some->> dashcard :card save-card!)
             series   (some->> dashcard :series (map save-card!))

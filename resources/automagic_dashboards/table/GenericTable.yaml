@@ -360,3 +360,4 @@ cards:
       height: 3
       width: 3
       group: Singletons
+      x_label: ""
