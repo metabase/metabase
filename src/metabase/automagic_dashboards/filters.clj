@@ -1,29 +1,35 @@
 (ns metabase.automagic-dashboards.filters
   (:require [clojure.string :as str]
-            [metabase.models.field :refer [Field] :as field]
+            [metabase.models
+             [field :refer [Field] :as field]
+             [table :refer [Table]]]
+            [metabase.query-processor.util :as qp.util]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
 (def ^:private FieldIdForm
-  [(s/one (s/constrained (s/either s/Str s/Keyword)
-                         (comp #{"field-id" "fk->"} str/lower-case name))
+  [(s/one (s/constrained su/KeywordOrString
+                         (comp #{:field-id :fk->} qp.util/normalize-token))
           "head")
    s/Any])
 
-(defn- collect-field-references
-  [card]
-  (->> card
-       :dataset_query
-       :query
-       ((juxt :breakout :fields))
-       (tree-seq sequential? identity)
-       (remove (s/checker FieldIdForm))
-       (map last)))
+(def ^{:arglists '([form])} field-form?
+  "Is given form an MBQL field form?"
+  (complement (s/checker FieldIdForm)))
+
+(defn collect-field-references
+  "Collect all field references (`[:field-id]` or `[:fk->]` forms) from a given form."
+  [form]
+  (->> form
+       (tree-seq (some-fn sequential? map?) identity)
+       (filter field-form?)))
 
 (defn- candidates-for-filtering
   [cards]
   (->> cards
        (mapcat collect-field-references)
+       (map last)
        distinct
        (map Field)
        (filter (fn [{:keys [base_type special_type] :as field}]
@@ -32,11 +38,8 @@
                      (field/unix-timestamp? field))))))
 
 (defn- build-fk-map
-  [tables field]
-  (->> (db/select Field
-         :fk_target_field_id [:not= nil]
-         :table_id [:in tables])
-       field/with-targets
+  [fks field]
+  (->> fks
        (filter (comp #{(:table_id field)} :table_id :target))
        (group-by :table_id)
        (keep (fn [[_ [fk & fks]]]
@@ -64,6 +67,7 @@
       mappings                (update dashcard :parameter_mappings concat mappings))))
 
 (defn- filter-type
+  "Return filter type for a given field."
   [{:keys [base_type special_type] :as field}]
   (cond
     (isa? base_type :type/DateTime)    "date/all-options"
@@ -72,30 +76,75 @@
     (isa? special_type :type/Country)  "location/country"
     (isa? special_type :type/Category) "category"))
 
+(defn- score
+  [{:keys [base_type special_type fingerprint] :as field}]
+  (cond-> 0
+    (some-> fingerprint :global :distinct-count (< 10)) inc
+    (some-> fingerprint :global :distinct-count (> 20)) dec
+    ((descendants :type/Category) special_type)         inc
+    (field/unix-timestamp? field)                       inc
+    (isa? base_type :type/DateTime)                     inc
+    ((descendants :type/DateTime) special_type)         inc
+    (isa? special_type :type/CreationTimestamp)         inc
+    (#{:type/State :type/Country} special_type)         inc))
+
+(def ^:private ^{:arglists '([dimensions])} remove-unqualified
+  (partial remove (fn [{:keys [fingerprint]}]
+                    (some-> fingerprint :global :distinct-count (< 2)))))
+
 (defn add-filters
-  "Add filters to dashboard `dashboard`. Takes an optional argument `dimensions`
-   which is a list of fields for which to create filters, else it tries to infer
-   by which fields it would be useful to filter."
-  ([dashboard]
-   (add-filters dashboard (-> dashboard :orderd_cards candidates-for-filtering)))
-  ([dashboard dimensions]
-   (->> dimensions
-        (map #(->> %
-                   (build-fk-map (keep (comp :table_id :card)
-                                       (:ordered_cards dashboard)))
-                   (assoc % :fk-map)))
-        (reduce
-         (fn [dashboard candidate]
-           (let [filter-id     (-> candidate hash str)
-                 dashcards     (:ordered_cards dashboard)
-                 dashcards-new (map #(add-filter % filter-id candidate) dashcards)]
-             ;; Only add filters that apply to all cards.
-             (if (= (count dashcards) (count dashcards-new))
-               (-> dashboard
-                   (assoc :ordered_cards dashcards-new)
-                   (update :parameters conj {:id   filter-id
-                                             :type (filter-type candidate)
-                                             :name (:display_name candidate)
-                                             :slug (:name candidate)}))
-               dashboard)))
-         dashboard))))
+  "Add up to `max-filters` filters to dashboard `dashboard`. Takes an optional
+   argument `dimensions` which is a list of fields for which to create filters, else
+   it tries to infer by which fields it would be useful to filter."
+  ([dashboard max-filters]
+   (->> dashboard
+        :orderd_cards
+        candidates-for-filtering
+        (add-filters dashboard max-filters)))
+  ([dashboard dimensions max-filters]
+   (let [fks (->> (db/select Field
+                    :fk_target_field_id [:not= nil]
+                    :table_id [:in (keep (comp :table_id :card)
+                                         (:ordered_cards dashboard))])
+                  field/with-targets)]
+     (->> dimensions
+          remove-unqualified
+          (sort-by score >)
+          (take max-filters)
+          (map #(assoc % :fk-map (build-fk-map fks %)))
+          (reduce
+           (fn [dashboard candidate]
+             (let [filter-id     (-> candidate hash str)
+                   dashcards     (:ordered_cards dashboard)
+                   dashcards-new (map #(add-filter % filter-id candidate) dashcards)]
+               ;; Only add filters that apply to all cards.
+               (if (= (count dashcards) (count dashcards-new))
+                 (-> dashboard
+                     (assoc :ordered_cards dashcards-new)
+                     (update :parameters conj {:id   filter-id
+                                               :type (filter-type candidate)
+                                               :name (:display_name candidate)
+                                               :slug (:name candidate)}))
+                 dashboard)))
+           dashboard)))))
+
+(defn applied-filters
+  "Extract fields and their values from MBQL filter clauses."
+  [filter-clause]
+  (when filter-clause
+    (if (-> filter-clause first qp.util/normalize-token (#{:and :not :or}))
+      (mapcat applied-filters (rest filter-clause))
+      (let [[op lhs rhs & _] filter-clause]
+        (for [field-reference (collect-field-references lhs)]
+          (let [field (-> field-reference last Field)]
+            {:field    (if (-> field-reference
+                               first
+                               qp.util/normalize-token
+                               (= :fk->))
+                         [(-> field :table_id Table :display_name)
+                          (:display_name field)]
+                         [(:display_name field)])
+             :field_id (:id field)
+             :type     (filter-type field)
+             :value    rhs
+             :op       op}))))))

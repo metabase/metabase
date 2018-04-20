@@ -9,7 +9,7 @@
             [metabase.config :as config]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]))
 
 (def ^:private ValidToken
@@ -48,20 +48,20 @@
                   ;; slurp will throw a FileNotFoundException for 404s, so in that case just return an appropriate
                   ;; 'Not Found' message
                   (catch java.io.FileNotFoundException e
-                    {:valid false, :status "Unable to validate token."})
+                    {:valid false, :status (tru "Unable to validate token.")})
                   ;; if there was any other error fetching the token, log it and return a generic message about the
                   ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
                   ;; we do not want something complicated
                   (catch Throwable e
-                    (log/error "Error fetching token status:" e)
-                    {:valid false, :status "There was an error checking whether this token was valid."})))
+                    (log/error e (trs "Error fetching token status:"))
+                    {:valid false, :status (tru "There was an error checking whether this token was valid.")})))
            fetch-token-status-timeout-ms
-           {:valid false, :status "Token validation timed out."})))
+           {:valid false, :status (tru "Token validation timed out.")})))
 
 (defn- check-embedding-token-is-valid* [token]
   (when (s/check ValidToken token)
-    (throw (Exception. "Invalid token: token isn't in the right format.")))
-  (log/info "Checking with the MetaStore to see whether" token "is valid...")
+    (throw (Exception. (str (trs "Invalid token: token isn't in the right format.")))))
+  (log/info (trs "Checking with the MetaStore to see whether {0} is valid..." token))
   (let [{:keys [valid status]} (fetch-token-status token)]
     (or valid
         ;; if token isn't valid throw an Exception with the `:status` message
@@ -90,10 +90,10 @@
             (try
               (when (seq new-value)
                 (check-embedding-token-is-valid new-value)
-                (log/info "Token is valid."))
+                (log/info (trs "Token is valid.")))
               (setting/set-string! :premium-embedding-token new-value)
               (catch Throwable e
-                (log/error e "Error setting premium embedding token")
+                (log/error e (trs "Error setting premium embedding token"))
                 (throw (ex-info (.getMessage e) {:status-code 400}))))))
 
 (defn hide-embed-branding?

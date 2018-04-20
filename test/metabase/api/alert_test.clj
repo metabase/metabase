@@ -110,7 +110,7 @@
        ~@body)))
 
 (defn- rasta-new-alert-email [body-map]
-  (et/email-to :rasta {:subject "You setup an alert",
+  (et/email-to :rasta {:subject "You set up an alert",
                        :body (merge {"https://metabase.com/testmb" true,
                                      "My question" true}
                                     body-map)}))
@@ -147,9 +147,9 @@
                               :schedule_type "hourly"
                               :schedule_hour nil
                               :recipients    [(recipient-details :rasta)]
-                              :updated_at    true,
-                              :pulse_id      true,
-                              :id            true,
+                              :updated_at    true
+                              :pulse_id      true
+                              :id            true
                               :created_at    true})]
    :skip_if_empty    true
    :collection_id    false})
@@ -188,8 +188,8 @@
        (update-in [:channels 0] merge {:schedule_hour 12
                                        :schedule_type "daily"
                                        :recipients    (set (map recipient-details [:rasta :crowberto]))}))
-   (merge (et/email-to :crowberto {:subject "You setup an alert",
-                                   :body    {"https://metabase.com/testmb"  true,
+   (merge (et/email-to :crowberto {:subject "You set up an alert"
+                                   :body    {"https://metabase.com/testmb"  true
                                              "My question"                  true
                                              "now getting alerts"           false
                                              "confirmation that your alert" true}})

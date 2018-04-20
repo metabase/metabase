@@ -12,21 +12,39 @@
    :email-smtp-password (setting/get :email-smtp-password)
    :email-from-address  (setting/get :email-from-address)})
 
-;; /api/email/test - sends a test email to the given user
-(expect
+(def ^:private default-email-settings
   {:email-smtp-host     "foobar"
    :email-smtp-port     "789"
    :email-smtp-security "tls"
    :email-smtp-username "munchkin"
    :email-smtp-password "gobble gobble"
-   :email-from-address  "eating@hungry.com"}
-  (let [orig-settings (email-settings)
-        _             ((user->client :crowberto) :put 200 "email" {:email-smtp-host     "foobar"
-                                                                   :email-smtp-port     "789"
-                                                                   :email-smtp-security "tls"
-                                                                   :email-smtp-username "munchkin"
-                                                                   :email-smtp-password "gobble gobble"
-                                                                   :email-from-address  "eating@hungry.com"})
-        new-settings  (email-settings)
-        _             (setting/set-many! orig-settings)]
-    new-settings))
+   :email-from-address  "eating@hungry.com"})
+
+;; PUT /api/email - check updating email settings
+(expect
+  default-email-settings
+  (let [orig-settings (email-settings)]
+    (try
+      ((user->client :crowberto) :put 200 "email" default-email-settings)
+      (email-settings)
+      (finally
+        (setting/set-many! orig-settings)))))
+
+;; DELETE /api/email - check clearing email settings
+(expect
+  [default-email-settings
+   {:email-smtp-host nil,
+    :email-smtp-port nil,
+    :email-smtp-security "none",
+    :email-smtp-username nil,
+    :email-smtp-password nil,
+    :email-from-address "notifications@metabase.com"}]
+  (let [orig-settings (email-settings)]
+    (try
+      ((user->client :crowberto) :put 200 "email" default-email-settings)
+      (let [new-email-settings (email-settings)]
+        ((user->client :crowberto) :delete 204 "email")
+        [new-email-settings
+         (email-settings)])
+      (finally
+        (setting/set-many! orig-settings)))))

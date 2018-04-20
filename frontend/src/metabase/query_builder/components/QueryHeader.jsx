@@ -213,7 +213,7 @@ export default class QueryHeader extends Component {
           key="save"
           ref="saveModal"
           triggerClasses="h4 text-grey-4 text-brand-hover text-uppercase"
-          triggerElement="Save"
+          triggerElement={t`Save`}
         >
           <SaveQuestionModal
             card={this.props.card}
@@ -222,7 +222,7 @@ export default class QueryHeader extends Component {
             // if saving modified question, don't show "add to dashboard" modal
             saveFn={card => this.onSave(card, false)}
             createFn={this.onCreate}
-            onClose={() => this.refs.saveModal.toggle()}
+            onClose={() => this.refs.saveModal && this.refs.saveModal.toggle()}
           />
         </ModalWithTrigger>,
       ]);

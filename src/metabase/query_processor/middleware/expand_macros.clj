@@ -112,13 +112,17 @@
        (expand-metric form filter-clauses-atom)))
    query-dict))
 
-(defn- merge-filter-clauses [base-clause additional-clauses]
-  (cond
-    (and (seq base-clause)
-         (seq additional-clauses)) [:and base-clause additional-clauses]
-    (seq base-clause)              base-clause
-    (seq additional-clauses)       additional-clauses
-    :else                          []))
+(defn merge-filter-clauses
+  "Merge filter clauses."
+  ([] [])
+  ([clause] clause)
+  ([base-clause additional-clauses]
+   (cond
+     (and (seq base-clause)
+          (seq additional-clauses)) [:and base-clause additional-clauses]
+     (seq base-clause)              base-clause
+     (seq additional-clauses)       additional-clauses
+     :else                          [])))
 
 (defn- add-metrics-filter-clauses
   "Add any FILTER-CLAUSES to the QUERY-DICT. If query has existing filter clauses, the new ones are

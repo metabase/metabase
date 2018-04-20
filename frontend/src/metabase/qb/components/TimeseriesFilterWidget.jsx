@@ -151,7 +151,7 @@ export default class TimeseriesFilterWidget extends Component {
               }
             }}
           >
-            Apply
+            {t`Apply`}
           </Button>
         </div>
       </PopoverWithTrigger>

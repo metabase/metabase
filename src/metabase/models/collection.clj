@@ -9,6 +9,7 @@
              [permissions :as perms]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -22,8 +23,8 @@
 
 (defn- assert-unique-slug [slug]
   (when (db/exists? Collection :slug slug)
-    (throw (ex-info "Name already taken"
-             {:status-code 400, :errors {:name "A collection with this name already exists"}}))))
+    (throw (ex-info (tru "Name already taken")
+             {:status-code 400, :errors {:name (tru "A collection with this name already exists")}}))))
 
 (def ^:const ^java.util.regex.Pattern hex-color-regex
   "Regex for a valid value of `:color`, a 7-character hex string including the preceding hash sign."
@@ -32,14 +33,14 @@
 (defn- assert-valid-hex-color [^String hex-color]
   (when (or (not (string? hex-color))
             (not (re-matches hex-color-regex hex-color)))
-    (throw (ex-info "Invalid color"
-             {:status-code 400, :errors {:color "must be a valid 6-character hex color code"}}))))
+    (throw (ex-info (tru "Invalid color")
+             {:status-code 400, :errors {:color (tru "must be a valid 6-character hex color code")}}))))
 
 (defn- slugify [collection-name]
   ;; double-check that someone isn't trying to use a blank string as the collection name
   (when (str/blank? collection-name)
-    (throw (ex-info "Collection name cannot be blank!"
-             {:status-code 400, :errors {:name "cannot be blank"}})))
+    (throw (ex-info (tru "Collection name cannot be blank!")
+             {:status-code 400, :errors {:name (tru "cannot be blank")}})))
   (u/slugify collection-name collection-slug-max-length))
 
 (defn- pre-insert [{collection-name :name, color :color, :as collection}]
