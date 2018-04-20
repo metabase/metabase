@@ -107,19 +107,22 @@
 
 
 (s/defn ^:private special-type-for-name-and-base-type :- (s/maybe su/FieldType)
-  "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it."
-  [field-name :- su/NonBlankString, base-type :- su/FieldType]
-  (or (when (= "id" (str/lower-case field-name)) :type/PK)
-      (some (fn [[name-pattern valid-base-types special-type]]
-              (when (and (some (partial isa? base-type) valid-base-types)
-                         (re-find name-pattern (str/lower-case field-name)))
-                special-type))
-            pattern+base-types+special-type)))
+  "If field `:name` and `:base_type` matches a known pattern, return the `special_type` we should assign to it."
+  [field :- i/FieldInstance]
+  (cond
+    (= "id" (str/lower-case (:name field))) :type/PK
+
+    (nil?  (:special_type field)) ; don't overwrite previously infered types
+    (some (fn [[name-pattern valid-base-types special-type]]
+            (when (and (some (partial isa? (:base_type field)) valid-base-types)
+                       (re-find name-pattern (str/lower-case (:name field))))
+              special-type))
+          pattern+base-types+special-type)))
 
 (s/defn infer-special-type :- (s/maybe i/FieldInstance)
   "Classifer that infers the special type of a FIELD based on its name and base type."
   [field :- i/FieldInstance, _ :- (s/maybe i/Fingerprint)]
-  (when-let [inferred-special-type (special-type-for-name-and-base-type (:name field) (:base_type field))]
+  (when-let [inferred-special-type (special-type-for-name-and-base-type field)]
     (log/debug (format "Based on the name of %s, we're giving it a special type of %s."
                        (sync-util/name-for-logging field)
                        inferred-special-type))
