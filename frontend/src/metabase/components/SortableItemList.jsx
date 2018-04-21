@@ -44,7 +44,7 @@ export default class SortableItemList extends Component {
       <div className="SortableItemList">
         <div className="flex align-center px2 pb3 border-bottom">
           <h5 className="text-bold text-uppercase text-grey-3 ml2 mt1 mr2">
-            Sort by
+            {t`Sort by`}
           </h5>
           <Radio
             value={this.state.sort}
