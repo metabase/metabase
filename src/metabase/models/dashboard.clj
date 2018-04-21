@@ -260,6 +260,13 @@
            (str/join ", ")
            (str "Filtered by: ")))
 
+(defn- ensure-unique-collection-name
+  [collection]
+  (let [c (db/count 'Collection :name [:like (format "%s%%" collection)])]
+    (if (zero? c)
+      collection
+      (format "%s %s" collection (inc c)))))
+
 (defn save-transient-dashboard!
   "Save a denormalized description of dashboard."
   [dashboard]
@@ -272,7 +279,8 @@
                                                   :transient_filters
                                                   applied-filters-blurb))))
         collection (magic.populate/create-collection!
-                    (format "Questions for %s dashboard" (:name dashboard))
+                    (ensure-unique-collection-name
+                     (format "Questions for your \"%s\" dashboard" (:name dashboard)))
                     "#509EE3"
                     "Automatically generated cards.")]
     (doseq [dashcard dashcards]
