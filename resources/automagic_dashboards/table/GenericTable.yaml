@@ -80,6 +80,26 @@ dashboard_filters:
 - Country
 - State
 cards:
+# Overview
+  - Rowcount:
+      title: Total [[GenericTable]]
+      visualization: scalar
+      metrics: Count
+      score: 100
+      group: Overview
+  - RowcountLast30Days:
+      title: New [[GenericTable]] in the last 30 days
+      visualization: scalar
+      metrics: Count
+      score: 100
+      filters: Last30Days
+      group: Overview
+  - DistinctFKCounts:
+      title: Distinct [[FK]]
+      visualization: scalar
+      metrics: CountDistinctFKs
+      score: 100
+      group: Overview
 # General
   - NumberDistribution:
       title: How [[GenericTable]] are distributed across [[GenericNumber]]
@@ -335,30 +355,10 @@ cards:
 # Special
   - Singleton:
       title: "[[Singleton]]"
-      visualization: bar
+      visualization: scalar
       metrics: Count
       dimensions: Singleton
       score: 30
       height: 3
       width: 3
       group: Singletons
-# Overview
-  - Rowcount:
-      title: Total [[GenericTable]]
-      visualization: scalar
-      metrics: Count
-      score: 100
-      group: Overview
-  - RowcountLast30Days:
-      title: New [[GenericTable]] in the last 30 days
-      visualization: scalar
-      metrics: Count
-      score: 100
-      filters: Last30Days
-      group: Overview
-  - DistinctFKCounts:
-      title: Distinct [[FK]]
-      visualization: scalar
-      metrics: CountDistinctFKs
-      score: 100
-      group: Overview

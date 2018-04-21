@@ -100,7 +100,7 @@
       (* 24 30 6)     :day
       (* 24 30 12 10) :month
       :year)
-    :month))
+    :day))
 
 (defmethod ->reference [:mbql (type Field)]
   [_ {:keys [fk_target_field_id id link aggregation base_type fingerprint] :as field}]
