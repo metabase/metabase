@@ -32,17 +32,50 @@
     (filter mi/can-read? collections)
     (hydrate collections :can_write)))
 
-(defn- objects-in-collection [model collection-id-or-nil]
-  (let [return? (if-not model
-                  (constantly true)
-                  (partial = model))]
-    (merge
-     (when (return? "cards")
-       {:cards (db/select [Card :name :id], :collection_id collection-id-or-nil, :archived false)})
-     (when (return? "dashboards")
-       {:dashboards (db/select [Dashboard :name :id], :collection_id collection-id-or-nil, :archived false)})
-     (when (return? "pulses")
-       {:pulses (db/select [Pulse :name :id], :collection_id collection-id-or-nil)}))))
+
+;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
+
+(defn- collection-children
+  "Fetch a map of the 'child' objects belonging to a Collection of type `model`, or of all available types if `model` is
+  nil. `model->children-fn` should be a map of the different types of children that can be included to a function used
+  to fetch them. Optional `children-fn-params` will be passed to each children-fetching fn.
+
+      (collection-children :cards model->collection-children-fn 1)
+      ;; -> {:cards [...cards for Collection 1...]}
+
+      (collection-children nil model->collection-children-fn  1)
+      ;; -> {:cards [...], :dashboards [...], :pulses [...]}"
+  [model model->children-fn & children-fn-params]
+  (into {} (for [[a-model children-fn] model->children-fn
+                 ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
+                 :when (or (nil? model)
+                           (= (name model) (name a-model)))]
+             ;; return the results like {:card <results-of-card-children-fn>}
+             {a-model (apply children-fn children-fn-params)})))
+
+(def ^:private model->collection-children-fn
+  "Functions for fetching the 'children' of a Collection."
+  {:cards      #(db/select [Card :name :id],      :collection_id %, :archived false)
+   :dashboards #(db/select [Dashboard :name :id], :collection_id %, :archived false)
+   :pulses     #(db/select [Pulse :name :id],     :collection_id %)})
+
+(def ^:private model->root-collection-children-fn
+  "Functions for fetching the 'children' of the root Collection."
+  (let [just-names-and-ids (fn [items]
+                             (for [item items]
+                               (select-keys item [:name :id])))]
+    {:cards      #(->> (db/select [Card :name :id :public_uuid :read_permissions :dataset_query]
+                         :collection_id nil, :archived false)
+                       (filter mi/can-read?)
+                       just-names-and-ids)
+     :dashboards #(->> (db/select [Dashboard :name :id :public_uuid]
+                         :collection_id nil, :archived false)
+                       (filter mi/can-read?)
+                       just-names-and-ids)
+     :pulses     #(->> (db/select [Pulse :name :id]
+                         :collection_id nil)
+                       (filter mi/can-read?)
+                       just-names-and-ids)}))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific (non-archived) Collection, including objects of a specific `model` that belong to it. If `model` is
@@ -51,15 +84,19 @@
   {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
   (merge
    (api/read-check Collection id, :archived false)
-   (objects-in-collection model id)))
+   (collection-children model model->collection-children-fn id)))
 
 (api/defendpoint GET "/root"
   "Fetch objects in the 'root' Collection. (The 'root' Collection doesn't actually exist at this point, so this just
   returns objects that aren't in *any* Collection."
   [model]
   {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
-  (assoc (objects-in-collection model nil)
-    :name (tru "Root Collection")))
+  (merge
+   {:name (tru "Root Collection")}
+   (collection-children model model->root-collection-children-fn)))
+
+
+;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
 (api/defendpoint POST "/"
   "Create a new Collection."
