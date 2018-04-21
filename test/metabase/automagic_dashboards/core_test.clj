@@ -54,6 +54,28 @@
          (map (comp first :applies_to)))))
 
 
+(defn- collect-urls
+  [dashboard]
+  (->> dashboard
+       (tree-seq (some-fn sequential? map?) identity)
+       (keep (fn [form]
+               (when (map? form)
+                 (:url form))))))
+
+(defn- valid-urls?
+  [dashboard]
+  (->> dashboard
+       collect-urls
+       (every? (fn [url]
+                 ((test-users/user->client :rasta) :get 200 (format "automagic-dashboards/%s"
+                                                                    (subs url 16)))))))
+
+(defn- valid-dashboard?
+  [dashboard]
+  (and dashboard
+       (:name dashboard)
+       (valid-urls? dashboard)))
+
 (defmacro ^:private with-dashboard-cleanup
   [& body]
   `(tu/with-model-cleanup [(quote ~'Card) (quote ~'Dashboard) (quote ~'Collection)
@@ -61,24 +83,24 @@
      ~@body))
 
 (expect
-  false
+  true
   (with-rasta
     (with-dashboard-cleanup
-      (->> (Table) (keep #(automagic-analysis % {})) empty?))))
+      (->> (Table) (keep #(automagic-analysis % {})) (every? valid-dashboard?)))))
 
 (expect
-  false
+  true
   (with-rasta
     (with-dashboard-cleanup
-      (->> (Field) (keep #(automagic-analysis % {})) empty?))))
+      (->> (Field) (keep #(automagic-analysis % {})) (every? valid-dashboard?)))))
 
 (expect
-  false
+  true
   (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
                                            :definition {:query {:aggregation ["count"]}}}]]
     (with-rasta
       (with-dashboard-cleanup
-        (->> (Metric) (keep #(automagic-analysis % {})) empty?)))))
+        (->> (Metric) (keep #(automagic-analysis % {})) (every? valid-dashboard?))))))
 
 (expect
   true
@@ -89,7 +111,7 @@
                                                        :database (data/id)}}]]
     (with-rasta
       (with-dashboard-cleanup
-        (-> card-id Card (automagic-analysis {}) some?)))))
+        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
 
 (expect
   true
@@ -100,7 +122,10 @@
                                                        :database (data/id)}}]]
     (with-rasta
       (with-dashboard-cleanup
-        (-> card-id Card (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]}) some?)))))
+        (-> card-id
+            Card
+            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]})
+            valid-dashboard?)))))
 
 (expect
   true
@@ -110,7 +135,7 @@
                                           :source_table (data/id :venues)}
                                   :type :query
                                   :database (data/id)})]
-        (-> q (automagic-analysis {}) some?)))))
+        (-> q (automagic-analysis {}) valid-dashboard?)))))
 
 (expect
   true
@@ -120,7 +145,9 @@
                                           :source_table (data/id :venues)}
                                   :type :query
                                   :database (data/id)})]
-        (-> q (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]}) some?)))))
+        (-> q
+            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]})
+            valid-dashboard?)))))
 
 
 (expect
@@ -150,7 +177,7 @@
 
 
 (expect
-  (db/count Table :db_id (data/id))
+  3
   (with-rasta
     (->> (Database (data/id)) candidate-tables first :tables count)))
 

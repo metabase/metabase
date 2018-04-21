@@ -435,7 +435,7 @@
          :table_id           (:id table)
          :fk_target_field_id [:not= nil])
        field/with-targets
-       (filter (comp mi/can-read? :target))
+       (filter #(some-> % :target mi/can-read?))
        (map (fn [{:keys [id target]}]
               (-> target field/table (assoc :link id))))))
 

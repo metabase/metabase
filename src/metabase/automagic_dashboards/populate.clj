@@ -2,7 +2,6 @@
   "Create and save models that make up automagic dashboards."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [clojure.walk :refer [postwalk]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.filters :as magic.filters]
             [metabase.models.card :as card]
