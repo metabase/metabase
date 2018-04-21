@@ -638,8 +638,7 @@
           cell-query)
     (let [table (-> card :table_id Table)]
       (automagic-dashboard
-       (merge opts
-              {:entity       table
+       (merge {:entity       table
                :source-table table
                :query-filter (-> card :dataset_query :query :filter)
                :database     (:db_id table)
@@ -649,7 +648,8 @@
                                        (:id card)
                                        (endocde-base64-json cell-query))
                                (format "%squestion/%s" public-endpoint (:id card)))
-               :rules-prefix "table"})))
+               :rules-prefix "table"}
+              opts)))
     nil))
 
 (defmethod automagic-analysis (type Query)
@@ -658,21 +658,21 @@
           (:cell-query opts))
     (let [table (-> query :table-id Table)]
       (automagic-dashboard
-       (merge (update opts :cell-query merge-filter-clauses (-> query
-                                                                :dataset_query
-                                                                :query
-                                                                :filter))
-              {:entity       table
+       (merge {:entity       table
                :source-table table
                :database     (:db_id table)
                :full-name    (:display_name table)
                :url          (if cell-query
                                (format "%sadhoc/%s/cell/%s" public-endpoint
-                                       (endocde-base64-json query)
+                                       (endocde-base64-json (:dataset_query query))
                                        (endocde-base64-json cell-query))
                                (format "%sadhoc/%s" public-endpoint
                                                    (endocde-base64-json query)))
-               :rules-prefix "table"})))
+               :rules-prefix "table"}
+              (update opts :cell-query merge-filter-clauses (-> query
+                                                                :dataset_query
+                                                                :query
+                                                                :filter)))))
     nil))
 
 (defmethod automagic-analysis (type Field)
