@@ -681,7 +681,8 @@
 
 (defn- enhanced-table-stats
   [table]
-  (let [field-types (db/select-field :special_type Field :table_id (:id table))]
+  (let [field-types (->> (db/select [Field :special_type] :table_id (:id table))
+                         (map :special_type))]
     (assoc table :stats {:num-fields  (count field-types)
                          :list-like?  (= (count (remove #{:type/PK} field-types)) 1)
                          :link-table? (every? #{:type/FK :type/PK} field-types)})))
@@ -711,7 +712,7 @@
                    schema (concat [:schema schema])))
           (filter mi/can-read?)
           (map enhanced-table-stats)
-          (remove (comp (some-fn :link-table? :list-like-table?) :stats))
+          (remove (comp (some-fn :link-table? :list-like?) :stats))
           (map (fn [table]
                  (let [root      (->root table)
                        rule      (->> root
