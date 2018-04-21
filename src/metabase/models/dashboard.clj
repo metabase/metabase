@@ -50,6 +50,7 @@
                                            :dashboard_id (u/get-id dashboard)
                                            :card_id      [:not= nil]) ; skip text-only Cards
                                          (hydrate [:card :in_public_dashboard] :series))))]
+     ;; you can read/write a Dashboard if it has *no* Cards or if you can read/write at least one of those Cards
      (or (empty? cards)
          (some (case read-or-write
                  :read  i/can-read?
