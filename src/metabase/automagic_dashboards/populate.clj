@@ -240,7 +240,7 @@
                          :else        n)
          dashboard     {:name              title
                         :transient_name    (or transient_title title)
-                        :transient_filters (magic.filters/applied-filters refinements)
+                        :transient_filters (magic.filters/filter-referenced-fields refinements)
                         :description       description
                         :creator_id        api/*current-user-id*
                         :parameters        []}
