@@ -29,7 +29,8 @@
       :color       color
       :description description)))
 
-(def ^:private colors
+(def colors
+  "Colors used for coloring charts and collections."
   ["#509EE3" "#9CC177" "#A989C5" "#EF8C8C" "#f9d45c" "#F1B556" "#A6E7F3" "#7172AD"])
 
 (defn- ensure-distinct-colors
