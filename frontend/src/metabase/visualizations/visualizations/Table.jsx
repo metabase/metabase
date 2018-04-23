@@ -23,6 +23,8 @@ import { getIn } from "icepick";
 import type { DatasetData } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 
+import { GroupingManager } from "../lib/GroupingManager";
+
 type Props = {
   card: Card,
   data: DatasetData,
@@ -151,6 +153,10 @@ export default class Table extends Component {
       return null;
     }
 
+    const groupingManager = new GroupingManager(data.rows);
+
+    const dataUpdated = { ...data, rows: groupingManager.rowsOrdered };
+
     if (isColumnsDisabled) {
       return (
         <div
@@ -173,9 +179,10 @@ export default class Table extends Component {
         // $FlowFixMe
         <TableComponent
           {...this.props}
-          data={data}
+          data={dataUpdated}
           isPivoted={isPivoted}
           sort={sort}
+          groupingManager={groupingManager}
         />
       );
     }

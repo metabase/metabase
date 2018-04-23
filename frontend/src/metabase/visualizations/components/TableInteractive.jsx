@@ -30,6 +30,7 @@ const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import { GroupingManager } from "metabase/visualizations/lib/GroupingManager";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
   const rowIndexes = [];
@@ -52,6 +53,7 @@ type Props = VisualizationProps & {
   sort: any,
   isPivoted: boolean,
   onActionDismissal: () => void,
+  groupingManager: GroupingManager,
 };
 type State = {
   columnWidths: number[],
@@ -80,6 +82,7 @@ export default class TableInteractive extends Component {
 
   header: GridComponent;
   grid: GridComponent;
+  debugger;
 
   constructor(props: Props) {
     super(props);
@@ -245,6 +248,19 @@ export default class TableInteractive extends Component {
   }
 
   cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
+    const groupingManager = this.props.groupingManager;
+
+    if (this.grid) {
+      if (
+        columnIndex === 0 &&
+        groupingManager.shouldHide(rowIndex, this.grid._rowStartIndex)
+      ) {
+        return <br />;
+      }
+    }
+
+    // console.log(style);
+
     const {
       data,
       isPivoted,
@@ -256,6 +272,11 @@ export default class TableInteractive extends Component {
     const column = cols[columnIndex];
     const row = rows[rowIndex];
     const value = row[columnIndex];
+
+    const mappedStyle =
+      columnIndex === 0 && this.grid
+        ? groupingManager.mapStyle(rowIndex, this.grid._rowStartIndex, style)
+        : style;
 
     const clicked = getTableCellClickedObject(
       data,
@@ -269,7 +290,7 @@ export default class TableInteractive extends Component {
     return (
       <div
         key={key}
-        style={style}
+        style={mappedStyle}
         className={cx("TableInteractive-cellWrapper", {
           "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
           "TableInteractive-cellWrapper--lastColumn":
@@ -418,11 +439,13 @@ export default class TableInteractive extends Component {
   };
 
   render() {
-    const { width, height, data: { cols, rows }, className } = this.props;
+    const { width, height, data: { cols }, className } = this.props;
 
     if (!width || !height) {
       return <div className={className} />;
     }
+
+    const rows = this.props.groupingManager.rowsOrdered;
 
     return (
       <ScrollSync>
