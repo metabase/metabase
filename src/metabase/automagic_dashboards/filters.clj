@@ -140,10 +140,9 @@
 (defn filter-referenced-fields
   "Return a map of fields referenced in filter cluase."
   [filter-clause]
-  {:filter filter-clause
-   :fields (->> filter-clause
-                collect-field-references
-                (mapcat (fn [[_ & ids]]
-                          (for [id ids]
-                            [id (Field id)])))
-                (into {}))})
+  (->> filter-clause
+       collect-field-references
+       (mapcat (fn [[_ & ids]]
+                 (for [id ids]
+                   [id (Field id)])))
+       (into {})))
