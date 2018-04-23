@@ -2,8 +2,6 @@ import React from "react";
 import { Box } from "rebass";
 import { Link } from "react-router";
 
-import * as Urls from "metabase/lib/urls";
-
 import { normal } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
@@ -23,15 +21,30 @@ const ICON_SIZE = 18;
 
 const LandingNav = props => {
   const { collectionSlug } = props;
+
+  function showEntity(type) {
+    return `${
+      collectionSlug ? `collections/${collectionSlug}` : ""
+    }?show=${type}`;
+  }
+
   return (
     <Box className="absolute left top" px={2}>
       <Box>
-        <Link to="/" style={linkStyle} activeStyle={activeStyle}>
+        <Link
+          to={collectionSlug ? `collections/${collectionSlug}` : "/"}
+          style={linkStyle}
+          activeStyle={activeStyle}
+        >
           <Icon name="reference" size={ICON_SIZE} />
         </Link>
       </Box>
       <Box>
-        <Link to="dashboards" style={linkStyle} activeStyle={activeStyle}>
+        <Link
+          to={showEntity("dashboards")}
+          style={linkStyle}
+          activeStyle={activeStyle}
+        >
           <Icon name="dashboard" size={ICON_SIZE} />
         </Link>
       </Box>
@@ -48,17 +61,17 @@ const LandingNav = props => {
       </Box>
       */}
       <Box>
-        <Link to="pulse" style={linkStyle} activeStyle={activeStyle}>
+        <Link
+          to={showEntity("pulses")}
+          style={linkStyle}
+          activeStyle={activeStyle}
+        >
           <Icon name="pulse" size={ICON_SIZE} />
         </Link>
       </Box>
       <Box>
         <Link
-          to={
-            collectionSlug
-              ? Urls.collection({ slug: collectionSlug })
-              : "questions"
-          }
+          to={showEntity("questions")}
           activeStyle={activeStyle}
           style={linkStyle}
         >
