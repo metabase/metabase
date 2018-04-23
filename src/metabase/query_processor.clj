@@ -138,6 +138,8 @@
        expand/expand-middleware
        parameters/substitute-parameters
        expand-macros/expand-macros
+       driver-specific/process-query-in-context
+       resolve-driver/resolve-driver
        fetch-source-query/fetch-source-query))
 ;; ▲▲▲ This only does PRE-PROCESSING, so it happens from bottom to top, eventually returning the preprocessed query
 ;; instead of running it
