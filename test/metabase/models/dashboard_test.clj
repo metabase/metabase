@@ -1,14 +1,22 @@
 (ns metabase.models.dashboard-test
   (:require [expectations :refer :all]
+            [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
-             [dashboard :refer :all :as dashboard]
+             [collection :refer [Collection]]
+             [dashboard :as dashboard :refer :all]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [database :refer [Database]]
+             [interface :as mi]
+             [permissions :as perms]
+             [permissions-group :as group]
+             [table :refer [Table]]]
             [metabase.test
              [data :refer :all]
              [util :as tu]]
             [metabase.test.data.users :refer :all]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -167,3 +175,41 @@
   (tu/with-temporary-setting-values [enable-public-sharing false]
     (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
       (:public_uuid dashboard))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Collections Permissions Tests                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- do-with-dash-in-collection [f]
+  (tt/with-temp* [Collection    [collection]
+                  Dashboard     [dash  {:collection_id (u/get-id collection)}]
+                  Database      [db    {:engine :h2}]
+                  Table         [table {:db_id (u/get-id db)}]
+                  Card          [card  {:dataset_query {:database (u/get-id db)
+                                                        :type     :query
+                                                        :query    {:source-table (u/get-id table)}}}]
+                  DashboardCard [_ {:dashboard_id (u/get-id dash), :card_id (u/get-id card)}]]
+    (f db collection dash)))
+
+(defmacro ^:private with-dash-in-collection
+  {:style/indent 1}
+  [[db-binding collection-binding dash-binding] & body]
+  `(do-with-dash-in-collection
+    (fn [~db-binding ~collection-binding ~dash-binding]
+      ~@body)))
+
+;; Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old
+;; artifact-permissions regime will be able to see it if they have permissions for that Collection
+(expect
+  (with-dash-in-collection [_ collection dash]
+    (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
+      (mi/can-read? dash))))
+
+;; Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under the old
+;; artifact-permissions regime will *NOT* be able to see it if they don't have permissions for that Collection
+(expect
+  false
+  (with-dash-in-collection [db _ dash]
+    (binding [api/*current-user-permissions-set* (atom #{(perms/object-path (u/get-id db))})]
+      (mi/can-read? dash))))

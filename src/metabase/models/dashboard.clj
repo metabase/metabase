@@ -7,6 +7,7 @@
             [metabase
              [events :as events]
              [public-settings :as public-settings]
+             [query-processor :as qp]
              [util :as u]]
             [metabase.models
              [card :as card :refer [Card]]
@@ -16,9 +17,8 @@
              [interface :as i]
              [params :as params]
              [revision :as revision]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.interface :as qpi]
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.query-processor.interface :as qpi]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -33,29 +33,37 @@
           card     (cons (:card dashcard) (:series dashcard))]
       card)))
 
+(defn- can-read-or-write-based-on-cards? [dashboard read-or-write]
+  ;; otherwise if Dashboard is already hydrated no need to do it a second time
+  (let [cards (or (dashcards->cards (:ordered_cards dashboard))
+                  (dashcards->cards (-> (db/select [DashboardCard :id :card_id]
+                                          :dashboard_id (u/get-id dashboard)
+                                          :card_id      [:not= nil]) ; skip text-only Cards
+                                        (hydrate [:card :in_public_dashboard] :series))))]
+    ;; you can read/write a Dashboard if it has *no* Cards or if you can read/write at least one of those Cards
+    (or (empty? cards)
+        (some (case read-or-write
+                :read  i/can-read?
+                :write i/can-write?)
+              cards))))
+
 (defn- can-read-or-write?
   [{public-uuid :public_uuid, collection-id :collection_id, :as dashboard} read-or-write]
-  (or
+  (cond
    ;; if the Dashboard is shared publicly then there is simply no need to check *read* permissions for it because
    ;; people can see it already!!!
    (and (= read-or-write :read)
         (public-settings/enable-public-sharing)
         (some? public-uuid))
-   ;; otherwise if the Dashboard is in a Collection then use Collection permissions
-   (when collection-id
-     (collection/perms-objects-set collection-id read-or-write))
-   ;; if Dashboard is already hydrated no need to do it a second time
-   (let [cards (or (dashcards->cards (:ordered_cards dashboard))
-                   (dashcards->cards (-> (db/select [DashboardCard :id :card_id]
-                                           :dashboard_id (u/get-id dashboard)
-                                           :card_id      [:not= nil]) ; skip text-only Cards
-                                         (hydrate [:card :in_public_dashboard] :series))))]
-     ;; you can read/write a Dashboard if it has *no* Cards or if you can read/write at least one of those Cards
-     (or (empty? cards)
-         (some (case read-or-write
-                 :read  i/can-read?
-                 :write i/can-write?)
-               cards)))))
+   true
+
+   ;; otherwise if the Dashboard is in a Collection then use Collection permission...
+   collection-id
+   (i/current-user-has-full-permissions? (collection/perms-objects-set collection-id read-or-write))
+
+   ;; ...finally if not use the "traditional" artifact-based Permissions, which are derived from the Cards in the Dash
+   :else
+   (can-read-or-write-based-on-cards? dashboard read-or-write)))
 
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
