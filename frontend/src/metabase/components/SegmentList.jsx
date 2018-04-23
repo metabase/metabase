@@ -4,14 +4,8 @@ import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon";
 import SegmentListLoader from "metabase/components/SegmentListLoader";
-import {
-  selectable,
-  selectManager,
-} from "metabase/dashboards/components/DashboardList";
-
 import { normal } from "metabase/lib/colors";
 
-@selectManager
 class SegmentList extends React.Component {
   render() {
     const { selectedItems, onSelectItem } = this.props;
@@ -40,7 +34,6 @@ class SegmentList extends React.Component {
   }
 }
 
-@selectable(props => props.segment.id)
 class SegmentItem extends React.Component {
   render() {
     const { segment } = this.props;

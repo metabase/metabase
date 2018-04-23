@@ -43,6 +43,7 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
+/*
 class SearchBar extends React.Component {
   state = {
     active: false,
@@ -66,6 +67,7 @@ class SearchBar extends React.Component {
     );
   }
 }
+*/
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
