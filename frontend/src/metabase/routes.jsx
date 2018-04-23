@@ -25,7 +25,6 @@ import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 /* Dashboards */
 import DashboardsArchive from "metabase/dashboards/containers/DashboardsArchive";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashboardApp";
 
 import {
@@ -232,7 +231,6 @@ export const getRoutes = store => (
               path="collections/:collectionSlug"
               component={CollectionPage}
             />
-            <ModalRoute route="dashboards/new" modal={CreateDashboardModal} />
           </Route>
         </Route>
 

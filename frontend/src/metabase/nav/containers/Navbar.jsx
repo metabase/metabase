@@ -15,6 +15,10 @@ import Icon from "metabase/components/Icon.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
+import ModalWithTrigger from "metabase/components/ModalWithTrigger"
+
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
 import { getPath, getContext, getUser } from "../selectors";
@@ -168,12 +172,10 @@ export default class Navbar extends Component {
         <Flex className="ml-auto" align="center">
           <Box mx={1}>
             <Link to="reference">
-              <Button primary medium icon="document">
-                Reference
-              </Button>
+              Reference
             </Link>
           </Box>
-          <PopoverWithTrigger triggerElement={<Button medium>New</Button>}>
+          <PopoverWithTrigger triggerElement={<Button medium primary>New</Button>}>
             <Box p={3} style={{ minWidth: 300 }}>
               <Box my={2}>
                 <Link to="question/new">
@@ -184,18 +186,24 @@ export default class Navbar extends Component {
                 </Link>
               </Box>
               <Box my={2}>
-                <Link to="dashboards/new">
+                <ModalWithTrigger
+                  triggerElement={
                   <Flex align="center" style={{ color: normal.blue }}>
                     <Icon name="dashboard" />
                     <h3>Dashboard</h3>
                   </Flex>
-                </Link>
+                  }
+                >
+                  <CreateDashboardModal />
+                </ModalWithTrigger>
               </Box>
               <Box my={2}>
-                <Flex align="center" style={{ color: saturated.yellow }}>
-                  <Icon name="pulse" />
-                  <h3>Pulse</h3>
-                </Flex>
+                <Link to="pulse/new">
+                  <Flex align="center" style={{ color: saturated.yellow }}>
+                    <Icon name="pulse" />
+                    <h3>Pulse</h3>
+                  </Flex>
+                </Link>
               </Box>
               <Box my={2}>
                 <Link to="collections/create">
