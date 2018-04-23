@@ -37,14 +37,14 @@ export default class MetadataTableList extends Component {
   }
 
   render() {
-    var queryableTablesHeader, hiddenTablesHeader;
-    var queryableTables = [];
-    var hiddenTables = [];
+    let queryableTablesHeader, hiddenTablesHeader;
+    let queryableTables = [];
+    let hiddenTables = [];
 
     if (this.props.tables) {
-      var tables = _.sortBy(this.props.tables, "display_name");
+      let tables = _.sortBy(this.props.tables, "display_name");
       _.each(tables, table => {
-        var row = (
+        let row = (
           <li key={table.id}>
             <a
               className={cx("AdminList-item flex align-center no-decoration", {
@@ -60,7 +60,7 @@ export default class MetadataTableList extends Component {
             </a>
           </li>
         );
-        var regex = this.state.searchRegex;
+        let regex = this.state.searchRegex;
         if (
           !regex ||
           regex.test(table.display_name) ||
