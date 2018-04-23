@@ -241,7 +241,7 @@
 
 (defn- save-card!
   [card]
-  (when (:dataset_query card)
+  (when (-> card :dataset_query not-empty)
     (let [card (db/insert! 'Card
                  (-> card
                      (update :result_metadata #(or % (-> card
