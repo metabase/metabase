@@ -15,9 +15,10 @@ import Icon from "metabase/components/Icon.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger"
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+import CollectionEdit from "metabase/questions/containers/CollectionCreate";
 
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
@@ -171,11 +172,15 @@ export default class Navbar extends Component {
         </Box>
         <Flex className="ml-auto" align="center">
           <Box mx={1}>
-            <Link to="reference">
-              Reference
-            </Link>
+            <Link to="reference">Reference</Link>
           </Box>
-          <PopoverWithTrigger triggerElement={<Button medium primary>New</Button>}>
+          <PopoverWithTrigger
+            triggerElement={
+              <Button medium primary>
+                New
+              </Button>
+            }
+          >
             <Box p={3} style={{ minWidth: 300 }}>
               <Box my={2}>
                 <Link to="question/new">
@@ -188,10 +193,10 @@ export default class Navbar extends Component {
               <Box my={2}>
                 <ModalWithTrigger
                   triggerElement={
-                  <Flex align="center" style={{ color: normal.blue }}>
-                    <Icon name="dashboard" />
-                    <h3>Dashboard</h3>
-                  </Flex>
+                    <Flex align="center" style={{ color: normal.blue }}>
+                      <Icon name="dashboard" />
+                      <h3>Dashboard</h3>
+                    </Flex>
                   }
                 >
                   <CreateDashboardModal />
@@ -206,12 +211,16 @@ export default class Navbar extends Component {
                 </Link>
               </Box>
               <Box my={2}>
-                <Link to="collections/create">
-                  <Flex align="center" style={{ color: "#93B3C9" }}>
-                    <Icon name="all" />
-                    <h3>Collection</h3>
-                  </Flex>
-                </Link>
+                <ModalWithTrigger
+                  triggerElement={
+                    <Flex align="center" style={{ color: "#93B3C9" }}>
+                      <Icon name="all" />
+                      <h3>Collection</h3>
+                    </Flex>
+                  }
+                >
+                  <CollectionEdit />
+                </ModalWithTrigger>
               </Box>
             </Box>
           </PopoverWithTrigger>

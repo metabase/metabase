@@ -66,7 +66,6 @@ export class CollectionEditorForm extends Component {
     const { fields, onClose } = this.props;
     return (
       <Modal
-        inline
         form
         title={getFormTitle(fields)}
         footer={<CollectionEditorFormActions {...this.props} />}
