@@ -90,10 +90,12 @@
 
 (defn- datetime-unit
   "Determine the appropriate datetime unit that should be used for a field F and a value V.
-   (Sometimes the value may already have a 'default' value that should be replaced with the
-   value from the field it is being used with, e.g. in a filter clause.
-   For example when filtering by minute it is important both F and V are bucketed as minutes,
-   and thus both most have the same unit."
+
+  (Sometimes the value may already have a 'default' value that should be replaced with the value from the field it is
+  being used with, e.g. in a filter clause.)
+
+  For example when filtering by minute it is important both F and V are bucketed as minutes, and thus both most have
+  the same unit."
   [f v]
   (qputil/normalize-token (core/or (:datetime-unit f)
                                    (:unit f)
@@ -200,7 +202,8 @@
    (log/warn "The syntax for aggregate fields has changed in MBQL '98. Instead of `[:aggregation 0]`, please use `[:aggregate-field 0]` instead.")
    (aggregate-field index))
 
-  ;; Handle :aggregation top-level clauses. This is either a single map (single aggregation) or a vector of maps (multiple aggregations)
+  ;; Handle :aggregation top-level clauses. This is either a single map (single aggregation) or a vector of maps
+  ;; (multiple aggregations)
   ([query ag-or-ags :- (s/maybe (s/cond-pre su/Map [su/Map]))]
    (cond
      (map? ag-or-ags)  (recur query [ag-or-ags])
@@ -221,7 +224,8 @@
 ;;; ## breakout & fields
 
 (s/defn ^:ql binning-strategy :- FieldPlaceholder
-  "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and `STRATEGY-PARAM`"
+  "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and
+  `STRATEGY-PARAM`"
   ([f strategy-name & [strategy-param]]
    (let [strategy (qputil/normalize-token strategy-name)
          field (field f)]
