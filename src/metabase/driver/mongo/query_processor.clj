@@ -18,8 +18,8 @@
              [operators :refer :all]])
   (:import java.sql.Timestamp
            java.util.Date
-           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field RelativeDateTimeValue
-            Value]
+           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field FieldLiteral
+            RelativeDateTimeValue Value]
            org.bson.types.ObjectId
            org.joda.time.DateTime))
 
@@ -85,6 +85,13 @@
 
 (extend-protocol IField
   Field
+  (->lvalue [this]
+    (field->name this "___"))
+
+  (->initial-rvalue [this]
+    (str \$ (field->name this ".")))
+
+  FieldLiteral
   (->lvalue [this]
     (field->name this "___"))
 
@@ -177,7 +184,7 @@
                        {:___date (u/format-date format-string v)}))
           extract   (u/rpartial u/date-extract value)]
       (case (or unit :default)
-        :default         (u/->Date value)
+        :default         (some-> value u/->Date)
         :minute          (stringify "yyyy-MM-dd'T'HH:mm:00")
         :minute-of-hour  (extract :minute)
         :hour            (stringify "yyyy-MM-dd'T'HH:00:00")
