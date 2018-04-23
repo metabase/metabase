@@ -219,11 +219,7 @@ export default class QueryBuilder extends Component {
   };
 
   render() {
-    return (
-      <div className="flex-full flex relative">
-        <LegacyQueryBuilder {...this.props} />
-      </div>
-    );
+    return <LegacyQueryBuilder {...this.props} />;
   }
 }
 
@@ -242,7 +238,7 @@ class LegacyQueryBuilder extends Component {
     const ModeFooter = mode && mode.ModeFooter;
 
     return (
-      <div className="flex-full relative">
+      <div className="relative" style={{ minHeight: "100vh" }}>
         <div
           className={cx("QueryBuilder flex flex-column bg-white spread", {
             "QueryBuilder--showSideDrawer": showDrawer,
