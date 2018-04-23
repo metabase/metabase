@@ -4,19 +4,26 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.automagic-dashboards.populate :as populate]
+            [metabase.query-processor.util :as qp.util]
             [metabase.types]
             [metabase.util :as u]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :as i18n :refer [tru]]
             [schema
              [coerce :as sc]
              [core :as s]]
+            [schema.spec.core :as spec]
             [yaml.core :as yaml])
   (:import java.nio.file.Path java.nio.file.FileSystems java.nio.file.FileSystem
-           java.nio.file.Files ))
+           java.nio.file.Files))
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
   100)
+
+(s/defschema TranslatableStr
+  "String marked for translation."
+  (s/pred string?))
 
 (def ^:private Score (s/constrained s/Int #(<= 0 % max-score)
                                     (str "0 <= score <= " max-score)))
@@ -27,7 +34,7 @@
 
 (def ^:private Metric {Identifier {(s/required-key :metric) MBQL
                                    (s/required-key :score)  Score
-                                   (s/optional-key :name)   s/Str}})
+                                   (s/optional-key :name)   TranslatableStr}})
 
 (def ^:private Filter {Identifier {(s/required-key :filter) MBQL
                                    (s/required-key :score)  Score}})
@@ -87,27 +94,27 @@
 (def ^:private CardDimension {Identifier {(s/optional-key :aggregation) s/Str}})
 
 (def ^:private Card
-  {Identifier {(s/required-key :title)         s/Str
+  {Identifier {(s/required-key :title)         TranslatableStr
                (s/required-key :score)         Score
                (s/optional-key :visualization) Visualization
-               (s/optional-key :text)          s/Str
+               (s/optional-key :text)          TranslatableStr
                (s/optional-key :dimensions)    [CardDimension]
                (s/optional-key :filters)       [s/Str]
                (s/optional-key :metrics)       [s/Str]
                (s/optional-key :limit)         su/IntGreaterThanZero
                (s/optional-key :order_by)      [OrderByPair]
-               (s/optional-key :description)   s/Str
+               (s/optional-key :description)   TranslatableStr
                (s/optional-key :query)         s/Str
                (s/optional-key :width)         Width
                (s/optional-key :height)        Height
                (s/optional-key :group)         s/Str
-               (s/optional-key :y_label)       s/Str
-               (s/optional-key :x_label)       s/Str
-               (s/optional-key :series_labels) [s/Str]}})
+               (s/optional-key :y_label)       TranslatableStr
+               (s/optional-key :x_label)       TranslatableStr
+               (s/optional-key :series_labels) [TranslatableStr]}})
 
 (def ^:private Groups
-  {Identifier {(s/required-key :title)       s/Str
-               (s/optional-key :description) s/Str}})
+  {Identifier {(s/required-key :title)       TranslatableStr
+               (s/optional-key :description) TranslatableStr}})
 
 (def ^{:arglists '([definition])} identifier
   "Return `key` in `{key {}}`."
@@ -122,7 +129,7 @@
 
 (def ^:private DimensionForm
   [(s/one (s/constrained (s/cond-pre s/Str s/Keyword)
-                         (comp #{"dimension"} str/lower-case name))
+                         (comp #{:dimension} qp.util/normalize-token))
           "dimension")
    (s/one s/Str "identifier")
    su/Map])
@@ -141,8 +148,7 @@
                    (dimension-form? subform) [(second subform)]
                    (string? subform)         (->> subform
                                                   (re-seq #"\[\[(\w+)\]\]")
-                                                  (map second))
-                   :else                     nil)))
+                                                  (map second)))))
        distinct))
 
 (defn- valid-metrics-references?
@@ -188,13 +194,13 @@
 
 (def ^:private Rules
   (constrained-all
-   {(s/required-key :title)             s/Str
+   {(s/required-key :title)             TranslatableStr
     (s/required-key :dimensions)        [Dimension]
     (s/required-key :cards)             [Card]
     (s/required-key :rule)              s/Str
     (s/optional-key :applies_to)        AppliesTo
-    (s/optional-key :transient_title)   s/Str
-    (s/optional-key :description)       s/Str
+    (s/optional-key :transient_title)   TranslatableStr
+    (s/optional-key :description)       TranslatableStr
     (s/optional-key :metrics)           [Metric]
     (s/optional-key :filters)           [Filter]
     (s/optional-key :groups)            Groups
@@ -271,7 +277,8 @@
                           [(->entity table-type) (->type field-type)]
                           [(if (-> table-type ->entity table-type?)
                              (->entity table-type)
-                             (->type table-type))])))}))
+                             (->type table-type))])))
+    TranslatableStr #(tru %)}))
 
 (def ^:private rules-dir "automagic_dashboards/")
 
@@ -344,10 +351,37 @@
             (keep (partial load-rule fs))
             doall)))))
 
+(defn- extract-i18n-strings
+  [rule]
+  (let [strings (atom [])]
+    ((spec/run-checker
+      (fn [s params]
+        (let [walk (spec/checker (s/spec s) params)]
+          (fn [x]
+            (when (= TranslatableStr s)
+              (swap! strings conj x))
+            (walk x))))
+      false
+      Rules)
+     rule)
+    @strings))
+
+(defn- make-pot
+  [strings]
+  (->> strings
+       (map (partial format "msgid \"%s\"\nmsgstr \"\"\n"))
+       (str/join "\n")))
+
 (defn -main
-  "Entry point for lein task `validate-automagic-dashboards`"
+  "Entry point for lein task `generate-automagic-dashboards-pot`"
   [& _]
-  (dorun (load-rules "tables"))
-  (dorun (load-rules "metrics"))
-  (dorun (load-rules "fields"))
+  (->> (concat (load-rules "table")
+               (load-rules "metric")
+               (load-rules "field"))
+       (mapcat (fn [rule]
+                 (conj (:indepth rule) rule)))
+       (mapcat (comp extract-i18n-strings #(dissoc % :indepth)))
+       distinct
+       make-pot
+       (spit "locales/automagic_dashboards.pot"))
   (System/exit 0))
