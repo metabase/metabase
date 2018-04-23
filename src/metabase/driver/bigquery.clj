@@ -241,7 +241,6 @@
   (hx/->timestamp (microseconds->str format-str (->microseconds timestamp))))
 
 (defn- date [unit expr]
-  {:pre [expr]}
   (case unit
     :default         expr
     :minute          (trunc-with-format "%Y-%m-%d %H:%M:00" expr)

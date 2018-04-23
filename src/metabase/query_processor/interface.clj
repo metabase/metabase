@@ -304,7 +304,7 @@
                                                           FieldPlaceholder)])
 
 ;; e.g. an absolute point in time (literal)
-(s/defrecord DateTimeValue [value :- Timestamp
+(s/defrecord DateTimeValue [value :- (s/maybe Timestamp)
                             field :- DateTimeField])
 
 (def OrderableValue
