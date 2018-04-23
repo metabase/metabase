@@ -26,7 +26,7 @@ export default class CreatedDatabaseModal extends Component {
         <div className="Form-actions flex layout-centered">
           <a className="link" onClick={onDone}>{t`I'm good thanks`}</a>
           <Link
-            to={`/ready/${databaseId}`}
+            to={`/explore/${databaseId}`}
             className="Button Button--primary ml-auto"
           >
             {t`Explore this data`}

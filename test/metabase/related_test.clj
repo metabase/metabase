@@ -11,7 +11,7 @@
             [toucan.util.test :as tt]))
 
 (expect
-  #{[:field-id 1] [:metric 1] ["FIELD-ID" 2] ["segment" 1]}
+  #{[:field-id 1] [:metric 1] [:field-id 2] [:segment 1]}
   (#'r/collect-context-bearing-forms [[:> [:field-id 1] 3]
                                       ["and" [:= ["FIELD-ID" 2] 2]
                                        ["segment" 1]]

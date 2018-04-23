@@ -3,7 +3,9 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-const VisualizationErrorMessage = ({ title, type, message, action }) => {
+// NOTE: currently relies on .QueryError CSS selectors residing in query_builder.css
+
+const ErrorMessage = ({ title, type, message, action }) => {
   return (
     <div className="QueryError flex full align-center">
       <div className={`QueryError-image QueryError-image--${type}`} />
@@ -16,11 +18,11 @@ const VisualizationErrorMessage = ({ title, type, message, action }) => {
   );
 };
 
-VisualizationErrorMessage.propTypes = {
+ErrorMessage.propTypes = {
   title: PropTypes.string.isRequired,
   type: PropTypes.string.isRequired,
   message: PropTypes.string.isRequired,
   action: PropTypes.node,
 };
 
-export default VisualizationErrorMessage;
+export default ErrorMessage;

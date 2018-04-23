@@ -292,6 +292,7 @@ export default class TableInteractive extends Component {
             column: column,
             type: "cell",
             jsx: true,
+            rich: true,
           })}
         </div>
       </div>

@@ -14,7 +14,7 @@ import NativeQuery from "./queries/NativeQuery";
 import { memoize } from "metabase-lib/lib/utils";
 import * as Card_DEPRECATED from "metabase/lib/card";
 
-import { getParametersWithExtras } from "metabase/meta/Card";
+import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
 
 import {
   summarize,
@@ -380,6 +380,25 @@ export default class Question {
     return isDirty
       ? Urls.question(null, this._serializeForUrl())
       : Urls.question(this.id(), "");
+  }
+
+  getAutomaticDashboardUrl(filters /*?: Filter[] = []*/) {
+    let cellQuery = "";
+    if (filters.length > 0) {
+      const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
+      cellQuery = `/cell/${Card_DEPRECATED.utf8_to_b64url(
+        JSON.stringify(mbqlFilter),
+      )}`;
+    }
+    const questionId = this.id();
+    if (questionId != null && !isTransientId(questionId)) {
+      return `/auto/dashboard/question/${questionId}${cellQuery}`;
+    } else {
+      const adHocQuery = Card_DEPRECATED.utf8_to_b64url(
+        JSON.stringify(this.card().dataset_query),
+      );
+      return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}`;
+    }
   }
 
   setResultsMetadata(resultsMetadata) {

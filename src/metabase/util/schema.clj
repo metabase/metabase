@@ -91,6 +91,7 @@
   (with-api-error-message (s/constrained schema seq "Non-empty")
     (str (api-error-message schema) " " (tru "The array cannot be empty."))))
 
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 USEFUL SCHEMAS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -122,6 +123,11 @@
    those values will be encoded as keywords at that point."
   (with-api-error-message (s/pred #(isa? (keyword %) :type/*) (tru "Valid field type (keyword or string)"))
     (tru "value must be a valid field type (keyword or string).")))
+
+(def EntityTypeKeywordOrString
+  "Validates entity type derivatives of `:entity/*`. Allows strings or keywords"
+  (with-api-error-message (s/pred #(isa? (keyword %) :entity/*) (tru "Valid entity type (keyword or string)"))
+   (tru "value must be a valid entity type (keyword or string).")))
 
 (def Map
   "Schema for a valid map."

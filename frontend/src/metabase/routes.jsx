@@ -182,9 +182,9 @@ export const getRoutes = store => (
       path="/setup"
       component={SetupApp}
       onEnter={(nextState, replace) => {
-        if (!MetabaseSettings.hasSetupToken()) {
-          replace("/");
-        }
+          if (!MetabaseSettings.hasSetupToken()) {
+            replace("/");
+          }
       }}
     />
 
@@ -197,8 +197,8 @@ export const getRoutes = store => (
     {/* APP */}
     <Route
       onEnter={async (nextState, replace, done) => {
-        await store.dispatch(loadCurrentUser());
-        done();
+          await store.dispatch(loadCurrentUser());
+          done();
       }}
     >
       {/* AUTH */}
@@ -241,6 +241,9 @@ export const getRoutes = store => (
             />
           </Route>
         </Route>
+
+        <Route path="/explore" component={PostSetupApp} />
+        <Route path="/explore/:databaseId" component={PostSetupApp} />
 
         <Route
           path="collections/:collectionSlug"
@@ -472,25 +475,25 @@ export const getRoutes = store => (
 
     {/* DEPRECATED */}
     {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
-    <Route
-      path="/q"
-      onEnter={({ location }, replace) =>
-        replace({ pathname: "/question", hash: location.hash })
-      }
-    />
-    <Route
-      path="/card/:cardId"
-      onEnter={({ location, params }, replace) =>
-        replace({
-          pathname: `/question/${params.cardId}`,
-          hash: location.hash,
-        })
-      }
-    />
-    <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
+      <Route
+        path="/q"
+        onEnter={({ location }, replace) =>
+          replace({ pathname: "/question", hash: location.hash })
+        }
+      />
+      <Route
+        path="/card/:cardId"
+        onEnter={({ location, params }, replace) =>
+          replace({
+            pathname: `/question/${params.cardId}`,
+            hash: location.hash,
+          })
+        }
+      />
+      <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
 
-    {/* MISC */}
-    <Route path="/unauthorized" component={Unauthorized} />
-    <Route path="/*" component={NotFound} />
+      {/* MISC */}
+      <Route path="/unauthorized" component={Unauthorized} />
+      <Route path="/*" component={NotFound} />
   </Route>
 );

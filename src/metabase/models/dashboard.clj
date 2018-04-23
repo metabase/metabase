@@ -1,7 +1,8 @@
 (ns metabase.models.dashboard
   (:require [clojure
              [data :refer [diff]]
-             [set :as set]]
+             [set :as set]
+             [string :as str]]
             [clojure.tools.logging :as log]
             [metabase
              [events :as events]
@@ -49,6 +50,7 @@
                                            :dashboard_id (u/get-id dashboard)
                                            :card_id      [:not= nil]) ; skip text-only Cards
                                          (hydrate [:card :in_public_dashboard] :series))))]
+     ;; you can read/write a Dashboard if it has *no* Cards or if you can read/write at least one of those Cards
      (or (empty? cards)
          (some (case read-or-write
                  :read  i/can-read?
@@ -249,19 +251,38 @@
 (defn- save-card!
   [card]
   (when (:dataset_query card)
-    (db/insert! 'Card
-      (-> card
-          (update :result_metadata #(or % (-> card
-                                              :dataset_query
-                                              result-metadata-for-query)))
-          (dissoc :id)))))
+    (let [card (db/insert! 'Card
+                 (-> card
+                     (update :result_metadata #(or % (-> card
+                                                         :dataset_query
+                                                         result-metadata-for-query)))
+                     (dissoc :id)))]
+      (events/publish-event! :card-create card)
+      (hydrate card :creator :dashboard_count :labels :can_write :collection))))
+
+(defn- applied-filters-blurb
+  [applied-filters]
+  (some->> applied-filters
+           not-empty
+           (map (fn [{:keys [field op value]}]
+                  (format "%s %s %s" (str/join " " field) op value)))
+           (str/join "\n")
+           (str "Filtered by:\n")))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of dashboard."
   [dashboard]
   (let [dashcards (:ordered_cards dashboard)
         dashboard (db/insert! Dashboard
-                    (dissoc dashboard :ordered_cards :rule :related))]
+                    (-> dashboard
+                        (dissoc :ordered_cards :rule :related :transient_name
+                                :transient_filters)
+                        (update :description #(->> dashboard
+                                                   :transient_filters
+                                                   applied-filters-blurb
+                                                   (vector %)
+                                                   (filter some?)
+                                                   (str/join "\n\n")))))]
     (doseq [dashcard dashcards]
       (let [card     (some->> dashcard :card save-card!)
             series   (some->> dashcard :series (map save-card!))
@@ -270,8 +291,5 @@
                          (update :parameter_mappings
                                  (partial map #(assoc % :card_id (:id card))))
                          (assoc :series series))]
-        (doseq [card (concat series (some-> card vector))]
-          (events/publish-event! :card-create card)
-          (hydrate card :creator :dashboard_count :labels :can_write :collection))
         (add-dashcard! dashboard card dashcard)))
     dashboard))
