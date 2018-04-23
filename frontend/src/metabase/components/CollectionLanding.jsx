@@ -1,6 +1,6 @@
 import React from "react";
-import { Box, Flex, Heading, Subhead } from "rebass";
-import { Link } from "react-router";
+import { Box, Flex, Subhead } from "rebass";
+import { Link, withRouter } from "react-router";
 
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
@@ -71,6 +71,7 @@ const ItemCard = ({ children, background }) => {
   );
 };
 
+@withRouter
 class DefaultLanding extends React.Component {
   _renderItem(item) {
     switch (item.type) {
@@ -104,20 +105,42 @@ class DefaultLanding extends React.Component {
     }
   }
   render() {
-    const { currentCollection, collectionSlug } = this.props;
+    const { currentCollection, collectionSlug, location } = this.props;
     return (
       <Box w="100%">
         {// HACK for now to only show the colleciton list on the root
         // colleciton until we have a notion of nested collections
         !collectionSlug && <CollectionList />}
         <CollectionItemsLoader collectionId={currentCollection.id}>
-          {({ dashboards, cards, pulses, loading, error, allItems }) => {
+          {({ loading, error, allItems, pulses, cards, dashboards }) => {
             if (loading) {
               return <Box>Loading...</Box>;
             }
+
+            let items = allItems;
+
+            if (location.query.show) {
+              switch (location.query.show) {
+                case "dashboards":
+                  items = dashboards.map(d => ({ ...d, type: "dashboard" }));
+                  break;
+                case "pulses":
+                  items = pulses.map(p => ({ ...p, type: "pulse" }));
+                  break;
+                case "questions":
+                  items = cards.map(c => ({ ...c, type: "card" }));
+                  break;
+                default:
+                  items = allItems;
+                  break;
+              }
+            }
+
+            console.log(items);
+
             return (
               <Flex wrap>
-                {allItems.map(item => (
+                {items.map(item => (
                   <Box w={1 / 4}>{this._renderItem(item)}</Box>
                 ))}
               </Flex>

@@ -22,11 +22,10 @@ import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
 import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
 import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
-// main app containers
-import Dashboards from "metabase/dashboards/containers/Dashboards.jsx";
-import DashboardsArchive from "metabase/dashboards/containers/DashboardsArchive.jsx";
-import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
-import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashboardApp.jsx";
+/* Dashboards */
+import DashboardsArchive from "metabase/dashboards/containers/DashboardsArchive";
+import DashboardApp from "metabase/dashboard/containers/DashboardApp";
+import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashboardApp";
 
 import {
   BrowseApp,
@@ -42,7 +41,6 @@ import CollectionEdit from "metabase/questions/containers/CollectionEdit.jsx";
 import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx";
 import SearchResults from "metabase/questions/containers/SearchResults.jsx";
 import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
-import EntityList from "metabase/questions/containers/EntityList.jsx";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
@@ -182,9 +180,9 @@ export const getRoutes = store => (
       path="/setup"
       component={SetupApp}
       onEnter={(nextState, replace) => {
-          if (!MetabaseSettings.hasSetupToken()) {
-            replace("/");
-          }
+        if (!MetabaseSettings.hasSetupToken()) {
+          replace("/");
+        }
       }}
     />
 
@@ -197,8 +195,8 @@ export const getRoutes = store => (
     {/* APP */}
     <Route
       onEnter={async (nextState, replace, done) => {
-          await store.dispatch(loadCurrentUser());
-          done();
+        await store.dispatch(loadCurrentUser());
+        done();
       }}
     >
       {/* AUTH */}
@@ -217,12 +215,6 @@ export const getRoutes = store => (
       <Route component={IsAuthenticated}>
         {/* The global all hands rotues, things in here are for all the folks */}
         <Route path="/" component={CollectionLanding}>
-          <Route
-            path="dashboards"
-            title={t`Dashboards`}
-            component={Dashboards}
-          />
-
           <Route path="segments" title={t`Segments`} component={Segments} />
 
           <Route path="metrics" title={t`metrics`} component={Metrics} />
@@ -293,18 +285,6 @@ export const getRoutes = store => (
 
         <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
       </Route>
-
-      <Route
-        path="/entities/:entityType"
-        component={({ location, params }) => (
-          <div className="p4">
-            <EntityList
-              entityType={params.entityType}
-              entityQuery={location.query}
-            />
-          </div>
-        )}
-      />
 
       <Route path="/collections">
         <Route path="create" component={CollectionCreate} />
@@ -475,25 +455,25 @@ export const getRoutes = store => (
 
     {/* DEPRECATED */}
     {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
-      <Route
-        path="/q"
-        onEnter={({ location }, replace) =>
-          replace({ pathname: "/question", hash: location.hash })
-        }
-      />
-      <Route
-        path="/card/:cardId"
-        onEnter={({ location, params }, replace) =>
-          replace({
-            pathname: `/question/${params.cardId}`,
-            hash: location.hash,
-          })
-        }
-      />
-      <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
+    <Route
+      path="/q"
+      onEnter={({ location }, replace) =>
+        replace({ pathname: "/question", hash: location.hash })
+      }
+    />
+    <Route
+      path="/card/:cardId"
+      onEnter={({ location, params }, replace) =>
+        replace({
+          pathname: `/question/${params.cardId}`,
+          hash: location.hash,
+        })
+      }
+    />
+    <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
 
-      {/* MISC */}
-      <Route path="/unauthorized" component={Unauthorized} />
-      <Route path="/*" component={NotFound} />
+    {/* MISC */}
+    <Route path="/unauthorized" component={Unauthorized} />
+    <Route path="/*" component={NotFound} />
   </Route>
 );

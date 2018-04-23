@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Heading, Subhead } from "rebass";
+import { Box, Subhead } from "rebass";
 import { Link } from "react-router";
 
 import Question from "metabase-lib/lib/Question";

@@ -57,7 +57,7 @@ export default class App extends Component {
     }
 
     return (
-      <div>
+      <div className="relative">
         <Navbar location={location} />
         {errorPage ? getErrorComponent(errorPage) : children}
         <UndoListing />
