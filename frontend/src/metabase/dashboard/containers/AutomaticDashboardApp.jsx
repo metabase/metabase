@@ -62,9 +62,10 @@ class AutomaticDashboardApp extends React.Component {
         type: "metabase/automatic-dashboards/link-to-created-object",
         message: () => (
           <div className="flex align-center">
-            <Icon name="dashboard" size={22} className="mr2" />
-            <Link className="link" to={Urls.dashboard(newDashboard.id)}>
-              {t`View your recently created dashboard`}
+            <Icon name="dashboard" size={22} className="mr2" color='#93A1AB' />
+            { t`Your dashboard was saved` }
+            <Link className="link text-bold ml1" to={Urls.dashboard(newDashboard.id)}>
+              {t`See it`}
             </Link>
           </div>
         ),
