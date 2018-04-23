@@ -26,13 +26,11 @@ import type {
   StructuredQuery,
   FieldFilter,
   Breakout,
-} from "metabase/meta/types/Query";
-import type { Column } from "metabase/meta/types/Dataset";
-import type {
   LocalFieldReference,
   ForeignFieldReference,
   FieldLiteral,
 } from "metabase/meta/types/Query";
+import type { Column } from "metabase/meta/types/Dataset";
 import type { DimensionValue } from "metabase/meta/types/Visualization";
 import { parseTimestamp } from "metabase/lib/time";
 
