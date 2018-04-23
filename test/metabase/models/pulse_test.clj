@@ -1,12 +1,18 @@
 (ns metabase.models.pulse-test
   (:require [expectations :refer :all]
             [medley.core :as m]
+            [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
+             [collection :refer [Collection]]
+             [database :refer [Database]]
+             [interface :as mi]
+             [permissions :as perms]
              [pulse :refer :all]
              [pulse-card :refer :all]
              [pulse-channel :refer :all]
-             [pulse-channel-recipient :refer :all]]
+             [pulse-channel-recipient :refer :all]
+             [table :refer [Table]]]
             [metabase.test
              [data :refer :all]
              [util :as tu]]
@@ -204,3 +210,41 @@
                   PulseCard [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card-1), :position 0}]
                   PulseCard [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card-2), :position 1}]]
     (count (:cards (retrieve-pulse (u/get-id pulse))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Collections Permissions Tests                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- do-with-pulse-in-collection [f]
+  (tt/with-temp* [Collection [collection]
+                  Pulse      [pulse  {:collection_id (u/get-id collection)}]
+                  Database   [db    {:engine :h2}]
+                  Table      [table {:db_id (u/get-id db)}]
+                  Card       [card  {:dataset_query {:database (u/get-id db)
+                                                     :type     :query
+                                                     :query    {:source-table (u/get-id table)}}}]
+                  PulseCard  [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card)}]]
+    (f db collection pulse)))
+
+(defmacro ^:private with-pulse-in-collection
+  {:style/indent 1}
+  [[db-binding collection-binding pulse-binding] & body]
+  `(do-with-pulse-in-collection
+    (fn [~db-binding ~collection-binding ~pulse-binding]
+      ~@body)))
+
+;; Check that if a Pulse is in a Collection, someone who would not be able to see it under the old
+;; artifact-permissions regime will be able to see it if they have permissions for that Collection
+(expect
+  (with-pulse-in-collection [_ collection pulse]
+    (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
+      (mi/can-read? pulse))))
+
+;; Check that if a Pulse is in a Collection, someone who would otherwise be able to see it under the old
+;; artifact-permissions regime will *NOT* be able to see it if they don't have permissions for that Collection
+(expect
+  false
+  (with-pulse-in-collection [db _ pulse]
+    (binding [api/*current-user-permissions-set* (atom #{(perms/object-path (u/get-id db))})]
+      (mi/can-read? pulse))))

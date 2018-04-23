@@ -23,6 +23,8 @@
             [metabase.api.common :refer [*current-user*]]
             [metabase.models
              [card :refer [Card]]
+             [permissions :as perms]
+             [collection :as collection]
              [interface :as i]
              [pulse-card :refer [PulseCard]]
              [pulse-channel :as pulse-channel :refer [PulseChannel]]
@@ -36,29 +38,49 @@
 
 ;;; ------------------------------------------------- Perms Checking -------------------------------------------------
 
-(defn- perms-objects-set [pulse read-or-write]
-  (set (when-let [card-ids (db/select-field :card_id PulseCard, :pulse_id (u/get-id pulse))]
-         (apply set/union (for [card (db/select [Card :dataset_query], :id [:in card-ids])]
-                            (i/perms-objects-set card read-or-write))))))
-
 (defn- channels-with-recipients
-  "Get the 'channels' associated with this PULSE, including recipients of those 'channels'. If `:channels` is already
+  "Get the 'channels' associated with this `notification`, including recipients of those 'channels'. If `:channels` is already
   hydrated, as it will be when using `retrieve-pulses`, this doesn't need to make any DB calls."
-  [pulse]
-  (or (:channels pulse)
-      (-> (db/select PulseChannel, :pulse_id (u/get-id pulse))
+  [notifcation]
+  (or (:channels notifcation)
+      (-> (db/select PulseChannel, :pulse_id (u/get-id notifcation))
           (hydrate :recipients))))
 
 (defn- emails
-  "Get the set of emails this PULSE will be sent to."
-  [pulse]
-  (set (for [channel   (channels-with-recipients pulse)
+  "Get the set of emails this `notification` will be sent to."
+  [notification]
+  (set (for [channel   notification
              recipient (:recipients channel)]
          (:email recipient))))
 
-(defn- can-read? [pulse]
-  (or (i/current-user-has-full-permissions? :read pulse)
-      (contains? (emails pulse) (:email @*current-user*))))
+(defn- notification-perms-based-on-cards
+  "Calculate permissions required to `read-or-write` a `notification` based on its Cards alone. Unlike Dashboards, to
+  view or edit a Notification you must have permissions to do the same for *all* the Cards in the Notification."
+  ;; TODO - I don't think the Permissions for Notification make a ton of sense. Shouldn't you just need read
+  ;; permissions for all the Cards in the Notification in order to edit it? Either way it doesn't matter a ton since
+  ;; these artifact perms are being phased out.
+  [notification read-or-write]
+  (when-let [card-ids (seq (db/select-field :card_id PulseCard, :pulse_id (u/get-id notification)))]
+    (reduce set/union (for [card (db/select [Card :public_uuid :dataset_query :read_permissions], :id [:in card-ids])]
+                        (i/perms-objects-set card read-or-write)))))
+
+(defn- perms-objects-set
+  "Calculate the set of permissions required to `read-or-write` a `notification`."
+  [{collection-id :collection_id, :as notification} read-or-write]
+  (cond
+    ;; first things first: if the current user is a *recipient* of this Pulse, they are allowed to read it
+    (and (= read-or-write :read)
+         (contains? (emails notification) (:email @*current-user*)))
+    nil
+
+    ;; if this Pulse is in a Collection you're allowed to read or write the Pulse based on your permissions for the
+    ;; Collection
+    collection-id
+    (collection/perms-objects-set collection-id read-or-write)
+
+    ;; otherwise we fall back to the traditional artifact-based Permissions
+    :else
+    (notification-perms-based-on-cards notification read-or-write)))
 
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -80,7 +102,7 @@
          {:perms-objects-set  perms-objects-set
           ;; I'm not 100% sure this covers everything. If a user is subscribed to a pulse they're still allowed to
           ;; know it exists, right?
-          :can-read?          can-read?
+          :can-read?          (partial i/current-user-has-full-permissions? :read)
           :can-write?         (partial i/current-user-has-full-permissions? :write)}))
 
 
@@ -288,8 +310,8 @@
       (handle-channel channel-type))))
 
 (s/defn ^:private create-notification-and-add-cards-and-channels!
-  "Create a new pulse with the properties specified in `notification`; add the `card-refs` to the Notification and add the
-  Notification to `channels`. Returns the `id` of the newly created Notification."
+  "Create a new pulse with the properties specified in `notification`; add the `card-refs` to the Notification and add
+  the Notification to `channels`. Returns the `id` of the newly created Notification."
   [notification, card-refs :- (s/maybe [CardRef]), channels]
   (db/transaction
     (let [notification (db/insert! Pulse notification)]
