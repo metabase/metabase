@@ -152,7 +152,7 @@
 (u/strict-extend (class Database)
   test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:details   {}
-                                :engine    :yeehaw ; wtf?
+                                :engine    :h2
                                 :is_sample false
                                 :name      (random-name)})})
 

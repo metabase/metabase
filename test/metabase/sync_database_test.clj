@@ -92,41 +92,42 @@
                tu/boolean-ids-and-timestamps)))
 
 (def ^:private table-defaults
-  {:id                      true
-   :db_id                   true
-   :raw_table_id            false
-   :schema                  nil
-   :description             nil
+  {:active                  true
    :caveats                 nil
-   :points_of_interest      nil
-   :show_in_getting_started false
-   :entity_type             :entity/GenericTable
-   :entity_name             nil
-   :visibility_type         nil
-   :rows                    nil
-   :active                  true
    :created_at              true
-   :updated_at              true})
+   :db_id                   true
+   :description             nil
+   :entity_name             nil
+   :entity_type             :entity/GenericTable
+   :id                      true
+   :points_of_interest      nil
+   :raw_table_id            false
+   :rows                    nil
+   :schema                  nil
+   :show_in_getting_started false
+   :updated_at              true
+   :visibility_type         nil})
 
 (def ^:private field-defaults
-  {:id                  true
-   :table_id            true
-   :raw_column_id       false
-   :description         nil
+  {:active              true
    :caveats             nil
-   :points_of_interest  nil
-   :active              true
+   :created_at          true
+   :description         nil
+   :fingerprint         false
+   :fingerprint_version false
+   :fk_target_field_id  false
+   :has_field_values    nil
+   :id                  true
+   :last_analyzed       false
    :parent_id           false
+   :points_of_interest  nil
    :position            0
    :preview_display     true
-   :visibility_type     :normal
-   :fk_target_field_id  false
-   :created_at          true
+   :raw_column_id       false
+   :special_type        nil
+   :table_id            true
    :updated_at          true
-   :last_analyzed       true
-   :has_field_values    nil
-   :fingerprint         true
-   :fingerprint_version true})
+   :visibility_type     :normal})
 
 ;; ## SYNC DATABASE
 (expect
@@ -135,18 +136,17 @@
            :name         "movie"
            :display_name "Movie"
            :fields       [(merge field-defaults
-                                 {:special_type  :type/PK
-                                  :name          "id"
+                                 {:name          "id"
                                   :display_name  "ID"
                                   :database_type "SERIAL"
                                   :base_type     :type/Integer})
                           (merge field-defaults
-                                 {:special_type       :type/FK
-                                  :name               "studio"
+                                 {:name               "studio"
                                   :display_name       "Studio"
                                   :database_type      "VARCHAR"
                                   :base_type          :type/Text
-                                  :fk_target_field_id true})
+                                  :fk_target_field_id true
+                                  :special_type       :type/FK})
                           (merge field-defaults
                                  {:name          "title"
                                   :display_name  "Title"
@@ -157,17 +157,16 @@
           {:name         "studio"
            :display_name "Studio"
            :fields       [(merge field-defaults
-                                 {:special_type  :type/Name
-                                  :name          "name"
+                                 {:name          "name"
                                   :display_name  "Name"
                                   :database_type "VARCHAR"
                                   :base_type     :type/Text})
                           (merge field-defaults
-                                 {:special_type  :type/PK
-                                  :name          "studio"
+                                 {:name          "studio"
                                   :display_name  "Studio"
                                   :database_type "VARCHAR"
-                                  :base_type     :type/Text})]})]
+                                  :base_type     :type/Text
+                                  :special_type  :type/PK})]})]
   (tt/with-temp Database [db {:engine :sync-test}]
     (sync-database! db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest on resync of a
@@ -184,14 +183,12 @@
           :name         "movie"
           :display_name "Movie"
           :fields       [(merge field-defaults
-                                {:special_type  :type/PK
-                                 :name          "id"
+                                {:name          "id"
                                  :display_name  "ID"
                                  :database_type "SERIAL"
                                  :base_type     :type/Integer})
                          (merge field-defaults
-                                {:special_type  nil
-                                 :name          "studio"
+                                {:name          "studio"
                                  :display_name  "Studio"
                                  :database_type "VARCHAR"
                                  :base_type     :type/Text})
