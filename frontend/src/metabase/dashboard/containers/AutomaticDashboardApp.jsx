@@ -6,6 +6,7 @@ import { connect } from "react-redux";
 import { Link } from "react-router";
 
 import { withBackground } from "metabase/hoc/Background";
+import title from "metabase/hoc/Title";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
@@ -41,6 +42,7 @@ const mapStateToProps = (state, props) => ({
 
 @connect(mapStateToProps, { addUndo, createUndo })
 @DashboardData
+@title(({ dashboard }) => dashboard && dashboard.name)
 class AutomaticDashboardApp extends React.Component {
   state = {
     savedDashboardId: null,
