@@ -4,6 +4,7 @@
              [set :as set]
              [string :as str]]
             [clojure.tools.logging :as log]
+            [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase
              [events :as events]
              [public-settings :as public-settings]
@@ -240,7 +241,7 @@
 
 (defn- save-card!
   [card]
-  (when (:dataset_query card)
+  (when (-> card :dataset_query not-empty)
     (let [card (db/insert! 'Card
                  (-> card
                      (update :result_metadata #(or % (-> card
@@ -254,28 +255,40 @@
   [applied-filters]
   (some->> applied-filters
            not-empty
-           (map (fn [{:keys [field op value]}]
-                  (format "%s %s %s" (str/join " " field) op value)))
-           (str/join "\n")
-           (str "Filtered by:\n")))
+           (map (fn [{:keys [field value]}]
+                  (format "%s %s" (str/join " " field) value)))
+           (str/join ", ")
+           (str "Filtered by: ")))
+
+(defn- ensure-unique-collection-name
+  [collection]
+  (let [c (db/count 'Collection :name [:like (format "%s%%" collection)])]
+    (if (zero? c)
+      collection
+      (format "%s %s" collection (inc c)))))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of dashboard."
   [dashboard]
-  (let [dashcards (:ordered_cards dashboard)
-        dashboard (db/insert! Dashboard
-                    (-> dashboard
-                        (dissoc :ordered_cards :rule :related :transient_name
-                                :transient_filters)
-                        (update :description #(->> dashboard
-                                                   :transient_filters
-                                                   applied-filters-blurb
-                                                   (vector %)
-                                                   (filter some?)
-                                                   (str/join "\n\n")))))]
+  (let [dashcards  (:ordered_cards dashboard)
+        dashboard  (db/insert! Dashboard
+                     (-> dashboard
+                         (dissoc :ordered_cards :rule :related :transient_name
+                                 :transient_filters)
+                         (assoc :description (->> dashboard
+                                                  :transient_filters
+                                                  applied-filters-blurb))))
+        collection (magic.populate/create-collection!
+                    (ensure-unique-collection-name
+                     (format "Questions for your \"%s\" dashboard" (:name dashboard)))
+                    "#509EE3"
+                    "Automatically generated cards.")]
     (doseq [dashcard dashcards]
-      (let [card     (some->> dashcard :card save-card!)
-            series   (some->> dashcard :series (map save-card!))
+      (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
+            series   (some->> dashcard :series (map (fn [card]
+                                                      (-> card
+                                                          (assoc :collection_id (:id collection))
+                                                          save-card!))))
             dashcard (-> dashcard
                          (dissoc :card :id :card_id)
                          (update :parameter_mappings

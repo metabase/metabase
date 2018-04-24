@@ -7,20 +7,26 @@ import { Link } from "react-router";
 
 import { withBackground } from "metabase/hoc/Background";
 import ActionButton from "metabase/components/ActionButton";
+import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 
 import cxs from "cxs";
 import { t } from "c-3po";
+import _ from "underscore";
 
-import { Dashboard } from "./Dashboard";
+import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import Parameters from "metabase/parameters/components/Parameters";
 
-import { getMetadata } from "metabase/selectors/metadata";
 import { addUndo, createUndo } from "metabase/redux/undo";
+
+import { getMetadata } from "metabase/selectors/metadata";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
+
+import { getParameterIconName } from "metabase/meta/Parameter";
 
 import { dissoc } from "icepick";
 
@@ -28,6 +34,7 @@ const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
   `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
 
 const mapStateToProps = (state, props) => ({
+  isAdmin: getUserIsAdmin(state),
   metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
 });
@@ -35,6 +42,10 @@ const mapStateToProps = (state, props) => ({
 @connect(mapStateToProps, { addUndo, createUndo })
 @DashboardData
 class AutomaticDashboardApp extends React.Component {
+  state = {
+    savedDashboardId: null,
+  };
+
   componentDidUpdate(prevProps) {
     // scroll to the top when the pathname changes
     if (prevProps.location.pathname !== this.props.location.pathname) {
@@ -51,15 +62,20 @@ class AutomaticDashboardApp extends React.Component {
         type: "metabase/automatic-dashboards/link-to-created-object",
         message: () => (
           <div className="flex align-center">
-            <Icon name="dashboard" size={22} className="mr2" />
-            <Link className="link" to={Urls.dashboard(newDashboard.id)}>
-              {t`View your recently created dashboard`}
+            <Icon name="dashboard" size={22} className="mr2" color="#93A1AB" />
+            {t`Your dashboard was saved`}
+            <Link
+              className="link text-bold ml1"
+              to={Urls.dashboard(newDashboard.id)}
+            >
+              {t`See it`}
             </Link>
           </div>
         ),
         action: null,
       }),
     );
+    this.setState({ savedDashboardId: newDashboard.id });
   };
 
   render() {
@@ -69,18 +85,17 @@ class AutomaticDashboardApp extends React.Component {
       parameterValues,
       setParameterValue,
       location,
+      isAdmin,
     } = this.props;
-    const relatedCount =
-      (dashboard &&
-        dashboard.related &&
-        Object.values(dashboard.related).reduce(
-          (acc, list) => acc + list.length,
-          0,
-        )) ||
-      0;
+    const { savedDashboardId } = this.state;
+    // pull out "more" related items for displaying as a button at the bottom of the dashboard
+    const more = dashboard && dashboard.related && dashboard.related["more"];
+    const related = dashboard && _.omit(dashboard.related, "more");
+    const hasSidebar = _.any(related || {}, list => list.length > 0);
+
     return (
-      <div className="flex">
-        <div className="flex-full overflow-x-hidden">
+      <div className="relative">
+        <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
           <div className="bg-white border-bottom py2">
             <div className="wrapper flex align-center">
               <Icon name="bolt" className="text-gold mr2" size={24} />
@@ -92,13 +107,18 @@ class AutomaticDashboardApp extends React.Component {
                     <TransientFilters filters={dashboard.transient_filters} />
                   )}
               </div>
-              <ActionButton
-                className="ml-auto Button--success"
-                borderless
-                actionFn={this.save}
-              >
-                Save this
-              </ActionButton>
+              {savedDashboardId != null ? (
+                <Button className="ml-auto" disabled>{t`Saved`}</Button>
+              ) : isAdmin ? (
+                <ActionButton
+                  className="ml-auto"
+                  success
+                  borderless
+                  actionFn={this.save}
+                >
+                  {t`Save this`}
+                </ActionButton>
+              ) : null}
             </div>
           </div>
 
@@ -120,10 +140,19 @@ class AutomaticDashboardApp extends React.Component {
               )}
             <Dashboard {...this.props} />
           </div>
+          {more && (
+            <div className="flex justify-end px4 pb4">
+              {more.map(item => (
+                <Link to={item.url} className="ml2">
+                  <Button iconRight="chevronright">{item.title}</Button>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
-        {relatedCount > 0 && (
-          <div className="Layout-sidebar flex-no-shrink">
-            <SuggestionsSidebar related={dashboard.related} />
+        {hasSidebar && (
+          <div className="Layout-sidebar absolute top right bottom">
+            <SuggestionsSidebar related={related} />
           </div>
         )}
       </div>
@@ -148,7 +177,7 @@ const TransientFilters = ({ filters }) => (
 
 const TransientFilter = ({ filter }) => (
   <div className="mr3">
-    <Icon name={filter.icon} size={12} className="mr1" />
+    <Icon name={getParameterIconName(filter.type)} size={12} className="mr1" />
     {filter.field.map((str, index) => [
       <span key={"name" + index}>{str}</span>,
       index !== filter.field.length - 1 ? (
@@ -160,7 +189,7 @@ const TransientFilter = ({ filter }) => (
         />
       ) : null,
     ])}
-    <span> is {filter.value}</span>
+    <span> {filter.value}</span>
   </div>
 );
 
