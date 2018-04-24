@@ -1,27 +1,55 @@
+/* @flow */
 import React, { Component } from "react";
-import PropTypes from "prop-types";
-import cx from "classnames";
+import cxs from 'cxs'
+
+type Props = {
+  percentage: Number,
+  animated: Boolean,
+}
 
 export default class ProgressBar extends Component {
-  static propTypes = {
-    percentage: PropTypes.number.isRequired,
-    isAnimated: PropTypes.bool,
-  };
+
+  props: Props
 
   static defaultProps = {
-    className: "ProgressBar",
-    isAnimated: false,
+    animated: false,
   };
 
   render() {
+    const { percentage, animated } = this.props
+
+    const wrapperStyles = cxs({
+      position: 'relative',
+      border: '1px solid #6f7a8b',
+      height: 10,
+      borderRadius: 99,
+    })
+
+    const progressStyles = cxs({
+      overflow: 'hidden',
+      backgroundColor: '#6f7a8b',
+      position: 'relative',
+      height: '100%',
+      top: 0,
+      left: 0,
+      borderRadius: 'inherit',
+      borderTopLeftRadius: 0,
+      borderBottomLeftRadius: 0,
+      width: `${percentage * 100}%`,
+      ':before': {
+        display: 'block',
+        position: 'absolute',
+        content: '""', // need to wrap this in quotes so it actually outputs as valid CSS
+        width: 50,
+        height: '100',
+        backgroundColor: 'red',
+        animation: animated ? 'move-ltr 1.5s linear infinite' : 'none',
+      }
+    })
+
     return (
-      <div className={this.props.className}>
-        <div
-          className={cx("ProgressBar-progress", {"animation-loading-bar" : this.props.isAnimated})}
-          style={{
-            width: this.props.percentage * 100 + "%",
-          }}
-        />
+      <div className={wrapperStyles}>
+        <div className={progressStyles} />
       </div>
     );
   }
