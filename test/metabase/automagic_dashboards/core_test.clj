@@ -5,14 +5,17 @@
              [core :refer :all :as magic]
              [rules :as rules]]
             [metabase.models
+             [card :refer [Card]]
              [database :refer [Database]]
              [field :as field :refer [Field]]
              [metric :refer [Metric]]
+             [query :as query]
              [table :refer [Table] :as table]
              [user :as user]]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (defmacro with-rasta
@@ -51,30 +54,132 @@
          (map (comp first :applies_to)))))
 
 
-(expect
-  false
-  (with-rasta
-    (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
-      (->> (Table) (keep #(automagic-analysis % {})) empty?))))
+(defn- collect-urls
+  [dashboard]
+  (->> dashboard
+       (tree-seq (some-fn sequential? map?) identity)
+       (keep (fn [form]
+               (when (map? form)
+                 (:url form))))))
+
+(defn- valid-urls?
+  [dashboard]
+  (->> dashboard
+       collect-urls
+       (every? (fn [url]
+                 ((test-users/user->client :rasta) :get 200 (format "automagic-dashboards/%s"
+                                                                    (subs url 16)))))))
+
+(defn- valid-dashboard?
+  [dashboard]
+  (and dashboard
+       (:name dashboard)
+       (valid-urls? dashboard)))
+
+(defmacro ^:private with-dashboard-cleanup
+  [& body]
+  `(tu/with-model-cleanup [(quote ~'Card) (quote ~'Dashboard) (quote ~'Collection)
+                           (quote ~'DashboardCard)]
+     ~@body))
 
 (expect
-  false
+  true
   (with-rasta
-    (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
-      (->> (Field) (keep #(automagic-analysis % {})) empty?))))
+    (with-dashboard-cleanup
+      (->> (Table) (keep #(automagic-analysis % {})) (every? valid-dashboard?)))))
 
 (expect
-  false
+  true
+  (with-rasta
+    (with-dashboard-cleanup
+      (->> (Field) (keep #(automagic-analysis % {})) (every? valid-dashboard?)))))
+
+(expect
+  true
   (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
                                            :definition {:query {:aggregation ["count"]}}}]]
     (with-rasta
-      (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
-        (->> (Metric) (keep #(automagic-analysis % {})) empty?)))))
+      (with-dashboard-cleanup
+        (->> (Metric) (keep #(automagic-analysis % {})) (every? valid-dashboard?))))))
+
+(expect
+  true
+  (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
+                                                               :source_table (data/id :venues)}
+                                                       :type :query
+                                                       :database (data/id)}}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
+
+(expect
+  true
+  (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
+                                                               :source_table (data/id :venues)}
+                                                       :type :query
+                                                       :database (data/id)}}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> card-id
+            Card
+            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]})
+            valid-dashboard?)))))
+
+(expect
+  true
+  (with-rasta
+    (with-dashboard-cleanup
+      (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
+                                          :source_table (data/id :venues)}
+                                  :type :query
+                                  :database (data/id)})]
+        (-> q (automagic-analysis {}) valid-dashboard?)))))
+
+(expect
+  true
+  (with-rasta
+    (with-dashboard-cleanup
+      (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
+                                          :source_table (data/id :venues)}
+                                  :type :query
+                                  :database (data/id)})]
+        (-> q
+            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]})
+            valid-dashboard?)))))
 
 
 (expect
-  4
-  (->> (Database (data/id)) candidate-tables first :tables count))
+  [true true]
+  (tt/with-temp* [Table [{table-id :id}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (let [table               (Table table-id)
+              not-analyzed-result (automagic-analysis table {})
+              analyzed-result     (-> table
+                                      (assoc :entity_type :entity/GenericTable)
+                                      (automagic-analysis {}))]
+          [(nil? not-analyzed-result) (some? analyzed-result)])))))
+
+(expect
+  true
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [{table-id :id} {:db_id db-id}]
+                  Field    [{} {:table_id table-id}]
+                  Field    [{} {:table_id table-id}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (let [database           (Database db-id)
+              not-analyzed-count (count (candidate-tables database))]
+          (db/update! Table table-id :entity_type :entity/GenericTable)
+          (= (inc not-analyzed-count) (count (candidate-tables database))))))))
+
+
+(expect
+  3
+  (with-rasta
+    (->> (Database (data/id)) candidate-tables first :tables count)))
 
 
 ;; Identity

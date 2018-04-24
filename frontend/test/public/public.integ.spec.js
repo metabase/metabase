@@ -83,8 +83,8 @@ const getRelativeUrlWithoutHash = url =>
   url.replace(/#.*$/, "").replace(/http:\/\/.*?\//, "/");
 
 const COUNT_ALL = "200";
-const COUNT_DOOHICKEY = "51";
-const COUNT_GADGET = "47";
+const COUNT_DOOHICKEY = "42";
+const COUNT_GADGET = "53";
 
 describe("public/embedded", () => {
   beforeAll(async () => useSharedAdminLogin());

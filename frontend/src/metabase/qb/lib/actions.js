@@ -21,11 +21,16 @@ import Utils from "metabase/lib/utils";
 
 import type Table from "metabase-lib/lib/metadata/Table";
 import type { Card as CardObject } from "metabase/meta/types/Card";
+import type { FieldId } from "metabase/meta/types/Field";
 import type {
   StructuredQuery,
   FieldFilter,
   Breakout,
+  LocalFieldReference,
+  ForeignFieldReference,
+  FieldLiteral,
 } from "metabase/meta/types/Query";
+import type { Column } from "metabase/meta/types/Dataset";
 import type { DimensionValue } from "metabase/meta/types/Visualization";
 import { parseTimestamp } from "metabase/lib/time";
 
@@ -52,9 +57,20 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
   }
 };
 
-export const getFieldRefFromColumn = (col, fieldId = col.id) => {
-  if (col.fk_field_id != null) {
-    return ["fk->", col.fk_field_id, fieldId];
+export const getFieldRefFromColumn = (
+  column: Column,
+  fieldId?: ?(FieldId | FieldLiteral) = column.id,
+): LocalFieldReference | ForeignFieldReference | FieldLiteral => {
+  if (fieldId == null) {
+    throw new Error(
+      "getFieldRefFromColumn expects non-null fieldId or column with non-null id",
+    );
+  }
+  if (Array.isArray(fieldId)) {
+    // NOTE: sometimes col.id is a field reference (e.x. nested queries), if so just return it
+    return fieldId;
+  } else if (column.fk_field_id != null) {
+    return ["fk->", column.fk_field_id, fieldId];
   } else {
     return ["field-id", fieldId];
   }
@@ -388,11 +404,7 @@ const guessVisualization = (card: CardObject, tableMetadata: Table) => {
         card.display = "line";
       } else if (_.all(breakoutFields, isCoordinate)) {
         card.display = "map";
-        // NOTE Atte Keinänen 8/2/17: Heat/grid maps disabled in the first merged version of binning
-        // Currently show a pin map instead of heat map for double coordinate breakout
-        // This way the binning drill-through works in a somewhat acceptable way (although it is designed for heat maps)
-        card.visualization_settings["map.type"] = "pin";
-        // card.visualization_settings["map.type"] = "grid";
+        card.visualization_settings["map.type"] = "grid";
       } else {
         card.display = "bar";
       }

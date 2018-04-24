@@ -1,4 +1,5 @@
-title: "A quick look at your [[GenericTable]] table"
+title: "A look at your [[GenericTable]] table"
+transient_title: "Here's a quick look at your [[GenericTable]] table"
 description: An overview of your [[GenericTable]] table and how it's distributed across time, place, and categories.
 metrics:
   - Count: ["count"]
@@ -61,9 +62,9 @@ filters:
       score: 80
 groups:
 - Overview:
-    title: Overview
+    title: Summary
 - Singletons:
-    title: Fields with only a single value
+    title: These are the same for all your [[this]]
 - ByTime:
     title: "[[GenericTable]] across time"
 - Geographical:
@@ -99,38 +100,6 @@ cards:
       metrics: CountDistinctFKs
       score: 100
       group: Overview
-# Geographical
-  - CountByCountry:
-      title: "[[GenericTable]] per country"
-      metrics: Count
-      dimensions: Country
-      score: 90
-      visualization:
-        map:
-          map.type: region
-          map.region: world_countries
-      group: Geographical
-  - CountByState:
-      title: "[[GenericTable]] per state"
-      metrics: Count
-      dimensions: State
-      score: 90
-      visualization:
-        map:
-          map.type: region
-          map.region: us_states
-      group: Geographical
-  - CountByCoords:
-      title: "[[GenericTable]] by coordinates"
-      metrics: Count
-      dimensions:
-        - Long:
-            aggregation: default
-        - Lat:
-            aggregation: default
-      visualization: map
-      score: 80
-      group: Geographical
 # General
   - NumberDistribution:
       title: How [[GenericTable]] are distributed across [[GenericNumber]]
@@ -161,6 +130,39 @@ cards:
       group: General
       order_by:
         - Count: descending
+# Geographical
+  - CountByCountry:
+      title: "[[GenericTable]] per country"
+      metrics: Count
+      dimensions: Country
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      group: Geographical
+      height: 6
+  - CountByState:
+      title: "[[GenericTable]] per state"
+      metrics: Count
+      dimensions: State
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      group: Geographical
+      height: 6
+  - CountByCoords:
+      title: "[[GenericTable]] by coordinates"
+      metrics: Count
+      dimensions:
+        - Long
+        - Lat
+      visualization: map
+      score: 80
+      group: Geographical
+      height: 6
 # By Time
   - CountByJoinDate:
       title: "[[GenericTable]] that have joined over time"
@@ -353,7 +355,7 @@ cards:
 # Special
   - Singleton:
       title: "[[Singleton]]"
-      visualization: bar
+      visualization: scalar
       metrics: Count
       dimensions: Singleton
       score: 30

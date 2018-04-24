@@ -20,6 +20,7 @@
             [metabase.models
              [card :as card :refer [Card]]
              [field :refer [Field] :as field]
+             [interface :as mi]
              [metric :refer [Metric]]
              [query :refer [Query]]
              [segment :refer [Segment]]
@@ -32,8 +33,9 @@
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
-(defmulti ^{:private  true
-            :arglists '([entity])}
+(defmulti
+  ^{:private  true
+    :arglists '([entity])}
   ->root type)
 
 (defmethod ->root (type Table)
@@ -98,7 +100,7 @@
       (* 24 30 6)     :day
       (* 24 30 12 10) :month
       :year)
-    :month))
+    :day))
 
 (defmethod ->reference [:mbql (type Field)]
   [_ {:keys [fk_target_field_id id link aggregation base_type fingerprint] :as field}]
@@ -154,12 +156,15 @@
   (or (isa? special_type t)
       (isa? base_type t)))
 
-(defn- numeric-key?
+(defn- key-col?
   "Workaround for our leaky type system which conflates types with properties."
   [{:keys [base_type special_type name]}]
   (and (isa? base_type :type/Number)
        (or (#{:type/PK :type/FK} special_type)
-           (-> name str/lower-case (= "id")))))
+           (let [name (str/lower-case name)]
+             (or (= name "id")
+                 (str/starts-with? name "id_")
+                 (str/ends-with? name "_id"))))))
 
 (def ^:private field-filters
   {:fieldspec       (fn [fieldspec]
@@ -175,9 +180,8 @@
                             target
                             (recur target)
 
-
                             :else
-                            (and (not (numeric-key? field))
+                            (and (not (key-col? field))
                                  (field-isa? field fieldspec))))))
    :named           (fn [name-pattern]
                       (comp (->> name-pattern
@@ -431,6 +435,7 @@
          :table_id           (:id table)
          :fk_target_field_id [:not= nil])
        field/with-targets
+       (filter #(some-> % :target mi/can-read?))
        (map (fn [{:keys [id target]}]
               (-> target field/table (assoc :link id))))))
 
@@ -568,15 +573,14 @@
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
   [{:keys [rule show rules-prefix query-filter cell-query full-name] :as root}]
-  (let [[dashboard rule] (if rule
-                           (apply-rule root rule)
-                           (->> root
-                                (matching-rules (rules/load-rules rules-prefix))
-                                (keep (partial apply-rule root))
-                                ;; `matching-rules` returns an `ArraySeq`
-                                ;; (via `sort-by`) so `first` realises one element
-                                ;; at a time (no chunking).
-                                first))]
+  (when-let [[dashboard rule] (if rule
+                                (apply-rule root rule)
+                                (->> root
+                                     (matching-rules (rules/load-rules rules-prefix))
+                                     (keep (partial apply-rule root))
+                                     ;; `matching-rules` returns an `ArraySeq` (via `sort-by`) so
+                                     ;; `first` realises one element at a time (no chunking).
+                                     first))]
     (log/info (format "Applying heuristic %s to %s." (:rule rule) full-name))
     (log/info (format "Dimensions bindings:\n%s"
                       (->> dashboard
@@ -597,7 +601,7 @@
                                                       count
                                                       (> max-cards))
                                                   (not= show :all))
-                                           [{:title       "Show more"
+                                           [{:title       "Show more about this"
                                              :description nil
                                              :table       (:source-table root)
                                              :url         (format "%s#show=all"
@@ -634,8 +638,7 @@
           cell-query)
     (let [table (-> card :table_id Table)]
       (automagic-dashboard
-       (merge opts
-              {:entity       table
+       (merge {:entity       table
                :source-table table
                :query-filter (-> card :dataset_query :query :filter)
                :database     (:db_id table)
@@ -645,7 +648,8 @@
                                        (:id card)
                                        (endocde-base64-json cell-query))
                                (format "%squestion/%s" public-endpoint (:id card)))
-               :rules-prefix "table"})))
+               :rules-prefix "table"}
+              opts)))
     nil))
 
 (defmethod automagic-analysis (type Query)
@@ -654,21 +658,21 @@
           (:cell-query opts))
     (let [table (-> query :table-id Table)]
       (automagic-dashboard
-       (merge (update opts :cell-query merge-filter-clauses (-> query
-                                                                :dataset_query
-                                                                :query
-                                                                :filter))
-              {:entity       table
+       (merge {:entity       table
                :source-table table
                :database     (:db_id table)
                :full-name    (:display_name table)
                :url          (if cell-query
                                (format "%sadhoc/%s/cell/%s" public-endpoint
-                                       (endocde-base64-json query)
+                                       (endocde-base64-json (:dataset_query query))
                                        (endocde-base64-json cell-query))
                                (format "%sadhoc/%s" public-endpoint
                                                    (endocde-base64-json query)))
-               :rules-prefix "table"})))
+               :rules-prefix "table"}
+              (update opts :cell-query merge-filter-clauses (-> query
+                                                                :dataset_query
+                                                                :query
+                                                                :filter)))))
     nil))
 
 (defmethod automagic-analysis (type Field)
@@ -677,7 +681,8 @@
 
 (defn- enhanced-table-stats
   [table]
-  (let [field-types (db/select-field :special_type Field :table_id (:id table))]
+  (let [field-types (->> (db/select [Field :special_type] :table_id (:id table))
+                         (map :special_type))]
     (assoc table :stats {:num-fields  (count field-types)
                          :list-like?  (= (count (remove #{:type/PK} field-types)) 1)
                          :link-table? (every? #{:type/FK :type/PK} field-types)})))
@@ -701,10 +706,13 @@
    (let [rules (rules/load-rules "table")]
      (->> (apply db/select Table
                  (cond-> [:db_id           (:id database)
-                          :visibility_type nil]
+                          :visibility_type nil
+                          :entity_type     [:not= nil]] ; only consider tables that have alredy
+                                                        ; been analyzed
                    schema (concat [:schema schema])))
+          (filter mi/can-read?)
           (map enhanced-table-stats)
-          (remove (comp (some-fn :link-table? :list-like-table?) :stats))
+          (remove (comp (some-fn :link-table? :list-like?) :stats))
           (map (fn [table]
                  (let [root      (->root table)
                        rule      (->> root

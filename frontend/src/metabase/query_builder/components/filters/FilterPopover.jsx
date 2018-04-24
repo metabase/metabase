@@ -16,7 +16,11 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
 import Query from "metabase/lib/query";
-import { isDate, isTime } from "metabase/lib/schema_metadata";
+import {
+  isDate,
+  isTime,
+  getFilterArgumentFormatOptions,
+} from "metabase/lib/schema_metadata";
 import { formatField, singularize } from "metabase/lib/formatting";
 
 import cx from "classnames";
@@ -136,8 +140,8 @@ export default class FilterPopover extends Component {
 
     if (operator) {
       for (let i = 0; i < operator.fields.length; i++) {
-        if (operator.defaults && operator.defaults[i] !== undefined) {
-          filter.push(operator.defaults[i]);
+        if (operator.fields[i].default !== undefined) {
+          filter.push(operator.fields[i].default);
         } else {
           filter.push(undefined);
         }
@@ -220,7 +224,9 @@ export default class FilterPopover extends Component {
           values = [this.state.filter[2 + index]];
           onValuesChange = values => this.setValue(index, values[0]);
         }
-        if (operatorField.type === "select") {
+        if (operatorField.type === "hidden") {
+          return null;
+        } else if (operatorField.type === "select") {
           return (
             <SelectPicker
               key={index}
@@ -244,6 +250,7 @@ export default class FilterPopover extends Component {
               searchField={field.filterSearchField()}
               autoFocus={index === 0}
               alwaysShowOptions={operator.fields.length === 1}
+              formatOptions={getFilterArgumentFormatOptions(operator, index)}
               minWidth={440}
               maxWidth={440}
             />

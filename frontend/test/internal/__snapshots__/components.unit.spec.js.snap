@@ -275,7 +275,7 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xl xm xn xo x2 xp xq xr xa xs xt"
+        className="x0 x1 xk xl xm xn x2 xo xp xq xa xr xs"
         onClick={[Function]}
       >
         <svg
@@ -307,7 +307,7 @@ exports[`EntityMenu should render "More menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xl xm xn xo x2 xp xq xr xa xs xt"
+        className="x0 x1 xk xl xm xn x2 xo xp xq xa xr xs"
         onClick={[Function]}
       >
         <svg
@@ -339,7 +339,7 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xl xm xn xo x2 xp xq xr xa xs xt"
+        className="x0 x1 xk xl xm xn x2 xo xp xq xa xr xs"
         onClick={[Function]}
       >
         <svg
@@ -360,7 +360,7 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xl xm xn xo x2 xp xq xr xa xs xt"
+        className="x0 x1 xk xl xm xn x2 xo xp xq xa xr xs"
         onClick={[Function]}
       >
         <svg
@@ -382,7 +382,7 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xl xm xn xo x2 xp xq xr xa xs xt"
+        className="x0 x1 xk xl xm xn x2 xo xp xq xa xr xs"
         onClick={[Function]}
       >
         <svg
@@ -414,7 +414,7 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xl xm xn xo x2 xp xq xr xa xs xt"
+        className="x0 x1 xk xl xm xn x2 xo xp xq xa xr xs"
         onClick={[Function]}
       >
         <svg
@@ -759,7 +759,7 @@ exports[`Toggle should render "on" correctly 1`] = `
 exports[`TokenField should render "" correctly 1`] = `
 <div>
   <ul
-    className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y xj xk"
+    className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y xj"
     onMouseDownCapture={[Function]}
     style={undefined}
   >
@@ -849,7 +849,7 @@ exports[`TokenField should render "" correctly 1`] = `
 exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
 <div>
   <ul
-    className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y xj xk"
+    className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y xj"
     onMouseDownCapture={[Function]}
     style={undefined}
   >

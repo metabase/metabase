@@ -16,6 +16,7 @@
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
             monger.json
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
              [models :as models]])
@@ -213,8 +214,9 @@
                 (format "%s %s; " (name k) (apply str (interpose " " vs)))))})
 
 (defsetting ssl-certificate-public-key
-  "Base-64 encoded public key for this site's SSL certificate. Specify this to enable HTTP Public Key Pinning.
-   See http://mzl.la/1EnfqBf for more information.")
+  (str (tru "Base-64 encoded public key for this site's SSL certificate.")
+       (tru "Specify this to enable HTTP Public Key Pinning.")
+       (tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 #_(defn- public-key-pins-header []
