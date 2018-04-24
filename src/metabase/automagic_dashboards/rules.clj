@@ -383,5 +383,5 @@
        (mapcat (comp extract-i18n-strings #(dissoc % :indepth)))
        distinct
        make-pot
-       (spit "locales/automagic_dashboards.pot"))
+       (spit "locales/metabase-automatic-dashboards.pot"))
   (System/exit 0))
