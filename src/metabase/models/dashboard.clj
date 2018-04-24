@@ -274,7 +274,7 @@
         dashboard  (db/insert! Dashboard
                      (-> dashboard
                          (dissoc :ordered_cards :rule :related :transient_name
-                                 :transient_filters)
+                                 :transient_filters :param_fields)
                          (assoc :description (->> dashboard
                                                   :transient_filters
                                                   applied-filters-blurb))))
