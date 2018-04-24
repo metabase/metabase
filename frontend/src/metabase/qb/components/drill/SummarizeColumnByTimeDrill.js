@@ -51,6 +51,6 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
               ? [aggregator.short, getFieldRefFromColumn(column)]
               : [aggregator.short],
           )
-          .pivot([["datetime-field", ["field-id", dateField], "day"]]),
+          .pivot([["datetime-field", ["field-id", dateField.id], "day"]]),
     }));
 };
