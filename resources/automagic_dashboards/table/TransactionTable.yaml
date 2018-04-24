@@ -247,10 +247,8 @@ cards:
       title: Sales by coordinates
       metrics: TotalOrders
       dimensions:
-        - Long:
-            aggregation: default
-        - Lat:
-            aggregation: default
+        - Long
+        - Lat
       visualization: map
       score: 80
       height: 10
