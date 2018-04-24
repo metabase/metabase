@@ -8,6 +8,7 @@ import {
   createDashboard,
   restorePreviousLogin,
   waitForRequestToComplete,
+  eventually,
 } from "__support__/integrated_tests";
 
 import _ from "underscore";
@@ -510,16 +511,6 @@ describe("public/embedded", () => {
 
         const app = mount(store.getAppContainer());
 
-        // I think this means we *wait* for the Cards to load?
-        await store.waitForActions([
-          FETCH_DASHBOARD_CARD_DATA,
-          FETCH_CARD_DATA,
-        ]);
-
-        // We need to wait for the API requests to finish or something like that.
-        // TODO - what's the right way to do this without using a stupid DELAY?
-        await delay(1000);
-
         const getValueOfCard = index =>
           app
             .update()
@@ -537,15 +528,16 @@ describe("public/embedded", () => {
             FETCH_DASHBOARD_CARD_DATA,
             FETCH_CARD_DATA,
           ]);
-          waitForRequestToComplete("GET", /.*/);
           await delay(500);
         };
 
+        await waitForDashToReload();
+
         // check that initial value of SQL Card is 1
-        expect(getValueOfSqlCard()).toBe("1");
+        await eventually(() => expect(getValueOfSqlCard()).toBe("1"));
 
         // check that initial value of People Count MBQL Card is 2500 (or whatever people.count is supposed to be)
-        expect(getValueOfMbqlCard()).toBe("2,500");
+        await eventually(() => expect(getValueOfMbqlCard()).toBe("2,500"));
 
         // now set the SQL param to '50' & wait for Dashboard to reload. check that value of SQL Card is updated
         app
@@ -555,7 +547,7 @@ describe("public/embedded", () => {
           .props()
           .setValue("50");
         await waitForDashToReload();
-        expect(getValueOfSqlCard()).toBe("50");
+        await eventually(() => expect(getValueOfSqlCard()).toBe("50"));
 
         // now set our MBQL param' & wait for Dashboard to reload. check that value of the MBQL Card is updated
         app
@@ -565,7 +557,7 @@ describe("public/embedded", () => {
           .props()
           .setValue("40");
         await waitForDashToReload();
-        expect(getValueOfMbqlCard()).toBe("1");
+        await eventually(() => expect(getValueOfMbqlCard()).toBe("1"));
       }
 
       it("should handle parameters in public Dashboards correctly", async () => {
