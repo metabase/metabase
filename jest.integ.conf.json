@@ -19,6 +19,7 @@
     "<rootDir>/frontend/test/jest-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js"
   ],
+  "setupTestFrameworkScriptFile": "<rootDir>/frontend/test/jest-setup-framework-integ.js",
   "globals": {
     "ace": {},
     "ga": {},
