@@ -127,6 +127,22 @@
             (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]})
             valid-dashboard?)))))
 
+
+(expect
+  true
+  (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
+                                                               :source_table (data/id :venues)}
+                                                       :type :query
+                                                       :database (data/id)}}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> card-id
+            Card
+            (automagic-analysis {:cell-query [:!= [:field-id (data/id :venues :category_id) 2]]})
+            valid-dashboard?)))))
+
+
 (expect
   true
   (with-rasta
