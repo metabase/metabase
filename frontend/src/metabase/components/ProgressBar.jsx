@@ -15,7 +15,7 @@ export default class ProgressBar extends Component {
 
   render() {
     return (
-      <div className={"overflow-hidden" + this.props.className}>
+      <div className={this.props.className}>
         <div
           className={cx("ProgressBar-progress", {"animation-loading-bar" : this.props.isAnimated})}
           style={{
