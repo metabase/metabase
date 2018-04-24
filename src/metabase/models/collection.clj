@@ -67,7 +67,7 @@
 (defn- pre-delete [collection]
   ;; unset the collection_id for Cards/Pulses in this collection. This is mostly for the sake of tests since IRL we
   ;; shouldn't be deleting Collections, but rather archiving them instead
-  (doseq [model ['Card 'Pulse]]
+  (doseq [model ['Card 'Pulse 'Dashboard]]
     (db/update-where! model {:collection_id (u/get-id collection)}
       :collection_id nil)))
 

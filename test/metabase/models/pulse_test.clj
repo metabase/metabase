@@ -216,7 +216,7 @@
 ;;; |                                         Collections Permissions Tests                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- do-with-pulse-in-collection [f]
+(defn do-with-pulse-in-collection [f]
   (tt/with-temp* [Collection [collection]
                   Pulse      [pulse  {:collection_id (u/get-id collection)}]
                   Database   [db    {:engine :h2}]
@@ -227,7 +227,8 @@
                   PulseCard  [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card)}]]
     (f db collection pulse)))
 
-(defmacro ^:private with-pulse-in-collection
+(defmacro with-pulse-in-collection
+  "Execute `body` with a temporary Pulse, in a Colleciton, containing a single Card."
   {:style/indent 1}
   [[db-binding collection-binding pulse-binding] & body]
   `(do-with-pulse-in-collection

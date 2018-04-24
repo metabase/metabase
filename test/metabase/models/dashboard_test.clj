@@ -15,7 +15,7 @@
             [metabase.test
              [data :refer :all]
              [util :as tu]]
-            [metabase.test.data.users :refer :all]
+            [metabase.test.data.users :as users]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -149,14 +149,14 @@
                                     :series  (= [series-id-1 series-id-2] series))])
           serialized-dashboard (serialize-dashboard dashboard)]
       ;; delete the dashcard and modify the dash attributes
-      (dashboard-card/delete-dashboard-card! dashboard-card (user->id :rasta))
+      (dashboard-card/delete-dashboard-card! dashboard-card (users/user->id :rasta))
       (db/update! Dashboard dashboard-id
         :name        "Revert Test"
         :description "something")
       ;; capture our updated dashboard state
       (let [serialized-dashboard2 (serialize-dashboard (Dashboard dashboard-id))]
         ;; now do the reversion
-        (#'dashboard/revert-dashboard! dashboard-id (user->id :crowberto) serialized-dashboard)
+        (#'dashboard/revert-dashboard! dashboard-id (users/user->id :crowberto) serialized-dashboard)
         ;; final output is original-state, updated-state, reverted-state
         [(update serialized-dashboard :cards check-ids)
          serialized-dashboard2
@@ -181,7 +181,7 @@
 ;;; |                                         Collections Permissions Tests                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- do-with-dash-in-collection [f]
+(defn do-with-dash-in-collection [f]
   (tt/with-temp* [Collection    [collection]
                   Dashboard     [dash  {:collection_id (u/get-id collection)}]
                   Database      [db    {:engine :h2}]
@@ -192,7 +192,8 @@
                   DashboardCard [_ {:dashboard_id (u/get-id dash), :card_id (u/get-id card)}]]
     (f db collection dash)))
 
-(defmacro ^:private with-dash-in-collection
+(defmacro with-dash-in-collection
+  "Execute `body` with a Dashboard in a Collection. Dashboard will contain one Card in a Database."
   {:style/indent 1}
   [[db-binding collection-binding dash-binding] & body]
   `(do-with-dash-in-collection
@@ -213,3 +214,9 @@
   (with-dash-in-collection [db _ dash]
     (binding [api/*current-user-permissions-set* (atom #{(perms/object-path (u/get-id db))})]
       (mi/can-read? dash))))
+
+;; Do we have *write* Permissions for a Dashboard if we have *write* Permissions for the Collection its in?
+(expect
+  (with-dash-in-collection [_ collection dash]
+    (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
+      (mi/can-write? dash))))

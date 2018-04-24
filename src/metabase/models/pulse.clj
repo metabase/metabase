@@ -20,7 +20,7 @@
             [metabase
              [events :as events]
              [util :as u]]
-            [metabase.api.common :refer [*current-user*]]
+            [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.models
              [card :refer [Card]]
              [permissions :as perms]
@@ -36,11 +36,12 @@
              [hydrate :refer [hydrate]]
              [models :as models]]))
 
+
 ;;; ------------------------------------------------- Perms Checking -------------------------------------------------
 
 (defn- channels-with-recipients
-  "Get the 'channels' associated with this `notification`, including recipients of those 'channels'. If `:channels` is already
-  hydrated, as it will be when using `retrieve-pulses`, this doesn't need to make any DB calls."
+  "Get the 'channels' associated with this `notification`, including recipients of those 'channels'. If `:channels` is
+  already hydrated, as it will be when using `retrieve-pulses`, this doesn't need to make any DB calls."
   [notifcation]
   (or (:channels notifcation)
       (-> (db/select PulseChannel, :pulse_id (u/get-id notifcation))
@@ -49,47 +50,60 @@
 (defn- emails
   "Get the set of emails this `notification` will be sent to."
   [notification]
-  (set (for [channel   notification
+  (set (for [channel   (channels-with-recipients notification)
              recipient (:recipients channel)]
          (:email recipient))))
 
 (defn- notification-perms-based-on-cards
-  "Calculate permissions required to `read-or-write` a `notification` based on its Cards alone. Unlike Dashboards, to
-  view or edit a Notification you must have permissions to do the same for *all* the Cards in the Notification."
+  "Calculate permissions required to read a `notification` based on its Cards alone. Unlike Dashboards, to view or edit
+  a Notification you must have permissions to do the same for *all* the Cards in the Notification."
   ;; TODO - I don't think the Permissions for Notification make a ton of sense. Shouldn't you just need read
   ;; permissions for all the Cards in the Notification in order to edit it? Either way it doesn't matter a ton since
   ;; these artifact perms are being phased out.
-  [notification read-or-write]
-  (when-let [card-ids (seq (db/select-field :card_id PulseCard, :pulse_id (u/get-id notification)))]
-    (reduce set/union (for [card (db/select [Card :public_uuid :dataset_query :read_permissions], :id [:in card-ids])]
-                        (i/perms-objects-set card read-or-write)))))
+  [notification]
+  (set
+   (when-let [card-ids (seq (db/select-field :card_id PulseCard, :pulse_id (u/get-id notification)))]
+     (reduce set/union (for [card (db/select [Card :public_uuid :dataset_query :read_permissions], :id [:in card-ids])]
+                         (i/perms-objects-set card :read))))))
+
+(defn- current-user-is-recipient? [notification]
+  (contains? (emails notification) (:email @*current-user*)))
 
 (defn- perms-objects-set
   "Calculate the set of permissions required to `read-or-write` a `notification`."
-  [{collection-id :collection_id, :as notification} read-or-write]
+  [{collection-id :collection_id, creator-id :creator_id, :as notification} read-or-write]
   (cond
-    ;; first things first: if the current user is a *recipient* of this Pulse, they are allowed to read it
-    (and (= read-or-write :read)
-         (contains? (emails notification) (:email @*current-user*)))
-    nil
+    ;; First things first:
+    ;; *  A User can *read* a Notification if they are a recipient
+    ;; *  A User can *write* a Notification if they are a recipient *and* the original creator
+    (and (current-user-is-recipient? notification)
+         (or (= read-or-write :read)
+             (and (= creator-id *current-user-id*))))
+    #{}
 
     ;; if this Pulse is in a Collection you're allowed to read or write the Pulse based on your permissions for the
     ;; Collection
     collection-id
     (collection/perms-objects-set collection-id read-or-write)
 
-    ;; otherwise we fall back to the traditional artifact-based Permissions
+    ;; If the Notification is not in a Collection and you are not a recipient and the original creator, you're not
+    ;; allowed to edit it unless you're an admin...
+    (= read-or-write :write)
+    #{"/"}
+
+    ;; ...but for read permissions, fall back to the traditional artifact-based Permissions. At some point in the
+    ;; furture this entry will be phased out when we move to the 'everything is in a Collection' model.
     :else
-    (notification-perms-based-on-cards notification read-or-write)))
+    (notification-perms-based-on-cards notification)))
 
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Pulse :pulse)
 
-(defn- pre-delete [{:keys [id]}]
-  (db/delete! PulseCard :pulse_id id)
-  (db/delete! PulseChannel :pulse_id id))
+(defn- pre-delete [notification]
+  (doseq [model [PulseCard PulseChannel]]
+    (db/delete! model :pulse_id (u/get-id notification))))
 
 (u/strict-extend (class Pulse)
   models/IModel
@@ -99,11 +113,9 @@
           :pre-delete     pre-delete})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
-         {:perms-objects-set  perms-objects-set
-          ;; I'm not 100% sure this covers everything. If a user is subscribed to a pulse they're still allowed to
-          ;; know it exists, right?
-          :can-read?          (partial i/current-user-has-full-permissions? :read)
-          :can-write?         (partial i/current-user-has-full-permissions? :write)}))
+         {:perms-objects-set perms-objects-set
+          :can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
@@ -146,49 +158,50 @@
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 
-(defn- hydrate-notification [notification]
+(s/defn ^:private hydrate-notification :- PulseInstance
+  [notification :- PulseInstance]
   (-> notification
       (hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
-(defn- notification->pulse
+(s/defn ^:private notification->pulse :- PulseInstance
   "Take a generic `Notification`, and put it in the standard Pulse format the frontend expects. This really just
   consists of removing associated `Alert` columns."
-  [notification]
+  [notification :- PulseInstance]
   (dissoc notification :alert_condition :alert_above_goal :alert_first_only))
 
 ;; TODO - do we really need this function? Why can't we just use `db/select` and `hydrate` like we do for everything
 ;; else?
-(defn retrieve-pulse
+(s/defn retrieve-pulse :- (s/maybe PulseInstance)
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert coulmns, since this is a
   *Pulse* and they will all be unset."
   [pulse-or-id]
-  (-> (db/select-one Pulse :id (u/get-id pulse-or-id), :alert_condition nil)
-      hydrate-notification
-      notification->pulse))
+  (some-> (db/select-one Pulse :id (u/get-id pulse-or-id), :alert_condition nil)
+          hydrate-notification
+          notification->pulse))
 
-(defn retrieve-notification
+(s/defn retrieve-notification :- (s/maybe PulseInstance)
   "Fetch an Alert or Pulse, and do the 'standard' hydrations."
   [notification-or-id]
   (-> (Pulse (u/get-id notification-or-id))
       hydrate-notification))
 
-(defn- notification->alert
+(s/defn ^:private notification->alert :- PulseInstance
   "Take a generic `Notification` and put it in the standard `Alert` format the frontend expects. This really just
   consists of collapsing `:cards` into a `:card` key with whatever the first Card is."
-  [notification]
+  [notification :- PulseInstance]
   (-> notification
       (assoc :card (first (:cards notification)))
       (dissoc :cards)))
 
-(defn retrieve-alert
+(s/defn retrieve-alert :- (s/maybe PulseInstance)
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
   [alert-or-id]
-  (-> (db/select-one Pulse, :id (u/get-id alert-or-id), :alert_condition [:not= nil])
-      hydrate-notification
-      notification->alert))
+  (some-> (db/select-one Pulse, :id (u/get-id alert-or-id), :alert_condition [:not= nil])
+          hydrate-notification
+          notification->alert))
 
-(defn retrieve-alerts
+(s/defn retrieve-alerts :- [PulseInstance]
   "Fetch all Alerts."
   []
   (for [alert (db/select Pulse, :alert_condition [:not= nil], {:order-by [[:%lower.name :asc]]})]
@@ -196,7 +209,7 @@
         hydrate-notification
         notification->alert)))
 
-(defn retrieve-pulses
+(s/defn retrieve-pulses :- [PulseInstance]
   "Fetch all `Pulses`."
   []
   (for [pulse (db/select Pulse, :alert_condition nil, {:order-by [[:%lower.name :asc]]})]
@@ -342,7 +355,7 @@
   "Creates a pulse with the correct fields specified for an alert"
   [alert creator-id card-id channels]
   (let [id (-> alert
-               (assoc :skip_if_empty true :creator_id creator-id)
+               (assoc :skip_if_empty true, :creator_id creator-id)
                (create-notification-and-add-cards-and-channels! [card-id] channels))]
     ;; return the full Pulse (and record our create event)
     (events/publish-event! :alert-create (retrieve-alert id))))
@@ -395,9 +408,10 @@
 (defn- alert->notification
   "Convert an 'Alert` back into the generic 'Notification' format."
   [{:keys [card cards], :as alert}]
-  (-> alert
-      (assoc :skip_if_empty true, :cards [(card->ref (or card (first cards)))])
-      (dissoc :card)))
+  (let [card (or card (first cards))]
+    (-> alert
+        (assoc :skip_if_empty true, :cards (when card [(card->ref card)]))
+        (dissoc :card))))
 
 ;; TODO - why do we make sure to strictly validate everything when we create a PULSE but not when we create an ALERT?
 (defn update-alert!
@@ -418,13 +432,13 @@
                                ;; make the join directly, which works in MySQL, PG and H2
                                :where [:= :id {:select [:*]
                                                :from [[{:select [:pcr.id]
-                                                         :from [[PulseChannelRecipient :pcr]]
-                                                         :join [[PulseChannel :pchan] [:= :pchan.id :pcr.pulse_channel_id]
-                                                                [Pulse :p] [:= :p.id :pchan.pulse_id]]
-                                                         :where [:and
-                                                                 [:= :p.id alert-id]
-                                                                 [:not= :p.alert_condition nil]
-                                                                 [:= :pcr.user_id user-id]]} "r"]]}]})]
+                                                        :from [[PulseChannelRecipient :pcr]]
+                                                        :join [[PulseChannel :pchan] [:= :pchan.id :pcr.pulse_channel_id]
+                                                               [Pulse :p] [:= :p.id :pchan.pulse_id]]
+                                                        :where [:and
+                                                                [:= :p.id alert-id]
+                                                                [:not= :p.alert_condition nil]
+                                                                [:= :pcr.user_id user-id]]} "r"]]}]})]
     (when (zero? result)
       (log/warnf "Failed to remove user-id '%s' from alert-id '%s'" user-id alert-id))
 

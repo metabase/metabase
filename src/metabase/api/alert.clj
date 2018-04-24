@@ -5,7 +5,8 @@
             [medley.core :as m]
             [metabase
              [email :as email]
-             [events :as events]]
+             [events :as events]
+             [util :as u]]
             [metabase.api
              [common :as api]
              [pulse :as pulse-api]]
@@ -39,7 +40,8 @@
                         (pulse/retrieve-user-alerts-for-card id api/*current-user-id*))))
 
 (defn- only-alert-keys [request]
-  (select-keys request [:alert_condition :alert_first_only :alert_above_goal :collection_id]))
+  (u/select-keys-when request
+    :present [:alert_condition :alert_first_only :alert_above_goal :collection_id]))
 
 (defn- email-channel [alert]
   (m/find-first #(= :email (:channel_type %)) (:channels alert)))
@@ -110,7 +112,7 @@
     card))
 
 (api/defendpoint POST "/"
-  "Create a new Alert (`Pulse`)"
+  "Create a new Alert."
   [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal collection_id] :as req} :body}]
   {alert_condition   pulse/AlertConditions
    alert_first_only  s/Bool
@@ -132,48 +134,36 @@
     ;; return our new Alert
     new-alert))
 
-(defn- recipient-ids [{:keys [channels] :as alert}]
-  (reduce (fn [acc {:keys [channel_type recipients]}]
-            (if (= :email channel_type)
-              (into acc (map :id recipients))
-              acc))
-          #{} channels))
-
-(defn- check-alert-update-permissions
-  "Admin users can update all alerts. Non-admin users can update alerts that they created as long as they are still a
-  recipient of that alert"
-  [alert]
-  (when-not api/*is-superuser?*
-    (api/write-check alert)
-    (api/check-403 (and (= api/*current-user-id* (:creator_id alert))
-                        (contains? (recipient-ids alert) api/*current-user-id*)))))
 
 (api/defendpoint PUT "/:id"
   "Update a `Alert` with ID."
   [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels collection_id]
-            :as   req} :body}]
-  {alert_condition  pulse/AlertConditions
-   alert_first_only s/Bool
+            :as   request} :body}]
+  {alert_condition  (s/maybe pulse/AlertConditions)
+   alert_first_only (s/maybe s/Bool)
    alert_above_goal (s/maybe s/Bool)
-   card             pulse/CardRef
-   channels         (su/non-empty [su/Map])
+   card             (s/maybe pulse/CardRef)
+   channels         (s/maybe (su/non-empty [su/Map]))
    collection_id    (s/maybe su/IntGreaterThanZero)}
   ;; fethc the existing Alert in the DB
-  (let [old-alert     (pulse/retrieve-alert id)
-        ;; check permissions as needed
-        _             (check-alert-update-permissions old-alert)
-        _             (collection/check-allowed-to-change-collection old-alert collection_id)
-        ;; ok, now update the
-        updated-alert (-> req
-                          only-alert-keys
-                          (assoc :id id :card (pulse/card->ref card) :channels channels)
-                          pulse/update-alert!)]
-
-    ;; Only admins can update recipients
-    (when (and api/*is-superuser?* (email/email-configured?))
-      (notify-recipient-changes! old-alert updated-alert))
-
-    updated-alert))
+  (let [old-alert (api/check-404 (pulse/retrieve-alert id))]
+    ;; check permissions as needed
+    (api/write-check old-alert)
+    (collection/check-allowed-to-change-collection old-alert collection_id)
+    ;; now update the Alert
+    (let [updated-alert (pulse/update-alert!
+                         (merge
+                          (assoc (only-alert-keys request)
+                            :id id)
+                          (when card
+                            {:card (pulse/card->ref card)})
+                          (when (contains? request :channels)
+                            {:channels channels})))]
+      ;; Only admins can update recipients
+      (when (and api/*is-superuser?* (email/email-configured?))
+        (notify-recipient-changes! old-alert updated-alert))
+      ;; Finally, return the updated Alert
+      updated-alert)))
 
 (defn- should-unsubscribe-delete?
   "An alert should be deleted instead of unsubscribing if
@@ -187,12 +177,13 @@
          (= unsubscribing-user-id (:id (first recipients)))
          (nil? (slack-channel alert)))))
 
+;; TODO - why is this a *PUT* endpoint???
 (api/defendpoint PUT "/:id/unsubscribe"
   "Unsubscribes a user from the given alert"
   [id]
   ;; Admins are not allowed to unsubscribe from alerts, they should edit the alert
   (api/check (not api/*is-superuser?*)
-    [400 "Admin user are not allowed to unsubscribe from alerts"])
+    [400 "Admin users are not allowed to unsubscribe from alerts"])
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)
 
@@ -201,10 +192,10 @@
       (db/delete! Pulse :id id)
       ;; There are other receipieints, remove current user only
       (pulse/unsubscribe-from-alert! id api/*current-user-id*))
-
+    ;; Send emails letting people know they have been unsubscribe
     (when (email/email-configured?)
       (messages/send-you-unsubscribed-alert-email! alert @api/*current-user*))
-
+    ;; finally, return a 204 No Content
     api/generic-204-no-content))
 
 (defn- notify-on-delete-if-needed!
