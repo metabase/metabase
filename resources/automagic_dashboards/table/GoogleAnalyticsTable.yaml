@@ -40,16 +40,15 @@ groups:
 - Overview:
     title: Summary
 - SessionsBreakdown:
-    title: Sessions in the last 30 days
+    title: Sessions
 cards:
   - SessionsOverTime:
-      title: Sessions and unique users per day, last 30 days
-      description: How many total sessions vs. how many individual users you had each day in the last 30 days.
+      title: Sessions and unique users per day
+      description: How many total sessions vs. how many individual users you had each day.
       metrics:
         - Sessions
         - 1DayActiveUsers
       dimensions: Day
-      filters: Last30Days
       visualization: line
       score: 100
       width: 18
@@ -60,7 +59,7 @@ cards:
   # it's displayed as a bar chart.
 #  - SessionsByNewVsReturningUser:
 #    title: Sessions, new vs. returning users
-#    description: Percent of total sessions in the last 30 days that were from new vs. returning users
+#    description: Percent of total sessions that were from new vs. returning users
 #    metrics: Sessions
 #    dimensions:
 #    filters: NewUsers
@@ -71,8 +70,6 @@ cards:
       description: Total sessions in each country
       metrics: Sessions
       dimensions: Country
-      filters:
-       - Last30Days
       visualization:
         map:
           map.type: region
@@ -84,7 +81,6 @@ cards:
       description: Where most of your sessions originate from
       metrics: Sessions
       dimensions: Channel
-      filters: Last30Days
       visualization: bar
       group: SessionsBreakdown
       score: 80
@@ -93,7 +89,6 @@ cards:
       description: Total sessions by desktop, mobile, or tablet
       metrics: Sessions
       dimensions: DeviceType
-      filters: Last30Days
       visualization: bar
       score: 80
       group: SessionsBreakdown
@@ -102,7 +97,6 @@ cards:
       description: The pages with the most pageviews
       metrics: Pageviews
       dimensions: Page
-      filters: Last30Days
       visualization: table
       height: 8
       score: 70
@@ -111,7 +105,6 @@ cards:
       description: Sessions by page where the session began
       metrics: Sessions
       dimensions: LandingPage
-      filters: Last30Days
       visualization: table
       height: 8
       score: 70
@@ -123,7 +116,6 @@ cards:
       description: The top external pages that brought users to your site
       metrics: Sessions
       dimensions: Source
-      filters: Last30Days
       visualization: table
       height: 8
       score: 70
@@ -133,6 +125,5 @@ cards:
 #    metric: Retention
 #    dimensions: Day, # The other dimension I want is called Acquisition Date in GA
                      # but I can't find this in ga-metadata.js
-#    filters: Last30Days
 #    visualization: table
 #    score: 100
