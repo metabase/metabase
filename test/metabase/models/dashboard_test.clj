@@ -1,6 +1,7 @@
 (ns metabase.models.dashboard-test
   (:require [expectations :refer :all]
             [metabase.api.common :as api]
+            [metabase.automagic-dashboards.core :as magic]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -10,8 +11,8 @@
              [database :refer [Database]]
              [interface :as mi]
              [permissions :as perms]
-             [permissions-group :as group]
-             [table :refer [Table]]]
+             [table :refer [Table]]
+             [user :as user]]
             [metabase.test
              [data :refer :all]
              [util :as tu]]
@@ -220,3 +221,22 @@
   (with-dash-in-collection [_ collection dash]
     (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
       (mi/can-write? dash))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Transient Dashboard Tests                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; test that we save a transient dashboard
+(expect
+  8
+  (tu/with-model-cleanup ['Card 'Dashboard 'DashboardCard 'Collection]
+    (binding [api/*current-user-id*              (user->id :rasta)
+              api/*current-user-permissions-set* (-> :rasta
+                                                     user->id
+                                                     user/permissions-set
+                                                     atom)]
+      (->> (magic/automagic-analysis (Table (id :venues)) {})
+           save-transient-dashboard!
+           :id
+           (db/count 'DashboardCard :dashboard_id)))))

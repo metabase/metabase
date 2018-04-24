@@ -275,10 +275,10 @@ export function questionUrlWithParameters(
   }
 
   if (isTransientId(card.id)) {
-    card.id = null;
+    card = assoc(card, "id", null);
   }
   if (isTransientId(card.original_card_id)) {
-    card.original_card_id = null;
+    card = assoc(card, "original_card_id", null);
   }
 
   return Urls.question(null, card.dataset_query ? card : undefined, query);

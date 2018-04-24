@@ -34,7 +34,7 @@ const getErrorComponent = ({ status, data, context }) => {
   ) {
     return <Archived entityName="question" linkTo="/questions/archive" />;
   } else {
-    return <GenericError />;
+    return <GenericError details={data && data.message} />;
   }
 };
 
