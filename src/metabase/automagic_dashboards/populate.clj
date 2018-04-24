@@ -119,7 +119,7 @@
                                     {:text         text
                                      :virtual_card {:name                   nil
                                                     :display                :text
-                                                    :dataset_query          nil
+                                                    :dataset_query          {}
                                                     :visualization_settings {}}}
                                     visualization-settings)
            :col                    y

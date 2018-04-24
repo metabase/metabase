@@ -25,8 +25,9 @@
     (-> (u/select-non-nil-keys table [:schema :name :fields])
         (update :fields (fn [fields]
                           (for [field fields]
-                            (u/select-non-nil-keys field [:table_id :name :fk_target_field_id :parent_id :base_type
-                                                          :special_type :database_type])))))))
+                            (u/select-non-nil-keys
+                             field
+                             [:table_id :name :fk_target_field_id :parent_id :base_type :database_type])))))))
 
 (defn- get-tables [database-or-id]
   (->> (hydrate (db/select Table, :db_id (u/get-id database-or-id), {:order-by [:id]}) :fields)

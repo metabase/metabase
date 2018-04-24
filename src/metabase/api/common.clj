@@ -13,6 +13,7 @@
              [util :as u]]
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
+            [puppetlabs.i18n.core :refer [trs tru]]
             [ring.util
              [io :as rui]
              [response :as rr]]
@@ -101,7 +102,7 @@
 (defn throw-invalid-param-exception
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
-  (throw (ex-info (format "Invalid field: %s" field-name)
+  (throw (ex-info (tru "Invalid field: {0}" field-name)
            {:status-code 400
             :errors      {(keyword field-name) message}})))
 
@@ -139,7 +140,7 @@
    (checkp-with f symb value (str "test failed: " f)))
   ([f symb value message]
    {:pre [(symbol? symb)]}
-   (checkp (f value) symb (format "Invalid value '%s' for '%s': %s" (str value) symb message))
+   (checkp (f value) symb (tru "Invalid value ''{0}'' for ''{1}'': {2}" (str value) symb message))
    value))
 
 (defn checkp-contains?
@@ -151,7 +152,8 @@
          [400 (str \"Invalid value '\" f \"' for 'f': must be one of: #{:fav :all :mine}\")])"
   [valid-values-set symb value]
   {:pre [(set? valid-values-set) (symbol? symb)]}
-  (checkp-with (partial contains? valid-values-set) symb value (str "must be one of: " valid-values-set)))
+  (checkp-with (partial contains? valid-values-set) symb value
+               (tru "must be one of: {0}" valid-values-set)))
 
 
 ;;; ---------------------------------------------- api-let, api->, etc. ----------------------------------------------
@@ -186,7 +188,7 @@
 
 ;; #### GENERIC 400 RESPONSE HELPERS
 (def ^:private generic-400
-  [400 "Invalid Request."])
+  [400 (tru "Invalid Request.")])
 
 (defn check-400
   "Throw a `400` if ARG is `false` or `nil`, otherwise return as-is."
@@ -201,7 +203,7 @@
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private generic-404
-  [404 "Not found."])
+  [404 (tru "Not found.")])
 
 (defn check-404
   "Throw a `404` if ARG is `false` or `nil`, otherwise return as-is."
@@ -217,7 +219,7 @@
 ;; #### GENERIC 403 RESPONSE HELPERS
 ;; If you can't be bothered to write a custom error message
 (def ^:private generic-403
-  [403 "You don't have permissions to do that."])
+  [403 (tru "You don''t have permissions to do that.")])
 
 (defn check-403
   "Throw a `403` if ARG is `false` or `nil`, otherwise return as-is."
@@ -232,7 +234,7 @@
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
 (def ^:private generic-500
-  [500 "Internal server error."])
+  [500 (tru "Internal server error.")])
 
 (defn check-500
   "Throw a `500` if ARG is `false` or `nil`, otherwise return as-is."
@@ -277,7 +279,7 @@
         [arg->schema body]     (u/optional #(and (map? %) (every? symbol? (keys %))) more)
         validate-param-calls   (validate-params arg->schema)]
     (when-not docstr
-      (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (ns-name *ns*) fn-name)))
+      (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
     `(def ~(vary-meta fn-name assoc
                       ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
                       ;; their API error messages
@@ -352,7 +354,7 @@
 (extend-protocol protocols/StreamableResponseBody
   clojure.core.async.impl.channels.ManyToManyChannel
   (write-body-to-stream [output-queue _ ^OutputStream output-stream]
-    (log/debug (u/format-color 'green "starting streaming request"))
+    (log/debug (u/format-color 'green (trs "starting streaming request")))
     (with-open [out (io/writer output-stream)]
       (loop [chunk (async/<!! output-queue)]
         (cond
@@ -362,7 +364,7 @@
               (.write out (str chunk))
               (.flush out)
               (catch org.eclipse.jetty.io.EofException e
-                (log/info e (u/format-color 'yellow "connection closed, canceling request"))
+                (log/info e (u/format-color 'yellow (trs "connection closed, canceling request")))
                 (async/close! output-queue)
                 (throw e)))
             (recur (async/<!! output-queue)))
@@ -419,7 +421,7 @@
             ;; a newline padding character as it's harmless and will allow us to check if the client is connected. If
             ;; sending this character fails because the connection is closed, the chan will then close.  Newlines are
             ;; no-ops when reading JSON which this depends upon.
-            (log/debug (u/format-color 'blue "Response not ready, writing one byte & sleeping..."))
+            (log/debug (u/format-color 'blue (trs "Response not ready, writing one byte & sleeping...")))
             (if (async/>!! output-chan \newline)
               ;; Success put the channel, wait and see if we get the response next time
               (recur)
@@ -449,13 +451,13 @@
   "Check that the `public-sharing-enabled` Setting is `true`, or throw a `400`."
   []
   (check (public-settings/enable-public-sharing)
-    [400 "Public sharing is not enabled."]))
+         [400 (tru "Public sharing is not enabled.")]))
 
 (defn check-embedding-enabled
   "Is embedding of Cards or Objects (secured access via `/api/embed` endpoints with a signed JWT enabled?"
   []
   (check (public-settings/enable-embedding)
-    [400 "Embedding is not enabled."]))
+    [400 (tru "Embedding is not enabled.")]))
 
 (defn check-not-archived
   "Check that the OBJECT exists and is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
@@ -463,4 +465,4 @@
   (u/prog1 object
     (check-404 object)
     (check (not (:archived object))
-      [404 {:message "The object has been archived.", :error_code "archived"}])))
+      [404 {:message (tru "The object has been archived."), :error_code "archived"}])))

@@ -255,8 +255,8 @@
 
 (defn- built-in-metrics
   [{query :query}]
-  (if-not (empty? (aggregations query))
-    (s/join "," (for [[aggregation-type metric-name] (aggregations query)
+  (when-let [ags (seq (aggregations query))]
+    (s/join "," (for [[aggregation-type metric-name] ags
                       :when (and aggregation-type
                                  (= :metric (qputil/normalize-token aggregation-type))
                                  (string? metric-name))]
