@@ -1115,7 +1115,7 @@ msgstr "Feito"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:212
 msgid "Group name"
-msgstr "Grupo de nomes"
+msgstr "Nome do grupo"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:389
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:25
@@ -1308,7 +1308,7 @@ msgstr "agora ele será capaz de"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:80
 msgid " native queries for "
-msgstr "consultas nativas para"
+msgstr "consultas nativas para "
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:17
 #: frontend/src/metabase/admin/permissions/routes.jsx:12
@@ -3317,7 +3317,7 @@ msgstr "removeu um alerta sobre - "
 
 #: frontend/src/metabase/home/components/Activity.jsx:152
 msgid "saved a question about "
-msgstr "salvou uma pergunta sobre"
+msgstr "salvou uma pergunta sobre "
 
 #: frontend/src/metabase/home/components/Activity.jsx:165
 msgid "saved a question"
@@ -3361,7 +3361,7 @@ msgstr "Olá mundo!"
 
 #: frontend/src/metabase/home/components/Activity.jsx:253
 msgid "Metabase is up and running."
-msgstr "o Metabase está funcionando."
+msgstr "O Metabase está funcionando."
 
 #: frontend/src/metabase/home/components/Activity.jsx:259
 #: frontend/src/metabase/home/components/Activity.jsx:289
@@ -3378,7 +3378,7 @@ msgstr "a"
 #: frontend/src/metabase/home/components/Activity.jsx:373
 #: frontend/src/metabase/home/components/Activity.jsx:414
 msgid " table"
-msgstr "placa"
+msgstr " tabela"
 
 #: frontend/src/metabase/home/components/Activity.jsx:299
 #: frontend/src/metabase/home/components/Activity.jsx:329
@@ -3388,7 +3388,7 @@ msgstr "fez alterações na métrica"
 #: frontend/src/metabase/home/components/Activity.jsx:313
 #: frontend/src/metabase/home/components/Activity.jsx:404
 msgid " in the "
-msgstr "no"
+msgstr " no "
 
 #: frontend/src/metabase/home/components/Activity.jsx:336
 msgid "removed the metric "
@@ -3704,7 +3704,7 @@ msgid ""
 msgstr ""
 "Este campo só será exibido quando você ver os detalhes de um único registro. "
 "Use-o para obter informações longas ou que não sejam úteis em uma tabela ou "
-"graphic"
+"gráfico"
 
 #: frontend/src/metabase/lib/core.js:228
 msgid "Do Not Include"
@@ -3860,11 +3860,11 @@ msgstr ""
 
 #: frontend/src/metabase/lib/schema_metadata.js:198
 msgid "True"
-msgstr "VERDADEIRO"
+msgstr "Verdadeiro"
 
 #: frontend/src/metabase/lib/schema_metadata.js:198
 msgid "False"
-msgstr "Falsa"
+msgstr "Falso"
 
 #: frontend/src/metabase/lib/schema_metadata.js:282
 msgid "Select longitude field"
@@ -3922,7 +3922,7 @@ msgstr "Vazio"
 #: frontend/src/metabase/lib/schema_metadata.js:369
 #: frontend/src/metabase/lib/schema_metadata.js:379
 msgid "Not empty"
-msgstr "Sem vácuo"
+msgstr "Não é vazio"
 
 #: frontend/src/metabase/lib/schema_metadata.js:331
 msgid "Equal to"
@@ -4125,7 +4125,7 @@ msgstr "dois"
 
 #: frontend/src/metabase/lib/utils.js:57
 msgid "three"
-msgstr "tres"
+msgstr "três"
 
 #: frontend/src/metabase/lib/utils.js:58
 msgid "four"
@@ -4924,12 +4924,12 @@ msgstr "Antes de {0}"
 #: frontend/src/metabase/qb/components/TimeseriesFilterWidget.jsx:104
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:299
 msgid "Is Empty"
-msgstr "Vazio"
+msgstr "É Vazio"
 
 #: frontend/src/metabase/qb/components/TimeseriesFilterWidget.jsx:106
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:305
 msgid "Not Empty"
-msgstr "Sem vácuo"
+msgstr "Não é vazio"
 
 #: frontend/src/metabase/qb/components/TimeseriesFilterWidget.jsx:109
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:216
@@ -5767,7 +5767,7 @@ msgstr "Adicionar filtro"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterWidget.jsx:151
 msgid "Matches"
-msgstr "Concordar com"
+msgstr "Igual à"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:224
 msgid "Previous"
@@ -8338,7 +8338,7 @@ msgstr "Erro ao testar a conexão SMTP"
 #: src/metabase/feature_extraction/costs.clj
 msgid ""
 "Cap resorce expanditure for all x-rays. (exact, approximate, or extended)"
-msgstr "Limitar recursos gastos para todos os raios-x. (exato, aproximado ou extendido)"
+msgstr "Limitar recursos gastos para todos os raios-x. (exact, approximate, or extended)"
 
 #: src/metabase/feature_extraction/costs.clj
 msgid "Should x-raying be available at all?"
@@ -8455,11 +8455,11 @@ msgid ""
 "matched:n{0}"
 msgstr ""
 "Você poderia ser um pouco mais específico? Eu encontrei esses cartões com "
-"Nomes correspondentes: n{0}"
+"nomes correspondentes: n{0}"
 
 #: src/metabase/metabot.clj
 msgid "I don''t know what Card `{0}` is. Give me a Card ID or name."
-msgstr "Eu não sei o que é o cartão {0} `. Me dê um ID ou nome do cartão."
+msgstr "Eu não sei o que é o cartão `{0}`. Me dê um ID ou nome do cartão."
 
 #: src/metabase/metabot.clj
 msgid ""
