@@ -155,7 +155,7 @@
     "lint-eslint":              "yarn && eslint --ext .js --ext .jsx --max-warnings 0 frontend/src frontend/test",
     "lint-prettier":            "yarn && prettier -l 'frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
     "flow":                     "yarn && flow check",
-    "test":                     "yarn test-unit --coverage && yarn test-integrated && yarn test-karma",
+    "test":                     "yarn test-unit && yarn test-integrated && yarn test-karma",
     "test-integrated":          "./bin/build-for-test && yarn test-integrated-no-build",
     "test-integrated-watch":    "yarn test-integrated --watch",
     "test-integrated-no-build": "yarn && babel-node ./frontend/test/__runner__/run_integrated_tests.js",
