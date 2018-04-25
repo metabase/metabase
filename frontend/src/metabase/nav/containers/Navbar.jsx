@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "c-3po";
-import { Box, Flex } from "rebass";
+import { Box, Flex, Wrapper } from "rebass";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -170,7 +170,7 @@ export default class Navbar extends Component {
         <Box my={1} p={1} className="wrapper lg-wrapper--trim">
           {/* <SearchBar /> */}
         </Box>
-        <Flex className="ml-auto" align="center">
+        <Flex ml="auto" align="center">
           <Box mx={1}>
             <Link to="reference">Reference</Link>
           </Box>

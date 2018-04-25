@@ -2,14 +2,13 @@
 
 import React, { Component } from "react";
 import RetinaImage from "react-retina-image";
-import cx from "classnames";
+import sys from "system-components";
 
 import { loadIcon } from "metabase/icon_paths";
 
 import Tooltipify from "metabase/hoc/Tooltipify";
 
-@Tooltipify
-export default class Icon extends Component {
+class BaseIcon extends Component {
   static props: {
     name: string,
     size?: string | number,
@@ -17,7 +16,6 @@ export default class Icon extends Component {
     height?: string | number,
     scale?: string | number,
     tooltip?: string, // using Tooltipify
-    className?: string,
   };
 
   render() {
@@ -25,11 +23,7 @@ export default class Icon extends Component {
     if (!icon) {
       return null;
     }
-    const className = cx(
-      icon.attrs && icon.attrs.className,
-      this.props.className,
-    );
-    const props = { ...icon.attrs, ...this.props, className };
+    const props = { ...icon.attrs, ...this.props };
     for (const prop of ["width", "height", "size", "scale"]) {
       if (typeof props[prop] === "string") {
         props[prop] = parseInt(props[prop], 10);
@@ -63,3 +57,16 @@ export default class Icon extends Component {
     }
   }
 }
+
+const Icon = sys(
+  {
+    is: BaseIcon,
+  },
+  props => ({
+    flexShrink: 0, // ensure the icon doesn't shrink when in a flex context
+  }),
+  "space",
+  "color",
+);
+
+export default Tooltipify(Icon);

@@ -17,6 +17,30 @@ import EntityMenu from "metabase/components/EntityMenu";
 
 import LandingNav from "metabase/components/LandingNav";
 
+const Card = Box.extend`
+  background-color: white;
+  border: 1px solid ${normal.grey1};
+  border-radius: 6px;
+  box-shadow: 0 1px 3px ${normal.grey1};
+`;
+
+const CollectionItem = ({ collection }) => (
+  <Link to={`collections/${collection.slug}`}>
+    <Card>
+      <Flex
+        align="center"
+        my={1}
+        px={1}
+        py={2}
+        key={`collection-${collection.id}`}
+      >
+        <Icon name="all" mx={2} />
+        {collection.name}
+      </Flex>
+    </Card>
+  </Link>
+);
+
 const CollectionList = ({ collectionSlug }) => {
   return (
     <Box>
@@ -26,31 +50,37 @@ const CollectionList = ({ collectionSlug }) => {
             return <Box>Loading...</Box>;
           }
           return (
-            <Flex wrap>
+            <Grid>
               {collections.map(collection => (
-                <Box w={1 / 4}>
-                  <Flex
-                    align="center"
-                    my={1}
-                    px={1}
-                    py={2}
-                    key={`collection-${collection.id}`}
-                    className="bordered rounded shadowed"
-                  >
-                    <Icon name="all" className="mr1" />
-                    <Link to={`collections/${collection.slug}`}>
-                      {collection.name}
-                    </Link>
-                  </Flex>
-                </Box>
+                <GridItem>
+                  <CollectionItem collection={collection} />
+                </GridItem>
               ))}
-            </Flex>
+            </Grid>
           );
         }}
       </CollectionListLoader>
     </Box>
   );
 };
+
+const GridItem = ({ children, w, px, py }) => (
+  <Box w={w} px={px} py={py}>
+    {children}
+  </Box>
+);
+
+GridItem.defaultProps = {
+  w: 1 / 4,
+  px: 2,
+  py: 1,
+};
+
+const Grid = ({ children }) => (
+  <Flex wrap mx={-2}>
+    {children}
+  </Flex>
+);
 
 const ItemCard = ({ children, background }) => {
   return (
@@ -119,6 +149,7 @@ class DefaultLanding extends React.Component {
 
             let items = allItems;
 
+            // Hack in filtering
             if (location.query.show) {
               switch (location.query.show) {
                 case "dashboards":
@@ -139,11 +170,11 @@ class DefaultLanding extends React.Component {
             console.log(items);
 
             return (
-              <Flex wrap>
+              <Grid>
                 {items.map(item => (
-                  <Box w={1 / 4}>{this._renderItem(item)}</Box>
+                  <GridItem>{this._renderItem(item)}</GridItem>
                 ))}
-              </Flex>
+              </Grid>
             );
           }}
         </CollectionItemsLoader>
@@ -176,7 +207,6 @@ class CollectionLanding extends React.Component {
     /* TODO - this will live in redux land  */
     const currentCollection =
       this.state.collections.filter(c => c.slug === collectionSlug)[0] || {};
-    console.log("currentCollection", currentCollection);
     return (
       <Box>
         <Box className="wrapper lg-wrapper--trim">
@@ -187,7 +217,7 @@ class CollectionLanding extends React.Component {
                 <Flex>
                   <Link to="/">Metabase, Inc</Link>
                 </Flex>
-                {currentCollection && (
+                {currentCollection.name && (
                   <Flex align="center">
                     <Icon name="chevronright" className="ml2 mr2" />
                     <Flex>
