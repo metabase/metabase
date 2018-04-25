@@ -309,9 +309,12 @@ describe("FieldApp", () => {
       click(useFKButton);
       store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA]);
 
-      const fkFieldSelect = section.find(SelectButton);
+      let fkFieldSelect;
 
-      await eventually(() => expect(fkFieldSelect.text()).toBe("Name"));
+      await eventually(() => {
+        fkFieldSelect = section.find(SelectButton);
+        expect(fkFieldSelect.text()).toBe("Name");
+      });
 
       click(fkFieldSelect);
 
@@ -326,7 +329,11 @@ describe("FieldApp", () => {
 
       click(sourceField);
       store.waitForActions([FETCH_TABLE_METADATA]);
-      await eventually(() => expect(fkFieldSelect.text()).toBe("Source"));
+
+      await eventually(() => {
+        fkFieldSelect = section.find(SelectButton);
+        expect(fkFieldSelect.text()).toBe("Source");
+      });
     });
 
     it("doesn't show date fields in fk options", async () => {
