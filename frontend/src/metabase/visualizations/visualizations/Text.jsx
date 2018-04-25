@@ -178,6 +178,9 @@ export default class Text extends Component {
             className,
             styles.Text,
             styles[isSmall ? "small" : "large"],
+            /* if the card is not showing a background we should adjust the left
+             * padding to help align the titles with the wrapper */
+            { pl0: !settings["dashcard.background"] },
           )}
         >
           <ReactMarkdown
