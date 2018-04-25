@@ -198,10 +198,13 @@
                (format "is on %s" (humanize-datetime value))
                (format "is %s" (apply either value values)))}]))
 
-(defmethod humanize-filter-value :not=
-  [_ [_ field-reference value]]
-  [{:field field-reference
-    :value (format "is not %s" value)}])
+(defmethod humanize-filter-value :!=
+  [fieldset [_ field-reference value & values]]
+  (let [field (field-reference->field fieldset field-reference)]
+    [{:field field-reference
+      :value (if (datetime? field)
+               (format "is not on %s" (humanize-datetime value))
+               (format "is not %s" (apply either value values)))}]))
 
 (defmethod humanize-filter-value :>
   [fieldset [_ field-reference value]]

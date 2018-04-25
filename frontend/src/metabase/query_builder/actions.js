@@ -126,8 +126,8 @@ export const updateUrl = createThunkAction(
     if (!card) {
       return;
     }
-    var copy = cleanCopyCard(card);
-    var newState = {
+    let copy = cleanCopyCard(card);
+    let newState = {
       card: copy,
       cardId: copy.id,
       serializedCard: serializeCardForUrl(copy),
@@ -139,7 +139,7 @@ export const updateUrl = createThunkAction(
       return;
     }
 
-    var url = urlForCardState(newState, dirty);
+    let url = urlForCardState(newState, dirty);
 
     // if the serialized card is identical replace the previous state instead of adding a new one
     // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
@@ -1319,8 +1319,8 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     if (!queryResult || !fk) return false;
 
     // extract the value we will use to filter our new query
-    var originValue;
-    for (var i = 0; i < queryResult.data.cols.length; i++) {
+    let originValue;
+    for (let i = 0; i < queryResult.data.cols.length; i++) {
       if (isPK(queryResult.data.cols[i].special_type)) {
         originValue = queryResult.data.rows[0][i];
       }
@@ -1351,8 +1351,8 @@ export const loadObjectDetailFKReferences = createThunkAction(
       const { qb: { card, queryResult, tableForeignKeys } } = getState();
 
       function getObjectDetailIdValue(data) {
-        for (var i = 0; i < data.cols.length; i++) {
-          var coldef = data.cols[i];
+        for (let i = 0; i < data.cols.length; i++) {
+          let coldef = data.cols[i];
           if (isPK(coldef.special_type)) {
             return data.rows[0][i];
           }
