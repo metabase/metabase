@@ -488,8 +488,13 @@
                               :id)
                         (->> source
                              :result_metadata
-                             (map (comp #(classify/run-classifiers % {}) field/map->FieldInstance))
-                             constantly ))]
+                             (map (fn [field]
+                                    (-> field
+                                        (update :base_type keyword)
+                                        (update :special_type keyword)
+                                        field/map->FieldInstance
+                                        (classify/run-classifiers {}))))
+                             constantly))]
     (as-> {:source       (assoc source :fields (table->fields source))
            :tables       (map #(assoc % :fields (table->fields %)) tables)
            :database     (:database root)
@@ -532,9 +537,15 @@
         cards     (make-cards context rule)]
     (when cards
       [(assoc dashboard
-         :filters filters
-         :cards   cards
-         :context context)
+         :filters  filters
+         :cards    cards
+         :context  context
+         :fieldset (->> context
+                        :tables
+                        (mapcat :fields)
+                        (map (fn [field]
+                               [((some-fn :id :name) field) field]))
+                        (into {})))
        rule])))
 
 (def ^:private ^:const ^Long max-related 6)
@@ -644,10 +655,10 @@
   (comp codec/base64-encode codecs/str->bytes json/encode))
 
 (def ^:private ^{:arglists '([card-or-question])} nested-query?
-  (comp string? :source_table :query :dataset_query))
+  (comp (every-pred string? #(str/starts-with? % "card__")) :source_table :query :dataset_query))
 
 (def ^:private ^{:arglists '([card-or-question])} native-query?
-  (comp #{:native} qp.util/normalize-token :type :query :dataset_query))
+  (comp #{:native} qp.util/normalize-token :type :dataset_query))
 
 (def ^:private ^{:arglists '([card-or-question])} source-question
   (comp Card #(Integer/parseInt %) second #(str/split % #"__") :source_table :query :dataset_query))
@@ -656,18 +667,16 @@
   [card {:keys [cell-query] :as opts}]
   (if (or (table-like? card)
           cell-query)
-    (let [source (if (nested-query? card)
-                   (-> card source-question (assoc :entity_type :entity/GenericTable))
-                   (-> card :table_id Table))]
+    (let [source (cond
+                   (nested-query? card) (-> card
+                                            source-question
+                                            (assoc :entity_type :entity/GenericTable))
+                   (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
+                   :else                (-> card :table_id Table))]
       (automagic-dashboard
        (merge {:entity       source
                :source       source
-               :query-filter (cond-> (-> card :dataset_query :query :filter)
-                               (nested-query? card) (merge-filter-clauses (-> card
-                                                                              source-question
-                                                                              :dataset_query
-                                                                              :query
-                                                                              :filter)))
+               :query-filter (-> card :dataset_query :query :filter)
                :database     (:database_id card)
                :full-name    (str (:name card) " question")
                :url          (if cell-query
@@ -683,14 +692,15 @@
   [query {:keys [cell-query] :as opts}]
   (if (or (table-like? query)
           (:cell-query opts))
-    (let [source (if (nested-query? query)
-                   (-> query source-question (assoc :entity_type :entity/GenericTable))
-                   (-> query :table_id Table))]
+    (let [source (cond
+                   (nested-query? query) (-> query
+                                             source-question
+                                             (assoc :entity_type :entity/GenericTable))
+                   (native-query? query) (-> query (assoc :entity_type :entity/GenericTable))
+                   :else                 (-> query :table-id Table))]
       (automagic-dashboard
        (merge {:entity       source
                :source       source
-               :query-filter (when (nested-query? query)
-                               (-> source :dataset_query :query :filter))
                :database     (:database-id query)
                :full-name    (if (nested-query? query)
                                (:name source)
@@ -700,7 +710,7 @@
                                        (endocde-base64-json (:dataset_query query))
                                        (endocde-base64-json cell-query))
                                (format "%sadhoc/%s" public-endpoint
-                                                   (endocde-base64-json query)))
+                                       (endocde-base64-json query)))
                :rules-prefix "table"}
               (update opts :cell-query merge-filter-clauses (-> query
                                                                 :dataset_query
