@@ -316,12 +316,14 @@ describe("public/embedded", () => {
         store.pushPath(questionUrl + "?category=Gadget");
         await waitForRequestToComplete("GET", apiRegex);
         // use `update()` because of setState
-        expect(
-          app
-            .update()
-            .find(Scalar)
-            .text(),
-        ).toBe(COUNT_GADGET + "sql parametrized");
+        await eventually(() =>
+          expect(
+            app
+              .update()
+              .find(Scalar)
+              .text(),
+          ).toBe(COUNT_GADGET + "sql parametrized"),
+        );
       }
 
       it("should allow seeing an embedded question", async () => {
