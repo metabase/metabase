@@ -14,7 +14,7 @@ import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // e
 import type { Data, Options } from "metabase/lib/api";
 
 import type { DatabaseId } from "metabase/meta/types/Database";
-import type { Candidate } from "metabase/meta/types/Auto";
+import type { DatabaseCandidates } from "metabase/meta/types/Auto";
 import type { DashboardWithCards } from "metabase/meta/types/Dashboard";
 
 export const ActivityApi = {
@@ -95,7 +95,7 @@ export const EmbedApi = {
 
 type $AutoApi = {
   dashboard: ({ subPath: string }) => DashboardWithCards,
-  db_candidates: ({ id: DatabaseId }) => Candidate[],
+  db_candidates: ({ id: DatabaseId }) => DatabaseCandidates,
 };
 
 export const AutoApi: $AutoApi = {
@@ -109,6 +109,7 @@ export const AutoApi: $AutoApi = {
 export const EmailApi = {
   updateSettings: PUT("/api/email"),
   sendTest: POST("/api/email/test"),
+  clear: DELETE("/api/email"),
 };
 
 export const SlackApi = {

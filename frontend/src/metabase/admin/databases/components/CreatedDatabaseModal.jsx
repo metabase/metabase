@@ -19,14 +19,14 @@ export default class CreatedDatabaseModal extends Component {
       <ModalContent title={t`Your database has been added!`} onClose={onClose}>
         <div className="Form-inputs mb4">
           <p>
-            {t`We took a look at your data, and we have some automated explorations that we can show you!.`}
+            {t`We took a look at your data, and we have some automated explorations that we can show you!`}
           </p>
         </div>
 
         <div className="Form-actions flex layout-centered">
           <a className="link" onClick={onDone}>{t`I'm good thanks`}</a>
           <Link
-            to={`/ready/${databaseId}`}
+            to={`/explore/${databaseId}`}
             className="Button Button--primary ml-auto"
           >
             {t`Explore this data`}

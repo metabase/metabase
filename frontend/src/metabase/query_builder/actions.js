@@ -1270,8 +1270,8 @@ export const queryCompleted = (card, queryResults) => {
 const getQuestionWithDefaultVisualizationSettings = (question, series) => {
   const oldVizSettings = question.visualizationSettings();
   const newVizSettings = {
-    ...getPersistableDefaultSettings(series),
     ...oldVizSettings,
+    ...getPersistableDefaultSettings(series),
   };
 
   // Don't update the question unnecessarily

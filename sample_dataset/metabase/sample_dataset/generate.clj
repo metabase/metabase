@@ -1,13 +1,14 @@
 (ns metabase.sample-dataset.generate
   "Logic for generating the sample dataset.
    Run this with `lein generate-sample-dataset`."
-  (:require [clojure.java
+  (:require [clojure
+             [edn :as edn]
+             [string :as s]]
+            [clojure.java
              [io :as io]
              [jdbc :as jdbc]]
             [clojure.math.numeric-tower :as math]
-            [clojure.string :as s]
             [faker
-             [address :as address]
              [company :as company]
              [internet :as internet]
              [lorem :as lorem]
@@ -21,23 +22,21 @@
 (def ^:private ^:const sample-dataset-filename
   (str (System/getProperty "user.dir") "/resources/sample-dataset.db"))
 
-(defn- normal-distribution-rand [mean median]
-  (dist/sample (dist/normal mean median)))
+(def ^:private num-rows-to-create
+  {:people   2500
+   :products 200})
 
-(defn- normal-distribution-rand-int [mean median]
-  (math/round (normal-distribution-rand mean median)))
+(def ^:private num-reviews-distribution
+  "Normal distribution sampled to determine number of reviews each product should have. Actual average number of
+  reviews will be slightly higher because negative values returned by the sample will be floored at 0 (e.g. a product
+  cannot have less than 0 reviews)."
+  (dist/normal 5 4))
+
+(def ^:private num-orders-distibution
+  "Normal distribution sampled to determine number of orders each person should have."
+  (dist/normal 5 10))
 
 ;;; ## PEOPLE
-
-(defn- random-latitude []
-  (-> (rand)
-      (* 180)
-      (- 90)))
-
-(defn- random-longitude []
-  (-> (rand)
-      (* 360)
-      (- 180)))
 
 (defn ^Date random-date-between [^Date min, ^Date max]
   (let [min-ms (.getTime min)
@@ -47,19 +46,34 @@
     (.setTime d (+ (long (rand range)) min-ms))
     d))
 
+(def ^:private addresses (atom nil))
+
+(defn- load-addresses! []
+  (println "Loading addresses...")
+  (reset! addresses (edn/read-string (slurp "sample_dataset/metabase/sample_dataset/addresses.edn")))
+  :ok)
+
+(defn- next-address []
+  (when-not (seq @addresses)
+    (load-addresses!))
+  (let [address (first @addresses)]
+    (swap! addresses rest)
+    address))
+
 (defn- random-person []
   (let [first (name/first-name)
-        last  (name/last-name)]
+        last  (name/last-name)
+        addr  (next-address)]
     {:name       (format "%s %s" first last)
      :email      (internet/free-email (format "%s.%s" first last))
      :password   (str (java.util.UUID/randomUUID))
      :birth_date (random-date-between (u/relative-date :year -60) (u/relative-date :year -18))
-     :address    (address/street-address)
-     :city       (address/city)
-     :zip        (apply str (take 5 (address/zip-code)))
-     :state      (address/us-state-abbr)
-     :latitude   (random-latitude)
-     :longitude  (random-longitude)
+     :address    (str (:house-number addr) " " (:street addr))
+     :city       (:city addr)
+     :zip        (:zip addr)
+     :state      (:state-abbrev addr)
+     :latitude   (:lat addr)
+     :longitude  (:lon addr)
      :source     (rand-nth ["Google" "Twitter" "Facebook" "Organic" "Affiliate"])
      :created_at (random-date-between (u/relative-date :year -2) (u/relative-date :year 1))}))
 
@@ -88,9 +102,12 @@
                                                  (dist/normal mean2 variance)]))))
 
 (def ^:private ^:const product-names
-  {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome, Enormous, Mediocre, Synergistic, Heavy-Duty, Lightweight, Aerodynamic, Durable]
-   :material  '[Steel, Wooden, Concrete, Plastic, Cotton, Granite, Rubber, Leather, Silk, Wool, Linen, Marble, Iron, Bronze, Copper, Aluminum, Paper]
-   :product   '[Chair, Car, Computer, Gloves, Pants, Shirt, Table, Shoes, Hat, Plate, Knife, Bottle, Coat, Lamp, Keyboard, Bag, Bench, Clock, Watch, Wallet, Toucan]})
+  {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome,
+                Enormous, Mediocre, Synergistic, Heavy-Duty, Lightweight, Aerodynamic, Durable]
+   :material  '[Steel, Wooden, Concrete, Plastic, Cotton, Granite, Rubber, Leather, Silk, Wool, Linen, Marble, Iron,
+                Bronze, Copper, Aluminum, Paper]
+   :product   '[Chair, Car, Computer, Gloves, Pants, Shirt, Table, Shoes, Hat, Plate, Knife, Bottle, Coat, Lamp,
+                Keyboard, Bag, Bench, Clock, Watch, Wallet, Toucan]})
 
 (defn- random-product-name []
   (format "%s %s %s"
@@ -129,7 +146,7 @@
 
 ;;; ## ORDERS
 
-(def ^:private ^:const state->tax-rate
+(def ^:private state->tax-rate
   {"AK" 0.0
    "AL" 0.04
    "AR" 0.065
@@ -251,13 +268,18 @@
    :body       (first (lorem/paragraphs))
    :created_at (random-date-between (:created_at product) (u/relative-date :year 2))})
 
+(defn- add-ids [objs]
+  (map-indexed
+   (fn [id obj]
+     (assoc obj :id (inc id)))
+   objs))
+
 (defn- create-randoms [n f]
-  (vec (map-indexed (fn [id obj]
-                      (assoc obj :id (inc id)))
-                    (repeatedly n f))))
+  (-> (take n (distinct (repeatedly f)))
+      add-ids))
 
 (defn- product-add-reviews [product]
-  (let [num-reviews (max 0 (normal-distribution-rand-int 5 4))
+  (let [num-reviews (max 0 (dist/sample num-reviews-distribution)) ; with 200 products should give us ~1000 reviews
         reviews     (vec (for [review (repeatedly num-reviews #(random-review product))]
                            (assoc review :product_id (:id product))))
         rating      (if (seq reviews) (/ (reduce + (map :rating reviews))
@@ -271,15 +293,14 @@
   {:pre [(sequential? products)
          (map? person)]
    :post [(map? %)]}
-  (let [num-orders (max 0 (normal-distribution-rand-int 5 10))]
+  (let [num-orders (max 0 (dist/sample num-orders-distibution))] ; with 2500 people should give us ~15k orders
     (if (zero? num-orders)
       person
       (assoc person :orders (vec (repeatedly num-orders #(random-order person (rand-nth products))))))))
 
 (defn- add-autocorrelation
-  "Add autocorrelation with lag `lag` to field `k` by adding the value from `lag`
-   steps back (and dividing by 2 to retain roughly the same value range).
-   https://en.wikipedia.org/wiki/Autocorrelation"
+  "Add autocorrelation with lag `lag` to field `k` by adding the value from `lag` steps back (and dividing by 2 to
+  retain roughly the same value range). https://en.wikipedia.org/wiki/Autocorrelation"
   ([k xs] (add-autocorrelation 1 k xs))
   ([lag k xs]
    (map (fn [prev next]
@@ -288,8 +309,8 @@
         (drop lag xs))))
 
 (defn- add-increasing-variance
-  "Gradually increase variance of field `k` by scaling it an (on average)
-   increasingly larger random noise.
+  "Gradually increase variance of field `k` by scaling it an (on average) increasingly larger random noise.
+
    https://en.wikipedia.org/wiki/Variance"
   [k xs]
   (let [n (count xs)]
@@ -299,16 +320,15 @@
                  xs)))
 
 (defn- add-seasonality
-  "Add seasonal component to field `k`. Seasonal variation (a multiplicative
-   factor) is described with map `seasonality-map` indexed into by `season-fn`
-   (eg. month of year of field created_at)."
+  "Add seasonal component to field `k`. Seasonal variation (a multiplicative factor) is described with map
+  `seasonality-map` indexed into by `season-fn` (eg. month of year of field created_at)."
   [season-fn k seasonality-map xs]
   (for [x xs]
     (update x k * (seasonality-map (season-fn x)))))
 
 (defn- add-outliers
-  "Add `n` outliers (times `scale` value spikes) to field `k`. `n` can be either
-   percentage or count, determined by `mode`."
+  "Add `n` outliers (times `scale` value spikes) to field `k`. `n` can be either percentage or count, determined by
+  `mode`."
   ([mode n k xs] (add-outliers mode n 10 k xs))
   ([mode n scale k xs]
    (if (= mode :share)
@@ -328,39 +348,40 @@
            (update x k * scale)
            x))))))
 
-(defn create-random-data [& {:keys [people products]
-                             :or   {people 2500 products 200}}]
+(defn create-random-data []
   {:post [(map? %)
-          (= (count (:people %)) people)
-          (= (count (:products %)) products)
+          (= (count (:people %)) (:people num-rows-to-create))
+          (= (count (:products %)) (:products num-rows-to-create))
           (every? keyword? (keys %))
           (every? sequential? (vals %))]}
-  (printf "Generating random data: %d people, %d products...\n" people products)
-  (let [products (mapv product-add-reviews (create-randoms products random-product))
-        people   (mapv (partial person-add-orders products) (create-randoms people random-person))]
-    {:people   (mapv #(dissoc % :orders) people)
-     :products (mapv #(dissoc % :reviews) products)
-     :reviews  (vec (mapcat :reviews products))
-     :orders   (->> people
-                    (mapcat :orders)
-                    (add-autocorrelation :quantity)
-                    (add-outliers :share 0.01 :quantity)
-                    (add-outliers :count 5 :discount)
-                    (add-increasing-variance :total)
-                    (add-seasonality #(.getMonth ^java.util.Date (:created_at %))
-                                     :quantity {0 0.6
-                                                1 0.5
-                                                2 0.3
-                                                3 0.9
-                                                4 1.3
-                                                5 1.9
-                                                6 1.5
-                                                7 2.1
-                                                8 1.5
-                                                9 1.7
-                                                10 0.9
-                                                11 0.6})
-                    vec)}))
+  (let [{:keys [products people]} num-rows-to-create]
+    (printf "Generating random data: %d people, %d products...\n" people products)
+    (let [products (for [product (create-randoms products random-product)]
+                     (product-add-reviews product))
+          people   (vec (for [person (create-randoms people random-person)]
+                          (person-add-orders products person)))]
+      {:people   (map #(dissoc % :orders) people)
+       :products (map #(dissoc % :reviews) products)
+       :reviews  (mapcat :reviews products)
+       :orders   (->> people
+                      (mapcat :orders)
+                      (add-autocorrelation :quantity)
+                      (add-outliers :share 0.01 :quantity)
+                      (add-outliers :count 5 :discount)
+                      (add-increasing-variance :total)
+                      (add-seasonality #(.getMonth ^java.util.Date (:created_at %))
+                                       :quantity {0  0.6
+                                                  1  0.5
+                                                  2  0.3
+                                                  3  0.9
+                                                  4  1.3
+                                                  5  1.9
+                                                  6  1.5
+                                                  7  2.1
+                                                  8  1.5
+                                                  9  1.7
+                                                  10 0.9
+                                                  11 0.6}))})))
 
 ;;; # LOADING THE DATA
 
@@ -475,7 +496,9 @@
    (io/delete-file (str filename ".mv.db") :silently)
    (io/delete-file (str filename ".trace.db") :silently)
    (println "Creating db...")
-   (let [db (dbspec/h2 {:db (format "file:%s;UNDO_LOG=0;CACHE_SIZE=131072;QUERY_CACHE_SIZE=128;COMPRESS=TRUE;MULTI_THREADED=TRUE;MVCC=TRUE;DEFRAG_ALWAYS=TRUE;MAX_COMPACT_TIME=5000;ANALYZE_AUTO=100"
+   (let [db (dbspec/h2 {:db (format (str "file:%s;UNDO_LOG=0;CACHE_SIZE=131072;QUERY_CACHE_SIZE=128;COMPRESS=TRUE;"
+                                         "MULTI_THREADED=TRUE;MVCC=TRUE;DEFRAG_ALWAYS=TRUE;MAX_COMPACT_TIME=5000;"
+                                         "ANALYZE_AUTO=100")
                                     filename)})]
      (doseq [[table-name field->type] (seq tables)]
        (jdbc/execute! db [(create-table-sql table-name field->type)]))
@@ -495,6 +518,7 @@
        (assert (keyword? table))
        (assert (sequential? rows))
        (let [table-name (s/upper-case (name table))]
+         (println (format "Inserting %d rows into %s..." (count rows) table-name))
          (jdbc/insert-multi! db table-name (for [row rows]
                                              (into {} (for [[k v] (seq row)]
                                                         {(s/upper-case (name k)) v}))))))

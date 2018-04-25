@@ -1,0 +1,147 @@
+title: A look at your [[this]] table
+transient_title: "Here's an overview of your [[this]] table"
+description: An exploration of your users to get you started.
+metrics:
+- Count:
+    metric: [count]
+dimensions:
+- JoinDate:
+    field_type: JoinTimestamp
+    score: 100
+- JoinDate:
+    field_type: CreationTimestamp
+    score: 90
+- JoinDate:
+    field_type: DateTime
+    score: 30
+- Source:
+    field_type: Source
+- GenericNumber:
+    field_type: GenericTable.Number
+    score: 80
+- Source:
+    field_type: GenericTable.Source
+    score: 100
+- GenericCategoryMedium:
+    field_type: GenericTable.Category
+    score: 75
+    max_cardinality: 10
+- GenericCategoryLarge:
+    field_type: GenericTable.Category
+    score: 70
+- State:
+    field_type: State
+- Country: Country
+- Long: GenericTable.Longitude
+- Lat: GenericTable.Latitude
+# Ignore
+- Name: Name
+- Birthdate: Birthdate
+- ZIP: ZipCode
+filters:
+  - Last30Days:
+      filter: ["time-interval", [dimension, JoinDate], -30, day]
+groups:
+- Overview:
+    title: Overview
+- Geographical:
+    title: Where your users are
+- General:
+    title: How your users are distributed
+dashboard_filters:
+- JoinDate
+- GenericCategoryMedium
+- Source
+- Country
+- State
+cards:
+# Overview
+  - Rowcount:
+      title: Total users
+      visualization: scalar
+      metrics: Count
+      score: 100
+      group: Overview
+      width: 5
+      height: 3
+  - RowcountLast30Days:
+      title: New users in the last 30 days
+      visualization: scalar
+      metrics: Count
+      score: 100
+      filters: Last30Days
+      group: Overview
+      width: 5
+      height: 3
+  - NewUsersByMonth:
+      visualization: line
+      title: New users per month
+      description: How many new users we've acquired each month
+      dimensions: JoinDate
+      metrics: Count
+      score: 100
+      group: Overview
+      width: 18
+      height: 7
+# Geographical
+  - CountByCountry:
+      title: Count of users per country
+      metrics: Count
+      dimensions: Country
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      group: Geographical
+  - CountByState:
+      title: Users per state
+      metrics: Count
+      dimensions: State
+      score: 90
+      height: 8
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      group: Geographical
+  - CountByCoords:
+      title: Users by coordinates
+      metrics: Count
+      dimensions:
+        - Long
+        - Lat
+      visualization: map
+      score: 80
+      height: 8
+      group: Geographical
+# General
+  - NumberDistribution:
+      title: How [[GenericNumber]] is distributed
+      dimensions:
+        - GenericNumber:
+            aggregation: default
+      metrics: Count
+      visualization: bar
+      score: 90
+      group: General
+  - CountByCategoryMedium:
+      title: Users per [[GenericCategoryMedium]]
+      dimensions: GenericCategoryMedium
+      metrics: Count
+      visualization: row
+      score: 80
+      height: 8
+      group: General
+      order_by:
+        - Count: descending
+  - CountByCategoryLarge:
+      title: Users per [[GenericCategoryLarge]]
+      dimensions: GenericCategoryLarge
+      metrics: Count
+      visualization: table
+      height: 8
+      score: 70
+      group: General
+      order_by:
+        - Count: descending

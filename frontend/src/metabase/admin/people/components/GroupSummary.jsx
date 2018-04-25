@@ -18,7 +18,9 @@ const GroupSummary = ({ groups, selectedGroups }) => {
         {otherGroups.length > 0 && (
           <span className="text-brand">
             {otherGroups.length +
-              " other " +
+              " " +
+              t`other` +
+              " " +
               inflect("group", otherGroups.length)}
           </span>
         )}

@@ -380,3 +380,9 @@
       :revision_message "WOW HOW COOL"
       :definition       {}})
     true))
+
+;; Test related/recommended entities
+(expect
+  #{:table :metrics :segments :linked-from}
+  (tt/with-temp* [Segment [{segment-id :id}]]
+    (-> ((user->client :crowberto) :get 200 (format "segment/%s/related" segment-id)) keys set)))

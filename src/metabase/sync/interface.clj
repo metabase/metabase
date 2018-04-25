@@ -108,11 +108,17 @@
    (s/optional-key :percent-email)  Percent
    (s/optional-key :average-length) (s/constrained Double #(>= % 0) "Valid number greater than or equal to zero")})
 
+(def DateTimeFingerprint
+  "Schema for fingerprint information for Fields deriving from `:type/DateTime`."
+  {(s/optional-key :earliest) s/Str
+   (s/optional-key :latest)   s/Str})
+
 (def TypeSpecificFingerprint
   "Schema for type-specific fingerprint information."
   (s/constrained
-   {(s/optional-key :type/Number) NumberFingerprint
-    (s/optional-key :type/Text)   TextFingerprint}
+   {(s/optional-key :type/Number)   NumberFingerprint
+    (s/optional-key :type/Text)     TextFingerprint
+    (s/optional-key :type/DateTime) DateTimeFingerprint}
    (fn [m]
      (= 1 (count (keys m))))
    "Type-specific fingerprint with exactly one key"))
@@ -151,7 +157,8 @@
 (def fingerprint-version->types-that-should-be-re-fingerprinted
   "Map of fingerprint version to the set of Field base types that need to be upgraded to this version the next
    time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
-  {1 #{:type/*}})
+  {1 #{:type/*}
+   2 #{:type/DateTime}})
 
 (def latest-fingerprint-version
   "The newest (highest-numbered) version of our Field fingerprints."

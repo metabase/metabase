@@ -3,7 +3,7 @@
 }
 .Dashboard {
   background-color: #f9fbfc;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 .DashboardHeader {

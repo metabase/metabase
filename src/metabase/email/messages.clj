@@ -188,7 +188,7 @@
 (defn- pulse-context [pulse]
   (merge {:emailType    "pulse"
           :pulseName    (:name pulse)
-          :sectionStyle (render/style render/section-style)
+          :sectionStyle (render/style (render/section-style))
           :colorGrey4   render/color-gray-4
           :logoFooter   true}
          (random-quote-context)))
@@ -266,7 +266,7 @@
      (merge {:questionURL (url/card-url card-id)
              :questionName card-name
              :emailType    "alert"
-             :sectionStyle render/section-style
+             :sectionStyle (render/section-style)
              :colorGrey4   render/color-gray-4
              :logoFooter   true}
             (random-quote-context)
@@ -319,7 +319,7 @@
 (defn send-new-alert-email!
   "Send out the initial 'new alert' email to the `CREATOR` of the alert"
   [{:keys [creator] :as alert}]
-  (send-email! creator "You setup an alert" new-alert-template
+  (send-email! creator "You set up an alert" new-alert-template
                (default-alert-context alert alert-condition-text)))
 
 (defn send-you-unsubscribed-alert-email!

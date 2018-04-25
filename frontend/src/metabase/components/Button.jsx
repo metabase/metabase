@@ -20,7 +20,14 @@ const BUTTON_VARIANTS = [
   "onlyIcon",
 ];
 
-const Button = ({ className, icon, iconSize, children, ...props }) => {
+const Button = ({
+  className,
+  icon,
+  iconRight,
+  iconSize,
+  children,
+  ...props
+}) => {
   let variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
     variant => "Button--" + variant,
   );
@@ -39,6 +46,13 @@ const Button = ({ className, icon, iconSize, children, ...props }) => {
           />
         )}
         <div>{children}</div>
+        {iconRight && (
+          <Icon
+            name={iconRight}
+            size={iconSize ? iconSize : 14}
+            className={cx({ ml1: !props.onlyIcon })}
+          />
+        )}
       </div>
     </button>
   );

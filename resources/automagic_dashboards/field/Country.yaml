@@ -1,0 +1,76 @@
+title: A look at your [[this]] field per country
+transient_title: Here's a closer look at your [[this]] field per country
+description: Which countries are represented the most and least.
+applies_to: GenericTable.Country
+metrics:
+- Sum: [sum, [dimension, GenericNumber]]
+- Avg: [avg, [dimension, GenericNumber]]
+- Count: [count]
+dimensions:
+  - GenericNumber: GenericTable.Number
+# bind just so they don't get used
+  - LongLat: GenericTable.Coordinate
+  - ZipCode: GenericTable.ZipCode
+# only used for filters
+  - Country:
+      field_type: GenericTable.Country
+  - State:
+      field_type: GenericTable.State
+  - GenericCategoryMedium:
+      field_type: GenericTable.Category
+      max_cardinality: 12
+      score: 90
+  - Timestamp:
+      field_type: CreationTimestamp
+      score: 100
+  - Timestamp:
+      field_type: DateTime
+      score: 90
+dashboard_filters:
+  - Timestamp
+  - State
+  - Country
+  - GenericCategoryMedium
+groups:
+  - Overview:
+      title: Overview
+  - Breakdowns:
+      title: "How different numbers are distributed across [[this]]"
+cards:
+  - Distribution:
+      title: Distribution of [[this]]
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      metrics: Count
+      dimensions: this
+      group: Overview
+  - Top5:
+      title: Top 5 [[this]]
+      visualization: row
+      metrics: Count
+      dimensions: this
+      limit: 5
+      order_by:
+        - Count: descending
+      group: Overview
+  - Bottom5:
+      title: Bottom 5 [[this]]
+      visualization: row
+      metrics: Count
+      dimensions: this
+      limit: 5
+      order_by:
+        - Count: ascending
+      group: Overview
+  - ByNumber:
+      title: "Sum of [[GenericNumber]] by [[this]]"
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      metrics:
+      - Sum
+      dimensions: this
+      group: Breakdowns

@@ -1,10 +1,14 @@
 (ns metabase.models.dashboard-test
   (:require [expectations :refer :all]
+            [metabase.api.common :as api]
+            [metabase.automagic-dashboards.core :as magic]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer :all :as dashboard]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [table :refer [Table]]
+             [user :as user]]
             [metabase.test
              [data :refer :all]
              [util :as tu]]
@@ -167,3 +171,18 @@
   (tu/with-temporary-setting-values [enable-public-sharing false]
     (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
       (:public_uuid dashboard))))
+
+
+;; test that we save a transient dashboard
+(expect
+  8
+  (tu/with-model-cleanup ['Card 'Dashboard 'DashboardCard 'Collection]
+    (binding [api/*current-user-id*              (user->id :rasta)
+              api/*current-user-permissions-set* (-> :rasta
+                                                     user->id
+                                                     user/permissions-set
+                                                     atom)]
+      (->> (magic/automagic-analysis (Table (id :venues)) {})
+           save-transient-dashboard!
+           :id
+           (db/count 'DashboardCard :dashboard_id)))))

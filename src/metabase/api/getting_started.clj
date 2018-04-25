@@ -5,16 +5,17 @@
             [metabase.models
              [interface :as mi]
              [setting :refer [defsetting]]]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db]))
 
 (defsetting getting-started-things-to-know
-  "'Some things to know' text field for the Getting Started guide.")
+  (tru "''Some things to know'' text field for the Getting Started guide."))
 
 (defsetting getting-started-contact-name
-  "Name of somebody users can contact for help in the Getting Started guide.")
+  (tru "Name of somebody users can contact for help in the Getting Started guide."))
 
 (defsetting getting-started-contact-email
-  "Email of somebody users can contact for help in the Getting Started guide.")
+  (tru "Email of somebody users can contact for help in the Getting Started guide."))
 
 
 (api/defendpoint GET "/"

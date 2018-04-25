@@ -346,7 +346,7 @@
              (assoc-in [:db :details] {:db "mem:test-data;USER=GUEST;PASSWORD=guest"}))
          (match-$ table
            {:description     "What a nice table!"
-            :entity_type     "person"
+            :entity_type     nil
             :visibility_type "hidden"
             :schema          $
             :name            $
@@ -357,7 +357,6 @@
             :raw_table_id    $
             :created_at      $}))
   (do ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
-                                                                           :entity_type     "person"
                                                                            :visibility_type "hidden"
                                                                            :description     "What a nice table!"})
       (dissoc ((user->client :crowberto) :get 200 (format "table/%d" (:id table)))
@@ -373,7 +372,6 @@
                    (with-redefs [sync/sync-table! (fn [& args] (swap! called inc)
                                                     (apply original-sync-table! args))]
                      ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
-                                                                                          :entity_type     "person"
                                                                                           :visibility_type state
                                                                                           :description     "What a nice table!"})))]
     (do (test-fun "hidden")
@@ -654,8 +652,13 @@
  (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
    (dimension-options-for-field response "date")))
 
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift}
+(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
   []
   (data/with-db (data/get-or-create-database! defs/test-data-with-time)
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :users)))]
       (dimension-options-for-field response "last_login_time"))))
+
+;; Test related/recommended entities
+(expect
+  #{:metrics :segments :linked-from :linking-to :tables}
+  (-> ((user->client :crowberto) :get 200 (format "table/%s/related" (data/id :venues))) keys set))

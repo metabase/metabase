@@ -66,7 +66,6 @@
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
-                 [instaparse "1.4.0"]                                 ; Insaparse parser generator
                  [io.forward/yaml "1.0.6"                             ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
                   :exclusions [org.clojure/clojure
                                org.yaml/snakeyaml]]
@@ -94,6 +93,16 @@
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
                  [org.postgresql/postgresql "42.1.4.jre7"]            ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
+                 [org.spark-project.hive/hive-jdbc "1.2.1.spark2"     ; JDBC Driver for Apache Spark
+                  :exclusions [org.apache.curator/curator-framework
+                               org.apache.curator/curator-recipes
+                               org.apache.thrift/libfb303
+                               org.apache.zookeeper/zookeeper
+                               org.eclipse.jetty.aggregate/jetty-all
+                               org.spark-project.hive/hive-common
+                               org.spark-project.hive/hive-metastore
+                               org.spark-project.hive/hive-serde
+                               org.spark-project.hive/hive-shims]]
                  [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
                  [org.xerial/sqlite-jdbc "3.21.0.1"]                  ; SQLite driver
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
@@ -155,7 +164,11 @@
                                            org.clojure/tools.namespace]]]
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"]
-                   :aot [metabase.logger]}                            ; Log appender class needs to be compiled for log4j to use it
+                   ;; Log appender class needs to be compiled for log4j to use it,
+                   ;; classes for fixed Hive driver in must be compiled for tests
+                   :aot [metabase.logger
+                         metabase.driver.FixedHiveConnection
+                         metabase.driver.FixedHiveDriver]}
              :ci {:jvm-opts ["-Xmx3g"]}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup  ; for test setup stuff
@@ -168,7 +181,8 @@
                                        "-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3010"
-                                       "-Dmb.api.key=test-api-key"]}
+                                       "-Dmb.api.key=test-api-key"
+                                       "-Duser.language=en"]}
              ;; build the uberjar with `lein uberjar`
              :uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]" ; strip out metadata for faster load / smaller uberjar size

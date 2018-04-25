@@ -1,14 +1,13 @@
 /* eslint "react/prop-types": "warn" */
 
-import React from "react";
+import React, { Component } from "react";
 import { t, jt } from "c-3po";
 
-import VisualizationErrorMessage from "./VisualizationErrorMessage";
+import ErrorMessage from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { DatasetQuery } from "metabase/meta/types/Card";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
-import { Component } from "react/lib/ReactBaseClasses";
 import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
 
@@ -55,7 +54,7 @@ export default class VisualizationResult extends Component {
       // successful query but there were 0 rows returned with the result
       return (
         <div className="flex flex-full">
-          <VisualizationErrorMessage
+          <ErrorMessage
             type="noRows"
             title="No results!"
             message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}

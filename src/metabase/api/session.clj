@@ -19,6 +19,7 @@
             [metabase.util
              [password :as pass]
              [schema :as su]]
+            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]
             [throttle.core :as throttle]
             [toucan.db :as db]))
@@ -41,6 +42,9 @@
    ;; IP Address doesn't have an actual UI field so just show error by username
    :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
 
+(def ^:private password-fail-message (tru "Password did not match stored password."))
+(def ^:private password-fail-snippet (tru "did not match stored password"))
+
 (defn- ldap-login
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
@@ -50,12 +54,15 @@
       (when-let [user-info (ldap/find-user username)]
         (when-not (ldap/verify-password user-info password)
           ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly outdated password
-          (throw (ex-info "Password did not match stored password." {:status-code 400
-                                                                     :errors      {:password "did not match stored password"}})))
+          (throw (ex-info password-fail-message
+                   {:status-code 400
+                    :errors      {:password password-fail-snippet}})))
         ;; password is ok, return new session
         {:id (create-session! (ldap/fetch-or-create-user! user-info password))})
       (catch com.unboundid.util.LDAPSDKException e
-        (log/error (u/format-color 'red "Problem connecting to LDAP server, will fallback to local authentication") (.getMessage e))))))
+        (log/error
+         (u/format-color 'red
+             (trs "Problem connecting to LDAP server, will fallback to local authentication {0}" (.getMessage e))))))))
 
 (defn- email-login
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
@@ -76,8 +83,9 @@
       (email-login username password) ; Then try local authentication
       ;; If nothing succeeded complain about it
       ;; Don't leak whether the account doesn't exist or the password was incorrect
-      (throw (ex-info "Password did not match stored password." {:status-code 400
-                                                                 :errors      {:password "did not match stored password"}}))))
+      (throw (ex-info password-fail-message
+               {:status-code 400
+                :errors      {:password password-fail-snippet}}))))
 
 
 (api/defendpoint DELETE "/"
@@ -146,7 +154,7 @@
         ;; after a successful password update go ahead and offer the client a new session that they can use
         {:success    true
          :session_id (create-session! user)})
-      (api/throw-invalid-param-exception :password "Invalid reset token")))
+      (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
 
 (api/defendpoint GET "/password_reset_token_valid"
@@ -169,18 +177,18 @@
 ;; add more 3rd-party SSO options
 
 (defsetting google-auth-client-id
-  "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
+  (tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled."))
 
 (defsetting google-auth-auto-create-accounts-domain
-  "When set, allow users to sign up on their own if their Google account email address is from this domain.")
+  (tru "When set, allow users to sign up on their own if their Google account email address is from this domain."))
 
 (defn- google-auth-token-info [^String token]
   (let [{:keys [status body]} (http/post (str "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" token))]
     (when-not (= status 200)
-      (throw (ex-info "Invalid Google Auth token." {:status-code 400})))
+      (throw (ex-info (tru "Invalid Google Auth token.") {:status-code 400})))
     (u/prog1 (json/parse-string body keyword)
       (when-not (= (:email_verified <>) "true")
-        (throw (ex-info "Email is not verified." {:status-code 400}))))))
+        (throw (ex-info (tru "Email is not verified.") {:status-code 400}))))))
 
 ;; TODO - are these general enough to move to `metabase.util`?
 (defn- email->domain ^String [email]
@@ -198,7 +206,7 @@
   (when-not (autocreate-user-allowed-for-email? email)
     ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific
     ;; to this situation
-    (throw (ex-info "You'll need an administrator to create a Metabase account before you can use Google to log in."
+    (throw (ex-info (tru "You''ll need an administrator to create a Metabase account before you can use Google to log in.")
              {:status-code 428}))))
 
 (defn- google-auth-create-new-user! [first-name last-name email]
@@ -220,7 +228,7 @@
   (throttle/check (login-throttlers :ip-address) remote-address)
   ;; Verify the token is valid with Google
   (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
-    (log/info "Successfully authenticated Google Auth token for:" given_name family_name)
+    (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
     (google-auth-fetch-or-create-user! given_name family_name email)))
 
 

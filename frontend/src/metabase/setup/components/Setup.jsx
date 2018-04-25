@@ -148,7 +148,7 @@ export default class Setup extends Component {
                   </div>
                   <div className="pt4 pb2">
                     <Link
-                      to="/ready"
+                      to="/explore"
                       className="Button Button--primary"
                       onClick={this.completeSetup.bind(this)}
                     >{t`Take me to Metabase`}</Link>

@@ -50,7 +50,7 @@ export default class UserAvatar extends Component {
     return (
       <div
         className={cx(classes)}
-        style={Object.assign(this.styles, this.props.style)}
+        style={{ ...this.styles, ...this.props.style }}
       >
         {this.userInitials()}
       </div>

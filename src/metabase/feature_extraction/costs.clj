@@ -1,6 +1,7 @@
 (ns metabase.feature-extraction.costs
   "Predicates for limiting resource expanditure during feature extraction."
   (:require [metabase.models.setting :refer [defsetting] :as setting]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]))
 
 (def ^:private query-costs {:cache     1
@@ -24,7 +25,7 @@
   (s/maybe (s/enum "exact" "approximate" "extended")))
 
 (defsetting xray-max-cost
-  "Cap resorce expanditure for all x-rays. (exact, approximate, or extended)"
+  (tru "Cap resorce expanditure for all x-rays. (exact, approximate, or extended)")
   :type    :string
   :default "extended"
   :setter  (fn [new-value]
@@ -54,7 +55,7 @@
                      max-cost))}))
 
 (defsetting enable-xrays
-  "Should x-raying be available at all?"
+  (tru "Should x-raying be available at all?")
   :type    :boolean
   :default true)
 

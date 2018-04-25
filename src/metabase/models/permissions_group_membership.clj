@@ -1,6 +1,7 @@
 (ns metabase.models.permissions-group-membership
   (:require [metabase.models.permissions-group :as group]
             [metabase.util :as u]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -11,7 +12,7 @@
   "Throw an Exception if we're trying to add or remove a user to the MetaBot group."
   [group-id]
   (when (= group-id (:id (group/metabot)))
-    (throw (ex-info "You cannot add or remove users to/from the 'MetaBot' group."
+    (throw (ex-info (tru "You cannot add or remove users to/from the 'MetaBot' group.")
                     {:status-code 400}))))
 
 (def ^:dynamic ^Boolean *allow-changing-all-users-group-members*
@@ -24,14 +25,14 @@
   [group-id]
   (when (= group-id (:id (group/all-users)))
     (when-not *allow-changing-all-users-group-members*
-      (throw (ex-info "You cannot add or remove users to/from the 'All Users' group."
+      (throw (ex-info (tru "You cannot add or remove users to/from the 'All Users' group.")
                {:status-code 400})))))
 
 (defn- check-not-last-admin []
   (when (<= (db/count PermissionsGroupMembership
               :group_id (:id (group/admin)))
             1)
-    (throw (ex-info "You cannot remove the last member of the 'Admin' group!"
+    (throw (ex-info (tru "You cannot remove the last member of the 'Admin' group!")
              {:status-code 400}))))
 
 (defn- pre-delete [{:keys [group_id user_id]}]
