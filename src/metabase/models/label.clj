@@ -2,6 +2,7 @@
   "Labels that can be applied to Cards. Deprecated in favor of Collections."
   (:require [metabase.models.interface :as i]
             [metabase.util :as u]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -10,8 +11,8 @@
 
 (defn- assert-unique-slug [slug]
   (when (db/exists? Label :slug slug)
-    (throw (ex-info "Name already taken"
-             {:status-code 400, :errors {:name "A label with this name already exists"}}))))
+    (throw (ex-info (tru "Name already taken")
+             {:status-code 400, :errors {:name (tru "A label with this name already exists")}}))))
 
 (defn- pre-insert [{label-name :name, :as label}]
   (assoc label :slug (u/prog1 (u/slugify label-name)

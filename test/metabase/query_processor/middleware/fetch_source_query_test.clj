@@ -52,7 +52,8 @@
       qp/expand
       (m/dissoc-in [:database :features])
       (m/dissoc-in [:database :details])
-      (m/dissoc-in [:database :timezone])))
+      (m/dissoc-in [:database :timezone])
+      (dissoc :driver)))
 
 (defn default-expanded-results [query]
   {:database     {:name "test-data", :id (data/id), :engine :h2}
@@ -60,7 +61,8 @@
    :fk-field-ids #{}
    :query        query})
 
-;; test that the `metabase.query-processor/expand` function properly handles nested queries (this function should call `fetch-source-query`)
+;; test that the `metabase.query-processor/expand` function properly handles nested queries (this function should call
+;; `fetch-source-query`)
 (expect
   (default-expanded-results
    {:source-query {:source-table {:schema "PUBLIC", :name "VENUES", :id (data/id :venues)}

@@ -46,7 +46,7 @@
   (memoize (fn [url-or-resource-path]
              (or (valid-json-url? url-or-resource-path)
                  (valid-json-resource? url-or-resource-path)
-                 (throw (Exception. (str "Invalid JSON URL or resource: " url-or-resource-path)))))))
+                 (throw (Exception. (str (tru "Invalid JSON URL or resource: {0}" url-or-resource-path))))))))
 
 (def ^:private CustomGeoJSON
   {s/Keyword {:name                     s/Str
@@ -87,7 +87,7 @@
   [key]
   {key su/NonBlankString}
   (let [url (or (get-in (custom-geojson) [(keyword key) :url])
-                (throw (ex-info (str "Invalid custom GeoJSON key: " key)
+                (throw (ex-info (tru "Invalid custom GeoJSON key: {0}" key)
                          {:status-code 400})))]
     ;; TODO - it would be nice if we could also avoid returning our usual cache-busting headers with the response here
     (-> (rr/response (ReaderInputStream. (io/reader url)))

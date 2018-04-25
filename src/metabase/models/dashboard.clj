@@ -241,7 +241,7 @@
 
 (defn- save-card!
   [card]
-  (when (:dataset_query card)
+  (when (-> card :dataset_query not-empty)
     (let [card (db/insert! 'Card
                  (-> card
                      (update :result_metadata #(or % (-> card
@@ -281,7 +281,7 @@
         collection (magic.populate/create-collection!
                     (ensure-unique-collection-name
                      (format "Questions for your \"%s\" dashboard" (:name dashboard)))
-                    "#509EE3"
+                    (rand-nth magic.populate/colors)
                     "Automatically generated cards.")]
     (doseq [dashcard dashcards]
       (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
