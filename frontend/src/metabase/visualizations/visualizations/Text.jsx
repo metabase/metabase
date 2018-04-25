@@ -164,7 +164,7 @@ export default class Text extends Component {
                 styles["text-card-textarea"],
               )}
               name="text"
-              placeholder="Write here, and use Markdown if you'd like"
+              placeholder={t`Write here, and use Markdown if you''d like`}
               value={settings.text}
               onChange={e => this.handleTextChange(e.target.value)}
             />
