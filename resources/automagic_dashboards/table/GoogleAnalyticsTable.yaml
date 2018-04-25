@@ -38,9 +38,9 @@ dimensions:
       field_type: ga:source
 dashboard_filters:
   - Day
-  - Country
-  - DeviceType
-  - Channel
+  # - Country
+  # - DeviceType
+  # - Channel
 groups:
 - Overview:
     title: Summary
