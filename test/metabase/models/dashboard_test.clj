@@ -231,9 +231,9 @@
 (expect
   8
   (tu/with-model-cleanup ['Card 'Dashboard 'DashboardCard 'Collection]
-    (binding [api/*current-user-id*              (user->id :rasta)
+    (binding [api/*current-user-id*              (users/user->id :rasta)
               api/*current-user-permissions-set* (-> :rasta
-                                                     user->id
+                                                     users/user->id
                                                      user/permissions-set
                                                      atom)]
       (->> (magic/automagic-analysis (Table (id :venues)) {})
