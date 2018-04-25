@@ -50,7 +50,7 @@ export function registerAnalyticsClickListener() {
   document.body.addEventListener(
     "click",
     function(e) {
-      var node = e.target;
+      let node = e.target;
 
       // check the target and all parent elements
       while (node) {

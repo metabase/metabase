@@ -27,7 +27,7 @@ export default class SortableItemList extends Component {
   }
 
   render() {
-    var items;
+    let items;
     if (this.state.sort === "Last Modified") {
       items = this.props.items
         .slice()

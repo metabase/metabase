@@ -35,17 +35,17 @@ export default class CreateDashboardModal extends Component {
   createNewDash(event) {
     event.preventDefault();
 
-    var name = this.state.name && this.state.name.trim();
-    var description = this.state.description && this.state.description.trim();
+    let name = this.state.name && this.state.name.trim();
+    let description = this.state.description && this.state.description.trim();
 
     // populate a new Dash object
-    var newDash = {
+    let newDash = {
       name: name && name.length > 0 ? name : null,
       description: description && description.length > 0 ? description : null,
     };
 
     // create a new dashboard
-    var component = this;
+    let component = this;
     this.props.createDashboardFn(newDash).then(null, function(error) {
       component.setState({
         errors: error,
@@ -54,9 +54,9 @@ export default class CreateDashboardModal extends Component {
   }
 
   render() {
-    var formError;
+    let formError;
     if (this.state.errors) {
-      var errorMessage = t`Server error encountered`;
+      let errorMessage = t`Server error encountered`;
       if (this.state.errors.data && this.state.errors.data.message) {
         errorMessage = this.state.errors.data.message;
       }
@@ -65,9 +65,9 @@ export default class CreateDashboardModal extends Component {
       formError = <span className="text-error px2">{errorMessage}</span>;
     }
 
-    var name = this.state.name && this.state.name.trim();
+    let name = this.state.name && this.state.name.trim();
 
-    var formReady = name !== null && name !== "";
+    let formReady = name !== null && name !== "";
 
     return (
       <ModalContent

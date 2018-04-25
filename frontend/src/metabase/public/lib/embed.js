@@ -59,7 +59,7 @@ export function getUnsignedPreviewUrl(
 export function optionsToHashParams(options = {}) {
   options = { ...options };
   // filter out null, undefined, ""
-  for (var name in options) {
+  for (let name in options) {
     if (options[name] == null || options[name] === "") {
       delete options[name];
     }
