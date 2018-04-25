@@ -1,5 +1,6 @@
 (ns metabase.automagic-dashboards.filters
   (:require [clojure.string :as str]
+            [clj-time.format :as t.format]
             [metabase.models
              [field :refer [Field] :as field]
              [table :refer [Table]]]
@@ -66,12 +67,23 @@
       (nil? (:card dashcard)) dashcard
       mappings                (update dashcard :parameter_mappings concat mappings))))
 
+
+(def ^:private ^{:arglists '([field])} periodic-datetime?
+  (comp #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year
+          :month-of-year :quarter-of-year}
+        :unit))
+
+(defn- datetime?
+  [field]
+  (and (not (periodic-datetime? field))
+       (or (isa? (:base_type field) :type/DateTime)
+           (field/unix-timestamp? field))))
+
 (defn- filter-type
   "Return filter type for a given field."
   [{:keys [base_type special_type] :as field}]
   (cond
-    (isa? base_type :type/DateTime)    "date/all-options"
-    (field/unix-timestamp? field)      "date/all-options"
+    (datetime? field)                  "date/all-options"
     (isa? special_type :type/State)    "location/state"
     (isa? special_type :type/Country)  "location/country"
     (isa? special_type :type/Category) "category"))
@@ -128,23 +140,165 @@
                  dashboard)))
            dashboard)))))
 
+
+(def ^:private date-formatter (t.format/formatter "MMMM d, YYYY"))
+(def ^:private datetime-formatter (t.format/formatter "EEEE, MMMM d, YYYY h:mm a"))
+
+(defn- humanize-datetime
+  [dt]
+  (t.format/unparse (if (str/index-of dt "T")
+                      datetime-formatter
+                      date-formatter)
+                    (t.format/parse dt)))
+
+(defn- field-reference->field
+  [field-reference]
+  (cond-> (-> field-reference collect-field-references first last Field)
+    (-> field-reference first qp.util/normalize-token (= :datetime-field))
+    (assoc :unit (-> field-reference last qp.util/normalize-token))))
+
+(defmulti
+  ^{:private true
+    :arglists '([op & args])}
+  humanize-filter-value (comp qp.util/normalize-token first))
+
+(defn- either
+  [v & vs]
+  (if (empty? vs)
+    v
+    (loop [acc      (format "either %s" v)
+           [v & vs] vs]
+      (cond
+        (nil? v)    acc
+        (empty? vs) (format "%s or %s" acc v)
+        :else       (recur (format "%s, %s" acc v) vs)))))
+
+(defmethod humanize-filter-value :=
+  [[_ field-reference value & values]]
+  (let [field (field-reference->field field-reference)]
+    [{:field field-reference
+      :value (if (datetime? field)
+               (format "is on %s" (humanize-datetime value))
+               (format "is %s" (apply either value values)))}]))
+
+(defmethod humanize-filter-value :!=
+  [[_ field-reference value]]
+  [{:field field-reference
+    :value (format "is not %s" value)}])
+
+(defmethod humanize-filter-value :>
+  [[_ field-reference value]]
+  (let [field (field-reference->field field-reference)]
+    [{:field field-reference
+      :value (if (datetime? field)
+               (format "is after %s" (humanize-datetime value))
+               (format "is greater than %s" value))}]))
+
+(defmethod humanize-filter-value :<
+  [[_ field-reference value]]
+  (let [field (field-reference->field field-reference)]
+  [{:field field-reference
+    :value (if (datetime? field)
+             (format "is before %s" (humanize-datetime value))
+             (format "is less than %s" value))}]))
+
+(defmethod humanize-filter-value :>=
+  [[_ field-reference value]]
+  [{:field field-reference
+    :value (format "is greater than or equal to %s" value)}])
+
+(defmethod humanize-filter-value :<=
+  [[_ field-reference value]]
+  [{:field field-reference
+    :value (format "is less than or equal to %s" value)}])
+
+(defmethod humanize-filter-value :is-null
+  [[_ field-reference]]
+  [{:field field-reference
+    :value "is null"}])
+
+(defmethod humanize-filter-value :not-null
+  [[_ field-reference]]
+  [{:field field-reference
+    :value "is not null"}])
+
+(defmethod humanize-filter-value :between
+  [[_ field-reference min-value max-value]]
+  [{:field field-reference
+    :value (format "is between %s and %s" min-value max-value)}])
+
+(defmethod humanize-filter-value :inside
+  [[_ lat-reference lon-reference lat-max lon-min lat-min lon-max]]
+  [{:field lat-reference
+    :value (format "is between %s and %s" lat-min lat-max)}
+   {:field lon-reference
+    :value (format "is between %s and %s" lon-min lon-max)}])
+
+(defmethod humanize-filter-value :starts-with
+  [[_ field-reference value]]
+  [{:field field-reference
+    :value (format "starts with %s" value)}])
+
+(defmethod humanize-filter-value :contains
+  [[_ field-reference value]]
+  [{:field field-reference
+    :value (format "contains %s" value)}])
+
+(defmethod humanize-filter-value :does-not-contain
+  [[_ field-reference value]]
+  [{:field field-reference
+    :value (format "does not contain %s" value)}])
+
+(defmethod humanize-filter-value :ends-with
+  [[_ field-reference value]]
+  [{:field field-reference
+    :value (format "ends with %s" value)}])
+
+(defn- time-interval
+  [n unit]
+  (let [unit (name unit)]
+    (cond
+      (zero? n) (format "current %s" unit)
+      (= n -1)  (format "previous %s" unit)
+      (= n 1)   (format "next %s" unit)
+      (pos? n)  (format "next %s %ss" n unit)
+      (neg? n)  (format "previous %s %ss" n unit))))
+
+(defmethod humanize-filter-value :time-interval
+  [[_ field-reference n unit]]
+  [{:field field-reference
+    :value (format "is during the %s" (time-interval n unit))}])
+
+(defmethod humanize-filter-value :and
+  [[_ & clauses]]
+  (mapcat humanize-filter-value clauses))
+
+(def ^:private unit-name (comp {:minute-of-hour  "minute of hour"
+                                :hour-of-day     "hour of day"
+                                :day-of-week     "day of week"
+                                :day-of-month    "day of month"
+                                :week-of-year    "week of year"
+                                :month-of-year   "month of year"
+                                :quarter-of-year "quarter of year"}
+                               qp.util/normalize-token))
+
+(defn- field-name
+  [field field-reference]
+  (let [full-name (cond->> (:display_name field)
+                    (periodic-datetime? field)
+                    (format "%s of %s" (-> field :unit unit-name str/capitalize)))]
+    (if (-> field-reference first qp.util/normalize-token (= :fk->))
+      [(-> field :table_id Table :display_name) full-name]
+      [full-name])))
+
 (defn applied-filters
   "Extract fields and their values from MBQL filter clauses."
   [filter-clause]
-  (when filter-clause
-    (if (-> filter-clause first qp.util/normalize-token (#{:and :not :or}))
-      (mapcat applied-filters (rest filter-clause))
-      (let [[op lhs rhs & _] filter-clause]
-        (for [field-reference (collect-field-references lhs)]
-          (let [field (-> field-reference last Field)]
-            {:field    (if (-> field-reference
-                               first
-                               qp.util/normalize-token
-                               (= :fk->))
-                         [(-> field :table_id Table :display_name)
-                          (:display_name field)]
-                         [(:display_name field)])
-             :field_id (:id field)
-             :type     (filter-type field)
-             :value    rhs
-             :op       op}))))))
+  (for [{field-reference :field value :value} (some->> filter-clause
+                                                       not-empty
+                                                       humanize-filter-value)]
+    (let [field (field-reference->field field-reference)]
+      {:field    (field-name field field-reference)
+       :field_id (:id field)
+       :type     (filter-type field)
+       :value    value})))

@@ -36,6 +36,7 @@
             [metabase
              [events :as events]
              [util :as u]]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -73,7 +74,7 @@
     setting-or-name
     (let [k (keyword setting-or-name)]
       (or (@registered-settings k)
-          (throw (Exception. (format "Setting %s does not exist.\nFound: %s" k (sort (keys @registered-settings)))))))))
+          (throw (Exception. (str (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -143,7 +144,7 @@
     (case (str/lower-case string-value)
       "true"  true
       "false" false
-      (throw (Exception. "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))
+      (throw (Exception. (str (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))))
 
 (defn get-boolean
   "Get boolean value of (presumably `:boolean`) SETTING-OR-NAME. This is the default getter for `:boolean` settings.

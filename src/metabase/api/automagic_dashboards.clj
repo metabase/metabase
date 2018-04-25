@@ -54,7 +54,6 @@
       (s/pred decode-base64-json "valid base64 encoded json")
     (tru "value couldn''t be parsed as base64 encoded JSON")))
 
-
 (defn- load-rule
   [entity prefix rule]
   (rules/load-rule (format "%s/%s/%s.yaml" entity prefix rule)))
@@ -174,6 +173,23 @@
         query/adhoc-query
         (magic/automagic-analysis {:show       (keyword show)
                                    :cell-query cell-query}))))
+
+(api/defendpoint GET "/adhoc/:query/cell/:cell-query/:prefix/:rule"
+  "Return an automagic dashboard analyzing cell in question  with id `id` defined by
+   query `cell-querry` using rule `rule`."
+  [query cell-query prefix rule show]
+  {show       Show
+   prefix     Prefix
+   rule       Rule
+   query      Base64EncodedJSON
+   cell-query Base64EncodedJSON}
+  (let [query      (decode-base64-json query)
+        cell-query (decode-base64-json cell-query)]
+    (-> query
+        query/adhoc-query
+        (magic/automagic-analysis {:show       (keyword show)
+                                   :cell-query cell-query
+                                   :rule       (load-rule "table" prefix rule)}))))
 
 (def ^:private valid-comparison-pair?
   #{["segment" "segment"]

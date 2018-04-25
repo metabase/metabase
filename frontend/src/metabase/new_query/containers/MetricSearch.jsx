@@ -85,7 +85,7 @@ export default class MetricSearch extends Component {
                 <EmptyState
                   message={
                     <span>
-                      ${t`Defining common metrics for your team makes it even easier to ask questions`}
+                      {t`Defining common metrics for your team makes it even easier to ask questions`}
                     </span>
                   }
                   image="/app/img/metrics_illustration"
