@@ -151,6 +151,15 @@
   {show Show}
   (-> id Card api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
+(api/defendpoint GET "/question/:id/:prefix/:rule"
+  "Return an automagic dashboard analyzing question with id `id` using rule `rule`."
+  [id prefix rule show]
+  {show Show
+   prefix Prefix
+   rule   Rule}
+  (-> id Card api/check-404 (magic/automagic-analysis {:show (keyword show)
+                                                       :rule (load-rule "table" prefix rule)})))
+
 (api/defendpoint GET "/adhoc/:query"
   "Return an automagic dashboard analyzing ad hoc query."
   [query show]
@@ -160,6 +169,19 @@
       decode-base64-json
       query/adhoc-query
       (magic/automagic-analysis {:show (keyword show)})))
+
+(api/defendpoint GET "/adhoc/:query/:prefix/:rule"
+  "Return an automagic dashboard analyzing ad hoc query."
+  [query prefix rule show]
+  {show   Show
+   query  Base64EncodedJSON
+   prefix Prefix
+   rule   Rule}
+  (-> query
+      decode-base64-json
+      query/adhoc-query
+      (magic/automagic-analysis {:show (keyword show)
+                                 :rule (load-rule "table" prefix rule)})))
 
 (api/defendpoint GET "/adhoc/:query/cell/:cell-query"
   "Return an automagic dashboard analyzing ad hoc query."
