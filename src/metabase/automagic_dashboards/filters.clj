@@ -181,7 +181,7 @@
                (format "is on %s" (humanize-datetime value))
                (format "is %s" (apply either value values)))}]))
 
-(defmethod humanize-filter-value :not=
+(defmethod humanize-filter-value :!=
   [[_ field-reference value]]
   [{:field field-reference
     :value (format "is not %s" value)}])

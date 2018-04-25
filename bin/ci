@@ -61,13 +61,13 @@ node-5() {
     run_step lein with-profile +ci eastwood
 
     run_step yarn run test-karma
-    run_step yarn run test-unit
+    run_step yarn run test-unit --coverage
     report-frontend-coverage
 }
 node-6() {
-    run_step ./bin/build version sample-dataset uberjar
+    run_step ./bin/build-for-test
     run_step check-uberjar-file-count
-    run_step yarn run test-integrated
+    run_step yarn run test-integrated-no-build
 }
 
 report() {
