@@ -139,7 +139,9 @@ export default class PostSetupApp extends Component {
                   just a few minutes.`}
                 </h2>
                 <BorderedPanel className="p4 my4 flex">
-                  <MetabotLogo />
+                  <div className="mt1">
+                    <MetabotLogo />
+                  </div>
                   <div className="flex-full ml3 mt1">
                     <div className="mb1">
                       <Quotes quotes={QUOTES} period={2000} />
