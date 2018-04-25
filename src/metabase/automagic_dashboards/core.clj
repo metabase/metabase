@@ -28,6 +28,7 @@
             [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses]]
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
+            [metabase.sync.analyze.classify :as classify]
             [metabase.util :as u]
             [ring.util.codec :as codec]
             [toucan.db :as db]))
@@ -485,7 +486,10 @@
                                    field/with-targets
                                    (group-by :table_id))
                               :id)
-                        (constantly (map field/map->FieldInstance (:result_metadata source))))]
+                        (->> source
+                             :result_metadata
+                             (map (comp #(classify/run-classifiers % {}) field/map->FieldInstance))
+                             constantly ))]
     (as-> {:source       (assoc source :fields (table->fields source))
            :tables       (map #(assoc % :fields (table->fields %)) tables)
            :database     (:database root)
