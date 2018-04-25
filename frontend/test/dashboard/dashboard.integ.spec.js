@@ -3,6 +3,7 @@ import {
   BROWSER_HISTORY_PUSH,
   createTestStore,
   useSharedAdminLogin,
+  eventually,
 } from "__support__/integrated_tests";
 import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 
@@ -22,7 +23,6 @@ import {
 } from "metabase/dashboard/dashboard";
 import EditBar from "metabase/components/EditBar";
 
-import { delay } from "metabase/lib/promise";
 import DashboardHeader from "metabase/dashboard/components/DashboardHeader";
 import {
   ParameterOptionItem,
@@ -144,10 +144,10 @@ describe("Dashboard", () => {
       clickButton(app.find(EditBar).find(".Button--primary.Button"));
       await store.waitForActions([SAVE_DASHBOARD_AND_CARDS, FETCH_DASHBOARD]);
 
-      await delay(500);
-
-      expect(app.find(DashboardHeader).text()).toMatch(
-        /Customer Analysis Paralysis/,
+      await eventually(() =>
+        expect(app.find(DashboardHeader).text()).toMatch(
+          /Customer Analysis Paralysis/,
+        ),
       );
     });
 

@@ -2,6 +2,7 @@ import {
   useSharedAdminLogin,
   createSavedQuestion,
   createTestStore,
+  eventually,
 } from "__support__/integrated_tests";
 
 import { click, dispatchBrowserEvent } from "__support__/enzyme_utils";
@@ -40,38 +41,46 @@ describe("ObjectDetail", () => {
       const app = mount(store.getAppContainer());
 
       await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
-      await delay(100); // Trying to address random CI failures with a small delay
 
-      expect(app.find(".ObjectDetail h1").text()).toEqual("2");
+      await eventually(() =>
+        expect(app.find(".ObjectDetail h1").text()).toEqual("2"),
+      );
 
       const previousObjectTrigger = app.find(".Icon.Icon-backArrow");
       click(previousObjectTrigger);
 
       await store.waitForActions([QUERY_COMPLETED]);
-      await delay(100); // Trying to address random CI failures with a small delay
 
-      expect(app.find(".ObjectDetail h1").text()).toEqual("1");
+      await eventually(() =>
+        expect(app.find(".ObjectDetail h1").text()).toEqual("1"),
+      );
+
       const nextObjectTrigger = app.find(".Icon.Icon-forwardArrow");
       click(nextObjectTrigger);
 
       await store.waitForActions([QUERY_COMPLETED]);
-      await delay(100); // Trying to address random CI failures with a small delay
 
-      expect(app.find(".ObjectDetail h1").text()).toEqual("2");
+      await eventually(() =>
+        expect(app.find(".ObjectDetail h1").text()).toEqual("2"),
+      );
 
       // test keyboard shortcuts
 
       // left arrow
       dispatchBrowserEvent("keydown", { key: "ArrowLeft" });
       await store.waitForActions([QUERY_COMPLETED]);
-      await delay(100); // Trying to address random CI failures with a small delay
-      expect(app.find(".ObjectDetail h1").text()).toEqual("1");
 
-      // left arrow
+      await eventually(() =>
+        expect(app.find(".ObjectDetail h1").text()).toEqual("1"),
+      );
+
+      // right arrow
       dispatchBrowserEvent("keydown", { key: "ArrowRight" });
       await store.waitForActions([QUERY_COMPLETED]);
-      await delay(100); // Trying to address random CI failures with a small delay
-      expect(app.find(".ObjectDetail h1").text()).toEqual("2");
+
+      await eventually(() =>
+        expect(app.find(".ObjectDetail h1").text()).toEqual("2"),
+      );
     });
   });
 });
