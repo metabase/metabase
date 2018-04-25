@@ -180,14 +180,6 @@
   font-size: smaller;
 }
 
-.AdminList-item .ProgressBar {
-  opacity: 0.2;
-}
-
-.AdminList-item.selected .ProgressBar {
-  opacity: 1;
-}
-
 .AdminInput {
   color: var(--default-font-color);
   padding: var(--padding-1);
@@ -273,16 +265,6 @@
   background-color: var(--brand-color) !important;
   color: white !important;
 }
-
-/*
- * TODO - where do we even use this?
- * /
-.ProgressBar--mini {
-  width: 17px;
-  height: 8px;
-  border-radius: 2px;
-}
-*/
 
 .SaveStatus {
   line-height: 1;

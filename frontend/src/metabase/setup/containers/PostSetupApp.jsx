@@ -5,7 +5,7 @@ import React, { Component } from "react";
 import { Link } from "react-router";
 import ExplorePane from "metabase/components/ExplorePane";
 import MetabotLogo from "metabase/components/MetabotLogo";
-import ProgressBar from "metabase/components/ProgressBar"
+import ProgressBar from "metabase/components/ProgressBar";
 import Quotes from "metabase/components/Quotes";
 import { withBackground } from "metabase/hoc/Background";
 
@@ -145,7 +145,7 @@ export default class PostSetupApp extends Component {
                       <Quotes quotes={QUOTES} period={2000} />
                     </div>
                     {/*The percentage is hardcoded so we can animate this*/}
-                    <ProgressBar isAnimated="true" percentage=".5" />
+                    <ProgressBar percentage={1} animated />
                   </div>
                 </BorderedPanel>
                 {sampleCandidates && (

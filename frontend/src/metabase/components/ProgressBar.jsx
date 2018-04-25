@@ -2,9 +2,12 @@
 import React, { Component } from "react";
 import cxs from "cxs";
 
+import { normal } from "metabase/lib/colors";
+
 type Props = {
-  percentage: Number,
-  animated: Boolean,
+  percentage: number,
+  animated: boolean,
+  color: string,
 };
 
 export default class ProgressBar extends Component {
@@ -12,21 +15,24 @@ export default class ProgressBar extends Component {
 
   static defaultProps = {
     animated: false,
+    color: normal.blue,
   };
 
   render() {
-    const { percentage, animated } = this.props;
+    const { percentage, animated, color } = this.props;
+
+    const width = percentage * 100;
 
     const wrapperStyles = cxs({
       position: "relative",
-      border: "1px solid #6f7a8b",
+      border: `1px solid ${color}`,
       height: 10,
       borderRadius: 99,
     });
 
     const progressStyles = cxs({
       overflow: "hidden",
-      backgroundColor: "#6f7a8b",
+      backgroundColor: color,
       position: "relative",
       height: "100%",
       top: 0,
@@ -34,16 +40,16 @@ export default class ProgressBar extends Component {
       borderRadius: "inherit",
       borderTopLeftRadius: 0,
       borderBottomLeftRadius: 0,
-      width: `${percentage * 100}%`,
+      width: `${width}%`,
       ":before": {
-        display: "block",
+        display: animated ? "block" : "none",
         position: "absolute",
         content: '""', // need to wrap this in quotes so it actually outputs as valid CSS
         left: 0,
-        width: 50,
-        height: "100",
-        backgroundColor: "red",
-        animation: animated ? "move-ltr 1.5s linear infinite" : "none",
+        width: `${width / 4}%`,
+        height: "100%",
+        backgroundColor: "rgba(0, 0, 0, 0.12)",
+        animation: animated ? "progress-bar 1.5s linear infinite" : "none",
       },
     });
 

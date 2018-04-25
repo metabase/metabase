@@ -1,9 +1,9 @@
-@keyframes move-ltr {
-  0%{
-    margin-left: -250px;
+/* TODO - ideally this would be more reusable and not hardcode a value */
+@keyframes progress-bar {
+  from {
+    transform: translate3d(0, 0, 0, 0);
   }
-
-  100%{
-    margin-left: 250px;
+  to {
+    transform: translate3d(1000px, 0, 0);
   }
 }
