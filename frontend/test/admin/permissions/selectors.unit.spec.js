@@ -80,7 +80,7 @@ const initialState = {
   metadata: normalizedMetadata,
 };
 
-var state = initialState;
+let state = initialState;
 const resetState = () => {
   state = initialState;
 };

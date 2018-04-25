@@ -180,14 +180,6 @@
   font-size: smaller;
 }
 
-.AdminList-item .ProgressBar {
-  opacity: 0.2;
-}
-
-.AdminList-item.selected .ProgressBar {
-  opacity: 1;
-}
-
 .AdminInput {
   color: var(--default-font-color);
   padding: var(--padding-1);
@@ -272,30 +264,6 @@
 .TableEditor-field-target .ColumnarSelector-row:hover {
   background-color: var(--brand-color) !important;
   color: white !important;
-}
-
-.ProgressBar {
-  position: relative;
-  border: 1px solid #6f7a8b;
-
-  width: 55px;
-  height: 10px;
-  border-radius: 99px;
-}
-.ProgressBar--mini {
-  width: 17px;
-  height: 8px;
-  border-radius: 2px;
-}
-.ProgressBar-progress {
-  background-color: #6f7a8b;
-  position: absolute;
-  height: 100%;
-  top: 0px;
-  left: 0px;
-  border-radius: inherit;
-  border-top-left-radius: 0px;
-  border-bottom-left-radius: 0px;
 }
 
 .SaveStatus {

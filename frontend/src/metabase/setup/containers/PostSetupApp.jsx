@@ -5,6 +5,7 @@ import React, { Component } from "react";
 import { Link } from "react-router";
 import ExplorePane from "metabase/components/ExplorePane";
 import MetabotLogo from "metabase/components/MetabotLogo";
+import ProgressBar from "metabase/components/ProgressBar";
 import Quotes from "metabase/components/Quotes";
 import { withBackground } from "metabase/hoc/Background";
 
@@ -143,7 +144,8 @@ export default class PostSetupApp extends Component {
                     <div className="mb1">
                       <Quotes quotes={QUOTES} period={2000} />
                     </div>
-                    <ThinProgressBar />
+                    {/*The percentage is hardcoded so we can animate this*/}
+                    <ProgressBar percentage={1} animated />
                   </div>
                 </BorderedPanel>
                 {sampleCandidates && (
@@ -163,7 +165,7 @@ export default class PostSetupApp extends Component {
                   description={
                     isSample
                       ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                      : t`I took a look at the data you just connected, and I have some explorations of interesting thing I found. Hope you like them!`
+                      : t`I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!`
                   }
                 />
               </BorderedPanel>
@@ -189,18 +191,5 @@ const BorderedPanel = ({ className, style, children }) => (
     style={style}
   >
     {children}
-  </div>
-);
-
-const ThinProgressBar = () => (
-  <div className="bg-brand" style={{ height: 6, borderRadius: 99 }}>
-    <div
-      style={{
-        backgroundColor: "black",
-        opacity: 0.15,
-        height: 6,
-        width: 52,
-      }}
-    />
   </div>
 );

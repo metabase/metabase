@@ -73,11 +73,11 @@ export default class DashboardGrid extends Component {
   }
 
   onLayoutChange(layout) {
-    var changes = layout.filter(
+    let changes = layout.filter(
       newLayout =>
         !_.isEqual(newLayout, this.getLayoutForDashCard(newLayout.dashcard)),
     );
-    for (var change of changes) {
+    for (let change of changes) {
       this.props.setDashCardAttributes({
         id: change.dashcard.id,
         attributes: {
