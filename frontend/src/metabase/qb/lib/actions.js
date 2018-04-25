@@ -104,13 +104,13 @@ export const filter = (card, operator, column, value) => {
   return newCard;
 };
 
-const drillFilter = (card, value, column) => {
+export const drillFilter = (card, value, column) => {
   let filter;
   if (isDate(column)) {
     filter = [
       "=",
       ["datetime-field", getFieldRefFromColumn(column), "as", column.unit],
-      parseTimestamp(value, column.unit).toISOString(),
+      parseTimestamp(value, column.unit).format(),
     ];
   } else {
     const range = rangeForValue(value, column);
