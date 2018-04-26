@@ -114,6 +114,46 @@
 
 (expect
   true
+  (tt/with-temp* [Card [{card-id :id} {:table_id      nil
+                                       :dataset_query {:native {:query "select * from users"}
+                                                       :type :native
+                                                       :database (data/id)}}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
+
+(expect
+  true
+  (tt/with-temp* [Card [{source-id :id} {:table_id      (data/id :venues)
+                                         :dataset_query {:query    {:source_table (data/id :venues)}
+                                                         :type     :query
+                                                         :database (data/id)}}]
+                  Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
+                                                                  :source_table (str "card__" source-id)}
+                                                       :type     :query
+                                                       :database -1337}}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
+
+(expect
+  true
+  (tt/with-temp* [Card [{source-id :id} {:table_id      nil
+                                         :dataset_query {:native {:query "select * from users"}
+                                                         :type :native
+                                                         :database (data/id)}}]
+                  Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
+                                                                  :source_table (str "card__" source-id)}
+                                                       :type     :query
+                                                       :database -1337}}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
+
+(expect
+  true
   (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
                                        :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                                                                :source_table (data/id :venues)}
