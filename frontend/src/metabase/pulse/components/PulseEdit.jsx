@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { t, jt } from "c-3po";
 
 import PulseEditName from "./PulseEditName.jsx";
+import PulseEditCollection from "./PulseEditCollection";
 import PulseEditCards from "./PulseEditCards.jsx";
 import PulseEditChannels from "./PulseEditChannels.jsx";
 import PulseEditSkip from "./PulseEditSkip.jsx";
@@ -142,6 +143,7 @@ export default class PulseEdit extends Component {
         </div>
         <div className="PulseEdit-content pt2 pb4">
           <PulseEditName {...this.props} setPulse={this.setPulse} />
+          <PulseEditCollection {...this.props} setPulse={this.setPulse} />
           <PulseEditCards
             {...this.props}
             setPulse={this.setPulse}
