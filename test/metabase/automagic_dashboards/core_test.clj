@@ -71,9 +71,8 @@
 
 (defn- valid-dashboard?
   [dashboard]
-  (and dashboard
-       (:name dashboard)
-       (-> dashboard :orderd_cards count pos?)
+  (and (:name dashboard)
+       (-> dashboard :ordered_cards count pos?)
        (valid-urls? dashboard)))
 
 (defmacro ^:private with-dashboard-cleanup
