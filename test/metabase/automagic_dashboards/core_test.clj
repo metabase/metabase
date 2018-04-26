@@ -47,12 +47,11 @@
 
 (expect
   [:entity/UserTable :entity/GenericTable :entity/*]
-  (let [table (table/map->TableInstance {:entity_type :entity/UserTable})]
-    (->> {:entity       table
-          :source-table table}
-         (#'magic/matching-rules (rules/load-rules "table"))
-         (map (comp first :applies_to)))))
-
+  (->> (data/id :users)
+       Table
+       (#'magic/->root)
+       (#'magic/matching-rules (rules/load-rules "table"))
+       (map (comp first :applies_to))))
 
 (defn- collect-urls
   [dashboard]
