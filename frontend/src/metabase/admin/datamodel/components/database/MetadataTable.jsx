@@ -50,7 +50,7 @@ export default class MetadataTable extends Component {
   }
 
   renderVisibilityType(text, type, any) {
-    var classes = cx(
+    let classes = cx(
       "mx1",
       "text-bold",
       "text-brand-hover",
@@ -73,7 +73,7 @@ export default class MetadataTable extends Component {
   }
 
   renderVisibilityWidget() {
-    var subTypes;
+    let subTypes;
     if (this.props.tableMetadata.visibility_type) {
       subTypes = (
         <span id="VisibilitySubTypes" className="border-left mx2">

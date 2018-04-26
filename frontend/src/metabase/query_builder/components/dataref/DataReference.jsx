@@ -51,11 +51,11 @@ export default class DataReference extends Component {
   }
 
   render() {
-    var content;
+    let content;
     if (this.state.stack.length === 0) {
       content = <MainPane {...this.props} show={this.show} />;
     } else {
-      var page = this.state.stack[this.state.stack.length - 1];
+      let page = this.state.stack[this.state.stack.length - 1];
       if (page.type === "table") {
         content = (
           <TablePane {...this.props} show={this.show} table={page.item} />
@@ -75,7 +75,7 @@ export default class DataReference extends Component {
       }
     }
 
-    var backButton;
+    let backButton;
     if (this.state.stack.length > 0) {
       backButton = (
         <a
@@ -88,7 +88,7 @@ export default class DataReference extends Component {
       );
     }
 
-    var closeButton = (
+    let closeButton = (
       <a
         className="flex-align-right text-default text-brand-hover no-decoration"
         onClick={this.close}

@@ -33,7 +33,7 @@ export default class UpdateUserDetails extends Component {
     let isValid = true;
 
     // required: first_name, last_name, email
-    for (var fieldName in this.refs) {
+    for (let fieldName in this.refs) {
       let node = ReactDOM.findDOMNode(this.refs[fieldName]);
       if (node.required && MetabaseUtils.isEmpty(node.value)) isValid = false;
     }
