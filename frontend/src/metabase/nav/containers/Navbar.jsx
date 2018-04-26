@@ -2,11 +2,13 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "c-3po";
-import { Box, Flex, Wrapper } from "rebass";
+import { Box, Flex } from "rebass";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { Link } from "react-router";
+
+import { createDashboard } from "metabase/dashboards/dashboards";
 
 import { normal, saturated } from "metabase/lib/colors";
 
@@ -32,6 +34,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
   onChangeLocation: push,
+  createDashboard,
 };
 
 const AdminNavItem = ({ name, path, currentPath }) => (
@@ -154,7 +157,7 @@ export default class Navbar extends Component {
           backgroundColor: "#FDFDFD",
           borderBottom: "1px solid #DCE1E4",
         }}
-        className="relative"
+        className="relative z2"
         align="center"
       >
         <Box className="">
@@ -199,7 +202,9 @@ export default class Navbar extends Component {
                     </Flex>
                   }
                 >
-                  <CreateDashboardModal />
+                  <CreateDashboardModal
+                    createDashboard={this.props.createDashboard}
+                  />
                 </ModalWithTrigger>
               </Box>
               <Box my={2}>
