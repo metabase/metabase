@@ -30,6 +30,7 @@
             [metabase.related :as related]
             [metabase.sync.analyze.classify :as classify]
             [metabase.util :as u]
+            [puppetlabs.i18n.core :as i18n :refer [tru]]
             [ring.util.codec :as codec]
             [toucan.db :as db]))
 
@@ -46,28 +47,28 @@
    :source       table
    :database     (:db_id table)
    :full-name    (:display_name table)
-   :url          (format "%stable/%s" public-endpoint (:id table))
+   :url          (format "%stable/%s" public-endpoint (u/get-id table))
    :rules-prefix "table"})
 
 (defmethod ->root (type Segment)
   [segment]
   (let [table (-> segment :table_id Table) ]
     {:entity       segment
-     :source.      table
+     :source       table
      :database     (:db_id table)
      :query-filter (-> segment :definition :filter)
-     :full-name    (str (:name segment) " segment")
-     :url          (format "%ssegment/%s" public-endpoint (:id segment))
+     :full-name    (str (:name segment) (tru " segment"))
+     :url          (format "%ssegment/%s" public-endpoint (u/get-id segment))
      :rules-prefix "table"}))
 
 (defmethod ->root (type Metric)
   [metric]
   (let [table (-> metric :table_id Table)]
     {:entity       metric
-     :source.      table
+     :source       table
      :database     (:db_id table)
-     :full-name    (str (:name metric) " metric")
-     :url          (format "%smetric/%s" public-endpoint (:id metric))
+     :full-name    (str (:name metric) (tru " metric"))
+     :url          (format "%smetric/%s" public-endpoint (u/get-id metric))
      :rules-prefix "metric"}))
 
 (defmethod ->root (type Field)
@@ -76,8 +77,8 @@
     {:entity       field
      :source       table
      :database     (:db_id table)
-     :full-name    (str (:display_name field) "field ")
-     :url          (format "%sfield/%s" public-endpoint (:id field))
+     :full-name    (str (:display_name field) (tru " field"))
+     :url          (format "%sfield/%s" public-endpoint (u/get-id field))
      :rules-prefix "field"}))
 
 (defmulti
@@ -231,7 +232,7 @@
     (filter (comp (->> (filter-tables links_to (:tables context))
                        (keep :link)
                        set)
-                  :id)
+                  u/get-id)
             (field-candidates context (dissoc constraints :links_to)))
     (let [[tablespec fieldspec] field_type]
       (if fieldspec
@@ -253,7 +254,7 @@
   (->> definition
        (field-candidates context)
        (map #(->> (merge % definition)
-                  vector
+                  vector ; we wrap these in a vector to make merging easier (see `bind-dimensions`)
                   (assoc definition :matches)
                   (hash-map (name identifier))))))
 
@@ -312,8 +313,8 @@
     {:type     :query
      :database (:database context)
      :query    (cond-> {:source_table (if (->> context :source (instance? (type Table)))
-                                        (-> context :source :id)
-                                        (->> context :source :id (str "card__")))}
+                                        (-> context :source u/get-id)
+                                        (->> context :source u/get-id (str "card__")))}
                  (not-empty filters)
                  (assoc :filter (transduce (map :filter)
                                            merge-filter-clauses
@@ -436,14 +437,11 @@
    If there are multiple FKs pointing to the same table, multiple entries will
    be returned."
   [table]
-  (when (instance? (type Table) table)
-    (->> (db/select Field
-                    :table_id           (:id table)
-                    :fk_target_field_id [:not= nil])
-         field/with-targets
-         (filter #(some-> % :target mi/can-read?))
-         (map (fn [{:keys [id target]}]
-                (-> target field/table (assoc :link id)))))))
+  (for [{:keys [id target]} (db/select Field
+                                       :table_id           (u/get-id table)
+                                       :fk_target_field_id [:not= nil])
+        :when (some-> target mi/can-read?)]
+    (-> target field/table (assoc :link id))))
 
 (defmulti
   ^{:private  true
@@ -458,7 +456,7 @@
                  (keep (fn [[identifier definition]]
                          (when-let [matches (->> definition
                                                  :matches
-                                                 (remove (comp #{(:id field)} :id))
+                                                 (remove (comp #{(u/get-id field)} u/get-id))
                                                  not-empty)]
                            [identifier (assoc definition :matches matches)])))
                  (concat [["this" {:matches [field]
@@ -477,15 +475,17 @@
 
 (defn- make-context
   [root rule]
+  {:pre [(:source root)]}
   (let [source        (:source root)
-        tables        (concat [source] (linked-tables source))
+        tables        (concat [source] (when (instance? (type Table) source)
+                                         (linked-tables source)))
         table->fields (if (instance? (type Table) source)
                         (comp (->> (db/select Field
-                                              :table_id        [:in (map :id tables)]
+                                              :table_id        [:in (map u/get-id tables)]
                                               :visibility_type "normal")
                                    field/with-targets
                                    (group-by :table_id))
-                              :id)
+                              u/get-id)
                         (->> source
                              :result_metadata
                              (map (fn [field]
@@ -615,7 +615,7 @@
                       (-> dashboard :context :filters u/pprint-to-str)))
     (-> (cond-> dashboard
           (or query-filter cell-query)
-          (assoc :title (str "A closer look at your " full-name)))
+          (assoc :title (str (tru "A closer look at your ") full-name)))
         (populate/create-dashboard (or show max-cards))
         (assoc :related (-> (related root rule)
                             (assoc :more (if (and (-> dashboard
@@ -623,7 +623,7 @@
                                                       count
                                                       (> max-cards))
                                                   (not= show :all))
-                                           [{:title       "Show more about this"
+                                           [{:title       (tru "Show more about this")
                                              :description nil
                                              :table       (:source root)
                                              :url         (format "%s#show=all"
@@ -631,7 +631,7 @@
                                            [])))))))
 
 (def ^:private ^{:arglists '([card])} table-like?
-  (comp empty? :aggregation :query :dataset_query))
+  (comp empty? #(qp.util/get-in-normalized % [:dataset_query :query :aggregation])))
 
 (defmulti
   ^{:doc "Create a transient dashboard analyzing given entity."
@@ -655,13 +655,15 @@
   (comp codec/base64-encode codecs/str->bytes json/encode))
 
 (def ^:private ^{:arglists '([card-or-question])} nested-query?
-  (comp (every-pred string? #(str/starts-with? % "card__")) :source_table :query :dataset_query))
+  (comp (every-pred string? #(str/starts-with? % "card__"))
+        #(qp.util/get-in-normalized % [:dataset_query :query :source_table])))
 
 (def ^:private ^{:arglists '([card-or-question])} native-query?
-  (comp #{:native} qp.util/normalize-token :type :dataset_query))
+  (comp #{:native} qp.util/normalize-token #(qp.util/get-in-normalized % [:dataset_query :type])))
 
 (def ^:private ^{:arglists '([card-or-question])} source-question
-  (comp Card #(Integer/parseInt %) second #(str/split % #"__") :source_table :query :dataset_query))
+  (comp Card #(Integer/parseInt %) second #(str/split % #"__")
+        #(qp.util/get-in-normalized % [:dataset_query :query :source_table])))
 
 (defmethod automagic-analysis (type Card)
   [card {:keys [cell-query] :as opts}]
@@ -676,14 +678,14 @@
       (automagic-dashboard
        (merge {:entity       source
                :source       source
-               :query-filter (-> card :dataset_query :query :filter)
+               :query-filter (qp.util/get-in-normalized card [:dataset_query :query :filter])
                :database     (:database_id card)
-               :full-name    (str (:name card) " question")
+               :full-name    (str (:name card) (tru " question"))
                :url          (if cell-query
                                (format "%squestion/%s/cell/%s" public-endpoint
-                                       (:id card)
+                                       (u/get-id card)
                                        (endocde-base64-json cell-query))
-                               (format "%squestion/%s" public-endpoint (:id card)))
+                               (format "%squestion/%s" public-endpoint (u/get-id card)))
                :rules-prefix "table"}
               opts)))
     nil))
@@ -712,10 +714,8 @@
                                (format "%sadhoc/%s" public-endpoint
                                        (endocde-base64-json query)))
                :rules-prefix "table"}
-              (update opts :cell-query merge-filter-clauses (-> query
-                                                                :dataset_query
-                                                                :query
-                                                                :filter)))))
+              (update opts :cell-query merge-filter-clauses
+                      (qp.util/get-in-normalized query [:dataset_query :query :filter])))))
     nil))
 
 (defmethod automagic-analysis (type Field)
@@ -724,7 +724,7 @@
 
 (defn- enhanced-table-stats
   [table]
-  (let [field-types (->> (db/select [Field :special_type] :table_id (:id table))
+  (let [field-types (->> (db/select [Field :special_type] :table_id (u/get-id table))
                          (map :special_type))]
     (assoc table :stats {:num-fields  (count field-types)
                          :list-like?  (= (count (remove #{:type/PK} field-types)) 1)
@@ -748,7 +748,7 @@
   ([database schema]
    (let [rules (rules/load-rules "table")]
      (->> (apply db/select Table
-                 (cond-> [:db_id           (:id database)
+                 (cond-> [:db_id           (u/get-id database)
                           :visibility_type nil
                           :entity_type     [:not= nil]] ; only consider tables that have alredy
                                                         ; been analyzed
@@ -762,7 +762,7 @@
                                       (matching-rules rules)
                                       first)
                        dashboard (make-dashboard root rule)]
-                   {:url         (format "%stable/%s" public-endpoint (:id table))
+                   {:url         (format "%stable/%s" public-endpoint (u/get-id table))
                     :title       (:full-name root)
                     :score       (+ (math/sq (rule-specificity rule))
                                     (math/log (-> table :stats :num-fields)))

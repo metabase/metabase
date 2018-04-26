@@ -5,6 +5,7 @@
              [field :refer [Field] :as field]
              [table :refer [Table]]]
             [metabase.query-processor.util :as qp.util]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -74,8 +75,8 @@
          (keep (fn [[_ [fk & fks]]]
                  ;; Bail out if there is more than one FK from the same table
                  (when (empty? fks)
-                   [(:table_id fk) [:fk-> (:id fk) (:id field)]])))
-         (into {(:table_id field) [:field-id (:id field)]}))
+                   [(:table_id fk) [:fk-> (u/get-id fk) (u/get-id field)]])))
+         (into {(:table_id field) [:field-id (u/get-id field)]}))
     (constantly [:field-literal (:name field) (:base_type field)])))
 
 (defn- filter-for-card
@@ -90,7 +91,7 @@
                               (when-let [target (filter-for-card card field)]
                                 {:parameter_id filter-id
                                  :target       target
-                                 :card_id      (:id card)})))
+                                 :card_id      (u/get-id card)})))
                       not-empty)]
     (cond
       (nil? (:card dashcard)) dashcard

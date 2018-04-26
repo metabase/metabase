@@ -6,8 +6,6 @@
             [metabase.automagic-dashboards.filters :as magic.filters]
             [metabase.models.card :as card]
             [metabase.query-processor.util :as qp.util]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
             [toucan.db :as db]))
 
 (def ^Long ^:const grid-width

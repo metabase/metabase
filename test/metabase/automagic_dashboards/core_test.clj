@@ -73,6 +73,7 @@
   [dashboard]
   (and dashboard
        (:name dashboard)
+       (-> dashboard :orderd_cards count pos?)
        (valid-urls? dashboard)))
 
 (defmacro ^:private with-dashboard-cleanup
@@ -82,19 +83,16 @@
      ~@body))
 
 (expect
-  true
   (with-rasta
     (with-dashboard-cleanup
       (->> (Table) (keep #(automagic-analysis % {})) (every? valid-dashboard?)))))
 
 (expect
-  true
   (with-rasta
     (with-dashboard-cleanup
       (->> (Field) (keep #(automagic-analysis % {})) (every? valid-dashboard?)))))
 
 (expect
-  true
   (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
                                            :definition {:query {:aggregation ["count"]}}}]]
     (with-rasta
@@ -102,7 +100,6 @@
         (->> (Metric) (keep #(automagic-analysis % {})) (every? valid-dashboard?))))))
 
 (expect
-  true
   (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
                                        :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                                                                :source_table (data/id :venues)}
@@ -113,7 +110,6 @@
         (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
 
 (expect
-  true
   (tt/with-temp* [Card [{card-id :id} {:table_id      nil
                                        :dataset_query {:native {:query "select * from users"}
                                                        :type :native
@@ -123,7 +119,6 @@
         (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
 
 (expect
-  true
   (tt/with-temp* [Card [{source-id :id} {:table_id      (data/id :venues)
                                          :dataset_query {:query    {:source_table (data/id :venues)}
                                                          :type     :query
@@ -138,7 +133,6 @@
         (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
 
 (expect
-  true
   (tt/with-temp* [Card [{source-id :id} {:table_id      nil
                                          :dataset_query {:native {:query "select * from users"}
                                                          :type :native
@@ -153,7 +147,6 @@
         (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
 
 (expect
-  true
   (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
                                        :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                                                                :source_table (data/id :venues)}
@@ -168,7 +161,6 @@
 
 
 (expect
-  true
   (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
                                        :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                                                                :source_table (data/id :venues)}
@@ -183,7 +175,6 @@
 
 
 (expect
-  true
   (with-rasta
     (with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
@@ -193,7 +184,6 @@
         (-> q (automagic-analysis {}) valid-dashboard?)))))
 
 (expect
-  true
   (with-rasta
     (with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
@@ -218,7 +208,6 @@
           [(nil? not-analyzed-result) (some? analyzed-result)])))))
 
 (expect
-  true
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
                   Field    [{} {:table_id table-id}]
