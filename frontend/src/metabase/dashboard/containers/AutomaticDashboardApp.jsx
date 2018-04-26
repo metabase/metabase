@@ -128,7 +128,7 @@ class AutomaticDashboardApp extends React.Component {
             </div>
           </div>
 
-          <div className="px3 pb4">
+          <div className="wrapper pb4">
             {parameters &&
               parameters.length > 0 && (
                 <div className="px1 pt1">
