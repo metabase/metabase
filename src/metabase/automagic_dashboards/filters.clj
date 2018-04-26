@@ -91,7 +91,7 @@
                               (when-let [target (filter-for-card card field)]
                                 {:parameter_id filter-id
                                  :target       target
-                                 :card_id      (u/get-id card)})))
+                                 :card_id      (:id card)})))
                       not-empty)]
     (cond
       (nil? (:card dashcard)) dashcard

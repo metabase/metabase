@@ -437,9 +437,10 @@
    If there are multiple FKs pointing to the same table, multiple entries will
    be returned."
   [table]
-  (for [{:keys [id target]} (db/select Field
-                                       :table_id           (u/get-id table)
-                                       :fk_target_field_id [:not= nil])
+  (for [{:keys [id target]} (field/with-targets
+                              (db/select Field
+                                         :table_id           (u/get-id table)
+                                         :fk_target_field_id [:not= nil]))
         :when (some-> target mi/can-read?)]
     (-> target field/table (assoc :link id))))
 
