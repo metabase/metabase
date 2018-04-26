@@ -9,6 +9,7 @@ import { withBackground } from "metabase/hoc/Background";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
+import Filter from "metabase/query_builder/components/Filter";
 
 import cxs from "cxs";
 import { t } from "c-3po";
@@ -26,7 +27,8 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 
-import { getParameterIconName } from "metabase/meta/Parameter";
+import * as Q from "metabase/lib/query/query";
+import Dimension from "metabase-lib/lib/Dimension";
 
 import { dissoc } from "icepick";
 
@@ -98,9 +100,11 @@ class AutomaticDashboardApp extends React.Component {
               <div>
                 <h2>{dashboard && <TransientTitle dashboard={dashboard} />}</h2>
                 {dashboard &&
-                  dashboard.transient_filters &&
-                  dashboard.transient_filters.length > 0 && (
-                    <TransientFilters filters={dashboard.transient_filters} />
+                  dashboard.transient_filters && (
+                    <TransientFilters
+                      filter={dashboard.transient_filters}
+                      metadata={this.props.metadata}
+                    />
                   )}
               </div>
               {savedDashboardId != null ? (
@@ -163,31 +167,32 @@ const TransientTitle = ({ dashboard }) =>
     <span>{dashboard.name}</span>
   ) : null;
 
-const TransientFilters = ({ filters }) => (
+const TransientFilters = ({ filter, metadata }) => (
   <div className="mt1 flex align-center text-grey-4 text-bold">
-    {filters.map((filter, index) => (
-      <TransientFilter key={index} filter={filter} />
+    {/* $FlowFixMe */}
+    {Q.getFilters({ filter }).map((f, index) => (
+      <TransientFilter key={index} filter={f} metadata={metadata} />
     ))}
   </div>
 );
 
-const TransientFilter = ({ filter }) => (
+const TransientFilter = ({ filter, metadata }) => (
   <div className="mr3">
-    <Icon name={getParameterIconName(filter.type)} size={12} className="mr1" />
-    {filter.field.map((str, index) => [
-      <span key={"name" + index}>{str}</span>,
-      index !== filter.field.length - 1 ? (
-        <Icon
-          key={"icon" + index}
-          size={10}
-          style={{ marginLeft: 3, marginRight: 3 }}
-          name="connections"
-        />
-      ) : null,
-    ])}
-    <span> {filter.value}</span>
+    <Icon size={12} name={getIconForFilter(filter, metadata)} className="mr1" />
+    <Filter filter={filter} metadata={metadata} />
   </div>
 );
+
+const getIconForFilter = (filter, metadata) => {
+  const field = Dimension.parseMBQL(filter[1], metadata).field();
+  if (field.isDate()) {
+    return "calendar";
+  } else if (field.isLocation()) {
+    return "location";
+  } else {
+    return "label";
+  }
+};
 
 const suggestionClasses = cxs({
   ":hover h3": {
