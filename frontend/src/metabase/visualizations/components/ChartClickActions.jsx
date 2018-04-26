@@ -58,7 +58,7 @@ Object.values(SECTIONS).map((section, index) => {
 });
 
 const getGALabelForAction = action =>
-  `${action.section || ""}:${action.name || ""}`;
+  action ? `${action.section || ""}:${action.name || ""}` : null;
 
 type Props = {
   clicked: ?ClickObject,
