@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex, Subhead } from "rebass";
+import { Box, Flex, Subhead, Truncate } from "rebass";
 import { Link, withRouter } from "react-router";
 
 import * as Urls from "metabase/lib/urls";
@@ -31,11 +31,11 @@ const CollectionItem = ({ collection }) => (
         align="center"
         my={1}
         px={1}
-        py={2}
+        py={1}
         key={`collection-${collection.id}`}
       >
         <Icon name="all" mx={2} />
-        {collection.name}
+        <Truncate>{collection.name}</Truncate>
       </Flex>
     </Card>
   </Link>
@@ -43,7 +43,7 @@ const CollectionItem = ({ collection }) => (
 
 const CollectionList = ({ collectionSlug }) => {
   return (
-    <Box>
+    <Box mb={2}>
       <CollectionListLoader>
         {({ collections, loading, error }) => {
           if (loading) {
@@ -72,7 +72,7 @@ const GridItem = ({ children, w, px, py }) => (
 
 GridItem.defaultProps = {
   w: 1 / 4,
-  px: 2,
+  px: 1,
   py: 1,
 };
 
@@ -110,7 +110,7 @@ class DefaultLanding extends React.Component {
           <Link to={Urls.question(item.id)}>
             <ItemCard>
               <Icon name="beaker" />
-              <h3 className="mt-auto">{item.name}</h3>
+              <Truncate mt="auto">{item.name}</Truncate>
             </ItemCard>
           </Link>
         );
@@ -119,7 +119,7 @@ class DefaultLanding extends React.Component {
           <Link to={Urls.dashboard(item.id)}>
             <ItemCard background="white">
               <Icon name="dashboard" color={normal.blue} />
-              <h3 className="mt-auto">{item.name}</h3>
+              <Truncate mt="auto">{item.name}</Truncate>
             </ItemCard>
           </Link>
         );
@@ -128,7 +128,7 @@ class DefaultLanding extends React.Component {
           <Flex direction="column">
             <ItemCard>
               <Icon name="pulse" color={normal.yellow} />
-              <h3 className="mt-auto">{item.name}</h3>
+              <Truncate mt="auto">{item.name}</Truncate>
             </ItemCard>
           </Flex>
         );
@@ -166,8 +166,6 @@ class DefaultLanding extends React.Component {
                   break;
               }
             }
-
-            console.log(items);
 
             return (
               <Grid>
@@ -219,7 +217,7 @@ class CollectionLanding extends React.Component {
                 </Flex>
                 {currentCollection.name && (
                   <Flex align="center">
-                    <Icon name="chevronright" className="ml2 mr2" />
+                    <Icon name="chevronright" m={2} />
                     <Flex>
                       <Link to={`/collections/${currentCollection.slug}`}>
                         {currentCollection.name}
