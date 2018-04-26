@@ -184,11 +184,11 @@ export default class Navbar extends Component {
               </Button>
             }
           >
-            <Box p={3} style={{ minWidth: 300 }}>
+            <Box py={2} px={3} style={{ minWidth: 300 }}>
               <Box my={2}>
                 <Link to="question/new">
                   <Flex align="center" style={{ color: normal.red }}>
-                    <Icon name="beaker" />
+                    <Icon name="beaker" mr={1} />
                     <h3>Question</h3>
                   </Flex>
                 </Link>
@@ -197,7 +197,7 @@ export default class Navbar extends Component {
                 <ModalWithTrigger
                   triggerElement={
                     <Flex align="center" style={{ color: normal.blue }}>
-                      <Icon name="dashboard" />
+                      <Icon name="dashboard" mr={1} />
                       <h3>Dashboard</h3>
                     </Flex>
                   }
@@ -210,7 +210,7 @@ export default class Navbar extends Component {
               <Box my={2}>
                 <Link to="pulse/new">
                   <Flex align="center" style={{ color: saturated.yellow }}>
-                    <Icon name="pulse" />
+                    <Icon name="pulse" mr={1} />
                     <h3>Pulse</h3>
                   </Flex>
                 </Link>
@@ -219,7 +219,7 @@ export default class Navbar extends Component {
                 <ModalWithTrigger
                   triggerElement={
                     <Flex align="center" style={{ color: "#93B3C9" }}>
-                      <Icon name="all" />
+                      <Icon name="all" mr={1} />
                       <h3>Collection</h3>
                     </Flex>
                   }
