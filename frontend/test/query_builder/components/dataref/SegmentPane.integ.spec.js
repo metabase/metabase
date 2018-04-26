@@ -76,7 +76,7 @@ describe("SegmentPane", () => {
       .find(DataReference)
       .find(QueryDefinition);
     // eslint-disable-next-line no-irregular-whitespace
-    expect(queryDefinition.text()).toMatch(/Created At -300day/);
+    expect(queryDefinition.text()).toMatch(/Created AtPast 300 Days/);
   });
 
   it("lets you apply the filter to your current query", async () => {

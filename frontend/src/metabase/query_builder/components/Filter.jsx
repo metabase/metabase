@@ -17,7 +17,7 @@ import type { Filter as FilterType } from "metabase/meta/types/Query";
 import type { Value as ValueType } from "metabase/meta/types/Dataset";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
-type FilterRenderer = ({
+export type FilterRenderer = ({
   field?: ?React$Element<any>,
   operator: ?string,
   values: (React$Element<any> | string)[],

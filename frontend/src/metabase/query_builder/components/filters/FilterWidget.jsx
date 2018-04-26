@@ -11,6 +11,7 @@ import cx from "classnames";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { Filter as FilterType } from "metabase/meta/types/Query";
+import type { FilterRenderer } from "metabase/query_builder/components/Filter";
 
 type Props = {
   query: StructuredQuery,
@@ -23,6 +24,45 @@ type Props = {
 type State = {
   isOpen: boolean,
 };
+
+export const filterWidgetFilterRenderer: FilterRenderer = ({
+  field,
+  operator,
+  values,
+}) => (
+  <div className="flex flex-column justify-center">
+    <div
+      className="flex align-center"
+      style={{
+        padding: "0.5em",
+        paddingTop: "0.3em",
+        paddingBottom: "0.3em",
+        paddingLeft: 0,
+      }}
+    >
+      {field && (
+        <div className="Filter-section Filter-section-field QueryOption">
+          {field}
+        </div>
+      )}
+      {field && operator ? <span>&nbsp;</span> : null}
+      {operator && (
+        <div className="Filter-section Filter-section-operator">
+          <a className="QueryOption flex align-center">{operator}</a>
+        </div>
+      )}
+    </div>
+    {values.length > 0 && (
+      <div className="flex align-center flex-wrap">
+        {values.map((value, valueIndex) => (
+          <div key={valueIndex} className="Filter-section Filter-section-value">
+            <span className="QueryOption">{value}</span>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
 
 export default class FilterWidget extends Component {
   props: Props;
@@ -49,45 +89,13 @@ export default class FilterWidget extends Component {
   };
 
   renderFilter() {
+    const { query } = this.props;
     return (
-      <Filter metadata={this.props.query.metadata()} {...this.props}>
-        {({ field, operator, values }) => (
-          <div className="flex flex-column justify-center" onClick={this.open}>
-            <div
-              className="flex align-center"
-              style={{
-                padding: "0.5em",
-                paddingTop: "0.3em",
-                paddingBottom: "0.3em",
-                paddingLeft: 0,
-              }}
-            >
-              {field && (
-                <div className="Filter-section Filter-section-field QueryOption">
-                  {field}
-                </div>
-              )}
-              {field && operator ? <span>&nbsp;</span> : null}
-              {operator && (
-                <div className="Filter-section Filter-section-operator">
-                  <a className="QueryOption flex align-center">{operator}</a>
-                </div>
-              )}
-            </div>
-            {values.length > 0 && (
-              <div className="flex align-center flex-wrap">
-                {values.map((value, valueIndex) => (
-                  <div
-                    key={valueIndex}
-                    className="Filter-section Filter-section-value"
-                  >
-                    <span className="QueryOption">{value}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+      <Filter
+        metadata={query && query.metadata && query.metadata()}
+        {...this.props}
+      >
+        {filterWidgetFilterRenderer}
       </Filter>
     );
   }
@@ -125,7 +133,7 @@ export default class FilterWidget extends Component {
       <div
         className={cx("Query-filter p1 pl2", { selected: this.state.isOpen })}
       >
-        <div className="flex justify-center">
+        <div className="flex justify-center" onClick={this.open}>
           {this.renderFilter()}
           {this.renderPopover()}
         </div>
