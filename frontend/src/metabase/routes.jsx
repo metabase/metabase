@@ -34,7 +34,6 @@ import {
 } from "metabase/components/BrowseApp";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
-import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
 import CollectionPage from "metabase/questions/containers/CollectionPage.jsx";
 import CollectionEdit from "metabase/questions/containers/CollectionEdit.jsx";
@@ -214,25 +213,7 @@ export const getRoutes = store => (
       {/* MAIN */}
       <Route component={IsAuthenticated}>
         {/* The global all hands rotues, things in here are for all the folks */}
-        <Route path="/" component={CollectionLanding}>
-          <Route path="segments" title={t`Segments`} component={Segments} />
-
-          <Route path="metrics" title={t`metrics`} component={Metrics} />
-
-          <Route path="/questions" title={t`Questions`}>
-            <IndexRoute component={QuestionIndex} />
-            <Route
-              path="search"
-              title={({ location: { query: { q } } }) => t`Search` + ": " + q}
-              component={SearchResults}
-            />
-            <Route path="archive" title={t`Archive`} component={Archive} />
-            <Route
-              path="collections/:collectionSlug"
-              component={CollectionPage}
-            />
-          </Route>
-        </Route>
+        <Route path="/" component={CollectionLanding} />
 
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />

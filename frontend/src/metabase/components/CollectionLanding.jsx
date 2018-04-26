@@ -233,24 +233,9 @@ class CollectionLanding extends React.Component {
               <EntityMenu
                 items={[
                   {
-                    action: function noRefCheck() {},
+                    title: "Edit this collection",
+                    link: "/test",
                     icon: "editdocument",
-                    title: "Edit this question",
-                  },
-                  {
-                    icon: "history",
-                    link: "/derp",
-                    title: "View revision history",
-                  },
-                  {
-                    action: function noRefCheck() {},
-                    icon: "move",
-                    title: "Move",
-                  },
-                  {
-                    action: function noRefCheck() {},
-                    icon: "archive",
-                    title: "Archive",
                   },
                 ]}
                 triggerIcon="pencil"
