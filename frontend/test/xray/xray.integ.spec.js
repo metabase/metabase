@@ -358,7 +358,7 @@ describe("xray integration tests", () => {
 
       const actionsWidget = app.find(ActionsWidget);
       click(actionsWidget.childAt(0));
-      const xrayOptionIcon = actionsWidget.find(".Icon.Icon-beaker");
+      const xrayOptionIcon = actionsWidget.find(".Icon.Icon-bolt");
       click(xrayOptionIcon);
 
       await store.waitForActions([FETCH_CARD_XRAY], { timeout: 20000 });
@@ -385,7 +385,7 @@ describe("xray integration tests", () => {
 
       const actionsWidget = app.find(ActionsWidget);
       click(actionsWidget.childAt(0));
-      const xrayOptionIcon = actionsWidget.find(".Icon.Icon-beaker");
+      const xrayOptionIcon = actionsWidget.find(".Icon.Icon-bolt");
       click(xrayOptionIcon);
 
       await store.waitForActions([FETCH_SEGMENT_XRAY], { timeout: 20000 });
@@ -441,7 +441,7 @@ describe("xray integration tests", () => {
       click(actionsWidget.childAt(0));
 
       // there should not be an xray option
-      const xrayOptionIcon = actionsWidget.find(".Icon.Icon-beaker");
+      const xrayOptionIcon = actionsWidget.find(".Icon.Icon-bolt");
       expect(xrayOptionIcon.length).toEqual(0);
     });
 
@@ -459,7 +459,7 @@ describe("xray integration tests", () => {
 
       const actionsWidget = app.find(ActionsWidget);
       click(actionsWidget.childAt(0));
-      const xrayOptionIcon = actionsWidget.find(".Icon.Icon-beaker");
+      const xrayOptionIcon = actionsWidget.find(".Icon.Icon-bolt");
       expect(xrayOptionIcon.length).toEqual(0);
     });
 
@@ -510,35 +510,35 @@ describe("xray integration tests", () => {
 
       await store.waitForActions([END_LOADING]);
 
-      const xrayTableSideBarItem = app.find(".Icon.Icon-beaker");
+      const xrayTableSideBarItem = app.find(".Icon.Icon-bolt");
       expect(xrayTableSideBarItem.length).toEqual(1);
 
       store.pushPath("/reference/databases/1/tables/1/fields/1");
 
       await store.waitForActions([END_LOADING]);
-      const xrayFieldSideBarItem = app.find(".Icon.Icon-beaker");
+      const xrayFieldSideBarItem = app.find(".Icon.Icon-bolt");
       expect(xrayFieldSideBarItem.length).toEqual(1);
     });
 
-    it("should not be possible to access an Xray from the data reference if xrays are disabled", async () => {
-      // turn off xrays
-      await SettingsApi.put({ key: "enable-xrays", value: false });
-      const store = await createTestStore();
+    // it("should not be possible to access an Xray from the data reference if xrays are disabled", async () => {
+    //   // turn off xrays
+    //   await SettingsApi.put({ key: "enable-xrays", value: false });
+    //   const store = await createTestStore();
 
-      const app = mount(store.getAppContainer());
+    //   const app = mount(store.getAppContainer());
 
-      store.pushPath("/reference/databases/1/tables/1");
+    //   store.pushPath("/reference/databases/1/tables/1");
 
-      await store.waitForActions([END_LOADING]);
+    //   await store.waitForActions([END_LOADING]);
 
-      const xrayTableSideBarItem = app.find(".Icon.Icon-beaker");
-      expect(xrayTableSideBarItem.length).toEqual(0);
+    //   const xrayTableSideBarItem = app.find(".Icon.Icon-bolt");
+    //   expect(xrayTableSideBarItem.length).toEqual(0);
 
-      store.pushPath("/reference/databases/1/tables/1/fields/1");
-      await store.waitForActions([END_LOADING]);
-      const xrayFieldSideBarItem = app.find(".Icon.Icon-beaker");
-      expect(xrayFieldSideBarItem.length).toEqual(0);
-    });
+    //   store.pushPath("/reference/databases/1/tables/1/fields/1");
+    //   await store.waitForActions([END_LOADING]);
+    //   const xrayFieldSideBarItem = app.find(".Icon.Icon-bolt");
+    //   expect(xrayFieldSideBarItem.length).toEqual(0);
+    // });
   });
 
   afterAll(async () => {
