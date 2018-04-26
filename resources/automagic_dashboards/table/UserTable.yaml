@@ -109,10 +109,8 @@ cards:
       title: Users by coordinates
       metrics: Count
       dimensions:
-        - Long:
-            aggregation: default
-        - Lat:
-            aggregation: default
+        - Long
+        - Lat
       visualization: map
       score: 80
       height: 8

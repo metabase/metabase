@@ -7,6 +7,7 @@
             [medley.core :as m]
             [metabase.util :as u]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s])
   (:import java.sql.SQLException))
 
@@ -52,9 +53,8 @@
   (if-not schema
     ""
     (or (su/api-error-message schema)
-        (log/warn "We don't have a nice error message for schema:"
-                  schema
-                  "Consider wrapping it in `su/with-api-error-message`."))))
+        (log/warn (str (trs "We don't have a nice error message for schema: {0}." schema)
+                       (trs "Consider wrapping it in `su/with-api-error-message`."))))))
 
 (defn- param-name
   "Return the appropriate name for this PARAM-SYMB based on its SCHEMA. Usually this is just the name of the
@@ -271,7 +271,7 @@
   [field-name value schema]
   (try (s/validate schema value)
        (catch Throwable e
-         (throw (ex-info (format "Invalid field: %s" field-name)
+         (throw (ex-info (tru "Invalid field: {0}" field-name)
                   {:status-code 400
                    :errors      {(keyword field-name) (or (su/api-error-message schema)
                                                           (:message (ex-data e))
@@ -305,7 +305,7 @@
   [response]
   ;; Not sure why this is but the JSON serialization middleware barfs if response is just a plain boolean
   (when (m/boolean? response)
-    (throw (Exception. "Attempted to return a boolean as an API response. This is not allowed!")))
+    (throw (Exception. (str (tru "Attempted to return a boolean as an API response. This is not allowed!")))))
   (if (and (map? response)
            (contains? response :status)
            (contains? response :body))

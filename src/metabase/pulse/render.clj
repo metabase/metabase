@@ -783,7 +783,11 @@
         (render:attached render-type card data)
         (render:unknown card data)))
     (catch Throwable e
-      (log/error e (trs "Pulse card render error"))
+      (log/error (trs "Pulse card render error")
+                 (class e)
+                 (.getMessage e)
+                 "\n"
+                 (u/pprint-to-str (u/filtered-stacktrace e)))
       (render:error card data))))
 
 (s/defn ^:private render-pulse-card :- RenderedPulseCard
