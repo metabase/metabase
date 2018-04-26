@@ -6,10 +6,11 @@ import cucumber.api.CucumberOptions;
 import org.testng.annotations.Test;
 
 @CucumberOptions(features = {
-        "src/test/resources/features/installation/001_disc_installPostgres.feature",
+        //"src/test/resources/features/installation/001_disc_installPostgres.feature",
         "src/test/resources/features/installation/002_disc_installDiscovery.feature",
         "src/test/resources/features/installation/003_disc_uninstallDiscovery.feature",
         "src/test/resources/features/installation/004_disc_uninstallPostgres.feature"
+
 })
 public class DISC_nightly_IT extends BaseTest {
 

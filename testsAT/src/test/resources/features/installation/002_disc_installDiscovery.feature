@@ -15,7 +15,12 @@ Feature: Install Discovery
     And I save element in position '0' in '$.status[?(@.role == "master")].ports[0]' in environment variable 'postgresMD5_Port'
     And I wait '5' seconds
 
-  Scenario: [Basic Installation Discovery][02] Create config file
+  Scenario: [Basic Installation Discovery][02] Create database for Discovery
+    Given I connect with JDBC to database '${POSTGRES_FRAMEWORK_DEFAULT_DB:-postgres}' on host '!{postgresMD5_IP}' and port '!{postgresMD5_Port}' with user '${POSTGRES_FRAMEWORK_USER:-postgres}' and password '${POSTGRES_FRAMEWORK_PASSWORD:-stratio}'
+    When I execute query 'CREATE DATABASE ${DISCOVERY_NAME_DB:-discovery};'
+    Then I close database connection
+
+  Scenario: [Basic Installation Discovery][03] Create config file
     Given I create file 'config_discovery_0.28.9.json' based on 'schemas/config_discovery_0.28.9.json' as 'json' with:
       | $.Service.cpus                        | REPLACE | ${DISCOVERY_SERVICE_CPUS:-1}                                             | number  |
       | $.Service.name                        | UPDATE  | ${DISCOVERY_SERVICE_NAME:-discovery}                                     | n/a     |
@@ -42,7 +47,7 @@ Feature: Install Discovery
       | $.Armadillo.user                      | UPDATE  | ${DISCOVERY_ARMADILLO_USER:-vnd.bbva.user-id}                            | n/a     |
       | $.Crossdata.tenant_name               | UPDATE  | ${DISCOVERY_CROSSDATA_TENANT_NAME:-crossdata-1}                          | n/a     |
 
-  Scenario: [Basic Installation Discovery][03] Install using config file and cli
+  Scenario: [Basic Installation Discovery][04] Install using config file and cli
     Given I open a ssh connection to '${DCOS_CLI_HOST:-dcos-cli.demo.labs.stratio.com}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
     When I outbound copy 'target/test-classes/config_discovery_${DISC_VERSION:-0.28.9}.json' through a ssh connection to '/tmp'
     And I run 'dcos package install --yes --package-version=${DISC_VERSION:-0.28.9} --options=/tmp/config_discovery_${DISC_VERSION:-0.28.9}.json ${DISC_PACKAGE:-discovery}' in the ssh connection
