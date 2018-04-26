@@ -213,7 +213,8 @@ class CollectionLanding extends React.Component {
             <Subhead>
               <Flex align="center">
                 <Flex>
-                  <Link to="/">Metabase, Inc</Link>
+                  {/* TODO - figure out the right way to grab this */}
+                  <Link to="/">{window.MetabaseBootstrap.site_name}</Link>
                 </Flex>
                 {currentCollection.name && (
                   <Flex align="center">
