@@ -54,14 +54,6 @@ const FieldSidebar = ({
         />
       }
 
-      {showXray && (
-        <SidebarItem
-          key={`/xray/field/${field.id}/approximate`}
-          href={`/xray/field/${field.id}/approximate`}
-          icon="beaker"
-          name={t`See an in-depth analysis`}
-        />
-      )}
     </ul>
   </div>
 );
@@ -72,7 +64,6 @@ FieldSidebar.propTypes = {
   field: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object,
-  showXray: PropTypes.bool,
 };
 
 export default pure(FieldSidebar);

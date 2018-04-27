@@ -10,7 +10,7 @@ export class RestfulRequest {
 
   // Name of the request result property
   // In general, using the default value `result` is good for consistency
-  // but using an existing prop name (like `xray` or `dashboard`) temporarily
+  // but using an existing prop name (like `dashboard`) temporarily
   // can make the migration process from old implementation to this request API a lot easier
   resultPropName = "result";
 
@@ -106,7 +106,7 @@ export class BackgroundJobRequest {
 
   // Name of the request result property
   // In general, using the default value `result` is good for consistency
-  // but using an existing prop name (like `xray` or `dashboard`) temporarily
+  // but using an existing prop name (like `dashboard`) temporarily
   // can make the migration process from old implementation to this request API a lot easier
   resultPropName = "result";
 

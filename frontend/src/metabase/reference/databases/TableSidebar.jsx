@@ -50,14 +50,6 @@ const TableSidebar = ({ database, table, style, className, showXray }) => (
         icon="bolt"
         name={t`X-ray this table`}
       />
-      {showXray && (
-        <SidebarItem
-          key={`/xray/table/${table.id}/approximate`}
-          href={`/xray/table/${table.id}/approximate`}
-          icon="beaker"
-          name={t`See an in-depth analysis`}
-        />
-      )}
     </ol>
   </div>
 );

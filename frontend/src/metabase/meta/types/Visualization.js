@@ -48,15 +48,6 @@ export type ClickAction = {
   name?: string,
 };
 
-export type ClickActionProps = {
-  question: Question,
-  clicked?: ClickObject,
-  settings: {
-    enable_xrays: boolean,
-    xray_max_cost: string,
-  },
-};
-
 export type OnChangeCardAndRun = ({
   nextCard: Card,
   previousCard?: ?Card,

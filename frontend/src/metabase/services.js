@@ -197,28 +197,6 @@ export const MetabaseApi = {
   dataset_duration: POST("/api/dataset/duration"),
 };
 
-export const AsyncApi = {
-  status: GET("/api/async/:jobId"),
-  // endpoints:                  GET("/api/async/running-jobs")
-};
-
-export const XRayApi = {
-  // X-Rays
-  // NOTE Atte Keinänen 9/28/17: All xrays endpoints are asynchronous.
-  // You should use BackgroundJobRequest in `metabase/lib/promise` for invoking them.
-  field_xray: GET("/api/x-ray/field/:fieldId"),
-  table_xray: GET("/api/x-ray/table/:tableId"),
-  segment_xray: GET("/api/x-ray/segment/:segmentId"),
-  card_xray: GET("/api/x-ray/card/:cardId"),
-
-  compare_shared_type: GET(
-    "/api/x-ray/compare/:modelTypePlural/:modelId1/:modelId2",
-  ),
-  compare_two_types: GET(
-    "/api/x-ray/compare/:modelType1/:modelId1/:modelType2/:modelId2",
-  ),
-};
-
 export const PulseApi = {
   list: GET("/api/pulse"),
   create: POST("/api/pulse"),
