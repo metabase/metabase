@@ -629,7 +629,7 @@
   [metric opts]
   (automagic-dashboard (merge opts (->root metric))))
 
-(def ^:private ^{:arglists '([x])} endocde-base64-json
+(def ^:private ^{:arglists '([x])} encode-base64-json
   (comp codec/base64-encode codecs/str->bytes json/encode))
 
 (defmethod automagic-analysis (type Card)
@@ -646,7 +646,7 @@
                :url          (if cell-query
                                (format "%squestion/%s/cell/%s" public-endpoint
                                        (:id card)
-                                       (endocde-base64-json cell-query))
+                                       (encode-base64-json cell-query))
                                (format "%squestion/%s" public-endpoint (:id card)))
                :rules-prefix "table"}
               opts)))
@@ -664,10 +664,10 @@
                :full-name    (:display_name table)
                :url          (if cell-query
                                (format "%sadhoc/%s/cell/%s" public-endpoint
-                                       (endocde-base64-json (:dataset_query query))
-                                       (endocde-base64-json cell-query))
+                                       (encode-base64-json (:dataset_query query))
+                                       (encode-base64-json cell-query))
                                (format "%sadhoc/%s" public-endpoint
-                                                   (endocde-base64-json query)))
+                                       (encode-base64-json query)))
                :rules-prefix "table"}
               (update opts :cell-query merge-filter-clauses (-> query
                                                                 :dataset_query
