@@ -5,20 +5,20 @@
 
 ;; Postfix + pluralization
 (expect
-  :type/TransactionTable
+  :entity/TransactionTable
   (-> {:name "MY_ORDERS"} table/map->TableInstance infer-entity-type :entity_type))
 
 ;; Prefix
 (expect
-  :type/ProductTable
+  :entity/ProductTable
   (-> {:name "productcatalogue"} table/map->TableInstance infer-entity-type :entity_type))
 
 ;; Don't match in the middle of the name
 (expect
-  :type/GenericTable
+  :entity/GenericTable
   (-> {:name "myproductcatalogue"} table/map->TableInstance infer-entity-type :entity_type))
 
 ;; Not-match/default
 (expect
-  :type/GenericTable
+  :entity/GenericTable
   (-> {:name "foo"} table/map->TableInstance infer-entity-type :entity_type))
