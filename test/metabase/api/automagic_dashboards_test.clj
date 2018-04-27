@@ -35,7 +35,7 @@
       (some? ((test-users/user->client :rasta) :get 200 (apply format (str "automagic-dashboards/" template) args))))))
 
 (expect (api-call "table/%s" (data/id :venues)))
-(expect (api-call "table/%s/example/indepth" (data/id :venues)))
+(expect (api-call "table/%s/rule/example/indepth" (data/id :venues)))
 
 
 (expect
@@ -52,7 +52,7 @@
 (expect
   (tt/with-temp* [Segment [{segment-id :id} {:table_id (data/id :venues)
                                              :definition {:filter [:> [:field-id (data/id :venues :price)] 10]}}]]
-    (api-call "segment/%s/example/indepth" segment-id)))
+    (api-call "segment/%s/rule/example/indepth" segment-id)))
 
 
 (expect (api-call "field/%s" (data/id :venues :price)))
@@ -81,7 +81,7 @@
                                                                :source_table (data/id :venues)}
                                                        :type :query
                                                        :database (data/id)}}]]
-    (api-call "question/%s/cell/%s/example/indepth" card-id
+    (api-call "question/%s/cell/%s/rule/example/indepth" card-id
               (->> [:> [:field-id (data/id :venues :price)] 5]
                    (#'magic/encode-base64-json)))))
 
@@ -101,7 +101,7 @@
                   (->> [:> [:field-id (data/id :venues :price)] 5]
                        (#'magic/encode-base64-json))))
 
-(expect (api-call "adhoc/%s/cell/%s/example/indepth"
+(expect (api-call "adhoc/%s/cell/%s/rule/example/indepth"
                   (->> {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                                 :source_table (data/id :venues)}
                         :type :query

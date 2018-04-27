@@ -583,7 +583,7 @@
                (when-let [[dashboard _] (apply-rule root indepth)]
                  {:title       (:title dashboard)
                   :description (:description dashboard)
-                  :url         (format "%s/%s/%s" (:url root) (:rule rule)
+                  :url         (format "%s/rule/%s/%s" (:url root) (:rule rule)
                                        (:rule indepth))})))
        (take max-related)))
 
