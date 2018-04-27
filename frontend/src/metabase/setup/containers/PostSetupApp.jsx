@@ -87,11 +87,11 @@ export default class PostSetupApp extends Component {
           this._loadCandidates();
         });
       }
-      this._pollTimer = setInterval(
-        this._loadCandidates,
-        CANDIDATES_POLL_INTERVAL,
-      );
     }
+    this._pollTimer = setInterval(
+      this._loadCandidates,
+      CANDIDATES_POLL_INTERVAL,
+    );
   }
   componentWillUnmount() {
     this._clearTimers();

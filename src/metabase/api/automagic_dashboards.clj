@@ -47,7 +47,7 @@
     (tru "invalid value for rule name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
-  (comp json/decode codecs/bytes->str codec/base64-decode))
+  (comp #(json/decode % keyword) codecs/bytes->str codec/base64-decode))
 
 (def ^:private Base64EncodedJSON
   (su/with-api-error-message
