@@ -66,11 +66,11 @@ groups:
 - Singletons:
     title: These are the same for all your [[this]]
 - ByTime:
-    title: "[[GenericTable]] across time"
+    title: "[[this]] across time"
 - Geographical:
-    title: Where your [[GenericTable]] are
+    title: Where your [[this]] are
 - General:
-    title: How [[GenericTable]] are distributed
+    title: How [[this]] are distributed
 dashboard_filters:
 - Timestamp
 - JoinDate

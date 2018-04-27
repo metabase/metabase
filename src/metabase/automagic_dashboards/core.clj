@@ -44,9 +44,11 @@
 (defmethod ->root (type Table)
   [table]
   {:entity       table
+   :full-name    (if (isa? (:entity_type table) :entity/GoogleAnalyticsTable)
+                   (:display_name table)
+                   (str (:display_name table) (tru " table")))
    :source       table
    :database     (:db_id table)
-   :full-name    (:display_name table)
    :url          (format "%stable/%s" public-endpoint (u/get-id table))
    :rules-prefix "table"})
 
@@ -54,10 +56,10 @@
   [segment]
   (let [table (-> segment :table_id Table) ]
     {:entity       segment
+     :full-name    (str (:name segment) (tru " segment"))
      :source       table
      :database     (:db_id table)
      :query-filter (-> segment :definition :filter)
-     :full-name    (str (:name segment) (tru " segment"))
      :url          (format "%ssegment/%s" public-endpoint (u/get-id segment))
      :rules-prefix "table"}))
 
@@ -65,9 +67,9 @@
   [metric]
   (let [table (-> metric :table_id Table)]
     {:entity       metric
+     :full-name    (str (:name metric) (tru " metric"))
      :source       table
      :database     (:db_id table)
-     :full-name    (str (:name metric) (tru " metric"))
      :url          (format "%smetric/%s" public-endpoint (u/get-id metric))
      :rules-prefix "metric"}))
 
@@ -75,9 +77,9 @@
   [field]
   (let [table (field/table field)]
     {:entity       field
+     :full-name    (str (:display_name field) (tru " field"))
      :source       table
      :database     (:db_id table)
-     :full-name    (str (:display_name field) (tru " field"))
      :url          (format "%sfield/%s" public-endpoint (u/get-id field))
      :rules-prefix "field"}))
 
@@ -126,16 +128,16 @@
       reference)))
 
 (defmethod ->reference [:string (type Field)]
-  [_ {:keys [display_name]}]
-  display_name)
+  [_ {:keys [display_name full-name]}]
+  (or full-name display_name))
 
 (defmethod ->reference [:string (type Table)]
-  [_ {:keys [display_name]}]
-  display_name)
+  [_ {:keys [display_name full-name]}]
+  (or full-name display_name))
 
 (defmethod ->reference [:string (type Metric)]
-  [_ {:keys [name]}]
-  name)
+  [_ {:keys [name full-name]}]
+  (or full-name name))
 
 (defmethod ->reference [:mbql (type Metric)]
   [_ {:keys [id]}]
@@ -152,7 +154,7 @@
 (defmethod ->reference :default
   [_ form]
   (or (cond-> form
-        (map? form) :name)
+        (map? form) ((some-fn :full-name :name) form))
       form))
 
 (defn- field-isa?
@@ -215,17 +217,22 @@
   [tablespec tables]
   (filter #(-> % :entity_type (isa? tablespec)) tables))
 
-(defn- fill-template
-  [template-type context bindings template]
-  (str/replace template #"\[\[(\w+)\]\]"
-               (fn [[_ identifier]]
-                 (->reference template-type (or ((merge {"this" (-> context :root :entity)}
-                                                        bindings) identifier)
-                                                (-> identifier
-                                                    rules/->entity
-                                                    (filter-tables (:tables context))
-                                                    first)
-                                                identifier)))))
+(defn- fill-templates
+  [template-type context bindings form]
+  (walk/postwalk
+   (fn [form]
+     (if (string? form)
+       (str/replace form #"\[\[(\w+)\]\]"
+                    (fn [[_ identifier]]
+                      (->reference template-type (or ((merge {"this" (-> context :root :entity)}
+                                                             bindings) identifier)
+                                                     (-> identifier
+                                                         rules/->entity
+                                                         (filter-tables (:tables context))
+                                                         first)
+                                                     identifier))))
+       form))
+   form))
 
 (defn- field-candidates
   [context {:keys [field_type links_to named max_cardinality] :as constraints}]
@@ -334,7 +341,7 @@
                  (assoc :order_by order_by))}))
   ([context bindings query]
    {:type     :native
-    :native   {:query (fill-template :native context bindings query)}
+    :native   {:query (fill-templates :native context bindings query)}
     :database (-> context :root :database)}))
 
 (defn- has-matches?
@@ -366,11 +373,7 @@
 
 (defn- instantiate-metadata
   [x context bindings]
-  (-> (walk/postwalk (fn [form]
-                       (if (string? form)
-                         (fill-template :string context bindings form)
-                         form))
-                     x)
+  (-> (fill-templates :string context bindings x)
       (u/update-when :visualization #(instantate-visualization % bindings
                                                                (:metrics context)))))
 
@@ -524,10 +527,17 @@
   ([root rule]
    (make-dashboard root rule {:tables [(:source root)]}))
   ([root rule context]
-   (-> rule
-       (select-keys [:title :description :groups :transient_title])
-       (instantiate-metadata context {})
-       (assoc :refinements (:cell-query root)))))
+   (let [this {"this" (-> root
+                          :entity
+                          (assoc :full-name (:full-name root)))}]
+     (-> rule
+         (select-keys [:title :description :transient_title])
+         (update :title (partial fill-templates :string context this))
+         (update :description (partial fill-templates :string context this))
+         (update :transient_title (partial fill-templates :string context this))
+         (u/update-when :short_title (partial fill-templates :string context this))
+         (update :groups (partial fill-templates :string context {}))
+         (assoc :refinements (:cell-query root))))))
 
 (defn- apply-rule
   [root rule]
@@ -617,7 +627,7 @@
                       (-> dashboard :context :filters u/pprint-to-str)))
     (-> (cond-> dashboard
           (or query-filter cell-query)
-          (assoc :title (str (tru "A closer look at your ") full-name)))
+          (assoc :title (str (tru "A closer look at ") full-name)))
         (populate/create-dashboard (or show max-cards))
         (assoc :related (-> (related root rule)
                             (assoc :more (if (and (-> dashboard
@@ -679,10 +689,10 @@
                    :else                (-> card :table_id Table))]
       (automagic-dashboard
        (merge {:entity       source
+               :full-name    (str (:name card) (tru " question"))
                :source       source
                :query-filter (qp.util/get-in-normalized card [:dataset_query :query :filter])
                :database     (:database_id card)
-               :full-name    (str (:name card) (tru " question"))
                :url          (if cell-query
                                (format "%squestion/%s/cell/%s" public-endpoint
                                        (u/get-id card)
@@ -704,11 +714,17 @@
                    :else                 (-> query :table-id Table))]
       (automagic-dashboard
        (merge {:entity       source
+               :full-name    (cond
+                               (nested-query? query)
+                               (str (:name source) (tru " question"))
+
+                               (isa? (:entity_type source) :entity/GoogleAnalyitcsTable)
+                               (:display_name source)
+
+                               :else
+                               (str (:display_name source) (tru " table")))
                :source       source
                :database     (:database-id query)
-               :full-name    (if (nested-query? query)
-                               (:name source)
-                               (:display_name source))
                :url          (if cell-query
                                (format "%sadhoc/%s/cell/%s" public-endpoint
                                        (endocde-base64-json (:dataset_query query))
