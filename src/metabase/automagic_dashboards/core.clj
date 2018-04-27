@@ -582,7 +582,7 @@
        :indepth
        (keep (fn [indepth]
                (when-let [[dashboard _] (apply-rule root indepth)]
-                 {:title       (:title dashboard)
+                 {:title       ((some-fn :short-title :title) dashboard)
                   :description (:description dashboard)
                   :url         (format "%s/%s/%s" (:url root) (:rule rule)
                                        (:rule indepth))})))
