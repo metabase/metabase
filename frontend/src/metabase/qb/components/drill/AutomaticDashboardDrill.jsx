@@ -15,6 +15,11 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     return [];
   }
 
+  // aggregations
+  if (query.aggregations().length) {
+    return [];
+  }
+
   // questions with a breakout
   const dimensions = (clicked && clicked.dimensions) || [];
   if (!clicked || dimensions.length === 0) {
@@ -28,6 +33,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     {
       name: "exploratory-dashboard",
       section: "auto",
+      icon: "bolt",
       title: t`X-ray ${inflect(t`these`, count, t`this`, t`these`)} ${inflect(
         query.table().display_name,
         count,
