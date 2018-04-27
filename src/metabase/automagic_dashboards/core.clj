@@ -215,7 +215,8 @@
   [template-type context bindings template]
   (str/replace template #"\[\[(\w+)\]\]"
                (fn [[_ identifier]]
-                 (->reference template-type (or (bindings identifier)
+                 (->reference template-type (or ((merge {"this" (-> context :root :entity)}
+                                                        bindings) identifier)
                                                 (-> identifier
                                                     rules/->entity
                                                     (filter-tables (:tables context))
@@ -307,7 +308,7 @@
           (->reference :mbql (-> identifier bindings (merge opts))))
         subform))
     {:type     :query
-     :database (:database context)
+     :database (-> context :root :database)
      :query    (cond-> {:source_table (-> context :source-table :id)}
                  (not-empty filters)
                  (assoc :filter (transduce (map :filter)
@@ -328,7 +329,7 @@
   ([context bindings query]
    {:type     :native
     :native   {:query (fill-template :native context bindings query)}
-    :database (:database context)}))
+    :database (-> context :root :database)}))
 
 (defn- has-matches?
   [dimensions definition]
@@ -479,9 +480,9 @@
                                  field/with-targets
                                  (group-by :table_id))
                             :id)]
-    (as-> {:source-table (assoc source-table :fields (table->fields source-table))
+    (as-> {:root         root
+           :source-table (assoc source-table :fields (table->fields source-table))
            :tables       (map #(assoc % :fields (table->fields %)) tables)
-           :database     (:database root)
            :query-filter (merge-filter-clauses (:query-filter root)
                                                (:cell-query root))} context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
@@ -508,7 +509,7 @@
   ([root rule context]
    (-> rule
        (select-keys [:title :description :groups :transient_title])
-       (instantiate-metadata context {"this" (:entity root)})
+       (instantiate-metadata context {})
        (assoc :refinements (:cell-query root)))))
 
 (defn- apply-rule
