@@ -15,7 +15,6 @@ const FieldSidebar = ({
   field,
   style,
   className,
-  showXray,
 }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>

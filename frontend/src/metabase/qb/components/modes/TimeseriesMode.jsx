@@ -11,7 +11,6 @@ import { DEFAULT_DRILLS } from "../drill";
 
 import PivotByCategoryAction from "../actions/PivotByCategoryAction";
 import PivotByLocationAction from "../actions/PivotByLocationAction";
-import XRayCard from "../actions/XRayCard";
 
 import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByLocationDrill from "../drill/PivotByLocationDrill";
@@ -47,7 +46,6 @@ const TimeseriesMode: QueryMode = {
   actions: [
     PivotByCategoryAction,
     PivotByLocationAction,
-    XRayCard,
     ...DEFAULT_ACTIONS,
   ],
   drills: [PivotByCategoryDrill, PivotByLocationDrill, ...DEFAULT_DRILLS],
