@@ -66,9 +66,7 @@ export default class TableDetailContainer extends Component {
       <SidebarLayout
         className="flex-full relative"
         style={isEditing ? { paddingTop: "43px" } : {}}
-        sidebar={
-          <TableSidebar database={database} table={table} />
-        }
+        sidebar={<TableSidebar database={database} table={table} />}
       >
         <TableDetail {...this.props} />
       </SidebarLayout>

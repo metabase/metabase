@@ -73,11 +73,7 @@ export default class FieldDetailContainer extends Component {
         className="flex-full relative"
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={
-          <FieldSidebar
-            database={database}
-            table={table}
-            field={field}
-          />
+          <FieldSidebar database={database} table={table} field={field} />
         }
       >
         <FieldDetail {...this.props} />
