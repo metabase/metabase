@@ -9,7 +9,8 @@
 (alter-meta! #'honeysql.core/format assoc :style/indent 1)
 (alter-meta! #'honeysql.core/call   assoc :style/indent 1)
 
-;; for some reason the metadata on these helper functions is wrong which causes Eastwood to fail, see https://github.com/jkk/honeysql/issues/123
+;; for some reason the metadata on these helper functions is wrong which causes Eastwood to fail, see
+;; https://github.com/jkk/honeysql/issues/123
 (alter-meta! #'honeysql.helpers/merge-left-join assoc
              :arglists '([m & clauses])
              :style/indent 1)
@@ -45,27 +46,35 @@
 (defmethod hformat/fn-handler "extract" [_ unit expr]
   (str "extract(" (name unit) " from " (hformat/to-sql expr) ")"))
 
+;; register the function "distinct-count" with HoneySQL
+;; (hsql/format :%distinct-count.x) -> "count(distinct x)"
+(defmethod hformat/fn-handler "distinct-count" [_ field]
+  (str "count(distinct " (hformat/to-sql field) ")"))
 
-;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see https://github.com/jkk/honeysql/pull/122.
-;; However, this broke some of Metabase's behavior, specifically queries with calculated columns with numeric literals --
-;; some SQL databases can't recognize that a calculated field in a SELECT clause and a GROUP BY clause is the same thing if the calculation involves parameters.
-;; Go ahead an use the old behavior so we can keep our HoneySQL dependency up to date.
+
+;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see
+;; https://github.com/jkk/honeysql/pull/122. However, this broke some of Metabase's behavior, specifically queries
+;; with calculated columns with numeric literals -- some SQL databases can't recognize that a calculated field in a
+;; SELECT clause and a GROUP BY clause is the same thing if the calculation involves parameters. Go ahead an use the
+;; old behavior so we can keep our HoneySQL dependency up to date.
 (extend-protocol honeysql.format/ToSql
   java.lang.Number
   (to-sql [x] (str x)))
 
-;; HoneySQL automatically assumes that dots within keywords are used to separate schema / table / field / etc.
-;; To handle weird situations where people actually put dots *within* a single identifier we'll replace those dots with lozenges,
-;; let HoneySQL do its thing, then switch them back at the last second
+;; HoneySQL automatically assumes that dots within keywords are used to separate schema / table / field / etc. To
+;; handle weird situations where people actually put dots *within* a single identifier we'll replace those dots with
+;; lozenges, let HoneySQL do its thing, then switch them back at the last second
 ;;
-;; TODO - Maybe instead of this lozengey hackiness it would make more sense just to add a new "identifier" record type that implements `ToSql` in a more intelligent way
+;; TODO - Maybe instead of this lozengey hackiness it would make more sense just to add a new "identifier" record type
+;; that implements `ToSql` in a more intelligent way
 (defn escape-dots
   "Replace dots in a string with WHITE MEDIUM LOZENGES (⬨)."
   ^String [s]
   (s/replace (name s) #"\." "⬨"))
 
 (defn qualify-and-escape-dots
-  "Combine several NAME-COMPONENTS into a single Keyword, and escape dots in each name by replacing them with WHITE MEDIUM LOZENGES (⬨).
+  "Combine several NAME-COMPONENTS into a single Keyword, and escape dots in each name by replacing them with WHITE
+  MEDIUM LOZENGES (⬨).
 
      (qualify-and-escape-dots :ab.c :d) -> :ab⬨c.d"
   ^clojure.lang.Keyword [& name-components]
