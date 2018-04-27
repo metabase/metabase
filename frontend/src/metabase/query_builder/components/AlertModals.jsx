@@ -39,6 +39,7 @@ import cxs from "cxs";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import { apiUpdateQuestion } from "metabase/query_builder/actions";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 const getScheduleFromChannel = channel =>
   _.pick(
@@ -117,6 +118,8 @@ export class CreateAlertModalContent extends Component {
     // OR should the modal visibility be part of QB redux state
     // (maybe check how other modals are implemented)
     onAlertCreated();
+
+    MetabaseAnalytics.trackEvent("Alert", "Create", alert.alert_condition);
   };
 
   proceedFromEducationalScreen = () => {
@@ -288,6 +291,12 @@ export class UpdateAlertModalContent extends Component {
 
     await updateAlert(modifiedAlert);
     onAlertUpdated();
+
+    MetabaseAnalytics.trackEvent(
+      "Alert",
+      "Update",
+      modifiedAlert.alert_condition,
+    );
   };
 
   onDeleteAlert = async () => {

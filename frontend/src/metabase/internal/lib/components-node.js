@@ -3,7 +3,7 @@
 import path from "path";
 import fs from "fs";
 
-var normalizedPath = path.join(__dirname, "..", "..", "components");
+let normalizedPath = path.join(__dirname, "..", "..", "components");
 
 export default fs
   .readdirSync(normalizedPath)

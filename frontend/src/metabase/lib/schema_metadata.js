@@ -423,7 +423,7 @@ function dimensionFields(fields) {
   return _.filter(fields, isDimension);
 }
 
-var Aggregators = [
+let Aggregators = [
   {
     name: t`Raw data`,
     short: "rows",
@@ -506,7 +506,7 @@ var Aggregators = [
   },
 ];
 
-var BreakoutAggregator = {
+let BreakoutAggregator = {
   name: t`Break out by dimension`,
   short: "breakout",
   validFieldsFilters: [dimensionFields],
@@ -558,7 +558,7 @@ export const isCompatibleAggregatorForField = (aggregator, field) =>
   aggregator.validFieldsFilters.every(filter => filter([field]).length === 1);
 
 export function getBreakouts(fields) {
-  var result = populateFields(BreakoutAggregator, fields);
+  let result = populateFields(BreakoutAggregator, fields);
   result.fields = result.fields[0];
   result.validFieldsFilter = result.validFieldsFilters[0];
   return result;
@@ -623,8 +623,8 @@ export function getIconForField(field) {
 }
 
 export function computeMetadataStrength(table) {
-  var total = 0;
-  var completed = 0;
+  let total = 0;
+  let completed = 0;
   function score(value) {
     total++;
     if (value) {

@@ -57,6 +57,9 @@ Object.values(SECTIONS).map((section, index) => {
   section.index = index;
 });
 
+const getGALabelForAction = action =>
+  action ? `${action.section || ""}:${action.name || ""}` : null;
+
 type Props = {
   clicked: ?ClickObject,
   clickActions: ?(ClickAction[]),
@@ -84,6 +87,11 @@ export default class ChartClickActions extends Component {
   handleClickAction = (action: ClickAction) => {
     const { onChangeCardAndRun } = this.props;
     if (action.popover) {
+      MetabaseAnalytics.trackEvent(
+        "Actions",
+        "Open Click Action Popover",
+        getGALabelForAction(action),
+      );
       this.setState({ popoverAction: action });
     } else if (action.question) {
       const nextQuestion = action.question();
@@ -91,7 +99,7 @@ export default class ChartClickActions extends Component {
         MetabaseAnalytics.trackEvent(
           "Actions",
           "Executed Click Action",
-          `${action.section || ""}:${action.name || ""}`,
+          getGALabelForAction(action),
         );
         onChangeCardAndRun({ nextCard: nextQuestion.card() });
       }
@@ -117,7 +125,7 @@ export default class ChartClickActions extends Component {
               MetabaseAnalytics.trackEvent(
                 "Action",
                 "Executed Click Action",
-                `${popoverAction.section || ""}:${popoverAction.name || ""}`,
+                getGALabelForAction(popoverAction),
               );
             }
             onChangeCardAndRun({ nextCard });
@@ -126,6 +134,7 @@ export default class ChartClickActions extends Component {
             MetabaseAnalytics.trackEvent(
               "Action",
               "Dismissed Click Action Menu",
+              getGALabelForAction(popoverAction),
             );
             this.close();
           }}
@@ -209,7 +218,17 @@ export const ChartClickAction = ({
   // } else
   if (action.url) {
     return (
-      <Link to={action.url()} className={className}>
+      <Link
+        to={action.url()}
+        className={className}
+        onClick={() =>
+          MetabaseAnalytics.trackEvent(
+            "Actions",
+            "Executed Click Action",
+            getGALabelForAction(action),
+          )
+        }
+      >
         {action.title}
       </Link>
     );

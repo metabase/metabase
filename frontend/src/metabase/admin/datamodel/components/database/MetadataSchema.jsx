@@ -13,7 +13,7 @@ export default class MetadataSchema extends Component {
       return false;
     }
 
-    var fields = tableMetadata.fields.map(field => {
+    let fields = tableMetadata.fields.map(field => {
       return (
         <li key={field.id} className="px1 py2 flex border-bottom">
           <div className="flex-full flex flex-column mr1">

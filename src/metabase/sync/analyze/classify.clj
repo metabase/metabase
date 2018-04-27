@@ -73,7 +73,7 @@
    no-preview-display/infer-no-preview-display
    text-fingerprint/infer-special-type])
 
-(s/defn ^:private run-classifiers :- i/FieldInstance
+(s/defn run-classifiers :- i/FieldInstance
   "Run all the available `classifiers` against FIELD and FINGERPRINT, and return the resulting FIELD with changes
   decided upon by the classifiers."
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
