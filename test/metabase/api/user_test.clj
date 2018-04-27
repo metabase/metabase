@@ -25,11 +25,23 @@
 ;; ## GET /api/user
 ;; Check that anyone can get a list of all active Users
 (expect
-  #{(match-$ (fetch-user :crowberto)
+  #{(match-$ (fetch-user :trashbird)
+      {:email        "trashbird@metabase.com"
+       :ldap_auth    false
+       :first_name   "Trash"
+       :last_login   $
+       :is_active    false
+       :is_superuser false
+       :id           $
+       :last_name    "Bird"
+       :common_name  "Trash Bird"
+       :google_auth  false})
+    (match-$ (fetch-user :crowberto)
       {:common_name  "Crowberto Corv"
        :last_name    "Corv"
        :id           $
        :is_superuser true
+       :is_active    true
        :last_login   $
        :first_name   "Crowberto"
        :email        "crowberto@metabase.com"
@@ -40,6 +52,7 @@
        :last_name    "Pigeon"
        :id           $
        :is_superuser false
+       :is_active    true
        :last_login   $
        :first_name   "Lucky"
        :email        "lucky@metabase.com"
@@ -50,6 +63,7 @@
        :last_name    "Toucan"
        :id           $
        :is_superuser false
+       :is_active    true
        :last_login   $
        :first_name   "Rasta"
        :email        "rasta@metabase.com"
@@ -87,11 +101,12 @@
 ;; Test that reactivating a disabled account works
 (expect
   ;; create a random inactive user
-  (tt/with-temp User [user {:is_active false}]
+  (tt/with-temp User [ user {:is_active false}]
     ;; now try creating the same user again, should re-activiate the original
-    ((user->client :crowberto) :post 200 "user" {:first_name (:first_name user)
-                                                 :last_name  "whatever"
-                                                 :email      (:email user)})
+    ((user->client :crowberto) :put 200 (format "user/%s/reactivate" (u/get-id user))
+     {:first_name (:first_name user)
+      :last_name  "whatever"
+      :email      (:email user)})
     ;; the user should now be active
     (db/select-one-field :is_active User :id (:id user))))
 
@@ -101,6 +116,23 @@
   ((user->client :rasta) :post 403 "user" {:first_name "whatever"
                                            :last_name  "whatever"
                                            :email      "whatever@whatever.com"}))
+
+;; Attempting to reactivate a non-existant user should return a 404
+(expect
+  "Not found."
+  ((user->client :crowberto) :put 404 (format "user/%s/reactivate" Integer/MAX_VALUE)))
+
+;; Attempting to reactivate an already active user should fail
+(expect
+  "Not able to reactivate an active user"
+  ((user->client :crowberto) :put 400 (format "user/%s/reactivate" (u/get-id (fetch-user :rasta)))))
+
+;; Attempting to create a new user with the same email as an existing user should fail
+(expect
+  "Email address already in use."
+  ((user->client :crowberto) :post 400 "user" {:first_name  "Something"
+                                               :last_name   "Random"
+                                               :email       (:email (fetch-user :rasta))}))
 
 ;; Test input validations
 (expect
@@ -191,6 +223,14 @@
        (do ((user->client :crowberto) :put 200 (str "user/" user-id) {:last_name "Eron"
                                                                       :email     "cam.eron@metabase.com"})
            (user))])))
+
+;; ## PUT /api/user/:id
+;; Test that updating a user's email to an existing inactive user's email fails
+(expect
+  "Email address already associated to another user."
+  (let [trashbird (fetch-user :trashbird)
+        rasta     (fetch-user :rasta)]
+    ((user->client :crowberto) :put 400 (str "user/" (u/get-id rasta)) (select-keys trashbird [:email]))))
 
 ;; Test that a normal user cannot change the :is_superuser flag for themselves
 (defn- fetch-rasta []
@@ -290,8 +330,5 @@
       (db/update! User (u/get-id user)
         :is_active false)
       (tu/with-temporary-setting-values [google-auth-client-id nil]
-        ((user->client :crowberto) :post 200 "user"
-         {:first_name "Cam"
-          :last_name  "Era"
-          :email      (:email user)})
+        ((user->client :crowberto) :put 200 (format "user/%s/reactivate" (u/get-id user)))
         (db/select-one [User :is_active :google_auth] :id (u/get-id user))))))
