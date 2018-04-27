@@ -685,7 +685,7 @@
                :url          (if cell-query
                                (format "%squestion/%s/cell/%s" public-endpoint
                                        (u/get-id card)
-                                       (endocde-base64-json cell-query))
+                                       (encode-base64-json cell-query))
                                (format "%squestion/%s" public-endpoint (u/get-id card)))
                :rules-prefix "table"}
               opts)))
