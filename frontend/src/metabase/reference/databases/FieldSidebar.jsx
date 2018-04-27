@@ -53,15 +53,6 @@ const FieldSidebar = ({
           name={t`X-ray this field`}
         />
       }
-
-      {showXray && (
-        <SidebarItem
-          key={`/xray/field/${field.id}/approximate`}
-          href={`/xray/field/${field.id}/approximate`}
-          icon="beaker"
-          name={t`See an in-depth analysis`}
-        />
-      )}
     </ul>
   </div>
 );

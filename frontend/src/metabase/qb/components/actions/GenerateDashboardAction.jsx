@@ -23,7 +23,7 @@ export default ({ question, settings }: ClickActionProps): ClickAction[] => {
     {
       name: "generate-dashboard",
       title: t`See an exploration of this question`,
-      icon: "beaker",
+      icon: "bolt",
       url: () => dashboard_url,
     },
   ];

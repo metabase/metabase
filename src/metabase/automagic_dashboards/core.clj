@@ -224,8 +224,9 @@
      (if (string? form)
        (str/replace form #"\[\[(\w+)\]\]"
                     (fn [[_ identifier]]
-                      (->reference template-type (or ((merge {"this" (-> context :root :entity)}
-                                                             bindings) identifier)
+                      (->reference template-type (or (-> identifier
+                                                         ((merge {"this" (-> context :root :entity)}
+                                                                 bindings)))
                                                      (-> identifier
                                                          rules/->entity
                                                          (filter-tables (:tables context))
@@ -531,7 +532,7 @@
                           :entity
                           (assoc :full-name (:full-name root)))}]
      (-> rule
-         (select-keys [:title :description :transient_title])
+         (select-keys [:title :description :transient_title :groups])
          (update :title (partial fill-templates :string context this))
          (update :description (partial fill-templates :string context this))
          (update :transient_title (partial fill-templates :string context this))
@@ -594,7 +595,7 @@
                (when-let [[dashboard _] (apply-rule root indepth)]
                  {:title       ((some-fn :short-title :title) dashboard)
                   :description (:description dashboard)
-                  :url         (format "%s/%s/%s" (:url root) (:rule rule)
+                  :url         (format "%s/rule/%s/%s" (:url root) (:rule rule)
                                        (:rule indepth))})))
        (take max-related)))
 
@@ -663,7 +664,7 @@
   [metric opts]
   (automagic-dashboard (merge opts (->root metric))))
 
-(def ^:private ^{:arglists '([x])} endocde-base64-json
+(def ^:private ^{:arglists '([x])} encode-base64-json
   (comp codec/base64-encode codecs/str->bytes json/encode))
 
 (def ^:private ^{:arglists '([card-or-question])} nested-query?
@@ -696,7 +697,7 @@
                :url          (if cell-query
                                (format "%squestion/%s/cell/%s" public-endpoint
                                        (u/get-id card)
-                                       (endocde-base64-json cell-query))
+                                       (encode-base64-json cell-query))
                                (format "%squestion/%s" public-endpoint (u/get-id card)))
                :rules-prefix "table"}
               opts)))
@@ -727,10 +728,10 @@
                :database     (:database-id query)
                :url          (if cell-query
                                (format "%sadhoc/%s/cell/%s" public-endpoint
-                                       (endocde-base64-json (:dataset_query query))
-                                       (endocde-base64-json cell-query))
+                                       (encode-base64-json (:dataset_query query))
+                                       (encode-base64-json cell-query))
                                (format "%sadhoc/%s" public-endpoint
-                                       (endocde-base64-json query)))
+                                       (encode-base64-json query)))
                :rules-prefix "table"}
               (update opts :cell-query merge-filter-clauses
                       (qp.util/get-in-normalized query [:dataset_query :query :filter])))))
