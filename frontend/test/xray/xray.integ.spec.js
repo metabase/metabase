@@ -10,7 +10,7 @@ import { CardApi, SegmentApi, SettingsApi } from "metabase/services";
 
 import { delay } from "metabase/lib/promise";
 import {
-  FETCH_CARD_XRAY,
+  // FETCH_CARD_XRAY,
   FETCH_FIELD_XRAY,
   FETCH_SEGMENT_XRAY,
   FETCH_SHARED_TYPE_COMPARISON_XRAY,
@@ -21,7 +21,7 @@ import {
 import FieldXray from "metabase/xray/containers/FieldXray";
 import TableXRay from "metabase/xray/containers/TableXRay";
 import SegmentXRay from "metabase/xray/containers/SegmentXRay";
-import CardXRay from "metabase/xray/containers/CardXRay";
+// import CardXRay from "metabase/xray/containers/CardXRay";
 
 import CostSelect from "metabase/xray/components/CostSelect";
 import Constituent from "metabase/xray/components/Constituent";
@@ -51,9 +51,9 @@ import ItemLink from "metabase/xray/components/ItemLink";
 import { TableLikeComparisonXRay } from "metabase/xray/containers/TableLikeComparison";
 import {
   InsightCard,
-  NoisinessInsight,
+  // NoisinessInsight,
   NormalRangeInsight,
-  AutocorrelationInsight,
+  // AutocorrelationInsight,
 } from "metabase/xray/components/InsightCard";
 
 describe("xray integration tests", () => {
