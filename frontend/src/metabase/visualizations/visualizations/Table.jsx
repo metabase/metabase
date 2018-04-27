@@ -153,7 +153,8 @@ export default class Table extends Component {
       return null;
     }
 
-    const groupingManager = new GroupingManager(data.rows);
+    //todo: fix 30
+    const groupingManager = new GroupingManager(30, data.rows);
 
     const dataUpdated = { ...data, rows: groupingManager.rowsOrdered };
 

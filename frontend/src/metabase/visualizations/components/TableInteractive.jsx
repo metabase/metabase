@@ -21,7 +21,7 @@ import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 
 // $FlowFixMe: had to ignore react-virtualized in flow, probably due to different version
-import { Grid, ScrollSync } from "react-virtualized";
+import { Grid, ScrollSync, defaultCellRangeRenderer } from "react-virtualized";
 import Draggable from "react-draggable";
 
 const HEADER_HEIGHT = 36;
@@ -30,7 +30,7 @@ const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
-import { GroupingManager } from "metabase/visualizations/lib/GroupingManager";
+import {GroupingManager} from "metabase/visualizations/lib/GroupingManager";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
   const rowIndexes = [];
@@ -66,6 +66,13 @@ type CellRendererProps = {
   columnIndex: number,
   rowIndex: number,
 };
+
+type CellRangeProps ={
+  visibleRowIndices: Range,
+  visibleColumnIndices: Range
+};
+
+type Range = {start : Number, stop: Number};
 
 type GridComponent = Component<void, void, void> & {
   recomputeGridSize: () => void,
@@ -174,7 +181,7 @@ export default class TableInteractive extends Component {
               style: {},
             })}
             {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
-              this.cellRenderer({
+              this.cellRenderer({visibleRowIndices : { start: 0, stop : 100}, visibleColumnIndices: { start: 0, stop : rowIndex}},{
                 rowIndex,
                 columnIndex,
                 key: "row-" + rowIndex,
@@ -247,19 +254,20 @@ export default class TableInteractive extends Component {
     setTimeout(() => this.recomputeGridSize(), 1);
   }
 
-  cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
+  cellRenderer = ({visibleRowIndices, visibleColumnIndices}: CellRangeProps,{ key, style, rowIndex, columnIndex }: CellRendererProps) => {
     const groupingManager = this.props.groupingManager;
 
-    if (this.grid) {
+ // console.log(visibleRowIndices.start + " " + visibleRowIndices.stop + " " + visibleColumnIndices.start + " " + visibleColumnIndices.stop);
+ //    if(columnIndex === 0 && rowIndex === 0)
+      // console.log(groupingManager.shouldHide(rowIndex, visibleRowIndices.start));
       if (
+        // !isVisible ||
         columnIndex === 0 &&
-        groupingManager.shouldHide(rowIndex, this.grid._rowStartIndex)
+        groupingManager.shouldHide(rowIndex, visibleRowIndices)
       ) {
-        return <br />;
+        return null;
       }
-    }
 
-    // console.log(style);
 
     const {
       data,
@@ -274,9 +282,16 @@ export default class TableInteractive extends Component {
     const value = row[columnIndex];
 
     const mappedStyle =
-      columnIndex === 0 && this.grid
-        ? groupingManager.mapStyle(rowIndex, this.grid._rowStartIndex, style)
+      columnIndex === 0
+        ? groupingManager.mapStyle(rowIndex, visibleRowIndices, style)
         : style;
+
+
+    // if(rowIndex === 0 && columnIndex === 0){
+    //   console.log(visibleRowIndices.start + " " + visibleRowIndices.stop + " " + visibleColumnIndices.start + " " + visibleColumnIndices.stop);
+    //   console.log(mappedStyle);
+    // }
+
 
     const clicked = getTableCellClickedObject(
       data,
@@ -439,13 +454,13 @@ export default class TableInteractive extends Component {
   };
 
   render() {
-    const { width, height, data: { cols }, className } = this.props;
+    const { width, height, data: { cols }, className, groupingManager } = this.props;
 
     if (!width || !height) {
       return <div className={className} />;
     }
 
-    const rows = this.props.groupingManager.rowsOrdered;
+    const rows = groupingManager.rowsOrdered;
 
     return (
       <ScrollSync>
@@ -515,7 +530,6 @@ export default class TableInteractive extends Component {
               columnWidth={this.getColumnWidth}
               rowCount={rows.length}
               rowHeight={ROW_HEIGHT}
-              cellRenderer={this.cellRenderer}
               onScroll={({ scrollLeft }) => {
                 this.props.onActionDismissal();
                 return onScroll({ scrollLeft });
@@ -523,6 +537,11 @@ export default class TableInteractive extends Component {
               scrollLeft={scrollLeft}
               tabIndex={null}
               overscanRowCount={20}
+              cellRangeRenderer={rangeArgs => {
+                const res = defaultCellRangeRenderer({...rangeArgs, cellRenderer: (renderArgs => this.cellRenderer(rangeArgs, renderArgs))});
+                // console.log(res[0]);
+                return res;
+              }}
             />
           </div>
         )}
