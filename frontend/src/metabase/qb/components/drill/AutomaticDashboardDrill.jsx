@@ -15,6 +15,11 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     return [];
   }
 
+  // aggregations
+  if (query.aggregations().length) {
+    return [];
+  }
+
   // questions with a breakout
   const dimensions = (clicked && clicked.dimensions) || [];
   if (!clicked || dimensions.length === 0) {

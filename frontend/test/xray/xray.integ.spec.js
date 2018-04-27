@@ -345,57 +345,57 @@ describe("xray integration tests", () => {
       await SettingsApi.put({ key: "enable-xrays", value: "true" });
     });
 
-    it("let you see card xray for a timeseries question", async () => {
-      await SettingsApi.put({ key: "xray-max-cost", value: "extended" });
-      const store = await createTestStore();
-      // make sure xrays are on and at the proper cost
-      store.pushPath(Urls.question(timeBreakoutQuestion.id()));
-      const app = mount(store.getAppContainer());
+    // it("let you see card xray for a timeseries question", async () => {
+    //   await SettingsApi.put({ key: "xray-max-cost", value: "extended" });
+    //   const store = await createTestStore();
+    //   // make sure xrays are on and at the proper cost
+    //   store.pushPath(Urls.question(timeBreakoutQuestion.id()));
+    //   const app = mount(store.getAppContainer());
 
-      await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
-      // NOTE Atte Keinänen: Not sure why we need this delay to get most of action widget actions to appear :/
-      await delay(500);
+    //   await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
+    //   // NOTE Atte Keinänen: Not sure why we need this delay to get most of action widget actions to appear :/
+    //   await delay(500);
 
-      const actionsWidget = app.find(ActionsWidget);
-      click(actionsWidget.childAt(0));
-      const xrayOptionIcon = actionsWidget.find(".Icon.Icon-bolt");
-      click(xrayOptionIcon);
+    //   const actionsWidget = app.find(ActionsWidget);
+    //   click(actionsWidget.childAt(0));
+    //   const xrayOptionIcon = actionsWidget.find(".Icon.Icon-bolt");
+    //   click(xrayOptionIcon);
 
-      await store.waitForActions([FETCH_CARD_XRAY], { timeout: 20000 });
-      expect(store.getPath()).toBe(
-        `/xray/card/${timeBreakoutQuestion.id()}/extended`,
-      );
+    //   await store.waitForActions([FETCH_CARD_XRAY], { timeout: 20000 });
+    //   expect(store.getPath()).toBe(
+    //     `/xray/card/${timeBreakoutQuestion.id()}/extended`,
+    //   );
 
-      const cardXRay = app.find(CardXRay);
-      expect(cardXRay.length).toBe(1);
-      expect(cardXRay.text()).toMatch(/Time breakout question/);
+    //   const cardXRay = app.find(CardXRay);
+    //   expect(cardXRay.length).toBe(1);
+    //   expect(cardXRay.text()).toMatch(/Time breakout question/);
 
-      // Should contain the expected insights
-      expect(app.find(InsightCard).length > 0).toBe(true);
-      expect(app.find(NoisinessInsight).length).toBe(1);
-      expect(app.find(AutocorrelationInsight).length).toBe(1);
-    });
+    //   // Should contain the expected insights
+    //   expect(app.find(InsightCard).length > 0).toBe(true);
+    //   expect(app.find(NoisinessInsight).length).toBe(1);
+    //   expect(app.find(AutocorrelationInsight).length).toBe(1);
+    // });
 
-    it("let you see segment xray for a question containing a segment", async () => {
-      const store = await createTestStore();
-      store.pushPath(Urls.question(segmentQuestion.id()));
-      const app = mount(store.getAppContainer());
+    // it("let you see segment xray for a question containing a segment", async () => {
+    //   const store = await createTestStore();
+    //   store.pushPath(Urls.question(segmentQuestion.id()));
+    //   const app = mount(store.getAppContainer());
 
-      await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
+    //   await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
 
-      const actionsWidget = app.find(ActionsWidget);
-      click(actionsWidget.childAt(0));
-      const xrayOptionIcon = actionsWidget.find(".Icon.Icon-bolt");
-      click(xrayOptionIcon);
+    //   const actionsWidget = app.find(ActionsWidget);
+    //   click(actionsWidget.childAt(0));
+    //   const xrayOptionIcon = actionsWidget.find(".Icon.Icon-bolt");
+    //   click(xrayOptionIcon);
 
-      await store.waitForActions([FETCH_SEGMENT_XRAY], { timeout: 20000 });
-      expect(store.getPath()).toBe(`/xray/segment/${segmentId}/approximate`);
+    //   await store.waitForActions([FETCH_SEGMENT_XRAY], { timeout: 20000 });
+    //   expect(store.getPath()).toBe(`/xray/segment/${segmentId}/approximate`);
 
-      const segmentXRay = app.find(SegmentXRay);
-      expect(segmentXRay.length).toBe(1);
-      expect(segmentXRay.find(CostSelect).length).toBe(1);
-      expect(segmentXRay.text()).toMatch(/A Segment/);
-    });
+    //   const segmentXRay = app.find(SegmentXRay);
+    //   expect(segmentXRay.length).toBe(1);
+    //   expect(segmentXRay.find(CostSelect).length).toBe(1);
+    //   expect(segmentXRay.text()).toMatch(/A Segment/);
+    // });
   });
 
   describe("admin management of xrays", async () => {
