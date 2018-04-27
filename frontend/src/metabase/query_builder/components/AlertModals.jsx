@@ -119,7 +119,7 @@ export class CreateAlertModalContent extends Component {
     // (maybe check how other modals are implemented)
     onAlertCreated();
 
-    MetabaseAnalytics.trackEvent("Alert", "Create", alert.alert_condition)
+    MetabaseAnalytics.trackEvent("Alert", "Create", alert.alert_condition);
   };
 
   proceedFromEducationalScreen = () => {
@@ -292,7 +292,11 @@ export class UpdateAlertModalContent extends Component {
     await updateAlert(modifiedAlert);
     onAlertUpdated();
 
-    MetabaseAnalytics.trackEvent("Alert", "Update", modifiedAlert.alert_condition)
+    MetabaseAnalytics.trackEvent(
+      "Alert",
+      "Update",
+      modifiedAlert.alert_condition,
+    );
   };
 
   onDeleteAlert = async () => {
