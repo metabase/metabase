@@ -5,6 +5,7 @@ import ProgressBar from "metabase/components/ProgressBar.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import { t } from "c-3po";
 import { inflect } from "metabase/lib/formatting";
+import { normal } from "metabase/lib/colors";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -37,30 +38,33 @@ export default class MetadataTableList extends Component {
   }
 
   render() {
-    var queryableTablesHeader, hiddenTablesHeader;
-    var queryableTables = [];
-    var hiddenTables = [];
+    let queryableTablesHeader, hiddenTablesHeader;
+    let queryableTables = [];
+    let hiddenTables = [];
 
     if (this.props.tables) {
-      var tables = _.sortBy(this.props.tables, "display_name");
+      let tables = _.sortBy(this.props.tables, "display_name");
       _.each(tables, table => {
-        var row = (
+        const selected = this.props.tableId === table.id;
+        let row = (
           <li key={table.id}>
             <a
               className={cx("AdminList-item flex align-center no-decoration", {
-                selected: this.props.tableId === table.id,
+                selected,
               })}
               onClick={this.props.selectTable.bind(null, table)}
             >
               {table.display_name}
-              <ProgressBar
-                className="ProgressBar ProgressBar--mini flex-align-right"
-                percentage={table.metadataStrength}
-              />
+              <span className="flex-align-right" style={{ width: 17 }}>
+                <ProgressBar
+                  percentage={table.metadataStrength}
+                  color={selected ? normal.grey2 : normal.grey1}
+                />
+              </span>
             </a>
           </li>
         );
-        var regex = this.state.searchRegex;
+        let regex = this.state.searchRegex;
         if (
           !regex ||
           regex.test(table.display_name) ||

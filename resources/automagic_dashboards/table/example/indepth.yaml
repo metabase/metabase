@@ -1,0 +1,12 @@
+title: Indepth example
+applies_to: GenericTable
+metrics:
+  - Count: ["count"]
+dimensions:
+  - GenericField: "*"
+cards:
+  - Rowcount:
+      title: Total [[GenericTable]]
+      visualization: scalar
+      metrics: Count
+      score: 100

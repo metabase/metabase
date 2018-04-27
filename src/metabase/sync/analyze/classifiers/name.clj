@@ -123,23 +123,27 @@
                        inferred-special-type))
     (assoc field :special_type inferred-special-type)))
 
+(defn- prefix-or-postfix
+  [s]
+  (re-pattern (format "(?:^%s)|(?:%ss?$)" s s)))
+
 (def ^:private entity-types-patterns
-  [[#"order"        :entity/TransactionTable]
-   [#"transaction"  :entity/TransactionTable]
-   [#"sale"         :entity/TransactionTable]
-   [#"product"      :entity/ProductTable]
-   [#"user"         :entity/UserTable]
-   [#"account"      :entity/UserTable]
-   [#"people"       :entity/UserTable]
-   [#"person"       :entity/UserTable]
-   [#"employee"     :entity/UserTable]
-   [#"event"        :entity/EventTable]
-   [#"checkin"      :entity/EventTable]
-   [#"log"          :entity/EventTable]
-   [#"subscription" :entity/SubscriptionTable]
-   [#"company"      :entity/CompanyTable]
-   [#"companies"    :entity/CompanyTable]
-   [#"vendor"       :entity/CompanyTable]])
+  [[(prefix-or-postfix "order")        :entity/TransactionTable]
+   [(prefix-or-postfix "transaction")  :entity/TransactionTable]
+   [(prefix-or-postfix "sale")         :entity/TransactionTable]
+   [(prefix-or-postfix "product")      :entity/ProductTable]
+   [(prefix-or-postfix "user")         :entity/UserTable]
+   [(prefix-or-postfix "account")      :entity/UserTable]
+   [(prefix-or-postfix "people")       :entity/UserTable]
+   [(prefix-or-postfix "person")       :entity/UserTable]
+   [(prefix-or-postfix "employee")     :entity/UserTable]
+   [(prefix-or-postfix "event")        :entity/EventTable]
+   [(prefix-or-postfix "checkin")      :entity/EventTable]
+   [(prefix-or-postfix "log")          :entity/EventTable]
+   [(prefix-or-postfix "subscription") :entity/SubscriptionTable]
+   [(prefix-or-postfix "company")      :entity/CompanyTable]
+   [(prefix-or-postfix "companies")    :entity/CompanyTable]
+   [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
 (s/defn infer-entity-type :- i/TableInstance
   "Classifer that infers the special type of a TABLE based on its name."
