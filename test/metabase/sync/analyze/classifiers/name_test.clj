@@ -1,4 +1,4 @@
-(ns metabase.automagic-dashboards.core-test
+(ns metabase.sync.analyze.classifiers.name-test
   (:require [expectations :refer :all]
             [metabase.models.table :as table]
             [metabase.sync.analyze.classifiers.name :refer :all]))
