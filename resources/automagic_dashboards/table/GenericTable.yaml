@@ -1,6 +1,6 @@
-title: "A look at your [[GenericTable]] table"
-transient_title: "Here's a quick look at your [[GenericTable]] table"
-description: An overview of your [[GenericTable]] table and how it's distributed across time, place, and categories.
+title: "A look at your [[this]]"
+transient_title: "Here's a quick look at your [[this]]"
+description: An overview of your [[this]] and how it's distributed across time, place, and categories.
 metrics:
   - Count: ["count"]
   - CountDistinctFKs: [distinct, [dimension, FK]]
@@ -66,11 +66,11 @@ groups:
 - Singletons:
     title: These are the same for all your [[this]]
 - ByTime:
-    title: "[[GenericTable]] across time"
+    title: "[[this]] across time"
 - Geographical:
-    title: Where your [[GenericTable]] are
+    title: Where your [[this]] are
 - General:
-    title: How [[GenericTable]] are distributed
+    title: How [[this]] are distributed
 dashboard_filters:
 - Timestamp
 - JoinDate
@@ -82,13 +82,13 @@ dashboard_filters:
 cards:
 # Overview
   - Rowcount:
-      title: Total [[GenericTable]]
+      title: Total [[this]]
       visualization: scalar
       metrics: Count
       score: 100
       group: Overview
   - RowcountLast30Days:
-      title: New [[GenericTable]] in the last 30 days
+      title: New [[this]] in the last 30 days
       visualization: scalar
       metrics: Count
       score: 100
@@ -102,7 +102,7 @@ cards:
       group: Overview
 # General
   - NumberDistribution:
-      title: How [[GenericTable]] are distributed across [[GenericNumber]]
+      title: How [[this]] are distributed across [[GenericNumber]]
       dimensions:
         - GenericNumber:
             aggregation: default
@@ -111,7 +111,7 @@ cards:
       score: 90
       group: General
   - CountByCategoryMedium:
-      title: "[[GenericTable]] per [[GenericCategoryMedium]]"
+      title: "[[this]] per [[GenericCategoryMedium]]"
       dimensions: GenericCategoryMedium
       metrics: Count
       visualization: row
@@ -121,7 +121,7 @@ cards:
       order_by:
         - Count: descending
   - CountByCategoryLarge:
-      title: "[[GenericTable]] per [[GenericCategoryLarge]]"
+      title: "[[this]] per [[GenericCategoryLarge]]"
       dimensions: GenericCategoryLarge
       metrics: Count
       visualization: table
@@ -132,7 +132,7 @@ cards:
         - Count: descending
 # Geographical
   - CountByCountry:
-      title: "[[GenericTable]] per country"
+      title: "[[this]] per country"
       metrics: Count
       dimensions: Country
       score: 90
@@ -143,7 +143,7 @@ cards:
       group: Geographical
       height: 6
   - CountByState:
-      title: "[[GenericTable]] per state"
+      title: "[[this]] per state"
       metrics: Count
       dimensions: State
       score: 90
@@ -154,7 +154,7 @@ cards:
       group: Geographical
       height: 6
   - CountByCoords:
-      title: "[[GenericTable]] by coordinates"
+      title: "[[this]] by coordinates"
       metrics: Count
       dimensions:
         - Long
@@ -165,21 +165,21 @@ cards:
       height: 6
 # By Time
   - CountByJoinDate:
-      title: "[[GenericTable]] that have joined over time"
+      title: "[[this]] that have joined over time"
       visualization: line
       dimensions: JoinDate
       metrics: Count
       score: 90
       group: ByTime
   - CountByCreateDate:
-      title: New [[GenericTable]] over time
+      title: New [[this]] over time
       visualization: line
       dimensions: CreateDate
       metrics: Count
       score: 90
       group: ByTime
   - CountByTimestamp:
-      title: "[[GenericTable]] by [[Timestamp]]"
+      title: "[[this]] by [[Timestamp]]"
       visualization: line
       dimensions: Timestamp
       metrics: Count
@@ -253,7 +253,7 @@ cards:
       group: ByTime
       x_label: "[[Timestamp]]"
   - DayOfWeekCreateDate:
-      title: Weekdays when new [[GenericTable]] were added
+      title: Weekdays when new [[this]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -263,7 +263,7 @@ cards:
       group: ByTime
       x_label: Created At by day of the week
   - HourOfDayCreateDate:
-      title: Hours when new [[GenericTable]] were added
+      title: Hours when new [[this]] were added
       visualization: bar
       dimensions:
       - CreateDate:
@@ -273,7 +273,7 @@ cards:
       group: ByTime
       x_label: Created At by hour of the day
   - DayOfMonthCreateDate:
-      title: Days when new [[GenericTable]] were added
+      title: Days when new [[this]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -283,7 +283,7 @@ cards:
       group: ByTime
       x_label: Created At by day of the month
   - MonthOfYearCreateDate:
-      title: Months when new [[GenericTable]] were added
+      title: Months when new [[this]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -293,7 +293,7 @@ cards:
       group: ByTime
       x_label: Created At by month of the year
   - QuerterOfYearCreateDate:
-      title: Quarters when new [[GenericTable]] were added
+      title: Quarters when new [[this]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -303,7 +303,7 @@ cards:
       group: ByTime
       x_label: Created At by quarter of the year
   - DayOfWeekJoinDate:
-      title: Weekdays when [[GenericTable]] joined
+      title: Weekdays when [[this]] joined
       visualization: bar
       dimensions:
         - JoinDate:
@@ -313,7 +313,7 @@ cards:
       group: ByTime
       x_label: Join date by day of the week
   - HourOfDayJoinDate:
-      title: Hours when [[GenericTable]] joined
+      title: Hours when [[this]] joined
       visualization: bar
       dimensions:
       - JoinDate:
@@ -323,7 +323,7 @@ cards:
       group: ByTime
       x_label: Join date by hour of the day
   - DayOfMonthJoinDate:
-      title: Days of the month when [[GenericTable]] joined
+      title: Days of the month when [[this]] joined
       visualization: bar
       dimensions:
         - JoinDate:
@@ -333,7 +333,7 @@ cards:
       group: ByTime
       x_label: Join date by day of the month
   - MonthOfYearJoinDate:
-      title: Months when [[GenericTable]] joined
+      title: Months when [[this]] joined
       visualization: bar
       dimensions:
         - JoinDate:
@@ -343,7 +343,7 @@ cards:
       group: ByTime
       x_label: Join date by month of the year
   - QuerterOfYearJoinDate:
-      title: Quarters when [[GenericTable]] joined
+      title: Quarters when [[this]] joined
       visualization: bar
       dimensions:
         - JoinDate:
