@@ -5,7 +5,6 @@
             [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
-             [format :as hformat]
              [helpers :as h]]
             [metabase
              [driver :as driver]
@@ -31,12 +30,6 @@
   find referenced aggregations (otherwise something like [:aggregate-field 0] could be ambiguous in a nested query).
   Each nested query increments this counter by 1."
   0)
-
-;; register the function "distinct-count" with HoneySQL
-;; (hsql/format :%distinct-count.x) -> "count(distinct x)"
-(defmethod hformat/fn-handler "distinct-count" [_ field]
-  (str "count(distinct " (hformat/to-sql field) ")"))
-
 
 ;;; ## Formatting
 

@@ -130,6 +130,19 @@
         (ql/aggregation (ql/count))
         (ql/filter (ql/not-null $date))))))
 
+;; Creates a query that uses a field-literal. Normally our test queries will use a field placeholder, but
+;; https://github.com/metabase/metabase/issues/7381 is only triggered by a field literal
+(expect-with-non-timeseries-dbs
+  [1000]
+  (let [vec-filter #(assoc % :filter ["NOT_NULL"
+                                      ["field-id"
+                                       ["field-literal" (data/format-name "date") "type/DateTime"]]])]
+    (first-row
+      (format-rows-by [int]
+        (data/run-query checkins
+          (ql/aggregation (ql/count))
+          vec-filter)))))
+
 (expect-with-non-timeseries-dbs
   true
   (let [result (first-row (data/run-query checkins

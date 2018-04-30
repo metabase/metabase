@@ -13,7 +13,7 @@ export function precision(a) {
   if (!a) {
     return 0;
   }
-  var e = 1;
+  let e = 1;
   while (Math.round(a / e) !== a / e) {
     e /= 10;
   }
@@ -25,7 +25,7 @@ export function precision(a) {
 
 export function decimalCount(a) {
   if (!isFinite(a)) return 0;
-  var e = 1,
+  let e = 1,
     p = 0;
   while (Math.round(a * e) / e !== a) {
     e *= 10;

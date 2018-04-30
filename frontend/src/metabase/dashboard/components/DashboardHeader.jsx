@@ -325,7 +325,7 @@ export default class DashboardHeader extends Component {
   }
 
   render() {
-    var { dashboard } = this.props;
+    let { dashboard } = this.props;
 
     return (
       <Header

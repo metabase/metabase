@@ -451,7 +451,7 @@ async function sharedParametersTests(getAppAndStore) {
           .slice(0, -1), // the last item is the input, remove it
     );
     expect(values).toEqual([
-      ["Adelia Eichmann - 1"], // remapped value
+      ["Hudson Borer - 1"], // remapped value
       [],
       [],
       [],
@@ -477,7 +477,7 @@ async function sharedParametersTests(getAppAndStore) {
     expect(widget.find("li").length).toEqual(1 + 1);
     widget.find("input").simulate("change", { target: { value: "Aly" } });
     await waitForRequestToComplete("GET", /\/field\/.*\/search/);
-    expect(widget.find("li").length).toEqual(1 + 1 + 6);
+    expect(widget.find("li").length).toEqual(1 + 1 + 4);
   });
   it("should allow searching PEOPLE.NAME by PEOPLE.NAME", async () => {
     const widget = app.find(FieldValuesWidget).at(1);
@@ -485,7 +485,7 @@ async function sharedParametersTests(getAppAndStore) {
     expect(widget.find("li").length).toEqual(1);
     widget.find("input").simulate("change", { target: { value: "Aly" } });
     await waitForRequestToComplete("GET", /\/field\/.*\/search/);
-    expect(widget.find("li").length).toEqual(1 + 6);
+    expect(widget.find("li").length).toEqual(1 + 4);
   });
   it("should show values for PEOPLE.SOURCE", async () => {
     const widget = app.find(FieldValuesWidget).at(2);
@@ -500,6 +500,6 @@ async function sharedParametersTests(getAppAndStore) {
     expect(widget.find("li").length).toEqual(1);
     widget.find("input").simulate("change", { target: { value: "Aly" } });
     await waitForRequestToComplete("GET", /\/field\/.*\/search/);
-    expect(widget.find("li").length).toEqual(1 + 6);
+    expect(widget.find("li").length).toEqual(1 + 4);
   });
 }
