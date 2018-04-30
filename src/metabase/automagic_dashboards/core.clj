@@ -572,7 +572,7 @@
                        first)
         dashboard (make-dashboard root rule)]
     {:url         (:url root)
-     :title       (-> root :full-name str/capitalize)
+     :title       (:full-name root)
      :description (:description dashboard)}))
 
 (defn- others
