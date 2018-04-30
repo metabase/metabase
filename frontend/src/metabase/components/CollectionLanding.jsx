@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Flex, Subhead, Truncate } from "rebass";
 import { Link, withRouter } from "react-router";
+import { t } from "c-3po";
 
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
@@ -233,9 +234,16 @@ class CollectionLanding extends React.Component {
               <EntityMenu
                 items={[
                   {
-                    title: "Edit this collection",
-                    link: "/test",
+                    title: t`Edit this collection`,
                     icon: "editdocument",
+                    link: "/test",
+                  },
+                  {
+                    title: t`Edit permissions`,
+                    icon: "lock",
+                    link: `/collections/permissions?collectionId=${
+                      currentCollection.id
+                    }`,
                   },
                 ]}
                 triggerIcon="pencil"
