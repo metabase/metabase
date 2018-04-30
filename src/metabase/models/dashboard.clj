@@ -280,7 +280,7 @@
                                                   applied-filters-blurb))))
         collection (magic.populate/create-collection!
                     (ensure-unique-collection-name
-                     (format "Questions for your \"%s\" dashboard" (:name dashboard)))
+                     (format "Questions for the dashboard \"%s\"" (:name dashboard)))
                     (rand-nth magic.populate/colors)
                     "Automatically generated cards.")]
     (doseq [dashcard dashcards]
