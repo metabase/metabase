@@ -12,7 +12,6 @@
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.models.session :refer [Session]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.async :refer [while-with-timeout]]
             [ring.mock.request :as mock]
             [ring.util.response :as resp]
             [toucan.db :as db]
