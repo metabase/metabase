@@ -15,11 +15,6 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     return [];
   }
 
-  // aggregations
-  if (query.aggregations().length) {
-    return [];
-  }
-
   // questions with a breakout
   const dimensions = (clicked && clicked.dimensions) || [];
   if (!clicked || dimensions.length === 0) {
@@ -39,7 +34,9 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
         count,
       )}`,
       url: () => {
-        const filters = question
+        const filters = query
+          .clearFilters() // clear existing filters so we don't duplicate them
+          .question()
           .drillUnderlyingRecords(dimensions)
           .query()
           .filters();
