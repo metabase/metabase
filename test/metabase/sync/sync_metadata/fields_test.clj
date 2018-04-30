@@ -14,11 +14,10 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.test.data
-             [generic-sql :as sql-test-data]
-             h2
-             [interface :as tdi]]
-            [toucan.db :as db]
+            [metabase.test.data.interface :as tdi]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
 
 (defn- with-test-db-before-and-after-dropping-a-column
@@ -79,6 +78,15 @@
             (db/select [Field :name :active]
               :table_id [:in (db/select-ids Table :db_id (u/get-id database))]))))))
 
+;; make sure deleted fields doesn't show up in `:fields` of a table
+(expect
+  {:before-drop #{"species" "example_name"}
+   :after-drop  #{"species"}}
+  (with-test-db-before-and-after-dropping-a-column
+    (fn [database]
+      (let [table (hydrate (db/select-one Table :db_id (u/get-id database)) :fields)]
+        (set
+         (map :name (:fields table)))))))
 
 ;; make sure that inactive columns don't end up getting spliced into queries! This test arguably belongs in the query
 ;; processor tests since it's ultimately checking to make sure columns marked as `:active` = `false` aren't getting

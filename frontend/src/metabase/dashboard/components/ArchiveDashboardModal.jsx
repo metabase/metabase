@@ -28,9 +28,9 @@ export default class ArchiveDashboardModal extends Component {
   }
 
   render() {
-    var formError;
+    let formError;
     if (this.state.error) {
-      var errorMessage = "Server error encountered";
+      let errorMessage = "Server error encountered";
       if (this.state.error.data && this.state.error.data.message) {
         errorMessage = this.state.error.data.message;
       } else {

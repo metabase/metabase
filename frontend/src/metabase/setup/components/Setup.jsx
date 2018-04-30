@@ -45,7 +45,9 @@ export default class Setup extends Component {
         {t`If you feel stuck`},{" "}
         <a
           className="link"
-          href={"http://www.metabase.com/docs/" + tag + "/setting-up-metabase"}
+          href={
+            "http://www.metabase.com/docs/" + tag + "/setting-up-metabase.html"
+          }
           target="_blank"
         >{t`our getting started guide`}</a>{" "}
         {t`is just a click away.`}

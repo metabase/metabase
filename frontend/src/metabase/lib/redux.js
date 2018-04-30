@@ -12,7 +12,7 @@ export { handleActions, createAction } from "redux-actions";
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
 export function createThunkAction(actionType, actionThunkCreator) {
   function fn(...actionArgs) {
-    var thunk = actionThunkCreator(...actionArgs);
+    let thunk = actionThunkCreator(...actionArgs);
     return async function(dispatch, getState) {
       try {
         let payload = await thunk(dispatch, getState);
