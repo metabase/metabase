@@ -33,9 +33,9 @@ export default class DeleteDatabaseModal extends Component {
   render() {
     const { database } = this.props;
 
-    var formError;
+    let formError;
     if (this.state.error) {
-      var errorMessage = t`Server error encountered`;
+      let errorMessage = t`Server error encountered`;
       if (this.state.error.data && this.state.error.data.message) {
         errorMessage = this.state.error.data.message;
       } else {

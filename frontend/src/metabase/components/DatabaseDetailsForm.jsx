@@ -252,7 +252,7 @@ export default class DatabaseDetailsForm extends Component {
     } else if (field.name === "client-id" && CREDENTIALS_URL_PREFIXES[engine]) {
       let { details } = this.state;
       let projectID = details && details["project-id"];
-      var credentialsURLLink;
+      let credentialsURLLink;
       // if (projectID) {
       let credentialsURL = CREDENTIALS_URL_PREFIXES[engine] + (projectID || "");
       credentialsURLLink = (
@@ -279,7 +279,7 @@ export default class DatabaseDetailsForm extends Component {
     } else if (field.name === "auth-code" && AUTH_URL_PREFIXES[engine]) {
       let { details } = this.state;
       const clientID = details && details["client-id"];
-      var authURLLink;
+      let authURLLink;
       if (clientID) {
         let authURL = AUTH_URL_PREFIXES[engine] + clientID;
         authURLLink = (

@@ -9,11 +9,11 @@ import { t } from "c-3po";
 
 export default ({ question, settings }: ClickActionProps): ClickAction[] => {
   console.log(JSON.stringify(question.query().datasetQuery()));
-  var dashboard_url = "adhoc";
+  let dashboard_url = "adhoc";
   if (question.card().id) {
     dashboard_url = `/auto/dashboard/question/${question.card().id}`;
   } else {
-    var encodedQueryDict = utf8_to_b64url(
+    let encodedQueryDict = utf8_to_b64url(
       JSON.stringify(question.query().datasetQuery()),
     );
     dashboard_url = `/auto/dashboard/adhoc/${encodedQueryDict}`;
@@ -22,7 +22,7 @@ export default ({ question, settings }: ClickActionProps): ClickAction[] => {
     {
       name: "generate-dashboard",
       title: t`See an exploration of this question`,
-      icon: "beaker",
+      icon: "bolt",
       url: () => dashboard_url,
     },
   ];

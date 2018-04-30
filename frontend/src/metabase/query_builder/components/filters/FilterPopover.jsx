@@ -187,7 +187,7 @@ export default class FilterPopover extends Component {
       }
     }
     // arguments are non-null/undefined
-    for (var i = 2; i < filter.length; i++) {
+    for (let i = 2; i < filter.length; i++) {
       if (filter[i] == null) {
         return false;
       }

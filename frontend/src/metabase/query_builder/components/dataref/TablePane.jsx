@@ -66,9 +66,9 @@ export default class TablePane extends Component {
   render() {
     const { table, error } = this.state;
     if (table) {
-      var queryButton;
+      let queryButton;
       if (table.rows != null) {
-        var text = t`See the raw data for ${table.display_name}`;
+        let text = t`See the raw data for ${table.display_name}`;
         queryButton = (
           <QueryButton
             className="border-bottom border-top mb3"
@@ -78,13 +78,13 @@ export default class TablePane extends Component {
           />
         );
       }
-      var panes = {
+      let panes = {
         fields: table.fields.length,
         // "metrics": table.metrics.length,
         // "segments": table.segments.length,
         connections: this.state.tableForeignKeys.length,
       };
-      var tabs = Object.entries(panes).map(([name, count]) => (
+      let tabs = Object.entries(panes).map(([name, count]) => (
         <a
           key={name}
           className={cx("Button Button--small", {
@@ -97,7 +97,8 @@ export default class TablePane extends Component {
         </a>
       ));
 
-      var pane;
+      let pane;
+      let description;
       if (this.state.pane === "connections") {
         const fkCountsByTable = foreignKeyCountsByOriginTable(
           this.state.tableForeignKeys,
@@ -140,12 +141,14 @@ export default class TablePane extends Component {
             ))}
           </ul>
         );
-      } else var descriptionClasses = cx({ "text-grey-3": !table.description });
-      var description = (
-        <p className={descriptionClasses}>
-          {table.description || t`No description set.`}
-        </p>
-      );
+      } else {
+        const descriptionClasses = cx({ "text-grey-3": !table.description });
+        description = (
+          <p className={descriptionClasses}>
+            {table.description || t`No description set.`}
+          </p>
+        );
+      }
 
       return (
         <div>
