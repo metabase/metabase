@@ -12,7 +12,13 @@ Click on one of these to see an x-ray.
 
 ![X-ray example](.images/x-rays/example.png)
 
-You can see more suggested x-rays over on the right-hand side of the screen. If you come across an x-ray that's particularly interesting, you can save it as a dashboard by clicking the green Save button.
+You can see more suggested x-rays over on the right-hand side of the screen. Browsing through x-rays like this is a pretty fun way of getting a quick overview of your data.
+
+### Saving x-rays
+
+If you're logged in as an Administrator and you come across an x-ray that's particularly interesting, you can save it as a dashboard by clicking the green Save button. Metabase will create a new dashboard for you and put all of its charts in a new collection. The new collection and dashboard will only be visible to other Administrators by default.
+
+To quickly make your new dashboard visible to other users, go to the collection with its charts, click the lock icon to edit the collection's permissions, and choose which groups should be allowed to view the charts in this collection. Note that this might allow users to see charts and data that they might not normally have access to. For more about how Metabase handles permissions, check out these posts about [collection permissions](../administration-guide/06-collections.md) and [data access permissions](../administration-guide/05-setting-permissions.md).
 
 ### Creating x-rays by clicking on charts or tables
 
