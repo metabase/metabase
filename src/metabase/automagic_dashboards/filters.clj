@@ -327,9 +327,10 @@
 
 (defn- flatten-filter-clause
   [filter-clause]
-  (if (-> filter-clause first qp.util/normalize-token (= :and))
-    (mapcat flatten-filter-clause (rest filter-clause))
-    [filter-clause]))
+  (when (not-empty filter-clause)
+    (if (-> filter-clause first qp.util/normalize-token (= :and))
+      (mapcat flatten-filter-clause (rest filter-clause))
+      [filter-clause])))
 
 (defn inject-refinement
   "Inject a filter refinement into an MBQL filter clause.

@@ -733,9 +733,10 @@
                                (format "%sadhoc/%s" public-endpoint
                                        (encode-base64-json query)))
                :rules-prefix "table"}
-              (update opts :cell-query #(filters/inject-refinement
-                                         (qp.util/get-in-normalized query [:dataset_query :query :filter])
-                                         %)))))
+              (update opts :cell-query
+                      #(-> query
+                           (qp.util/get-in-normalized [:dataset_query :query :filter])
+                           (filters/inject-refinement %))))))
     nil))
 
 (defmethod automagic-analysis (type Field)
