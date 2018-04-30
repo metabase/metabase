@@ -34,7 +34,9 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
         count,
       )}`,
       url: () => {
-        const filters = question
+        const filters = query
+          .clearFilters() // clear existing filters so we don't duplicate them
+          .question()
           .drillUnderlyingRecords(dimensions)
           .query()
           .filters();
