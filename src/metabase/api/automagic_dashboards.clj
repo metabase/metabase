@@ -30,20 +30,20 @@
 
 (def ^:private Prefix
   (su/with-api-error-message
-      (->> ["table" "metric" "field"]
-           (mapcat rules/load-rules)
-           (filter :indepth)
-           (map :rule)
-           (apply s/enum))
+      (s/pred (fn [prefix]
+                (some #(not-empty (rules/get-rules [% prefix])) ["table" "metric" "field"])))
     (tru "invalid value for prefix")))
 
 (def ^:private Rule
   (su/with-api-error-message
-      (->> ["table" "metric" "field"]
-           (mapcat rules/load-rules)
-           (mapcat :indepth)
-           (map :rule)
-           (apply s/enum))
+      (s/pred (fn [rule]
+                (some (fn [toplevel]
+                        (some (comp rules/get-rule
+                                    (fn [prefix]
+                                      [toplevel prefix rule])
+                                    :rule)
+                              (rules/get-rules [toplevel])))
+                      ["table" "metric" "field"])))
     (tru "invalid value for rule name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
@@ -51,12 +51,8 @@
 
 (def ^:private Base64EncodedJSON
   (su/with-api-error-message
-      (s/pred decode-base64-json "valid base64 encoded json")
+      (s/pred decode-base64-json)
     (tru "value couldn''t be parsed as base64 encoded JSON")))
-
-(defn- load-rule
-  [entity prefix rule]
-  (rules/load-rule (format "%s/%s/%s.yaml" entity prefix rule)))
 
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
@@ -84,7 +80,7 @@
       Table
       api/check-404
       (magic/automagic-analysis
-       {:rule (load-rule "table" prefix rule)
+       {:rule ["table" prefix rule]
         :show (keyword show)})))
 
 (api/defendpoint GET "/segment/:id"
@@ -103,7 +99,7 @@
       Segment
       api/check-404
       (magic/automagic-analysis
-       {:rule (load-rule "table" prefix rule)
+       {:rule ["table" prefix rule]
         :show (keyword show)})))
 
 (api/defendpoint GET "/question/:id/cell/:cell-query"
@@ -130,7 +126,7 @@
       Card
       api/check-404
       (magic/automagic-analysis {:show       (keyword show)
-                                 :rule       (load-rule "table" prefix rule)
+                                 :rule       ["table" prefix rule]
                                  :cell-query (decode-base64-json cell-query)})))
 
 (api/defendpoint GET "/metric/:id"
@@ -158,7 +154,7 @@
    prefix Prefix
    rule   Rule}
   (-> id Card api/check-404 (magic/automagic-analysis {:show (keyword show)
-                                                       :rule (load-rule "table" prefix rule)})))
+                                                       :rule ["table" prefix rule]})))
 
 (api/defendpoint GET "/adhoc/:query"
   "Return an automagic dashboard analyzing ad hoc query."
@@ -181,7 +177,7 @@
       decode-base64-json
       query/adhoc-query
       (magic/automagic-analysis {:show (keyword show)
-                                 :rule (load-rule "table" prefix rule)})))
+                                 :rule ["table" prefix rule]})))
 
 (api/defendpoint GET "/adhoc/:query/cell/:cell-query"
   "Return an automagic dashboard analyzing ad hoc query."
@@ -211,7 +207,7 @@
         query/adhoc-query
         (magic/automagic-analysis {:show       (keyword show)
                                    :cell-query cell-query
-                                   :rule       (load-rule "table" prefix rule)}))))
+                                   :rule       ["table" prefix rule]}))))
 
 (def ^:private valid-comparison-pair?
   #{["segment" "segment"]

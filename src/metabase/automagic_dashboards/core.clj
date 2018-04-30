@@ -568,7 +568,7 @@
   [entity]
   (let [root      (->root entity)
         rule      (->> root
-                       (matching-rules (rules/load-rules (:rules-prefix root)))
+                       (matching-rules (rules/get-rules [(:rules-prefix root)]))
                        first)
         dashboard (make-dashboard root rule)]
     {:url         (:url root)
@@ -589,8 +589,7 @@
 
 (defn- indepth
   [root rule]
-  (->> rule
-       :indepth
+  (->> (rules/get-rules [(:rules-prefix root) (:rule rule)])
        (keep (fn [indepth]
                (when-let [[dashboard _] (apply-rule root indepth)]
                  {:title       ((some-fn :short-title :title) dashboard)
@@ -609,9 +608,9 @@
   "Create dashboards for table `root` using the best matching heuristics."
   [{:keys [rule show rules-prefix query-filter cell-query full-name] :as root}]
   (when-let [[dashboard rule] (if rule
-                                (apply-rule root rule)
+                                (apply-rule root (rules/get-rule rule))
                                 (->> root
-                                     (matching-rules (rules/load-rules rules-prefix))
+                                     (matching-rules (rules/get-rules [rules-prefix]))
                                      (keep (partial apply-rule root))
                                      ;; `matching-rules` returns an `ArraySeq` (via `sort-by`) so
                                      ;; `first` realises one element at a time (no chunking).
@@ -765,7 +764,7 @@
    interestingness of tables they contain (see above)."
   ([database] (candidate-tables database nil))
   ([database schema]
-   (let [rules (rules/load-rules "table")]
+   (let [rules (rules/get-rules ["table"])]
      (->> (apply db/select Table
                  (cond-> [:db_id           (u/get-id database)
                           :visibility_type nil

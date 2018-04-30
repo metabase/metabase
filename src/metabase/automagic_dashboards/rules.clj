@@ -276,11 +276,8 @@
 
 (def ^:private rules-dir "automagic_dashboards/")
 
-(def ^:private ^{:arglists '([f])} file->table-type
+(def ^:private ^{:arglists '([f])} file->entity-type
   (comp (partial re-find #".+(?=\.yaml)") str (memfn ^Path getFileName)))
-
-(def ^:private ^{:arglists '([f])} file->parent-dir
-  (comp last #(str/split % #"/") str (memfn ^Path getParent)))
 
 (defmacro ^:private with-resources
   [identifier & body]
@@ -295,60 +292,59 @@
          (let [~identifier (FileSystems/getDefault)]
            ~@body)))))
 
-(defn- resource-path
-  [^FileSystem fs path]
-  (when-let [path (some->> path (str rules-dir) io/resource)]
-    (let [path (if (-> path str (str/starts-with? "jar"))
-                 (-> path str (str/split #"!" 2) second)
-                 (.getPath path))]
-      (.getPath fs path (into-array String [])))))
+(defn- load-rule
+  [f]
+  (try
+    (let [entity-type (file->entity-type f)]
+      (-> f
+          .toUri
+          slurp
+          yaml/parse-string
+          (assoc :rule entity-type)
+          (update :applies_to #(or % entity-type))
+          rules-validator))
+    (catch Exception e
+      (log/error (format "Error parsing %s:\n%s"
+                         (.getFileName f)
+                         (or (some-> e
+                                     ex-data
+                                     (select-keys [:error :value])
+                                     u/pprint-to-str)
+                             e)))
+      nil)))
 
-(declare load-rules)
+(defn- load-rule-dir
+  ([dir] (load-rule-dir dir [] {}))
+  ([dir path rules]
+   (with-open [ds (Files/newDirectoryStream dir)]
+     (reduce (fn [rules ^Path f]
+               (cond
+                 (Files/isDirectory f (into-array java.nio.file.LinkOption []))
+                 (load-rule-dir f (conj path (str (.getFileName f))) rules)
 
-(defn load-rule
-  "Load and validate rule from file `f`."
-  ([f]
-   (with-resources fs
-     (some->> f (resource-path fs) (load-rule fs))))
-  ([fs ^Path f]
-   (try
-     (-> f
-         .toUri
-         slurp
-         yaml/parse-string
-         (assoc :rule (file->table-type f))
-         (update :applies_to #(or % (file->table-type f)))
-         rules-validator
-         (assoc :indepth (load-rules fs (format "%s/%s"
-                                                (file->parent-dir f)
-                                                (file->table-type f)))))
-     (catch Exception e
-       (log/error (format "Error parsing %s:\n%s"
-                          (.getFileName f)
-                          (or (some-> e
-                                      ex-data
-                                      (select-keys [:error :value])
-                                      u/pprint-to-str)
-                              e)))
-       nil))))
+                 (file->entity-type f)
+                 (assoc-in rules (concat path [(file->entity-type f) ::leaf]) (load-rule f))))
+             rules
+             ds))))
 
-(defn load-rules
-  "Load and validate all rules in dir."
-  ([dir]
-   (with-resources fs
-     (load-rules fs dir)))
-  ([fs dir]
-   (when-let [dir (resource-path fs dir)]
-     (with-open [ds (Files/newDirectoryStream dir)]
-       (->> ds
-            (filter #(str/ends-with? (.toString ^Path %) ".yaml"))
-            (keep (partial load-rule fs))
-            doall)))))
+(def ^:private rules
+  (with-resources fs
+    (let [path (io/resource rules-dir)
+          path (if (-> path str (str/starts-with? "jar"))
+                                (-> path str (str/split #"!" 2) second)
+                                (.getPath path))]
+      (into {} (load-rule-dir (.getPath fs path (into-array String [])))))))
 
-(defn -main
-  "Entry point for lein task `validate-automagic-dashboards`"
-  [& _]
-  (dorun (load-rules "tables"))
-  (dorun (load-rules "metrics"))
-  (dorun (load-rules "fields"))
-  (System/exit 0))
+(defn get-rules
+  "Get all rules with prefix `path`.
+   Path needs to match the entire prefix, so [\"table\"] will match table/TransactionTable.yaml,
+   but not table/TransactionTable/ByCountry.yaml"
+  [path]
+  (->> path
+       (get-in rules)
+       (keep (comp ::leaf val))))
+
+(defn get-rule
+  "Get rule at path `path`."
+  [path]
+  (get-in rules (concat path [::leaf])))
