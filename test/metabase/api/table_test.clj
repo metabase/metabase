@@ -346,7 +346,7 @@
              (assoc-in [:db :details] {:db "mem:test-data;USER=GUEST;PASSWORD=guest"}))
          (match-$ table
            {:description     "What a nice table!"
-            :entity_type     "person"
+            :entity_type     nil
             :visibility_type "hidden"
             :schema          $
             :name            $
@@ -357,7 +357,6 @@
             :raw_table_id    $
             :created_at      $}))
   (do ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
-                                                                           :entity_type     "person"
                                                                            :visibility_type "hidden"
                                                                            :description     "What a nice table!"})
       (dissoc ((user->client :crowberto) :get 200 (format "table/%d" (:id table)))
@@ -373,7 +372,6 @@
                    (with-redefs [sync/sync-table! (fn [& args] (swap! called inc)
                                                     (apply original-sync-table! args))]
                      ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
-                                                                                          :entity_type     "person"
                                                                                           :visibility_type state
                                                                                           :description     "What a nice table!"})))]
     (do (test-fun "hidden")

@@ -1,6 +1,7 @@
 import {
   useSharedAdminLogin,
   createTestStore,
+  eventually,
 } from "__support__/integrated_tests";
 
 import {
@@ -307,12 +308,14 @@ describe("FieldApp", () => {
         .first();
       click(useFKButton);
       store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA]);
-      // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
-      await delay(500);
 
-      const fkFieldSelect = section.find(SelectButton);
+      let fkFieldSelect;
 
-      expect(fkFieldSelect.text()).toBe("Name");
+      await eventually(() => {
+        fkFieldSelect = section.find(SelectButton);
+        expect(fkFieldSelect.text()).toBe("Name");
+      });
+
       click(fkFieldSelect);
 
       const sourceField = fkFieldSelect
@@ -326,9 +329,11 @@ describe("FieldApp", () => {
 
       click(sourceField);
       store.waitForActions([FETCH_TABLE_METADATA]);
-      // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
-      await delay(500);
-      expect(fkFieldSelect.text()).toBe("Source");
+
+      await eventually(() => {
+        fkFieldSelect = section.find(SelectButton);
+        expect(fkFieldSelect.text()).toBe("Source");
+      });
     });
 
     it("doesn't show date fields in fk options", async () => {

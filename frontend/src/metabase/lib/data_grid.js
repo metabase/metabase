@@ -10,7 +10,7 @@ function compareNumbers(a, b) {
 export function pivot(data) {
   // find the lowest cardinality dimension and make it our "pivoted" column
   // TODO: we assume dimensions are in the first 2 columns, which is less than ideal
-  var pivotCol = 0,
+  let pivotCol = 0,
     normalCol = 1,
     cellCol = 2,
     pivotColValues = distinctValues(data, pivotCol),
@@ -19,7 +19,7 @@ export function pivot(data) {
     pivotCol = 1;
     normalCol = 0;
 
-    var tmp = pivotColValues;
+    let tmp = pivotColValues;
     pivotColValues = normalColValues;
     normalColValues = tmp;
   }
@@ -52,9 +52,9 @@ export function pivot(data) {
   });
 
   // fill it up with the data
-  for (var j = 0; j < data.rows.length; j++) {
-    var normalColIdx = normalColValues.lastIndexOf(data.rows[j][normalCol]);
-    var pivotColIdx = pivotColValues.lastIndexOf(data.rows[j][pivotCol]);
+  for (let j = 0; j < data.rows.length; j++) {
+    let normalColIdx = normalColValues.lastIndexOf(data.rows[j][normalCol]);
+    let pivotColIdx = pivotColValues.lastIndexOf(data.rows[j][pivotCol]);
 
     pivotedRows[normalColIdx][0] = data.rows[j][normalCol];
     // NOTE: we are hard coding the expectation that the metric is in the 3rd column
@@ -68,7 +68,7 @@ export function pivot(data) {
       return data.cols[normalCol];
     }
 
-    var colDef = _.clone(data.cols[cellCol]);
+    let colDef = _.clone(data.cols[cellCol]);
     colDef.name = colDef.display_name =
       formatValue(value, { column: data.cols[pivotCol] }) || "";
     // for onVisualizationClick:
@@ -88,7 +88,7 @@ export function pivot(data) {
 }
 
 export function distinctValues(data, colIdx) {
-  var vals = data.rows.map(function(r) {
+  let vals = data.rows.map(function(r) {
     return r[colIdx];
   });
 

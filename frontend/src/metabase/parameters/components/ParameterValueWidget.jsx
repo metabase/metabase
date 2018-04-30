@@ -3,10 +3,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
+import { t } from "c-3po";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import { t } from "c-3po";
 import DateSingleWidget from "./widgets/DateSingleWidget.jsx";
 import DateRangeWidget from "./widgets/DateRangeWidget.jsx";
 import DateRelativeWidget from "./widgets/DateRelativeWidget.jsx";
@@ -22,6 +22,8 @@ import {
   getMetadata,
   makeGetMergedParameterFieldValues,
 } from "metabase/selectors/metadata";
+
+import { getParameterIconName } from "metabase/meta/Parameter";
 
 import S from "./ParameterWidget.css";
 
@@ -99,13 +101,6 @@ export default class ParameterValueWidget extends Component {
     }
   }
 
-  static getParameterIconName(parameterType) {
-    if (parameterType.search(/date/) !== -1) return "calendar";
-    if (parameterType.search(/location/) !== -1) return "location";
-    if (parameterType.search(/id/) !== -1) return "label";
-    return "label";
-  }
-
   state = { isFocused: false };
 
   componentWillMount() {
@@ -162,7 +157,7 @@ export default class ParameterValueWidget extends Component {
       if (!isEditing && !hasValue && !this.state.isFocused) {
         return (
           <Icon
-            name={ParameterValueWidget.getParameterIconName(parameter.type)}
+            name={getParameterIconName(parameter.type)}
             className="flex-align-left mr1 flex-no-shrink"
             size={14}
           />
