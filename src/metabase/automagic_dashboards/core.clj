@@ -499,8 +499,8 @@
     (as-> {:source       (assoc source :fields (table->fields source))
            :tables       (map #(assoc % :fields (table->fields %)) tables)
            :database     (:database root)
-           :query-filter (merge-filter-clauses (:query-filter root)
-                                               (:cell-query root))} context
+           :query-filter (filters/inject-refinement (:query-filter root)
+                                                    (:cell-query root))} context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
       (assoc context :metrics (resolve-overloading context (:metrics rule)))
       (assoc context :filters (resolve-overloading context (:filters rule)))
@@ -715,8 +715,9 @@
                                (format "%sadhoc/%s" public-endpoint
                                        (encode-base64-json query)))
                :rules-prefix "table"}
-              (update opts :cell-query merge-filter-clauses
-                      (qp.util/get-in-normalized query [:dataset_query :query :filter])))))
+              (update opts :cell-query #(filters/inject-refinement
+                                         (qp.util/get-in-normalized query [:dataset_query :query :filter])
+                                         %)))))
     nil))
 
 (defmethod automagic-analysis (type Field)
