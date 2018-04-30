@@ -38,7 +38,8 @@
   name)
 
 (defn collect-field-references
-  "Collect all field references (`[:field-id]` or `[:fk->]` forms) from a given form."
+  "Collect all field references (`[:field-id]`, `[:fk->]` or `[:field-literal]` forms) from a given
+   form."
   [form]
   (->> form
        (tree-seq (some-fn sequential? map?) identity)

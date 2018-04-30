@@ -16,12 +16,13 @@
             [medley.core :as m]
             [metabase.automagic-dashboards
              [populate :as populate]
+             [filters :as filters]
              [rules :as rules]]
             [metabase.models
              [card :as card :refer [Card]]
              [field :refer [Field] :as field]
              [interface :as mi]
-             [metric :refer [Metric]]
+             [metric :refer [Metric] :as metric]
              [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
@@ -32,8 +33,8 @@
             [metabase.util :as u]
             [puppetlabs.i18n.core :as i18n :refer [tru]]
             [ring.util.codec :as codec]
-            [toucan.db :as db]))
-
+            [toucan.db :as db]))q
+q
 (def ^:private public-endpoint "/auto/dashboard/")
 
 (defmulti
@@ -68,7 +69,7 @@
      :source       table
      :database     (:db_id table)
      :full-name    (str (:name metric) (tru " metric"))
-     :url          (format "%smetric/%s" public-endpoint (u/get-id metric))
+     :url          (format "%smetric/%s" public-endpoint (:id metric))
      :rules-prefix "metric"}))
 
 (defmethod ->root (type Field)
@@ -138,8 +139,10 @@
   name)
 
 (defmethod ->reference [:mbql (type Metric)]
-  [_ {:keys [id]}]
-  ["METRIC" id])
+  [_ {:keys [id definition]}]
+  (if id
+    ["METRIC" id]
+    (-> definition :aggregation first)))
 
 (defmethod ->reference [:native (type Field)]
   [_ field]
@@ -642,15 +645,15 @@
 
 (defmethod automagic-analysis (type Table)
   [table opts]
-  (automagic-dashboard (merge opts (->root table))))
+  (automagic-dashboard (merge (->root table) opts)))
 
 (defmethod automagic-analysis (type Segment)
   [segment opts]
-  (automagic-dashboard (merge opts (->root segment))))
+  (automagic-dashboard (merge (->root segment) opts)))
 
 (defmethod automagic-analysis (type Metric)
   [metric opts]
-  (automagic-dashboard (merge opts (->root metric))))
+  (automagic-dashboard (merge (->root metric) opts)))
 
 (def ^:private ^{:arglists '([x])} encode-base64-json
   (comp codec/base64-encode codecs/str->bytes json/encode))
@@ -665,6 +668,46 @@
 (def ^:private ^{:arglists '([card-or-question])} source-question
   (comp Card #(Integer/parseInt %) second #(str/split % #"__")
         #(qp.util/get-in-normalized % [:dataset_query :query :source_table])))
+
+(defn- metric->description
+  [metric]
+  (let [aggregation-clause (-> metric :definition :aggregation first)
+        field              (some-> aggregation-clause second Field)]
+    (if field
+      (-> aggregation-clause first name str/capitalize)
+      (-> aggregation-clause first name str/capitalize))))
+
+(defn- join-enumeration
+  [[x & xs]]
+  (loop [acc      x
+         [x & xs] xs]
+    (cond
+      (nil? x)    acc
+      (empty? xs) (format "%s and %s" acc x)
+      :else       (recur (format "%s, %s" acc x) xs))))
+
+(defn- question-description
+  [question]
+  (let [aggregations (->> (qp.util/get-in-normalized question [:dataset_query :query :aggregation])
+                          (map (fn [[op arg]]
+                                 (cond
+                                   (-> op qp.util/normalize-token (= :metric))
+                                   (-> arg Metric :name)
+
+                                   arg
+                                   (format "%s of %s" (name op) (-> arg
+                                                                    filters/field-reference->id
+                                                                    Field
+                                                                    :display_name))
+
+                                   :else
+                                   (name op))))
+                          join-enumeration)
+        dimensions   (->> (qp.util/get-in-normalized question [:dataset_query :query :breakout])
+                          (mapcat filters/collect-field-references)
+                          (map (comp :display_name Field filters/field-reference->id))
+                          join-enumeration)]
+    (format "%s by %s" aggregations dimensions)))
 
 (defmethod automagic-analysis (type Card)
   [card {:keys [cell-query] :as opts}]
@@ -689,7 +732,33 @@
                                (format "%squestion/%s" public-endpoint (u/get-id card)))
                :rules-prefix "table"}
               opts)))
-    nil))
+    (->> (concat
+          (->> (qp.util/get-in-normalized card [:dataset_query :query :aggregation])
+               (map (fn [aggregation-clause]
+                      (let [metric (if (-> aggregation-clause
+                                           first
+                                           qp.util/normalize-token
+                                           (= :metric))
+                                     (-> aggregation-clause second Metric)
+                                     (let [metric (metric/map->MetricInstance
+                                                   {:definition {:aggregation  [aggregation-clause]
+                                                                 :source_table (:table_id card)}
+                                                    :table_id   (:table_id card)})]
+                                       (assoc metric :name (metric->description metric))))]
+                        (automagic-analysis metric opts)))))
+          (->> card
+               :dataset_query
+               :query
+               :breakout
+               (map (comp #(automagic-analysis % opts)
+                          Field
+                          filters/field-reference->id
+                          first
+                          filters/collect-field-references))))
+         (apply populate/merge-dashboards
+                (populate/create-dashboard
+                 {:transient_title (tru "Here''s a closer look at your {0} question" (:name card))
+                  :title           (tru "A closer look at your {0} question" (:name card))})))))
 
 (defmethod automagic-analysis (type Query)
   [query {:keys [cell-query] :as opts}]
@@ -705,9 +774,7 @@
        (merge {:entity       source
                :source       source
                :database     (:database-id query)
-               :full-name    (if (nested-query? query)
-                               (:name source)
-                               (:display_name source))
+               :full-name    (question-description query)
                :url          (if cell-query
                                (format "%sadhoc/%s/cell/%s" public-endpoint
                                        (encode-base64-json (:dataset_query query))
@@ -716,12 +783,39 @@
                                        (encode-base64-json query)))
                :rules-prefix "table"}
               (update opts :cell-query merge-filter-clauses
-                      (qp.util/get-in-normalized query [:dataset_query :query :filter])))))
-    nil))
+                      (qp.util/get-in-normalized
+                       query [:dataset_query :query :filter])))))
+    (->> (concat
+          (->> (qp.util/get-in-normalized query [:dataset_query :query :aggregation])
+               (map (fn [aggregation-clause]
+                      (let [metric (if (-> aggregation-clause
+                                           first
+                                           qp.util/normalize-token
+                                           (= :metric))
+                                     (-> aggregation-clause second Metric)
+                                     (let [metric (metric/map->MetricInstance
+                                                   {:definition {:aggregation  [aggregation-clause]
+                                                                 :source_table (:table_id query)}
+                                                    :table_id   (:table_id query)})]
+                                       (assoc metric :name (metric->description metric))))]
+                        (automagic-analysis metric opts)))))
+          (->> query
+               :dataset_query
+               :query
+               :breakout
+               (map (comp #(automagic-analysis % opts)
+                          Field
+                          filters/field-reference->id
+                          first
+                          filters/collect-field-references))))
+         (apply populate/merge-dashboards
+                (populate/create-dashboard
+                 {:transient_title (tru "Here''s a closer look at your {0} question" (question-description query))
+                  :title           (tru "A closer look at your {0} question" (question-description query))})))))
 
 (defmethod automagic-analysis (type Field)
   [field opts]
-  (automagic-dashboard (merge opts (->root field))))
+  (automagic-dashboard (merge (->root field) opts)))
 
 (defn- enhanced-table-stats
   [table]
