@@ -1,7 +1,6 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
 import { drillFilter } from "metabase/qb/lib/actions";
-import moment from "moment";
 
 describe("actions", () => {
   describe("drillFilter", () => {
@@ -13,7 +12,7 @@ describe("actions", () => {
             query: {},
           },
         },
-        moment("2018-04-27T00:00:00.000+02:00"),
+        "2018-04-27T00:00:00.000+02:00",
         {
           base_type: "type/DateTime",
           id: 123,
