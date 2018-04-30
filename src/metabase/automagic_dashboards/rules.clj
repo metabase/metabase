@@ -194,6 +194,7 @@
     (s/required-key :rule)              s/Str
     (s/optional-key :applies_to)        AppliesTo
     (s/optional-key :transient_title)   s/Str
+    (s/optional-key :short_title)       s/Str
     (s/optional-key :description)       s/Str
     (s/optional-key :metrics)           [Metric]
     (s/optional-key :filters)           [Filter]
