@@ -493,12 +493,13 @@ export const updateFieldValues = (fieldId, fieldValuePairs) => {
 export { ADD_PARAM_VALUES } from "metabase/entities/fields";
 export const addParamValues = paramValues => {
   console.warn("DEPRECATED: metabase/redux/metadata addParamValues");
-  fields.actions.addParamValues(paramValues);
+  return fields.actions.addParamValues(paramValues);
 };
 
-export const addFields = fields => {
+export { ADD_FIELDS } from "metabase/entities/fields";
+export const addFields = fieldMaps => {
   console.warn("DEPRECATED: metabase/redux/metadata addFields");
-  fields.actions.addFields(fields);
+  return fields.actions.addFields(fieldMaps);
 };
 // export const ADD_FIELDS = "metabase/entities/ADD_FIELDS";
 // export const addFields = createAction(ADD_FIELDS, fields => {
