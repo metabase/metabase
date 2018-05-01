@@ -223,4 +223,7 @@
           :string-length-fn          (u/drop-first-arg hive-like/string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg hive-like/unix-timestamp->timestamp)}))
 
-(driver/register-driver! :sparksql (SparkSQLDriver.))
+(defn -init-driver
+  "Register the SparkSQL driver."
+  []
+  (driver/register-driver! :sparksql (SparkSQLDriver.)))
