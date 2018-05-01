@@ -314,7 +314,7 @@
                   (if (> @num-fs-readers 1)
                     (alter num-fs-readers dec)
                     (do
-                      (.close @fs)
+                      (.close ^FileSystem @fs)
                       (ref-set fs nil)
                       (ref-set num-fs-readers 0))))))))
          (let [~identifier (FileSystems/getDefault)]
