@@ -8,7 +8,6 @@ import {
 import { click, dispatchBrowserEvent } from "__support__/enzyme_utils";
 
 import { mount } from "enzyme";
-import { delay } from "metabase/lib/promise";
 
 import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
 
