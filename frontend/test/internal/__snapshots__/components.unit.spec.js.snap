@@ -36,7 +36,7 @@ exports[`Button should render "with an icon" correctly 1`] = `
     className="flex layout-centered"
   >
     <svg
-      className="Icon Icon-star mr1"
+      className="mr1 sc-bdVaJa htZdtD"
       fill="currentcolor"
       height={14}
       name="star"
@@ -91,7 +91,7 @@ exports[`CheckBox should render "Green" correctly 1`] = `
     }
   >
     <svg
-      className="Icon Icon-check"
+      className="sc-bdVaJa htZdtD"
       fill="currentcolor"
       height={12}
       name="check"
@@ -129,7 +129,7 @@ exports[`CheckBox should render "On - Default blue" correctly 1`] = `
     }
   >
     <svg
-      className="Icon Icon-check"
+      className="sc-bdVaJa htZdtD"
       fill="currentcolor"
       height={12}
       name="check"
@@ -167,7 +167,7 @@ exports[`CheckBox should render "Purple" correctly 1`] = `
     }
   >
     <svg
-      className="Icon Icon-check"
+      className="sc-bdVaJa htZdtD"
       fill="currentcolor"
       height={12}
       name="check"
@@ -205,7 +205,7 @@ exports[`CheckBox should render "Red" correctly 1`] = `
     }
   >
     <svg
-      className="Icon Icon-check"
+      className="sc-bdVaJa htZdtD"
       fill="currentcolor"
       height={12}
       name="check"
@@ -243,7 +243,7 @@ exports[`CheckBox should render "Yellow" correctly 1`] = `
     }
   >
     <svg
-      className="Icon Icon-check"
+      className="sc-bdVaJa htZdtD"
       fill="currentcolor"
       height={12}
       name="check"
@@ -279,7 +279,7 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-pencil m1"
+          className="m1 sc-bdVaJa htZdtD"
           fill="currentcolor"
           height={16}
           name="pencil"
@@ -311,7 +311,7 @@ exports[`EntityMenu should render "More menu" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-burger m1"
+          className="m1 sc-bdVaJa htZdtD"
           fill="currentcolor"
           height={16}
           name="burger"
@@ -343,7 +343,7 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-pencil m1"
+          className="m1 sc-bdVaJa htZdtD"
           fill="currentcolor"
           height={16}
           name="pencil"
@@ -364,7 +364,7 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-share m1"
+          className="m1 sc-bdVaJa htZdtD"
           fill="currentcolor"
           fillRule="evenodd"
           height={20}
@@ -386,7 +386,7 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-burger m1"
+          className="m1 sc-bdVaJa htZdtD"
           fill="currentcolor"
           height={16}
           name="burger"
@@ -418,7 +418,7 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-share m1"
+          className="m1 sc-bdVaJa htZdtD"
           fill="currentcolor"
           fillRule="evenodd"
           height={20}
@@ -433,6 +433,26 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
       </div>
     </div>
   </div>
+</div>
+`;
+
+exports[`ProgressBar should render "Animated" correctly 1`] = `
+<div
+  className="xt xu xv xn"
+>
+  <div
+    className="xw xx xt xy xz x10 x11 x12 x13 x1d x1e x16 x17 x18 x1f x1a x1b x1g"
+  />
+</div>
+`;
+
+exports[`ProgressBar should render "Default" correctly 1`] = `
+<div
+  className="xt xu xv xn"
+>
+  <div
+    className="xw xx xt xy xz x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x1a x1b x1c"
+  />
 </div>
 `;
 
@@ -452,7 +472,7 @@ exports[`Select should render "Default" correctly 1`] = `
       Yellow
     </span>
     <svg
-      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right"
+      className="AdminSelect-chevron flex-align-right sc-bdVaJa htZdtD"
       fill="currentcolor"
       height={12}
       name="chevrondown"
@@ -487,7 +507,7 @@ exports[`Select should render "With search" correctly 1`] = `
       Yellow
     </span>
     <svg
-      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right"
+      className="AdminSelect-chevron flex-align-right sc-bdVaJa htZdtD"
       fill="currentcolor"
       height={12}
       name="chevrondown"
@@ -536,7 +556,7 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
         }
       >
         <svg
-          className="Icon Icon-check"
+          className="sc-bdVaJa htZdtD"
           fill="currentcolor"
           height={12}
           name="check"
@@ -572,7 +592,7 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
       }
     >
       <svg
-        className="Icon Icon-check"
+        className="sc-bdVaJa htZdtD"
         fill="currentcolor"
         height={12}
         name="check"
@@ -624,7 +644,7 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
         }
       >
         <svg
-          className="Icon Icon-check"
+          className="sc-bdVaJa htZdtD"
           fill="currentcolor"
           height={12}
           name="check"
@@ -660,7 +680,7 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
       }
     >
       <svg
-        className="Icon Icon-check"
+        className="sc-bdVaJa htZdtD"
         fill="currentcolor"
         height={12}
         name="check"
