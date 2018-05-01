@@ -107,7 +107,7 @@ export default class PublicDashboard extends Component {
       await fetchDashboard(uuid || token, location.query);
       await fetchDashboardCardData({ reload: false, clear: true });
     } catch (error) {
-      console.error(error)
+      console.error(error);
       setErrorPage(error);
     }
   }

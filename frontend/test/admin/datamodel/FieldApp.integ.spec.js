@@ -162,7 +162,7 @@ describe("FieldApp", () => {
       await MetabaseApi.field_update({
         id: CREATED_AT_ID,
         visibility_type: "normal",
-      })
+      });
     });
   });
 
@@ -255,7 +255,7 @@ describe("FieldApp", () => {
         id: CREATED_AT_ID,
         special_type: "type/CreationTimestamp",
         fk_target_field_id: null,
-      })
+      });
     });
   });
 

@@ -177,16 +177,31 @@ export function createEntity(def: EntityDefinition): Entity {
 
     fetchList: createThunkAction(
       FETCH_LIST_ACTION,
-      (query = {}, reload = false) => (dispatch, getState) =>
-        fetchData({
-          dispatch,
-          getState,
-          reload,
-          requestStatePath: ["entities", entity.name + "_list"], // FIXME: different path depending on query?
-          existingStatePath: ["entities", entity.name + "_list"], // FIXME: different path depending on query?
-          getData: async () =>
-            normalize(await entity.api.list(query), [entity.schema]),
-        }),
+      (query = {}, reload = false) => async (dispatch, getState) => {
+        const statePath = ["entities", entity.name + "_list", "fetch"];
+        try {
+          dispatch(setRequestState({ statePath, state: "LOADING" }));
+          const result = normalize(await entity.api.list(query), [
+            entity.schema,
+          ]);
+          dispatch(setRequestState({ statePath, state: "LOADED" }));
+          return result;
+        } catch (error) {
+          console.error(`${FETCH_LIST_ACTION} failed:`, error);
+          dispatch(setRequestState({ statePath, error }));
+          throw error;
+        }
+      },
+      // (query = {}, reload = false) => (dispatch, getState) =>
+      //   fetchData({
+      //     dispatch,
+      //     getState,
+      //     reload,
+      //     requestStatePath: ["entities", entity.name + "_list"], // FIXME: different path depending on query?
+      //     existingStatePath: ["entities", entity.name + "_list"], // FIXME: different path depending on query?
+      //     getData: async () =>
+      //       normalize(await entity.api.list(query), [entity.schema]),
+      //   }),
     ),
   };
 
@@ -204,7 +219,7 @@ export function createEntity(def: EntityDefinition): Entity {
     (entities, entityId) => entities[entityId],
   );
 
-  const getRequestState = (state, props) => {
+  const getRequestState = (state, props = {}) => {
     const path = ["requests", "states", "entities"];
     if (props.entityId != null) {
       path.push(entity.name, props.entityId);

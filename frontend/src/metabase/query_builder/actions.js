@@ -204,11 +204,12 @@ export const initializeQB = (location, params) => {
       databasesList = getDatabasesList(getState());
     } catch (error) {
       console.error("error fetching dbs", error);
-
-      // if we can't actually get the databases list then bail now
-      dispatch(setErrorPage(error));
-
-      return { uiControls };
+      // NOTE: don't actually error if dbs can't be fetched for some reason,
+      // we may still be able to run the query
+      // NOTE: for some reason previously fetchDatabases would fall back to []
+      // if there was an API error so this would never be hit
+      // dispatch(setErrorPage(error));
+      // return { uiControls };
     }
 
     // load up or initialize the card we'll be working on
