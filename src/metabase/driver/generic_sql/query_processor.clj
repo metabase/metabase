@@ -387,12 +387,19 @@
       parsed-date
       (throw (Exception. (format "Unable to parse date '%s'" date-string))))))
 
-(defn- get-date [^TimeZone tz]
-  (fn [^ResultSet rs _ ^Integer i]
-    (try
-      (.getDate rs i (Calendar/getInstance tz))
-      (catch SQLException e
-        (parse-date-as-string tz rs i)))))
+(defn- get-date 
+  ([]
+    (fn [^ResultSet rs _ ^Integer i]
+      (try
+        (str (.getDate rs i))
+        (catch SQLException e
+          (parse-date-as-string rs i)))))
+  ([^TimeZone tz]
+    (fn [^ResultSet rs _ ^Integer i]
+      (try
+        (.getDate rs i (Calendar/getInstance tz))
+        (catch SQLException e
+          (parse-date-as-string tz rs i))))))
 
 (defn- get-timestamp [^TimeZone tz]
   (fn [^ResultSet rs _ ^Integer i]
@@ -413,6 +420,9 @@
 
     (and tz (= column-type java.sql.Types/TIMESTAMP))
     (get-timestamp tz)
+
+    (= column-type java.sql.Types/DATE)
+    (get-date)
 
     :else
     get-object))
