@@ -676,7 +676,7 @@ const Query = {
   },
 
   getFilterClauseDescription(tableMetadata, filter, options) {
-    if (filter[0] === "AND" || filter[0] === "OR") {
+    if (mbqlEq(filter[0], "AND") || mbqlEq(filter[0], "OR")) {
       let clauses = filter
         .slice(1)
         .map(f => Query.getFilterClauseDescription(tableMetadata, f, options));

@@ -6,8 +6,6 @@
             [metabase.automagic-dashboards.filters :as magic.filters]
             [metabase.models.card :as card]
             [metabase.query-processor.util :as qp.util]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
             [toucan.db :as db]))
 
 (def ^Long ^:const grid-width
@@ -68,9 +66,8 @@
                                          qp.util/normalize-token
                                          (= :count)))
                          (->> breakout
-                              (tree-seq sequential? identity)
-                              (filter magic.filters/field-form?)
-                              (map last))
+                              magic.filters/collect-field-references
+                              (map magic.filters/field-reference->id))
                          aggregation)]
         {:graph.colors (->> color-keys
                             (map (comp colors #(mod % (count colors)) hash))
@@ -234,7 +231,7 @@
 (defn create-dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard :all))
-  ([{:keys [title transient_title description groups filters cards refinements]} n]
+  ([{:keys [title transient_title description groups filters cards refinements fieldset]} n]
    (let [n             (cond
                          (= n :all)   (count cards)
                          (keyword? n) (Integer/parseInt (name n))

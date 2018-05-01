@@ -47,7 +47,7 @@
     (tru "invalid value for rule name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
-  (comp json/decode codecs/bytes->str codec/base64-decode))
+  (comp #(json/decode % keyword) codecs/bytes->str codec/base64-decode))
 
 (def ^:private Base64EncodedJSON
   (su/with-api-error-message
@@ -74,7 +74,7 @@
   {show Show}
   (-> id Table api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
-(api/defendpoint GET "/table/:id/:prefix/:rule"
+(api/defendpoint GET "/table/:id/rule/:prefix/:rule"
   "Return an automagic dashboard for table with id `ìd` using rule `rule`."
   [id prefix rule show]
   {show   Show
@@ -93,7 +93,7 @@
   {show Show}
   (-> id Segment api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
-(api/defendpoint GET "/segment/:id/:prefix/:rule"
+(api/defendpoint GET "/segment/:id/rule/:prefix/:rule"
   "Return an automagic dashboard analyzing segment with id `id`. using rule `rule`."
   [id prefix rule show]
   {show   Show
@@ -118,7 +118,7 @@
       (magic/automagic-analysis {:show       (keyword show)
                                  :cell-query (decode-base64-json cell-query)})))
 
-(api/defendpoint GET "/question/:id/cell/:cell-query/:prefix/:rule"
+(api/defendpoint GET "/question/:id/cell/:cell-query/rule/:prefix/:rule"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry` using rule `rule`."
   [id cell-query prefix rule show]
@@ -151,6 +151,15 @@
   {show Show}
   (-> id Card api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
+(api/defendpoint GET "/question/:id/rule/:prefix/:rule"
+  "Return an automagic dashboard analyzing question with id `id` using rule `rule`."
+  [id prefix rule show]
+  {show Show
+   prefix Prefix
+   rule   Rule}
+  (-> id Card api/check-404 (magic/automagic-analysis {:show (keyword show)
+                                                       :rule (load-rule "table" prefix rule)})))
+
 (api/defendpoint GET "/adhoc/:query"
   "Return an automagic dashboard analyzing ad hoc query."
   [query show]
@@ -160,6 +169,19 @@
       decode-base64-json
       query/adhoc-query
       (magic/automagic-analysis {:show (keyword show)})))
+
+(api/defendpoint GET "/adhoc/:query/rule/:prefix/:rule"
+  "Return an automagic dashboard analyzing ad hoc query."
+  [query prefix rule show]
+  {show   Show
+   query  Base64EncodedJSON
+   prefix Prefix
+   rule   Rule}
+  (-> query
+      decode-base64-json
+      query/adhoc-query
+      (magic/automagic-analysis {:show (keyword show)
+                                 :rule (load-rule "table" prefix rule)})))
 
 (api/defendpoint GET "/adhoc/:query/cell/:cell-query"
   "Return an automagic dashboard analyzing ad hoc query."
@@ -174,7 +196,7 @@
         (magic/automagic-analysis {:show       (keyword show)
                                    :cell-query cell-query}))))
 
-(api/defendpoint GET "/adhoc/:query/cell/:cell-query/:prefix/:rule"
+(api/defendpoint GET "/adhoc/:query/cell/:cell-query/rule/:prefix/:rule"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry` using rule `rule`."
   [query cell-query prefix rule show]

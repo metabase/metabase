@@ -27,6 +27,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import * as Q from "metabase/lib/query/query";
 import Dimension from "metabase-lib/lib/Dimension";
@@ -80,6 +81,7 @@ class AutomaticDashboardApp extends React.Component {
       }),
     );
     this.setState({ savedDashboardId: newDashboard.id });
+    MetabaseAnalytics.trackEvent("AutoDashboard", "Save");
   };
 
   render() {
@@ -149,7 +151,13 @@ class AutomaticDashboardApp extends React.Component {
           {more && (
             <div className="flex justify-end px4 pb4">
               {more.map(item => (
-                <Link to={item.url} className="ml2">
+                <Link
+                  to={item.url}
+                  className="ml2"
+                  onClick={() =>
+                    MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
+                  }
+                >
                   <Button iconRight="chevronright">{item.title}</Button>
                 </Link>
               ))}
@@ -209,13 +217,20 @@ const suggestionClasses = cxs({
   },
 });
 
-const SuggestionsList = ({ suggestions }) => (
+const SuggestionsList = ({ suggestions, section }) => (
   <ol className="px2">
     {suggestions.map((s, i) => (
       <li key={i} className={suggestionClasses}>
         <Link
           to={s.url}
           className="bordered rounded bg-white shadowed mb2 p2 flex no-decoration"
+          onClick={() =>
+            MetabaseAnalytics.trackEvent(
+              "AutoDashboard",
+              "ClickRelated",
+              section,
+            )
+          }
         >
           <div
             className="bg-slate-extra-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
@@ -238,8 +253,8 @@ const SuggestionsSidebar = ({ related }) => (
     <div className="py2 text-centered my3">
       <h3 className="text-grey-3">More X-rays</h3>
     </div>
-    {Object.values(related).map(suggestions => (
-      <SuggestionsList suggestions={suggestions} />
+    {Object.entries(related).map(([section, suggestions]) => (
+      <SuggestionsList section={section} suggestions={suggestions} />
     ))}
   </div>
 );

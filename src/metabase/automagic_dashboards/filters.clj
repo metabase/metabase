@@ -1,49 +1,79 @@
 (ns metabase.automagic-dashboards.filters
   (:require [metabase.models.field :refer [Field] :as field]
             [metabase.query-processor.util :as qp.util]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:private FieldIdForm
+(def ^:private FieldReference
   [(s/one (s/constrained su/KeywordOrString
-                         (comp #{:field-id :fk->} qp.util/normalize-token))
+                         (comp #{:field-id :fk-> :field-literal} qp.util/normalize-token))
           "head")
    s/Any])
 
-(def ^{:arglists '([form])} field-form?
-  "Is given form an MBQL field form?"
-  (complement (s/checker FieldIdForm)))
+(def ^:private ^{:arglists '([form])} field-reference?
+  "Is given form an MBQL field reference?"
+  (complement (s/checker FieldReference)))
+
+(defmulti
+  ^{:doc "Extract field ID from a given field reference form."
+    :arglists '([op & args])}
+  field-reference->id (comp qp.util/normalize-token first))
+
+(defmethod field-reference->id :field-id
+  [[_ id]]
+  id)
+
+(defmethod field-reference->id :fk->
+  [[_ _ id]]
+  id)
+
+(defmethod field-reference->id :field-literal
+  [[_ name _]]
+  name)
 
 (defn collect-field-references
   "Collect all field references (`[:field-id]` or `[:fk->]` forms) from a given form."
   [form]
   (->> form
        (tree-seq (some-fn sequential? map?) identity)
-       (filter field-form?)))
+       (filter field-reference?)))
+
+(def ^:private ^{:arglists '([field])} periodic-datetime?
+  (comp #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year
+          :month-of-year :quarter-of-year}
+        :unit))
+
+(defn- datetime?
+  [field]
+  (and (not (periodic-datetime? field))
+       (or (isa? (:base_type field) :type/DateTime)
+           (field/unix-timestamp? field))))
 
 (defn- candidates-for-filtering
-  [cards]
+  [fieldset cards]
   (->> cards
        (mapcat collect-field-references)
-       (map last)
+       (map field-reference->id)
        distinct
-       (map Field)
-       (filter (fn [{:keys [base_type special_type] :as field}]
-                 (or (isa? base_type :type/DateTime)
-                     (isa? special_type :type/Category)
-                     (field/unix-timestamp? field))))))
+       (map fieldset)
+       (filter (fn [{:keys [special_type] :as field}]
+                 (or (datetime? field)
+                     (isa? special_type :type/Category))))))
 
 (defn- build-fk-map
   [fks field]
-  (->> fks
-       (filter (comp #{(:table_id field)} :table_id :target))
-       (group-by :table_id)
-       (keep (fn [[_ [fk & fks]]]
-               ;; Bail out if there is more than one FK from the same table
-               (when (empty? fks)
-                 [(:table_id fk) [:fk-> (:id fk) (:id field)]])))
-       (into {(:table_id field) [:field-id (:id field)]})))
+  (if (:id field)
+    (->> fks
+         (filter (comp #{(:table_id field)} :table_id :target))
+         (group-by :table_id)
+         (keep (fn [[_ [fk & fks]]]
+                 ;; Bail out if there is more than one FK from the same table
+                 (when (empty? fks)
+                   [(:table_id fk) [:fk-> (u/get-id fk) (u/get-id field)]])))
+         (into {(:table_id field) [:field-id (u/get-id field)]}))
+    (constantly [:field-literal (:name field) (:base_type field)])))
 
 (defn- filter-for-card
   [card field]
@@ -62,18 +92,6 @@
     (cond
       (nil? (:card dashcard)) dashcard
       mappings                (update dashcard :parameter_mappings concat mappings))))
-
-
-(def ^:private ^{:arglists '([field])} periodic-datetime?
-  (comp #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year
-          :month-of-year :quarter-of-year}
-        :unit))
-
-(defn- datetime?
-  [field]
-  (and (not (periodic-datetime? field))
-       (or (isa? (:base_type field) :type/DateTime)
-           (field/unix-timestamp? field))))
 
 (defn- filter-type
   "Return filter type for a given field."
@@ -107,13 +125,12 @@
   ([dashboard max-filters]
    (->> dashboard
         :orderd_cards
-        candidates-for-filtering
+        (candidates-for-filtering (:fieldset dashboard))
         (add-filters dashboard max-filters)))
   ([dashboard dimensions max-filters]
    (let [fks (->> (db/select Field
                     :fk_target_field_id [:not= nil]
-                    :table_id [:in (keep (comp :table_id :card)
-                                         (:ordered_cards dashboard))])
+                    :table_id [:in (keep (comp :table_id :card) (:ordered_cards dashboard))])
                   field/with-targets)]
      (->> dimensions
           remove-unqualified

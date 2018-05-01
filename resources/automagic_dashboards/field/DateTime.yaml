@@ -1,5 +1,5 @@
-title: A look at your [[this]] field over time
-transient_title: Here's a closer look at your [[this]] field over time
+title: A look at your [[this]] over time
+transient_title: Here's a closer look at your [[this]] over time
 description: How [[this]] is distributed, and how different numbers change across it.
 applies_to: GenericTable.DateTime
 metrics:
