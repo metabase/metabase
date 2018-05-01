@@ -15,6 +15,7 @@
              [math :as math]]
             [medley.core :as m]
             [metabase.automagic-dashboards
+             [filters :as filters]
              [populate :as populate]
              [rules :as rules]]
             [metabase.models
