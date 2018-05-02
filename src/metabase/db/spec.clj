@@ -14,6 +14,17 @@
           :subname db}
          (dissoc opts :db)))
 
+(defn csv
+  "Create a database specification for a csv database. Opts should include a key
+  for :db which is the path to the database file."
+  [{:keys [db]
+    :or {db "h2.db"}
+    :as opts}]
+  (merge {:classname "org.relique.jdbc.csv.CsvDriver" ; must be in classpath
+          :subprotocol "relique:csv"
+          :subname db}
+         (dissoc opts :db)))
+
 (defn postgres
   "Create a database specification for a postgres database. Opts should include
   keys for :db, :user, and :password. You can also optionally set host and
