@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+import ReactMarkdown from "react-markdown";
 import { t } from "c-3po";
 import "./TableInteractive.css";
 
@@ -288,12 +289,12 @@ export default class TableInteractive extends Component {
       >
         <div className="cellData">
           {/* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */}
-          {formatValue(value, {
+          <ReactMarkdown source={formatValue(value, {
             column: column,
             type: "cell",
             jsx: true,
             rich: true,
-          })}
+          })} escapeHtml = "false" />
         </div>
       </div>
     );
