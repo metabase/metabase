@@ -2,21 +2,27 @@ import React from "react";
 import { Box, Flex, Subhead, Truncate } from "rebass";
 import { Link, withRouter } from "react-router";
 import { t } from "c-3po";
+import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
-
-import { CollectionsApi } from "metabase/services";
 
 import Icon from "metabase/components/Icon";
 import CollectionListLoader from "metabase/components/CollectionListLoader";
 import CollectionItemsLoader from "metabase/components/CollectionItemsLoader";
 import EntityMenu from "metabase/components/EntityMenu";
 
-//import SegmentList from "metabase/components/SegmentList";
-//import MetricList from "metabase/components/MetricList";
-
 import LandingNav from "metabase/components/LandingNav";
+
+// TODO - this should be a selector
+const mapStateToProps = (state, props) => ({
+  currentCollection:
+    (state.entities.collections &&
+      Object.values(state.entities.collections).filter(
+        c => c.slug === props.params.collectionSlug,
+      )[0]) ||
+    {},
+});
 
 const Card = Box.extend`
   background-color: white;
@@ -46,13 +52,10 @@ const CollectionList = ({ collectionSlug }) => {
   return (
     <Box mb={2}>
       <CollectionListLoader>
-        {({ collections, loading, error }) => {
-          if (loading) {
-            return <Box>Loading...</Box>;
-          }
+        {({ list }) => {
           return (
             <Grid>
-              {collections.map(collection => (
+              {list.map(collection => (
                 <GridItem>
                   <CollectionItem collection={collection} />
                 </GridItem>
@@ -182,35 +185,15 @@ class DefaultLanding extends React.Component {
   }
 }
 
+@connect(mapStateToProps)
 class CollectionLanding extends React.Component {
-  state = {
-    collections: [],
-  };
-  componentWillMount() {
-    this._loadCollections();
-  }
-  /* quick hack to look up collection information for slug matching,
-   * this will eventually happen in redux land */
-  async _loadCollections() {
-    try {
-      const collections = await CollectionsApi.list();
-      this.setState({ collections });
-    } catch (error) {}
-  }
   render() {
-    const { children } = this.props;
-    const collectionSlug = this.props.params.collectionSlug;
-    if (!this.state.collections) {
-      return <Box>Loading...</Box>;
-    }
-    /* TODO - this will live in redux land  */
-    const currentCollection =
-      this.state.collections.filter(c => c.slug === collectionSlug)[0] || {};
+    const { children, params, currentCollection } = this.props;
+    const collectionSlug = params.collectionSlug;
     return (
       <Box>
         <Box className="wrapper lg-wrapper--trim">
           <Flex py={3}>
-            {/* TODO - this should be the collection or instance name */}
             <Subhead>
               <Flex align="center">
                 <Flex>
