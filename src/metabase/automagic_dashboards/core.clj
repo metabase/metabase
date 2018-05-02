@@ -33,8 +33,8 @@
             [metabase.util :as u]
             [puppetlabs.i18n.core :as i18n :refer [tru]]
             [ring.util.codec :as codec]
-            [toucan.db :as db]))q
-q
+            [toucan.db :as db]))
+
 (def ^:private public-endpoint "/auto/dashboard/")
 
 (defmulti
@@ -563,7 +563,7 @@ q
                        first)
         dashboard (make-dashboard root rule)]
     {:url         (:url root)
-     :title       (-> root :full-name str/capitalize)
+     :title       (:full-name root)
      :description (:description dashboard)}))
 
 (defn- others
@@ -573,8 +573,8 @@ q
      (->> (reduce (fn [acc selector]
                     (concat acc (-> selector recommendations rules/ensure-seq)))
                   []
-                  [:table :segments :metrics :linking-to :linked-from :tables
-                   :fields])
+                  [:table :segments :metrics :linking-to :dashboard-mates :similar-questions
+                   :linked-from :tables :fields])
           (take n)
           (map ->related-entity)))))
 
@@ -756,10 +756,11 @@ q
                           first
                           filters/collect-field-references))))
          (apply populate/merge-dashboards
-                (populate/create-dashboard
-                 {:transient_title (tru "Here''s a closer look at your {0} question" (:name card))
-                  :title           (tru "A closer look at your {0} question" (:name card))})))))
-
+                (-> (populate/create-dashboard
+                    {:transient_title (tru "Here''s a closer look at your {0} question" (:name card))
+                     :title           (tru "A closer look at your {0} question" (:name card))})))
+         (merge {:related (related {:entity card} nil)}))))
+;(automagic-analysis (Card 299) {})
 (defmethod automagic-analysis (type Query)
   [query {:keys [cell-query] :as opts}]
   (if (or (table-like? query)
