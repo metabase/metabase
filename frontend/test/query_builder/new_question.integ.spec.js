@@ -261,9 +261,18 @@ describe("new question flow", async () => {
         expect(store.getPath()).toBe("/question/new/metric"),
       );
 
+      await eventually(() => {
+        expect(
+          app
+            .find(EntitySearch)
+            .find(SearchGroupingOption)
+            .last()
+            .text(),
+        ).toBe("Creator");
+      });
+
       const entitySearch = app.find(EntitySearch);
       const viewByCreator = entitySearch.find(SearchGroupingOption).last();
-      expect(viewByCreator.text()).toBe("Creator");
       click(viewByCreator);
       expect(store.getPath()).toBe("/question/new/metric?grouping=creator");
 
