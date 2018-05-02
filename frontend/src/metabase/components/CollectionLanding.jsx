@@ -145,7 +145,7 @@ class DefaultLanding extends React.Component {
         {// HACK for now to only show the colleciton list on the root
         // colleciton until we have a notion of nested collections
         !collectionSlug && <CollectionList />}
-        <CollectionItemsLoader collectionId={currentCollection.id}>
+        <CollectionItemsLoader collectionId={currentCollection.id || "root"}>
           {({ loading, error, allItems, pulses, cards, dashboards }) => {
             if (loading) {
               return <Box>Loading...</Box>;
