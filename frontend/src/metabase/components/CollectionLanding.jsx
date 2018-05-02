@@ -56,7 +56,7 @@ const CollectionList = ({ collectionSlug }) => {
           return (
             <Grid>
               {list.map(collection => (
-                <GridItem>
+                <GridItem key={collection.id}>
                   <CollectionItem collection={collection} />
                 </GridItem>
               ))}
