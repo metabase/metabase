@@ -138,6 +138,7 @@
                      {:read-fn describe-all-database->clj})
        (map (fn [{:keys [name type]}]
               {:name name
+               :database-type type
                :base-type (or (column->base-type (keyword type))
                               :type/*)}))
        (set)))
