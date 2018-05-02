@@ -219,7 +219,7 @@ export const getRoutes = store => (
         <Route path="/explore/:databaseId" component={PostSetupApp} />
 
         <Route
-          path="collections/:collectionSlug"
+          path="collection/:collectionSlug"
           component={CollectionLanding}
         />
 

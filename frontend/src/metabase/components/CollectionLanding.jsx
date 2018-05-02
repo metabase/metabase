@@ -32,7 +32,7 @@ const Card = Box.extend`
 `;
 
 const CollectionItem = ({ collection }) => (
-  <Link to={`collections/${collection.slug}`}>
+  <Link to={`collection/${collection.slug}`}>
     <Card>
       <Flex
         align="center"
@@ -204,7 +204,7 @@ class CollectionLanding extends React.Component {
                   <Flex align="center">
                     <Icon name="chevronright" m={2} />
                     <Flex>
-                      <Link to={`/collections/${currentCollection.slug}`}>
+                      <Link to={`/collection/${currentCollection.slug}`}>
                         {currentCollection.name}
                       </Link>
                     </Flex>
@@ -219,7 +219,7 @@ class CollectionLanding extends React.Component {
                   {
                     title: t`Edit this collection`,
                     icon: "editdocument",
-                    link: "/test",
+                    link: `/collections/${currentCollection.id}`,
                   },
                   {
                     title: t`Edit permissions`,
