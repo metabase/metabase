@@ -107,7 +107,9 @@ export const updateData = async ({
   dependentRequestStatePaths,
   putData,
 }) => {
-  const existingData = getIn(getState(), existingStatePath);
+  const existingData = existingStatePath
+    ? getIn(getState(), existingStatePath)
+    : null;
   const statePath = requestStatePath.concat(["update"]);
   try {
     dispatch(setRequestState({ statePath, state: "LOADING" }));
@@ -143,7 +145,11 @@ export function mergeEntities(entities, newEntities) {
 
 // helper for working with normalizr
 // reducer that merges payload.entities
-export function handleEntities(actionPattern, entityType, reducer) {
+export function handleEntities(
+  actionPattern,
+  entityType,
+  reducer = (state = {}, action) => state,
+) {
   return (state, action) => {
     if (state === undefined) {
       state = {};
