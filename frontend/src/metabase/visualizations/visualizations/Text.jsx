@@ -190,6 +190,7 @@ export default class Text extends Component {
               getSettingsStyle(settings),
             )}
             source={settings.text}
+            escapeHtml = {false}
           />
         </div>
       );

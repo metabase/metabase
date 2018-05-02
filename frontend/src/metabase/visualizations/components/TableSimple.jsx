@@ -1,6 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
+import ReactMarkdown from "react-markdown"
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import styles from "./Table.css";
@@ -191,13 +192,13 @@ export default class TableSimple extends Component {
                                 : undefined
                             }
                           >
-                            {cell == null
-                              ? "-"
-                              : formatValue(cell, {
-                                  column: cols[columnIndex],
-                                  jsx: true,
-                                  rich: true,
-                                })}
+                          <ReactMarkdown source={cell == null
+                            ? "-"
+                            : formatValue(cell, {
+                              column: cols[columnIndex],
+                              jsx: true,
+                              rich: true,
+                            })}  escapeHtml = "false" />
                           </span>
                         </td>
                       );
