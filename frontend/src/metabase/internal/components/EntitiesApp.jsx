@@ -23,7 +23,7 @@ export default class EntitiesApp extends React.Component {
     return (
       <div className="p2">
         {Object.values(entityDefs).map(entityDef => (
-          <div>
+          <div key={entityDef.name}>
             <Link to={`/_internal/entities/${entityDef.name}`}>
               {capitalize(entityDef.name)}
             </Link>
@@ -34,21 +34,36 @@ export default class EntitiesApp extends React.Component {
   }
 }
 
+import { List, WindowScroller } from "react-virtualized";
+
 const EntityListApp = ({ params: { entityType } }) => (
   <EntityListLoader entityType={entityType}>
     {({ list }) => (
       <div className="p2">
         <h2 className="pb2">{capitalize(entityType)}</h2>
-        <div>
-          {list &&
-            list.map(object => (
-              <div>
-                <Link to={`/_internal/entities/${entityType}/${object.id}`}>
-                  {object[entityDefs[entityType].nameProperty]}
-                </Link>
-              </div>
-            ))}
-        </div>
+        <WindowScroller>
+          {({ height, isScrolling, registerChild, scrollTop }) => (
+            <List
+              ref={registerChild}
+              autoHeight
+              height={height}
+              isScrolling={isScrolling}
+              rowCount={list.length}
+              rowHeight={20}
+              width={200}
+              rowRenderer={({ index, key, style }) => (
+                <div key={key} style={style}>
+                  <Link
+                    to={`/_internal/entities/${entityType}/${list[index].id}`}
+                  >
+                    {entityDefs[entityType].getName(list[index])}
+                  </Link>
+                </div>
+              )}
+              scrollTop={scrollTop}
+            />
+          )}
+        </WindowScroller>
         <div className="my2">
           <Link to={`/_internal/entities/${entityType}/create`}>
             <Button>Create</Button>
@@ -67,7 +82,7 @@ const EntityObjectApp = ({ params: { entityType, entityId }, push }) => (
         <table className="Table">
           <tbody>
             {Object.entries(object).map(([key, value]) => (
-              <tr>
+              <tr key={key}>
                 <td>{key}</td>
                 <td>
                   {typeof value === "number" || typeof value === "string" ? (

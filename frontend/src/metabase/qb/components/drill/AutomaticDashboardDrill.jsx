@@ -28,12 +28,15 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     {
       name: "exploratory-dashboard",
       section: "auto",
+      icon: "bolt",
       title: t`X-ray ${inflect(t`these`, count, t`this`, t`these`)} ${inflect(
         query.table().display_name,
         count,
       )}`,
       url: () => {
-        const filters = question
+        const filters = query
+          .clearFilters() // clear existing filters so we don't duplicate them
+          .question()
           .drillUnderlyingRecords(dimensions)
           .query()
           .filters();

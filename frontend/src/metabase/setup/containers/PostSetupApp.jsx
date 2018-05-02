@@ -15,7 +15,9 @@ import cx from "classnames";
 import { t } from "c-3po";
 
 const CANDIDATES_POLL_INTERVAL = 2000;
-const CANDIDATES_TIMEOUT = 10000;
+// ensure this is 1 second offset from CANDIDATES_POLL_INTERVAL due to
+// concurrency issue in candidates endpoint
+const CANDIDATES_TIMEOUT = 11000;
 
 const QUOTES = [
   t`Metabot is admiring your integers…`,
@@ -87,11 +89,11 @@ export default class PostSetupApp extends Component {
           this._loadCandidates();
         });
       }
-      this._pollTimer = setInterval(
-        this._loadCandidates,
-        CANDIDATES_POLL_INTERVAL,
-      );
     }
+    this._pollTimer = setInterval(
+      this._loadCandidates,
+      CANDIDATES_POLL_INTERVAL,
+    );
   }
   componentWillUnmount() {
     this._clearTimers();
@@ -139,7 +141,9 @@ export default class PostSetupApp extends Component {
                   just a few minutes.`}
                 </h2>
                 <BorderedPanel className="p4 my4 flex">
-                  <MetabotLogo />
+                  <div className="mt1">
+                    <MetabotLogo />
+                  </div>
                   <div className="flex-full ml3 mt1">
                     <div className="mb1">
                       <Quotes quotes={QUOTES} period={2000} />

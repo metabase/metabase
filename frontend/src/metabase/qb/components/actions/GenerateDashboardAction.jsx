@@ -4,6 +4,7 @@ import type {
   ClickAction,
   ClickActionProps,
 } from "metabase/meta/types/Visualization";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { utf8_to_b64url } from "metabase/lib/card";
 import { t } from "c-3po";
 
@@ -11,6 +12,16 @@ export default ({ question, settings }: ClickActionProps): ClickAction[] => {
   // currently time series xrays require the maximum fidelity
   console.log(JSON.stringify(question.query().datasetQuery()));
   let dashboard_url = "adhoc";
+
+  const query = question.query();
+  if (!(query instanceof StructuredQuery)) {
+    return [];
+  }
+
+  // aggregations
+  if (query.aggregations().length) {
+    return [];
+  }
   if (question.card().id) {
     dashboard_url = `/auto/dashboard/question/${question.card().id}`;
   } else {
@@ -23,7 +34,7 @@ export default ({ question, settings }: ClickActionProps): ClickAction[] => {
     {
       name: "generate-dashboard",
       title: t`See an exploration of this question`,
-      icon: "beaker",
+      icon: "bolt",
       url: () => dashboard_url,
     },
   ];

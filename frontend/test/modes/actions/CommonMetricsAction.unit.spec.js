@@ -12,14 +12,14 @@ import { assocIn } from "icepick";
 
 const question0Metrics = makeQuestion((card, state) => ({
   card,
-  state: assocIn(state, ["metadata", "tables", ORDERS_TABLE_ID, "metrics"], []),
+  state: assocIn(state, ["entities", "tables", ORDERS_TABLE_ID, "metrics"], []),
 }));
 const question1Metrics = makeQuestion();
 const question6Metrics = makeQuestion((card, state) => ({
   card,
   state: assocIn(
     state,
-    ["metadata", "tables", ORDERS_TABLE_ID, "metrics"],
+    ["entities", "tables", ORDERS_TABLE_ID, "metrics"],
     [
       MAIN_METRIC_ID,
       MAIN_METRIC_ID,

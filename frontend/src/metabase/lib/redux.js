@@ -93,7 +93,7 @@ export const fetchData = async ({
     return existingData;
   } catch (error) {
     dispatch(setRequestState({ statePath, error }));
-    console.error(error);
+    console.error("fetchData error", error);
     return existingData;
   }
 };
