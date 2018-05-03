@@ -12,10 +12,7 @@ export default class PulseEditCollection extends React.Component {
         <h2>{t`Which collection should this pulse live in?`}</h2>
 
         <CollectionListLoader>
-          {({ collections, loading, error }) => {
-            if (loading) {
-              return <Box>Loading...</Box>;
-            }
+          {({ collections }) => {
             return (
               <Box my={2} width={400}>
                 <Select

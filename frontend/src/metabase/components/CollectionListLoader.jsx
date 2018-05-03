@@ -6,8 +6,12 @@ type Props = {
   children: () => void,
 };
 
-const CollectionListLoader = (props: Props) => (
-  <EntityListLoader entityType="collections" {...props} />
+const CollectionListLoader = ({ children, ...props }: Props) => (
+  <EntityListLoader
+    entityType="collections"
+    children={({ list, ...rest }) => children({ collections: list, ...rest })}
+    {...props}
+  />
 );
 
 export default CollectionListLoader;
