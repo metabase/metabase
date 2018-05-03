@@ -768,9 +768,7 @@
    (let [rules (rules/load-rules "table")]
      (->> (apply db/select Table
                  (cond-> [:db_id           (u/get-id database)
-                          :visibility_type nil
-                          :entity_type     [:not= nil]] ; only consider tables that have alredy
-                                                        ; been analyzed
+                          :visibility_type nil]
                    schema (concat [:schema schema])))
           (filter mi/can-read?)
           (map enhanced-table-stats)
