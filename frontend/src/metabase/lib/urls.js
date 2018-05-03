@@ -63,6 +63,10 @@ export function pulse(pulseId) {
   return `/pulse/#${pulseId}`;
 }
 
+export function pulseEdit(pulseId) {
+  return `/pulse/${pulseId}`;
+}
+
 export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
   let query = `?db=${databaseId}&table=${tableId}`;
 

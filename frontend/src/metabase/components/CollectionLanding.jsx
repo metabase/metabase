@@ -52,10 +52,10 @@ const CollectionList = ({ collectionSlug }) => {
   return (
     <Box mb={2}>
       <CollectionListLoader>
-        {({ list }) => {
+        {({ collections }) => {
           return (
             <Grid>
-              {list.map(collection => (
+              {collections.map(collection => (
                 <GridItem key={collection.id}>
                   <CollectionItem collection={collection} />
                 </GridItem>
@@ -129,12 +129,12 @@ class DefaultLanding extends React.Component {
         );
       case "pulse":
         return (
-          <Flex direction="column">
+          <Link to={Urls.pulseEdit(item.id)}>
             <ItemCard>
               <Icon name="pulse" color={normal.yellow} />
               <Truncate mt="auto">{item.name}</Truncate>
             </ItemCard>
-          </Flex>
+          </Link>
         );
     }
   }
