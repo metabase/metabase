@@ -53,6 +53,17 @@
        (#'magic/matching-rules (rules/load-rules "table"))
        (map (comp first :applies_to))))
 
+;; Test fallback to GenericTable
+(expect
+  [:entity/GenericTable :entity/*]
+  (->> (-> (data/id :users)
+           Table
+           (assoc :entity_type nil)
+           (#'magic/->root))
+       (#'magic/matching-rules (rules/load-rules "table"))
+       (map (comp first :applies_to))))
+
+
 (defn- collect-urls
   [dashboard]
   (->> dashboard
