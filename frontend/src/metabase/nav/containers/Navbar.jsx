@@ -157,7 +157,7 @@ export default class Navbar extends Component {
           backgroundColor: "#FDFDFD",
           borderBottom: "1px solid #DCE1E4",
         }}
-        className="relative z2"
+        className="relative z5"
         align="center"
       >
         <Box className="">
