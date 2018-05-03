@@ -206,18 +206,6 @@
 
 
 (expect
-  [true true]
-  (tt/with-temp* [Table [{table-id :id}]]
-    (with-rasta
-      (with-dashboard-cleanup
-        (let [table               (Table table-id)
-              not-analyzed-result (automagic-analysis table {})
-              analyzed-result     (-> table
-                                      (assoc :entity_type :entity/GenericTable)
-                                      (automagic-analysis {}))]
-          [(nil? not-analyzed-result) (some? analyzed-result)])))))
-
-(expect
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
                   Field    [{} {:table_id table-id}]
