@@ -279,19 +279,6 @@
 (def ^:private ^{:arglists '([f])} file->entity-type
   (comp (partial re-find #".+(?=\.yaml)") str (memfn ^Path getFileName)))
 
-(defmacro ^:private with-resources
-  [identifier & body]
-  `(let [uri# (-> rules-dir io/resource .toURI)]
-     (let [[fs# path#] (-> uri# .toString (str/split #"!" 2))]
-       (if path#
-         (with-open [^FileSystem ~identifier
-                     (-> fs#
-                         java.net.URI/create
-                         (FileSystems/newFileSystem (java.util.HashMap.)))]
-           ~@body)
-         (let [~identifier (FileSystems/getDefault)]
-           ~@body)))))
-
 (defn- load-rule
   [f]
   (try
@@ -323,17 +310,28 @@
                  (load-rule-dir f (conj path (str (.getFileName f))) rules)
 
                  (file->entity-type f)
-                 (assoc-in rules (concat path [(file->entity-type f) ::leaf]) (load-rule f))))
+                 (assoc-in rules (concat path [(file->entity-type f) ::leaf]) (load-rule f))
+
+                 :else
+                 rules))
              rules
              ds))))
 
+(defmacro ^:private with-resource
+  [[identifier path] & body]
+  `(let [[jar# path#] (-> ~path .toString (str/split #"!" 2))]
+     (if path#
+       (with-open [^FileSystem fs# (-> jar#
+                                       java.net.URI/create
+                                       (FileSystems/newFileSystem (java.util.HashMap.)))]
+         (let [~identifier (.getPath fs# path# (into-array String []))]
+           ~@body))
+       (let [~identifier (.getPath (FileSystems/getDefault) (.getPath ~path) (into-array String []))]
+         ~@body))))
+
 (def ^:private rules
-  (with-resources fs
-    (let [path (io/resource rules-dir)
-          path (if (-> path str (str/starts-with? "jar"))
-                                (-> path str (str/split #"!" 2) second)
-                                (.getPath path))]
-      (into {} (load-rule-dir (.getPath fs path (into-array String [])))))))
+  (with-resource [path (-> rules-dir io/resource .toURI)]
+    (into {} (load-rule-dir path))))
 
 (defn get-rules
   "Get all rules with prefix `path`.
