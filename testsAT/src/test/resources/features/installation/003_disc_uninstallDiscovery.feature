@@ -9,5 +9,5 @@ Feature: Uninstall Discovery
     And I securely send requests to '${DCOS_IP}:443'
 
   Scenario: [Uninstallation Discovery][01] Uninstall Discovery
-    Given I run 'dcos marathon app remove ${DISCOVERY_NAME:-discovery}' in the ssh connection
-    Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos task | grep ${DISCOVERY_NAME:-discovery} | wc -l' contains '0'
+    Given I run 'dcos marathon app remove ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection
+    Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos task | grep ${DISCOVERY_SERVICE_NAME:-discovery} | wc -l' contains '0'
