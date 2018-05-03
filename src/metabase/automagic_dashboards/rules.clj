@@ -280,7 +280,7 @@
   (comp (partial re-find #".+(?=\.yaml)") str (memfn ^Path getFileName)))
 
 (defn- load-rule
-  [f]
+  [^Path f]
   (try
     (let [entity-type (file->entity-type f)]
       (-> f
