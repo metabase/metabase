@@ -24,7 +24,7 @@ const LandingNav = props => {
 
   function showEntity(type) {
     return `${
-      collectionSlug ? `collections/${collectionSlug}` : ""
+      collectionSlug ? `collection/${collectionSlug}` : ""
     }?show=${type}`;
   }
 
@@ -32,7 +32,7 @@ const LandingNav = props => {
     <Box className="absolute left top" px={2}>
       <Box>
         <Link
-          to={collectionSlug ? `collections/${collectionSlug}` : "/"}
+          to={collectionSlug ? `collection/${collectionSlug}` : "/"}
           style={linkStyle}
           activeStyle={activeStyle}
         >
