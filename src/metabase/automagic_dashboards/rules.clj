@@ -12,7 +12,7 @@
              [core :as s]]
             [yaml.core :as yaml])
   (:import java.nio.file.Path java.nio.file.FileSystems java.nio.file.FileSystem
-           java.nio.file.Files ))
+           java.nio.file.Files))
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
@@ -282,16 +282,41 @@
 (def ^:private ^{:arglists '([f])} file->parent-dir
   (comp last #(str/split % #"/") str (memfn ^Path getParent)))
 
+;; Only one FileSystem can be created for a given ZIP file (JAR) at a time. As there is a
+;; possibility that we'll have multiple concurrent calls to `load-rules`, we have to reuse the same
+;; FileSystem for all of them. At the same time we also want to close the FileSystem once we're done
+;; with it. If we close it at the end of the scope where we opned it, we run the risk of another
+;; thread still needing it. Instead we imlement simple reference counting via `num-fs-readers`, and
+;; close it only at the end of the scope of the last reader.
+
+(def ^:private num-fs-readers (ref 0))
+(def ^:private fs (ref nil))
+
 (defmacro ^:private with-resources
   [identifier & body]
   `(let [uri# (-> rules-dir io/resource .toURI)]
      (let [[fs# path#] (-> uri# .toString (str/split #"!" 2))]
        (if path#
-         (with-open [^FileSystem ~identifier
-                     (-> fs#
-                         java.net.URI/create
-                         (FileSystems/newFileSystem (java.util.HashMap.)))]
-           ~@body)
+         (do
+           (dosync
+            (if @fs
+              (alter num-fs-readers inc)
+              (do
+                (ref-set fs (-> fs#
+                                java.net.URI/create
+                                (FileSystems/newFileSystem (java.util.HashMap.))))
+                (ref-set num-fs-readers 1))))
+           (let [^FileSystem ~identifier @fs]
+             (try
+               ~@body
+               (finally
+                 (dosync
+                  (if (> @num-fs-readers 1)
+                    (alter num-fs-readers dec)
+                    (do
+                      (.close ^FileSystem @fs)
+                      (ref-set fs nil)
+                      (ref-set num-fs-readers 0))))))))
          (let [~identifier (FileSystems/getDefault)]
            ~@body)))))
 
