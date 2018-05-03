@@ -53,10 +53,7 @@ const PermissionsEditor = ({
   );
 
   return (
-    <LoadingAndErrorWrapper
-      loading={!grid}
-      className="flex-full flex flex-column"
-    >
+    <LoadingAndErrorWrapper loading={!grid}>
       {() =>
         // eslint-disable-line react/display-name
         modal ? (
@@ -67,14 +64,13 @@ const PermissionsEditor = ({
             onClose={onCancel}
           >
             <PermissionsGrid
-              className="flex-full"
               grid={grid}
               onUpdatePermission={onUpdatePermission}
               {...getEntityAndGroupIdFromLocation(location)}
             />
           </Modal>
         ) : (
-          <div className="flex-full flex flex-column">
+          <div>
             {isDirty && (
               <EditBar
                 admin={admin}
@@ -90,7 +86,6 @@ const PermissionsEditor = ({
               )}
             </div>
             <PermissionsGrid
-              className="flex-full"
               grid={grid}
               onUpdatePermission={onUpdatePermission}
               {...getEntityAndGroupIdFromLocation(location)}
