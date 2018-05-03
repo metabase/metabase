@@ -18,7 +18,7 @@
   "Create a database specification for a csv database. Opts should include a key
   for :db which is the path to the database file."
   [{:keys [db]
-    :or {db "h2.db"}
+    :or {db "data.csv"}
     :as opts}]
   (merge {:classname "org.relique.jdbc.csv.CsvDriver" ; must be in classpath
           :subprotocol "relique:csv"

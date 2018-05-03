@@ -120,31 +120,6 @@
              (hsql/raw "timestamp '1970-01-01T00:00:00Z'")))
 
 
-; (defn- check-native-query-not-using-default-user [{query-type :type, database-id :database, :as query}]
-;   {:pre [(integer? database-id)]}
-;   (u/prog1 query
-;     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
-;     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
-;     ;; reasons
-;     (when (= (keyword query-type) :native)
-;       (let [{:keys [db]}   (db/select-one-field :details Database :id database-id)
-;             _              (assert db)
-;             [_ options]    (connection-string->file+options db)
-;             {:strs [USER]} options]
-;         (when (or (s/blank? USER)
-;                   (= USER "sa"))        ; "sa" is the default USER
-;           (throw
-;            (Exception.
-;             (str (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))))))
-
-
-(defn- process-query-in-context [qp]
-  (qp))
-
-; (defn- process-query-in-context [qp]
-;   (comp qp check-native-query-not-using-default-user))
-
-
 ;; H2 doesn't have date_trunc() we fake it by formatting a date to an appropriate string
 ;; and then converting back to a date.
 ;; Format strings are the same as those of SimpleDateFormat.
@@ -220,8 +195,8 @@
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval                     (u/drop-first-arg date-interval)
           :details-fields                    (constantly [{:name         "db"
-                                                           :display-name "Connection String"
-                                                           :placeholder  "file:/Users/camsaul/bird_sightings/toucans"
+                                                           :display-name "Path to CSV file."
+                                                           :placeholder  "file path to folder containing csv file"
                                                            :required     true}])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           ; :process-query-in-context          (u/drop-first-arg process-query-in-context)
