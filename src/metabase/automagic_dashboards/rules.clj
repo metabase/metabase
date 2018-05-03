@@ -329,20 +329,20 @@
        (let [~identifier (.getPath (FileSystems/getDefault) (.getPath ~path) (into-array String []))]
          ~@body))))
 
-(def ^:private rules
-  (with-resource [path (-> rules-dir io/resource .toURI)]
-    (into {} (load-rule-dir path))))
+(def ^:private rules (delay
+                      (with-resource [path (-> rules-dir io/resource .toURI)]
+                        (into {} (load-rule-dir path)))))
 
 (defn get-rules
-  "Get all rules with prefix `path`.
-   Path needs to match the entire prefix, so [\"table\"] will match table/TransactionTable.yaml,
-   but not table/TransactionTable/ByCountry.yaml"
-  [path]
-  (->> path
-       (get-in rules)
+  "Get all rules with prefix `prefix`.
+   prefix is greedy, so [\"table\"] will match table/TransactionTable.yaml, but not
+   table/TransactionTable/ByCountry.yaml"
+  [prefix]
+  (->> prefix
+       (get-in @rules)
        (keep (comp ::leaf val))))
 
 (defn get-rule
   "Get rule at path `path`."
   [path]
-  (get-in rules (concat path [::leaf])))
+  (get-in @rules (concat path [::leaf])))
