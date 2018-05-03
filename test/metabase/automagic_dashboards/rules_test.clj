@@ -19,7 +19,7 @@
 (expect (every? some? (get-rules ["metrics"])))
 (expect (every? some? (get-rules ["fields"])))
 
-(expect (some? (get-rules ["table" "GenericTable" "ByCountry"]))
+(expect (some? (get-rules ["table" "GenericTable" "ByCountry"])))
 
 (expect true  (dimension-form? [:dimension "Foo"]))
 (expect true  (dimension-form? ["dimension" "Foo"]))
