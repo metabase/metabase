@@ -15,7 +15,7 @@
             [toucan.util.test :as tt]))
 
 (def ^:private fake-analysis-completion-date
-  (du/->Timestamp "2017-08-01"))
+  (du/->Timestamp #inst "2017-08-01"))
 
 ;; Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current
 (expect
@@ -62,7 +62,7 @@
 (expect
   #{"Current fingerprint, not analyzed"}
   (with-redefs [i/latest-fingerprint-version Short/MAX_VALUE
-                du/new-sql-timestamp         (constantly (du/->Timestamp "1999-01-01"))]
+                du/new-sql-timestamp         (constantly (du/->Timestamp #inst "1999-01-01"))]
     (tt/with-temp* [Table [table]
                     Field [_ {:table_id            (u/get-id table)
                               :name                "Current fingerprint, not analyzed"
@@ -71,7 +71,7 @@
                     Field [_ {:table_id            (u/get-id table)
                               :name                "Current fingerprint, already analzed"
                               :fingerprint_version Short/MAX_VALUE
-                              :last_analyzed       (du/->Timestamp "2017-08-09")}]
+                              :last_analyzed       (du/->Timestamp #inst "2017-08-09")}]
                     Field [_ {:table_id            (u/get-id table)
                               :name                "Old fingerprint, not analyzed"
                               :fingerprint_version (dec Short/MAX_VALUE)
@@ -79,6 +79,6 @@
                     Field [_ {:table_id            (u/get-id table)
                               :name                "Old fingerprint, already analzed"
                               :fingerprint_version (dec Short/MAX_VALUE)
-                              :last_analyzed       (du/->Timestamp "2017-08-09")}]]
+                              :last_analyzed       (du/->Timestamp #inst "2017-08-09")}]]
       (#'analyze/update-fields-last-analyzed! table)
       (db/select-field :name Field :last_analyzed (du/new-sql-timestamp)))))

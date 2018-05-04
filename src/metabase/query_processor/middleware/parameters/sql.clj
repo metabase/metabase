@@ -20,6 +20,7 @@
            honeysql.types.SqlCall
            java.text.NumberFormat
            java.util.regex.Pattern
+           java.util.TimeZone
            metabase.models.field.FieldInstance))
 
 ;; The Basics:
@@ -44,9 +45,6 @@
 ;; TODO - we have dynamic *driver* variables like this in several places; it probably makes more sense to see if we
 ;; can share one used somewhere else instead
 (def ^:private ^:dynamic *driver* nil)
-
-(def ^:private ^:dynamic *timezone* nil)
-
 
 ;; various record types below are used as a convenience for differentiating the different param types.
 
@@ -299,7 +297,7 @@
 (s/defn ^:private relative-date-dimension-value->replacement-snippet-info :- ParamSnippetInfo
   [value]
   ;; TODO - get timezone from query dict
-  (-> (date-params/date-string->range value *timezone*)
+  (-> (date-params/date-string->range value (.getID du/*report-timezone*))
       map->DateRange
       ->replacement-snippet-info))
 
@@ -528,8 +526,7 @@
 (defn expand
   "Expand parameters inside a *SQL* QUERY."
   [query]
-  (binding [*driver*   (ensure-driver query)
-            *timezone* (get-in query [:settings :report-timezone])]
+  (binding [*driver*   (ensure-driver query)]
     (if (driver/driver-supports? *driver* :native-query-params)
       (update query :native expand-query-params (query->params-map query))
       query)))

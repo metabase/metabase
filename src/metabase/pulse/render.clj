@@ -646,7 +646,7 @@
   [render-type timezone card {:keys [rows cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
         ft-row (if (datetime-field? (x-axis-rowfn cols))
-                 #(.getTime ^Date (du/->Timestamp %))
+                 #(.getTime ^Date (du/->Timestamp % timezone))
                  identity)
         rows   (if (> (ft-row (x-axis-rowfn (first rows)))
                       (ft-row (x-axis-rowfn (last rows))))
