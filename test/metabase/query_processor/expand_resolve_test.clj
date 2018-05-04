@@ -12,7 +12,8 @@
             [metabase.test
              [data :as data :refer :all]
              [util :as tu]]
-            [metabase.test.data.dataset-definitions :as defs]))
+            [metabase.test.data.dataset-definitions :as defs]
+            [metabase.util.date :as du]))
 
 ;; this is here because expectations has issues comparing and object w/ a map and most of the output
 ;; below has objects for the various place holders in the expanded/resolved query
@@ -239,7 +240,7 @@
                                                                                     :type   {:type/DateTime {:earliest "2014-01-01T00:00:00.000Z"
                                                                                                              :latest   "2014-12-05T00:00:00.000Z"}}}})
                                                 :unit  :year}
-                                  :value       {:value (u/->Timestamp "1980-01-01")
+                                  :value       {:value (du/->Timestamp "1980-01-01")
                                                 :field {:field
                                                         (merge field-defaults
                                                                {:field-id           (id :users :last_login)

@@ -18,6 +18,7 @@
             [metabase.query-processor.util :as qputil]
             [metabase.util :as util]
             [metabase.util
+             [date :as du]
              [export :as ex]
              [schema :as su]]
             [puppetlabs.i18n.core :refer [trs tru]]
@@ -108,7 +109,7 @@
       {:status  200
        :body    ((:export-fn export-conf) columns (maybe-modify-date-values cols rows))
        :headers {"Content-Type"        (str (:content-type export-conf) "; charset=utf-8")
-                 "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) "." (:ext export-conf) "\"")}}
+                 "Content-Disposition" (str "attachment; filename=\"query_result_" (du/date->iso-8601) "." (:ext export-conf) "\"")}}
       ;; failed query, send error message
       {:status 500
        :body   (:error response)})))
