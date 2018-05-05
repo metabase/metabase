@@ -179,8 +179,8 @@
 (defsetting google-auth-client-id
   (tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled."))
 
-(defsetting google-auth-auto-create-accounts-domain
-  (tru "When set, allow users to sign up on their own if their Google account email address is from this domain."))
+(defsetting google-auth-auto-create-accounts-domains
+  (tru "Comma-separated domains. When set, allow users to sign up on their own if their Google account email address is from these domains."))
 
 (defn- google-auth-token-info [^String token]
   (let [{:keys [status body]} (http/post (str "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" token))]
@@ -191,16 +191,21 @@
         (throw (ex-info (tru "Email is not verified.") {:status-code 400}))))))
 
 ;; TODO - are these general enough to move to `metabase.util`?
+(defn- split-domains [domains]
+  (apply vector
+    (map clojure.string/trim
+      (clojure.string/split domains #","))))
+
 (defn- email->domain ^String [email]
   (last (re-find #"^.*@(.*$)" email)))
 
-(defn- email-in-domain? ^Boolean [email domain]
+(defn- email-in-domains? ^Boolean [email domains]
   {:pre [(u/email? email)]}
-  (= (email->domain email) domain))
+  (some #(= (email->domain email) %) (split-domains domains)))
 
 (defn- autocreate-user-allowed-for-email? [email]
-  (when-let [domain (google-auth-auto-create-accounts-domain)]
-    (email-in-domain? email domain)))
+  (when-let [domains (google-auth-auto-create-accounts-domains)]
+    (email-in-domains? email domains)))
 
 (defn- check-autocreate-user-allowed-for-email [email]
   (when-not (autocreate-user-allowed-for-email? email)

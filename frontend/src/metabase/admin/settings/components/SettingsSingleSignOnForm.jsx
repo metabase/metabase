@@ -26,13 +26,13 @@ export default class SettingsSingleSignOnForm extends Component {
   componentWillMount() {
     let { elements } = this.props,
       clientID = _.findWhere(elements, { key: "google-auth-client-id" }),
-      domain = _.findWhere(elements, {
-        key: "google-auth-auto-create-accounts-domain",
+      domains = _.findWhere(elements, {
+        key: "google-auth-auto-create-accounts-domains",
       });
 
     this.setState({
       clientID: clientID,
-      domain: domain,
+      domains: domains,
       clientIDValue: clientID.value,
       domainValue: domain.value,
       recentlySaved: false,

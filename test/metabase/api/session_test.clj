@@ -202,12 +202,12 @@
 
 ;;; tests for autocreate-user-allowed-for-email?
 (expect
-  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
+  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domains "metabase.com"]
     (#'session-api/autocreate-user-allowed-for-email? "cam@metabase.com")))
 
 (expect
   false
-  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
+  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domains "metabase.com"]
     (#'session-api/autocreate-user-allowed-for-email? "cam@expa.com")))
 
 
@@ -215,14 +215,14 @@
 ;; shouldn't be allowed to create a new user via Google Auth if their email doesn't match the auto-create accounts domain
 (expect
   clojure.lang.ExceptionInfo
-  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
+  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domains "sf-toucannery.com"]
     (#'session-api/google-auth-create-new-user! "Rasta" "Toucan" "rasta@metabase.com")))
 
 ;; should totally work if the email domains match up
 (expect
   {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
   (et/with-fake-inbox
-    (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
+    (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domains "sf-toucannery.com"
                                        admin-email                             "rasta@toucans.com"]
       (select-keys (u/prog1 (#'session-api/google-auth-create-new-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
                      (db/delete! User :id (:id <>))) ; make sure we clean up after ourselves !
@@ -239,14 +239,14 @@
 ;; their account should return a Session
 (expect
   (tt/with-temp User [user {:email "cam@sf-toucannery.com"}]
-    (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
+    (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domains "metabase.com"]
       (is-session? (#'session-api/google-auth-fetch-or-create-user! "Cam" "Saül" "cam@sf-toucannery.com")))))
 
 ;; test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an
 ;; exception
 (expect
   clojure.lang.ExceptionInfo
-  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain nil
+  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domains nil
                                      admin-email                             "rasta@toucans.com"]
     (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Can" "rasta@sf-toucannery.com")))
 
@@ -254,7 +254,7 @@
 ;; created
 (expect
   (et/with-fake-inbox
-    (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
+    (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domains "sf-toucannery.com"
                                        admin-email                             "rasta@toucans.com"]
       (u/prog1 (is-session? (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com"))
         (db/delete! User :email "rasta@sf-toucannery.com"))))) ; clean up after ourselves
