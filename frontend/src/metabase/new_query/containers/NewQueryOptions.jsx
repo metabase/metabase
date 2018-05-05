@@ -1,6 +1,8 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
+import fitViewport from "metabase/hoc/FitViewPort";
+
 import {
   fetchDatabases,
   fetchMetrics,
@@ -71,6 +73,7 @@ const allOptionsVisibleState = {
   showSQLOption: true,
 };
 
+@fitViewport
 export class NewQueryOptions extends Component {
   props: Props;
 

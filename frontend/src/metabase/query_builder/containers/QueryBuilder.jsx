@@ -9,6 +9,8 @@ import _ from "underscore";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 
+import fitViewport from "metabase/hoc/FitViewPort";
+
 import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 
 import QueryHeader from "../components/QueryHeader.jsx";
@@ -132,6 +134,7 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ card }) => (card && card.name) || t`Question`)
+@fitViewport
 export default class QueryBuilder extends Component {
   forceUpdateDebounced: () => void;
 
@@ -238,7 +241,7 @@ class LegacyQueryBuilder extends Component {
     const ModeFooter = mode && mode.ModeFooter;
 
     return (
-      <div className="relative" style={{ minHeight: "100vh" }}>
+      <div className={this.props.fitClasses}>
         <div
           className={cx("QueryBuilder flex flex-column bg-white spread", {
             "QueryBuilder--showSideDrawer": showDrawer,

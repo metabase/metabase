@@ -46,7 +46,7 @@ export default class PermissionsApp extends Component {
   };
   render() {
     return (
-      <div>
+      <div className={this.props.fitClasses}>
         {this.props.children}
         <Modal isOpen={this.state.nextLocation}>
           <ConfirmContent
