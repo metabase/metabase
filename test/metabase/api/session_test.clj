@@ -198,11 +198,11 @@
 ;;; tests for email-in-domains?
 ;;; single domain tests
 (expect true  (#'session-api/email-in-domains? "cam@metabase.com"          "metabase.com"))
-(expect nil (#'session-api/email-in-domains? "cam.saul+1@metabase.co.uk" "metabase.com"))
+(expect nil (#'session-api/email-in-domains?   "cam.saul+1@metabase.co.uk" "metabase.com"))
 (expect true  (#'session-api/email-in-domains? "cam.saul+1@metabase.com"   "metabase.com"))
 ;;; multiple domain tests
-(expect true  (#'session-api/email-in-domains? "cam@metabase.se"          "metabase.com, metabase.se"))
-(expect nil (#'session-api/email-in-domains? "cam.saul+1@metabase.co.uk" "metabase.com, metabase.se"))
+(expect true  (#'session-api/email-in-domains? "cam@metabase.se"           "metabase.com, metabase.se"))
+(expect nil (#'session-api/email-in-domains?   "cam.saul+1@metabase.co.uk" "metabase.com, metabase.se"))
 (expect true  (#'session-api/email-in-domains? "cam.saul+1@metabase.com"   "metabase.com, metabase.se"))
 
 ;;; tests for autocreate-user-allowed-for-email?
