@@ -11,11 +11,11 @@ export default class SettingsSingleSignOnForm extends Component {
   constructor(props, context) {
     super(props, context);
     this.updateClientID = this.updateClientID.bind(this);
-    this.updateDomain = this.updateDomain.bind(this);
+    this.updateDomains = this.updateDomains.bind(this);
     (this.onCheckboxClicked = this.onCheckboxClicked.bind(this)),
       (this.saveChanges = this.saveChanges.bind(this)),
       (this.clientIDChanged = this.clientIDChanged.bind(this)),
-      (this.domainChanged = this.domainChanged.bind(this));
+      (this.domainsChanged = this.domainsChanged.bind(this));
   }
 
   static propTypes = {
@@ -34,7 +34,7 @@ export default class SettingsSingleSignOnForm extends Component {
       clientID: clientID,
       domains: domains,
       clientIDValue: clientID.value,
-      domainValue: domain.value,
+      domainsValue: domains.value,
       recentlySaved: false,
     });
   }
@@ -48,11 +48,11 @@ export default class SettingsSingleSignOnForm extends Component {
     });
   }
 
-  updateDomain(newValue) {
-    if (newValue === this.state.domain.value) return;
+  updateDomains(newValue) {
+    if (newValue === this.state.domains.value) return;
 
     this.setState({
-      domainValue: newValue && newValue.length ? newValue : null,
+      domainsValue: newValue && newValue.length ? newValue : null,
       recentlySaved: false,
     });
   }
@@ -61,12 +61,12 @@ export default class SettingsSingleSignOnForm extends Component {
     return this.state.clientID.value !== this.state.clientIDValue;
   }
 
-  domainChanged() {
-    return this.state.domain.value !== this.state.domainValue;
+  domainsChanged() {
+    return this.state.domains.value !== this.state.domainsValue;
   }
 
   saveChanges() {
-    let { clientID, clientIDValue, domain, domainValue } = this.state;
+    let { clientID, clientIDValue, domains, domainsValue } = this.state;
 
     if (this.clientIDChanged()) {
       this.props.updateSetting(clientID, clientIDValue);
@@ -78,11 +78,11 @@ export default class SettingsSingleSignOnForm extends Component {
       });
     }
 
-    if (this.domainChanged()) {
-      this.props.updateSetting(domain, domainValue);
+    if (this.domainsChanged()) {
+      this.props.updateSetting(domains, domainsValue);
       this.setState({
-        domain: {
-          value: domainValue,
+        domains: {
+          value: domainsValue,
         },
         recentlySaved: true,
       });
@@ -90,15 +90,15 @@ export default class SettingsSingleSignOnForm extends Component {
   }
 
   onCheckboxClicked() {
-    // if domain is present, clear it out; otherwise if there's no domain try to set it back to what it was
+    // if domains are present, clear it out; otherwise if there's no domains try to set it back to what it was
     this.setState({
-      domainValue: this.state.domainValue ? null : this.state.domain.value,
+      domainsValue: this.state.domainsValue ? null : this.state.domains.value,
       recentlySaved: false,
     });
   }
 
   render() {
-    let hasChanges = this.domainChanged() || this.clientIDChanged(),
+    let hasChanges = this.domainsChanged() || this.clientIDChanged(),
       hasClientID = this.state.clientIDValue;
 
     return (
@@ -135,15 +135,15 @@ export default class SettingsSingleSignOnForm extends Component {
           />
           <div className="py3">
             <div className="flex align-center">
-              <p className="text-grey-4">{t`Allow users to sign up on their own if their Google account email address is from:`}</p>
+              <p className="text-grey-4">{t`Allow users to sign up on their own if their Google account email address is from one of these domains (separate multiple domains with a comma):`}</p>
             </div>
             <div className="mt1 bordered rounded inline-block">
               <div className="inline-block px2 h2">@</div>
               <Input
                 className="SettingsInput inline-block AdminInput h3 border-left"
                 type="text"
-                value={this.state.domainValue}
-                onChange={event => this.updateDomain(event.target.value)}
+                value={this.state.domainsValue}
+                onChange={event => this.updateDomains(event.target.value)}
                 disabled={!hasClientID}
               />
             </div>
