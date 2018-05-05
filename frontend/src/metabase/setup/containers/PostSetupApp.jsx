@@ -8,6 +8,7 @@ import MetabotLogo from "metabase/components/MetabotLogo";
 import ProgressBar from "metabase/components/ProgressBar";
 import Quotes from "metabase/components/Quotes";
 import { withBackground } from "metabase/hoc/Background";
+import fitViewport from "metabase/hoc/FitViewPort";
 
 import { MetabaseApi, AutoApi } from "metabase/services";
 import _ from "underscore";
@@ -44,6 +45,7 @@ type State = {
 };
 
 @withBackground("bg-slate-extra-light")
+@fitViewport
 export default class PostSetupApp extends Component {
   props: Props;
   state: State = {
