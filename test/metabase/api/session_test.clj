@@ -195,10 +195,15 @@
 (expect "metabase.co.uk" (#'session-api/email->domain "cam@metabase.co.uk"))
 (expect "metabase.com"   (#'session-api/email->domain "cam.saul+1@metabase.com"))
 
-;;; tests for email-in-domain?
-(expect true  (#'session-api/email-in-domain? "cam@metabase.com"          "metabase.com"))
-(expect false (#'session-api/email-in-domain? "cam.saul+1@metabase.co.uk" "metabase.com"))
-(expect true  (#'session-api/email-in-domain? "cam.saul+1@metabase.com"   "metabase.com"))
+;;; tests for email-in-domains?
+;;; single domain tests
+(expect true  (#'session-api/email-in-domains? "cam@metabase.com"          "metabase.com"))
+(expect nil (#'session-api/email-in-domains? "cam.saul+1@metabase.co.uk" "metabase.com"))
+(expect true  (#'session-api/email-in-domains? "cam.saul+1@metabase.com"   "metabase.com"))
+;;; multiple domain tests
+(expect true  (#'session-api/email-in-domains? "cam@metabase.se"          "metabase.com, metabase.se"))
+(expect nil (#'session-api/email-in-domains? "cam.saul+1@metabase.co.uk" "metabase.com, metabase.se"))
+(expect true  (#'session-api/email-in-domains? "cam.saul+1@metabase.com"   "metabase.com, metabase.se"))
 
 ;;; tests for autocreate-user-allowed-for-email?
 (expect
@@ -206,7 +211,7 @@
     (#'session-api/autocreate-user-allowed-for-email? "cam@metabase.com")))
 
 (expect
-  false
+  nil
   (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domains "metabase.com"]
     (#'session-api/autocreate-user-allowed-for-email? "cam@expa.com")))
 
