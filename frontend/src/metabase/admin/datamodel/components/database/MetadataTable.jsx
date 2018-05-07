@@ -8,6 +8,8 @@ import { t } from "c-3po";
 import Input from "metabase/components/Input.jsx";
 import ProgressBar from "metabase/components/ProgressBar.jsx";
 
+import { normal } from "metabase/lib/colors";
+
 import _ from "underscore";
 import cx from "classnames";
 
@@ -120,7 +122,12 @@ export default class MetadataTable extends Component {
           {this.renderVisibilityWidget()}
           <span className="flex-align-right flex align-center">
             <span className="text-uppercase mr1">{t`Metadata Strength`}</span>
-            <ProgressBar percentage={tableMetadata.metadataStrength} />
+            <span style={{ width: 64 }}>
+              <ProgressBar
+                percentage={tableMetadata.metadataStrength}
+                color={normal.grey2}
+              />
+            </span>
           </span>
         </div>
         <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
