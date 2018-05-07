@@ -50,7 +50,7 @@
   (->> (data/id :users)
        Table
        (#'magic/->root)
-       (#'magic/matching-rules (rules/load-rules "table"))
+       (#'magic/matching-rules (rules/get-rules ["table"]))
        (map (comp first :applies_to))))
 
 ;; Test fallback to GenericTable
