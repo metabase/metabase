@@ -218,10 +218,7 @@ export const getRoutes = store => (
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />
 
-        <Route
-          path="collection/:collectionSlug"
-          component={CollectionLanding}
-        />
+        <Route path="collection/:collectionId" component={CollectionLanding} />
 
         <Route path="activity" component={HomepageApp} />
 

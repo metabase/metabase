@@ -18,9 +18,7 @@ import LandingNav from "metabase/components/LandingNav";
 const mapStateToProps = (state, props) => ({
   currentCollection:
     (state.entities.collections &&
-      Object.values(state.entities.collections).filter(
-        c => c.slug === props.params.collectionSlug,
-      )[0]) ||
+      state.entities.collections[props.params.collectionId]) ||
     {},
 });
 
@@ -32,7 +30,7 @@ const Card = Box.extend`
 `;
 
 const CollectionItem = ({ collection }) => (
-  <Link to={`collection/${collection.slug}`}>
+  <Link to={`collection/${collection.id}`}>
     <Card>
       <Flex
         align="center"
@@ -48,7 +46,7 @@ const CollectionItem = ({ collection }) => (
   </Link>
 );
 
-const CollectionList = ({ collectionSlug }) => {
+const CollectionList = () => {
   return (
     <Box mb={2}>
       <CollectionListLoader>
@@ -139,47 +137,50 @@ class DefaultLanding extends React.Component {
     }
   }
   render() {
-    const { currentCollection, collectionSlug, location } = this.props;
+    const { currentCollection, collectionId, location } = this.props;
     return (
       <Box w="100%">
         {// HACK for now to only show the colleciton list on the root
         // colleciton until we have a notion of nested collections
-        !collectionSlug && <CollectionList />}
-        <CollectionItemsLoader collectionId={currentCollection.id || "root"}>
-          {({ loading, error, allItems, pulses, cards, dashboards }) => {
-            if (loading) {
-              return <Box>Loading...</Box>;
-            }
-
-            let items = allItems;
-
-            // Hack in filtering
-            if (location.query.show) {
-              switch (location.query.show) {
-                case "dashboards":
-                  items = dashboards.map(d => ({ ...d, type: "dashboard" }));
-                  break;
-                case "pulses":
-                  items = pulses.map(p => ({ ...p, type: "pulse" }));
-                  break;
-                case "questions":
-                  items = cards.map(c => ({ ...c, type: "card" }));
-                  break;
-                default:
-                  items = allItems;
-                  break;
+        !collectionId && <CollectionList />}
+        {// Hack to hide the list until the root fix is in }
+        collectionId && (
+          <CollectionItemsLoader collectionId={currentCollection.id || "root"}>
+            {({ loading, error, allItems, pulses, cards, dashboards }) => {
+              if (loading) {
+                return <Box>Loading...</Box>;
               }
-            }
 
-            return (
-              <Grid>
-                {items.map(item => (
-                  <GridItem>{this._renderItem(item)}</GridItem>
-                ))}
-              </Grid>
-            );
-          }}
-        </CollectionItemsLoader>
+              let items = allItems;
+
+              // Hack in filtering
+              if (location.query.show) {
+                switch (location.query.show) {
+                  case "dashboards":
+                    items = dashboards.map(d => ({ ...d, type: "dashboard" }));
+                    break;
+                  case "pulses":
+                    items = pulses.map(p => ({ ...p, type: "pulse" }));
+                    break;
+                  case "questions":
+                    items = cards.map(c => ({ ...c, type: "card" }));
+                    break;
+                  default:
+                    items = allItems;
+                    break;
+                }
+              }
+
+              return (
+                <Grid>
+                  {items.map(item => (
+                    <GridItem>{this._renderItem(item)}</GridItem>
+                  ))}
+                </Grid>
+              );
+            }}
+          </CollectionItemsLoader>
+        )}
       </Box>
     );
   }
@@ -189,7 +190,7 @@ class DefaultLanding extends React.Component {
 class CollectionLanding extends React.Component {
   render() {
     const { children, params, currentCollection } = this.props;
-    const collectionSlug = params.collectionSlug;
+    const collectionId = params.collectionId;
     return (
       <Box>
         <Box className="wrapper lg-wrapper--trim">
@@ -204,7 +205,7 @@ class CollectionLanding extends React.Component {
                   <Flex align="center">
                     <Icon name="chevronright" m={2} />
                     <Flex>
-                      <Link to={`/collection/${currentCollection.slug}`}>
+                      <Link to={`/collection/${currentCollection.id}`}>
                         {currentCollection.name}
                       </Link>
                     </Flex>
@@ -235,14 +236,14 @@ class CollectionLanding extends React.Component {
           </Flex>
         </Box>
         <Box className="relative">
-          <LandingNav collectionSlug={collectionSlug} />
+          <LandingNav collectionId={collectionId} />
           <Box className="wrapper lg-wrapper--trim">
             {children ? (
               children
             ) : (
               <DefaultLanding
                 currentCollection={currentCollection}
-                collectionSlug={collectionSlug}
+                collectionId={collectionId}
               />
             )}
           </Box>
