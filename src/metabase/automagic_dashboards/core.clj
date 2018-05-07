@@ -428,7 +428,7 @@
    Most specific is defined as entity type specification the longest ancestor
    chain."
   [rules {:keys [source entity]}]
-  (let [table-type (:entity_type source)]
+  (let [table-type (or (:entity_type source) :entity/GenericTable)]
     (->> rules
          (filter (fn [{:keys [applies_to]}]
                    (let [[entity-type field-type] applies_to]
@@ -572,7 +572,7 @@
                        first)
         dashboard (make-dashboard root rule)]
     {:url         (:url root)
-     :title       (-> root :full-name str/capitalize)
+     :title       (:full-name root)
      :description (:description dashboard)}))
 
 (defn- others
@@ -768,9 +768,7 @@
    (let [rules (rules/load-rules "table")]
      (->> (apply db/select Table
                  (cond-> [:db_id           (u/get-id database)
-                          :visibility_type nil
-                          :entity_type     [:not= nil]] ; only consider tables that have alredy
-                                                        ; been analyzed
+                          :visibility_type nil]
                    schema (concat [:schema schema])))
           (filter mi/can-read?)
           (map enhanced-table-stats)
