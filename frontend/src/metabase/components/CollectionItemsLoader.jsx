@@ -12,6 +12,7 @@ const CollectionItemsLoader = ({ collectionId, children }: Props) => (
     entityType="collections"
     entityId={collectionId}
     children={({ object }) =>
+      object &&
       children({
         dashboards: object.dashboards,
         cards: object.cards,
