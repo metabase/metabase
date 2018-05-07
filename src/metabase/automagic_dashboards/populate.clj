@@ -264,13 +264,19 @@
 (defn merge-dashboards
   "Merge dashboards `ds` into dashboard `d`."
   [d & ds]
-  (let [filter-targets (->> ds
-                            (mapcat :ordered_cards)
-                            (mapcat :parameter_mappings)
-                            (mapcat (comp filters/collect-field-references :target))
-                            (map filters/field-reference->id)
-                            distinct
-                            (map Field))]
+  (let [filter-targets (when (->> ds
+                                  (mapcat :ordered_cards)
+                                  (keep (comp :table_id :card))
+                                  distinct
+                                  count
+                                  (= 1))
+                         (->> ds
+                              (mapcat :ordered_cards)
+                              (mapcat :parameter_mappings)
+                              (mapcat (comp filters/collect-field-references :target))
+                              (map filters/field-reference->id)
+                              distinct
+                              (map Field)))]
     (cond-> (reduce
              (fn [target dashboard]
                (let [offset (->> target

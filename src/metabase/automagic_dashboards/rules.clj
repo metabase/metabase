@@ -189,9 +189,9 @@
 (def ^:private Rules
   (constrained-all
    {(s/required-key :title)             s/Str
-    (s/required-key :dimensions)        [Dimension]
-    (s/required-key :cards)             [Card]
     (s/required-key :rule)              s/Str
+    (s/optional-key :cards)             [Card]
+    (s/optional-key :dimensions)        [Dimension]
     (s/optional-key :applies_to)        AppliesTo
     (s/optional-key :transient_title)   s/Str
     (s/optional-key :description)       s/Str

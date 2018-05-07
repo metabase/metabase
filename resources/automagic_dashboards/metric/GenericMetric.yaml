@@ -39,7 +39,7 @@ groups:
   - Geographical:
       title: "[[this]] by location"
   - Categories:
-      title: How [[this]] is distributed
+      title: How [[this]] is distributed across different categories
   - Numbers:
       title: How [[this]] is distributed across different numbers
   - LargeCategories:
