@@ -402,7 +402,15 @@ export default class PeopleListingApp extends Component {
     let { modal, users, groups } = this.props;
     let { error } = this.state;
 
-    users = _.values(users).sort((a, b) => b.date_joined - a.date_joined);
+    // sort the users list by last_name, ignore case or diacritical marks. If last names are the same then compare by
+    // first name
+    const compareNames = (a, b) =>
+      a.localeCompare(b, undefined, { sensitivty: "base" });
+    users = _.values(users).sort(
+      (a, b) =>
+        compareNames(a.last_name, b.last_name) ||
+        compareNames(a.first_name, b.first_name),
+    );
 
     return (
       <LoadingAndErrorWrapper loading={!users} error={error}>
