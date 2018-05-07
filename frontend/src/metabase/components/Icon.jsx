@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 import RetinaImage from "react-retina-image";
 import sys from "system-components";
+import cx from "classnames";
 
 import { loadIcon } from "metabase/icon_paths";
 
@@ -23,7 +24,11 @@ class BaseIcon extends Component {
     if (!icon) {
       return null;
     }
-    const props = { ...icon.attrs, ...this.props };
+    const className = cx(
+      icon.attrs && icon.attrs.className,
+      this.props.className,
+    );
+    const props = { ...icon.attrs, ...this.props, className };
     for (const prop of ["width", "height", "size", "scale"]) {
       if (typeof props[prop] === "string") {
         props[prop] = parseInt(props[prop], 10);

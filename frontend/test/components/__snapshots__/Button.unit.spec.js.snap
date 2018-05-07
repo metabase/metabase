@@ -22,7 +22,7 @@ exports[`Button should render correctly with an icon 1`] = `
     className="flex layout-centered"
   >
     <svg
-      className="mr1 sc-bdVaJa htZdtD"
+      className="Icon Icon-star mr1 sc-bdVaJa htZdtD"
       fill="currentcolor"
       height={14}
       name="star"
