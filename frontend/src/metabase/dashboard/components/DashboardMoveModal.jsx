@@ -46,32 +46,31 @@ class DashboardMoveModal extends React.Component {
         </Flex>
         <CollectionListLoader>
           {({ collections, loading, error }) => {
-            if (loading) {
-              return <Box>Loading...</Box>;
-            }
             return (
               <Box>
-                {collections.map(collection => (
-                  <Box
-                    my={1}
-                    p={1}
-                    onClick={() =>
-                      this.setState({ selectedCollection: collection })
-                    }
-                    className={cx(
-                      "bg-brand-hover text-white-hover cursor-pointer rounded",
-                      {
-                        "bg-brand text-white":
-                          selectedCollection.id === collection.id,
-                      },
-                    )}
-                  >
-                    <Flex align="center">
-                      <Icon name="all" color={"#DCE1E4"} size={32} />
-                      <h4 className="ml1">{collection.name}</h4>
-                    </Flex>
-                  </Box>
-                ))}
+                {collections
+                  .concat({ name: "None", id: null })
+                  .map(collection => (
+                    <Box
+                      my={1}
+                      p={1}
+                      onClick={() =>
+                        this.setState({ selectedCollection: collection })
+                      }
+                      className={cx(
+                        "bg-brand-hover text-white-hover cursor-pointer rounded",
+                        {
+                          "bg-brand text-white":
+                            selectedCollection.id === collection.id,
+                        },
+                      )}
+                    >
+                      <Flex align="center">
+                        <Icon name="all" color={"#DCE1E4"} size={32} />
+                        <h4 className="ml1">{collection.name}</h4>
+                      </Flex>
+                    </Box>
+                  ))}
               </Box>
             );
           }}
