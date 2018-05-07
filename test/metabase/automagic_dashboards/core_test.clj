@@ -53,6 +53,17 @@
        (#'magic/matching-rules (rules/load-rules "table"))
        (map (comp first :applies_to))))
 
+;; Test fallback to GenericTable
+(expect
+  [:entity/GenericTable :entity/*]
+  (->> (-> (data/id :users)
+           Table
+           (assoc :entity_type nil)
+           (#'magic/->root))
+       (#'magic/matching-rules (rules/load-rules "table"))
+       (map (comp first :applies_to))))
+
+
 (defn- collect-urls
   [dashboard]
   (->> dashboard
@@ -195,34 +206,20 @@
 
 
 (expect
-  [true true]
-  (tt/with-temp* [Table [{table-id :id}]]
-    (with-rasta
-      (with-dashboard-cleanup
-        (let [table               (Table table-id)
-              not-analyzed-result (automagic-analysis table {})
-              analyzed-result     (-> table
-                                      (assoc :entity_type :entity/GenericTable)
-                                      (automagic-analysis {}))]
-          [(nil? not-analyzed-result) (some? analyzed-result)])))))
+  3
+  (with-rasta
+    (->> (Database (data/id)) candidate-tables first :tables count)))
 
+;; /candidates should work with unanalyzed tables
 (expect
+  1
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
                   Field    [{} {:table_id table-id}]
                   Field    [{} {:table_id table-id}]]
     (with-rasta
       (with-dashboard-cleanup
-        (let [database           (Database db-id)
-              not-analyzed-count (count (candidate-tables database))]
-          (db/update! Table table-id :entity_type :entity/GenericTable)
-          (= (inc not-analyzed-count) (count (candidate-tables database))))))))
-
-
-(expect
-  3
-  (with-rasta
-    (->> (Database (data/id)) candidate-tables first :tables count)))
+        (count (candidate-tables (Database db-id)))))))
 
 
 ;; Identity
