@@ -361,63 +361,63 @@ export const getRoutes = store => (
 
       {/* USER */}
       <Route path="/user/edit_current" component={UserSettingsApp} />
-    </Route>
 
-    {/* ADMIN */}
-    <Route path="/admin" title={t`Admin`} component={IsAdmin}>
-      <IndexRedirect to="/admin/settings" />
+      {/* ADMIN */}
+      <Route path="/admin" title={t`Admin`} component={IsAdmin}>
+        <IndexRedirect to="/admin/settings" />
 
-      <Route path="databases" title={t`Databases`}>
-        <IndexRoute component={DatabaseListApp} />
-        <Route path="create" component={DatabaseEditApp} />
-        <Route path=":databaseId" component={DatabaseEditApp} />
-      </Route>
-
-      <Route path="datamodel" title={t`Data Model`}>
-        <IndexRedirect to="database" />
-        <Route path="database" component={MetadataEditorApp} />
-        <Route path="database/:databaseId" component={MetadataEditorApp} />
-        <Route
-          path="database/:databaseId/:mode"
-          component={MetadataEditorApp}
-        />
-        <Route
-          path="database/:databaseId/:mode/:tableId"
-          component={MetadataEditorApp}
-        />
-        <Route
-          path="database/:databaseId/:mode/:tableId/settings"
-          component={TableSettingsApp}
-        />
-        <Route
-          path="database/:databaseId/:mode/:tableId/:fieldId"
-          component={FieldApp}
-        />
-        <Route path="metric/create" component={MetricApp} />
-        <Route path="metric/:id" component={MetricApp} />
-        <Route path="segment/create" component={SegmentApp} />
-        <Route path="segment/:id" component={SegmentApp} />
-        <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
-      </Route>
-
-      {/* PEOPLE */}
-      <Route path="people" title={t`People`} component={AdminPeopleApp}>
-        <IndexRoute component={PeopleListingApp} />
-        <Route path="groups" title={t`Groups`}>
-          <IndexRoute component={GroupsListingApp} />
-          <Route path=":groupId" component={GroupDetailApp} />
+        <Route path="databases" title={t`Databases`}>
+          <IndexRoute component={DatabaseListApp} />
+          <Route path="create" component={DatabaseEditApp} />
+          <Route path=":databaseId" component={DatabaseEditApp} />
         </Route>
-      </Route>
 
-      {/* SETTINGS */}
-      <Route path="settings" title={t`Settings`}>
-        <IndexRedirect to="/admin/settings/setup" />
-        {/* <IndexRoute component={SettingsEditorApp} /> */}
-        <Route path=":section/:authType" component={SettingsEditorApp} />
-        <Route path=":section" component={SettingsEditorApp} />
-      </Route>
+        <Route path="datamodel" title={t`Data Model`}>
+          <IndexRedirect to="database" />
+          <Route path="database" component={MetadataEditorApp} />
+          <Route path="database/:databaseId" component={MetadataEditorApp} />
+          <Route
+            path="database/:databaseId/:mode"
+            component={MetadataEditorApp}
+          />
+          <Route
+            path="database/:databaseId/:mode/:tableId"
+            component={MetadataEditorApp}
+          />
+          <Route
+            path="database/:databaseId/:mode/:tableId/settings"
+            component={TableSettingsApp}
+          />
+          <Route
+            path="database/:databaseId/:mode/:tableId/:fieldId"
+            component={FieldApp}
+          />
+          <Route path="metric/create" component={MetricApp} />
+          <Route path="metric/:id" component={MetricApp} />
+          <Route path="segment/create" component={SegmentApp} />
+          <Route path="segment/:id" component={SegmentApp} />
+          <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
+        </Route>
 
-      {getAdminPermissionsRoutes(store)}
+        {/* PEOPLE */}
+        <Route path="people" title={t`People`} component={AdminPeopleApp}>
+          <IndexRoute component={PeopleListingApp} />
+          <Route path="groups" title={t`Groups`}>
+            <IndexRoute component={GroupsListingApp} />
+            <Route path=":groupId" component={GroupDetailApp} />
+          </Route>
+        </Route>
+
+        {/* SETTINGS */}
+        <Route path="settings" title={t`Settings`}>
+          <IndexRedirect to="/admin/settings/setup" />
+          {/* <IndexRoute component={SettingsEditorApp} /> */}
+          <Route path=":section/:authType" component={SettingsEditorApp} />
+          <Route path=":section" component={SettingsEditorApp} />
+        </Route>
+
+        {getAdminPermissionsRoutes(store)}
+      </Route>
     </Route>
 
     {/* INTERNAL */}
