@@ -92,7 +92,8 @@
   [model]
   {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
   (merge
-   {:name (tru "Root Collection")}
+   {:name (tru "Root Collection")
+    :id   "root"}
    (collection-children model model->root-collection-children-fn)))
 
 
