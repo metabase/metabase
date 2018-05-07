@@ -20,19 +20,17 @@ const linkStyle = {
 const ICON_SIZE = 18;
 
 const LandingNav = props => {
-  const { collectionSlug } = props;
+  const { collectionId } = props;
 
   function showEntity(type) {
-    return `${
-      collectionSlug ? `collection/${collectionSlug}` : ""
-    }?show=${type}`;
+    return `${collectionId ? `collection/${collectionId}` : ""}?show=${type}`;
   }
 
   return (
     <Box className="absolute left top" px={2}>
       <Box>
         <Link
-          to={collectionSlug ? `collection/${collectionSlug}` : "/"}
+          to={collectionId ? `collection/${collectionId}` : "/"}
           style={linkStyle}
           activeStyle={activeStyle}
         >

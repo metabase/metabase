@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
 
 import CollectionEditorForm from "./CollectionEditorForm.jsx";
 
@@ -14,7 +13,6 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
   saveCollection,
-  onClose: () => push("/questions"),
 };
 
 @connect(mapStateToProps, mapDispatchToProps)

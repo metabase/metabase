@@ -145,7 +145,7 @@ class DefaultLanding extends React.Component {
         !collectionId && <CollectionList />}
         {// Hack to hide the list until the root fix is in }
         collectionId && (
-          <CollectionItemsLoader collectionId={currentCollection.id || "root"}>
+          <CollectionItemsLoader collectionId={collectionId || "root"}>
             {({ loading, error, allItems, pulses, cards, dashboards }) => {
               if (loading) {
                 return <Box>Loading...</Box>;
