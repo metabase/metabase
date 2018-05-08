@@ -5,6 +5,7 @@
             [metabase.driver
              [generic-sql :as sql]
              [oracle :as oracle]]
+            [metabase.models.setting :as setting]
             [metabase.test.data.datasets :refer [expect-with-engine]]
             [metabase.test.util :as tu])
   (:import metabase.driver.oracle.OracleDriver))
@@ -67,4 +68,6 @@
 
 (expect-with-engine :oracle
   "UTC"
-  (tu/db-timezone-id))
+  (do
+    (setting/set! :report-timezone "")
+    (tu/db-timezone-id)))

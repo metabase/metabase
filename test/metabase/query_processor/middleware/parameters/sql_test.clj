@@ -592,13 +592,25 @@
 
 ;; Test that native dates are parsed with the report timezone (when supported)
 (datasets/expect-with-engines (disj sql-parameters-engines :sqlite)
-  [(if (qpt/supports-report-timezone? datasets/*engine*)
+  [(cond
+     (= :presto datasets/*engine*)
+     "2018-04-18"
+
+     (qpt/supports-report-timezone? datasets/*engine*)
      "2018-04-18T00:00:00.000-07:00"
+
+     :else
      "2018-04-18T00:00:00.000Z")]
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
     (first-row
       (process-native
-        :native     {:query         "SELECT cast({{date}} as date)"
+        :native     {:query         (cond
+                                      (= :bigquery datasets/*engine*)
+                                      "SELECT {{date}} as date"
+                                      (= :oracle datasets/*engine*)
+                                      "SELECT cast({{date}} as date) from dual"
+                                      :else
+                                      "SELECT cast({{date}} as date)")
                      :template_tags {:date {:name "date" :display_name "Date" :type "date" }}}
         :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]))))
 

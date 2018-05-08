@@ -197,7 +197,8 @@
   (->Timestamp (System/currentTimeMillis)))
 
 (defn format-date
-  "Format DATE using a given DATE-FORMAT.
+  "Format DATE using a given DATE-FORMAT. NOTE: This will create a date string in the JVM's timezone, not the report
+  timezone.
 
    DATE is anything that can coerced to a `Timestamp` via `->Timestamp`, such as a `Date`, `Timestamp`,
    `Long` (ms since the epoch), or an ISO-8601 `String`. DATE defaults to the current moment in time.
