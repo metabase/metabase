@@ -270,6 +270,8 @@ export const getRoutes = store => (
         <Route path=":collectionId" component={CollectionEdit} />
       </Route>
 
+      <Route path="questions/archive" title={t`Archive`} component={Archive} />
+
       {/* REFERENCE */}
       <Route path="/reference" title={`Data Reference`}>
         <IndexRedirect to="/reference/guide" />
