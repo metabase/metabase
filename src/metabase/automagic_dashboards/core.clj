@@ -135,6 +135,9 @@
   (comp Card #(Integer/parseInt %) second #(str/split % #"__")
         #(qp.util/get-in-normalized % [:dataset_query :query :source_table])))
 
+(def ^:private ^{:arglists '([card])} table-like?
+  (comp empty? #(qp.util/get-in-normalized % [:dataset_query :query :aggregation])))
+
 (defmethod ->root (type Card)
   [card]
   {:entity       card
@@ -719,9 +722,6 @@
                                              :url         (format "%s#show=all"
                                                                   (:url root))}]
                                            [])))))))
-
-(def ^:private ^{:arglists '([card])} table-like?
-  (comp empty? #(qp.util/get-in-normalized % [:dataset_query :query :aggregation])))
 
 (defmulti
   ^{:doc "Create a transient dashboard analyzing given entity."
