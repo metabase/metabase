@@ -36,6 +36,7 @@ type Props = {
   params: {
     databaseId?: number,
   },
+  fitClasses: string,
 };
 type State = {
   databaseId: ?number,
@@ -130,8 +131,8 @@ export default class PostSetupApp extends Component {
     let { candidates, sampleCandidates, isSample } = this.state;
 
     return (
-      <div className="full-height">
-        <div className="flex full-height">
+      <div className={this.props.fitClasses}>
+        <div className="flex full full-height">
           <div
             style={{ maxWidth: 587 }}
             className="ml-auto mr-auto mt-auto mb-auto py2"

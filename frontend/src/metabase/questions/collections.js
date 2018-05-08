@@ -46,7 +46,7 @@ export const saveCollection = createThunkAction(SAVE_COLLECTION, collection => {
       if (response.id != null) {
         dispatch(reset("collection"));
         // use `replace` so form url doesn't appear in history
-        dispatch(replace(`/collections/${response.slug}`));
+        dispatch(replace(`/collection/${response.id}`));
       }
       return response;
     } catch (e) {
