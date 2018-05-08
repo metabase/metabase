@@ -21,7 +21,8 @@
              [util :as tu]]
             [metabase.test.data
              [datasets :as datasets]
-             [users :refer [user->client]]]
+             [dataset-definitions :as defs]
+             [users :refer [create-users-if-needed! user->client]]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -183,6 +184,32 @@
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query "SELECT * FROM VENUES"}}}]
+    (rows+cols
+      (format-rows-by [int int]
+        (qp/process-query
+          (query-with-source-card card
+            :aggregation [:count]
+            :breakout    [[:field-literal (keyword (data/format-name :price)) :type/Integer]]))))))
+
+;; Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail
+(expect
+  breakout-results
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM VENUES -- small comment here"}}}]
+    (rows+cols
+      (format-rows-by [int int]
+        (qp/process-query
+          (query-with-source-card card
+            :aggregation [:count]
+            :breakout    [[:field-literal (keyword (data/format-name :price)) :type/Integer]]))))))
+
+;; Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail
+(expect
+  breakout-results
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM VENUES -- small comment here\n"}}}]
     (rows+cols
       (format-rows-by [int int]
         (qp/process-query
@@ -486,8 +513,10 @@
   "Run `f` with a temporary Database that copies the details from the standard test database. `f` is invoked as `(f
   db)`."
   [f]
-  (tt/with-temp Database [db {:details (:details (data/db)), :engine "h2"}]
-    (f db)))
+  (data/with-db (data/get-or-create-database! defs/test-data)
+    (create-users-if-needed!)
+    (tt/with-temp Database [db {:details (:details (data/db)), :engine "h2"}]
+      (f db))))
 
 (defn- save-card-via-API-with-native-source-query!
   "Attempt to save a Card that uses a native source query for Database with `db-id` via the API using Rasta. Use this to
@@ -496,7 +525,7 @@
   (tt/with-temp Card [card {:dataset_query {:database db-id
                                             :type     :native
                                             :native   {:query "SELECT * FROM VENUES"}}}]
-    ((user->client :rasta) :post "card"
+    ((user->client :rasta) :post expected-status-code "card"
      {:name                   (tu/random-name)
       :display                "scalar"
       :visualization_settings {}

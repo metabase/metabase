@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from "c-3po";
 import ModalContent from "metabase/components/ModalContent.jsx";
 
 export default class ArchiveDashboardModal extends Component {
@@ -28,9 +28,9 @@ export default class ArchiveDashboardModal extends Component {
   }
 
   render() {
-    var formError;
+    let formError;
     if (this.state.error) {
-      var errorMessage = "Server error encountered";
+      let errorMessage = "Server error encountered";
       if (this.state.error.data && this.state.error.data.message) {
         errorMessage = this.state.error.data.message;
       } else {
@@ -42,9 +42,9 @@ export default class ArchiveDashboardModal extends Component {
     }
 
     return (
-      <ModalContent title="Archive Dashboard" onClose={this.props.onClose}>
+      <ModalContent title={t`Archive Dashboard`} onClose={this.props.onClose}>
         <div className="Form-inputs mb4">
-          <p>Are you sure you want to do this?</p>
+          <p>{t`Are you sure you want to do this?`}</p>
         </div>
 
         <div className="Form-actions">

@@ -44,14 +44,12 @@ const TableSidebar = ({ database, table, style, className, showXray }) => (
         icon="all"
         name={t`Questions about this table`}
       />
-      {showXray && (
-        <SidebarItem
-          key={`/xray/table/${table.id}/approximate`}
-          href={`/xray/table/${table.id}/approximate`}
-          icon="beaker"
-          name={t`X-ray this table`}
-        />
-      )}
+      <SidebarItem
+        key={`/auto/dashboard/table/${table.id}`}
+        href={`/auto/dashboard/table/${table.id}`}
+        icon="bolt"
+        name={t`X-ray this table`}
+      />
     </ol>
   </div>
 );

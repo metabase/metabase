@@ -150,6 +150,12 @@
   flex-direction: row;
 }
 
+@media screen and (--breakpoint-min-sm) {
+  .sm-flex-row {
+    flex-direction: row;
+  }
+}
+
 .flex-wrap {
   flex-wrap: wrap;
 }

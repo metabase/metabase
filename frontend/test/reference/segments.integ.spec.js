@@ -80,12 +80,12 @@ describe("The Reference Section", () => {
     });
 
     describe("With Segments State", async () => {
-      var segmentIds = [];
+      let segmentIds = [];
 
       beforeAll(async () => {
         // Create some segments to have something to look at
-        var segment = await SegmentApi.create(segmentDef);
-        var anotherSegment = await SegmentApi.create(anotherSegmentDef);
+        let segment = await SegmentApi.create(segmentDef);
+        let anotherSegment = await SegmentApi.create(anotherSegmentDef);
         segmentIds.push(segment.id);
         segmentIds.push(anotherSegment.id);
       });
@@ -151,7 +151,7 @@ describe("The Reference Section", () => {
       });
 
       it("Should see a newly asked question in its questions list", async () => {
-        var card = await CardApi.create(segmentCardDef);
+        let card = await CardApi.create(segmentCardDef);
 
         expect(card.name).toBe(segmentCardDef.name);
 

@@ -1,6 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from "c-3po";
 
 import {
   LeftNavPane,
@@ -20,8 +21,8 @@ export default class AdminPeopleApp extends Component {
       <AdminLayout
         sidebar={
           <LeftNavPane>
-            <LeftNavPaneItem name="People" path="/admin/people" index />
-            <LeftNavPaneItem name="Groups" path="/admin/people/groups" />
+            <LeftNavPaneItem name={t`People`} path="/admin/people" index />
+            <LeftNavPaneItem name={t`Groups`} path="/admin/people/groups" />
           </LeftNavPane>
         }
       >

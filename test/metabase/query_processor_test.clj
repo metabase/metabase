@@ -155,7 +155,9 @@
                   :name         (data/format-name "last_login")
                   :display_name "Last Login"
                   :unit         :default
-                  :fingerprint  {:global {:distinct-count 11}}})))
+                  :fingerprint  {:global {:distinct-count 11}
+                                 :type   {:type/DateTime {:earliest "2014-01-01T00:00:00.000Z"
+                                                          :latest   "2014-12-05T00:00:00.000Z"}}}})))
 
 ;; #### venues
 (defn venues-columns
@@ -230,9 +232,8 @@
                                 {:target_table_id (data/id :venues)}
                                 {})
                 :target       (target-field (venues-col :id))
-                :special_type (if (data/fks-supported?)
-                                :type/FK
-                                :type/Category)
+                :special_type (when (data/fks-supported?)
+                                :type/FK)
                 :base_type    (data/expected-base-type->actual :type/Integer)
                 :name         (data/format-name "venue_id")
                 :display_name "Venue ID"

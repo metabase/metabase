@@ -5,7 +5,9 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.models.field :refer [Field]]
+            [metabase.models
+             [field :refer [Field]]
+             [database :refer [Database]]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
@@ -15,8 +17,12 @@
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
+(def ^:private int-type         #{:type/Integer})
 (def ^:private int-or-text-type #{:type/Integer :type/Text})
 (def ^:private text-type        #{:type/Text})
+(def ^:private timestamp-type   #{:type/DateTime})
+(def ^:private number-type      #{:type/Number})
+
 
 (def ^:private pattern+base-types+special-type
   "Tuples of `[name-pattern set-of-valid-base-types special-type]`.
@@ -24,42 +30,71 @@
 
    *  Convert field name to lowercase before matching against a pattern
    *  Consider a nil set-of-valid-base-types to mean \"match any base type\""
-  [[#"^.*_lat$"       float-type       :type/Latitude]
-   [#"^.*_lon$"       float-type       :type/Longitude]
-   [#"^.*_lng$"       float-type       :type/Longitude]
-   [#"^.*_long$"      float-type       :type/Longitude]
-   [#"^.*_longitude$" float-type       :type/Longitude]
-   [#"^.*_rating$"    int-or-text-type :type/Category]
-   [#"^.*_type$"      int-or-text-type :type/Category]
-   [#"^.*_url$"       text-type        :type/URL]
-   [#"^_latitude$"    float-type       :type/Latitude]
-   [#"^active$"       bool-or-int-type :type/Category]
-   [#"^city$"         text-type        :type/City]
-   [#"^country$"      text-type        :type/Country]
-   [#"^countryCode$"  text-type        :type/Country]
-   [#"^currency$"     int-or-text-type :type/Category]
-   [#"^first_name$"   text-type        :type/Name]
-   [#"^full_name$"    text-type        :type/Name]
-   [#"^gender$"       int-or-text-type :type/Category]
-   [#"^last_name$"    text-type        :type/Name]
-   [#"^lat$"          float-type       :type/Latitude]
-   [#"^latitude$"     float-type       :type/Latitude]
-   [#"^lon$"          float-type       :type/Longitude]
-   [#"^lng$"          float-type       :type/Longitude]
-   [#"^long$"         float-type       :type/Longitude]
-   [#"^longitude$"    float-type       :type/Longitude]
-   [#"^name$"         text-type        :type/Name]
-   [#"^postalCode$"   int-or-text-type :type/ZipCode]
-   [#"^postal_code$"  int-or-text-type :type/ZipCode]
-   [#"^rating$"       int-or-text-type :type/Category]
-   [#"^role$"         int-or-text-type :type/Category]
-   [#"^sex$"          int-or-text-type :type/Category]
-   [#"^state$"        text-type        :type/State]
-   [#"^status$"       int-or-text-type :type/Category]
-   [#"^type$"         int-or-text-type :type/Category]
-   [#"^url$"          text-type        :type/URL]
-   [#"^zip_code$"     int-or-text-type :type/ZipCode]
-   [#"^zipcode$"      int-or-text-type :type/ZipCode]])
+  [[#"^.*_lat$"                    float-type       :type/Latitude]
+   [#"^.*_lon$"                    float-type       :type/Longitude]
+   [#"^.*_lng$"                    float-type       :type/Longitude]
+   [#"^.*_long$"                   float-type       :type/Longitude]
+   [#"^.*_longitude$"              float-type       :type/Longitude]
+   [#"^.*_type$"                   int-or-text-type :type/Category]
+   [#"^.*_url$"                    text-type        :type/URL]
+   [#"^_latitude$"                 float-type       :type/Latitude]
+   [#"^active$"                    bool-or-int-type :type/Category]
+   [#"^city$"                      text-type        :type/City]
+   [#"^country"                    text-type        :type/Country]
+   [#"^currency$"                  int-or-text-type :type/Category]
+   [#"^first(?:_?)name$"           text-type        :type/Name]
+   [#"^full(?:_?)name$"            text-type        :type/Name]
+   [#"^gender$"                    int-or-text-type :type/Category]
+   [#"^last(?:_?)name$"            text-type        :type/Name]
+   [#"^lat$"                       float-type       :type/Latitude]
+   [#"^latitude$"                  float-type       :type/Latitude]
+   [#"^lon$"                       float-type       :type/Longitude]
+   [#"^lng$"                       float-type       :type/Longitude]
+   [#"^long$"                      float-type       :type/Longitude]
+   [#"^longitude$"                 float-type       :type/Longitude]
+   [#"^name$"                      text-type        :type/Name]
+   [#"^postal(?:_?)code$"          int-or-text-type :type/ZipCode]
+   [#"^role$"                      int-or-text-type :type/Category]
+   [#"^sex$"                       int-or-text-type :type/Category]
+   [#"^state$"                     text-type        :type/State]
+   [#"^status$"                    int-or-text-type :type/Category]
+   [#"^type$"                      int-or-text-type :type/Category]
+   [#"^url$"                       text-type        :type/URL]
+   [#"^zip(?:_?)code$"             int-or-text-type :type/ZipCode]
+   [#"discount"                    number-type      :type/Discount]
+   [#"income"                      number-type      :type/Income]
+   [#"amount"                      number-type      :type/Income]
+   [#"^total"                      number-type      :type/Income]
+   [#"_total$"                     number-type      :type/Income]
+   [#"quantity"                    int-type         :type/Quantity]
+   [#"count$"                      int-type         :type/Quantity]
+   [#"number"                      int-type         :type/Quantity]
+   [#"^num_"                       int-type         :type/Quantity]
+   [#"join"                        timestamp-type   :type/JoinTimestamp]
+   [#"create"                      timestamp-type   :type/CreationTimestamp]
+   [#"source"                      int-or-text-type :type/Source]
+   [#"channel"                     int-or-text-type :type/Source]
+   [#"share"                       float-type       :type/Share]
+   [#"percent"                     float-type       :type/Share]
+   [#"rate$"                       float-type       :type/Share]
+   [#"margin"                      number-type      :type/GrossMargin]
+   [#"cost"                        number-type      :type/Cost]
+   [#"duration"                    number-type      :type/Duration]
+   [#"author"                      int-or-text-type :type/Author]
+   [#"creator"                     int-or-text-type :type/Author]
+   [#"created(?:_?)by"             int-or-text-type :type/Author]
+   [#"owner"                       int-or-text-type :type/Owner]
+   [#"company"                     int-or-text-type :type/Company]
+   [#"vendor"                      int-or-text-type :type/Company]
+   [#"subscription"                int-or-text-type :type/Subscription]
+   [#"score"                       number-type      :type/Score]
+   [#"rating"                      number-type      :type/Score]
+   [#"stars"                       number-type      :type/Score]
+   [#"description"                 text-type        :type/Description]
+   [#"title"                       text-type        :type/Title]
+   [#"comment"                     text-type        :type/Comment]
+   [#"birthda(?:te|y)"             timestamp-type   :type/Birthdate]
+   [#"(?:te|y)(?:_?)or(?:_?)birth" timestamp-type   :type/Birthdate]])
 
 ;; Check that all the pattern tuples are valid
 (when-not config/is-prod?
@@ -75,7 +110,7 @@
   (or (when (= "id" (str/lower-case field-name)) :type/PK)
       (some (fn [[name-pattern valid-base-types special-type]]
               (when (and (some (partial isa? base-type) valid-base-types)
-                         (re-matches name-pattern (str/lower-case field-name)))
+                         (re-find name-pattern (str/lower-case field-name)))
                 special-type))
             pattern+base-types+special-type)))
 
@@ -87,3 +122,42 @@
                        (sync-util/name-for-logging field)
                        inferred-special-type))
     (assoc field :special_type inferred-special-type)))
+
+(defn- prefix-or-postfix
+  [s]
+  (re-pattern (format "(?:^%s)|(?:%ss?$)" s s)))
+
+(def ^:private entity-types-patterns
+  [[(prefix-or-postfix "order")        :entity/TransactionTable]
+   [(prefix-or-postfix "transaction")  :entity/TransactionTable]
+   [(prefix-or-postfix "sale")         :entity/TransactionTable]
+   [(prefix-or-postfix "product")      :entity/ProductTable]
+   [(prefix-or-postfix "user")         :entity/UserTable]
+   [(prefix-or-postfix "account")      :entity/UserTable]
+   [(prefix-or-postfix "people")       :entity/UserTable]
+   [(prefix-or-postfix "person")       :entity/UserTable]
+   [(prefix-or-postfix "employee")     :entity/UserTable]
+   [(prefix-or-postfix "event")        :entity/EventTable]
+   [(prefix-or-postfix "checkin")      :entity/EventTable]
+   [(prefix-or-postfix "log")          :entity/EventTable]
+   [(prefix-or-postfix "subscription") :entity/SubscriptionTable]
+   [(prefix-or-postfix "company")      :entity/CompanyTable]
+   [(prefix-or-postfix "companies")    :entity/CompanyTable]
+   [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
+
+(s/defn infer-entity-type :- i/TableInstance
+  "Classifer that infers the special type of a TABLE based on its name."
+  [table :- i/TableInstance]
+  (let [table-name (-> table :name str/lower-case)]
+    (assoc table :entity_type (or (some (fn [[pattern type]]
+                                          (when (re-find pattern table-name)
+                                            type))
+                                        entity-types-patterns)
+                                  (case (-> table
+                                            :db_id
+                                            Database
+                                            :engine)
+                                    :googleanalytics :entity/GoogleAnalyticsTable
+                                    :druid           :entity/EventTable
+                                    nil)
+                                  :entity/GenericTable))))

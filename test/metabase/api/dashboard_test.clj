@@ -133,7 +133,7 @@
                                                            :display                "table"
                                                            :query_type             nil
                                                            :dataset_query          {}
-                                                           :read_permissions       []
+                                                           :read_permissions       nil
                                                            :visualization_settings {}
                                                            :query_average_duration nil
                                                            :in_public_dashboard    false
@@ -620,3 +620,9 @@
     [116 69 -44 77 100 8 -40 -67 25 -4 27 -21 111 98 -45 85 83 -27 -39 8 63 -25 -88 74 32 -10 -2 35 102 -72 -104 111]            666
     [-84 -2 87 22 -4 105 68 48 -113 93 -29 52 3 102 123 -70 -123 36 31 76 -16 87 70 116 -93 109 -88 108 125 -36 -43 73]          777
     [90 127 103 -71 -76 -36 41 -107 -7 -13 -83 -87 28 86 -94 110 74 -86 110 -54 -128 124 102 -73 -127 88 77 -36 62 5 -84 -100]   888}))
+
+;; Test related/recommended entities
+(expect
+  #{:cards}
+  (tt/with-temp* [Dashboard [{dashboard-id :id}]]
+    (-> ((user->client :crowberto) :get 200 (format "dashboard/%s/related" dashboard-id)) keys set)))

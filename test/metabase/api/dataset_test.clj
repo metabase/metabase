@@ -8,16 +8,17 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [medley.core :as m]
-            [metabase.api.dataset :refer [default-query-constraints]]
             [metabase.models
              [database :refer [Database]]
              [query-execution :refer [QueryExecution]]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.sync :as sync]
             [metabase.test
              [data :refer :all]
              [util :as tu]]
             [metabase.test.data
+             [datasets :refer [expect-with-engine]]
              [dataset-definitions :as defs]
              [users :refer :all]]
             [toucan.db :as db]))
@@ -75,7 +76,7 @@
                                     (ql/aggregation (ql/count))))
                                 (assoc :type "query")
                                 (assoc-in [:query :aggregation] [{:aggregation-type "count", :custom-name nil}])
-                                (assoc :constraints default-query-constraints))
+                                (assoc :constraints qp/default-query-constraints))
     :started_at             true
     :running_time           true
     :average_execution_time nil}
@@ -113,7 +114,7 @@
     :json_query   {:database    (id)
                    :type        "native"
                    :native      {:query "foobar"}
-                   :constraints default-query-constraints}
+                   :constraints qp/default-query-constraints}
     :started_at   true
     :running_time true}
    ;; QueryExecution entry in the DB
@@ -194,6 +195,18 @@
                   (json/generate-string (wrap-inner-query
                                           (query checkins))))]
       (take 5 (parse-and-sort-csv result)))))
+
+;; SQLite doesn't return proper date objects but strings, they just pass through the qp untouched
+(expect-with-engine :sqlite
+  [["1" "2014-04-07" "5" "12"]
+   ["2" "2014-09-18" "1" "31"]
+   ["3" "2014-09-15" "8" "56"]
+   ["4" "2014-03-11" "5" "4"]
+   ["5" "2013-05-05" "3" "49"]]
+  (let [result ((user->client :rasta) :post 200 "dataset/csv" :query
+                (json/generate-string (wrap-inner-query
+                                        (query checkins))))]
+    (take 5 (parse-and-sort-csv result))))
 
 ;; DateTime fields are untouched when exported
 (expect

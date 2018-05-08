@@ -111,6 +111,11 @@ declare module "underscore" {
 
   declare function debounce<T: any => any>(func: T): T;
 
+  declare function partition<T>(
+    array: T[],
+    pred: (val: T) => boolean,
+  ): [T[], T[]];
+
   // TODO: improve this
   declare function chain<S>(obj: S): any;
 

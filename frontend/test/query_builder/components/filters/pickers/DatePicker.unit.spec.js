@@ -40,4 +40,24 @@ describe("DatePicker", () => {
     expect(picker.find(DateOperatorSelector).text()).toEqual("Current");
     expect(picker.find(DateUnitSelector).text()).toEqual("Week");
   });
+  it("should render 'Between'", () => {
+    let picker = mount(
+      <DatePicker
+        filter={["between", ["field-id", 1], "2018-01-01", null]}
+        onFilterChange={nop}
+      />,
+    );
+    expect(picker.find(DateOperatorSelector).text()).toEqual("Between");
+    expect(picker.find(".Calendar-header").map(t => t.text())).toEqual([
+      "January 2018",
+      "February 2018",
+    ]);
+    for (let i = 0; i < 24; i++) {
+      picker.find(".Icon-chevronright").simulate("click");
+    }
+    expect(picker.find(".Calendar-header").map(t => t.text())).toEqual([
+      "January 2020",
+      "February 2020",
+    ]);
+  });
 });

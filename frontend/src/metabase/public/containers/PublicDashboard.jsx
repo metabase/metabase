@@ -26,6 +26,11 @@ import {
 
 import * as dashboardActions from "metabase/dashboard/dashboard";
 
+import {
+  setPublicDashboardEndpoints,
+  setEmbedDashboardEndpoints,
+} from "metabase/services";
+
 import type { Dashboard } from "metabase/meta/types/Dashboard";
 import type { Parameter } from "metabase/meta/types/Parameter";
 
@@ -89,6 +94,13 @@ export default class PublicDashboard extends Component {
       location,
       params: { uuid, token },
     } = this.props;
+
+    if (uuid) {
+      setPublicDashboardEndpoints(uuid);
+    } else if (token) {
+      setEmbedDashboardEndpoints(token);
+    }
+
     initialize();
     try {
       // $FlowFixMe

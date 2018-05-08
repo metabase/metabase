@@ -19,6 +19,8 @@ import _ from "underscore";
 import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
+
+// $FlowFixMe: had to ignore react-virtualized in flow, probably due to different version
 import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 
@@ -28,6 +30,21 @@ const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
+
+function pickRowsToMeasure(rows, columnIndex, count = 10) {
+  const rowIndexes = [];
+  // measure up to 10 non-nil cells
+  for (
+    let rowIndex = 0;
+    rowIndex < rows.length && rowIndexes.length < count;
+    rowIndex++
+  ) {
+    if (rows[rowIndex][columnIndex] != null) {
+      rowIndexes.push(rowIndex);
+    }
+  }
+  return rowIndexes;
+}
 
 type Props = VisualizationProps & {
   width: number,
@@ -141,75 +158,61 @@ export default class TableInteractive extends Component {
   }
 
   _measure() {
-    const { data: { cols } } = this.props;
+    const { data: { cols, rows } } = this.props;
 
-    let contentWidths = cols.map((col, index) => this._measureColumn(index));
-
-    let columnWidths: number[] = cols.map((col, index) => {
-      if (this.columnNeedsResize) {
-        if (this.columnNeedsResize[index] && !this.columnHasResized[index]) {
-          this.columnHasResized[index] = true;
-          return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
-        } else if (this.state.columnWidths[index]) {
-          return this.state.columnWidths[index];
-        } else {
-          return 0;
-        }
-      } else {
-        return contentWidths[index] + 1;
-      }
-    });
-
-    delete this.columnNeedsResize;
-
-    this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
-  }
-
-  _measureColumn(columnIndex: number) {
-    const { data: { rows } } = this.props;
-    let width = MIN_COLUMN_WIDTH;
-
-    // measure column header
-    width = Math.max(
-      width,
-      this._measureCell(
-        this.tableHeaderRenderer({
-          columnIndex,
-          rowIndex: 0,
-          key: "",
-          style: {},
-        }),
-      ),
-    );
-
-    // measure up to 10 non-nil cells
-    let remaining = 10;
-    for (
-      let rowIndex = 0;
-      rowIndex < rows.length && remaining > 0;
-      rowIndex++
-    ) {
-      if (rows[rowIndex][columnIndex] != null) {
-        const cellWidth = this._measureCell(
-          this.cellRenderer({ rowIndex, columnIndex, key: "", style: {} }),
+    ReactDOM.render(
+      <div style={{ display: "flex" }}>
+        {cols.map((column, columnIndex) => (
+          <div className="fake-column" key={"column-" + columnIndex}>
+            {this.tableHeaderRenderer({
+              columnIndex,
+              rowIndex: 0,
+              key: "header",
+              style: {},
+            })}
+            {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
+              this.cellRenderer({
+                rowIndex,
+                columnIndex,
+                key: "row-" + rowIndex,
+                style: {},
+              }),
+            )}
+          </div>
+        ))}
+      </div>,
+      this._div,
+      () => {
+        const contentWidths = [].map.call(
+          this._div.getElementsByClassName("fake-column"),
+          columnElement => columnElement.offsetWidth,
         );
-        width = Math.max(width, cellWidth);
-        remaining--;
-      }
-    }
 
-    return width;
-  }
+        const columnWidths: number[] = cols.map((col, index) => {
+          if (this.columnNeedsResize) {
+            if (
+              this.columnNeedsResize[index] &&
+              !this.columnHasResized[index]
+            ) {
+              this.columnHasResized[index] = true;
+              return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
+            } else if (this.state.columnWidths[index]) {
+              return this.state.columnWidths[index];
+            } else {
+              return 0;
+            }
+          } else {
+            return contentWidths[index] + 1;
+          }
+        });
 
-  _measureCell(cell: React.Element<any>) {
-    ReactDOM.unstable_renderSubtreeIntoContainer(this, cell, this._div);
+        ReactDOM.unmountComponentAtNode(this._div);
 
-    // 2px for border?
-    const width = this._div.clientWidth + 2;
+        delete this.columnNeedsResize;
 
-    ReactDOM.unmountComponentAtNode(this._div);
-
-    return width;
+        this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
+      },
+    );
   }
 
   recomputeGridSize = () => {
@@ -275,11 +278,12 @@ export default class TableInteractive extends Component {
           "justify-end": isColumnRightAligned(column),
           link: isClickable && isID(column),
         })}
-        onClick={
-          isClickable &&
-          (e => {
-            onVisualizationClick({ ...clicked, element: e.currentTarget });
-          })
+        onMouseUp={
+          isClickable
+            ? e => {
+                onVisualizationClick({ ...clicked, element: e.currentTarget });
+              }
+            : undefined
         }
       >
         <div className="cellData">
@@ -288,6 +292,7 @@ export default class TableInteractive extends Component {
             column: column,
             type: "cell",
             jsx: true,
+            rich: true,
           })}
         </div>
       </div>
@@ -348,11 +353,13 @@ export default class TableInteractive extends Component {
             "justify-end": isRightAligned,
           },
         )}
-        onClick={
-          isClickable &&
-          (e => {
-            onVisualizationClick({ ...clicked, element: e.currentTarget });
-          })
+        // use onMouseUp instead of onClick since we can stopPropation when resizing headers
+        onMouseUp={
+          isClickable
+            ? e => {
+                onVisualizationClick({ ...clicked, element: e.currentTarget });
+              }
+            : undefined
         }
       >
         <div className="cellData">
@@ -379,6 +386,8 @@ export default class TableInteractive extends Component {
           bounds={{ left: RESIZE_HANDLE_WIDTH }}
           position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
           onStop={(e, { x }) => {
+            // prevent onVisualizationClick from being fired
+            e.stopPropagation();
             this.onColumnResize(columnIndex, x);
           }}
         >

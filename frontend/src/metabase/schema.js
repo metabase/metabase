@@ -22,6 +22,10 @@ TableSchema.define({
 FieldSchema.define({
   target: FieldSchema,
   table: TableSchema,
+  name_field: FieldSchema,
+  dimensions: {
+    human_readable_field: FieldSchema,
+  },
 });
 
 SegmentSchema.define({

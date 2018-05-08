@@ -19,7 +19,7 @@ const Warnings = ({ warnings, className, size = 16 }) => {
 
   return (
     <Tooltip tooltip={tooltip}>
-      <Icon className={className} name="warning2" size={size} />
+      <Icon className={className} name="warning" size={size} />
     </Tooltip>
   );
 };

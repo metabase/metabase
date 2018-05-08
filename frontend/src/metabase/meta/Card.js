@@ -179,10 +179,21 @@ export function applyParameters(
       continue;
     }
 
-    const mapping = _.findWhere(parameterMappings, {
-      card_id: card.id || card.original_card_id,
-      parameter_id: parameter.id,
-    });
+    const cardId = card.id || card.original_card_id;
+    const mapping = _.findWhere(
+      parameterMappings,
+      cardId != null
+        ? {
+            card_id: cardId,
+            parameter_id: parameter.id,
+          }
+        : // NOTE: this supports transient dashboards where cards don't have ids
+          // BUT will not work correctly with multiseries dashcards since
+          // there's no way to identify which card the mapping applies to.
+          {
+            parameter_id: parameter.id,
+          },
+    );
     if (mapping) {
       // mapped target, e.x. on a dashboard
       datasetQuery.parameters.push({
@@ -201,6 +212,10 @@ export function applyParameters(
   }
 
   return datasetQuery;
+}
+
+export function isTransientId(id: ?any) {
+  return id != null && typeof id === "string" && isNaN(parseInt(id));
 }
 
 /** returns a question URL with parameters added to query string or MBQL filters */
@@ -229,6 +244,7 @@ export function questionUrlWithParameters(
   // If we have a clean question without parameters applied, don't add the dataset query hash
   if (
     !cardIsDirty &&
+    !isTransientId(card.id) &&
     datasetQuery.parameters &&
     datasetQuery.parameters.length === 0
   ) {
@@ -257,5 +273,13 @@ export function questionUrlWithParameters(
       console.warn("UNHANDLED PARAMETER", datasetParameter);
     }
   }
+
+  if (isTransientId(card.id)) {
+    card = assoc(card, "id", null);
+  }
+  if (isTransientId(card.original_card_id)) {
+    card = assoc(card, "original_card_id", null);
+  }
+
   return Urls.question(null, card.dataset_query ? card : undefined, query);
 }

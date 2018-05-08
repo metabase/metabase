@@ -16,6 +16,7 @@
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
             monger.json
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
              [models :as models]])
@@ -213,8 +214,9 @@
                 (format "%s %s; " (name k) (apply str (interpose " " vs)))))})
 
 (defsetting ssl-certificate-public-key
-  "Base-64 encoded public key for this site's SSL certificate. Specify this to enable HTTP Public Key Pinning.
-   See http://mzl.la/1EnfqBf for more information.")
+  (str (tru "Base-64 encoded public key for this site's SSL certificate.")
+       (tru "Specify this to enable HTTP Public Key Pinning.")
+       (tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 #_(defn- public-key-pins-header []
@@ -307,25 +309,36 @@
 
 ;;; ---------------------------------------------------- LOGGING -----------------------------------------------------
 
-(defn- log-response [{:keys [uri request-method]} {:keys [status body]} elapsed-time db-call-count]
-  (let [log-error #(log/error %) ; these are macros so we can't pass by value :sad:
+(def ^:private jetty-stats-coll
+  (juxt :min-threads :max-threads :busy-threads :idle-threads :queue-size))
+
+(defn- log-response [jetty-stats-fn {:keys [uri request-method]} {:keys [status body]} elapsed-time db-call-count]
+  (let [log-error #(log/error %)        ; these are macros so we can't pass by value :sad:
         log-debug #(log/debug %)
         log-warn  #(log/warn  %)
-        [error? color log-fn] (cond
-                                (>= status 500) [true  'red   log-error]
-                                (=  status 403) [true  'red   log-warn]
-                                (>= status 400) [true  'red   log-debug]
-                                :else           [false 'green log-debug])]
-    (log-fn (str (u/format-color color "%s %s %d (%s) (%d DB calls)"
-                   (.toUpperCase (name request-method)) uri status elapsed-time db-call-count)
+        ;; stats? here is to avoid incurring the cost of collecting the Jetty stats and concatenating the extra
+        ;; strings when they're just going to be ignored. This is automatically handled by the macro , but is bypassed
+        ;; once we wrap it in a function
+        [error? color log-fn stats?] (cond
+                                       (>= status 500) [true  'red   log-error false]
+                                       (=  status 403) [true  'red   log-warn false]
+                                       (>= status 400) [true  'red   log-debug false]
+                                       :else           [false 'green log-debug true])]
+    (log-fn (str (apply u/format-color color (str "%s %s %d (%s) (%d DB calls)."
+                                                  (when stats?
+                                                    " Jetty threads: %s/%s (%s busy, %s idle, %s queued)"))
+                        (.toUpperCase (name request-method)) uri status elapsed-time db-call-count
+                        (when stats?
+                          (jetty-stats-coll (jetty-stats-fn))))
                  ;; only print body on error so we don't pollute our environment by over-logging
                  (when (and error?
                             (or (string? body) (coll? body)))
                    (str "\n" (u/pprint-to-str body)))))))
 
 (defn log-api-call
-  "Middleware to log `:request` and/or `:response` by passing corresponding OPTIONS."
-  [handler & options]
+  "Takes a handler and a `jetty-stats-fn`. Logs `:request` and/or `:response` by passing corresponding
+  OPTIONS. `jetty-stats-fn` returns threadpool metadata that is included in the api request log"
+  [handler jetty-stats-fn & options]
   (fn [{:keys [uri], :as request}]
     (if (or (not (api-call? request))
             (= uri "/api/health")     ; don't log calls to /health or /util/logs because they clutter up
@@ -334,7 +347,7 @@
       (let [start-time (System/nanoTime)]
         (db/with-call-counting [call-count]
           (u/prog1 (handler request)
-            (log-response request <> (u/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
+            (log-response jetty-stats-fn request <> (u/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
 
 
 ;;; ----------------------------------------------- EXCEPTION HANDLING -----------------------------------------------

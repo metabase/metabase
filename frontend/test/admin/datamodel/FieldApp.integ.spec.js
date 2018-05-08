@@ -1,6 +1,7 @@
 import {
   useSharedAdminLogin,
   createTestStore,
+  eventually,
 } from "__support__/integrated_tests";
 
 import {
@@ -189,6 +190,7 @@ describe("FieldApp", () => {
       const { store, fieldApp } = await initFieldApp({
         fieldId: CREATED_AT_ID,
       });
+
       const picker = fieldApp.find(SpecialTypeAndTargetPicker);
       const typeSelect = picker.find(Select).at(0);
       click(typeSelect);
@@ -269,7 +271,7 @@ describe("FieldApp", () => {
       await store.dispatch(
         updateField({
           ...createdAtField,
-          special_type: null,
+          special_type: "type/CreationTimestamp",
           fk_target_field_id: null,
         }),
       );
@@ -306,12 +308,14 @@ describe("FieldApp", () => {
         .first();
       click(useFKButton);
       store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA]);
-      // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
-      await delay(500);
 
-      const fkFieldSelect = section.find(SelectButton);
+      let fkFieldSelect;
 
-      expect(fkFieldSelect.text()).toBe("Name");
+      await eventually(() => {
+        fkFieldSelect = section.find(SelectButton);
+        expect(fkFieldSelect.text()).toBe("Name");
+      });
+
       click(fkFieldSelect);
 
       const sourceField = fkFieldSelect
@@ -325,9 +329,11 @@ describe("FieldApp", () => {
 
       click(sourceField);
       store.waitForActions([FETCH_TABLE_METADATA]);
-      // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
-      await delay(500);
-      expect(fkFieldSelect.text()).toBe("Source");
+
+      await eventually(() => {
+        fkFieldSelect = section.find(SelectButton);
+        expect(fkFieldSelect.text()).toBe("Source");
+      });
     });
 
     it("doesn't show date fields in fk options", async () => {
@@ -401,7 +407,7 @@ describe("FieldApp", () => {
         e: { target: document.documentElement },
       });
       await delay(300); // delay needed because of setState in FieldApp; app.update() does not work for whatever reason
-      expect(section.find(".text-danger").length).toBe(1); // warning that you should choose a column
+      expect(section.find(".text-error").length).toBe(1); // warning that you should choose a column
     });
 
     it("doesn't let you enter custom remappings for a field with string values", async () => {

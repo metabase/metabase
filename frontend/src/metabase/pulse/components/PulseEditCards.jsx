@@ -11,6 +11,17 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 const SOFT_LIMIT = 10;
 const HARD_LIMIT = 25;
+const TABLE_MAX_ROWS = 20;
+const TABLE_MAX_COLS = 10;
+
+function isAutoAttached(cardPreview) {
+  return (
+    cardPreview &&
+    cardPreview.pulse_card_type === "table" &&
+    (cardPreview.row_count > TABLE_MAX_ROWS ||
+      cardPreview.col_cound > TABLE_MAX_COLS)
+  );
+}
 
 export default class PulseEditCards extends Component {
   constructor(props) {
@@ -69,9 +80,10 @@ export default class PulseEditCards extends Component {
     const showSoftLimitWarning = index === SOFT_LIMIT;
     let notices = [];
     const hasAttachment =
-      this.props.attachmentsEnabled &&
-      card &&
-      (card.include_csv || card.include_xls);
+      isAutoAttached(cardPreview) ||
+      (this.props.attachmentsEnabled &&
+        card &&
+        (card.include_csv || card.include_xls));
     if (hasAttachment) {
       notices.push({
         head: t`Attachment`,
@@ -85,6 +97,13 @@ export default class PulseEditCards extends Component {
       });
     }
     if (cardPreview) {
+      if (isAutoAttached(cardPreview)) {
+        notices.push({
+          type: "warning",
+          head: t`Heads up`,
+          body: t`We'll show the first 10 columns and 20 rows of this table in your Pulse. If you email this, we'll add a file attachment with all columns and up to 2,000 rows.`,
+        });
+      }
       if (cardPreview.pulse_card_type == null && !hasAttachment) {
         notices.push({
           type: "warning",
@@ -97,7 +116,7 @@ export default class PulseEditCards extends Component {
       notices.push({
         type: "warning",
         head: t`Looks like this pulse is getting big`,
-        body: t`We recommend keeping pulses small and focused to help keep them digestable and useful to the whole team.`,
+        body: t`We recommend keeping pulses small and focused to help keep them digestible and useful to the whole team.`,
       });
     }
     return notices;
@@ -164,7 +183,10 @@ export default class PulseEditCards extends Component {
                         onChange={this.setCard.bind(this, index)}
                         onRemove={this.removeCard.bind(this, index)}
                         fetchPulseCardPreview={this.props.fetchPulseCardPreview}
-                        attachmentsEnabled={this.props.attachmentsEnabled}
+                        attachmentsEnabled={
+                          this.props.attachmentsEnabled &&
+                          !isAutoAttached(cardPreviews[card.id])
+                        }
                         trackPulseEvent={this.trackPulseEvent}
                       />
                     ) : (

@@ -32,6 +32,12 @@ const MetricSidebar = ({ metric, user, style, className }) => (
         icon="all"
         name={t`Questions about ${metric.name}`}
       />
+      <SidebarItem
+        key={`/auto/dashboard/metric/${metric.id}`}
+        href={`/auto/dashboard/metric/${metric.id}`}
+        icon="bolt"
+        name={t`X-ray this metric`}
+      />
       {user &&
         user.is_superuser && (
           <SidebarItem

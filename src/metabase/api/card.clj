@@ -36,6 +36,7 @@
             [metabase.query-processor.middleware
              [cache :as cache]
              [results-metadata :as results-metadata]]
+            [metabase.related :as related]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]
@@ -594,7 +595,7 @@
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
   {:style/indent 1}
   [card-id & {:keys [parameters constraints context dashboard-id]
-              :or   {constraints dataset-api/default-query-constraints
+              :or   {constraints qp/default-query-constraints
                      context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (api/read-check (hydrate (Card card-id) :in_public_dashboard))
@@ -668,5 +669,15 @@
   (api/check-superuser)
   (api/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
+
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Card api/read-check related/related))
+
+(api/defendpoint POST "/related"
+  "Return related entities for an ad-hoc query."
+  [:as {query :body}]
+  (related/related (query/adhoc-query query)))
 
 (api/define-routes)

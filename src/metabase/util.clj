@@ -817,7 +817,7 @@
                   v
                   (select-nested-keys v nested-keys))})))
 
-(defn base-64-string?
+(defn base64-string?
   "Is S a Base-64 encoded string?"
   ^Boolean [s]
   (boolean (when (string? s)
@@ -870,10 +870,19 @@
                          (Math/log 10))))))
 
 (defn update-when
-  "Like clojure.core/update but does not create a new key if it does not exist."
+  "Like clojure.core/update but does not create a new key if it does not exist.
+   Useful when you don't want to create cruft."
   [m k f & args]
   (if (contains? m k)
     (apply update m k f args)
+    m))
+
+(defn update-in-when
+  "Like clojure.core/update-in but does not create new keys if they do not exist.
+   Useful when you don't want to create cruft."
+  [m k f & args]
+  (if (not= ::not-found (get-in m k ::not-found))
+    (apply update-in m k f args)
     m))
 
 (defn- str->date-time-with-formatters
@@ -927,3 +936,10 @@
    (some-> (str->date-time-with-formatters ordered-time-parsers date-str tz)
            coerce/to-long
            Time.)))
+
+(defn index-of
+  "Return index of the first element in `coll` for which `pred` reutrns true."
+  [pred coll]
+  (first (keep-indexed (fn [i x]
+                         (when (pred x) i))
+                       coll)))

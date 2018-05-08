@@ -52,7 +52,7 @@ const LabelPicker = ({ labels, count, item, setLabeled }) => (
       <Tooltip
         tooltip={t`In an upcoming release, Labels will be removed in favor of Collections.`}
       >
-        <Icon name="warning2" className="text-error float-right" />
+        <Icon name="warning" className="text-error float-right" />
       </Tooltip>
     </div>
   </div>

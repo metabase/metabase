@@ -10,7 +10,14 @@ import "./mocks";
 
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
-import { DashboardApi, SessionApi } from "metabase/services";
+import { defer, delay } from "metabase/lib/promise";
+import {
+  DashboardApi,
+  SessionApi,
+  CardApi,
+  MetricApi,
+  SegmentApi,
+} from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
@@ -21,8 +28,13 @@ import { Provider } from "react-redux";
 import { createMemoryHistory } from "history";
 import { getStore } from "metabase/store";
 import { createRoutes, Router, useRouterHistory } from "react-router";
+
 import _ from "underscore";
 import chalk from "chalk";
+import moment from "moment";
+
+import EventEmitter from "events";
+const events = new EventEmitter();
 
 // Importing isomorphic-fetch sets the global `fetch` and `Headers` objects that are used here
 import fetch from "isomorphic-fetch";
@@ -32,8 +44,6 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 import { getRoutes as getNormalRoutes } from "metabase/routes";
 import { getRoutes as getPublicRoutes } from "metabase/routes-public";
 import { getRoutes as getEmbedRoutes } from "metabase/routes-embed";
-
-import moment from "moment";
 
 let hasStartedCreatingStore = false;
 let hasFinishedCreatingStore = false;
@@ -202,6 +212,8 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
        * Redux dispatch method middleware that records all dispatched actions
        */
       dispatch: action => {
+        events.emit("action", action);
+
         const result = store._originalDispatch(action);
 
         const actionWithTimestamp = [
@@ -438,6 +450,17 @@ export const waitForRequestToComplete = (
   });
 };
 
+export const waitForAllRequestsToComplete = () => {
+  if (pendingRequests > 0) {
+    if (!pendingRequestsDeferred) {
+      pendingRequestsDeferred = defer();
+    }
+    return pendingRequestsDeferred.promise;
+  } else {
+    return Promise.resolve();
+  }
+};
+
 /**
  * Lets you replace given API endpoints with mocked implementations for the lifetime of a test
  */
@@ -475,68 +498,167 @@ export async function withApiMocks(mocks, test) {
   }
 }
 
+// async function that tries running an assertion multiple times until it succeeds
+// useful for reducing race conditions in tests
+// TODO: log API calls and Redux actions that occurred in the meantime
+export const eventually = async (assertion, timeout = 5000, period = 250) => {
+  const start = Date.now();
+
+  const errors = [];
+  const actions = [];
+  const requests = [];
+  const addAction = a => actions.push(a);
+  const addRequest = r => requests.push(r);
+  events.addListener("action", addAction);
+  events.addListener("request", addRequest);
+  const cleanup = () => {
+    events.removeListener("action", addAction);
+    events.removeListener("request", addRequest);
+  };
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      await assertion();
+      if (errors.length > 0) {
+        console.warn(
+          "eventually asserted after " + (Date.now() - start) + " ms",
+          "\n + error:\n",
+          errors[errors.length - 1],
+          "\n + actions:\n    ",
+          actions.map(a => a && a.type).join("\n     "),
+          "\n + requests:\n    ",
+          requests.map(r => r && r.url).join("\n     "),
+        );
+      }
+      cleanup();
+      return;
+    } catch (e) {
+      if (Date.now() - start >= timeout) {
+        cleanup();
+        throw e;
+      }
+      errors.push(e);
+    }
+    await delay(period);
+  }
+};
+
+// to help tests cleanup after themselves, since integration tests don't use
+// isolated environments, e.x.
+//
+// beforeAll(async () => {
+//   cleanup.metric(await MetricApi.create({ ... }))
+// })
+// afterAll(cleanup);
+//
+export const cleanup = () => {
+  useSharedAdminLogin();
+  Promise.all(
+    cleanup.actions.splice(0, cleanup.actions.length).map(action => action()),
+  );
+};
+cleanup.actions = [];
+cleanup.fn = action => cleanup.actions.push(action);
+cleanup.metric = metric => cleanup.fn(() => deleteMetric(metric));
+cleanup.segment = segment => cleanup.fn(() => deleteSegment(segment));
+cleanup.question = question => cleanup.fn(() => deleteQuestion(question));
+
+export const deleteQuestion = question =>
+  CardApi.delete({ cardId: getId(question) });
+export const deleteSegment = segment =>
+  SegmentApi.delete({ segmentId: getId(segment), revision_message: "Please" });
+export const deleteMetric = metric =>
+  MetricApi.delete({ metricId: getId(metric), revision_message: "Please" });
+
+const getId = o =>
+  typeof o === "object" && o != null
+    ? typeof o.id === "function" ? o.id() : o.id
+    : o;
+
+export const deleteAllSegments = async () =>
+  Promise.all((await SegmentApi.list()).map(deleteSegment));
+export const deleteAllMetrics = async () =>
+  Promise.all((await MetricApi.list()).map(deleteMetric));
+
+let pendingRequests = 0;
+let pendingRequestsDeferred = null;
+
 // Patches the metabase/lib/api module so that all API queries contain the login credential cookie.
 // Needed because we are not in a real web browser environment.
 api._makeRequest = async (method, url, headers, requestBody, data, options) => {
-  const headersWithSessionCookie = {
-    ...headers,
-    ...(loginSession
-      ? { Cookie: `${METABASE_SESSION_COOKIE}=${loginSession.id}` }
-      : {}),
-  };
-
-  const fetchOptions = {
-    credentials: "include",
-    method,
-    headers: new Headers(headersWithSessionCookie),
-    ...(requestBody ? { body: requestBody } : {}),
-  };
-
-  let isCancelled = false;
-  if (options.cancelled) {
-    options.cancelled.then(() => {
-      isCancelled = true;
-    });
-  }
-  const result = simulateOfflineMode
-    ? { status: 0, responseText: "" }
-    : await fetch(api.basename + url, fetchOptions);
-
-  if (isCancelled) {
-    throw { status: 0, data: "", isCancelled: true };
-  }
-
-  let resultBody = null;
+  pendingRequests++;
   try {
-    resultBody = await result.text();
-    // Even if the result conversion to JSON fails, we still return the original text
-    // This is 1-to-1 with the real _makeRequest implementation
-    resultBody = JSON.parse(resultBody);
-  } catch (e) {}
-
-  apiRequestCompletedCallback &&
-    setTimeout(() => apiRequestCompletedCallback(method, url), 0);
-
-  if (result.status >= 200 && result.status <= 299) {
-    if (options.transformResponse) {
-      return options.transformResponse(resultBody, { data });
-    } else {
-      return resultBody;
-    }
-  } else {
-    const error = {
-      status: result.status,
-      data: resultBody,
-      isCancelled: false,
+    const headersWithSessionCookie = {
+      ...headers,
+      ...(loginSession
+        ? { Cookie: `${METABASE_SESSION_COOKIE}=${loginSession.id}` }
+        : {}),
     };
-    if (!simulateOfflineMode) {
-      console.log("A request made in a test failed with the following error:");
-      console.log(error, { depth: null });
-      console.log(`The original request: ${method} ${url}`);
-      if (requestBody) console.log(`Original payload: ${requestBody}`);
+
+    const fetchOptions = {
+      credentials: "include",
+      method,
+      headers: new Headers(headersWithSessionCookie),
+      ...(requestBody ? { body: requestBody } : {}),
+    };
+
+    let isCancelled = false;
+    if (options.cancelled) {
+      options.cancelled.then(() => {
+        isCancelled = true;
+      });
+    }
+    const result = simulateOfflineMode
+      ? { status: 0, responseText: "" }
+      : await fetch(api.basename + url, fetchOptions);
+
+    if (isCancelled) {
+      throw { status: 0, data: "", isCancelled: true };
     }
 
-    throw error;
+    let resultBody = null;
+    try {
+      resultBody = await result.text();
+      // Even if the result conversion to JSON fails, we still return the original text
+      // This is 1-to-1 with the real _makeRequest implementation
+      resultBody = JSON.parse(resultBody);
+    } catch (e) {}
+
+    apiRequestCompletedCallback &&
+      setTimeout(() => apiRequestCompletedCallback(method, url), 0);
+
+    events.emit("request", { method, url });
+
+    if (result.status >= 200 && result.status <= 299) {
+      if (options.transformResponse) {
+        return options.transformResponse(resultBody, { data });
+      } else {
+        return resultBody;
+      }
+    } else {
+      const error = {
+        status: result.status,
+        data: resultBody,
+        isCancelled: false,
+      };
+      if (!simulateOfflineMode) {
+        console.log(
+          "A request made in a test failed with the following error:",
+        );
+        console.log(error, { depth: null });
+        console.log(`The original request: ${method} ${url}`);
+        if (requestBody) console.log(`Original payload: ${requestBody}`);
+      }
+
+      throw error;
+    }
+  } finally {
+    pendingRequests--;
+    if (pendingRequests === 0 && pendingRequestsDeferred) {
+      process.nextTick(pendingRequestsDeferred.resolve);
+      pendingRequestsDeferred = null;
+    }
   }
 };
 

@@ -31,11 +31,11 @@ export default class MetadataHeader extends Component {
   }
 
   renderDbSelector() {
-    var database = this.props.databases.filter(
+    let database = this.props.databases.filter(
       db => db.id === this.props.databaseId,
     )[0];
     if (database) {
-      var columns = [
+      let columns = [
         {
           selectedItem: database,
           items: this.props.databases,
@@ -46,7 +46,7 @@ export default class MetadataHeader extends Component {
           },
         },
       ];
-      var triggerElement = (
+      let triggerElement = (
         <span className="text-bold cursor-pointer text-default">
           {database.name}
           <Icon className="ml1" name="chevrondown" size={8} />

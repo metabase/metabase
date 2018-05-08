@@ -40,7 +40,7 @@
   []
   ;; override env var that would normally make Jetty block forever
   (require 'environ.core)
-  (intern 'environ.core 'env (assoc environ.core/env :mb-jetty-join "false"))
+  (intern 'environ.core 'env (assoc @(resolve 'environ.core/env) :mb-jetty-join "false"))
   (u/profile "start-normally" ((resolve 'metabase.core/start-normally))))
 
 (defn ^:command reset-password
@@ -48,6 +48,12 @@
   [email-address]
   (require 'metabase.cmd.reset-password)
   ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
+
+(defn ^:command refresh-integration-test-db-metadata
+  "Re-sync the frontend integration test DB's metadata for the Sample Dataset."
+  []
+  (require 'metabase.cmd.refresh-integration-test-db-metadata)
+  ((resolve 'metabase.cmd.refresh-integration-test-db-metadata/refresh-integration-test-db-metadata)))
 
 (defn ^:command help
   "Show this help message listing valid Metabase commands."

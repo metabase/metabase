@@ -188,7 +188,7 @@
 (defn- pulse-context [pulse]
   (merge {:emailType    "pulse"
           :pulseName    (:name pulse)
-          :sectionStyle (render/style render/section-style)
+          :sectionStyle (render/style (render/section-style))
           :colorGrey4   render/color-gray-4
           :logoFooter   true}
          (random-quote-context)))
@@ -204,19 +204,21 @@
      :content-type content-type
      :file-name    (format "%s.%s" card-name ext)
      :content      (-> attachment-file .toURI .toURL)
-     :description  (format "Full results for '%s'" card-name)}))
+     :description  (format "More results for '%s'" card-name)}))
 
 (defn- result-attachments [results]
   (remove nil?
           (apply concat
-                 (for [{{card-name :name, csv? :include_csv, xls? :include_xls} :card :as result} results
-                       :when (and (or csv? xls?)
-                                  (seq (get-in result [:result :data :rows])))]
-                   [(when-let [temp-file (and csv? (create-temp-file "csv"))]
+                 (for [{{card-name :name, :as card} :card :as result} results
+                       :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
+                       :when (seq rows)]
+                   [(when-let [temp-file (and (render/include-csv-attachment? card result-data)
+                                              (create-temp-file "csv"))]
                       (export/export-to-csv-writer temp-file result)
                       (create-result-attachment-map "csv" card-name temp-file))
 
-                    (when-let [temp-file (and xls? (create-temp-file "xlsx"))]
+                    (when-let [temp-file (and (render/include-xls-attachment? card result-data)
+                                              (create-temp-file "xlsx"))]
                       (export/export-to-xlsx-file temp-file result)
                       (create-result-attachment-map "xlsx" card-name temp-file))]))))
 
@@ -264,7 +266,7 @@
      (merge {:questionURL (url/card-url card-id)
              :questionName card-name
              :emailType    "alert"
-             :sectionStyle render/section-style
+             :sectionStyle (render/section-style)
              :colorGrey4   render/color-gray-4
              :logoFooter   true}
             (random-quote-context)
@@ -317,7 +319,7 @@
 (defn send-new-alert-email!
   "Send out the initial 'new alert' email to the `CREATOR` of the alert"
   [{:keys [creator] :as alert}]
-  (send-email! creator "You setup an alert" new-alert-template
+  (send-email! creator "You set up an alert" new-alert-template
                (default-alert-context alert alert-condition-text)))
 
 (defn send-you-unsubscribed-alert-email!

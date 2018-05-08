@@ -46,12 +46,13 @@ import type {
   HoverObject,
   ClickObject,
   Series,
+  RawSeries,
   OnChangeCardAndRun,
 } from "metabase/meta/types/Visualization";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 type Props = {
-  rawSeries: Series,
+  rawSeries: RawSeries,
 
   className: string,
 
@@ -130,6 +131,7 @@ export default class Visualization extends Component {
   }
 
   static defaultProps = {
+    className: "full-height",
     showTitle: false,
     isDashboard: false,
     isEditing: false,
@@ -160,6 +162,13 @@ export default class Visualization extends Component {
     ) {
       this.updateWarnings();
     }
+  }
+
+  componentDidCatch(error, info) {
+    console.error("Error caught in <Visualization>", error, info);
+    this.setState({
+      error: new Error("An error occurred displaying this visualization."),
+    });
   }
 
   // $FlowFixMe
@@ -473,7 +482,7 @@ export default class Visualization extends Component {
                   </div>
                 ) : (
                   <div>
-                    {t`This is usually pretty fast, but seems to be taking awhile right now.`}
+                    {t`This is usually pretty fast but seems to be taking awhile right now.`}
                   </div>
                 )}
               </div>

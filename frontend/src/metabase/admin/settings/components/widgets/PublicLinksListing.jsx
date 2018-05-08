@@ -119,7 +119,7 @@ export default class PublicLinksListing extends Component {
                       <td className="flex layout-centered">
                         <Confirm
                           title={t`Disable this link?`}
-                          content={t`They won't work any more, and can't be restored, but you can create new links.`}
+                          content={t`They won't work anymore, and can't be restored, but you can create new links.`}
                           action={() => {
                             this.revoke(link);
                             this.trackEvent("Revoked link");
@@ -159,7 +159,7 @@ export const PublicLinksQuestionListing = () => (
     revoke={CardApi.deletePublicLink}
     type={t`Public Card Listing`}
     getUrl={({ id }) => Urls.question(id)}
-    getPublicUrl={({ public_uuid }) => Urls.publicCard(public_uuid)}
+    getPublicUrl={({ public_uuid }) => Urls.publicQuestion(public_uuid)}
     noLinksMessage={t`No questions have been publicly shared yet.`}
   />
 );

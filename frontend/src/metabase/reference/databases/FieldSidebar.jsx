@@ -44,14 +44,15 @@ const FieldSidebar = ({
         icon="document"
         name={t`Details`}
       />
-      {showXray && (
+
+      {
         <SidebarItem
-          key={`/xray/field/${field.id}/approximate`}
-          href={`/xray/field/${field.id}/approximate`}
-          icon="beaker"
-          name={t`X-ray this Field`}
+          key={`/auto/dashboard/field/${field.id}`}
+          href={`/auto/dashboard/field/${field.id}`}
+          icon="bolt"
+          name={t`X-ray this field`}
         />
-      )}
+      }
     </ul>
   </div>
 );

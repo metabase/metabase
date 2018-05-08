@@ -39,9 +39,9 @@ import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 import { rescanFieldValues, discardFieldValues } from "../field";
 
 const HAS_FIELD_VALUES_OPTIONS = [
-  { name: "Search box", value: "search" },
-  { name: "A list of all values", value: "list" },
-  { name: "Plain input box", value: "none" },
+  { name: t`Search box`, value: "search" },
+  { name: t`A list of all values`, value: "list" },
+  { name: t`Plain input box`, value: "none" },
 ];
 
 const SelectClasses =
@@ -743,7 +743,7 @@ export class FieldRemapping extends Component {
             />
           </PopoverWithTrigger>,
           dismissedInitialFkTargetPopover && (
-            <div className="text-danger my2">{t`Please select a column to use for display.`}</div>
+            <div className="text-error my2">{t`Please select a column to use for display.`}</div>
           ),
           hasChanged && hasFKMappingValue && <RemappingNamingTip />,
         ]}

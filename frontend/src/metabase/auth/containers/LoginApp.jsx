@@ -109,6 +109,7 @@ export default class LoginApp extends Component {
 
   render() {
     const { loginError } = this.props;
+    const ldapEnabled = Settings.ldapEnabled();
 
     return (
       <div className="full-height full bg-white flex flex-column flex-full md-layout-centered">
@@ -121,7 +122,6 @@ export default class LoginApp extends Component {
               className="Form-new bg-white bordered rounded shadowed"
               name="form"
               onSubmit={e => this.formSubmitted(e)}
-              noValidate
             >
               <h3 className="Login-header Form-offset">{t`Sign in to Metabase`}</h3>
 
@@ -162,7 +162,15 @@ export default class LoginApp extends Component {
                   className="Form-input Form-offset full py1"
                   name="username"
                   placeholder="youlooknicetoday@email.com"
-                  type="text"
+                  type={
+                    /*
+                     * if a user has ldap enabled, use a text input to allow for
+                     * ldap username && schemes. if not and they're using built
+                     * in auth, set the input type to email so we get built in
+                     * validation in modern browsers
+                     * */
+                    ldapEnabled ? "text" : "email"
+                  }
                   onChange={e => this.onChange("username", e.target.value)}
                   autoFocus
                 />
@@ -203,7 +211,7 @@ export default class LoginApp extends Component {
                   })}
                   disabled={!this.state.valid}
                 >
-                  Sign in
+                  {t`Sign in`}
                 </button>
                 <Link
                   to={

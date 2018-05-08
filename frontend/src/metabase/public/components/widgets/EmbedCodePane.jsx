@@ -100,7 +100,7 @@ export default class EmbedCodePane extends Component {
         <div className="text-centered my2">
           <h4>{jt`More ${(
             <ExternalLink href="https://github.com/metabase/embedding_reference_apps">
-              examples on GitHub
+              {t`examples on GitHub`}
             </ExternalLink>
           )}`}</h4>
         </div>

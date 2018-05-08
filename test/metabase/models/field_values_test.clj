@@ -1,4 +1,5 @@
 (ns metabase.models.field-values-test
+  "Tests for specific behavior related to FieldValues and functions in the `metabase.models.field-values` namespace."
   (:require [clojure.java.jdbc :as jdbc]
             [expectations :refer :all]
             [metabase
@@ -13,36 +14,70 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
-;; ## TESTS FOR FIELD-SHOULD-HAVE-FIELD-VALUES?
+;;; ---------------------------------------- field-should-have-field-values? -----------------------------------------
 
-(expect (field-should-have-field-values? {:special_type    :type/Category
-                                          :visibility_type :normal
-                                          :base_type       :type/Text}))
+(expect (field-should-have-field-values? {:has_field_values :list
+                                          :visibility_type  :normal
+                                          :base_type        :type/Text}))
 
-(expect false (field-should-have-field-values? {:special_type    :type/Category
-                                                :visibility_type :sensitive
-                                                :base_type       :type/Text}))
+(expect false (field-should-have-field-values? {:has_field_values :list
+                                                :visibility_type  :sensitive
+                                                :base_type        :type/Text}))
 
-(expect false (field-should-have-field-values? {:special_type    :type/Category
-                                                :visibility_type :hidden
-                                                :base_type       :type/Text}))
+(expect false (field-should-have-field-values? {:has_field_values :list
+                                                :visibility_type  :hidden
+                                                :base_type        :type/Text}))
 
-(expect false (field-should-have-field-values? {:special_type :type/Category
-                                                :visibility_type          :details-only
-                                                :base_type                :type/Text}))
+(expect false (field-should-have-field-values? {:has_field_values :list
+                                                :visibility_type  :details-only
+                                                :base_type        :type/Text}))
 
-(expect false (field-should-have-field-values? {:special_type    nil
+(expect false (field-should-have-field-values? {:has_field_values nil
                                                 :visibility_type :normal
                                                 :base_type       :type/Text}))
 
-(expect (field-should-have-field-values? {:special_type    "type/Country"
-                                          :visibility_type :normal
-                                          :base_type       :type/Text}))
+(expect (field-should-have-field-values? {:has_field_values :list
+                                          :visibility_type  :normal
+                                          :base_type        :type/Text}))
 
-(expect (field-should-have-field-values? {:special_type    nil
-                                          :visibility_type :normal
-                                          :base_type       "type/Boolean"}))
+(expect (field-should-have-field-values? {:has_field_values :list
+                                          :special_type     :type/Category
+                                          :visibility_type  :normal
+                                          :base_type        "type/Boolean"}))
 
+
+;; retired/sensitive/hidden/details-only fields should always be excluded
+(expect false (field-should-have-field-values? {:base_type        :type/Boolean
+                                                :has_field_values :list
+                                                :visibility_type  :retired}))
+
+(expect false (field-should-have-field-values? {:base_type        :type/Boolean
+                                                :has_field_values :list
+                                                :visibility_type  :sensitive}))
+
+(expect false (field-should-have-field-values? {:base_type        :type/Boolean
+                                                :has_field_values :list
+                                                :visibility_type  :hidden}))
+
+(expect false (field-should-have-field-values? {:base_type        :type/Boolean
+                                                :has_field_values :list
+                                                :visibility_type  :details-only}))
+
+;; date/time based fields should always be excluded
+(expect false (field-should-have-field-values? {:base_type        :type/Date
+                                                :has_field_values :list
+                                                :visibility_type  :normal}))
+
+(expect false (field-should-have-field-values? {:base_type        :type/DateTime
+                                                :has_field_values :list
+                                                :visibility_type  :normal}))
+
+(expect false (field-should-have-field-values? {:base_type        :type/Time
+                                                :has_field_values :list
+                                                :visibility_type  :normal}))
+
+
+;;; ------------------------------------------------ everything else -------------------------------------------------
 
 (expect
   [[1 2 3]

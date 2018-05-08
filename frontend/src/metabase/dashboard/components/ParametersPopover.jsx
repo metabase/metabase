@@ -1,6 +1,6 @@
 /* @flow */
 import React, { Component } from "react";
-
+import { t } from "c-3po";
 import { PARAMETER_SECTIONS } from "metabase/meta/Dashboard";
 
 import type { Parameter, ParameterOption } from "metabase/meta/types/Parameter";
@@ -79,7 +79,7 @@ export const ParameterOptionsSectionsPane = ({
   onSelectSection: ParameterSection => any,
 }) => (
   <div className="pb2">
-    <h3 className="p2">What do you want to filter?</h3>
+    <h3 className="p2">{t`What do you want to filter?`}</h3>
     <ul>
       {sections.map(section => (
         <ParameterOptionsSection
@@ -112,7 +112,7 @@ export const ParameterOptionsPane = ({
   onSelectOption: ParameterOption => any,
 }) => (
   <div className="pb2">
-    <h3 className="p2">What kind of filter?</h3>
+    <h3 className="p2">{t`What kind of filter?`}</h3>
     <ul>
       {options &&
         options.map(option => (

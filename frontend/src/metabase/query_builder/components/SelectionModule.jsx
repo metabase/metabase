@@ -16,7 +16,7 @@ export default class SelectionModule extends Component {
     this._toggleOpen = this._toggleOpen.bind(this);
     this.onClose = this.onClose.bind(this);
     // a selection module can be told to be open on initialization but otherwise is closed
-    var isInitiallyOpen = props.isInitiallyOpen || false;
+    let isInitiallyOpen = props.isInitiallyOpen || false;
 
     this.state = {
       open: isInitiallyOpen,
@@ -83,8 +83,8 @@ export default class SelectionModule extends Component {
       return true;
     }
     // if an item that is normally in the expansion is selected then show the expansion
-    for (var i = 0; i < this.props.items.length; i++) {
-      var item = this.props.items[i];
+    for (let i = 0; i < this.props.items.length; i++) {
+      let item = this.props.items[i];
       if (this._itemIsSelected(item) && !this.props.expandFilter(item, i)) {
         return true;
       }
@@ -93,9 +93,9 @@ export default class SelectionModule extends Component {
   }
 
   _displayCustom(values) {
-    var custom = [];
+    let custom = [];
     this.props.children.forEach(function(element) {
-      var newElement = element;
+      let newElement = element;
       newElement.props.children = values[newElement.props.content];
       custom.push(element);
     });
@@ -104,20 +104,20 @@ export default class SelectionModule extends Component {
 
   _listItems(selection) {
     if (this.props.items) {
-      var sourceItems = this.props.items;
+      let sourceItems = this.props.items;
 
-      var isExpanded = this._isExpanded();
+      let isExpanded = this._isExpanded();
       if (!isExpanded) {
         sourceItems = sourceItems.filter(this.props.expandFilter);
       }
 
-      var items = sourceItems.map(function(item, index) {
-        var display = item ? item[this.props.display] || item : item;
-        var itemClassName = cx({
+      let items = sourceItems.map(function(item, index) {
+        let display = item ? item[this.props.display] || item : item;
+        let itemClassName = cx({
           SelectionItem: true,
           "SelectionItem--selected": selection === display,
         });
-        var description = null;
+        let description = null;
         if (
           this.props.descriptionKey &&
           item &&
@@ -169,7 +169,7 @@ export default class SelectionModule extends Component {
   }
 
   _select(item) {
-    var index = this.props.index;
+    let index = this.props.index;
     // send back the item with the specified action
     if (this.props.action) {
       if (index !== undefined) {
@@ -197,12 +197,12 @@ export default class SelectionModule extends Component {
 
   renderPopover(selection) {
     if (this.state.open) {
-      var itemListClasses = cx("SelectionItems", {
+      let itemListClasses = cx("SelectionItems", {
         "SelectionItems--open": this.state.open,
         "SelectionItems--expanded": this.state.expanded,
       });
 
-      var searchBar;
+      let searchBar;
       if (this._enableSearch()) {
         searchBar = <SearchBar onFilter={this._filterSelections} />;
       }
@@ -224,18 +224,18 @@ export default class SelectionModule extends Component {
   }
 
   render() {
-    var selection;
+    let selection;
     this.props.items.forEach(function(item) {
       if (this._itemIsSelected(item)) {
         selection = item[this.props.display];
       }
     }, this);
 
-    var placeholder = selection || this.props.placeholder,
+    let placeholder = selection || this.props.placeholder,
       remove,
       removeable = !!this.props.remove;
 
-    var moduleClasses = cx({
+    let moduleClasses = cx({
       SelectionModule: true,
       selected: selection,
       removeable: removeable,

@@ -31,15 +31,25 @@ export default class Calendar extends Component {
 
   componentWillReceiveProps(nextProps) {
     if (
-      !moment(nextProps.selected).isSame(this.props.selected, "day") ||
-      !moment(nextProps.selectedEnd).isSame(this.props.selectedEnd, "day")
+      // `selected` became null or not null
+      (nextProps.selected == null) !== (this.props.selected == null) ||
+      // `selectedEnd` became null or not null
+      (nextProps.selectedEnd == null) !== (this.props.selectedEnd == null) ||
+      // `selected` is not null and doesn't match previous `selected`
+      (nextProps.selected != null &&
+        !moment(nextProps.selected).isSame(this.props.selected, "day")) ||
+      // `selectedEnd` is not null and doesn't match previous `selectedEnd`
+      (nextProps.selectedEnd != null &&
+        !moment(nextProps.selectedEnd).isSame(this.props.selectedEnd, "day"))
     ) {
       let resetCurrent = false;
-      if (nextProps.selected && nextProps.selectedEnd) {
+      if (nextProps.selected != null && nextProps.selectedEnd != null) {
+        // reset if `current` isn't between `selected` and `selectedEnd` month
         resetCurrent =
           nextProps.selected.isAfter(this.state.current, "month") &&
           nextProps.selectedEnd.isBefore(this.state.current, "month");
-      } else if (nextProps.selected) {
+      } else if (nextProps.selected != null) {
+        // reset if `current` isn't in `selected` month
         resetCurrent =
           nextProps.selected.isAfter(this.state.current, "month") ||
           nextProps.selected.isBefore(this.state.current, "month");
@@ -119,7 +129,7 @@ export default class Calendar extends Component {
   }
 
   renderWeeks(current) {
-    var weeks = [],
+    let weeks = [],
       done = false,
       date = moment(current)
         .startOf("month")
