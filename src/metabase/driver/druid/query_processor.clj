@@ -586,6 +586,12 @@
 
 (defn- parse-filter-subclause:intervals [{:keys [filter-type field value] :as filter}]
   (when (instance? DateTimeField field)
+    ;; since the `make-intervals` and `add-date-time-units` stuff below need to have a concrete bucketing unit go
+    ;; ahead and assume `:milliseconds` if `:default` was specified, because `:milliseconds` is the smallest
+    ;; resolution Druid lets you use. Futhermore since we're making date ranges anyways chosing the smallest option
+    ;; will let you get fine-grained access if you want it, but not change the results for larger ranges (e.g. 'June
+    ;; 2018' is the same whether you specify milliseconds or not; but 'the first millisecond of June 1st, 2018' needs
+    ;; to include milliseconds by definition.)
     (let [value (update-in value [:field :unit] (fn [unit]
                                                   (if (= unit :default)
                                                     :millisecond
