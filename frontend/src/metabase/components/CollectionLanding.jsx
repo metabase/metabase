@@ -211,25 +211,42 @@ class CollectionLanding extends React.Component {
               </Flex>
             </Subhead>
 
-            <Box ml="auto">
+            <Flex ml="auto">
+              <Box mx={1}>
+                <EntityMenu
+                  items={[
+                    {
+                      title: t`Edit this collection`,
+                      icon: "editdocument",
+                      link: `/collections/${currentCollection.id}`,
+                    },
+                    {
+                      title: t`Edit permissions`,
+                      icon: "lock",
+                      link: `/collections/permissions?collectionId=${
+                        currentCollection.id
+                      }`,
+                    },
+                  ]}
+                  triggerIcon="pencil"
+                />
+              </Box>
               <EntityMenu
                 items={[
                   {
-                    title: t`Edit this collection`,
-                    icon: "editdocument",
-                    link: `/collections/${currentCollection.id}`,
+                    title: t`View the question archive`,
+                    icon: "viewArchive",
+                    link: `/questions/archive/`,
                   },
                   {
-                    title: t`Edit permissions`,
-                    icon: "lock",
-                    link: `/collections/permissions?collectionId=${
-                      currentCollection.id
-                    }`,
+                    title: t`View the dashboard archive`,
+                    icon: "viewArchive",
+                    link: `/dashboards/archive`,
                   },
                 ]}
-                triggerIcon="pencil"
+                triggerIcon="burger"
               />
-            </Box>
+            </Flex>
           </Flex>
         </Box>
         <Box className="relative">
