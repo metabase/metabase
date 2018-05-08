@@ -137,50 +137,47 @@ class DefaultLanding extends React.Component {
     }
   }
   render() {
-    const { currentCollection, collectionId, location } = this.props;
+    const { collectionId, location } = this.props;
     return (
       <Box w="100%">
         {// HACK for now to only show the colleciton list on the root
         // colleciton until we have a notion of nested collections
         !collectionId && <CollectionList />}
-        {// Hack to hide the list until the root fix is in }
-        collectionId && (
-          <CollectionItemsLoader collectionId={collectionId || "root"}>
-            {({ loading, error, allItems, pulses, cards, dashboards }) => {
-              if (loading) {
-                return <Box>Loading...</Box>;
+        <CollectionItemsLoader collectionId={collectionId || "root"}>
+          {({ loading, error, allItems, pulses, cards, dashboards }) => {
+            if (loading) {
+              return <Box>Loading...</Box>;
+            }
+
+            let items = allItems;
+
+            // Hack in filtering
+            if (location.query.show) {
+              switch (location.query.show) {
+                case "dashboards":
+                  items = dashboards.map(d => ({ ...d, type: "dashboard" }));
+                  break;
+                case "pulses":
+                  items = pulses.map(p => ({ ...p, type: "pulse" }));
+                  break;
+                case "questions":
+                  items = cards.map(c => ({ ...c, type: "card" }));
+                  break;
+                default:
+                  items = allItems;
+                  break;
               }
+            }
 
-              let items = allItems;
-
-              // Hack in filtering
-              if (location.query.show) {
-                switch (location.query.show) {
-                  case "dashboards":
-                    items = dashboards.map(d => ({ ...d, type: "dashboard" }));
-                    break;
-                  case "pulses":
-                    items = pulses.map(p => ({ ...p, type: "pulse" }));
-                    break;
-                  case "questions":
-                    items = cards.map(c => ({ ...c, type: "card" }));
-                    break;
-                  default:
-                    items = allItems;
-                    break;
-                }
-              }
-
-              return (
-                <Grid>
-                  {items.map(item => (
-                    <GridItem>{this._renderItem(item)}</GridItem>
-                  ))}
-                </Grid>
-              );
-            }}
-          </CollectionItemsLoader>
-        )}
+            return (
+              <Grid>
+                {items.map(item => (
+                  <GridItem>{this._renderItem(item)}</GridItem>
+                ))}
+              </Grid>
+            );
+          }}
+        </CollectionItemsLoader>
       </Box>
     );
   }
