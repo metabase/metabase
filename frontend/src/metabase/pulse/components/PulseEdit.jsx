@@ -67,7 +67,7 @@ export default class PulseEdit extends Component {
       this.props.pulse.cards.length,
     );
 
-    this.props.onChangeLocation("/pulse");
+    this.props.onChangeLocation(`/collection/${pulse.collection_id}`);
   }
 
   async delete() {
