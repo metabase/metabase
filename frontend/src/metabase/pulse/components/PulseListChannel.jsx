@@ -1,11 +1,10 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t, ngettext, msgid } from "c-3po";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import { inflect } from "inflection";
 import _ from "underscore";
 
 export default class PulseListChannel extends Component {
@@ -56,9 +55,9 @@ export default class PulseListChannel extends Component {
     let channelSchedule = channel.schedule_type;
     let channelTarget =
       channel.recipients &&
-      channel.recipients.length +
-        " " +
-        inflect("people", channel.recipients.length);
+      (n => ngettext(msgid`${n} person`, `${n} people`, n))(
+        channel.recipients.length,
+      );
 
     if (channel.channel_type === "email") {
       channelIcon = "mail";
