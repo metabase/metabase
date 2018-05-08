@@ -1,5 +1,7 @@
-title: Transactions by country
-table_type: TransactionTable
+title: "[[this]] per country"
+transient_title: Here's a closer look at your [[this]] per country
+description: A deeper look at how different countries are performing for you.
+applies_to: TransactionTable
 metrics:
 - TotalIncome:
     metric: [sum, [dimension, Income]]
@@ -34,14 +36,48 @@ dimensions:
 - Cohort:
     field_type: UserTable.DateTime
     score: 80
+- Product:
+    field_type: Product
+    score: 90
+    max_cardinality: 10
+- Product:
+    field_type: ProductTable.Name
+    max_cardinality: 10
+- Product:
+    field_type: ProductTable.Title
+    max_cardinality: 10
+- ProductCategory:
+    field_type: ProductTable.Category
+    named: category
+    max_cardinality: 10
+    score: 90
+- Source:
+    field_type: GenericTable.Source
+    max_cardinality: 10
+    score: 90
+- State: GenericTable.State
 filters:
   - Last30Days:
       filter: ["time-interval", [dimension, Timestamp], -30, day]
   - NewUsers:
       filter: ["time-interval", [dimension, Cohort], -30, day]
+groups:
+- Top10:
+    title: Top performers
+- Transactions:
+    title: Transactions per country
+- Users:
+    title: User acquisition by country
+dashboard_filters:
+  - Timestamp
+  - Source
+  - Country
+  - State
+  - Product
+  - ProductCategory
 cards:
 - TopCountrysBySales:
-    title: Top countrys by sales (top 10)
+    title: Top 10 countries by sales
     visualization: row
     dimensions: Country
     metrics: TotalOrders
@@ -50,8 +86,9 @@ cards:
     limit: 10
     score: 100
     height: 8
+    group: Top10
 - TopCountrysBySalesLast30Days:
-    title: Top countrys by sales in the last 30 days (top 10)
+    title: Top 10 countries by sales in the last 30 days
     visualization: row
     dimensions: Country
     metrics: TotalOrders
@@ -61,58 +98,65 @@ cards:
     limit: 10
     score: 100
     height: 8
+    group: Top10
 - OrdersByCountry:
     visualization:
       map:
         map.type: region
-        map.region: us_countrys
-    title: Sales by country
+        map.region: world_countries
+    title: Sales per country
     dimensions: Country
     metrics: TotalOrders
     score: 90
+    group: Transactions
 - QuantityByCountry:
     visualization:
       map:
         map.type: region
-        map.region: us_countrys
-    title: Average quantity by country
+        map.region: world_countries
+    title: Average quantity per country
     dimensions: Country
     metrics: AvgQuantity
     score: 90
+    group: Transactions
 - IncomeByCountry:
     visualization:
       map:
         map.type: region
-        map.region: us_countrys
-    title: Income by country
+        map.region: world_countries
+    title: Income per country
     dimensions: Country
     metrics: TotalIncome
     score: 90
+    group: Transactions
 - AverageIncomeByCountry:
     visualization:
       map:
         map.type: region
-        map.region: us_countrys
-    title: Average Income by country
+        map.region: world_countries
+    title: Average income per country
     dimensions: Country
     metrics: AvgIncome
     score: 90
+    group: Transactions
 - UsersByCountry:
     visualization:
       map:
         map.type: region
-        map.region: us_countrys
-    title: Number of users by country
+        map.region: world_countries
+    title: Users in each country
     dimensions: Country
     metrics: TotalUsers
     score: 90
+    group: Users
 - NewUsersByCountry:
     visualization:
       map:
         map.type: region
-        map.region: us_countrys
-    title: New users in the last 30 days by country
+        map.region: world_countries
+    title: New users per country in the last 30 days
     dimensions: Country
     metrics: TotalUsers
     filters: NewUsers
     score: 90
+    group: Users

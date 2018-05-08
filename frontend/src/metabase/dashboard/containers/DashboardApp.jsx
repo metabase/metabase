@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import title from "metabase/hoc/Title";
 
-import Dashboard from "../components/Dashboard.jsx";
+import Dashboard from "metabase/dashboard/components/Dashboard.jsx";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";

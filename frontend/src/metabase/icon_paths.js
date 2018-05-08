@@ -7,7 +7,7 @@
     These paths represent the current canonical icon set for Metabase.
 */
 
-export var ICON_PATHS = {
+export const ICON_PATHS = {
   add:
     "M19,13 L19,2 L14,2 L14,13 L2,13 L2,18 L14,18 L14,30 L19,30 L19,18 L30,18 L30,13 L19,13 Z",
   addtodash: {
@@ -373,7 +373,7 @@ export function parseViewBox(viewBox: string): Array<number> {
 }
 
 export function loadIcon(name: string) {
-  var def = ICON_PATHS[name];
+  let def = ICON_PATHS[name];
   if (!def) {
     console.warn('Icon "' + name + '" does not exist.');
     return;
@@ -383,7 +383,7 @@ export function loadIcon(name: string) {
     return { ...def, attrs: { ...def.attrs, className: "Icon Icon-" + name } };
   }
 
-  var icon = {
+  let icon = {
     attrs: {
       className: "Icon Icon-" + name,
       viewBox: "0 0 32 32",
@@ -398,8 +398,8 @@ export function loadIcon(name: string) {
   if (typeof def === "string") {
     icon.path = def;
   } else if (def != null) {
-    var { svg, path, attrs } = def;
-    for (var attr in attrs) {
+    let { svg, path, attrs } = def;
+    for (let attr in attrs) {
       icon.attrs[attr] = attrs[attr];
     }
 

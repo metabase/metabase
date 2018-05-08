@@ -1,11 +1,10 @@
-title: Analysis of [[this]]
-table_type: GenericTable
+title: A look at your [[this]]
+transient_title: Here's a quick look at your [[this]]
+description: How it's distributed across time and other categories.
+applies_to: GenericTable
 metrics:
 # Placeholder that will get overloaded by reference to the actual metric, so we can
 # refer to the metric in card definition.
-  - Metric:
-      metric: null
-      score: 0
 dimensions:
   - Country:
       field_type: GenericTable.Country
@@ -13,7 +12,6 @@ dimensions:
       field_type: GenericTable.State
   - GenericNumber:
       field_type: GenericTable.Number
-      aggregation: default
   - GenericCategorySmall:
       field_type: GenericTable.Category
       max_cardinality: 5
@@ -31,38 +29,21 @@ dimensions:
   - Timestamp:
       field_type: DateTime
       score: 90
-  - DayOfWeek:
-      field_type: DateTime
-      aggregation: day-of-week
-  - HourOfDay:
-      field_type: DateTime
-      aggregation: hour-of-day
-  - DayOfMonth:
-      field_type: DateTime
-      aggregation: day-of-month
-  - MonthOfYear:
-      field_type: DateTime
-      aggregation: month-of-year
-  - QuarterOfYear:
-      field_type: DateTime
-      aggregation: quarter-of-year
   - LongLat:
       field_type: GenericTable.Coordinate
-      aggregation: default
   - ZipCode:
       field_type: GenericTable.ZipCode
-      aggregation: default
 groups:
   - Periodicity:
-      title: Periodicity breakdown
+      title: "[[this]] over time"
   - Geographical:
-      title: Geographical breakdown
+      title: "[[this]] by location"
   - Categories:
-      title: Distribution over categories
+      title: How [[this]] is distributed
   - Numbers:
-      title: Distribution over numbers
+      title: How [[this]] is distributed across different numbers
   - LargeCategories:
-      title: Distribution over high-cardinality categories
+      title: Top and bottom [[this]]
 dashboard_filters:
   - Timestamp
   - State
@@ -73,45 +54,55 @@ dashboard_filters:
 cards:
   - ByTime:
       group: Periodicity
-      title: Distribution over time
+      title: Over time
       visualization: line
-      metrics: Metric
+      metrics: this
       dimensions: Timestamp
       width: 18
   - DayOfWeek:
       group: Periodicity
-      title: Distribution by day of week
+      title: "[[this]] per day of the week"
       visualization: bar
-      metrics: Metric
-      dimensions: DayOfWeek
+      metrics: this
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-week
   - HourOfDay:
       group: Periodicity
-      title: Distribution by hour of day
+      title: "[[this]] per hour of the day"
       visualization: bar
-      metrics: Metric
-      dimensions: HourOfDay
+      metrics: this
+      dimensions:
+        - Timestamp:
+            aggregation: hour-of-day
   - DayOfMonth:
       group: Periodicity
-      title: Distribution by day of month
+      title: "[[this]] per day of the month"
       visualization: bar
-      metrics: Metric
-      dimensions: DayOfMonth
+      metrics: this
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-month
   - MonthOfYear:
       group: Periodicity
-      title: Distribution by month of year
+      title: "[[this]] per month of the year"
       visualization: bar
-      metrics: Metric
-      dimensions: MonthOfYear
+      metrics: this
+      dimensions:
+        - Timestamp:
+            aggregation: month-of-year
   - QuerterOfYear:
       group: Periodicity
-      title: Distribution by quarter of year
+      title: "[[this]] per quarter of the year"
       visualization: bar
-      metrics: Metric
-      dimensions: QuarterOfYear
+      metrics: this
+      dimensions:
+        - Timestamp:
+            aggregation: quarter-of-year
   - ByCountry:
       group: Geographical
-      title: Distribution by country
-      metrics: Metric
+      title: "[[this]] per country"
+      metrics: this
       dimensions: Country
       visualization:
         map:
@@ -119,8 +110,8 @@ cards:
           map.region: world_countries
   - ByState:
       group: Geographical
-      title: Distribution by state
-      metrics: Metric
+      title: "[[this]] per state"
+      metrics: this
       dimensions: State
       visualization:
         map:
@@ -128,23 +119,23 @@ cards:
           map.region: us_states
   - ByNumber:
       group: Numbers
-      title: Distribution by [[GenericNumber]]
-      metrics: Metric
+      title: How [[this]] is distributed across [[GenericNumber]]
+      metrics: this
       dimensions: GenericNumber
       visualization: bar
   - ByCategoryMedium:
       group: Categories
-      title: Distribution by [[GenericCategoryMedium]]
-      metrics: Metric
+      title: "[[this]] per [[GenericCategoryMedium]]"
+      metrics: this
       dimensions: GenericCategoryMedium
       visualization: row
       order_by:
-        Metric: descending
+        this: descending
       height: 8
   - ByCategoryAndTime:
       group: Categories
-      title: Distribution by [[GenericCategorySmall]] over time
-      metrics: Metric
+      title: "[[this]] per [[GenericCategorySmall]] over time"
+      metrics: this
       dimensions:
         - GenericCategorySmall
         - Timestamp
@@ -153,27 +144,27 @@ cards:
           stackable.stack_type: stacked
   - ByCategorySmall:
       group: Categories
-      title: Distribution by [[GenericCategorySmall]]
-      metrics: Metric
+      title: "[[this]] per [[GenericCategorySmall]]"
+      metrics: this
       dimensions: GenericCategorySmall
       visualization: row
       order_by:
-        Metric: descending
+        this: descending
   - ByCategoryLargeTop:
       group: LargeCategories
-      title: Distribution by [[GenericCategoryLarge]] (top 5)
-      metrics: Metric
+      title: "[[this]] per [[GenericCategoryLarge]], top 5"
+      metrics: this
       dimensions: GenericCategoryLarge
       visualization: row
       order_by:
-        Metric: descending
+        this: descending
       limit: 5
   - ByCategoryLargeBottom:
       group: LargeCategories
-      title: Distribution by [[GenericCategoryLarge]] (bottom 5)
-      metrics: Metric
+      title: "[[this]] per [[GenericCategoryLarge]], bottom 5"
+      metrics: this
       dimensions: GenericCategoryLarge
       visualization: row
       limit: 5
       order_by:
-        Metric: ascending
+        this: ascending

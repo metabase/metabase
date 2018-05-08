@@ -24,7 +24,6 @@ import { isObscured } from "metabase/lib/dom";
 
 const inputBoxClasses = cxs({
   maxHeight: 130,
-  overflow: "scroll",
 });
 
 type Value = any;

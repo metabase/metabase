@@ -1,13 +1,12 @@
-title: Analysis of [[this]]
-table_type: GenericTable
+title: A look at your [[this]]
+transient_title: Here's an overview of your [[this]]
+description: How [[this]] is distributed and more.
+applies_to: GenericTable.*
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]
 - Avg: [avg, [dimension, GenericNumber]]
 - Count: [count]
 dimensions:
-  - Field:
-      field_type: "*"
-      score: 0
   - GenericNumber: GenericTable.Number
 # bind just so they don't get used
   - LongLat: GenericTable.Coordinate
@@ -32,16 +31,24 @@ dashboard_filters:
   - State
   - Country
   - GenericCategoryMedium
+groups:
+  - Overview:
+      title: Overview
+  - Breakdowns:
+      title: "How different numbers are distributed across [[this]]"
 cards:
   - Distribution:
-      title: Distribution of [[Field]]
+      title: How [[this]] is distributed
       visualization: bar
       metrics: Count
-      dimensions: Field
+      dimensions: this
+      group: Overview
+      width: 12
   - ByNumber:
-      title: "[[GenericNumber]] by [[Field]]"
+      title: "[[GenericNumber]] by [[this]]"
       visualization: line
       metrics:
       - Sum
       - Avg
-      dimensions: Field
+      dimensions: this
+      group: Breakdowns

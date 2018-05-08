@@ -78,9 +78,9 @@ describe("The Reference Section", () => {
 
     it("Adding metrics should to the guide should make them appear", async () => {
       expect(0).toBe(0);
-      var metric = await MetricApi.create(metricDef);
+      let metric = await MetricApi.create(metricDef);
       expect(1).toBe(1);
-      var metric2 = await MetricApi.create(anotherMetricDef);
+      let metric2 = await MetricApi.create(anotherMetricDef);
       expect(2).toBe(2);
       await MetricApi.delete({
         metricId: metric.id,
@@ -96,9 +96,9 @@ describe("The Reference Section", () => {
 
     it("Adding segments should to the guide should make them appear", async () => {
       expect(0).toBe(0);
-      var segment = await SegmentApi.create(segmentDef);
+      let segment = await SegmentApi.create(segmentDef);
       expect(1).toBe(1);
-      var anotherSegment = await SegmentApi.create(anotherSegmentDef);
+      let anotherSegment = await SegmentApi.create(anotherSegmentDef);
       expect(2).toBe(2);
       await SegmentApi.delete({
         segmentId: segment.id,

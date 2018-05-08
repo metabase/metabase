@@ -204,7 +204,7 @@ describe("setup wizard", () => {
     const allSetUpSection = app.find(".SetupStep").last();
     expect(allSetUpSection.find(".SetupStep--active").length).toBe(1);
 
-    expect(allSetUpSection.find('a[href="/ready"]').length).toBe(1);
+    expect(allSetUpSection.find('a[href="/explore"]').length).toBe(1);
   });
 
   it("should show you the onboarding modal", async () => {

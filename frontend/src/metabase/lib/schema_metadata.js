@@ -196,6 +196,7 @@ function equivalentArgument(field, table) {
     return {
       type: "select",
       values: [{ key: true, name: t`True` }, { key: false, name: t`False` }],
+      default: true,
     };
   }
 
@@ -217,15 +218,23 @@ function equivalentArgument(field, table) {
 }
 
 function longitudeFieldSelectArgument(field, table) {
-  return {
-    type: "select",
-    values: table.fields
-      .filter(field => isa(field.special_type, TYPE.Longitude))
-      .map(field => ({
-        key: field.id,
-        name: field.display_name,
-      })),
-  };
+  const values = table.fields
+    .filter(field => isa(field.special_type, TYPE.Longitude))
+    .map(field => ({
+      key: field.id,
+      name: field.display_name,
+    }));
+  if (values.length === 1) {
+    return {
+      type: "hidden",
+      default: values[0].key,
+    };
+  } else {
+    return {
+      type: "select",
+      values: values,
+    };
+  }
 }
 
 const CASE_SENSITIVE_OPTION = {
@@ -275,6 +284,13 @@ const OPERATORS = {
       t`Enter left longitude`,
       t`Enter lower latitude`,
       t`Enter right longitude`,
+    ],
+    formatOptions: [
+      { hide: true },
+      { column: { special_type: TYPE.Latitude }, compact: true },
+      { column: { special_type: TYPE.Longitude }, compact: true },
+      { column: { special_type: TYPE.Latitude }, compact: true },
+      { column: { special_type: TYPE.Longitude }, compact: true },
     ],
   },
   BETWEEN: {
@@ -358,7 +374,7 @@ const OPERATORS_BY_TYPE_ORDERED = {
     { name: "INSIDE", verboseName: t`Inside` },
   ],
   [BOOLEAN]: [
-    { name: "=", verboseName: t`Is`, multi: false, defaults: [true] },
+    { name: "=", verboseName: t`Is`, multi: false },
     { name: "IS_NULL", verboseName: t`Is empty` },
     { name: "NOT_NULL", verboseName: t`Not empty` },
   ],
@@ -407,7 +423,7 @@ function dimensionFields(fields) {
   return _.filter(fields, isDimension);
 }
 
-var Aggregators = [
+let Aggregators = [
   {
     name: t`Raw data`,
     short: "rows",
@@ -490,7 +506,7 @@ var Aggregators = [
   },
 ];
 
-var BreakoutAggregator = {
+let BreakoutAggregator = {
   name: t`Break out by dimension`,
   short: "breakout",
   validFieldsFilters: [dimensionFields],
@@ -542,7 +558,7 @@ export const isCompatibleAggregatorForField = (aggregator, field) =>
   aggregator.validFieldsFilters.every(filter => filter([field]).length === 1);
 
 export function getBreakouts(fields) {
-  var result = populateFields(BreakoutAggregator, fields);
+  let result = populateFields(BreakoutAggregator, fields);
   result.fields = result.fields[0];
   result.validFieldsFilter = result.validFieldsFilters[0];
   return result;
@@ -607,8 +623,8 @@ export function getIconForField(field) {
 }
 
 export function computeMetadataStrength(table) {
-  var total = 0;
-  var completed = 0;
+  let total = 0;
+  let completed = 0;
   function score(value) {
     total++;
     if (value) {
@@ -628,4 +644,10 @@ export function computeMetadataStrength(table) {
   }
 
   return completed / total;
+}
+
+export function getFilterArgumentFormatOptions(operator, index) {
+  return (
+    (operator && operator.formatOptions && operator.formatOptions[index]) || {}
+  );
 }

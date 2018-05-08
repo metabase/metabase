@@ -230,7 +230,7 @@
                   Table     [{table-id :id}    {:db_id database-id}]
                   Card      [card              {:dataset_query {:database database-id
                                                                :type     "query"
-                                                               :query    {:source-table table-id,
+                                                               :query    {:source-table table-id
                                                                           :aggregation  {:aggregation-type "count"}}}}]
                   Pulse     [pulse             {:name "Daily Sad Toucans"}]
                   PulseCard [pulse-card        {:pulse_id (u/get-id pulse), :card_id (u/get-id card)}]]

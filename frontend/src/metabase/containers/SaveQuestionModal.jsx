@@ -135,9 +135,9 @@ export default class SaveQuestionModal extends Component {
 
   render() {
     let { error, details } = this.state;
-    var formError;
+    let formError;
     if (error) {
-      var errorMessage;
+      let errorMessage;
       if (error.status === 500) {
         errorMessage = t`Server error encountered`;
       }
@@ -155,7 +155,7 @@ export default class SaveQuestionModal extends Component {
       }
     }
 
-    var saveOrUpdate = null;
+    let saveOrUpdate = null;
     if (!this.props.card.id && this.props.originalCard) {
       saveOrUpdate = (
         <FormField

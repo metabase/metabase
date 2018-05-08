@@ -50,18 +50,9 @@ const FieldSidebar = ({
           key={`/auto/dashboard/field/${field.id}`}
           href={`/auto/dashboard/field/${field.id}`}
           icon="bolt"
-          name={t`See an exploration of this field`}
+          name={t`X-ray this field`}
         />
       }
-
-      {showXray && (
-        <SidebarItem
-          key={`/xray/field/${field.id}/approximate`}
-          href={`/xray/field/${field.id}/approximate`}
-          icon="beaker"
-          name={t`X-ray this Field`}
-        />
-      )}
     </ul>
   </div>
 );

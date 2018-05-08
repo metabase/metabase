@@ -196,6 +196,7 @@ export default class TableSimple extends Component {
                               : formatValue(cell, {
                                   column: cols[columnIndex],
                                   jsx: true,
+                                  rich: true,
                                 })}
                           </span>
                         </td>
