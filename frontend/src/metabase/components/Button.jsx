@@ -12,6 +12,7 @@ const BUTTON_VARIANTS = [
   "medium",
   "large",
   "primary",
+  "danger",
   "warning",
   "cancel",
   "success",

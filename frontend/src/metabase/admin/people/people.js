@@ -18,8 +18,9 @@ const user = new schema.Entity("user");
 
 // action constants
 export const CREATE_USER = "metabase/admin/people/CREATE_USER";
-export const DELETE_USER = "metabase/admin/people/DELETE_USER";
 export const FETCH_USERS = "metabase/admin/people/FETCH_USERS";
+export const DEACTIVATE_USER = "metabase/admin/people/DEACTIVATE_USER";
+export const REACTIVATE_USER = "metabase/admin/people/REACTIVATE_USER";
 export const RESEND_INVITE = "metabase/admin/people/RESEND_INVITE";
 export const RESET_PASSWORD_EMAIL =
   "metabase/admin/people/RESET_PASSWORD_EMAIL";
@@ -110,13 +111,28 @@ export const createUser = createThunkAction(CREATE_USER, function(user) {
   };
 });
 
-export const deleteUser = createThunkAction(DELETE_USER, function(user) {
+export const deactivateUser = createThunkAction(DEACTIVATE_USER, function(
+  user,
+) {
   return async function(dispatch, getState) {
     await UserApi.delete({
       userId: user.id,
     });
 
     MetabaseAnalytics.trackEvent("People Admin", "User Removed");
+    return user;
+  };
+});
+
+export const reactivateUser = createThunkAction(REACTIVATE_USER, function(
+  user,
+) {
+  return async function(dispatch, getState) {
+    await UserApi.reactivate({
+      userId: user.id,
+    });
+
+    MetabaseAnalytics.trackEvent("People Admin", "User Reactivated");
     return user;
   };
 });
@@ -196,8 +212,17 @@ const users = handleActions(
     [CREATE_USER]: {
       next: (state, { payload: user }) => ({ ...state, [user.id]: user }),
     },
-    [DELETE_USER]: {
-      next: (state, { payload: user }) => _.omit(state, user.id),
+    [DEACTIVATE_USER]: {
+      next: (state, { payload: user }) => ({
+        ...state,
+        [user.id]: { ...user, is_active: false },
+      }),
+    },
+    [REACTIVATE_USER]: {
+      next: (state, { payload: user }) => ({
+        ...state,
+        [user.id]: { ...user, is_active: true },
+      }),
     },
     [UPDATE_USER]: {
       next: (state, { payload: user }) => ({ ...state, [user.id]: user }),
