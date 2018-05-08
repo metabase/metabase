@@ -115,10 +115,7 @@ export default class PeopleListingApp extends Component {
     }
   }
 
-  async onAddPerson(user) {
-    // close the modal no matter what
-    this.props.showModal(null);
-
+  onAddPerson = async user => {
     if (user) {
       let modal = MODAL_USER_ADDED_WITH_INVITE;
 
@@ -129,7 +126,7 @@ export default class PeopleListingApp extends Component {
       }
 
       // create the user
-      this.props.createUser(user);
+      await this.props.createUser(user);
 
       // carry on
       this.props.showModal({
@@ -139,16 +136,14 @@ export default class PeopleListingApp extends Component {
         },
       });
     }
-  }
+  };
 
-  onEditDetails(user) {
-    // close the modal no matter what
-    this.props.showModal(null);
-
+  onEditDetails = async user => {
     if (user) {
-      this.props.updateUser(user);
+      await this.props.updateUser(user);
     }
-  }
+    this.props.showModal(null);
+  };
 
   onPasswordResetConfirm(user) {
     if (MetabaseSettings.isEmailConfigured()) {
@@ -197,7 +192,7 @@ export default class PeopleListingApp extends Component {
       <Modal title={t`Who do you want to add?`} onClose={this.onCloseModal}>
         <EditUserForm
           buttonText={t`Add`}
-          submitFn={this.onAddPerson.bind(this)}
+          submitFn={this.onAddPerson}
           groups={this.props.groups}
         />
       </Modal>
@@ -214,7 +209,7 @@ export default class PeopleListingApp extends Component {
         title={t`Edit ${user.first_name}'s details`}
         onClose={this.onCloseModal}
       >
-        <EditUserForm user={user} submitFn={this.onEditDetails.bind(this)} />
+        <EditUserForm user={user} submitFn={this.onEditDetails} />
       </Modal>
     );
   }

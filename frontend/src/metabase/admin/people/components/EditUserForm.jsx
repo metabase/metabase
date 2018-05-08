@@ -61,7 +61,7 @@ export default class EditUserForm extends Component {
     this.validateForm();
   };
 
-  formSubmitted(e) {
+  async formSubmitted(e) {
     e.preventDefault();
 
     this.setState({
@@ -85,18 +85,27 @@ export default class EditUserForm extends Component {
       return;
     }
 
-    this.props.submitFn({
-      ...(this.props.user || {}),
-      first_name: ReactDOM.findDOMNode(this.refs.firstName).value,
-      last_name: ReactDOM.findDOMNode(this.refs.lastName).value,
-      email: email,
-      groups:
-        this.props.groups && this.state.selectedGroups
-          ? Object.entries(this.state.selectedGroups)
-              .filter(([key, value]) => value)
-              .map(([key, value]) => parseInt(key, 10))
-          : null,
-    });
+    try {
+      await this.props.submitFn({
+        ...(this.props.user || {}),
+        first_name: ReactDOM.findDOMNode(this.refs.firstName).value,
+        last_name: ReactDOM.findDOMNode(this.refs.lastName).value,
+        email: email,
+        groups:
+          this.props.groups && this.state.selectedGroups
+            ? Object.entries(this.state.selectedGroups)
+                .filter(([key, value]) => value)
+                .map(([key, value]) => parseInt(key, 10))
+            : null,
+      });
+    } catch (e) {
+      // hack for email error being returned directly rather than via our usual convension
+      if (e && typeof e.data === "string") {
+        this.setState({ formError: { data: { errors: { email: e.data } } } });
+      } else {
+        this.setState({ formError: e });
+      }
+    }
   }
 
   cancel() {
