@@ -14,15 +14,11 @@
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
             [puppetlabs.i18n.core :refer [trs tru]]
-            [ring.util
-             [io :as rui]
-             [response :as rr]]
             [ring.core.protocols :as protocols]
             [ring.util.response :as response]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
-           [java.nio.charset Charset StandardCharsets]))
+  (:import java.io.OutputStream))
 
 (declare check-403 check-404)
 

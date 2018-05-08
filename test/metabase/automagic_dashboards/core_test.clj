@@ -60,7 +60,7 @@
            Table
            (assoc :entity_type nil)
            (#'magic/->root))
-       (#'magic/matching-rules (rules/load-rules "table"))
+       (#'magic/matching-rules (rules/get-rules ["table"]))
        (map (comp first :applies_to))))
 
 

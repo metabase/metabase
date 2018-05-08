@@ -436,6 +436,26 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
 </div>
 `;
 
+exports[`ProgressBar should render "Animated" correctly 1`] = `
+<div
+  className="xt xu xv xn"
+>
+  <div
+    className="xw xx xt xy xz x10 x11 x12 x13 x1d x1e x16 x17 x18 x1f x1a x1b x1g"
+  />
+</div>
+`;
+
+exports[`ProgressBar should render "Default" correctly 1`] = `
+<div
+  className="xt xu xv xn"
+>
+  <div
+    className="xw xx xt xy xz x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x1a x1b x1c"
+  />
+</div>
+`;
+
 exports[`Select should render "Default" correctly 1`] = `
 <a
   className="no-decoration"

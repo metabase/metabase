@@ -1484,7 +1484,7 @@ export const clickedDateTimeValue = {
     ...metadata.fields[ORDERS_CREATED_DATE_FIELD_ID],
     source: "fields",
   },
-  value: "2018-01-01T00:00:00.000Z",
+  value: "2018-01-01T00:00:00Z",
 };
 
 export const clickedMetric = {
