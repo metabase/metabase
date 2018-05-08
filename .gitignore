@@ -9,6 +9,7 @@ pom.xml.asc
 *.class
 /.lein-env
 /.lein-failures
+/.lein-plugins
 /.lein-repl-history
 /.nrepl-port
 .idea/
@@ -45,4 +46,12 @@ bin/release/aws-eb/metabase-aws-eb.zip
 /build.xml
 /test-report-*
 /crate-*
+*.po~
+/locales/metabase-*.pot
+/stats.json
+coverage-summary.json
+.DS_Store
+bin/node_modules/
+*.log
+*.trace.db
 /metabase.iml

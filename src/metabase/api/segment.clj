@@ -7,6 +7,7 @@
              [revision :as revision]
              [segment :as segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.related :as related]
             [metabase.util.schema :as su]
             [toucan
              [db :as db]
@@ -46,7 +47,8 @@
   (api/check-superuser)
   (api/write-check Segment id)
   (segment/update-segment!
-   (assoc (select-keys body #{:name :description :caveats :points_of_interest :show_in_getting_started :definition :revision_message})
+   (assoc (select-keys body #{:name :description :caveats :points_of_interest :show_in_getting_started :definition
+                              :revision_message})
      :id id)
    api/*current-user-id*))
 
@@ -81,5 +83,9 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id))
 
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Segment api/read-check related/related))
 
 (api/define-routes)

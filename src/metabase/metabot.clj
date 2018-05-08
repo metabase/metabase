@@ -22,11 +22,12 @@
              [permissions-group :as perms-group]
              [setting :as setting :refer [defsetting]]]
             [metabase.util.urls :as urls]
+            [puppetlabs.i18n.core :refer [tru trs]]
             [throttle.core :as throttle]
             [toucan.db :as db]))
 
 (defsetting metabot-enabled
-  "Enable MetaBot, which lets you search for and view your saved questions directly via Slack."
+  (tru "Enable MetaBot, which lets you search for and view your saved questions directly via Slack.")
   :type    :boolean
   :default false)
 
@@ -70,11 +71,11 @@
                              dispatch-token) varr}))]
     (fn dispatch*
       ([]
-       (keys-description (format "Here's what I can %s:" verb) fn-map))
+       (keys-description (tru "Here''s what I can {0}:" verb) fn-map))
       ([what & args]
        (if-let [f (fn-map (keyword what))]
          (apply f args)
-         (format "I don't know how to %s `%s`.\n%s"
+         (tru "I don''t know how to {0} `{1}`.\n{2}"
                  verb
                  (if (instance? clojure.lang.Named what)
                    (name what)
@@ -84,7 +85,7 @@
 (defn- format-exception
   "Format a `Throwable` the way we'd like for posting it on slack."
   [^Throwable e]
-  (str "Uh oh! :cry:\n>" (.getMessage e)))
+  (tru "Uh oh! :cry:\n> {0}" (.getMessage e)))
 
 (defmacro ^:private do-async {:style/indent 0} [& body]
   `(future (try ~@body
@@ -104,37 +105,37 @@
   [& _]
   (let [cards (with-metabot-permissions
                 (filterv mi/can-read? (db/select [Card :id :name :dataset_query], {:order-by [[:id :desc]], :limit 20})))]
-    (str "Here's your " (count cards) " most recent cards:\n" (format-cards cards))))
+    (tru "Here''s your {0} most recent cards:\n{1}" (count cards) (format-cards cards))))
 
 (defn- card-with-name [card-name]
   (first (u/prog1 (db/select [Card :id :name], :%lower.name [:like (str \% (str/lower-case card-name) \%)])
            (when (> (count <>) 1)
-             (throw (Exception. (str "Could you be a little more specific? I found these cards with names that matched:\n"
-                                     (format-cards <>))))))))
+             (throw (Exception. (str (tru "Could you be a little more specific? I found these cards with names that matched:\n{0}"
+                                          (format-cards <>)))))))))
 
 (defn- id-or-name->card [card-id-or-name]
   (cond
     (integer? card-id-or-name)     (db/select-one [Card :id :name], :id card-id-or-name)
     (or (string? card-id-or-name)
         (symbol? card-id-or-name)) (card-with-name card-id-or-name)
-    :else                          (throw (Exception. (format "I don't know what Card `%s` is. Give me a Card ID or name." card-id-or-name)))))
+    :else                          (throw (Exception. (str (tru "I don''t know what Card `{0}` is. Give me a Card ID or name." card-id-or-name))))))
 
 
 (defn ^:metabot show
   "Implementation of the `metabot show card <name-or-id>` command."
   ([]
-   "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don't know which card you want, try `metabot list`.")
+   (tru "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don''t know which card you want, try `metabot list`."))
   ([card-id-or-name]
    (if-let [{card-id :id} (id-or-name->card card-id-or-name)]
      (do
        (with-metabot-permissions
          (read-check Card card-id))
-       (do-async (let [attachments (pulse/create-and-upload-slack-attachments! [(pulse/execute-card card-id, :context :metabot)])]
+       (do-async (let [attachments (pulse/create-and-upload-slack-attachments! (pulse/create-slack-attachment-data [(pulse/execute-card card-id, :context :metabot)]))]
                    (slack/post-chat-message! *channel-id*
                                              nil
                                              attachments)))
-       "Ok, just a second...")
-     (throw (Exception. "Not Found"))))
+       (tru "Ok, just a second..."))
+     (throw (Exception. (str (tru "Not Found"))))))
   ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my wacky card")
   ([word & more]
    (show (str/join " " (cons word more)))))
@@ -160,7 +161,7 @@
 
 
 (def ^:private kanye-quotes
-  (delay (log/debug "Loading kanye quotes...")
+  (delay (log/debug (trs "Loading Kanye quotes..."))
          (when-let [data (slurp (io/reader (io/resource "kanye-quotes.edn")))]
            (edn/read-string data))))
 
@@ -181,7 +182,7 @@
     (let [s (if (seq s)
               s
               "help")]
-      (log/debug "Evaluating Metabot command:" s)
+      (log/debug (trs "Evaluating Metabot command:") s)
       (when-let [tokens (seq (edn/read-string (str "(" (-> s
                                                            (str/replace "“" "\"") ; replace smart quotes
                                                            (str/replace "”" "\"")) ")")))]
@@ -224,7 +225,7 @@
 
 (defn- handle-slack-event [socket start-time event]
   (when-not (= socket @websocket)
-    (log/debug "Go home websocket, you're drunk.")
+    (log/debug (trs "Go home websocket, you're drunk."))
     (s/close! socket)
     (throw (Exception.)))
 
@@ -249,7 +250,7 @@
       (d/catch (s/consume (partial handle-slack-event socket (System/currentTimeMillis))
                           socket)
           (fn [error]
-            (log/error "Error launching metabot:" error))))))
+            (log/error (trs "Error launching metabot:") error))))))
 
 (defn- disconnect-websocket! []
   (when-let [socket @websocket]
@@ -296,10 +297,10 @@
         (try
           (when (or (not  @websocket)
                     (s/closed? @websocket))
-            (log/debug "MetaBot WebSocket is closed. Reconnecting now.")
+            (log/debug (trs "MetaBot WebSocket is closed. Reconnecting now."))
             (connect-websocket!))
           (catch Throwable e
-            (log/error "Error connecting websocket:" (.getMessage e))))
+            (log/error (trs "Error connecting websocket:") (.getMessage e))))
         (recur)))))
 
 (defn start-metabot!
@@ -317,7 +318,7 @@
 
    This will stop the background thread that responsible for the Slack WebSocket connection."
   []
-  (log/info "Stopping MetaBot...  🤖")
+  (log/info (trs "Stopping MetaBot...  🤖"))
   (reset! websocket-monitor-thread-id nil)
   (disconnect-websocket!))
 
@@ -326,6 +327,6 @@
    Used on settings changed"
   []
   (when @websocket-monitor-thread-id
-    (log/info "MetaBot already running. Killing the previous WebSocket listener first.")
+    (log/info (trs "MetaBot already running. Killing the previous WebSocket listener first."))
     (stop-metabot!))
   (start-metabot!))

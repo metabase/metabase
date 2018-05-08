@@ -6,68 +6,94 @@
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
+            [metabase.public-settings.metastore :as metastore]
+            [metabase.util.i18n :refer [available-locales-with-names set-locale]]
             [metabase.util.password :as password]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db])
-  (:import java.util.TimeZone))
+  (:import [java.util Locale TimeZone UUID]))
 
 (defsetting check-for-updates
-  "Identify when new versions of Metabase are available."
+  (tru "Identify when new versions of Metabase are available.")
   :type    :boolean
   :default true)
 
 (defsetting version-info
-  "Information about available versions of Metabase."
+  (tru "Information about available versions of Metabase.")
   :type    :json
   :default {})
 
 (defsetting site-name
-  "The name used for this instance of Metabase."
+  (tru "The name used for this instance of Metabase.")
   :default "Metabase")
+
+(defsetting site-uuid
+  ;; Don't i18n this docstring because it's not user-facing! :)
+  "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
+  its magic getter. Nice!"
+  :internal? true
+  :setter    (fn [& _]
+               (throw (UnsupportedOperationException. "site-uuid is automatically generated. Don't try to change it!")))
+  ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
+  :getter    (fn []
+               (or (setting/get-string :site-uuid)
+                   (let [value (str (UUID/randomUUID))]
+                     (setting/set-string! :site-uuid value)
+                     value))))
 
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's not protocol when it comes in
 (defsetting site-url
-  "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
+  (tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
   :setter (fn [new-value]
             (setting/set-string! :site-url (when new-value
                                              (cond->> (s/replace new-value #"/$" "")
                                                (not (s/starts-with? new-value "http")) (str "http://"))))))
 
+(defsetting site-locale
+  (str  (tru "The default language for this Metabase instance.")
+        (tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
+  :type    :string
+  :setter  (fn [new-value]
+             (setting/set-string! :site-locale new-value)
+             (set-locale new-value))
+  :default "en")
+
 (defsetting admin-email
-  "The email address users should be referred to if they encounter a problem.")
+  (tru "The email address users should be referred to if they encounter a problem."))
 
 (defsetting anon-tracking-enabled
-  "Enable the collection of anonymous usage data in order to help Metabase improve."
+  (tru "Enable the collection of anonymous usage data in order to help Metabase improve.")
   :type   :boolean
   :default true)
 
 (defsetting map-tile-server-url
-  "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
+  (tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
   :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
 
 (defsetting enable-public-sharing
-  "Enable admins to create publically viewable links (and embeddable iframes) for Questions and Dashboards?"
+  (tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
   :type    :boolean
   :default false)
 
 (defsetting enable-embedding
-  "Allow admins to securely embed questions and dashboards within other applications?"
+  (tru "Allow admins to securely embed questions and dashboards within other applications?")
   :type    :boolean
   :default false)
 
 (defsetting enable-nested-queries
-  "Allow using a saved question as the source for other queries?"
+  (tru "Allow using a saved question as the source for other queries?")
   :type    :boolean
   :default true)
 
 
 (defsetting enable-query-caching
-  "Enabling caching will save the results of queries that take a long time to run."
+  (tru "Enabling caching will save the results of queries that take a long time to run.")
   :type    :boolean
   :default false)
 
 (defsetting query-caching-max-kb
-  "The maximum size of the cache, per saved question, in kilobytes:"
+  (tru "The maximum size of the cache, per saved question, in kilobytes:")
   ;; (This size is a measurement of the length of *uncompressed* serialized result *rows*. The actual size of
   ;; the results as stored will vary somewhat, since this measurement doesn't include metadata returned with the
   ;; results, and doesn't consider whether the results are compressed, as the `:db` backend does.)
@@ -75,40 +101,34 @@
   :default 1000)
 
 (defsetting query-caching-max-ttl
-  "The absoulte maximum time to keep any cached query results, in seconds."
+  (tru "The absolute maximum time to keep any cached query results, in seconds.")
   :type    :integer
   :default (* 60 60 24 100)) ; 100 days
 
 (defsetting query-caching-min-ttl
-  "Metabase will cache all saved questions with an average query execution time longer than
-   this many seconds:"
+  (tru "Metabase will cache all saved questions with an average query execution time longer than this many seconds:")
   :type    :integer
   :default 60)
 
 (defsetting query-caching-ttl-ratio
-  "To determine how long each saved question's cached result should stick around, we take the
-   query's average execution time and multiply that by whatever you input here. So if a query
-   takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry
-   will persist for 20 minutes."
+  (str (tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
+       (tru "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
   :type    :integer
   :default 10)
 
 (defsetting breakout-bins-num
-  "When using the default binning strategy and a number of bins is not
-  provided, this number will be used as the default."
+  (tru "When using the default binning strategy and a number of bins is not provided, this number will be used as the default.")
   :type :integer
   :default 8)
 
 (defsetting breakout-bin-width
-  "When using the default binning strategy for a field of type
-  Coordinate (such as Latitude and Longitude), this number will be used
-  as the default bin width (in degrees)."
+  (tru "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), this number will be used as the default bin width (in degrees).")
   :type :double
   :default 10.0)
 
 (defn remove-public-uuid-if-public-sharing-is-disabled
-  "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it won't work).
-   Intended for use as part of a `post-select` implementation for Cards and Dashboards."
+  "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it
+   won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
   [object]
   (if (and (:public_uuid object)
            (not (enable-public-sharing)))
@@ -128,7 +148,8 @@
 
 
 (defn public-settings
-  "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end application."
+  "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end
+   application."
   []
   {:admin_email           (admin-email)
    :anon_tracking_enabled (anon-tracking-enabled)
@@ -142,9 +163,13 @@
    :ga_code               "UA-60817802-1"
    :google_auth_client_id (setting/get :google-auth-client-id)
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
+   :hide_embed_branding   (metastore/hide-embed-branding?)
    :ldap_configured       ((resolve 'metabase.integrations.ldap/ldap-configured?))
+   :available_locales     (available-locales-with-names)
    :map_tile_server_url   (map-tile-server-url)
+   :metastore_url         metastore/store-url
    :password_complexity   password/active-password-complexity
+   :premium_token         (metastore/premium-embedding-token)
    :public_sharing        (enable-public-sharing)
    :report_timezone       (setting/get :report-timezone)
    :setup_token           ((resolve 'metabase.setup/token-value))
@@ -152,6 +177,7 @@
    :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :timezones             common/timezones
-   :types                 (types/types->parents)
+   :types                 (types/types->parents :type/*)
+   :entities              (types/types->parents :entity/*)
    :version               config/mb-version-info
    :xray_max_cost         (setting/get :xray-max-cost)})

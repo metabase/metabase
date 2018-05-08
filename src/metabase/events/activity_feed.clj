@@ -15,7 +15,9 @@
 
 (def ^:const activity-feed-topics
   "The `Set` of event topics which are subscribed to for use in the Metabase activity feed."
-  #{:card-create
+  #{:alert-create
+    :alert-delete
+    :card-create
     :card-update
     :card-delete
     :dashboard-create
@@ -98,6 +100,16 @@
       :object      object
       :details-fn  details-fn)))
 
+(defn- process-alert-activity! [topic {:keys [card] :as alert}]
+  (let [details-fn #(select-keys (:card %) [:name])]
+    (activity/record-activity!
+      ;; Alerts are centered around a card/question. Users always interact with the alert via the question
+      :model       "card"
+      :model-id    (:id card)
+      :topic       topic
+      :object      alert
+      :details-fn  details-fn)))
+
 (defn- process-segment-activity! [topic object]
   (let [details-fn  #(select-keys % [:name :description :revision_message])
         table-id    (:table_id object)
@@ -123,7 +135,8 @@
     (db/insert! Activity, :topic "install", :model "install")))
 
 (def ^:private model->processing-fn
-  {"card"      process-card-activity!
+  {"alert"     process-alert-activity!
+   "card"      process-card-activity!
    "dashboard" process-dashboard-activity!
    "install"   process-install-activity!
    "metric"    process-metric-activity!

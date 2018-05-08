@@ -16,7 +16,7 @@
             [schema.core :as s]
             [metabase.sync.util :as sync-util]))
 
-(s/defn ^:always-validate sync-database!
+(s/defn sync-database!
   "Perform all the different sync operations synchronously for DATABASE.
    This is considered a 'full sync' in that all the different sync operations are performed at the same time.
    Please note that this function is *not* what is called by the scheduled tasks. Those call different steps
@@ -32,7 +32,7 @@
     (field-values/update-field-values! database)))
 
 
-(s/defn ^:always-validate sync-table!
+(s/defn sync-table!
   "Perform all the different sync operations synchronously for a given TABLE."
   [table :- i/TableInstance]
   (sync-metadata/sync-table-metadata! table)

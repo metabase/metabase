@@ -12,7 +12,7 @@
             [toucan.util.test :as tt]))
 
 ;; sum, *
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1 1211]
    [2 5710]
    [3 1845]
@@ -23,7 +23,7 @@
             (ql/breakout $price)))))
 
 ;; min, +
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1 10]
    [2  4]
    [3  4]
@@ -34,7 +34,7 @@
             (ql/breakout $price)))))
 
 ;; max, /
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1 94]
    [2 50]
    [3 26]
@@ -45,7 +45,7 @@
             (ql/breakout $price)))))
 
 ;; avg, -
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   (if (= *engine* :h2)
     [[1  55]
      [2  97]
@@ -61,7 +61,7 @@
             (ql/breakout $price)))))
 
 ;; post-aggregation math w/ 2 args: count + sum
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1  44]
    [2 177]
    [3  52]
@@ -73,7 +73,7 @@
             (ql/breakout $price)))))
 
 ;; post-aggregation math w/ 3 args: count + sum + count
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1  66]
    [2 236]
    [3  65]
@@ -86,7 +86,7 @@
             (ql/breakout $price)))))
 
 ;; post-aggregation math w/ a constant: count * 10
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1 220]
    [2 590]
    [3 130]
@@ -98,7 +98,7 @@
             (ql/breakout $price)))))
 
 ;; nested post-aggregation math: count + (count * sum)
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1  506]
    [2 7021]
    [3  520]
@@ -111,7 +111,7 @@
             (ql/breakout $price)))))
 
 ;; post-aggregation math w/ avg: count + avg
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   (if (= *engine* :h2)
     [[1  77]
      [2 107]
@@ -128,7 +128,7 @@
             (ql/breakout $price)))))
 
 ;; post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1 -92]
    [2 -96]
    [3 -74]
@@ -140,7 +140,7 @@
             (ql/breakout $price)))))
 
 ;; aggregation w/o field
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1 23]
    [2 60]
    [3 14]
@@ -150,8 +150,17 @@
             (ql/aggregation (ql/+ 1 (ql/count)))
             (ql/breakout $price)))))
 
+;; Sorting by an un-named aggregate expression
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
+  [[1 2] [2 2] [12 2] [4 4] [7 4] [10 4] [11 4] [8 8]]
+  (format-rows-by [int int]
+    (rows (data/run-query users
+            (ql/aggregation (ql/* (ql/count) 2))
+            (ql/breakout (ql/datetime-field $last_login :month-of-year))
+            (ql/order-by (ql/asc (ql/aggregation 0)))))))
+
 ;; aggregation with math inside the aggregation :scream_cat:
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1  44]
    [2 177]
    [3  52]
@@ -162,7 +171,7 @@
             (ql/breakout $price)))))
 
 ;; check that we can name an expression aggregation w/ aggregation at top-level
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   {:rows    [[1  44]
              [2 177]
              [3  52]
@@ -175,7 +184,7 @@
                          (ql/breakout $price)))))
 
 ;; check that we can name an expression aggregation w/ expression at top-level
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   {:rows    [[1 -19]
              [2  77]
              [3  -2]
@@ -188,7 +197,7 @@
                          (ql/breakout $price)))))
 
 ;; check that we can handle METRICS (ick) inside expression aggregation clauses
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[2 119]
    [3  40]
    [4  25]]
@@ -204,7 +213,7 @@
                           :breakout     [(ql/breakout (ql/field-id (data/id :venues :price)))]}})))))
 
 ;; check that we can handle METRICS (ick) inside a NAMED clause
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   {:rows    [[2 118]
              [3  39]
              [4  24]]
@@ -222,7 +231,7 @@
                                        :breakout     [(ql/breakout (ql/field-id (data/id :venues :price)))]}})))))
 
 ;; check that METRICS (ick) with a nested aggregation still work inside a NAMED clause
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   {:rows    [[2 118]
              [3  39]
              [4  24]]
@@ -240,7 +249,7 @@
                                        :breakout     [(ql/breakout (ql/field-id (data/id :venues :price)))]}})))))
 
 ;; check that named aggregations come back with the correct column metadata (#4002)
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   (let [col-name (driver/format-custom-field-name *driver* "Count of Things")]
     (assoc (aggregate-col :count)
       :name         col-name
@@ -253,7 +262,7 @@
       :data :cols first))
 
 ;; check that we can use cumlative count in expression aggregations
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[1000]]
   (format-rows-by [int]
     (rows (qp/process-query

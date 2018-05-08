@@ -1,26 +1,37 @@
+:root {
+  --modal-background-color: rgba(46, 53, 59, 0.6);
+  --modal-background-color-transition: rgba(46, 53, 59, 0.01);
+}
+
 .ModalContainer {
-    z-index: 4;
+  z-index: 4;
 }
 
 .Modal {
   margin: auto;
   width: 640px;
-  box-shadow: 0 0 6px rgba(0, 0, 0, .12);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.12);
   max-height: 90%;
   overflow-y: auto;
 }
 
 /* On IE11, single flex item with `margin: auto` gets shifted to flex end
  * https://github.com/philipwalton/flexbugs/issues/157
- * Set margin to zero when using Flexbox in `WindowModal` component 
+ * Set margin to zero when using Flexbox in `WindowModal` component
  */
-.Modal-backdrop > .Modal, .Modal-backdrop--dark > .Modal {
+.Modal-backdrop > .Modal {
   margin: 0;
 }
 
-.Modal.Modal--small   { width: 480px; } /* TODO - why is this one px? */
-.Modal.Modal--medium  { width: 65%; }
-.Modal.Modal--wide    { width: 85%; }
+.Modal.Modal--small {
+  width: 480px;
+} /* TODO - why is this one px? */
+.Modal.Modal--medium {
+  width: 65%;
+}
+.Modal.Modal--wide {
+  width: 85%;
+}
 
 .Modal.Modal--tall {
   min-height: 85%;
@@ -37,11 +48,7 @@
 }
 
 .Modal-backdrop {
-    background-color: rgba(255, 255, 255, 0.6);
-}
-
-.Modal-backdrop--dark {
-    background-color: rgba(75, 75, 75, 0.7);
+  background-color: var(--modal-background-color);
 }
 
 /* TRANSITIONS */
@@ -51,23 +58,22 @@
 .Modal-backdrop.Modal-appear,
 .Modal-backdrop.Modal-enter {
   transition: background-color 200ms ease-in-out;
-  background-color: rgba(255, 255, 255, 0.01);
+  background-color: var(--modal-background-color-transition);
 }
 
 .Modal-backdrop.Modal-appear-active,
 .Modal-backdrop.Modal-enter-active {
-  background-color: rgba(255, 255, 255, 0.6);
+  background-color: var(--modal-background-color);
 }
 
 .Modal-backdrop.Modal-leave {
   transition: background-color 200ms ease-in-out 100ms;
-  background-color: rgba(255, 255, 255, 0.6);
+  background-color: var(--modal-background-color);
 }
 
 .Modal-backdrop.Modal-leave-active {
-  background-color: rgba(255, 255, 255, 0.01);
+  background-color: var(--modal-background-color-transition);
 }
-
 
 /* modal */
 

@@ -1,25 +1,25 @@
 :local(.button) {
-    composes: flex align-center bg-white text-bold cursor-pointer from "style";
-    font-size: 16px;
-    border: 2px solid var(--brand-color);
-    border-radius: 4px;
-    min-height: 30px;
-    min-width: 100px;
-    padding: 0.25em 0.5em 0.25em 0.5em;
-    color: var(--default-font-color);
+  composes: flex align-center bg-white text-bold cursor-pointer from "style";
+  font-size: 16px;
+  border: 2px solid var(--brand-color);
+  border-radius: 4px;
+  min-height: 30px;
+  min-width: 100px;
+  padding: 0.25em 0.5em 0.25em 0.5em;
+  color: var(--default-font-color);
 }
 
 :local(.mapped) {
-    border-color: var(--green-color);
-    color: var(--green-color);
+  border-color: var(--green-color);
+  color: var(--green-color);
 }
 
 :local(.warn) {
-    border-color: var(--warning-color) !important;
-    color: var(--warning-color) !important;
+  border-color: var(--error-color) !important;
+  color: var(--error-color) !important;
 }
 
 :local(.disabled) {
-    composes: disabled from "style";
-    border-color: inherit;
+  composes: disabled from "style";
+  border-color: inherit;
 }

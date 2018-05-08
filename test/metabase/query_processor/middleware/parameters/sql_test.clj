@@ -1,23 +1,109 @@
 (ns metabase.query-processor.middleware.parameters.sql-test
+  "Tests for parameters in native SQL queries, which are of the `{{param}}` form."
   (:require [clj-time.core :as t]
             [expectations :refer :all]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :refer [engines-that-support first-row format-rows-by]]]
-            [metabase.query-processor.middleware.parameters.sql :refer :all]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+             [query-processor-test :refer [non-timeseries-engines-with-feature first-row format-rows-by]]]
+            [metabase.query-processor.middleware.parameters.sql :as sql :refer :all]
+            [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
              [generic-sql :as generic-sql]]
             [toucan.db :as db]))
 
-;;; ------------------------------------------------------------ simple substitution -- {{x}} ------------------------------------------------------------
+;;; ------------------------------------------ basic parser tests ------------------------------------------
+
+(defn- parse-template
+  ([sql]
+   (parse-template sql {}))
+  ([sql param-key->value]
+   (binding [metabase.query-processor.middleware.parameters.sql/*driver* (driver/engine->driver :h2)]
+     (#'sql/parse-template sql param-key->value))))
+
+(expect
+  {:query "select * from foo where bar=1"
+   :params []}
+  (parse-template "select * from foo where bar=1"))
+
+(expect
+  {:query "select * from foo where bar=?"
+   :params ["foo"]}
+  (parse-template "select * from foo where bar={{baz}}" {:baz "foo"}))
+
+(expect
+  {:query "select * from foo where bar = ?"
+   :params ["foo"]}
+  (parse-template "select * from foo [[where bar = {{baz}} ]]" {:baz "foo"}))
+
+;; Multiple optional clauses, all present
+(expect
+  {:query "select * from foo where bar1 = ? and bar2 = ? and bar3 = ? and bar4 = ?"
+   :params (repeat 4 "foo")}
+  (parse-template (str "select * from foo where bar1 = {{baz}} "
+                       "[[and bar2 = {{baz}}]] "
+                       "[[and bar3 = {{baz}}]] "
+                       "[[and bar4 = {{baz}}]]")
+                  {:baz "foo"}))
+
+;; Multiple optional clauses, none present
+(expect
+  {:query "select * from foo where bar1 = ?"
+   :params ["foo"]}
+  (parse-template (str "select * from foo where bar1 = {{baz}} "
+                       "[[and bar2 = {{none}}]] "
+                       "[[and bar3 = {{none}}]] "
+                       "[[and bar4 = {{none}}]]")
+                  {:baz "foo"}))
+
+(expect
+  {:query "select * from foobars  where foobars.id in (string_to_array(?, ',')::integer[])"
+   :params ["foo"]}
+  (parse-template "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"
+                  {:foobar_id "foo"}))
+
+(expect
+  {:query (str "SELECT [test_data.checkins.venue_id] AS [venue_id], "
+               "       [test_data.checkins.user_id] AS [user_id], "
+               "       [test_data.checkins.id] AS [checkins_id] "
+               "FROM [test_data.checkins] "
+               "LIMIT 2")
+   :params []}
+  (parse-template (str "SELECT [test_data.checkins.venue_id] AS [venue_id], "
+                       "       [test_data.checkins.user_id] AS [user_id], "
+                       "       [test_data.checkins.id] AS [checkins_id] "
+                       "FROM [test_data.checkins] "
+                       "LIMIT 2")))
+
+;; Valid syntax in PG
+(expect
+  {:query "SELECT array_dims(1 || '[0:1]={2,3}'::int[])"
+   :params []}
+  (parse-template "SELECT array_dims(1 || '[0:1]={2,3}'::int[])"))
+
+;; Testing that invalid/unterminated template params/clauses throw an exception
+(expect
+  java.lang.IllegalArgumentException
+  (parse-template "select * from foo [[where bar = {{baz}} " {:baz "foo"}))
+
+(expect
+  java.lang.IllegalArgumentException
+  (parse-template "select * from foo [[where bar = {{baz]]" {:baz "foo"}))
+
+(expect
+  java.lang.IllegalArgumentException
+  (parse-template "select * from foo {{bar}} {{baz" {:bar "foo" :baz "foo"}))
+
+(expect
+  java.lang.IllegalArgumentException
+  (parse-template "select * from foo [[clause 1 {{bar}}]] [[clause 2" {:bar "foo"}))
+
+;;; ------------------------------------------ simple substitution -- {{x}} ------------------------------------------
 
 (defn- substitute {:style/indent 1} [sql params]
-  (binding [metabase.query-processor.middleware.parameters.sql/*driver* (driver/engine->driver :h2)] ; apparently you can still bind private dynamic vars
+  ;; apparently you can still bind private dynamic vars
+  (binding [metabase.query-processor.middleware.parameters.sql/*driver* (driver/engine->driver :h2)]
     ((resolve 'metabase.query-processor.middleware.parameters.sql/expand-query-params)
      {:query sql}
      (into {} (for [[k v] params]
@@ -43,8 +129,7 @@
   (substitute "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
     {:toucans_are_cool true}))
 
-
-;;; ------------------------------------------------------------ optional substitution -- [[ ... {{x}} ... ]] ------------------------------------------------------------
+;;; ---------------------------------- optional substitution -- [[ ... {{x}} ... ]] ----------------------------------
 
 (expect
   {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
@@ -81,6 +166,13 @@
    :params []}
   (substitute "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = 'toucan']]"
     {:toucans_are_cool true}))
+
+;; Two parameters in an optional
+(expect
+  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
+   :params ["toucan"]}
+  (substitute "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}]]"
+    {:toucans_are_cool true, :bird_type "toucan"}))
 
 (expect
   {:query  "SELECT * FROM bird_facts"
@@ -180,25 +272,23 @@
     {:foobar_id 100}))
 
 
-;;; ------------------------------------------------------------ tests for value-for-tag ------------------------------------------------------------
-
-(tu/resolve-private-vars metabase.query-processor.middleware.parameters.sql value-for-tag)
+;;; -------------------------------------------- tests for value-for-tag ---------------------------------------------
 
 ;; variable -- specified
 (expect
   "2"
-  (value-for-tag {:name "id", :display_name "ID", :type "text", :required true, :default "100"}
-                 [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]))
+  (#'sql/value-for-tag {:name "id", :display_name "ID", :type "text", :required true, :default "100"}
+                       [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]))
 
 ;; variable -- unspecified
 (expect
   #metabase.query_processor.middleware.parameters.sql.NoValue{}
-  (value-for-tag {:name "id", :display_name "ID", :type "text"} nil))
+  (#'sql/value-for-tag {:name "id", :display_name "ID", :type "text"} nil))
 
 ;; variable -- default
 (expect
   "100"
-  (value-for-tag {:name "id", :display_name "ID", :type "text", :required true, :default "100"} nil))
+  (#'sql/value-for-tag {:name "id", :display_name "ID", :type "text", :required true, :default "100"} nil))
 
 ;; dimension -- specified
 (expect
@@ -208,8 +298,8 @@
    :param {:type   "date/range"
            :target ["dimension" ["template-tag" "checkin_date"]]
            :value  "2015-04-01~2015-05-01"}}
-  (into {} (value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
-                          [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}])))
+  (into {} (#'sql/value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
+                                [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}])))
 
 ;; dimension -- unspecified
 (expect
@@ -217,8 +307,8 @@
            :parent_id nil
            :table_id  (data/id :checkins)}
    :param nil}
-  (into {} (value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
-                          nil)))
+  (into {} (#'sql/value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
+                                nil)))
 
 ;; multiple values for the same tag should return a vector with multiple params instead of a single param
 (expect
@@ -231,12 +321,12 @@
            {:type   "date/single"
             :target ["dimension" ["template-tag" "checkin_date"]]
             :value  "2015-07-01"}]}
-  (into {} (value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
-                          [{:type "date/range",  :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-01-01~2016-09-01"}
-                           {:type "date/single", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-07-01"}])))
+  (into {} (#'sql/value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
+                                [{:type "date/range",  :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-01-01~2016-09-01"}
+                                 {:type "date/single", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-07-01"}])))
 
 
-;;; ------------------------------------------------------------ expansion tests: variables ------------------------------------------------------------
+;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
 (defn- expand* [query]
   (-> (expand (assoc query :driver (driver/engine->driver :h2)))
@@ -291,10 +381,10 @@
             :parameters [{:type "category", :target ["variable" ["template-tag" "category"]], :value "Gizmo"}]}))
 
 
-;;; ------------------------------------------------------------ expansion tests: dimensions ------------------------------------------------------------
+;;; ------------------------------------------ expansion tests: dimensions -------------------------------------------
 
 (defn- expand-with-dimension-param [dimension-param]
-  (with-redefs [t/now (fn [] (t/date-time 2016 06 07 12 0 0))]
+  (with-redefs [t/now (constantly (t/date-time 2016 06 07 12 0 0))]
     (expand* {:native     {:query "SELECT * FROM checkins WHERE {{date}};"
                            :template_tags {:date {:name "date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
               :parameters (when dimension-param
@@ -421,13 +511,14 @@
   (expand-with-dimension-param {:type "text", :value "100"}))
 
 
-;;; ------------------------------------------------------------ "REAL" END-TO-END-TESTS ------------------------------------------------------------
+;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
 (defn- quote-name [identifier]
   (generic-sql/quote-name datasets/*driver* identifier))
 
 (defn- checkins-identifier []
-  ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery and Presto we will just hackily return the correct identifier here
+  ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery and
+  ;; Presto we will just hackily return the correct identifier here
   (case datasets/*engine*
     :bigquery "[test_data.checkins]"
     :presto   "\"default\".\"checkins\""
@@ -439,7 +530,7 @@
 ;; as with the MBQL parameters tests Redshift and Crate fail for unknown reasons; disable their tests for now
 ;; Athena failed because the timestamp keyword is not supported
 (def ^:private ^:const sql-parameters-engines
-  (disj (engines-that-support :native-parameters) :redshift :crate :athena))
+  (disj (non-timeseries-engines-with-feature :native-parameters) :redshift :crate :athena))
 
 (defn- process-native {:style/indent 0} [& kvs]
   (qp/process-query
@@ -488,7 +579,7 @@
                     {:type "date/single", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-07-01"}]))))
 
 
-;;; ------------------------------------------------------------ SQL PARAMETERS 2.0 TESTS ------------------------------------------------------------
+;;; -------------------------------------------- SQL PARAMETERS 2.0 TESTS --------------------------------------------
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
 
@@ -547,3 +638,155 @@
                     :native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"
                                  :template_tags {:id {:name "id", :display_name "ID", :type "text"}}}
                     :parameters [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]})))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                            RELATIVE DATES & DEFAULTS IN "DIMENSION" PARAMS (#6059)                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Make sure relative date forms like `past5days` work correctly with Field Filters
+(expect
+  {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                       "FROM CHECKINS "
+                       "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
+                       "GROUP BY \"DATE\"")
+   :template_tags {:checkin_date {:name         "checkin_date"
+                                  :display_name "Checkin Date"
+                                  :type         "dimension"
+                                  :dimension    ["field-id" (data/id :checkins :date)]}}
+   :params        [#inst "2017-10-31T00:00:00.000000000-00:00"
+                   #inst "2017-11-04T00:00:00.000000000-00:00"]}
+  (with-redefs [t/now (constantly (t/date-time 2017 11 05 12 0 0))]
+    (:native (expand {:driver     (driver/engine->driver :h2)
+                      :native     {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                                                       "FROM CHECKINS "
+                                                       "WHERE {{checkin_date}} "
+                                                       "GROUP BY \"DATE\"")
+                                   :template_tags {:checkin_date {:name         "checkin_date"
+                                                                  :display_name "Checkin Date"
+                                                                  :type         "dimension"
+                                                                  :dimension    ["field-id" (data/id :checkins :date)]}}}
+                      :parameters [{:type   "date/range"
+                                    :target ["dimension" ["template-tag" "checkin_date"]]
+                                    :value  "past5days"}]}))))
+
+;; Make sure defaults values get picked up for field filter clauses
+(expect
+  {:field {:name "DATE", :parent_id nil, :table_id (data/id :checkins)}
+   :param {:type   "date/all-options"
+           :target ["dimension" ["template-tag" "checkin_date"]]
+           :value  "past5days"}}
+  (#'sql/dimension-value-for-tag {:name         "checkin_date"
+                                  :display_name "Checkin Date"
+                                  :type         "dimension"
+                                  :dimension    [:field-id (data/id :checkins :date)]
+                                  :default      "past5days"
+                                  :widget_type  "date/all-options"}
+                                 nil))
+
+;; Make sure we can specify the type of a default value for a "Dimension" (Field Filter) by setting the
+;; `:widget_type` key. Check that it works correctly with relative dates...
+(expect
+  {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                       "FROM CHECKINS "
+                       "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
+                       "GROUP BY \"DATE\"")
+   :template_tags {:checkin_date
+                   {:name         "checkin_date"
+                    :display_name "Checkin Date"
+                    :type         "dimension"
+                    :dimension    ["field-id" (data/id :checkins :date)]
+                    :default      "past5days"
+                    :widget_type  "date/all-options"}}
+   :params        [#inst "2017-10-31T00:00:00.000000000-00:00"
+                   #inst "2017-11-04T00:00:00.000000000-00:00"]}
+  (with-redefs [t/now (constantly (t/date-time 2017 11 05 12 0 0))]
+    (:native (expand {:driver (driver/engine->driver :h2)
+                      :native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                                                   "FROM CHECKINS "
+                                                   "WHERE {{checkin_date}} "
+                                                   "GROUP BY \"DATE\"")
+                               :template_tags {:checkin_date {:name         "checkin_date"
+                                                              :display_name "Checkin Date"
+                                                              :type         "dimension"
+                                                              :dimension    ["field-id" (data/id :checkins :date)]
+                                                              :default      "past5days"
+                                                              :widget_type  "date/all-options"}}}}))))
+
+;; Check that it works with absolute dates as well
+(expect
+  {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                       "FROM CHECKINS "
+                       "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ? "
+                       "GROUP BY \"DATE\"")
+   :template_tags {:checkin_date {:name         "checkin_date"
+                                  :display_name "Checkin Date"
+                                  :type         "dimension"
+                                  :dimension    ["field-id" (data/id :checkins :date)]
+                                  :default      "2017-11-14"
+                                  :widget_type  "date/all-options"}}
+   :params        [#inst "2017-11-14T00:00:00.000000000-00:00"]}
+  (:native (expand {:driver (driver/engine->driver :h2)
+                    :native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                                                 "FROM CHECKINS "
+                                                 "WHERE {{checkin_date}} "
+                                                 "GROUP BY \"DATE\"")
+                             :template_tags {:checkin_date {:name         "checkin_date"
+                                                            :display_name "Checkin Date"
+                                                            :type         "dimension"
+                                                            :dimension    ["field-id" (data/id :checkins :date)]
+                                                            :default      "2017-11-14"
+                                                            :widget_type  "date/all-options"}}}})))
+
+
+;;; ------------------------------- Multiple Value Support (comma-separated or array) --------------------------------
+
+;; Make sure using commas in numeric params treats them as separate IDs (#5457)
+(expect
+  "SELECT * FROM USERS where id IN (1, 2, 3)"
+  (-> (qp/process-query
+        {:database   (data/id)
+         :type       "native"
+         :native     {:query         "SELECT * FROM USERS [[where id IN ({{ids_list}})]]"
+                      :template_tags {:ids_list {:name         "ids_list"
+                                                 :display_name "Ids list"
+                                                 :type         "number"}}}
+         :parameters [{:type   "category"
+                       :target ["variable" ["template-tag" "ids_list"]]
+                       :value  "1,2,3"}]})
+      :data :native_form :query))
+
+
+;; make sure you can now also pass multiple values in by passing an array of values
+(expect
+  {:query         "SELECT * FROM CATEGORIES where name IN (?, ?, ?)"
+   :template_tags {:names_list {:name "names_list", :display_name "Names List", :type "text"}}
+   :params        ["BBQ" "Bakery" "Bar"]}
+  (:native (expand
+            {:driver     (driver/engine->driver :h2)
+             :native     {:query         "SELECT * FROM CATEGORIES [[where name IN ({{names_list}})]]"
+                          :template_tags {:names_list {:name         "names_list"
+                                                       :display_name "Names List"
+                                                       :type         "text"}}}
+             :parameters [{:type   "category"
+                           :target ["variable" ["template-tag" "names_list"]]
+                           :value  ["BBQ", "Bakery", "Bar"]}]})))
+
+;; Make sure arrays of values also work for 'field filter' params
+(expect
+  {:query         "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"USERS\".\"ID\" IN (?, ?, ?)",
+   :template_tags {:names_list {:name         "names_list"
+                                :display_name "Names List"
+                                :type         "dimension"
+                                :dimension    ["field-id" (data/id :users :id)]}}
+   :params        ["BBQ" "Bakery" "Bar"]}
+  (:native (expand
+            {:driver     (driver/engine->driver :h2)
+             :native     {:query         "SELECT * FROM CATEGORIES WHERE {{names_list}}"
+                          :template_tags {:names_list {:name         "names_list"
+                                                       :display_name "Names List"
+                                                       :type         "dimension"
+                                                       :dimension    ["field-id" (data/id :users :id)]}}}
+             :parameters [{:type   "text"
+                           :target ["dimension" ["template-tag" "names_list"]]
+                           :value  ["BBQ", "Bakery", "Bar"]}]})))

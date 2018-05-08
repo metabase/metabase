@@ -5,17 +5,24 @@
              [db :as db]
              [models :as models]]))
 
-(def ^:const ^Integer low-cardinality-threshold
-  "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`."
-  300)
+(def ^:const ^Integer category-cardinality-threshold
+  "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`.
+  This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
+  frontend behavior such as widget choices."
+  (int 30))
+
+(def ^:const ^Integer list-cardinality-threshold
+  "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means the
+  Field should have FieldValues."
+  (int 100))
 
 (def ^:private ^:const ^Integer entry-max-length
   "The maximum character length for a stored `FieldValues` entry."
-  100)
+  (int 100))
 
 (def ^:private ^:const ^Integer total-max-length
   "Maximum total length for a `FieldValues` entry (combined length of all values for the field)."
-  (* low-cardinality-threshold entry-max-length))
+  (int (* list-cardinality-threshold entry-max-length)))
 
 
 ;; ## Entity + DB Multimethods
@@ -35,20 +42,18 @@
 (defn field-should-have-field-values?
   "Should this `Field` be backed by a corresponding `FieldValues` object?"
   {:arglists '([field])}
-  [{:keys [base_type special_type visibility_type] :as field}]
-  {:pre [visibility_type
+  [{base-type :base_type, visibility-type :visibility_type, has-field-values :has_field_values, :as field}]
+  {:pre [visibility-type
          (contains? field :base_type)
-         (contains? field :special_type)]}
-  (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility_type)))
-       (not (isa? (keyword base_type) :type/DateTime))
-       (or (isa? (keyword base_type) :type/Boolean)
-           (isa? (keyword special_type) :type/Category)
-           (isa? (keyword special_type) :type/Enum))))
+         (contains? field :has_field_values)]}
+  (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
+       (not (isa? (keyword base-type) :type/DateTime))
+       (= has-field-values "list")))
 
 
 (defn- values-less-than-total-max-length?
-  "`true` if the combined length of all the values in DISTINCT-VALUES is below the
-   threshold for what we'll allow in a FieldValues entry. Does some logging as well."
+  "`true` if the combined length of all the values in DISTINCT-VALUES is below the threshold for what we'll allow in a
+  FieldValues entry. Does some logging as well."
   [distinct-values]
   (let [total-length (reduce + (map (comp count str)
                                     distinct-values))]
@@ -59,19 +64,21 @@
                    "FieldValues are NOT allowed for this Field.")))))
 
 (defn- cardinality-less-than-threshold?
-  "`true` if the number of DISTINCT-VALUES is less that `low-cardinality-threshold`.
+  "`true` if the number of DISTINCT-VALUES is less that `list-cardinality-threshold`.
    Does some logging as well."
   [distinct-values]
   (let [num-values (count distinct-values)]
-    (u/prog1 (<= num-values low-cardinality-threshold)
+    (u/prog1 (<= num-values list-cardinality-threshold)
       (log/debug (if <>
-                   (format "Field has %d distinct values (max %d). FieldValues are allowed for this Field." num-values low-cardinality-threshold)
-                   (format "Field has over %d values. FieldValues are NOT allowed for this Field." low-cardinality-threshold))))))
+                   (format "Field has %d distinct values (max %d). FieldValues are allowed for this Field."
+                           num-values list-cardinality-threshold)
+                   (format "Field has over %d values. FieldValues are NOT allowed for this Field."
+                           list-cardinality-threshold))))))
 
 
 (defn- distinct-values
-  "Fetch a sequence of distinct values for FIELD that are below the `total-max-length` threshold.
-   If the values are past the threshold, this returns `nil`."
+  "Fetch a sequence of distinct values for FIELD that are below the `total-max-length` threshold. If the values are past
+  the threshold, this returns `nil`."
   [field]
   (require 'metabase.db.metadata-queries)
   (let [values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)]
@@ -80,11 +87,9 @@
         values))))
 
 (defn- fixup-human-readable-values
-  "Field values and human readable values are lists that are zipped
-  together. If the field values have changes, the human readable
-  values will need to change too. This function reconstructs the
-  human_readable_values to reflect `NEW-VALUES`. If a new field value
-  is found, a string version of that is used"
+  "Field values and human readable values are lists that are zipped together. If the field values have changes, the
+  human readable values will need to change too. This function reconstructs the human_readable_values to reflect
+  `NEW-VALUES`. If a new field value is found, a string version of that is used"
   [{old-values :values, old-hrv :human_readable_values} new-values]
   (when (seq old-hrv)
     (let [orig-remappings (zipmap old-values old-hrv)]
@@ -120,7 +125,7 @@
 
 (defn field-values->pairs
   "Returns a list of pairs (or single element vectors if there are no human_readable_values) for the given
-   `FIELD-VALUES` instance."
+  `FIELD-VALUES` instance."
   [{:keys [values human_readable_values] :as field-values}]
   (if (seq human_readable_values)
     (map vector values human_readable_values)
@@ -152,8 +157,8 @@
 
 (defn- table-ids->table-id->is-on-demand?
   "Given a collection of TABLE-IDS return a map of Table ID to whether or not its Database is subject to 'On Demand'
-   FieldValues updating. This means the FieldValues for any Fields belonging to the Database should be updated only
-   when they are used in new Dashboard or Card parameters."
+  FieldValues updating. This means the FieldValues for any Fields belonging to the Database should be updated only
+  when they are used in new Dashboard or Card parameters."
   [table-ids]
   (let [table-ids            (set table-ids)
         table-id->db-id      (when (seq table-ids)
@@ -166,11 +171,12 @@
 
 (defn update-field-values-for-on-demand-dbs!
   "Update the FieldValues for any Fields with FIELD-IDS if the Field should have FieldValues and it belongs to a
-   Database that is set to do 'On-Demand' syncing."
+  Database that is set to do 'On-Demand' syncing."
   [field-ids]
   (let [fields (when (seq field-ids)
                  (filter field-should-have-field-values?
-                         (db/select ['Field :name :id :base_type :special_type :visibility_type :table_id]
+                         (db/select ['Field :name :id :base_type :special_type :visibility_type :table_id
+                                     :has_field_values]
                            :id [:in field-ids])))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
     (doseq [{table-id :table_id, :as field} fields]

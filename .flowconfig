@@ -1,8 +1,13 @@
 [ignore]
 .*/node_modules/react/node_modules/.*
 .*/node_modules/postcss-import/node_modules/.*
+.*/node_modules/react-resizable/.*
 .*/node_modules/documentation/.*
 .*/node_modules/.*/\(lib\|test\).*\.json$
+.*/node_modules/react-element-to-jsx-string/.*
+.*/node_modules/react-element-to-jsx-string/.*
+.*/node_modules/resize-observer-polyfill/.*
+.*/node_modules/react-virtualized/.*
 
 [include]
 .*/frontend/.*

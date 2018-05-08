@@ -14,11 +14,11 @@
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                             PERMISSIONS GRAPH ENDPOINTS                                                              |
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; ---------------------------------------- DeJSONifaction ----------------------------------------
+;;; ------------------------------------------------- DeJSONifaction -------------------------------------------------
 
 (defn- ->int [id] (Integer/parseInt (name id)))
 
@@ -44,12 +44,13 @@
              {(->int group-id) (dejsonify-dbs dbs)})))
 
 (defn- dejsonify-graph
-  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and parsing object keys as integers."
+  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
+  parsing object keys as integers."
   [graph]
   (update graph :groups dejsonify-groups))
 
 
-;;; ---------------------------------------- Endpoints ----------------------------------------
+;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
 (api/defendpoint GET "/graph"
   "Fetch a graph of all Permissions."
@@ -59,14 +60,14 @@
 
 
 (api/defendpoint PUT "/graph"
-  "Do a batch update of Permissions by passing in a modified graph. This should return the same graph,
-   in the same format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever neccesary.
-   This modified graph must correspond to the `PermissionsGraph` schema.
-   If successful, this endpoint returns the updated permissions graph; use this as a base for any further modifications.
+  "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
+  format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever neccesary. This
+  modified graph must correspond to the `PermissionsGraph` schema. If successful, this endpoint returns the updated
+  permissions graph; use this as a base for any further modifications.
 
-   Revisions to the permissions graph are tracked. If you fetch the permissions graph and some other third-party modifies it before you can submit
-   you revisions, the endpoint will instead make no changes andr eturn a 409 (Conflict) response. In this case, you should fetch the updated graph
-   and make desired changes to that."
+  Revisions to the permissions graph are tracked. If you fetch the permissions graph and some other third-party
+  modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
+  409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
@@ -74,19 +75,20 @@
   (perms/graph))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                             PERMISSIONS GROUP ENDPOINTS                                                              |
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- group-id->num-members
-  "Return a map of `PermissionsGroup` ID -> number of members in the group.
-  (This doesn't include entries for empty groups.)"
+  "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
+  groups.)"
   []
-  (into {} (for [{:keys [group_id members]} (db/query {:select    [[:pgm.group_id :group_id] [:%count.pgm.id :members]]
-                                                       :from      [[:permissions_group_membership :pgm]]
-                                                       :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
-                                                       :where     [:= :user.is_active true]
-                                                       :group-by  [:pgm.group_id]})]
+  (into {} (for [{:keys [group_id members]} (db/query
+                                             {:select    [[:pgm.group_id :group_id] [:%count.pgm.id :members]]
+                                              :from      [[:permissions_group_membership :pgm]]
+                                              :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
+                                              :where     [:= :user.is_active true]
+                                              :group-by  [:pgm.group_id]})]
              {group_id members})))
 
 (defn- ordered-groups
@@ -141,7 +143,7 @@
   api/generic-204-no-content)
 
 
-;;; ---------------------------------------- Group Membership Endpoints ----------------------------------------
+;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
 
 (api/defendpoint GET "/membership"
   "Fetch a map describing the group memberships of various users.
@@ -162,7 +164,8 @@
   (db/insert! PermissionsGroupMembership
     :group_id group_id
     :user_id  user_id)
-  ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and let the frontend add it ass appropriate
+  ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
+  ;; let the frontend add it ass appropriate
   (group/members {:id group_id}))
 
 (api/defendpoint DELETE "/membership/:id"

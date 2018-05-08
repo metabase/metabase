@@ -19,6 +19,29 @@
   ([^Histogram histogram] histogram)
   ([^Histogram histogram x] (impl/insert-categorical! histogram (when x 1) x)))
 
+(defn map->histogram
+  "Transducer that summarizes preaggregated numerical data with a histogram."
+  [fbin fcount]
+  (fn
+    ([] (impl/create))
+    ([^Histogram histogram] histogram)
+    ([^Histogram histogram e]
+     (impl/insert-bin! histogram {:mean  (fbin e)
+                                  :count (-> e fcount double)}))))
+
+(defn map->histogram-categorical
+  "Transducer that summarizes preaggregated categorical data with a histogram."
+  [fbin fcount]
+  (fn
+    ([] (impl/create :group-types [:categorical]))
+    ([^Histogram histogram] histogram)
+    ([^Histogram histogram e]
+     (let [[bin count] ((juxt fbin (comp double fcount)) e)]
+       (impl/insert-bin! histogram {:mean  1.0
+                                    :count count
+                                    :target {:counts        {bin count}
+                                             :missing-count 0.0}})))))
+
 (def ^{:arglists '([^Histogram histogram])} categorical?
   "Returns true if given histogram holds categorical values."
   (comp (complement #{:none :unset}) impl/target-type))
@@ -37,20 +60,33 @@
   (+ (impl/total-count histogram)
      (nil-count histogram)))
 
+(defn iqr
+  "Return interquartile range for a given histogram.
+   https://en.wikipedia.org/wiki/Interquartile_range"
+  [^Histogram histogram]
+  {:pre [(not (categorical? histogram))]}
+  (when-not (empty? histogram)
+    (let [{q1 0.25 q3 0.75} (impl/percentiles histogram 0.25 0.75)]
+      {:iqr (- q3 q1)
+       :q1  q1
+       :q3  q3})))
+
 (defn optimal-bin-width
   "Determine optimal bin width (and consequently number of bins) for a given
    histogram using Freedman-Diaconis rule.
    https://en.wikipedia.org/wiki/Freedman%E2%80%93Diaconis_rule"
   [^Histogram histogram]
   {:pre [(not (categorical? histogram))]}
-  (when-not (empty? histogram)
-    (let [{first-q 0.25 third-q 0.75} (impl/percentiles histogram 0.25 0.75)]
-      (* 2 (- third-q first-q) (math/pow (impl/total-count histogram) (/ -3))))))
+  (some-> histogram
+          iqr
+          :iqr
+          (* 2 (math/pow (impl/total-count histogram)
+                         (/ -3)))))
 
 (defn equidistant-bins
   "Split histogram into `bin-width` wide bins. If `bin-width` is not given use
    `optimal-bin-width` to calculate optimal width. Optionally takes `min` and
-   `max` and projects histogram into that interval rather than hisogram bounds."
+   `max` and projects histogram into that interval rather than histogram bounds."
   ([^Histogram histogram]
    (if (categorical? histogram)
      (-> histogram impl/bins first :target :counts)

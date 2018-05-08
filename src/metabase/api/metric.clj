@@ -8,6 +8,7 @@
              [metric :as metric :refer [Metric]]
              [revision :as revision]
              [table :refer [Table]]]
+            [metabase.related :as related]
             [metabase.util.schema :as su]
             [toucan
              [db :as db]
@@ -56,7 +57,8 @@
   (api/check-superuser)
   (api/write-check Metric id)
   (metric/update-metric!
-   (assoc (select-keys body #{:caveats :definition :description :how_is_this_calculated :name :points_of_interest :revision_message :show_in_getting_started})
+   (assoc (select-keys body #{:caveats :definition :description :how_is_this_calculated :name :points_of_interest
+                              :revision_message :show_in_getting_started})
      :id id)
    api/*current-user-id*))
 
@@ -111,5 +113,9 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id))
 
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Metric api/read-check related/related))
 
 (api/define-routes)

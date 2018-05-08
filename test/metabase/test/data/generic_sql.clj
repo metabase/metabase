@@ -8,6 +8,7 @@
              [helpers :as h]]
             [medley.core :as m]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.test.data.interface :as i]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
@@ -15,7 +16,7 @@
            java.sql.SQLException
            [metabase.test.data.interface DatabaseDefinition FieldDefinition TableDefinition]))
 
-;;; ## ------------------------------------------------------------ IGenericDatasetLoader + default impls ------------------------------------------------------------
+;;; ----------------------------------- IGenericSQLTestExtensions + default impls ------------------------------------
 
 (defprotocol IGenericSQLTestExtensions
   "Methods for loading `DatabaseDefinition` in a SQL database.
@@ -57,20 +58,23 @@
                              [this, ^String database-name, ^String table-name]
                              [this, ^String database-name, ^String table-name, ^String field-name]
     "*Optional*. Return a vector of String names that can be used to refer to a database, table, or field.
-     This is provided so drivers have the opportunity to inject things like schema names or even modify the names themselves.
+ This is provided so drivers have the opportunity to inject things like schema names or even modify the names
+ themselves.
 
-       (qualified-name-components [driver \"my-db\" \"my-table\"]) -> [\"my-db\" \"dbo\" \"my-table\"]
+    (qualified-name-components [driver \"my-db\" \"my-table\"]) -> [\"my-db\" \"dbo\" \"my-table\"]
 
-     By default, this qualifies field names with their table name, but otherwise does no other specific qualification.")
+ By default, this qualifies field names with their table name, but otherwise does no other specific
+ qualification.")
 
+  ;; TODO - why can't we just use `honeysql.core/format` with the `:quoting` options set to the driver's `quote-style`?
   (quote-name ^String [this, ^String nm]
     "*Optional*. Quote a name. Defaults to using double quotes.")
 
   (qualify+quote-name ^String [this, ^String database-name]
                       ^String [this, ^String database-name, ^String table-name]
                       ^String [this, ^String database-name, ^String table-name, ^String field-name]
-    "*Optional*. Qualify names and combine into a single, quoted name. By default, this combines the results of `qualified-name-components`
-     and `quote-name`.
+    "*Optional*. Qualify names and combine into a single, quoted name. By default, this combines the results of
+     `qualified-name-components`and `quote-name`.
 
        (qualify+quote-name [driver \"my-db\" \"my-table\"]) -> \"my-db\".\"dbo\".\"my-table\"")
 
@@ -81,7 +85,7 @@
   (load-data! [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
     "*Optional*. Load the rows for a specific table into a DB. `load-data-chunked` is the default implementation.")
 
-  (execute-sql! [driver ^Keyword context, ^DatabaseDefinition dbdef, ^String sql]
+  (^{:style/indent 2} execute-sql! [driver ^Keyword context, ^DatabaseDefinition dbdef, ^String sql]
     "*Optional*. Execute a string of raw SQL. Context is either `:server` or `:db`."))
 
 
@@ -110,7 +114,8 @@
   (format "DROP TABLE IF EXISTS %s;" (qualify+quote-name driver database-name table-name)))
 
 (defn drop-table-if-exists-cascade-sql
-  "Alternate implementation of `drop-table-if-exists-sql` that adds `CASCADE` to the statement for DBs that support it."
+  "Alternate implementation of `drop-table-if-exists-sql` that adds `CASCADE` to the statement for DBs that support
+  it."
   [driver {:keys [database-name]} {:keys [table-name]}]
   (format "DROP TABLE IF EXISTS %s CASCADE;" (qualify+quote-name driver database-name table-name)))
 
@@ -138,6 +143,7 @@
                (name (hx/qualify-and-escape-dots (quote-name driver n))))))
 
 (defn- default-qualify+quote-name
+  ;; TODO - what about schemas?
   ([driver db-name]
    (quote+combine-names driver (qualified-name-components driver db-name)))
   ([driver db-name table-name]
@@ -153,8 +159,10 @@
 
 ;; Since different DBs have constraints on how we can do this, the logic is broken out into a few different functions
 ;; you can compose together a driver that works with a given DB.
-;; (ex. SQL Server has a low limit on how many ? args we can have in a prepared statement, so it needs to be broken out into chunks;
-;;  Oracle doesn't understand the normal syntax for inserting multiple rows at a time so we'll insert them one-at-a-time instead)
+;;
+;; (ex. SQL Server has a low limit on how many ? args we can have in a prepared statement, so it needs to be broken
+;;  out into chunks; Oracle doesn't understand the normal syntax for inserting multiple rows at a time so we'll insert
+;;  them one-at-a-time instead)
 
 (defn load-data-get-rows
   "Get a sequence of row maps for use in a `insert!` when loading table data."
@@ -163,12 +171,14 @@
                                 (:field-definitions tabledef))]
     (for [row (:rows tabledef)]
       (zipmap fields-for-insert (for [v row]
-                                  (if (instance? java.util.Date v)
+                                  (if (and (not (instance? java.sql.Time v))
+                                           (instance? java.util.Date v))
                                     (u/->Timestamp v)
                                     v))))))
 
 (defn load-data-add-ids
-  "Add IDs to each row, presumabily for doing a parallel insert. This arg should go before `load-data-chunked` or `load-data-one-at-a-time`."
+  "Add IDs to each row, presumabily for doing a parallel insert. This arg should go before `load-data-chunked` or
+  `load-data-one-at-a-time`."
   [insert!]
   (fn [rows]
     (insert! (vec (for [[i row] (m/indexed rows)]
@@ -205,7 +215,7 @@
         columns     (keys (first rows))
         values      (for [row rows]
                       (for [value (map row columns)]
-                        (sql/prepare-value driver {:value value})))
+                        (sqlqp/->honeysql driver value)))
         hsql-form   (-> (apply h/columns (for [column columns]
                                            (hx/qualify-and-escape-dots (prepare-key column))))
                         (h/insert-into (prepare-key table-name))
@@ -220,8 +230,8 @@
            (jdbc/print-sql-exception-chain e)))))
 
 (defn make-load-data-fn
-  "Create a `load-data!` function. This creates a function to actually insert a row or rows, wraps it with any WRAP-INSERT-FNS,
-   the calls the resulting function with the rows to insert."
+  "Create a `load-data!` function. This creates a function to actually insert a row or rows, wraps it with any
+  WRAP-INSERT-FNS, the calls the resulting function with the rows to insert."
   [& wrap-insert-fns]
   (fn [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
     (jdbc/with-db-connection [conn (database->spec driver :db dbdef)]
@@ -238,7 +248,11 @@
 (def load-data-one-at-a-time-parallel! "Insert rows one at a time, in parallel."              (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
 ;; ^ the parallel versions aren't neccesarily faster than the sequential versions for all drivers so make sure to do some profiling in order to pick the appropriate implementation
 
-(defn default-execute-sql! [driver context dbdef sql]
+(defn- jdbc-execute! [db-spec sql]
+  (jdbc/execute! db-spec [sql] {:transaction? false, :multi? true}))
+
+(defn default-execute-sql! [driver context dbdef sql & {:keys [execute!]
+                                                        :or   {execute! jdbc-execute!}}]
   (let [sql (some-> sql s/trim)]
     (when (and (seq sql)
                ;; make sure SQL isn't just semicolons
@@ -246,7 +260,7 @@
       ;; Remove excess semicolons, otherwise snippy DBs like Oracle will barf
       (let [sql (s/replace sql #";+" ";")]
         (try
-          (jdbc/execute! (database->spec driver context dbdef) [sql] {:transaction? false, :multi? true})
+          (execute! (database->spec driver context dbdef) sql)
           (catch SQLException e
             (println "Error executing SQL:" sql)
             (printf "Caught SQLException:\n%s\n"
@@ -257,7 +271,6 @@
             (printf "Caught Exception: %s %s\n%s\n" (class e) (.getMessage e)
                     (with-out-str (.printStackTrace e)))
             (throw e)))))))
-
 
 (def DefaultsMixin
   "Default implementations for methods marked *Optional* in `IGenericSQLTestExtensions`."
@@ -276,19 +289,19 @@
    :quote-name                default-quote-name})
 
 
-;; ## ------------------------------------------------------------ IDriverTestExtensions impl ------------------------------------------------------------
+;;; ------------------------------------------- IDriverTestExtensions impl -------------------------------------------
 
 (defn sequentially-execute-sql!
   "Alternative implementation of `execute-sql!` that executes statements one at a time for drivers
-   that don't support executing multiple statements at once.
+  that don't support executing multiple statements at once.
 
-   Since there are some cases were you might want to execute compound statements without splitting, an upside-down ampersand (`⅋`) is understood as an
-   \"escaped\" semicolon in the resulting SQL statement."
-  [driver context dbdef sql]
+  Since there are some cases were you might want to execute compound statements without splitting, an upside-down
+  ampersand (`⅋`) is understood as an \"escaped\" semicolon in the resulting SQL statement."
+  [driver context dbdef sql  & {:keys [execute!] :or {execute! default-execute-sql!}}]
   (when sql
     (doseq [statement (map s/trim (s/split sql #";+"))]
       (when (seq statement)
-        (default-execute-sql! driver context dbdef (s/replace statement #"⅋" ";"))))))
+        (execute! driver context dbdef (s/replace statement #"⅋" ";"))))))
 
 (defn- create-db! [driver {:keys [table-definitions], :as dbdef}]
   ;; Exec SQL for creating the DB
@@ -325,8 +338,8 @@
   ((resolve 'metabase.test.data.datasets/do-when-testing-engine) engine f))
 
 (defn execute-when-testing!
-  "Execute a prepared SQL-AND-ARGS against Database with spec returned by GET-CONNECTION-SPEC only when running tests against ENGINE.
-   Useful for doing engine-specific setup or teardown."
+  "Execute a prepared SQL-AND-ARGS against Database with spec returned by GET-CONNECTION-SPEC only when running tests
+  against ENGINE. Useful for doing engine-specific setup or teardown."
   {:style/indent 2}
   [engine get-connection-spec & sql-and-args]
   (do-when-testing-engine engine
@@ -336,8 +349,9 @@
       (println (u/format-color 'blue "[OK]")))))
 
 (defn query-when-testing!
-  "Execute a prepared SQL-AND-ARGS **query** against Database with spec returned by GET-CONNECTION-SPEC only when running tests against ENGINE.
-   Useful for doing engine-specific setup or teardown where `execute-when-testing!` won't work because the query returns results."
+  "Execute a prepared SQL-AND-ARGS **query** against Database with spec returned by GET-CONNECTION-SPEC only when
+  running tests against ENGINE. Useful for doing engine-specific setup or teardown where `execute-when-testing!` won't
+  work because the query returns results."
   {:style/indent 2}
   [engine get-connection-spec & sql-and-args]
   (do-when-testing-engine engine

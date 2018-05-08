@@ -1,16 +1,35 @@
 (ns metabase.driver
-  (:require [clj-time.format :as tformat]
+  "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
+  introspecting their schemas and processing and running MBQL queries. Each Metabase driver lives in a namespace like
+  `metabase.driver.<driver>`, e.g. `metabase.driver.postgres`. Each driver must implement the `IDriver` protocol
+  below.
+
+  JDBC-based drivers for SQL databases can use the 'Generic SQL' driver which acts as a sort of base class and
+  implements most of this protocol. Instead, those drivers should implement the `ISQLDriver` protocol which can be
+  found in `metabase.driver.generic-sql`.
+
+  This namespace also contains various other functions for fetching drivers, testing database connections, and the
+  like."
+  (:require [clj-time
+             [coerce :as tcoerce]
+             [core :as time]
+             [format :as tformat]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.models
              [database :refer [Database]]
-             [setting :refer [defsetting]]]
+             field
+             [setting :refer [defsetting]]
+             table]
             [metabase.sync.interface :as si]
             [metabase.util :as u]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
+            [puppetlabs.i18n.core :refer [trs tru]]
             [toucan.db :as db])
   (:import clojure.lang.Keyword
+           java.text.SimpleDateFormat
            metabase.models.database.DatabaseInstance
            metabase.models.field.FieldInstance
            metabase.models.table.TableInstance
@@ -21,15 +40,23 @@
 
 (def connection-error-messages
   "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
-  {:cannot-connect-check-host-and-port "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
-   :ssh-tunnel-auth-fail               "We couldn't connect to the ssh tunnel host. Check the username, password"
-   :ssh-tunnel-connection-fail         "We couldn't connect to the ssh tunnel host. Check the hostname and port"
-   :database-name-incorrect            "Looks like the database name is incorrect."
-   :invalid-hostname                   "It looks like your host is invalid. Please double-check it and try again."
-   :password-incorrect                 "Looks like your password is incorrect."
-   :password-required                  "Looks like you forgot to enter your password."
-   :username-incorrect                 "Looks like your username is incorrect."
-   :username-or-password-incorrect     "Looks like the username or password is incorrect."})
+  {:cannot-connect-check-host-and-port (str (tru "Hmm, we couldn''t connect to the database.")
+                                            " "
+                                            (tru "Make sure your host and port settings are correct"))
+   :ssh-tunnel-auth-fail               (str (tru "We couldn''t connect to the ssh tunnel host.")
+                                            " "
+                                            (tru "Check the username, password."))
+   :ssh-tunnel-connection-fail         (str (tru "We couldn''t connect to the ssh tunnel host.")
+                                            " "
+                                            (tru "Check the hostname and port."))
+   :database-name-incorrect            (tru "Looks like the database name is incorrect.")
+   :invalid-hostname                   (str (tru "It looks like your host is invalid.")
+                                            " "
+                                            (tru "Please double-check it and try again."))
+   :password-incorrect                 (tru "Looks like your password is incorrect.")
+   :password-required                  (tru "Looks like you forgot to enter your password.")
+   :username-incorrect                 (tru "Looks like your username is incorrect.")
+   :username-or-password-incorrect     (tru "Looks like the username or password is incorrect.")})
 
 (defprotocol IDriver
   "Methods that Metabase drivers must implement. Methods marked *OPTIONAL* have default implementations in
@@ -99,7 +126,7 @@
 
       Is this property required? Defaults to `false`.")
 
-  (execute-query ^java.util.Map [this, ^java.util.Map query]
+  (^{:style/indent 1} execute-query ^java.util.Map [this, ^java.util.Map query]
     "Execute a query against the database and return the results.
 
   The query passed in will contain:
@@ -126,12 +153,16 @@
       everything besides standard deviation is considered \"basic\"; only GA doesn't support this).
   *  `:standard-deviation-aggregations` - Does this driver support standard deviation aggregations?
   *  `:expressions` - Does this driver support expressions (e.g. adding the values of 2 columns together)?
-  *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
   *  `:native-parameters` - Does the driver support parameter substitution on native queries?
   *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like
       \"sum(x) + count(y)\" or \"avg(x + y)\"
   *  `:nested-queries` - Does the driver support using a query as the `:source-query` of another MBQL query? Examples
-      are CTEs or subselects in SQL queries.")
+      are CTEs or subselects in SQL queries.
+  *  `:no-case-sensitivity-string-filter-options` - An anti-feature: does this driver not let you specify whether or not
+      our string search filter clauses (`:contains`, `:starts-with`, and `:ends-with`, collectively the equivalent of
+      SQL `LIKE` are case-senstive or not? This informs whether we should present you with the 'Case Sensitive' checkbox
+      in the UI. At the time of this writing SQLite, SQLServer, and MySQL have this 'feature' -- `LIKE` clauses are
+      always case-insensitive.")
 
   (format-custom-field-name ^String [this, ^String custom-field-name]
     "*OPTIONAL*. Return the custom name passed via an MBQL `:named` clause so it matches the way it is returned in the
@@ -163,7 +194,7 @@
                  SELECT * FROM my_table\"}")
 
   (notify-database-updated [this, ^DatabaseInstance database]
-    "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in
+    "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed. This is specifically relevant in
      the event that the driver was doing some caching or connection pooling.")
 
   (process-query-in-context [this, ^clojure.lang.IFn qp]
@@ -177,7 +208,7 @@
          (fn [query]
            (qp query)))")
 
-  (sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
+  (^{:style/indent 2} sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
     "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as
      `sync-database!`. The sync operation itself is encapsulated as the lambda F, which must be called with no
      arguments.
@@ -194,8 +225,13 @@
      table. As such, the results are not expected to be returned lazily. There is no expectation that the results be
      returned in any given order.")
 
-  (current-db-time ^DateTime [this ^DatabaseInstance database]
-    "Returns the current time and timezone from the perspective of `DATABASE`."))
+  (current-db-time ^org.joda.time.DateTime [this ^DatabaseInstance database]
+    "Returns the current time and timezone from the perspective of `DATABASE`.")
+
+  (default-to-case-sensitive? ^Boolean [this]
+    "Should this driver default to case-sensitive string search filter clauses (e.g. `starts-with` or `contains`)? The
+    default is `true` since that was the behavior of all drivers with the exception of GA before `0.29.0` when we
+    introduced case-insensitive string search filters as an option."))
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
@@ -211,12 +247,13 @@
                                         (throw
                                          (NoSuchMethodException.
                                           (str (name driver) " does not implement table-rows-seq."))))
-   :current-db-time                   (constantly nil)})
+   :current-db-time                   (constantly nil)
+   :default-to-case-sensitive?        (constantly true)})
 
 
 ;;; ## CONFIG
 
-(defsetting report-timezone "Connection timezone to use when executing queries. Defaults to system timezone.")
+(defsetting report-timezone (tru "Connection timezone to use when executing queries. Defaults to system timezone."))
 
 (defonce ^:private registered-drivers
   (atom {}))
@@ -228,7 +265,7 @@
   [^Keyword engine, driver-instance]
   {:pre [(keyword? engine) (map? driver-instance)]}
   (swap! registered-drivers assoc engine driver-instance)
-  (log/debug (format "Registered driver %s %s" (u/format-color 'blue engine) (u/emoji "🚚"))))
+  (log/debug (trs "Registered driver {0} {1}" (u/format-color 'blue engine) (u/emoji "🚚"))))
 
 (defn available-drivers
   "Info about available drivers."
@@ -243,7 +280,7 @@
   (require ns-symb)
   (if-let [register-driver-fn (ns-resolve ns-symb '-init-driver)]
     (register-driver-fn)
-    (log/warn (format "No -init-driver function found for '%s'" (name ns-symb)))))
+    (log/warn (trs "No -init-driver function found for ''{0}''" (name ns-symb)))))
 
 (defn find-and-load-drivers!
   "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the
@@ -272,18 +309,47 @@
       (when-not (empty? report-tz)
         report-tz))))
 
-(defn create-db-time-formatter
-  "Creates a date formatter from `DATE-FORMAT-STR` that will preserve
-  the offset/timezone information. Results of this are threadsafe and
-  can safely be def'd"
+(defprotocol ^:private ParseDateTimeString
+  (^:private parse [this date-time-str] "Parse the `date-time-str` and return a `DateTime` instance"))
+
+(extend-protocol ParseDateTimeString
+  DateTimeFormatter
+  (parse [formatter date-time-str]
+    (tformat/parse formatter date-time-str)))
+
+;; Java's SimpleDateFormat is more flexible on what it accepts for a time zone identifier. As an example, CEST is not
+;; recognized by Joda's DateTimeFormatter but is recognized by Java's SimpleDateFormat. This defrecord is used to
+;; dispatch parsing for SimpleDateFormat instances. Dispatching off of the SimpleDateFormat directly wouldn't be good
+;; as it's not threadsafe. This will always create a new SimpleDateFormat instance and discard it after parsing the
+;; date
+(defrecord ^:private ThreadSafeSimpleDateFormat [format-str]
+  ParseDateTimeString
+  (parse [_ date-time-str]
+    (let [sdf         (SimpleDateFormat. format-str)
+          parsed-date (.parse sdf date-time-str)
+          joda-tz     (-> sdf .getTimeZone .getID time/time-zone-for-id)]
+      (time/to-time-zone (tcoerce/from-date parsed-date) joda-tz))))
+
+(defn create-db-time-formatters
+  "Creates date formatters from `DATE-FORMAT-STR` that will preserve the offset/timezone information. Will return a
+  JodaTime date formatter and a core Java SimpleDateFormat. Results of this are threadsafe and can safely be def'd."
   [date-format-str]
-  (.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str)))
+  [(.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str))
+   (ThreadSafeSimpleDateFormat. date-format-str)])
+
+(defn- first-successful-parse
+  "Attempt to parse `time-str` with each of `date-formatters`, returning the first successful parse. If there are no
+  successful parses throws the exception that the last formatter threw."
+  [date-formatters time-str]
+  (or (some #(u/ignore-exceptions (parse % time-str)) date-formatters)
+      (doseq [formatter (reverse date-formatters)]
+        (parse formatter time-str))))
 
 (defn make-current-db-time-fn
   "Takes a clj-time date formatter `DATE-FORMATTER` and a native query
   for the current time. Returns a function that executes the query and
   parses the date returned preserving it's timezone"
-  [date-formatter native-query]
+  [native-query date-formatters]
   (fn [driver database]
     (let [settings (when-let [report-tz (report-timezone-if-supported driver)]
                      {:settings {:report-timezone report-tz}})
@@ -298,11 +364,11 @@
                          (format "Error querying database '%s' for current time" (:name database)) e))))]
       (try
         (when time-str
-          (tformat/parse date-formatter time-str))
+          (first-successful-parse date-formatters time-str))
         (catch Exception e
           (throw
            (Exception.
-            (format "Unable to parse date string '%s' for database engine '%s'"
+            (tru "Unable to parse date string ''{0}'' for database engine ''{1}''"
                     time-str (-> database :engine name)) e)))))))
 
 (defn class->base-type
@@ -324,13 +390,13 @@
              [java.sql.Date                  :type/Date]
              [java.sql.Timestamp             :type/DateTime]
              [java.util.Date                 :type/DateTime]
-             [org.joda.time.DateTime         :type/DateTime]
+             [DateTime                       :type/DateTime]
              [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
              [clojure.lang.IPersistentMap    :type/Dictionary]
              [clojure.lang.IPersistentVector :type/Array]
              [org.bson.types.ObjectId        :type/MongoBSONID]
              [org.postgresql.util.PGobject   :type/*]])
-      (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass))
+      (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
       :type/*))
 
 (defn values->base-type
@@ -404,7 +470,7 @@
       (u/with-timeout can-connect-timeout-ms
         (can-connect? driver details-map))
       (catch Throwable e
-        (log/error "Failed to connect to database:" (.getMessage e))
+        (log/error (trs "Failed to connect to database: {0}" (.getMessage e)))
         (when rethrow-exceptions
           (throw (Exception. (humanize-connection-error-message driver (.getMessage e)))))
         false))))
@@ -417,7 +483,7 @@
   10000)
 
 ;; TODO - move this to the metadata-queries namespace or something like that instead
-(s/defn ^:always-validate ^{:style/indent 1} table-rows-sample :- (s/maybe si/TableSample)
+(s/defn ^{:style/indent 1} table-rows-sample :- (s/maybe si/TableSample)
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   [table :- si/TableInstance, fields :- [si/FieldInstance]]
   (let [results ((resolve 'metabase.query-processor/process-query)

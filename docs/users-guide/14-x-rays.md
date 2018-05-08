@@ -33,7 +33,9 @@ X-rays can be a somewhat costly or slow operation for your database to run, so b
 
 ![X-ray fidelity](images/x-ray-fidelity.png)
 
-### Comparing a segment
+Administrators can also set the maximum allowed fidelity for x-rays in the Admin Panel. Note that the `Extended` setting is required for time series x-rays to work. Admins can even turn x-rays off entirely, but that makes Simon cry. No one likes it when Simon cries.
+
+### Comparing segments
 
 Segments are a subset of a larger table or list, so one thing you can do when viewing an x-ray of a segment is compare it to its "parent" table. For example, if I have a segment called "Californians," which is a subset of the "People" table, I can click on the button that says "Compare to all People" to see a comparison report:
 
@@ -44,3 +46,13 @@ The comparison report shows how many rows there are in the segment versus the pa
 ![Comparison report](images/x-ray-comparison.png)
 
 An example for where this can be especially useful is a scenario where you've defined many different segments for your users or customers, like "Repeat Customers," "Users between 18 and 35," or "Female customers in Kalamazoo who dislike cheese." You can open up the x-ray for any of these segments, and then compare them to the larger Users or Customers table to see if there are any interesting patterns or differences.
+
+## Automated insights
+Metabase hasn't quite achieved self-awareness, but it has gotten smarter recently. It will now show you relevant insights about your data at the top of x-rays about time series or numeric fields, provided there's something insightful to say.
+
+![Insights](./images/insights.png)
+
+Insights include things like whether or not your data has an overall trend, has uncharacteristic spikes or dips, or if it follows a similar pattern at regular intervals.
+
+## Need help?
+If you still have questions about x-rays or comparisons, you can head over to our [discussion forum](http://discourse.metabase.com/). See you there!

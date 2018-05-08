@@ -1,5 +1,12 @@
 (ns metabase.models.permissions-group
-  (:require [clojure.string :as s]
+  "A `PermissionsGroup` is a group (or role) that can be assigned certain permissions. Users can be members of one or
+  more of these groups.
+
+  A few 'magic' groups exist: `all-users`, which predicably contains All Users; `admin`, which contains all
+  superusers, and `metabot`, which is used to set permissions for the MetaBot. These groups are 'magic' in the sense
+  that you cannot add users to them yourself, nor can you delete them; they are created automatically. You can,
+  however, set permissions for them. "
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting]
             [metabase.util :as u]
@@ -10,7 +17,7 @@
 (models/defmodel PermissionsGroup :permissions_group)
 
 
-;;; ------------------------------------------------------------ Magic Groups Getter Fns ------------------------------------------------------------
+;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- group-fetch-fn [group-name]
   (memoize (fn []
@@ -36,14 +43,14 @@
   (group-fetch-fn "MetaBot"))
 
 
-;;; ------------------------------------------------------------ Validation ------------------------------------------------------------
+;;; --------------------------------------------------- Validation ---------------------------------------------------
 
 (defn exists-with-name?
   "Does a `PermissionsGroup` with GROUP-NAME exist in the DB? (case-insensitive)"
   ^Boolean [group-name]
   {:pre [((some-fn keyword? string?) group-name)]}
   (db/exists? PermissionsGroup
-    :%lower.name (s/lower-case (name group-name))))
+    :%lower.name (str/lower-case (name group-name))))
 
 (defn- check-name-not-already-taken
   [group-name]
@@ -62,7 +69,7 @@
                {:status-code 400})))))
 
 
-;;; ------------------------------------------------------------ Lifecycle ------------------------------------------------------------
+;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- pre-insert [{group-name :name, :as group}]
   (u/prog1 group
@@ -92,7 +99,7 @@
                     :pre-update         pre-update}))
 
 
-;;; ------------------------------------------------------------ Util Fns ------------------------------------------------------------
+;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
 
 (defn ^:hydrate members

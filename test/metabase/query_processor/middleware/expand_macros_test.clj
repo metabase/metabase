@@ -165,7 +165,7 @@
                                                              :order_by    [[1 "ASC"]]}})))
 
 ;; Check that a metric w/ multiple aggregation syntax (nested vector) still works correctly
-(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
   [[2 118]
    [3  39]
    [4  24]]
@@ -179,3 +179,12 @@
                :query    {:source-table (data/id :venues)
                           :aggregation  [["METRIC" (u/get-id metric)]]
                           :breakout     [(ql/breakout (ql/field-id (data/id :venues :price)))]}})))))
+
+;; make sure that we don't try to expand GA "metrics" (#6104)
+(expect
+  {:query {:aggregation [[:metric :ga:users]]}}
+  (#'expand-macros/expand-metrics-and-segments {:query {:aggregation [[:metric :ga:users]]}}))
+
+(expect
+  {:query {:aggregation [[:metric :gaid:users]]}}
+  (#'expand-macros/expand-metrics-and-segments {:query {:aggregation [[:metric :gaid:users]]}}))

@@ -9,6 +9,7 @@
              [interface :as i]
              [util :as sync-util]]
             [metabase.sync.analyze.fingerprint
+             [datetime :as datetime]
              [global :as global]
              [number :as number]
              [sample :as sample]
@@ -18,15 +19,16 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(s/defn ^:private ^:always-validate type-specific-fingerprint :- (s/maybe i/TypeSpecificFingerprint)
+(s/defn ^:private type-specific-fingerprint :- (s/maybe i/TypeSpecificFingerprint)
   "Return type-specific fingerprint info for FIELD AND. a FieldSample of Values if it has an elligible base type"
   [field :- i/FieldInstance, values :- i/FieldSample]
   (condp #(isa? %2 %1) (:base_type field)
-    :type/Text   {:type/Text (text/text-fingerprint values)}
-    :type/Number {:type/Number (number/number-fingerprint values)}
+    :type/Text     {:type/Text (text/text-fingerprint values)}
+    :type/Number   {:type/Number (number/number-fingerprint values)}
+    :type/DateTime {:type/DateTime (datetime/datetime-fingerprint values)}
     nil))
 
-(s/defn ^:private ^:always-validate fingerprint :- i/Fingerprint
+(s/defn ^:private fingerprint :- i/Fingerprint
   "Generate a 'fingerprint' from a FieldSample of VALUES."
   [field :- i/FieldInstance, values :- i/FieldSample]
   (merge
@@ -36,7 +38,7 @@
      {:type type-specific-fingerprint})))
 
 
-(s/defn ^:private ^:always-validate save-fingerprint!
+(s/defn ^:private save-fingerprint!
   [field :- i/FieldInstance, fingerprint :- i/Fingerprint]
   ;; don't bother saving fingerprint if it's completely empty
   (when (seq fingerprint)
@@ -49,7 +51,7 @@
       :fingerprint_version i/latest-fingerprint-version
       :last_analyzed       nil)))
 
-(s/defn ^:private ^:always-validate fingerprint-table!
+(s/defn ^:private fingerprint-table!
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
   (doseq [[field sample] (sample/sample-fields table fields)]
     (when sample
@@ -78,7 +80,7 @@
 ;;        (fingerprint_version < 2 AND
 ;;         base_type IN ("type/Text", "type/SerializedJSON")))
 
-(s/defn ^:private ^:always-validate base-types->descendants :- #{su/FieldTypeKeywordOrString}
+(s/defn ^:private base-types->descendants :- #{su/FieldTypeKeywordOrString}
   "Given a set of BASE-TYPES return an expanded set that includes those base types as well as all of their
    descendants. These types are converted to strings so HoneySQL doesn't confuse them for columns."
   [base-types :- #{su/FieldType}]
@@ -107,7 +109,7 @@
 ;;
 ;; This way we can also completely omit adding clauses for versions that have been "eclipsed" by others.
 ;; This would keep the SQL query from growing boundlessly as new fingerprint versions are added
-(s/defn ^:private ^:always-validate versions-clauses :- [s/Any]
+(s/defn ^:private versions-clauses :- [s/Any]
   []
   ;; keep track of all the base types (including descendants) for each version, starting from most recent
   (let [versions+base-types (reverse (sort-by first (seq i/fingerprint-version->types-that-should-be-re-fingerprinted)))
@@ -124,7 +126,7 @@
          [:< :fingerprint_version version]
          [:in :base_type not-yet-seen]]))))
 
-(s/defn ^:private ^:always-validate honeysql-for-fields-that-need-fingerprint-updating :- {:where s/Any}
+(s/defn ^:private honeysql-for-fields-that-need-fingerprint-updating :- {:where s/Any}
   "Return appropriate WHERE clause for all the Fields whose Fingerprint needs to be re-calculated."
   ([]
    {:where [:and
@@ -141,7 +143,7 @@
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate fields-to-fingerprint :- (s/maybe [i/FieldInstance])
+(s/defn ^:private fields-to-fingerprint :- (s/maybe [i/FieldInstance])
   "Return a sequences of Fields belonging to TABLE for which we should generate (and save) fingerprints.
    This should include NEW fields that are active and visibile."
   [table :- i/TableInstance]
@@ -149,8 +151,17 @@
          (honeysql-for-fields-that-need-fingerprint-updating table))))
 
 ;; TODO - `fingerprint-fields!` and `fingerprint-table!` should probably have their names switched
-(s/defn ^:always-validate fingerprint-fields!
+(s/defn fingerprint-fields!
   "Generate and save fingerprints for all the Fields in TABLE that have not been previously analyzed."
   [table :- i/TableInstance]
   (when-let [fields (fields-to-fingerprint table)]
     (fingerprint-table! table fields)))
+
+(s/defn fingerprint-fields-for-db!
+  "Invokes `fingerprint-fields!` on every table in `database`"
+  [database :- i/DatabaseInstance
+   tables :- [i/TableInstance]
+   log-progress-fn]
+  (doseq [table tables]
+    (fingerprint-fields! table)
+    (log-progress-fn "fingerprint-fields" table)))

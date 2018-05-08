@@ -1,21 +1,19 @@
 (ns metabase.models.field
-  (:require [clojure
-             [data :as d]
-             [string :as s]]
-            [metabase
-             [config :as config]
-             [util :as u]]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.string :as s]
             [metabase.models
              [dimension :refer [Dimension]]
              [field-values :as fv :refer [FieldValues]]
              [humanization :as humanization]
              [interface :as i]
              [permissions :as perms]]
+            [metabase.util :as u]
             [toucan
              [db :as db]
+             [hydrate :refer [hydrate]]
              [models :as models]]))
 
-;;; ------------------------------------------------------------ Type Mappings ------------------------------------------------------------
+;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
 (def ^:const visibility-types
   "Possible values for `Field.visibility_type`."
@@ -26,8 +24,7 @@
     :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
 
 
-
-;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Field :metabase_field)
 
@@ -53,22 +50,55 @@
   (db/delete! 'FieldValues :field_id id)
   (db/delete! 'MetricImportantField :field_id id))
 
-;; For the time being permissions to access a field are the same as permissions to access its parent table
-;; TODO - this can be memoized because a Table's `:db_id` and `:schema` are guaranteed to never change, as is a Field's `:table_id`
-(defn- perms-objects-set [{table-id :table_id} _]
-  {:pre [(integer? table-id)]}
-  (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
-    #{(perms/object-path database-id schema table-id)}))
+
+;;; Field permissions
+;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
+;; a DB call to fetch information about their Table, because a Field's permissions set is the same as its parent
+;; Table's. To make API endpoints perform well, we have use two strategies:
+;; 1)  If a Field's Table is already hydrated, there is no need to manually fetch the information a second time
+;; 2)  Failing that, we cache the corresponding permissions sets for each *Table ID* for a few seconds to minimize the
+;;     number of DB calls that are made. See discussion below for more details.
+
+(def ^:private ^{:arglists '([table-id])} perms-objects-set*
+  "Cached lookup for the permissions set for a table with TABLE-ID. This is done so a single API call or other unit of
+   computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
+   permissions for a large number of Fields. Thus, the cache only persists for 5 seconds.
+
+   Of course, no DB lookups are needed at all if the Field already has a hydrated Table. However, mistakes are
+   possible, and I did not extensively audit every single code pathway that uses sequences of Fields and permissions,
+   so this caching is added as a failsafe in case Table hydration wasn't done.
+
+   Please note this only caches one entry PER TABLE ID. Thus, even a million Tables (which is more than I hope we ever
+   see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
+   seconds."
+  (memoize/ttl
+   (fn [table-id]
+     (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
+       #{(perms/object-path database-id schema table-id)}))
+   :ttl/threshold 5000))
+
+(defn- perms-objects-set
+  "Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
+   same as permissions to access its parent Table, and there are not separate permissions for reading/writing."
+  [{table-id :table_id, {db-id :db_id, schema :schema} :table} _]
+  {:arglists '([field read-or-write])}
+  (if db-id
+    ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
+    #{(perms/object-path db-id schema table-id)}
+    ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
+    (perms-objects-set* table-id)))
+
 
 (u/strict-extend (class Field)
   models/IModel
   (merge models/IModelDefaults
-         {:hydration-keys (constantly [:destination :field :origin])
-          :types          (constantly {:base_type       :keyword
-                                       :special_type    :keyword
-                                       :visibility_type :keyword
-                                       :description     :clob
-                                       :fingerprint     :json})
+         {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
+          :types          (constantly {:base_type        :keyword
+                                       :special_type     :keyword
+                                       :visibility_type  :keyword
+                                       :description      :clob
+                                       :has_field_values :clob
+                                       :fingerprint      :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-update     pre-update
@@ -81,8 +111,7 @@
           :can-write?        i/superuser?}))
 
 
-;;; ------------------------------------------------------------ Hydration / Util Fns ------------------------------------------------------------
-
+;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
 (defn target
   "Return the FK target `Field` that this `Field` points to."
@@ -96,9 +125,12 @@
   [{:keys [id]}]
   (db/select [FieldValues :field_id :values], :field_id id))
 
-(defn- keyed-by-field-ids
-  "Queries for `MODEL` instances related by `FIELDS`, returns a map
-  keyed by :field_id"
+(defn- select-field-id->instance
+  "Select instances of `model` related by `field_id` FK to a Field in `fields`, and return a map of Field ID -> model
+  instance. This only returns a single instance for each Field! Duplicates are discarded!
+
+    (select-field-id->instance [(Field 1) (Field 2)] FieldValues)
+    ;; -> {1 #FieldValues{...}, 2 #FieldValues{...}}"
   [fields model]
   (let [field-ids (set (map :id fields))]
     (u/key-by :field_id (when (seq field-ids)
@@ -108,7 +140,7 @@
   "Efficiently hydrate the `FieldValues` for a collection of FIELDS."
   {:batched-hydrate :values}
   [fields]
-  (let [id->field-values (keyed-by-field-ids fields FieldValues)]
+  (let [id->field-values (select-field-id->instance fields FieldValues)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -116,7 +148,7 @@
   "Efficiently hydrate the `FieldValues` for visibility_type normal FIELDS."
   {:batched-hydrate :normal_values}
   [fields]
-  (let [id->field-values (keyed-by-field-ids (filter fv/field-should-have-field-values? fields)
+  (let [id->field-values (select-field-id->instance (filter fv/field-should-have-field-values? fields)
                                              [FieldValues :id :human_readable_values :values :field_id])]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
@@ -125,9 +157,55 @@
   "Efficiently hydrate the `Dimension` for a collection of FIELDS."
   {:batched-hydrate :dimensions}
   [fields]
-  (let [id->dimensions (keyed-by-field-ids fields Dimension)]
+  ;; TODO - it looks like we obviously thought this code would return *all* of the Dimensions for a Field, not just
+  ;; one! This code is obviously wrong! It will either assoc a single Dimension or an empty vector under the
+  ;; `:dimensions` key!!!!
+  ;; TODO - consult with tom and see if fixing this will break any hacks that surely must exist in the frontend to deal
+  ;; with this
+  (let [id->dimensions (select-field-id->instance fields Dimension)]
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))
+
+(defn- is-searchable?
+  "Is this `field` a Field that you should be presented with a search widget for (to search its values)? If so, we can
+  give it a `has_field_values` value of `search`."
+  [{base-type :base_type}]
+  ;; For the time being we will consider something to be "searchable" if it's a text Field since the `starts-with`
+  ;; filter that powers the search queries (see `metabase.api.field/search-values`) doesn't work on anything else
+  (or (isa? base-type :type/Text)
+      (isa? base-type :type/TextLike)))
+
+(defn with-has-field-values
+  "Infer what the value of the `has_field_values` should be for Fields where it's not set. Admins can set this to one
+  of the values below, but if it's `nil` in the DB we'll infer it automatically.
+
+  *  `list`   = has an associated FieldValues object
+  *  `search` = does not have FieldValues
+  *  `none`   = admin has explicitly disabled search behavior for this Field"
+  {:batched-hydrate :has_field_values}
+  [fields]
+  (let [fields-without-has-field-values-ids (set (for [field fields
+                                                       :when (nil? (:has_field_values field))]
+                                                   (:id field)))
+        fields-with-fieldvalues-ids         (when (seq fields-without-has-field-values-ids)
+                                              (db/select-field :field_id FieldValues
+                                                               :field_id [:in fields-without-has-field-values-ids]))]
+    (for [field fields]
+      (when field
+        (assoc field
+          :has_field_values (or
+                             (:has_field_values field)
+                             (cond
+                               (contains? fields-with-fieldvalues-ids (u/get-id field)) :list
+                               (is-searchable? field)                                   :search
+                               :else                                                    :none)))))))
+
+(defn readable-fields-only
+  "Efficiently checks if each field is readable and returns only readable fields"
+  [fields]
+  (for [field (hydrate fields :table)
+        :when (i/can-read? field)]
+    (dissoc field :table)))
 
 (defn with-targets
   "Efficiently hydrate the FK target fields for a collection of FIELDS."
@@ -138,7 +216,7 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (u/key-by :id (when (seq target-field-ids)
-                                         (filter i/can-read? (db/select Field :id [:in target-field-ids]))))]
+                                         (readable-fields-only (db/select Field :id [:in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
@@ -165,3 +243,9 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (db/select-one 'Table, :id table_id))
+
+(defn unix-timestamp?
+  "Is field a UNIX timestamp?"
+  [{:keys [base_type special_type]}]
+  (and (isa? base_type :type/Integer)
+       (isa? special_type :type/DateTime)))

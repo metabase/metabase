@@ -45,8 +45,8 @@
   (-> (into {} metric)
       (dissoc :id :table_id)
       (update :creator #(into {} %))
-      (assoc :created_at (not (nil? created_at))
-             :updated_at (not (nil? updated_at)))))
+      (assoc :created_at (some? created_at)
+             :updated_at (some? updated_at))))
 
 
 ;; ## /api/metric/* AUTHENTICATION Tests
@@ -369,3 +369,9 @@
                         (assoc metric-2 :database_id (data/id))]
                        :creator))
   ((user->client :rasta) :get 200 "metric/"))
+
+;; Test related/recommended entities
+(expect
+  #{:table :metrics :segments}
+  (tt/with-temp* [Metric [{metric-id :id}]]
+    (-> ((user->client :crowberto) :get 200 (format "metric/%s/related" metric-id)) keys set)))

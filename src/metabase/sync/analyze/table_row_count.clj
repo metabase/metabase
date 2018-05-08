@@ -10,13 +10,13 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(s/defn ^:private ^:always-validate table-row-count :- (s/maybe s/Int)
+(s/defn ^:private table-row-count :- (s/maybe s/Int)
   "Determine the count of rows in TABLE by running a simple structured MBQL query."
   [table :- i/TableInstance]
   (sync-util/with-error-handling (format "Unable to determine row count for %s" (sync-util/name-for-logging table))
     (queries/table-row-count table)))
 
-(s/defn ^:always-validate update-row-count!
+(s/defn update-row-count!
   "Update the cached row count (`rows`) for a single TABLE."
   [table :- i/TableInstance]
   (sync-util/with-error-handling (format "Error setting table row count for %s" (sync-util/name-for-logging table))
