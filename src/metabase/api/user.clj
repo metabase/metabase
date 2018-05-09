@@ -52,8 +52,8 @@
    last_name  su/NonBlankString
    email      su/Email}
   (api/check-superuser)
-  (api/check (not (db/exists? User :email email))
-    [400 "Email address already in use."])
+  (api/checkp (not (db/exists? User :email email))
+    "email" "Email address already in use.")
   (user/invite-user! first_name last_name email password @api/*current-user*))
 
 (api/defendpoint GET "/current"
@@ -79,8 +79,8 @@
   ;; only allow updates if the specified account is active
   (api/check-404 (db/exists? User, :id id, :is_active true))
   ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-  (api/check (not (db/exists? User, :email email, :id [:not= id]))
-    [400 "Email address already associated to another user."])
+  (api/checkp (not (db/exists? User, :email email, :id [:not= id]))
+    "email" "Email address already associated to another user.")
   (api/check-500 (db/update-non-nil-keys! User id
                    :email        email
                    :first_name   first_name
@@ -97,7 +97,7 @@
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
-      [400 "Not able to reactivate an active user"])
+      [400 {:message "Not able to reactivate an active user"}])
     (reactivate-user! user)))
 
 

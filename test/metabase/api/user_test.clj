@@ -111,12 +111,12 @@
 
 ;; Attempting to reactivate an already active user should fail
 (expect
-  "Not able to reactivate an active user"
+  {:message "Not able to reactivate an active user"}
   ((user->client :crowberto) :put 400 (format "user/%s/reactivate" (u/get-id (fetch-user :rasta)))))
 
 ;; Attempting to create a new user with the same email as an existing user should fail
 (expect
-  "Email address already in use."
+  {:errors {:email "Email address already in use."}}
   ((user->client :crowberto) :post 400 "user" {:first_name  "Something"
                                                :last_name   "Random"
                                                :email       (:email (fetch-user :rasta))}))
@@ -201,7 +201,7 @@
 ;; ## PUT /api/user/:id
 ;; Test that updating a user's email to an existing inactive user's email fails
 (expect
-  "Email address already associated to another user."
+  {:errors {:email "Email address already associated to another user."}}
   (let [trashbird (fetch-user :trashbird)
         rasta     (fetch-user :rasta)]
     ((user->client :crowberto) :put 400 (str "user/" (u/get-id rasta)) (select-keys trashbird [:email]))))
