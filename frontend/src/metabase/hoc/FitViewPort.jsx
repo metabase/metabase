@@ -36,15 +36,19 @@ function fitViewport(ComposedComponent) {
 
     // componentDidMount is required here to ensure the top level react child is present
     componentDidMount() {
-      document
-        .getElementById("root")
-        .firstChild.classList.add("spread", "flex", "flex-column");
+      const topLevel = document.getElementById("root").firstChild;
+
+      if (topLevel) {
+        topLevel.classList.add("spread", "flex", "flex-column");
+      }
     }
 
     componentWillUnmount() {
-      document
-        .getElementById("root")
-        .firstChild.classList.remove("spread", "flex", "flex-column");
+      const topLevel = document.getElementById("root").firstChild;
+
+      if (topLevel) {
+        topLevel.classList.remove("spread", "flex", "flex-column");
+      }
     }
 
     render() {

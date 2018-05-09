@@ -35,10 +35,8 @@ import {
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
-import CollectionPage from "metabase/questions/containers/CollectionPage.jsx";
 import CollectionEdit from "metabase/questions/containers/CollectionEdit.jsx";
 import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx";
-import SearchResults from "metabase/questions/containers/SearchResults.jsx";
 import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
@@ -53,9 +51,6 @@ import {
   NewQuestionStart,
   NewQuestionMetricSearch,
 } from "metabase/new_query/router_wrappers";
-
-import Segments from "metabase/components/SegmentList";
-import Metrics from "metabase/components/MetricList";
 
 // admin containers
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
