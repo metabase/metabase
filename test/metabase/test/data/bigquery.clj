@@ -11,6 +11,7 @@
              [datasets :as datasets]
              [interface :as i]]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [metabase.util.schema :as su]
             [schema.core :as s])
   (:import com.google.api.client.util.DateTime
@@ -94,7 +95,7 @@
   "Convert the HoneySQL form we normally use to wrap a `Timestamp` to a Google `DateTime`."
   [{[{s :literal}] :args}]
   {:pre [(string? s) (seq s)]}
-  (DateTime. (u/->Timestamp (str/replace s #"'" ""))))
+  (DateTime. (du/->Timestamp (str/replace s #"'" ""))))
 
 
 (defn- insert-data! [^String dataset-id, ^String table-id, row-maps]

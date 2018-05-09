@@ -15,6 +15,7 @@
              [config :as config]
              [driver :as driver]
              [util :as u]]
+            [metabase.util.date :as du]
             [metabase.driver
              [generic-sql :as sql]
              [google :as google]]
@@ -153,15 +154,15 @@
 (defn- parse-timestamp-str [s]
   ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
   (or
-   (u/->Timestamp s)
+   (du/->Timestamp s)
    ;; If parsing as ISO-8601 fails parse as a double then convert to ms. Add the appropriate number of milliseconds to
    ;; the number to convert it to the local timezone. We do this because the dates come back in UTC but we want the
    ;; grouping to match the local time (HUH?) This gives us the same results as the other
    ;; `has-questionable-timezone-support?` drivers. Not sure if this is actually desirable, but if it's not, it
    ;; probably means all of those other drivers are doing it wrong
-   (u/->Timestamp (- (* (Double/parseDouble s) 1000)
-                     (.getDSTSavings default-timezone)
-                     (.getRawOffset  default-timezone)))))
+   (du/->Timestamp (- (* (Double/parseDouble s) 1000)
+                      (.getDSTSavings default-timezone)
+                      (.getRawOffset  default-timezone)))))
 
 (def ^:private bigquery-time-format (tformat/formatter "HH:mm:SS" time/utc))
 
@@ -377,7 +378,7 @@
 
 (defmethod sqlqp/->honeysql [BigQueryDriver Date]
   [_ date]
-  (hsql/call :timestamp (hx/literal (u/date->iso-8601 date))))
+  (hsql/call :timestamp (hx/literal (du/date->iso-8601 date))))
 
 (defmethod sqlqp/->honeysql [BigQueryDriver TimeValue]
   [driver {:keys [value]}]
@@ -452,7 +453,7 @@
   (hsql/call :length field-key))
 
 (defn- date-interval [driver unit amount]
-  (sqlqp/->honeysql driver (u/relative-date unit amount)))
+  (sqlqp/->honeysql driver (du/relative-date unit amount)))
 
 
 ;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC

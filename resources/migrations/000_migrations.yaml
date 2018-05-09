@@ -4058,6 +4058,17 @@ databaseChangeLog:
               type: text
               remarks: 'Permissions required to view this Card and run its query.'
   - changeSet:
+      id: 76
+      author: senior
+      comment: 'Added 0.29.0'
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              name: fields_hash
+              type: text
+              remarks: 'Computed hash of all of the fields associated to this table'
+  - changeSet:
       id: 79
       author: camsaul
       comment: 'Added 1.0'

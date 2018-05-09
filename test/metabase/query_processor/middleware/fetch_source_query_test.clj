@@ -10,6 +10,7 @@
              [database :as database]]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
             [metabase.test.data :as data]
+            [metabase.util.date :as du]
             [toucan.util.test :as tt]))
 
 (def ^:private ^{:arglists '([query])} fetch-source-query (fetch-source-query/fetch-source-query identity))
@@ -79,9 +80,9 @@
    {:source-query {:source-table {:schema "PUBLIC" :name "CHECKINS" :id (data/id :checkins)}, :join-tables nil}
     :filter {:filter-type :between,
              :field {:field-name "date", :base-type :type/Date},
-             :min-val {:value (tcoerce/to-timestamp (u/str->date-time "2015-01-01"))
+             :min-val {:value (tcoerce/to-timestamp (du/str->date-time "2015-01-01"))
                        :field {:field {:field-name "date", :base-type :type/Date}, :unit :default}},
-             :max-val {:value (tcoerce/to-timestamp (u/str->date-time "2015-02-01"))
+             :max-val {:value (tcoerce/to-timestamp (du/str->date-time "2015-02-01"))
                        :field {:field {:field-name "date", :base-type :type/Date}, :unit :default}}}})
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :query
