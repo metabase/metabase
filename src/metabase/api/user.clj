@@ -23,9 +23,13 @@
   (vec (cons User user/all-user-fields)))
 
 (api/defendpoint GET "/"
-  "Fetch a list of all `Users` for the admin People page."
-  []
-  (db/select all-user-fields))
+  "Fetch a list of `Users` for the admin People page. By default returns only active users. If `include_deactivated`
+  is true, return all users (active and inactive)."
+  [include_deactivated]
+  {include_deactivated (s/maybe su/BooleanString)}
+  (apply db/select all-user-fields (if include_deactivated
+                                     []
+                                     [:is_active true])))
 
 (defn- fetch-user [& query-criteria]
   (apply db/select-one all-user-fields query-criteria))

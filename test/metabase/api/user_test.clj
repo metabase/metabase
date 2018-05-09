@@ -32,35 +32,47 @@
    :updated_at   true
    :date_joined  true})
 
+(def ^:private test-users
+  (map #(merge user-defaults %)
+       [{:email        "trashbird@metabase.com"
+         :first_name   "Trash"
+         :is_active    false
+         :last_name    "Bird"
+         :common_name  "Trash Bird"}
+        {:common_name  "Crowberto Corv"
+         :last_name    "Corv"
+         :is_superuser true
+         :first_name   "Crowberto"
+         :email        "crowberto@metabase.com"}
+        {:common_name  "Lucky Pigeon"
+         :last_name    "Pigeon"
+         :first_name   "Lucky"
+         :email        "lucky@metabase.com"}
+        {:common_name  "Rasta Toucan"
+         :last_name    "Toucan"
+         :first_name   "Rasta"
+         :email        "rasta@metabase.com"}]))
+
 ;; ## GET /api/user
 ;; Check that anyone can get a list of all active Users
 (expect
-  (set (map #(merge user-defaults %)
-
-            [{:email        "trashbird@metabase.com"
-              :first_name   "Trash"
-              :is_active    false
-              :last_name    "Bird"
-              :common_name  "Trash Bird"}
-             {:common_name  "Crowberto Corv"
-              :last_name    "Corv"
-              :is_superuser true
-              :first_name   "Crowberto"
-              :email        "crowberto@metabase.com"}
-             {:common_name  "Lucky Pigeon"
-              :last_name    "Pigeon"
-              :first_name   "Lucky"
-              :email        "lucky@metabase.com"}
-             {:common_name  "Rasta Toucan"
-              :last_name    "Toucan"
-              :first_name   "Rasta"
-              :email        "rasta@metabase.com"}]))
+  (set (filter :is_active test-users))
   (do
     ;; Delete all the other random Users we've created so far
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
       (db/delete! User :id [:not-in user-ids]))
     ;; Now do the request
     (set (tu/boolean-ids-and-timestamps ((user->client :rasta) :get 200 "user"))))) ; as a set since we don't know what order the results will come back in
+
+;; Check that anyone can get a list of all Users (active and inactive)
+(expect
+  (set test-users)
+  (do
+    ;; Delete all the other random Users we've created so far
+    (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
+      (db/delete! User :id [:not-in user-ids]))
+    ;; Now do the request
+    (set (tu/boolean-ids-and-timestamps ((user->client :rasta) :get 200 "user" :include_deactivated true)))))
 
 
 ;; ## POST /api/user
