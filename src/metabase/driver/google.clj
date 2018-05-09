@@ -5,6 +5,7 @@
              [config :as config]
              [util :as u]]
             [metabase.models.database :refer [Database]]
+            [ring.util.codec :as codec]
             [toucan.db :as db])
   (:import [com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow
             GoogleAuthorizationCodeFlow$Builder GoogleCredential GoogleCredential$Builder GoogleTokenResponse]
@@ -47,8 +48,9 @@
 
 (def ^:const ^String application-name
   "The application name we should use for Google drivers. Requested by Google themselves -- see #2627"
-  (let [{:keys [tag hash branch]} config/mb-version-info]
-    (format "Metabase/%s (GPN:Metabse; %s %s)" tag hash branch)))
+  (let [{:keys [tag ^String hash branch]} config/mb-version-info
+        encoded-hash                      (-> hash (.getBytes "UTF-8") codec/base64-encode)]
+    (format "Metabase/%s (GPN:Metabse; %s %s)" tag encoded-hash branch)))
 
 
 (defn- fetch-access-and-refresh-tokens* [scopes, ^String client-id, ^String client-secret, ^String auth-code]
