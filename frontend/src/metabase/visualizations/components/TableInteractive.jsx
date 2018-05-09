@@ -34,7 +34,10 @@ const HEADER_DRAG_THRESHOLD = 5;
 // HACK: used to get react-draggable to reset after a drag
 let DRAG_COUNTER = 0;
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type {
+  VisualizationProps,
+  ClickObject,
+} from "metabase/meta/types/Visualization";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
   const rowIndexes = [];
@@ -271,7 +274,7 @@ export default class TableInteractive extends Component {
     });
   }
 
-  visualizationIsClickable(clicked) {
+  visualizationIsClickable(clicked: ?ClickObject) {
     const { onVisualizationClick, visualizationIsClickable } = this.props;
     const { dragColIndex } = this.state;
     return (
