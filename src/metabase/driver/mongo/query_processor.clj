@@ -13,6 +13,7 @@
              [annotate :as annotate]
              [interface :as i]]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [monger joda-time
              [collection :as mc]
              [operators :refer :all]])
@@ -181,10 +182,10 @@
                       ([format-string]
                        (stringify format-string value))
                       ([format-string v]
-                       {:___date (u/format-date format-string v)}))
-          extract   (u/rpartial u/date-extract value)]
+                       {:___date (du/format-date format-string v)}))
+          extract   (u/rpartial du/date-extract value)]
       (case (or unit :default)
-        :default         (some-> value u/->Date)
+        :default         (some-> value du/->Date)
         :minute          (stringify "yyyy-MM-dd'T'HH:mm:00")
         :minute-of-hour  (extract :minute)
         :hour            (stringify "yyyy-MM-dd'T'HH:00:00")
@@ -193,17 +194,17 @@
         :day-of-week     (extract :day-of-week)
         :day-of-month    (extract :day-of-month)
         :day-of-year     (extract :day-of-year)
-        :week            (stringify "yyyy-MM-dd" (u/date-trunc :week value))
+        :week            (stringify "yyyy-MM-dd" (du/date-trunc :week value))
         :week-of-year    (extract :week-of-year)
         :month           (stringify "yyyy-MM")
         :month-of-year   (extract :month)
-        :quarter         (stringify "yyyy-MM" (u/date-trunc :quarter value))
+        :quarter         (stringify "yyyy-MM" (du/date-trunc :quarter value))
         :quarter-of-year (extract :quarter-of-year)
         :year            (extract :year))))
 
   RelativeDateTimeValue
   (->rvalue [{:keys [amount unit field]}]
-    (->rvalue (i/map->DateTimeValue {:value (u/relative-date (or unit :day) amount)
+    (->rvalue (i/map->DateTimeValue {:value (du/relative-date (or unit :day) amount)
                                      :field field}))))
 
 
@@ -416,7 +417,7 @@
     (into {} (for [[k v] row]
                {k (if (and (map? v)
                            (:___date v))
-                    (u/->Timestamp (:___date v))
+                    (du/->Timestamp (:___date v))
                     v)}))))
 
 
@@ -439,7 +440,7 @@
    ;; it looks like Date() just ignores any arguments return a date string formatted the same way the Mongo console
    ;; does
    :Date       (fn [& _]
-                 (u/format-date "EEE MMM dd yyyy HH:mm:ss z"))
+                 (du/format-date "EEE MMM dd yyyy HH:mm:ss z"))
    :NumberLong (fn [^String s]
                  (Long/parseLong s))
    :NumberInt  (fn [^String s]

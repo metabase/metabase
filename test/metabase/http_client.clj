@@ -6,7 +6,8 @@
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [util :as u]]))
+             [util :as u]]
+            [metabase.util.date :as du]))
 
 ;;; build-url
 
@@ -40,7 +41,7 @@
         (map? response) (->> response
                              (map (fn [[k v]]
                                     {k (cond
-                                         (contains? auto-deserialize-dates-keys k) (u/->Timestamp v)
+                                         (contains? auto-deserialize-dates-keys k) (du/->Timestamp v)
                                          (coll? v) (auto-deserialize-dates v)
                                          :else v)}))
                              (into {}))

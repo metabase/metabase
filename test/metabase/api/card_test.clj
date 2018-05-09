@@ -29,6 +29,7 @@
              [data :as data :refer :all]
              [util :as tu :refer [match-$ random-name]]]
             [metabase.test.data.users :refer :all]
+            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream
@@ -140,15 +141,15 @@
                       ;; 3 was viewed most recently, followed by 4, then 1. Card 2 was viewed by a different user so
                       ;; shouldn't be returned
                       ViewLog  [_ {:model "card", :model_id card-1-id, :user_id (user->id :rasta)
-                                   :timestamp (u/->Timestamp #inst "2015-12-01")}]
+                                   :timestamp (du/->Timestamp "2015-12-01")}]
                       ViewLog  [_ {:model "card", :model_id card-2-id, :user_id (user->id :trashbird)
-                                   :timestamp (u/->Timestamp #inst "2016-01-01")}]
+                                   :timestamp (du/->Timestamp "2016-01-01")}]
                       ViewLog  [_ {:model "card", :model_id card-3-id, :user_id (user->id :rasta)
-                                   :timestamp (u/->Timestamp #inst "2016-02-01")}]
+                                   :timestamp (du/->Timestamp "2016-02-01")}]
                       ViewLog  [_ {:model "card", :model_id card-4-id, :user_id (user->id :rasta)
-                                   :timestamp (u/->Timestamp #inst "2016-03-01")}]
+                                   :timestamp (du/->Timestamp "2016-03-01")}]
                       ViewLog  [_ {:model "card", :model_id card-3-id, :user_id (user->id :rasta)
-                                   :timestamp (u/->Timestamp #inst "2016-04-01")}]]
+                                   :timestamp (du/->Timestamp "2016-04-01")}]]
   [card-3-id card-4-id card-1-id]
   (mapv :id ((user->client :rasta) :get 200 "card", :f :recent)))
 

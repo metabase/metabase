@@ -105,7 +105,7 @@
   ([data]
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
-                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id :date_joined :date-joined}
+                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id :fields_hash :date_joined :date-joined}
                          #(.endsWith (name %) "_id")))
     data))
   ([pred data]

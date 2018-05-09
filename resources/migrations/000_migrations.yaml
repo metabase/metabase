@@ -4060,6 +4060,17 @@ databaseChangeLog:
   - changeSet:
       id: 76
       author: senior
+      comment: 'Added 0.29.0'
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              name: fields_hash
+              type: text
+              remarks: 'Computed hash of all of the fields associated to this table'
+  - changeSet:
+      id: 77
+      author: senior
       comment: 'Added 0.30.0'
       changes:
         - addColumn:

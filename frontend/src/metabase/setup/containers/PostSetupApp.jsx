@@ -15,7 +15,9 @@ import cx from "classnames";
 import { t } from "c-3po";
 
 const CANDIDATES_POLL_INTERVAL = 2000;
-const CANDIDATES_TIMEOUT = 10000;
+// ensure this is 1 second offset from CANDIDATES_POLL_INTERVAL due to
+// concurrency issue in candidates endpoint
+const CANDIDATES_TIMEOUT = 11000;
 
 const QUOTES = [
   t`Metabot is admiring your integers…`,

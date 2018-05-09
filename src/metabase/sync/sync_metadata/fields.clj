@@ -10,7 +10,7 @@
             [metabase.models
              [field :as field :refer [Field]]
              [humanization :as humanization]
-             [table :as table]]
+             [table :as table :refer [Table]]]
             [metabase.sync
              [fetch-metadata :as fetch-metadata]
              [interface :as i]
@@ -298,18 +298,31 @@
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- calculate-table-hash [db-metadata]
+  (->> db-metadata
+       (map (juxt :name :database-type :base-type :special-type :pk? :nested-fields :custom))
+       ;; We need a predictable sort order as the hash will be different if the order is different
+       (sort-by first)
+       sync-util/calculate-hash))
+
 (s/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific TABLE."
   ([table :- i/TableInstance]
    (sync-fields-for-table! (table/database table) table))
-  ([database :- i/DatabaseInstance, table :- i/TableInstance]
+  ([database :- i/DatabaseInstance, {:keys [fields_hash] :as table} :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing fields for %s" (sync-util/name-for-logging table))
-     (let [db-metadata (db-metadata database table)]
-       ;; make sure the instances of Field are in-sync
-       (sync-field-instances! table db-metadata (our-metadata table) nil)
-       ;; now that tables are synced and fields created as needed make sure field properties are in sync
-       (update-metadata! table db-metadata nil)))))
-
+     (let [db-field-metadata (db-metadata database table)
+           db-hash     (calculate-table-hash db-field-metadata)]
+       (if (and fields_hash (= db-hash fields_hash))
+         (log/debugf "Hash of '%s' matches stored hash, skipping fields sync for table" (sync-util/name-for-logging table))
+         (do
+           ;; make sure the instances of Field are in-sync
+           (sync-field-instances! table db-field-metadata (our-metadata table) nil)
+           ;; now that tables are synced and fields created as needed make sure field properties are in sync
+           (update-metadata! table db-field-metadata nil)
+           ;; Either there was no hash or there has been some change, update the hash too
+           (let [new-metadata (db-metadata database table)]
+             (db/update! Table (u/get-id table) :fields_hash (calculate-table-hash new-metadata)))))))))
 
 (s/defn sync-fields!
   "Sync the Fields in the Metabase application database for all the Tables in a DATABASE."
