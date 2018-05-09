@@ -1,6 +1,6 @@
 (ns metabase.models.dependency
   (:require [clojure.set :as set]
-            [metabase.util :as u]
+            [metabase.util.date :as du]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -52,7 +52,7 @@
         dependencies+    (set/difference dependencies-new dependencies-old)
         dependencies-    (set/difference dependencies-old dependencies-new)]
     (when (seq dependencies+)
-      (let [vs (map #(merge % {:model entity-name, :model_id id, :created_at (u/new-sql-timestamp)}) dependencies+)]
+      (let [vs (map #(merge % {:model entity-name, :model_id id, :created_at (du/new-sql-timestamp)}) dependencies+)]
         (db/insert-many! Dependency vs)))
     (when (seq dependencies-)
       (doseq [{:keys [dependent_on_model dependent_on_id]} dependencies-]

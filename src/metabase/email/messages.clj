@@ -12,6 +12,7 @@
              [util :as u]]
             [metabase.pulse.render :as render]
             [metabase.util
+             [date :as du]
              [export :as export]
              [quotation :as quotation]
              [urls :as url]]
@@ -62,7 +63,7 @@
                                :invitorEmail (:email invitor)
                                :company      company
                                :joinUrl      join-url
-                               :today        (u/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy")
+                               :today        (du/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy")
                                :logoHeader   true}
                               (random-quote-context)))]
     (email/send-message!
@@ -97,7 +98,7 @@
                               :joinedUserName    (:first_name new-user)
                               :joinedViaSSO      google-auth?
                               :joinedUserEmail   (:email new-user)
-                              :joinedDate        (u/format-date "EEEE, MMMM d") ; e.g. "Wednesday, July 13". TODO - is this what we want?
+                              :joinedDate        (du/format-date "EEEE, MMMM d") ; e.g. "Wednesday, July 13". TODO - is this what we want?
                               :adminEmail        (first recipients)
                               :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}
                              (random-quote-context))))))

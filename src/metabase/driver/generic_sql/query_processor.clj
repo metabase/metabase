@@ -14,7 +14,9 @@
              [annotate :as annotate]
              [interface :as i]
              [util :as qputil]]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util
+             [date :as du]
+             [honeysql-extensions :as hx]])
   (:import clojure.lang.Keyword
            [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
            [java.util Calendar Date TimeZone]
@@ -383,7 +385,7 @@
   land"
   [^TimeZone tz ^ResultSet rs ^Integer i]
   (let [date-string (.getString rs i)]
-    (if-let [parsed-date (u/str->date-time tz date-string)]
+    (if-let [parsed-date (du/str->date-time date-string tz)]
       parsed-date
       (throw (Exception. (format "Unable to parse date '%s'" date-string))))))
 

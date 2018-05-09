@@ -24,6 +24,7 @@
              table]
             [metabase.sync.interface :as si]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [puppetlabs.i18n.core :refer [trs tru]]
@@ -73,7 +74,7 @@
 
   (date-interval [this, ^Keyword unit, ^Number amount]
     "*OPTIONAL* Return an driver-appropriate representation of a moment relative to the current moment in time. By
-     default, this returns an `Timestamp` by calling `metabase.util/relative-date`; but when possible drivers should
+     default, this returns an `Timestamp` by calling `metabase.util.date/relative-date`; but when possible drivers should
      return a native form so we can be sure the correct timezone is applied. For example, SQL drivers should return a
      HoneySQL form to call the appropriate SQL fns:
 
@@ -235,7 +236,7 @@
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
-  {:date-interval                     (u/drop-first-arg u/relative-date)
+  {:date-interval                     (u/drop-first-arg du/relative-date)
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
    :format-custom-field-name          (u/drop-first-arg identity)
