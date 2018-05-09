@@ -288,6 +288,7 @@ export default class TableInteractive extends Component {
 
   cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
     const { data, isPivoted, onVisualizationClick } = this.props;
+    const { dragColIndex } = this.state;
     const { rows, cols } = data;
 
     const column = cols[columnIndex];
@@ -309,6 +310,8 @@ export default class TableInteractive extends Component {
           ...style,
           // use computed left if dragging
           left: this.getColumnLeft(style, columnIndex),
+          // add a transition while dragging column
+          transition: dragColIndex != null ? "left 200ms" : null,
         }}
         className={cx("TableInteractive-cellWrapper", {
           "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
