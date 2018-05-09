@@ -4060,7 +4060,7 @@ databaseChangeLog:
   - changeSet:
       id: 76
       author: senior
-      comment: 'Added 0.29.0'
+      comment: 'Added 0.30.0'
       changes:
         - addColumn:
             tableName: metabase_table
@@ -4071,7 +4071,7 @@ databaseChangeLog:
   - changeSet:
       id: 79
       author: camsaul
-      comment: 'Added 1.0'
+      comment: 'Added 0.30.0'
       changes:
         - addColumn:
             tableName: report_dashboard
