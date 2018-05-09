@@ -4077,8 +4077,8 @@ databaseChangeLog:
             tableName: core_user
             columns:
               name: updated_at
-              type: DATETIME
-              defaultValueComputed: 'current_timestamp'
-              remarks: 'When was the user last updated.'
+              type: datetime
+              remarks: 'When was this User last updated?'
               constraints:
                 nullable: false
+              defaultValueComputed: now()
