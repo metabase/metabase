@@ -10,6 +10,7 @@
             [metabase.test.data :as data]
             [metabase.test.util]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -212,7 +213,7 @@
                               :table_id            (data/id :venues)
                               :fingerprint         nil
                               :fingerprint_version 1
-                              :last_analyzed       (u/->Timestamp "2017-08-09")}]
+                              :last_analyzed       (du/->Timestamp "2017-08-09")}]
     (with-redefs [i/latest-fingerprint-version 3
                   sample/sample-fields         (constantly [[field [1 2 3 4 5]]])
                   fingerprint/fingerprint      (constantly {:experimental {:fake-fingerprint? true}})]

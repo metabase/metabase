@@ -15,7 +15,9 @@
              [session :refer [Session]]
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
+            [metabase.util.date :as du]
             monger.json
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
              [models :as models]])
@@ -172,7 +174,7 @@
   []
   {"Cache-Control" "max-age=0, no-cache, must-revalidate, proxy-revalidate"
    "Expires"        "Tue, 03 Jul 2001 06:00:00 GMT"
-   "Last-Modified"  (u/format-date :rfc822)})
+   "Last-Modified"  (du/format-date :rfc822)})
 
 (def ^:private ^:const strict-transport-security-header
   "Tell browsers to only access this resource over HTTPS for the next year (prevent MTM attacks). (This only applies if
@@ -213,8 +215,9 @@
                 (format "%s %s; " (name k) (apply str (interpose " " vs)))))})
 
 (defsetting ssl-certificate-public-key
-  "Base-64 encoded public key for this site's SSL certificate. Specify this to enable HTTP Public Key Pinning.
-   See http://mzl.la/1EnfqBf for more information.")
+  (str (tru "Base-64 encoded public key for this site's SSL certificate.")
+       (tru "Specify this to enable HTTP Public Key Pinning.")
+       (tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 #_(defn- public-key-pins-header []
@@ -345,7 +348,7 @@
       (let [start-time (System/nanoTime)]
         (db/with-call-counting [call-count]
           (u/prog1 (handler request)
-            (log-response jetty-stats-fn request <> (u/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
+            (log-response jetty-stats-fn request <> (du/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
 
 
 ;;; ----------------------------------------------- EXCEPTION HANDLING -----------------------------------------------

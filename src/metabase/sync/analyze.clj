@@ -13,6 +13,7 @@
              [fingerprint :as fingerprint]
              #_[table-row-count :as table-row-count]]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -61,7 +62,7 @@
     (db/update-where! Field {:table_id            [:in ids]
                              :fingerprint_version i/latest-fingerprint-version
                              :last_analyzed       nil}
-      :last_analyzed (u/new-sql-timestamp))))
+      :last_analyzed (du/new-sql-timestamp))))
 
 (s/defn ^:private update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."

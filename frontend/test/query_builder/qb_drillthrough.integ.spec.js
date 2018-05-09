@@ -186,10 +186,10 @@ describe("QueryBuilder", () => {
           .find("td");
         expect(firstRowCells.length).toBe(2);
 
-        expect(firstRowCells.first().text()).toBe("AA");
+        expect(firstRowCells.first().text()).toBe("AK");
 
         const countCell = firstRowCells.last();
-        expect(countCell.text()).toBe("233");
+        expect(countCell.text()).toBe("474");
         click(countCell.children().first());
 
         // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
@@ -212,7 +212,7 @@ describe("QueryBuilder", () => {
         // Should have visualization type set to Pin map (temporary workaround until we have polished heat maps)
         const card = getCard(store.getState());
         expect(card.display).toBe("map");
-        expect(card.visualization_settings).toEqual({ "map.type": "pin" });
+        expect(card.visualization_settings).toEqual({ "map.type": "grid" });
       });
 
       it("works for Count of rows aggregation and FK Latitude Auto binned breakout", async () => {
@@ -239,10 +239,10 @@ describe("QueryBuilder", () => {
           .find("td");
         expect(firstRowCells.length).toBe(2);
 
-        expect(firstRowCells.first().text()).toBe("90° S  –  80° S");
+        expect(firstRowCells.first().text()).toBe("20° N  –  30° N");
 
         const countCell = firstRowCells.last();
-        expect(countCell.text()).toBe("701");
+        expect(countCell.text()).toBe("579");
         click(countCell.children().first());
 
         // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms

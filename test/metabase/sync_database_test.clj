@@ -92,41 +92,43 @@
                tu/boolean-ids-and-timestamps)))
 
 (def ^:private table-defaults
-  {:id                      true
-   :db_id                   true
-   :raw_table_id            false
-   :schema                  nil
-   :description             nil
+  {:active                  true
    :caveats                 nil
-   :points_of_interest      nil
-   :show_in_getting_started false
-   :entity_type             :entity/GenericTable
-   :entity_name             nil
-   :visibility_type         nil
-   :rows                    nil
-   :active                  true
    :created_at              true
-   :updated_at              true})
+   :db_id                   true
+   :description             nil
+   :entity_name             nil
+   :entity_type             :entity/GenericTable
+   :id                      true
+   :points_of_interest      nil
+   :raw_table_id            false
+   :rows                    nil
+   :schema                  nil
+   :show_in_getting_started false
+   :updated_at              true
+   :visibility_type         nil
+   :fields_hash             true})
 
 (def ^:private field-defaults
-  {:id                  true
-   :table_id            true
-   :raw_column_id       false
-   :description         nil
+  {:active              true
    :caveats             nil
-   :points_of_interest  nil
-   :active              true
+   :created_at          true
+   :description         nil
+   :fingerprint         false
+   :fingerprint_version false
+   :fk_target_field_id  false
+   :has_field_values    nil
+   :id                  true
+   :last_analyzed       false
    :parent_id           false
+   :points_of_interest  nil
    :position            0
    :preview_display     true
-   :visibility_type     :normal
-   :fk_target_field_id  false
-   :created_at          true
+   :raw_column_id       false
+   :special_type        nil
+   :table_id            true
    :updated_at          true
-   :last_analyzed       true
-   :has_field_values    nil
-   :fingerprint         true
-   :fingerprint_version true})
+   :visibility_type     :normal})
 
 ;; ## SYNC DATABASE
 (expect
@@ -135,18 +137,17 @@
            :name         "movie"
            :display_name "Movie"
            :fields       [(merge field-defaults
-                                 {:special_type  :type/PK
-                                  :name          "id"
+                                 {:name          "id"
                                   :display_name  "ID"
                                   :database_type "SERIAL"
                                   :base_type     :type/Integer})
                           (merge field-defaults
-                                 {:special_type       :type/FK
-                                  :name               "studio"
+                                 {:name               "studio"
                                   :display_name       "Studio"
                                   :database_type      "VARCHAR"
                                   :base_type          :type/Text
-                                  :fk_target_field_id true})
+                                  :fk_target_field_id true
+                                  :special_type       :type/FK})
                           (merge field-defaults
                                  {:name          "title"
                                   :display_name  "Title"
@@ -157,17 +158,16 @@
           {:name         "studio"
            :display_name "Studio"
            :fields       [(merge field-defaults
-                                 {:special_type  :type/Name
-                                  :name          "name"
+                                 {:name          "name"
                                   :display_name  "Name"
                                   :database_type "VARCHAR"
                                   :base_type     :type/Text})
                           (merge field-defaults
-                                 {:special_type  :type/PK
-                                  :name          "studio"
+                                 {:name          "studio"
                                   :display_name  "Studio"
                                   :database_type "VARCHAR"
-                                  :base_type     :type/Text})]})]
+                                  :base_type     :type/Text
+                                  :special_type  :type/PK})]})]
   (tt/with-temp Database [db {:engine :sync-test}]
     (sync-database! db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest on resync of a
@@ -184,14 +184,12 @@
           :name         "movie"
           :display_name "Movie"
           :fields       [(merge field-defaults
-                                {:special_type  :type/PK
-                                 :name          "id"
+                                {:name          "id"
                                  :display_name  "ID"
                                  :database_type "SERIAL"
                                  :base_type     :type/Integer})
                          (merge field-defaults
-                                {:special_type  nil
-                                 :name          "studio"
+                                {:name          "studio"
                                  :display_name  "Studio"
                                  :database_type "VARCHAR"
                                  :base_type     :type/Text})
@@ -272,6 +270,12 @@
 
 ;; ## Individual Helper Fns
 
+(defn- force-sync-table!
+  "Updates the `:fields_hash` to ensure that the sync process will include fields in the sync"
+  [table]
+  (db/update! Table (u/get-id table), :fields_hash "something new")
+  (sync-table! (Table (data/id :venues))))
+
 ;; ## TEST PK SYNCING
 (expect [:type/PK
          nil
@@ -285,14 +289,14 @@
      (do (db/update! Field (data/id :venues :id), :special_type nil)
          (get-special-type))
      ;; Calling sync-table! should set the special type again
-     (do (sync-table! (Table (data/id :venues)))
+     (do (force-sync-table! (data/id :venues))
          (get-special-type))
      ;; sync-table! should *not* change the special type of fields that are marked with a different type
      (do (db/update! Field (data/id :venues :id), :special_type :type/Latitude)
          (get-special-type))
      ;; Make sure that sync-table runs set-table-pks-if-needed!
      (do (db/update! Field (data/id :venues :id), :special_type nil)
-         (sync-table! (Table (data/id :venues)))
+         (force-sync-table! (Table (data/id :venues)))
          (get-special-type))]))
 
 ;; ## FK SYNCING
@@ -369,28 +373,39 @@
        (str/join ", " (for [n rang]
                         (str "(" n ")")))))
 
+(defn- exec! [conn statements]
+  (doseq [statement statements]
+    (jdbc/execute! conn [statement])))
+
+(defmacro ^:private with-new-mem-db
+  "Setup a in-memory H2 database with a `Database` instance bound to `db-sym` and a connection to that H3 database
+  bound to `conn-sym`."
+  [db-sym conn-sym & body]
+  `(let [details# {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
+     (binding [mdb/*allow-potentailly-unsafe-connections* true]
+       (tt/with-temp Database [db# {:engine :h2, :details details#}]
+         (jdbc/with-db-connection [conn# (sql/connection-details->spec (driver/engine->driver :h2) details#)]
+           (let [~db-sym db#
+                 ~conn-sym conn#]
+             ~@body))))))
+
 (expect
   false
-  (let [details {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
-    (binding [mdb/*allow-potentailly-unsafe-connections* true]
-      (tt/with-temp Database [db {:engine :h2, :details details}]
-        (jdbc/with-db-connection [conn (sql/connection-details->spec (driver/engine->driver :h2) details)]
-          (let [exec! #(doseq [statement %]
-                         (jdbc/execute! conn [statement]))]
-            ;; create the `blueberries_consumed` table and insert 50 values
-            (exec! ["CREATE TABLE blueberries_consumed (num INTEGER NOT NULL);"
-                    (insert-range-sql (range 50))])
-            (sync-database! db)
-            (let [table-id (db/select-one-id Table :db_id (u/get-id db))
-                  field-id (db/select-one-id Field :table_id table-id)]
-              ;; field values should exist...
-              (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
-                         50))
-              ;; ok, now insert enough rows to push the field past the `list-cardinality-threshold` and sync again,
-              ;; there should be no more field values
-              (exec! [(insert-range-sql (range 50 (+ 100 field-values/list-cardinality-threshold)))])
-              (sync-database! db)
-              (db/exists? FieldValues :field_id field-id))))))))
+  (with-new-mem-db db conn
+    ;; create the `blueberries_consumed` table and insert 50 values
+    (exec! conn ["CREATE TABLE blueberries_consumed (num INTEGER NOT NULL);"
+                 (insert-range-sql (range 50))])
+    (sync-database! db)
+    (let [table-id (db/select-one-id Table :db_id (u/get-id db))
+          field-id (db/select-one-id Field :table_id table-id)]
+      ;; field values should exist...
+      (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
+                 50))
+      ;; ok, now insert enough rows to push the field past the `list-cardinality-threshold` and sync again,
+      ;; there should be no more field values
+      (exec! conn [(insert-range-sql (range 50 (+ 100 field-values/list-cardinality-threshold)))])
+      (sync-database! db)
+      (db/exists? FieldValues :field_id field-id))))
 
 (defn- narrow-to-min-max [row]
   (-> row
@@ -408,3 +423,136 @@
     (map narrow-to-min-max
          [(db/select-one-field :fingerprint Field, :id (data/id :venues :longitude))
           (db/select-one-field :fingerprint Field, :id (data/id :venues :latitude))])))
+
+(defmacro ^{:style/indent 2} throw-if-called [fn-var & body]
+  `(with-redefs [~fn-var (fn [& args#]
+                           (throw (RuntimeException. "Should not be called!")))]
+     ~@body))
+
+;; Validate the changing of a column's type triggers a hash miss and sync
+(expect
+  [ ;; Original column type
+   "SMALLINT"
+   ;; Altered the column, now it's an integer
+   "INTEGER"
+   ;; Original hash and the new one are not equal
+   false
+   ;; Reruning sync shouldn't change the hash
+   true]
+  (with-new-mem-db db conn
+    (let [get-table #(db/select-one Table :db_id (u/get-id db))]
+      ;; create the `blueberries_consumed` table and insert 50 values
+      (exec! conn ["CREATE TABLE blueberries_consumed (num SMALLINT NOT NULL);"
+                   (insert-range-sql (range 50))])
+      (sync-database! db)
+      ;; After this sync, we know about the new table and it's SMALLINT column
+      (let [table-id                     (u/get-id (get-table))
+            get-field                    #(db/select-one Field :table_id table-id)
+            {old-hash :fields_hash}      (get-table)
+            {old-db-type :database_type} (get-field)]
+        ;; Change the column from SMALLINT to INTEGER. In clojure-land these are both integers, but this change
+        ;; should trigger a hash miss and thus resync the table, since something has changed
+        (exec! conn ["ALTER TABLE blueberries_consumed ALTER COLUMN num INTEGER"])
+        (sync-database! db)
+        (let [{new-hash :fields_hash}      (get-table)
+              {new-db-type :database_type} (get-field)]
+
+          ;; Syncing again with no change should not call sync-field-instances! or update the hash
+          (throw-if-called metabase.sync.sync-metadata.fields/sync-field-instances!
+              (sync-database! db)
+            [old-db-type
+             new-db-type
+             (= old-hash new-hash)
+             (= new-hash (:fields_hash (get-table)))]))))))
+
+(defn- table-md-with-hash [table-id]
+  {:active-fields   (count (db/select Field :table_id table-id :active true))
+   :inactive-fields (count (db/select Field :table_id table-id :active false))
+   :fields-hash     (:fields_hash (db/select-one Table :id table-id))})
+
+(defn- no-fields-hash [m]
+  (dissoc m :fields-hash))
+
+;; This tests a table that adds a column, ensures sync picked up the new column and the hash changed
+(expect
+  [
+   ;; Only the num column should be found
+   {:active-fields 1, :inactive-fields 0}
+   ;; Add a column, should still be no inactive
+   {:active-fields 2, :inactive-fields 0}
+   ;; Adding a column should make the hashes not equal
+   false
+   ]
+  (with-new-mem-db db conn
+    (let [get-table #(db/select-one Table :db_id (u/get-id db))]
+      ;; create the `blueberries_consumed` table and insert 50 values
+      (exec! conn ["CREATE TABLE blueberries_consumed (num SMALLINT NOT NULL)"
+                   (insert-range-sql (range 50))])
+      (sync-database! db)
+      ;; We should now have a hash value for num as a SMALLINT
+      (let [table-id        (u/get-id (get-table))
+            before-table-md (table-md-with-hash table-id)
+            _               (exec! conn ["ALTER TABLE blueberries_consumed ADD COLUMN weight FLOAT"])
+            _               (sync-database! db)
+            ;; Now that hash will include num and weight
+            after-table-md  (table-md-with-hash table-id)]
+        [(no-fields-hash before-table-md)
+         (no-fields-hash after-table-md)
+         (= (:fields-hash before-table-md)
+            (:fields-hash after-table-md))]))))
+
+;; Drops a column, ensures sync finds the drop, updates the hash
+(expect
+  [
+   ;; Test starts with two columns
+   {:active-fields 2, :inactive-fields 0}
+   ;; Dropped the weight column
+   {:active-fields 1, :inactive-fields 1}
+   ;; Hashes should be different without the weight column
+   false]
+  (with-new-mem-db db conn
+    (let [get-table #(db/select-one Table :db_id (u/get-id db))]
+      ;; create the `blueberries_consumed` table and insert 50 values
+      (exec! conn ["CREATE TABLE blueberries_consumed (num SMALLINT NOT NULL, weight FLOAT)"
+                   (insert-range-sql (range 50))])
+      (sync-database! db)
+      ;; We should now have a hash value for num as a SMALLINT
+      (let [table-id        (u/get-id (get-table))
+            before-table-md (table-md-with-hash table-id)
+            _               (exec! conn ["ALTER TABLE blueberries_consumed DROP COLUMN weight"])
+            _               (sync-database! db)
+            ;; Now that hash will include num and weight
+            after-table-md  (table-md-with-hash table-id)]
+        [(no-fields-hash before-table-md)
+         (no-fields-hash after-table-md)
+         (= (:fields-hash before-table-md)
+            (:fields-hash after-table-md))]))))
+
+;; Drops and readds a column, ensures that the hash is back to it's original value
+(expect
+  [
+   ;; Both num and weight columns should be found
+   {:active-fields 2, :inactive-fields 0}
+   ;; Both columns should still be present
+   {:active-fields 2, :inactive-fields 0}
+   ;; The hashes should be the same
+   true]
+  (with-new-mem-db db conn
+    (let [get-table #(db/select-one Table :db_id (u/get-id db))]
+      ;; create the `blueberries_consumed` table and insert 50 values
+      (exec! conn ["CREATE TABLE blueberries_consumed (num SMALLINT NOT NULL, weight FLOAT)"
+                   (insert-range-sql (range 50))])
+      (sync-database! db)
+      ;; We should now have a hash value for num as a SMALLINT
+      (let [table-id        (u/get-id (get-table))
+            before-table-md (table-md-with-hash table-id)
+            _               (exec! conn ["ALTER TABLE blueberries_consumed DROP COLUMN weight"])
+            _               (sync-database! db)
+            _               (exec! conn ["ALTER TABLE blueberries_consumed ADD COLUMN weight FLOAT"])
+            _               (sync-database! db)
+            ;; Now that hash will include num and weight
+            after-table-md  (table-md-with-hash table-id)]
+        [(no-fields-hash before-table-md)
+         (no-fields-hash after-table-md)
+         (= (:fields-hash before-table-md)
+            (:fields-hash after-table-md))])))  )

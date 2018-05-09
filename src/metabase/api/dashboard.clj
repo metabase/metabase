@@ -377,6 +377,7 @@
 (api/defendpoint POST "/save"
   "Save a denormalized description of dashboard."
   [:as {dashboard :body}]
+  (api/check-superuser)
   (->> (dashboard/save-transient-dashboard! dashboard)
        (events/publish-event! :dashboard-create)))
 

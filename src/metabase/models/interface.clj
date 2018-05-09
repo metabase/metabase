@@ -4,6 +4,7 @@
             [metabase.util :as u]
             [metabase.util
              [cron :as cron-util]
+             [date :as du]
              [encryption :as encryption]]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
@@ -82,10 +83,10 @@
 ;;; properties
 
 (defn- add-created-at-timestamp [obj & _]
-  (assoc obj :created_at (u/new-sql-timestamp)))
+  (assoc obj :created_at (du/new-sql-timestamp)))
 
 (defn- add-updated-at-timestamp [obj & _]
-  (assoc obj :updated_at (u/new-sql-timestamp)))
+  (assoc obj :updated_at (du/new-sql-timestamp)))
 
 (models/add-property! :timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)

@@ -286,7 +286,7 @@ export default class Popover extends Component {
     );
 
     if (isOpen) {
-      var tetherOptions = {
+      let tetherOptions = {
         element: popoverElement,
         target: this._getTarget(),
       };

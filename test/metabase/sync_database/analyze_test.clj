@@ -105,7 +105,6 @@
    (This is done via the API so we can see which, if any, side effects (e.g. analysis) get triggered.)"
   [table visibility-type]
   ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
-                                                                       :entity_type     "person"
                                                                        :visibility_type visibility-type
                                                                        :description     "What a nice table!"}))
 

@@ -20,6 +20,7 @@
             [metabase.query-processor
              [interface :as i]
              [util :as qputil]]
+            [metabase.util.date :as du]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -233,8 +234,8 @@
     (let [tz                 (when-let [tz-id ^String (setting/get :report-timezone)]
                                (TimeZone/getTimeZone tz-id))
           parsed-string-date (some-> value
-                                     (u/str->date-time tz)
-                                     u/->Timestamp)]
+                                     (du/str->date-time tz)
+                                     du/->Timestamp)]
       (cond
         parsed-string-date
         (s/validate DateTimeValue (i/map->DateTimeValue {:field this, :value parsed-string-date}))
@@ -256,7 +257,7 @@
           tz                 (when tz-id
                                (TimeZone/getTimeZone tz-id))
           parsed-string-time (some-> value
-                                     (u/str->time tz))]
+                                     (du/str->time tz))]
       (cond
         parsed-string-time
         (s/validate TimeValue (i/map->TimeValue {:field this, :value parsed-string-time :timezone-id tz-id}))

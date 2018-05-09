@@ -8,7 +8,7 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 import moment from "moment";
 
 function formatDate(date) {
-  var m = moment(date);
+  let m = moment(date);
   if (m.isSame(moment(), "day")) {
     return t`Today, ` + m.format("h:mm a");
   } else if (m.isSame(moment().subtract(1, "day"), "day")) {
@@ -74,7 +74,7 @@ export default class HistoryModal extends Component {
   }
 
   render() {
-    var { revisions } = this.props;
+    let { revisions } = this.props;
     return (
       <ModalContent
         title={t`Revision history`}
