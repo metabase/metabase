@@ -22,8 +22,8 @@
 (defn- user-details [user-kwd]
   (-> user-kwd
       fetch-user
-      (select-keys [:email :first_name :last_login :is_qbnewb :is_superuser :last_name :date_joined :common_name])
-      (assoc :id true)))
+      (select-keys [:email :first_name :last_login :is_qbnewb :is_superuser :last_name :common_name])
+      (assoc :id true :date_joined true)))
 
 (defn- pulse-card-details [card]
   (-> card

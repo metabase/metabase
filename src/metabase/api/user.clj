@@ -19,10 +19,16 @@
   (api/check-403 (or (= user-id api/*current-user-id*)
                      (:is_superuser @api/*current-user*))))
 
+(def ^:private all-user-fields
+  (vec (cons User user/all-user-fields)))
+
 (api/defendpoint GET "/"
   "Fetch a list of all `Users` for the admin People page."
   []
-  (db/select [User :id :first_name :last_name :email :is_superuser :google_auth :ldap_auth :last_login :is_active]))
+  (db/select all-user-fields))
+
+(defn- fetch-user [& query-criteria]
+  (apply db/select-one all-user-fields query-criteria))
 
 (defn- reactivate-user! [existing-user]
   (db/update! User (u/get-id existing-user)
@@ -36,7 +42,7 @@
     :ldap_auth     (boolean (and (:ldap_auth existing-user)
                                  (ldap/ldap-configured?))))
   ;; now return the existing user whether they were originally active or not
-  (User (u/get-id existing-user)))
+  (fetch-user :id (u/get-id existing-user)))
 
 
 (api/defendpoint POST "/"
@@ -60,7 +66,7 @@
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."
   [id]
   (check-self-or-superuser id)
-  (api/check-404 (User :id id, :is_active true)))
+  (api/check-404 (fetch-user :id id, :is_active true)))
 
 
 (api/defendpoint PUT "/:id"
@@ -81,7 +87,7 @@
                    :last_name    last_name
                    :is_superuser (when (:is_superuser @api/*current-user*)
                                    is_superuser)))
-  (User id))
+  (fetch-user :id id))
 
 (api/defendpoint PUT "/:id/reactivate"
   "Reactivate user at `:id`"
@@ -109,7 +115,7 @@
         "Invalid password")))
   (user/set-password! id password)
   ;; return the updated User
-  (User id))
+  (fetch-user :id id))
 
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint

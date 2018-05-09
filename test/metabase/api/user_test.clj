@@ -21,54 +21,51 @@
 (expect (get middleware/response-unauthentic :body) (http/client :get 401 "user"))
 (expect (get middleware/response-unauthentic :body) (http/client :get 401 "user/current"))
 
+(def user-defaults
+  {:ldap_auth    false
+   :is_active    true
+   :is_superuser false
+   :google_auth  false
+   :is_qbnewb    true})
 
 ;; ## GET /api/user
 ;; Check that anyone can get a list of all active Users
 (expect
-  #{(match-$ (fetch-user :trashbird)
-      {:email        "trashbird@metabase.com"
-       :ldap_auth    false
-       :first_name   "Trash"
-       :last_login   $
-       :is_active    false
-       :is_superuser false
-       :id           $
-       :last_name    "Bird"
-       :common_name  "Trash Bird"
-       :google_auth  false})
-    (match-$ (fetch-user :crowberto)
-      {:common_name  "Crowberto Corv"
-       :last_name    "Corv"
-       :id           $
-       :is_superuser true
-       :is_active    true
-       :last_login   $
-       :first_name   "Crowberto"
-       :email        "crowberto@metabase.com"
-       :google_auth  false
-       :ldap_auth    false})
-    (match-$ (fetch-user :lucky)
-      {:common_name  "Lucky Pigeon"
-       :last_name    "Pigeon"
-       :id           $
-       :is_superuser false
-       :is_active    true
-       :last_login   $
-       :first_name   "Lucky"
-       :email        "lucky@metabase.com"
-       :google_auth  false
-       :ldap_auth    false})
-    (match-$ (fetch-user :rasta)
-      {:common_name  "Rasta Toucan"
-       :last_name    "Toucan"
-       :id           $
-       :is_superuser false
-       :is_active    true
-       :last_login   $
-       :first_name   "Rasta"
-       :email        "rasta@metabase.com"
-       :google_auth  false
-       :ldap_auth    false})}
+  (set (map #(merge user-defaults %)
+            [(match-$ (fetch-user :trashbird)
+               {:email        "trashbird@metabase.com"
+                :first_name   "Trash"
+                :last_login   $
+                :is_active    false
+                :id           $
+                :last_name    "Bird"
+                :common_name  "Trash Bird"
+                :date_joined  $})
+             (match-$ (fetch-user :crowberto)
+               {:common_name  "Crowberto Corv"
+                :last_name    "Corv"
+                :id           $
+                :is_superuser true
+                :last_login   $
+                :first_name   "Crowberto"
+                :email        "crowberto@metabase.com"
+                :date_joined  $})
+             (match-$ (fetch-user :lucky)
+               {:common_name  "Lucky Pigeon"
+                :last_name    "Pigeon"
+                :id           $
+                :last_login   $
+                :first_name   "Lucky"
+                :email        "lucky@metabase.com"
+                :date_joined  $})
+             (match-$ (fetch-user :rasta)
+               {:common_name  "Rasta Toucan"
+                :last_name    "Toucan"
+                :id           $
+                :last_login   $
+                :first_name   "Rasta"
+                :email        "rasta@metabase.com"
+                :date_joined  $})]))
   (do
     ;; Delete all the other random Users we've created so far
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
@@ -87,12 +84,13 @@
      :last_name    user-name
      :common_name  (str user-name " " user-name)
      :is_superuser false
-     :is_qbnewb    true}
+     :is_qbnewb    true
+     :is_active    true}
     (et/with-fake-inbox
       ((user->client :crowberto) :post 200 "user" {:first_name user-name
                                                    :last_name  user-name
                                                    :email      email})
-      (u/prog1 (db/select-one [User :email :first_name :last_name :is_superuser :is_qbnewb]
+      (u/prog1 (db/select-one [User :email :first_name :last_name :is_superuser :is_qbnewb :is_active]
                               :email email)
                ;; clean up after ourselves
                (db/delete! User :email email)))))
@@ -158,35 +156,30 @@
 ;; ## GET /api/user/current
 ;; Check that fetching current user will return extra fields like `is_active` and will return OrgPerms
 (expect
-  (match-$ (fetch-user :rasta)
-    {:email        "rasta@metabase.com"
-     :first_name   "Rasta"
-     :last_name    "Toucan"
-     :common_name  "Rasta Toucan"
-     :date_joined  $
-     :last_login   $
-     :is_active    true
-     :is_superuser false
-     :is_qbnewb    true
-     :google_auth  false
-     :ldap_auth    false
-     :id           $})
+  (merge user-defaults
+         (match-$ (fetch-user :rasta)
+           {:email        "rasta@metabase.com"
+            :first_name   "Rasta"
+            :last_name    "Toucan"
+            :common_name  "Rasta Toucan"
+            :date_joined  $
+            :last_login   $
+            :id           $}))
   ((user->client :rasta) :get 200 "user/current"))
 
 
 ;; ## GET /api/user/:id
 ;; Should return a smaller set of fields, and should *not* return OrgPerms
 (expect
-  (match-$ (fetch-user :rasta)
-    {:email        "rasta@metabase.com"
-     :first_name   "Rasta"
-     :last_login   $
-     :is_superuser false
-     :is_qbnewb    true
-     :id           $
-     :last_name    "Toucan"
-     :date_joined  $
-     :common_name  "Rasta Toucan"})
+  (merge user-defaults
+         (match-$ (fetch-user :rasta)
+           {:email        "rasta@metabase.com"
+            :first_name   "Rasta"
+            :last_login   $
+            :id           $
+            :last_name    "Toucan"
+            :date_joined  $
+            :common_name  "Rasta Toucan"}))
   ((user->client :rasta) :get 200 (str "user/" (user->id :rasta))))
 
 ;; Check that a non-superuser CANNOT fetch someone else's user details
@@ -194,16 +187,16 @@
   ((user->client :rasta) :get 403 (str "user/" (user->id :trashbird))))
 
 ;; A superuser should be allowed to fetch another users data
-(expect (match-$ (fetch-user :rasta)
-          {:email        "rasta@metabase.com"
-           :first_name   "Rasta"
-           :last_login   $
-           :is_superuser false
-           :is_qbnewb    true
-           :id           $
-           :last_name    "Toucan"
-           :date_joined  $
-           :common_name  "Rasta Toucan"})
+(expect
+  (merge user-defaults
+         (match-$ (fetch-user :rasta)
+           {:email        "rasta@metabase.com"
+            :first_name   "Rasta"
+            :last_login   $
+            :id           $
+            :last_name    "Toucan"
+            :date_joined  $
+            :common_name  "Rasta Toucan"}))
   ((user->client :crowberto) :get 200 (str "user/" (user->id :rasta))))
 
 ;; We should get a 404 when trying to access a disabled account
@@ -215,14 +208,18 @@
 ;; Test that we can edit a User
 (expect
   [{:first_name "Cam", :last_name "Era",  :is_superuser true, :email "cam.era@metabase.com"}
+   (merge user-defaults
+          {:last_login nil, :common_name "Cam Eron", :id true, :date_joined true :email "cam.eron@metabase.com",
+           :first_name "Cam", :is_superuser true, :last_name "Eron"})
    {:first_name "Cam", :last_name "Eron", :is_superuser true, :email "cam.eron@metabase.com"}]
   (tt/with-temp User [{user-id :id} {:first_name "Cam", :last_name "Era", :email "cam.era@metabase.com", :is_superuser true}]
     (let [user (fn [] (into {} (dissoc (db/select-one [User :first_name :last_name :is_superuser :email], :id user-id)
                                        :common_name)))]
       [(user)
-       (do ((user->client :crowberto) :put 200 (str "user/" user-id) {:last_name "Eron"
-                                                                      :email     "cam.eron@metabase.com"})
-           (user))])))
+       (tu/boolean-ids-and-timestamps
+        ((user->client :crowberto) :put 200 (str "user/" user-id) {:last_name "Eron"
+                                                                   :email     "cam.eron@metabase.com"}))
+       (user)])))
 
 ;; ## PUT /api/user/:id
 ;; Test that updating a user's email to an existing inactive user's email fails
@@ -290,9 +287,9 @@
   [{:success true}
    false]
   (tt/with-temp User [{:keys [id]} {:first_name (random-name)
-                                 :last_name  (random-name)
-                                 :email      "def@metabase.com"
-                                 :password   "def123"}]
+                                    :last_name  (random-name)
+                                    :email      "def@metabase.com"
+                                    :password   "def123"}]
     (let [creds {:username "def@metabase.com"
                  :password "def123"}]
       [(metabase.http-client/client creds :put 200 (format "user/%d/qbnewb" id))
