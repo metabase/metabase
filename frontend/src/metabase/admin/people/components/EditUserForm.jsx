@@ -99,9 +99,9 @@ export default class EditUserForm extends Component {
             : null,
       });
     } catch (e) {
-      // hack for email error being returned directly rather than via our usual convension
+      // HACK: sometimes errors don't follow our usual conventions
       if (e && typeof e.data === "string") {
-        this.setState({ formError: { data: { errors: { email: e.data } } } });
+        this.setState({ formError: { data: { message: e.data } } });
       } else {
         this.setState({ formError: e });
       }
@@ -238,7 +238,12 @@ export default class EditUserForm extends Component {
           ) : null}
         </div>
 
-        <ModalFooter>
+        <ModalFooter className="flex align-center">
+          {formError &&
+            formError.data &&
+            formError.data.message && (
+              <span className="text-error">{formError.data.message}</span>
+            )}
           <Button type="button" onClick={this.cancel.bind(this)}>
             {t`Cancel`}
           </Button>

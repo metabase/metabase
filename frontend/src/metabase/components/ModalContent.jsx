@@ -103,7 +103,7 @@ export const ModalFooter = ({ children, fullPageModal, formModal }) => (
     )}
   >
     <div
-      className="flex-full ml-auto mr-auto flex"
+      className="flex-full ml-auto mr-auto flex align-center"
       style={{ maxWidth: formModal && fullPageModal ? FORM_WIDTH : undefined }}
     >
       <div className="flex-full" />
