@@ -417,6 +417,7 @@ export default class TableInteractive extends Component {
       clicked = { column };
     }
 
+    const isDraggable = !this.props.isPivoted;
     const isDragging = this.state.dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
     const isSortable = isClickable && column.source;
@@ -431,6 +432,7 @@ export default class TableInteractive extends Component {
         /* needs to be index+name+counter so Draggable resets after each drag */
         key={columnIndex + column.name + DRAG_COUNTER}
         axis="x"
+        disabled={!isDraggable}
         onStart={(e, d) => {
           this.setState({
             columnPositions: this.getColumnPositions(),
@@ -500,9 +502,9 @@ export default class TableInteractive extends Component {
               "justify-end": isRightAligned,
             },
           )}
-          // use onMouseUp instead of onClick since we can stopPropation when resizing headers
-          onMouseUp={
-            isClickable
+          onClick={
+            // only use the onClick if not draggable since it's also handled in Draggable's onStop
+            isClickable && !isDraggable
               ? e => {
                   onVisualizationClick({
                     ...clicked,
