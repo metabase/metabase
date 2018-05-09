@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { fetchMetrics, fetchDatabases } from "metabase/redux/metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EntitySearch from "metabase/containers/EntitySearch";
-import { getMetadata, getMetadataFetched } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import _ from "underscore";
 import { t } from "c-3po";
 import type { Metric } from "metabase/meta/types/Metric";
@@ -14,10 +14,15 @@ import type { StructuredQuery } from "metabase/meta/types/Query";
 import { getCurrentQuery } from "metabase/new_query/selectors";
 import { resetQuery } from "../new_query";
 
+import Metrics from "metabase/entities/metrics";
+import Databases from "metabase/entities/databases";
+
 const mapStateToProps = state => ({
   query: getCurrentQuery(state),
   metadata: getMetadata(state),
-  metadataFetched: getMetadataFetched(state),
+  isLoading:
+    Metrics.selectors.getLoading(state) ||
+    Databases.selectors.getLoading(state),
 });
 const mapDispatchToProps = {
   fetchMetrics,
@@ -33,7 +38,7 @@ export default class MetricSearch extends Component {
 
     query: StructuredQuery,
     metadata: Metadata,
-    metadataFetched: any,
+    isLoading: boolean,
     fetchMetrics: () => void,
     fetchDatabases: () => void,
     resetQuery: () => void,
@@ -55,8 +60,7 @@ export default class MetricSearch extends Component {
   };
 
   render() {
-    const { backButtonUrl, metadataFetched, metadata } = this.props;
-    const isLoading = !metadataFetched.metrics || !metadataFetched.databases;
+    const { backButtonUrl, isLoading, metadata } = this.props;
 
     return (
       <LoadingAndErrorWrapper loading={isLoading}>

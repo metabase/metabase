@@ -145,7 +145,6 @@ export default class TokenField extends Component {
   static defaultProps = {
     removeSelected: true,
 
-    // $FlowFixMe
     valueKey: "value",
     labelKey: "label",
 
