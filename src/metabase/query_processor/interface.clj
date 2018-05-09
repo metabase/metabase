@@ -7,7 +7,9 @@
              [field :as field]]
             [metabase.sync.interface :as i]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s])
   (:import clojure.lang.Keyword
            [java.sql Time Timestamp]))
@@ -269,7 +271,7 @@
 
 (def LiteralDatetimeString
   "Schema for an MBQL datetime string literal, in ISO-8601 format."
-  (s/constrained su/NonBlankString u/date-string? "Valid ISO-8601 datetime string literal"))
+  (s/constrained su/NonBlankString du/date-string? "Valid ISO-8601 datetime string literal"))
 
 (def LiteralDatetime
   "Schema for an MBQL literal datetime value: and ISO-8601 string or `java.sql.Date`."
@@ -333,7 +335,7 @@
 (extend-protocol IDateTimeValue
   DateTimeValue
   (unit                [this]   (:unit (:field this)))
-  (add-date-time-units [this n] (assoc this :value (u/relative-date (unit this) n (:value this))))
+  (add-date-time-units [this n] (assoc this :value (du/relative-date (unit this) n (:value this))))
 
   RelativeDateTimeValue
   (unit                [this]   (:unit this))

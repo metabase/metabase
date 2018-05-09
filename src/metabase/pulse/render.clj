@@ -13,6 +13,7 @@
              [util :as hutil]]
             [metabase.util :as u]
             [metabase.util
+             [date :as du]
              [ui-logic :as ui-logic]
              [urls :as urls]]
             [puppetlabs.i18n.core :refer [tru trs]]
@@ -212,7 +213,7 @@
 (defn- reformat-timestamp [timezone old-format-timestamp new-format-string]
   (f/unparse (f/with-zone (f/formatter new-format-string)
                (DateTimeZone/forTimeZone timezone))
-             (u/str->date-time old-format-timestamp timezone)))
+             (du/str->date-time old-format-timestamp timezone)))
 
 (defn- format-timestamp
   "Formats timestamps with human friendly absolute dates based on the column :unit"
@@ -221,7 +222,7 @@
     :hour          (reformat-timestamp timezone timestamp "h a - MMM YYYY")
     :week          (str "Week " (reformat-timestamp timezone timestamp "w - YYYY"))
     :month         (reformat-timestamp timezone timestamp "MMMM YYYY")
-    :quarter       (let [timestamp-obj (u/str->date-time timestamp timezone)]
+    :quarter       (let [timestamp-obj (du/str->date-time timestamp timezone)]
                      (str "Q"
                           (inc (int (/ (t/month timestamp-obj)
                                        3)))
@@ -249,7 +250,7 @@
 (defn- format-timestamp-relative
   "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible, otherwie returns nil"
   [timezone timestamp, {:keys [unit]}]
-  (let [parsed-timestamp (u/str->date-time timestamp timezone)]
+  (let [parsed-timestamp (du/str->date-time timestamp timezone)]
     (case unit
       :day     (date->interval-name parsed-timestamp
                                     (t/date-midnight (year) (month) (day))
@@ -649,7 +650,7 @@
   [render-type timezone card {:keys [rows cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
         ft-row (if (datetime-field? (x-axis-rowfn cols))
-                 #(.getTime ^Date (u/->Timestamp %))
+                 #(.getTime ^Date (du/->Timestamp %))
                  identity)
         rows   (if (> (ft-row (x-axis-rowfn (first rows)))
                       (ft-row (x-axis-rowfn (last rows))))

@@ -31,6 +31,7 @@
              [table :as table :refer [Table]]
              [user :refer [User]]]
             [metabase.query-processor.util :as qputil]
+            [metabase.util.date :as du]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -51,7 +52,7 @@
       (@migration-var)
       (db/insert! DataMigrations
         :id        migration-name
-        :timestamp (u/new-sql-timestamp)))))
+        :timestamp (du/new-sql-timestamp)))))
 
 (def ^:private data-migrations (atom []))
 
