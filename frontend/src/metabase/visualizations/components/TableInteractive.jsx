@@ -28,6 +28,8 @@ const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 30;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
+// if header is dragged fewer than than this number of pixels we consider it a click instead of a drag
+const HEADER_DRAG_THRESHOLD = 5;
 
 // HACK: used to get react-draggable to reset after a drag
 let DRAG_COUNTER = 0;
@@ -269,13 +271,20 @@ export default class TableInteractive extends Component {
     });
   }
 
+  visualizationIsClickable(clicked) {
+    const { onVisualizationClick, visualizationIsClickable } = this.props;
+    const { dragColIndex } = this.state;
+    return (
+      // don't bother calling if we're dragging
+      dragColIndex == null &&
+      onVisualizationClick &&
+      visualizationIsClickable &&
+      visualizationIsClickable(clicked)
+    );
+  }
+
   cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
-    const {
-      data,
-      isPivoted,
-      onVisualizationClick,
-      visualizationIsClickable,
-    } = this.props;
+    const { data, isPivoted, onVisualizationClick } = this.props;
     const { rows, cols } = data;
 
     const column = cols[columnIndex];
@@ -288,8 +297,7 @@ export default class TableInteractive extends Component {
       columnIndex,
       isPivoted,
     );
-    const isClickable =
-      onVisualizationClick && visualizationIsClickable(clicked);
+    const isClickable = this.visualizationIsClickable(clicked);
 
     return (
       <div
@@ -389,12 +397,7 @@ export default class TableInteractive extends Component {
   }
 
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-    const {
-      sort,
-      isPivoted,
-      onVisualizationClick,
-      visualizationIsClickable,
-    } = this.props;
+    const { sort, isPivoted, onVisualizationClick } = this.props;
     // $FlowFixMe: not sure why flow has a problem with this
     const { cols } = this.props.data;
     const column = cols[columnIndex];
@@ -415,9 +418,7 @@ export default class TableInteractive extends Component {
     }
 
     const isDragging = this.state.dragColIndex === columnIndex;
-
-    const isClickable =
-      onVisualizationClick && visualizationIsClickable(clicked);
+    const isClickable = this.visualizationIsClickable(clicked);
     const isSortable = isClickable && column.source;
     const isRightAligned = isColumnRightAligned(column);
 
@@ -456,7 +457,10 @@ export default class TableInteractive extends Component {
             dragColIndex !== dragColNewIndex
           ) {
             this.onColumnReorder(dragColIndex, dragColNewIndex);
-          } else if (Math.abs(d.x) + Math.abs(d.y) < 5) {
+          } else if (
+            isClickable &&
+            Math.abs(d.x) + Math.abs(d.y) < HEADER_DRAG_THRESHOLD
+          ) {
             // in setTimeout since headers will be rerendered due to DRAG_COUNTER changing
             setTimeout(() => {
               onVisualizationClick({
@@ -578,15 +582,7 @@ export default class TableInteractive extends Component {
 
     return (
       <ScrollSync>
-        {({
-          clientHeight,
-          clientWidth,
-          onScroll,
-          scrollHeight,
-          scrollLeft,
-          scrollTop,
-          scrollWidth,
-        }) => (
+        {({ onScroll, scrollLeft, scrollTop }) => (
           <div
             className={cx(className, "TableInteractive relative", {
               "TableInteractive--pivot": this.props.isPivoted,
