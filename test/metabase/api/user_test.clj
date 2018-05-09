@@ -21,57 +21,46 @@
 (expect (get middleware/response-unauthentic :body) (http/client :get 401 "user"))
 (expect (get middleware/response-unauthentic :body) (http/client :get 401 "user/current"))
 
-(def user-defaults
+(def ^:private user-defaults
   {:ldap_auth    false
    :is_active    true
    :is_superuser false
    :google_auth  false
-   :is_qbnewb    true})
+   :is_qbnewb    true
+   :id           true
+   :last_login   nil
+   :updated_at   true
+   :date_joined  true})
 
 ;; ## GET /api/user
 ;; Check that anyone can get a list of all active Users
 (expect
   (set (map #(merge user-defaults %)
-            [(match-$ (fetch-user :trashbird)
-               {:email        "trashbird@metabase.com"
-                :first_name   "Trash"
-                :last_login   $
-                :is_active    false
-                :id           $
-                :last_name    "Bird"
-                :common_name  "Trash Bird"
-                :date_joined  $})
-             (match-$ (fetch-user :crowberto)
-               {:common_name  "Crowberto Corv"
-                :last_name    "Corv"
-                :id           $
-                :is_superuser true
-                :last_login   $
-                :first_name   "Crowberto"
-                :email        "crowberto@metabase.com"
-                :date_joined  $})
-             (match-$ (fetch-user :lucky)
-               {:common_name  "Lucky Pigeon"
-                :last_name    "Pigeon"
-                :id           $
-                :last_login   $
-                :first_name   "Lucky"
-                :email        "lucky@metabase.com"
-                :date_joined  $})
-             (match-$ (fetch-user :rasta)
-               {:common_name  "Rasta Toucan"
-                :last_name    "Toucan"
-                :id           $
-                :last_login   $
-                :first_name   "Rasta"
-                :email        "rasta@metabase.com"
-                :date_joined  $})]))
+
+            [{:email        "trashbird@metabase.com"
+              :first_name   "Trash"
+              :is_active    false
+              :last_name    "Bird"
+              :common_name  "Trash Bird"}
+             {:common_name  "Crowberto Corv"
+              :last_name    "Corv"
+              :is_superuser true
+              :first_name   "Crowberto"
+              :email        "crowberto@metabase.com"}
+             {:common_name  "Lucky Pigeon"
+              :last_name    "Pigeon"
+              :first_name   "Lucky"
+              :email        "lucky@metabase.com"}
+             {:common_name  "Rasta Toucan"
+              :last_name    "Toucan"
+              :first_name   "Rasta"
+              :email        "rasta@metabase.com"}]))
   (do
     ;; Delete all the other random Users we've created so far
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
       (db/delete! User :id [:not-in user-ids]))
     ;; Now do the request
-    (set ((user->client :rasta) :get 200 "user")))) ; as a set since we don't know what order the results will come back in
+    (set (tu/boolean-ids-and-timestamps ((user->client :rasta) :get 200 "user"))))) ; as a set since we don't know what order the results will come back in
 
 
 ;; ## POST /api/user
@@ -157,30 +146,22 @@
 ;; Check that fetching current user will return extra fields like `is_active` and will return OrgPerms
 (expect
   (merge user-defaults
-         (match-$ (fetch-user :rasta)
-           {:email        "rasta@metabase.com"
-            :first_name   "Rasta"
-            :last_name    "Toucan"
-            :common_name  "Rasta Toucan"
-            :date_joined  $
-            :last_login   $
-            :id           $}))
-  ((user->client :rasta) :get 200 "user/current"))
+         {:email        "rasta@metabase.com"
+          :first_name   "Rasta"
+          :last_name    "Toucan"
+          :common_name  "Rasta Toucan"})
+  (tu/boolean-ids-and-timestamps ((user->client :rasta) :get 200 "user/current")))
 
 
 ;; ## GET /api/user/:id
 ;; Should return a smaller set of fields, and should *not* return OrgPerms
 (expect
   (merge user-defaults
-         (match-$ (fetch-user :rasta)
-           {:email        "rasta@metabase.com"
-            :first_name   "Rasta"
-            :last_login   $
-            :id           $
-            :last_name    "Toucan"
-            :date_joined  $
-            :common_name  "Rasta Toucan"}))
-  ((user->client :rasta) :get 200 (str "user/" (user->id :rasta))))
+         {:email        "rasta@metabase.com"
+          :first_name   "Rasta"
+          :last_name    "Toucan"
+          :common_name  "Rasta Toucan"})
+  (tu/boolean-ids-and-timestamps ((user->client :rasta) :get 200 (str "user/" (user->id :rasta)))))
 
 ;; Check that a non-superuser CANNOT fetch someone else's user details
 (expect "You don't have permissions to do that."
@@ -189,15 +170,11 @@
 ;; A superuser should be allowed to fetch another users data
 (expect
   (merge user-defaults
-         (match-$ (fetch-user :rasta)
-           {:email        "rasta@metabase.com"
-            :first_name   "Rasta"
-            :last_login   $
-            :id           $
-            :last_name    "Toucan"
-            :date_joined  $
-            :common_name  "Rasta Toucan"}))
-  ((user->client :crowberto) :get 200 (str "user/" (user->id :rasta))))
+         {:email        "rasta@metabase.com"
+          :first_name   "Rasta"
+          :last_name    "Toucan"
+          :common_name  "Rasta Toucan"})
+  (tu/boolean-ids-and-timestamps ((user->client :crowberto) :get 200 (str "user/" (user->id :rasta)))))
 
 ;; We should get a 404 when trying to access a disabled account
 (expect "Not found."

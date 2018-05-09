@@ -4057,3 +4057,17 @@ databaseChangeLog:
               name: read_permissions
               type: text
               remarks: 'Permissions required to view this Card and run its query.'
+  - changeSet:
+      id: 76
+      author: senior
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              name: updated_at
+              type: DATETIME
+              defaultValueComputed: 'current_timestamp'
+              remarks: 'When was the user last updated.'
+              constraints:
+                nullable: false
