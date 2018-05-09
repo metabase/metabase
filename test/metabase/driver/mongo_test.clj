@@ -6,6 +6,7 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :refer [rows]]]
+            [metabase.driver.mongo :as mongo]
             [metabase.driver.mongo.query-processor :as mongo-qp]
             [metabase.models
              [field :refer [Field]]
@@ -237,3 +238,14 @@
                                              :collection "venues"}
                                   :type     :native
                                   :database (data/id)}))))
+
+
+;; tests for `most-common-object-type`
+(expect
+ String
+ (#'mongo/most-common-object-type [[Float 20] [Integer 10] [String 30]]))
+
+;; make sure it handles `nil` types correctly as well (#6880)
+(expect
+ nil
+ (#'mongo/most-common-object-type [[Float 20] [nil 40] [Integer 10] [String 30]]))
