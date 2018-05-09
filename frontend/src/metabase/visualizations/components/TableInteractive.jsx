@@ -286,8 +286,15 @@ export default class TableInteractive extends Component {
     );
   }
 
+  onVisualizationClick(clicked: ?ClickObject, element: HTMLElement) {
+    const { onVisualizationClick } = this.props;
+    if (this.visualizationIsClickable(clicked)) {
+      onVisualizationClick({ ...clicked, element });
+    }
+  }
+
   cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
-    const { data, isPivoted, onVisualizationClick } = this.props;
+    const { data, isPivoted } = this.props;
     const { dragColIndex } = this.state;
     const { rows, cols } = data;
 
@@ -324,7 +331,7 @@ export default class TableInteractive extends Component {
         onMouseUp={
           isClickable
             ? e => {
-                onVisualizationClick({ ...clicked, element: e.currentTarget });
+                this.onVisualizationClick(clicked, e.currentTarget);
               }
             : undefined
         }
@@ -403,7 +410,7 @@ export default class TableInteractive extends Component {
   }
 
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-    const { sort, isPivoted, onVisualizationClick } = this.props;
+    const { sort, isPivoted } = this.props;
     // $FlowFixMe: not sure why flow has a problem with this
     const { cols } = this.props.data;
     const column = cols[columnIndex];
@@ -465,16 +472,10 @@ export default class TableInteractive extends Component {
             dragColIndex !== dragColNewIndex
           ) {
             this.onColumnReorder(dragColIndex, dragColNewIndex);
-          } else if (
-            isClickable &&
-            Math.abs(d.x) + Math.abs(d.y) < HEADER_DRAG_THRESHOLD
-          ) {
+          } else if (Math.abs(d.x) + Math.abs(d.y) < HEADER_DRAG_THRESHOLD) {
             // in setTimeout since headers will be rerendered due to DRAG_COUNTER changing
             setTimeout(() => {
-              onVisualizationClick({
-                ...clicked,
-                element: this.headerRefs[columnIndex],
-              });
+              this.onVisualizationClick(clicked, this.headerRefs[columnIndex]);
             });
           }
           this.setState({
@@ -512,10 +513,7 @@ export default class TableInteractive extends Component {
             // only use the onClick if not draggable since it's also handled in Draggable's onStop
             isClickable && !isDraggable
               ? e => {
-                  onVisualizationClick({
-                    ...clicked,
-                    element: e.currentTarget,
-                  });
+                  this.onVisualizationClick(clicked, e.currentTarget);
                 }
               : undefined
           }
