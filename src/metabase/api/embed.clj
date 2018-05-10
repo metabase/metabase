@@ -17,6 +17,7 @@
   (:require [clojure
              [set :as set]
              [string :as str]]
+            [clojure.data.csv :as csv]
             [clojure.tools.logging :as log]
             [compojure.core :refer [GET]]
             [medley.core :as m]
@@ -33,8 +34,7 @@
              [embed :as eu]
              [schema :as su]]
             [schema.core :as s]
-            [toucan.db :as db]
-            [clojure.data.csv :as csv]))
+            [toucan.db :as db]))
 
 ;;; ------------------------------------------------- Param Checking -------------------------------------------------
 
@@ -71,9 +71,9 @@
   [object-embedding-params token-params user-params]
   ;; TODO - maybe make this log/debug once embedding is wrapped up
   (log/debug "Validating params for embedded object:\n"
-            "object embedding params:" object-embedding-params
-            "token params:"            token-params
-            "user params:"             user-params)
+             "object embedding params:" object-embedding-params
+             "token params:"            token-params
+             "user params:"             user-params)
   (validate-params-are-allowed object-embedding-params token-params user-params)
   (validate-params-exist object-embedding-params (set/union token-params user-params)))
 
@@ -154,8 +154,8 @@
    `value`."
   [parameters parameter-values]
   (when (seq parameters)
-  (for [param parameters
-        :let  [value (get parameter-values (keyword (:slug param)))]
+    (for [param parameters
+          :let  [value (get parameter-values (keyword (:slug param)))]
           :when (some? value)]
       (assoc (select-keys param [:type :target :slug])
         :value value))))
@@ -189,6 +189,7 @@
   not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect."
   [query-params]
   (m/map-keys keyword query-params))
+
 (defn- mapify-row [row columns mergeKeysSet]
   (loop [len 0  index 0 rowkey (str "") array [] ]
     (if (not ( = (count row) (count columns)))
@@ -199,8 +200,7 @@
               colName (nth columns index)]
           (if (not (contains? mergeKeysSet colName))
             (recur (inc len) (inc index) rowkey (conj array colValue))
-            (recur (inc len) (inc index) (str rowkey colValue) array)
-            ))))))
+            (recur (inc len) (inc index) (str rowkey colValue) array)))))))
 
 (defn- mapify-rows [rows columns mergeKeysSet]
   (into (sorted-map)
@@ -219,8 +219,8 @@
   (let [cols (concat (data1 :cols)
                      (for [col (data2 :cols)
                            :when (not (contains? mergeKeysSet (col :name)))]
-                       col)) ]
-    {:cols (into []  cols)}) )
+                       col))]
+       {:cols (into []  cols)}))
 
 
 (defn- merge-rows [data1 data2 mergeKeysSet allColumns]
@@ -278,9 +278,6 @@
         (if-not (seq more)
           (merge {:data data } (merge-query-params card1 card2))
           (recur data more)))))))
-
-
-;;; ------------------------------------------------------------ Card Fns used by both /api/embed and /api/preview_embed ------------------------------------------------------------
 
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
@@ -429,7 +426,6 @@
    Additional dashboard parameters can be provided in the query string, but params in the JWT token take precedence."
   {:style/indent 1}
   [token dashcard-id card-id query-params]
-  (println token dashcard-id card-id query-params)
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -527,13 +523,11 @@
    [token export-format dashcard-id & query-params]
     {export-format dataset-api/ExportFormat}
       (dataset-api/as-format export-format
-      (let [cards-id (first (csv/read-csv  (query-params :card-ids)))
-            query-params (dissoc query-params :card-ids)
-            cards-data (into [] (map (fn [card-id] (card-for-signed-token token dashcard-id (Integer/parseInt card-id) query-params)) cards-id))
-            combined (reduce combine-cards-data cards-data)
-        ]
-        combined
-    )))
+        (let [cards-id (first (csv/read-csv  (query-params :card-ids)))
+              query-params (dissoc query-params :card-ids)
+              cards-data (into [] (map (fn [card-id] (card-for-signed-token token dashcard-id (Integer/parseInt card-id) query-params)) cards-id))
+              combined (reduce combine-cards-data cards-data)]
+          combined)))
 
 
 (api/define-routes)

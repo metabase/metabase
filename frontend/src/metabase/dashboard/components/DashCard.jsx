@@ -9,12 +9,6 @@ import Visualization, {
 } from "metabase/visualizations/components/Visualization.jsx";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
-import {
-  getParameters,
-  getParametersWithExtras,
-  applyParameters,
-} from "metabase/meta/Card";
-
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
 
