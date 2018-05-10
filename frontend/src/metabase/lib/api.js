@@ -1,5 +1,7 @@
 /* @flow weak */
 
+import "isomorphic-fetch";
+
 import querystring from "querystring";
 
 import EventEmitter from "events";
@@ -25,8 +27,9 @@ const DEFAULT_OPTIONS: Options = {
 export type APIMethod = (d?: Data, o?: Options) => Promise<any>;
 export type APICreator = (t: string, o?: Options | TransformFn) => APIMethod;
 
-class Api extends EventEmitter {
+export class Api extends EventEmitter {
   basename: "";
+  headers: null;
 
   GET: APICreator;
   POST: APICreator;
@@ -88,48 +91,58 @@ class Api extends EventEmitter {
     };
   }
 
-  // TODO Atte Keinänen 6/26/17: Replacing this with isomorphic-fetch could simplify the implementation
-  _makeRequest(method, url, headers, body, data, options) {
-    return new Promise((resolve, reject) => {
-      let isCancelled = false;
-      let xhr = new XMLHttpRequest();
-      xhr.open(method, this.basename + url);
-      for (let headerName in headers) {
-        xhr.setRequestHeader(headerName, headers[headerName]);
+  async _makeRequest(method, url, headers, body, data, options) {
+    let isCancelled = false;
+    let result;
+    try {
+      if (this.headers) {
+        headers = { ...this.headers, ...(headers || {}) };
       }
-      xhr.onreadystatechange = () => {
-        // $FlowFixMe
-        if (xhr.readyState === XMLHttpRequest.DONE) {
-          let body = xhr.responseText;
-          try {
-            body = JSON.parse(body);
-          } catch (e) {}
-          if (xhr.status >= 200 && xhr.status <= 299) {
-            if (options.transformResponse) {
-              body = options.transformResponse(body, { data });
-            }
-            resolve(body);
-          } else {
-            reject({
-              status: xhr.status,
-              data: body,
-              isCancelled: isCancelled,
-            });
-          }
-          if (!options.noEvent) {
-            this.emit(xhr.status, url);
-          }
-        }
+      const fetchOptions = {
+        method,
+        headers: new Headers(headers),
+        credentials: "include",
       };
-      xhr.send(body);
-
+      if (body) {
+        fetchOptions.body = body;
+      }
       if (options.cancelled) {
+        // eslint-disable-next-line no-undef
+        var controller = new AbortController();
+        fetchOptions.signal = controller.signal;
         options.cancelled.then(() => {
           isCancelled = true;
-          xhr.abort();
+          controller.abort();
         });
       }
-    });
+
+      result = await fetch(this.basename + url, fetchOptions);
+
+      let resultBody = null;
+      try {
+        resultBody = await result.text();
+        // Even if the result conversion to JSON fails, we still return the original textsou
+        resultBody = JSON.parse(resultBody);
+      } catch (e) {}
+
+      if (result.status >= 200 && result.status <= 299) {
+        if (options.transformResponse) {
+          return options.transformResponse(resultBody, { data });
+        } else {
+          return resultBody;
+        }
+      } else {
+        throw {
+          status: result.status,
+          data: resultBody,
+          isCancelled,
+        };
+      }
+    } finally {
+      if (!options.noEvent) {
+        this.emit(result && result.status, url);
+      }
+    }
   }
 }
 
