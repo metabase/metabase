@@ -37,7 +37,7 @@
 (def ^:private public-endpoint "/auto/dashboard/")
 
 (defmulti
-  ^{:private  true
+  ^{:doc ""
     :arglists '([entity])}
   ->root type)
 

@@ -234,10 +234,8 @@
   (-> id Segment api/check-404))
 
 (defmethod ->segment :adhoc
-  [{:keys [query name]}]
-  (-> query
-      query/adhoc-query
-      (assoc :name name)))
+  [{:keys [query]}]
+  (query/adhoc-query query))
 
 (api/defendpoint POST "/compare"
   "Return an automagic comparison dashboard based on given dashboard."

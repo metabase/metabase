@@ -73,6 +73,9 @@
                             (map (comp colors #(mod % (count colors)) hash))
                             ensure-distinct-colors)}))))
 
+(defn series-labels
+  [])
+
 (defn- visualization-settings
   [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]
   (let [metric-name (some-fn :name (comp str/capitalize name first :metric))
