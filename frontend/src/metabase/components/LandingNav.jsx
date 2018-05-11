@@ -27,7 +27,7 @@ const LandingNav = props => {
   }
 
   return (
-    <Box className="absolute left top" px={2}>
+    <Box className="absolute left top" px={2} pt={1}>
       <Box>
         <Link
           to={collectionId ? `collection/${collectionId}` : "/"}
@@ -42,27 +42,17 @@ const LandingNav = props => {
           to={showEntity("dashboards")}
           style={linkStyle}
           activeStyle={activeStyle}
+          className="text-brand-hover"
         >
           <Icon name="dashboard" size={ICON_SIZE} />
         </Link>
       </Box>
-      {/*
-      <Box>
-        <Link to="metrics" style={linkStyle} activeStyle={activeStyle}>
-          <Icon name="insight" size={ICON_SIZE} />
-        </Link>
-      </Box>
-      <Box>
-        <Link to="segments" style={linkStyle} activeStyle={activeStyle}>
-          <Icon name="segment" size={ICON_SIZE} />
-        </Link>
-      </Box>
-      */}
       <Box>
         <Link
           to={showEntity("pulses")}
           style={linkStyle}
           activeStyle={activeStyle}
+          className="text-brand-hover"
         >
           <Icon name="pulse" size={ICON_SIZE} />
         </Link>
@@ -72,6 +62,7 @@ const LandingNav = props => {
           to={showEntity("questions")}
           activeStyle={activeStyle}
           style={linkStyle}
+          className="text-brand-hover"
         >
           <Icon name="beaker" size={ICON_SIZE} />
         </Link>

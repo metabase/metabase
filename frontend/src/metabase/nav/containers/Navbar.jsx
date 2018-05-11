@@ -15,6 +15,7 @@ import { normal, saturated } from "metabase/lib/colors";
 import Button from "metabase/components/Button.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
+import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import Modal from "metabase/components/Modal";
@@ -177,35 +178,25 @@ export default class Navbar extends Component {
 
   renderMainNav() {
     return (
-      <Flex
-        style={{
-          backgroundColor: "#FDFDFD",
-          borderBottom: "1px solid #DCE1E4",
-        }}
-        className="relative z4"
-        align="center"
-      >
-        <Box className="">
+      <Flex className="relative bg-brand text-white z4" align="center">
+        <Box ml={1}>
           <Link
             to="/"
             data-metabase-event={"Navbar;Logo"}
             className="LogoNavItem NavItem cursor-pointer flex align-center transition-background justify-center"
             activeClassName="NavItem--selected"
           >
-            <LogoIcon />
+            <LogoIcon dark />
           </Link>
         </Box>
         <Box my={1} p={1} className="wrapper lg-wrapper--trim">
           {/* <SearchBar /> */}
         </Box>
         <Flex ml="auto" align="center">
-          <Box mx={1}>
-            <Link to="reference">Reference</Link>
-          </Box>
           <PopoverWithTrigger
             ref={e => (this._newPopover = e)}
             triggerElement={
-              <Button medium primary>
+              <Button medium mr={3} color="#509ee3">
                 New
               </Button>
             }
@@ -251,10 +242,19 @@ export default class Navbar extends Component {
               </Box>
             </Box>
           </PopoverWithTrigger>
-          <Box mx={1}>
-            <Link to="activity">
-              <Icon name="alert" />
-            </Link>
+          <Box mx={2}>
+            <Tooltip tooltip={t`Reference`}>
+              <Link to="reference">
+                <Icon name="reference" />
+              </Link>
+            </Tooltip>
+          </Box>
+          <Box mx={2}>
+            <Tooltip tooltip={t`Activity`}>
+              <Link to="activity">
+                <Icon name="alert" />
+              </Link>
+            </Tooltip>
           </Box>
           <ProfileLink {...this.props} />
         </Flex>

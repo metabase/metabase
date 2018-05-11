@@ -1,5 +1,6 @@
 import React from "react";
-import { Box, Flex, Subhead, Truncate } from "rebass";
+import { Box, Flex } from "grid-styled";
+import { Subhead, Truncate } from "rebass";
 import { Link, withRouter } from "react-router";
 import { t } from "c-3po";
 import { connect } from "react-redux";
@@ -31,7 +32,7 @@ const Card = Box.extend`
 
 const CollectionItem = ({ collection }) => (
   <Link to={`collection/${collection.id}`}>
-    <Card>
+    <Card className="text-brand-hover">
       <Flex
         align="center"
         my={1}
@@ -84,22 +85,17 @@ const Grid = ({ children }) => (
   </Flex>
 );
 
-const ItemCard = ({ children, background }) => {
+const ItemCard = Card.extend`
+  height: 140px;
+`;
+
+const Item = ({ children }) => {
   return (
-    <Box
-      style={{
-        backgroundColor: background ? background : "#F8F8FA",
-        border: "1px solid #EEF0f1",
-        borderRadius: 6,
-        height: 140,
-      }}
-      className="text-brand-hover"
-      p={2}
-    >
+    <ItemCard className="text-brand-hover" p={2}>
       <Flex direction="column" style={{ height: "100%" }}>
         {children}
       </Flex>
-    </Box>
+    </ItemCard>
   );
 };
 
@@ -110,28 +106,28 @@ class DefaultLanding extends React.Component {
       case "card":
         return (
           <Link to={Urls.question(item.id)}>
-            <ItemCard>
+            <Item>
               <Icon name="beaker" />
               <Truncate mt="auto">{item.name}</Truncate>
-            </ItemCard>
+            </Item>
           </Link>
         );
       case "dashboard":
         return (
           <Link to={Urls.dashboard(item.id)}>
-            <ItemCard background="white">
+            <Item>
               <Icon name="dashboard" color={normal.blue} />
               <Truncate mt="auto">{item.name}</Truncate>
-            </ItemCard>
+            </Item>
           </Link>
         );
       case "pulse":
         return (
           <Link to={Urls.pulseEdit(item.id)}>
-            <ItemCard>
+            <Item>
               <Icon name="pulse" color={normal.yellow} />
               <Truncate mt="auto">{item.name}</Truncate>
-            </ItemCard>
+            </Item>
           </Link>
         );
     }
@@ -144,7 +140,7 @@ class DefaultLanding extends React.Component {
         // colleciton until we have a notion of nested collections
         !collectionId && <CollectionList />}
         <CollectionItemsLoader collectionId={collectionId || "root"}>
-          {({ loading, error, allItems, pulses, cards, dashboards }) => {
+          {({ loading, error, allItems, pulses, cards, dashboards, empty }) => {
             if (loading) {
               return <Box>Loading...</Box>;
             }
@@ -169,6 +165,14 @@ class DefaultLanding extends React.Component {
               }
             }
 
+            if (!items.length) {
+              return (
+                <Flex align="center" justifyContent="center">
+                  <h3>Empty</h3>
+                </Flex>
+              );
+            }
+
             return (
               <Grid>
                 {items.map(item => (
@@ -191,7 +195,7 @@ class CollectionLanding extends React.Component {
     return (
       <Box>
         <Box className="wrapper lg-wrapper--trim">
-          <Flex py={3}>
+          <Flex py={3} align="center">
             <Subhead>
               <Flex align="center">
                 <Flex>

@@ -23,6 +23,7 @@ const CollectionItemsLoader = ({ collectionId, children }: Props) => (
             object.dashboards.map(d => ({ ...d, type: "dashboard" })),
             object.pulses.map(p => ({ ...p, type: "pulse" })),
           ) || [],
+        empty: !object.dashboards && !object.cards && !object.pulses,
       })
     }
   />
