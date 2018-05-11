@@ -75,6 +75,21 @@ export const createAlert = alert => {
   };
 };
 
+// NOTE: backend is a little picky about the properties present on the alert
+function cleanAlert(alert) {
+  alert = {
+    ...alert,
+    card: _.pick(alert.card, "id", "include_csv", "include_xls"),
+  };
+  if (alert.collection_id == null) {
+    delete alert.collection_id;
+  }
+  if (alert.alert_above_goal == null) {
+    delete alert.alert_above_goal;
+  }
+  return alert;
+}
+
 export const UPDATE_ALERT = "metabase/alerts/UPDATE_ALERT";
 const updateAlertRequest = new RestfulRequest({
   endpoint: AlertApi.update,
@@ -83,7 +98,7 @@ const updateAlertRequest = new RestfulRequest({
 });
 export const updateAlert = alert => {
   return async (dispatch, getState) => {
-    await dispatch(updateAlertRequest.trigger(alert));
+    await dispatch(updateAlertRequest.trigger(cleanAlert(alert)));
 
     dispatch(
       addUndo(
