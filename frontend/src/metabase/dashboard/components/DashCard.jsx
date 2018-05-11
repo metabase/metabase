@@ -69,8 +69,9 @@ export default class DashCard extends Component {
       navigateToNewCardFromDashboard,
       metadata,
       dashboard,
-      parameterValues,
+      parameterValues
     } = this.props;
+
     const mainCard = {
       ...dashcard.card,
       visualization_settings: {
@@ -89,11 +90,7 @@ export default class DashCard extends Component {
         card.query_average_duration &&
         card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
     }));
-    var cardIds = [dashcard.card.id];
-    const seriesCards = dashcard.series || [];
-    for (var index = 0; index < seriesCards.length; index++) {
-      cardIds.push(seriesCards[index].id);
-    }
+
     const loading = !(series.length > 0 && _.every(series, s => s.data));
     const expectedDuration = Math.max(
       ...series.map(s => s.card.query_average_duration || 0),
@@ -103,18 +100,8 @@ export default class DashCard extends Component {
       loading &&
       _.some(series, s => s.isSlow) &&
       (usuallyFast ? "usually-fast" : "usually-slow");
-
     const errors = series.map(s => s.error).filter(e => e);
 
-    var parametersMap = getParametersBySlug(
-      dashboard.parameters,
-      parameterValues,
-    );
-
-    if (!parametersMap) {
-      parametersMap = {};
-    }
-    parametersMap["card-ids"] = cardIds;
     let errorMessage, errorIcon;
     if (_.any(errors, e => e && e.status === 403)) {
       errorMessage = ERROR_MESSAGE_PERMISSION;
@@ -127,6 +114,8 @@ export default class DashCard extends Component {
       }
       errorIcon = "warning";
     }
+
+    const params = getParametersBySlug(dashboard.parameters , parameterValues);
 
     return (
       <div
@@ -168,10 +157,9 @@ export default class DashCard extends Component {
                 className="m1 text-brand-hover"
                 classNameClose="hover-child"
                 card={dashcard.card}
-                result={dashcardData}
+                params={params}
                 dashcardId={dashcard.id}
                 token={dashcard.dashboard_id}
-                parameters={parametersMap}
                 icon="download"
               />
             ) : (
