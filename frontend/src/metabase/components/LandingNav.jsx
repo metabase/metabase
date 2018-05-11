@@ -23,16 +23,16 @@ const LandingNav = props => {
   const { collectionId } = props;
 
   function showEntity(type) {
-    return `${collectionId ? `collection/${collectionId}` : ""}?show=${type}`;
+    return {
+      pathname: collectionId ? `collection/${collectionId}` : "",
+      query: { show: type },
+    };
   }
 
   return (
     <Box className="absolute left top" px={2} pt={1}>
       <Box>
-        <Link
-          to={collectionId ? `collection/${collectionId}` : "/"}
-          style={linkStyle}
-        >
+        <Link to={showEntity()} style={linkStyle} activeStyle={activeStyle}>
           <Icon name="reference" size={ICON_SIZE} />
         </Link>
       </Box>
