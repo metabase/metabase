@@ -3,6 +3,7 @@
              [set :as set]
              [string :as s]]
             [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
@@ -15,7 +16,8 @@
              [hive-like :as hive-like]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util.honeysql-extensions :as hx]
+            [puppetlabs.i18n.core :refer [trs]])
   (:import clojure.lang.Reflector
            java.sql.DriverManager
            metabase.query_processor.interface.Field))
@@ -94,23 +96,6 @@
   [{:keys [host port db jdbc-flags]
     :or   {host "localhost", port 10000, db "", jdbc-flags ""}
     :as   opts}]
-  ;; manually register our FixedHiveDriver with java.sql.DriverManager and make sure it's the only driver returned for
-  ;; jdbc:hive2, since we do not want to use the driver registered by the super class of our FixedHiveDriver.
-  ;;
-  ;; Class/forName and invokeConstructor is required to make this compile, but it may be possible to solve this with
-  ;; the right project.clj magic
-  (DriverManager/registerDriver
-   (Reflector/invokeConstructor
-    (Class/forName "metabase.driver.FixedHiveDriver")
-    (into-array [])))
-  (loop []
-    (when-let [driver (try
-                        (DriverManager/getDriver "jdbc:hive2://localhost:10000")
-                        (catch java.sql.SQLException _
-                          nil))]
-      (when-not (instance? (Class/forName "metabase.driver.FixedHiveDriver") driver)
-        (DriverManager/deregisterDriver driver)
-        (recur))))
   (merge {:classname   "metabase.driver.FixedHiveDriver"
           :subprotocol "hive2"
           :subname     (str "//" host ":" port "/" db jdbc-flags)}
@@ -223,7 +208,39 @@
           :string-length-fn          (u/drop-first-arg hive-like/string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg hive-like/unix-timestamp->timestamp)}))
 
+(defn- register-hive-jdbc-driver! [& {:keys [remaining-tries], :or {remaining-tries 5}}]
+  ;; manually register our FixedHiveDriver with java.sql.DriverManager
+  (DriverManager/registerDriver
+   (Reflector/invokeConstructor
+    (Class/forName "metabase.driver.FixedHiveDriver")
+    (into-array [])))
+  ;; now make sure it's the only driver returned
+  ;; for jdbc:hive2, since we do not want to use the driver registered by the super class of our FixedHiveDriver.
+  (when-let [driver (u/ignore-exceptions
+                      (DriverManager/getDriver "jdbc:hive2://localhost:10000"))]
+    (let [registered? (instance? (Class/forName "metabase.driver.FixedHiveDriver") driver)]
+      (cond
+        registered?
+        true
+
+        ;; if it's not the registered driver, deregister the current driver (if applicable) and try a couple more times
+        ;; before giving up :(
+        (and (not registered?)
+             (> remaining-tries 0))
+        (do
+          (when driver
+            (DriverManager/deregisterDriver driver))
+          (recur {:remaining-tries (dec remaining-tries)}))
+
+        :else
+        (log/error
+         (trs "Error: metabase.driver.FixedHiveDriver is registered, but JDBC does not seem to be using it."))))))
+
 (defn -init-driver
-  "Register the SparkSQL driver."
+  "Register the SparkSQL driver if the SparkSQL dependencies are available."
   []
-  (driver/register-driver! :sparksql (SparkSQLDriver.)))
+  (when (u/ignore-exceptions (Class/forName "metabase.driver.FixedHiveDriver"))
+    (log/info (trs "Found metabase.driver.FixedHiveDriver."))
+    (when (u/ignore-exceptions (register-hive-jdbc-driver!))
+      (log/info (trs "Successfully registered metabase.driver.FixedHiveDriver with JDBC."))
+      (driver/register-driver! :sparksql (SparkSQLDriver.)))))
