@@ -36,7 +36,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     ? getFieldRefFromColumn(column)
     : ["field-id", dateField.id];
 
-  return ["sum", "count"]
+  return ["sum"]
     .map(getAggregator)
     .filter(aggregator => isCompatibleAggregatorForField(aggregator, column))
     .map(aggregator => ({
