@@ -32,7 +32,6 @@ const LandingNav = props => {
         <Link
           to={collectionId ? `collection/${collectionId}` : "/"}
           style={linkStyle}
-          activeStyle={activeStyle}
         >
           <Icon name="reference" size={ICON_SIZE} />
         </Link>

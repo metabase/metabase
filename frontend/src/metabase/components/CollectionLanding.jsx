@@ -12,6 +12,7 @@ import Icon from "metabase/components/Icon";
 import CollectionListLoader from "metabase/components/CollectionListLoader";
 import CollectionItemsLoader from "metabase/components/CollectionItemsLoader";
 import EntityMenu from "metabase/components/EntityMenu";
+import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 
 import LandingNav from "metabase/components/LandingNav";
 
@@ -140,12 +141,12 @@ class DefaultLanding extends React.Component {
         // colleciton until we have a notion of nested collections
         !collectionId && <CollectionList />}
         <CollectionItemsLoader collectionId={collectionId || "root"}>
-          {({ loading, error, allItems, pulses, cards, dashboards, empty }) => {
-            if (loading) {
-              return <Box>Loading...</Box>;
-            }
-
+          {({ allItems, pulses, cards, dashboards, empty }) => {
             let items = allItems;
+
+            if (!items.length) {
+              return <CollectionEmptyState />;
+            }
 
             // Hack in filtering
             if (location.query.show) {
@@ -163,14 +164,6 @@ class DefaultLanding extends React.Component {
                   items = allItems;
                   break;
               }
-            }
-
-            if (!items.length) {
-              return (
-                <Flex align="center" justifyContent="center">
-                  <h3>Empty</h3>
-                </Flex>
-              );
             }
 
             return (
@@ -200,7 +193,9 @@ class CollectionLanding extends React.Component {
               <Flex align="center">
                 <Flex>
                   {/* TODO - figure out the right way to grab this */}
-                  <Link to="/">{window.MetabaseBootstrap.site_name}</Link>
+                  <Link to="/" className="text-brand-hover">
+                    {window.MetabaseBootstrap.site_name}
+                  </Link>
                 </Flex>
                 {currentCollection.name && (
                   <Flex align="center">
