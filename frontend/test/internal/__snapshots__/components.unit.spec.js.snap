@@ -1,60 +1,5 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Button should render "" correctly 1`] = `
-<button
-  className="Button "
->
-  <div
-    className="flex layout-centered"
-  >
-    <div>
-      Clickity click
-    </div>
-  </div>
-</button>
-`;
-
-exports[`Button should render "primary" correctly 1`] = `
-<button
-  className="Button Button--primary"
->
-  <div
-    className="flex layout-centered"
-  >
-    <div>
-      Clickity click
-    </div>
-  </div>
-</button>
-`;
-
-exports[`Button should render "with an icon" correctly 1`] = `
-<button
-  className="Button "
->
-  <div
-    className="flex layout-centered"
-  >
-    <svg
-      className="Icon Icon-star mr1 sc-bdVaJa htZdtD"
-      fill="currentcolor"
-      height={14}
-      name="star"
-      size={14}
-      viewBox="0 0 32 32"
-      width={14}
-    >
-      <path
-        d="M16 0 L21 11 L32 12 L23 19 L26 31 L16 25 L6 31 L9 19 L0 12 L11 11"
-      />
-    </svg>
-    <div>
-      Clickity click
-    </div>
-  </div>
-</button>
-`;
-
 exports[`CheckBox should render "Default - Off" correctly 1`] = `
 <div
   className="cursor-pointer"
@@ -750,6 +695,61 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
     />
   </div>
 </div>
+`;
+
+exports[`Styled(div) should render "" correctly 1`] = `
+<button
+  className="Button sc-bwzfXH uTxCW "
+>
+  <div
+    className="flex layout-centered"
+  >
+    <div>
+      Clickity click
+    </div>
+  </div>
+</button>
+`;
+
+exports[`Styled(div) should render "primary" correctly 1`] = `
+<button
+  className="Button sc-bwzfXH uTxCW Button--primary"
+>
+  <div
+    className="flex layout-centered"
+  >
+    <div>
+      Clickity click
+    </div>
+  </div>
+</button>
+`;
+
+exports[`Styled(div) should render "with an icon" correctly 1`] = `
+<button
+  className="Button sc-bwzfXH uTxCW "
+>
+  <div
+    className="flex layout-centered"
+  >
+    <svg
+      className="Icon Icon-star mr1 sc-bdVaJa htZdtD"
+      fill="currentcolor"
+      height={14}
+      name="star"
+      size={14}
+      viewBox="0 0 32 32"
+      width={14}
+    >
+      <path
+        d="M16 0 L21 11 L32 12 L23 19 L26 31 L16 25 L6 31 L9 19 L0 12 L11 11"
+      />
+    </svg>
+    <div>
+      Clickity click
+    </div>
+  </div>
+</button>
 `;
 
 exports[`Toggle should render "off" correctly 1`] = `
