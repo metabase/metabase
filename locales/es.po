@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-04-21 13:42+0200\n"
+"POT-Creation-Date: 2018-05-12 12:51+0200\n"
 "PO-Revision-Date: 2018-03-02 01:00+0100\n"
 "Last-Translator: joe <joe@tsolucio.com>\n"
 "Language-Team: Spanish\n"
@@ -44,7 +44,7 @@ msgstr "Selecciona un tipo de base de datos"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseEditForms.jsx:75
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:182
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:438
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:434
 #: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:175
 #: frontend/src/metabase/components/ActionButton.jsx:51
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:6
@@ -220,8 +220,8 @@ msgstr "en esta casilla:"
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:159
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:42
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:199
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:180
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:334
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:183
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:343
 #: frontend/src/metabase/query_builder/components/RunButton.jsx:24
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:83
 #: frontend/src/metabase/query_builder/containers/ArchiveQuestionModal.jsx:48
@@ -272,7 +272,7 @@ msgstr "Programación"
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:258
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:217
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:194
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:336
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:345
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:47
 msgid "Save changes"
 msgstr "Guardar cambios"
@@ -289,8 +289,8 @@ msgstr "Sincronizar el esquema de la base de datos ahora"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:206
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:218
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:783
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:791
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:779
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:787
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:112
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:120
 msgid "Starting…"
@@ -309,20 +309,20 @@ msgid "Re-scan field values now"
 msgstr "Vuelva a escanear los valores de campo ahora"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:219
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:784
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:780
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:113
 msgid "Failed to start scan"
 msgstr "No se ha podido iniciar la exploración"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:220
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:785
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:781
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:114
 msgid "Scan triggered!"
 msgstr "Exploración iniciada!"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:227
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:165
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:379
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:388
 msgid "Danger Zone"
 msgstr "Zona Peligrosa"
 
@@ -345,10 +345,10 @@ msgstr "Añadir base de datos"
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:421
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:183
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:91
-#: frontend/src/metabase/components/CreateDashboardModal.jsx:90
+#: frontend/src/metabase/components/CreateDashboardModal.jsx:91
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:371
 #: frontend/src/metabase/containers/EntitySearch.jsx:24
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:215
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:216
 #: frontend/src/metabase/questions/containers/CollectionEditorForm.jsx:79
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:463
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:62
@@ -485,13 +485,13 @@ msgid "Column"
 msgstr "Columna"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList.jsx:24
-#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:119
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:206
+#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:121
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:202
 msgid "Visibility"
 msgstr "Visibilidad"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList.jsx:25
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:217
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:213
 msgid "Type"
 msgstr "Tipo"
 
@@ -515,41 +515,41 @@ msgstr "Información Adicional"
 msgid "Find a schema"
 msgstr "Encontrar un esquema"
 
-#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:80
+#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:82
 msgid "Why Hide?"
 msgstr "¿Por qué esconderlo?"
 
-#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:81
+#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:83
 msgid "Technical Data"
 msgstr "Datos Técnicos"
 
-#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:82
+#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:84
 msgid "Irrelevant/Cruft"
 msgstr "Irrelevante"
 
-#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:88
-#: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:81
+#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:90
+#: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:85
 msgid "Queryable"
 msgstr "Consultable"
 
-#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:89
-#: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:89
+#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:91
+#: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:93
 msgid "Hidden"
 msgstr "Escondido"
 
-#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:115
+#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:117
 msgid "No table description yet"
 msgstr "No hay una descripción de la tabla"
 
-#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:122
+#: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:124
 msgid "Metadata Strength"
 msgstr "Alcance Metadatos"
 
-#: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:105
+#: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:109
 msgid "Find a table"
 msgstr "Encontrar una tabla"
 
-#: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:118
+#: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:122
 msgid "Schemas"
 msgstr "Esquemas"
 
@@ -637,85 +637,73 @@ msgstr "Historia"
 msgid "Revision History for"
 msgstr "Historial de Revisiones para"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:42
-msgid "Search box"
-msgstr "Caja de Búsqueda"
-
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:43
-msgid "A list of all values"
-msgstr "Una lista con todos los valores"
-
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:44
-msgid "Plain input box"
-msgstr "Caja de Texto"
-
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:188
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:184
 msgid "{0} – Field Settings"
 msgstr "{0} – Configuración"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:207
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:203
 msgid "Where this field will appear throughout Metabase"
 msgstr "Donde aparecerá este campo en Metabase"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:229
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:225
 msgid "Filtering on this field"
 msgstr "Filtrando sobre este campo"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:230
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:226
 msgid ""
 "When this field is used in a filter, what should people use to enter the "
 "value they want to filter on?"
 msgstr "Cuando este campo se usa en un filtro, ¿qué valores debería aceptar?"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:337
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:333
 msgid "No description for this field yet"
 msgstr "No hay descripción para este campo todavía"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:416
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:412
 msgid "Original value"
 msgstr "Valor original"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:417
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:413
 msgid "Mapped value"
 msgstr "Valor asignado"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:460
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:456
 msgid "Enter value"
 msgstr "Introduce un valor"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:483
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:479
 msgid "Use original value"
 msgstr "Utiliza valor original"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:484
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:480
 msgid "Use foreign key"
 msgstr "Utilizar clave foránea"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:485
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:481
 msgid "Custom mapping"
 msgstr "Mapeo personalizado"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:505
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:605
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:501
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:601
 msgid "Unrecognized mapping type"
 msgstr "Tipo de mapeo no reconocido"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:539
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:535
 msgid ""
 "Current field isn't a foreign key or FK target table metadata is missing"
 msgstr ""
 "El campo actual no es una clave foránea o faltan los metadatos de clave "
 "foránea en la tabla de destino"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:636
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:632
 msgid "The selected field isn't a foreign key"
 msgstr "El campo seleccionado no es una clave foránea"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:698
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:694
 msgid "Display values"
 msgstr "Valores mostrados"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:699
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:695
 msgid ""
 "Choose to show the original value from the database, or have this field "
 "display associated or custom information."
@@ -723,19 +711,19 @@ msgstr ""
 "Elige si quieres mostrar el valor original de la base de datos, o mostrar "
 "información asociada o personalizada."
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:725
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:721
 msgid "Choose a field"
 msgstr "Elige un campo"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:746
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:742
 msgid "Please select a column to use for display."
 msgstr "Selecciona una columna para mostrar."
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:766
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:762
 msgid "Tip:"
 msgstr "Consejo:"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:767
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:763
 msgid ""
 "You might want to update the field name to make sure it still makes sense "
 "based on your remapping choices."
@@ -743,12 +731,12 @@ msgstr ""
 "Es posible que quieras actualizar el nombre del campo para asegurarte de que "
 "todavía tenga sentidoen función de las opciones de asignación."
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:776
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:772
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:105
 msgid "Cached field values"
 msgstr "Valores de campo en caché"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:777
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:773
 msgid ""
 "Metabase can scan the values for this field to enable checkbox filters in "
 "dashboards and questions."
@@ -756,21 +744,21 @@ msgstr ""
 "Metabase puede escanear los valores de este campo para habilitar los filtros "
 "de casilla de verificación en cuadros de mando y preguntas."
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:782
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:778
 msgid "Re-scan this field"
 msgstr "Vuelve a escanear este campo"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:790
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:786
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:119
 msgid "Discard cached field values"
 msgstr "Descartar valores de campo en caché"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:792
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:788
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:121
 msgid "Failed to discard values"
 msgstr "Error al descartar valores"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:793
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:789
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:122
 msgid "Discard triggered!"
 msgstr "Limpieza iniciada!"
@@ -782,6 +770,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/containers/MetricForm.jsx:37
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:34
+#: frontend/src/metabase/entities/collections.js:17
 #: frontend/src/metabase/questions/containers/CollectionEditorForm.jsx:19
 msgid "Name is required"
 msgstr "Nombre es obligatorio"
@@ -1106,7 +1095,7 @@ msgstr "Borrar Grupo"
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:281
 #: frontend/src/metabase/parameters/components/widgets/CategoryWidget.jsx:106
 #: frontend/src/metabase/query_builder/components/AggregationPopover.jsx:298
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:182
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:185
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:96
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:200
 msgid "Done"
@@ -1750,7 +1739,7 @@ msgstr "Elimina mapa personalizado"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:226
 #: frontend/src/metabase/dashboard/containers/DashCardCardParameterMapper.jsx:187
-#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:244
+#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:239
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:142
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:184
 msgid "Select…"
@@ -2254,7 +2243,7 @@ msgid "Please enter a valid formatted email address."
 msgstr ""
 "Por favor ingresa una dirección de correo electrónico con formato válido."
 
-#: frontend/src/metabase/auth/auth.js:113
+#: frontend/src/metabase/auth/auth.js:116
 #: frontend/src/metabase/setup/components/UserStep.jsx:107
 #: frontend/src/metabase/user/components/SetUserPassword.jsx:67
 msgid "Passwords do not match"
@@ -2393,6 +2382,7 @@ msgstr "Ha fallado"
 #: frontend/src/metabase/components/ActionButton.jsx:54
 #: frontend/src/metabase/components/SaveStatus.jsx:60
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:180
+#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:115
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:197
 #: frontend/src/metabase/query_builder/components/QueryHeader.jsx:243
 #: frontend/src/metabase/query_builder/components/QueryHeader.jsx:270
@@ -2498,8 +2488,8 @@ msgstr "Crea"
 msgid "What is the name of your dashboard?"
 msgstr "¿Cuál es el nombre de tu cuadro de mando?"
 
-#: frontend/src/metabase/components/CreateDashboardModal.jsx:105
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:229
+#: frontend/src/metabase/components/CreateDashboardModal.jsx:106
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:230
 #: frontend/src/metabase/lib/core.js:45 frontend/src/metabase/lib/core.js:180
 #: frontend/src/metabase/questions/containers/CollectionEditorForm.jsx:87
 #: frontend/src/metabase/reference/databases/DatabaseDetail.jsx:156
@@ -2693,6 +2683,14 @@ msgstr "Recibe alertas sobre esto"
 msgid "View the SQL"
 msgstr "Ver el SQL"
 
+#: frontend/src/metabase/components/ErrorDetails.jsx:20
+msgid "Show error details"
+msgstr "Mostrar detalles del error"
+
+#: frontend/src/metabase/components/ErrorDetails.jsx:26
+msgid "Here's the full error message"
+msgstr "Este es el mensaje de error completo"
+
 #: frontend/src/metabase/components/ExplorePane.jsx:15
 msgid "Hi, Metabot here."
 msgstr "Hola, soy Metabot"
@@ -2721,19 +2719,19 @@ msgstr "Introduce un número"
 msgid "Enter some text"
 msgstr "Introduce un texto"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:354
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:355
 msgid "No matching {0} found."
 msgstr "No se encontraron {0} coincidentes."
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:362
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:363
 msgid "Including every option in your filter probably won’t do much…"
 msgstr "Incluir cada opción en tu filtro probablemente no hará mucho…"
 
-#: frontend/src/metabase/components/GenericError.jsx:7
+#: frontend/src/metabase/components/GenericError.jsx:8
 msgid "Something's gone wrong"
 msgstr "Lo siento. Algo salió mal."
 
-#: frontend/src/metabase/components/GenericError.jsx:8
+#: frontend/src/metabase/components/GenericError.jsx:9
 msgid ""
 "We've run into an error. You can try refreshing the page, or just go back."
 msgstr ""
@@ -2782,7 +2780,7 @@ msgstr "Revertido a una revisión anterior y {0}"
 #: frontend/src/metabase/components/HistoryModal.jsx:80
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:287
 #: frontend/src/metabase/query_builder/components/QueryHeader.jsx:392
-#: frontend/src/metabase/reference/segments/SegmentSidebar.jsx:60
+#: frontend/src/metabase/reference/segments/SegmentSidebar.jsx:54
 msgid "Revision history"
 msgstr "Historial de Revisiones"
 
@@ -2994,6 +2992,11 @@ msgstr "Seleccionado"
 msgid "Nothing to select"
 msgstr "Nada para seleccionar"
 
+#: frontend/src/metabase/components/SortableItemList.jsx:47
+#: frontend/src/metabase/questions/containers/AddToDashboard.jsx:115
+msgid "Sort by"
+msgstr "Ordenar por"
+
 #: frontend/src/metabase/components/Unauthorized.jsx:12
 msgid "Sorry, you don’t have permission to see that."
 msgstr "Lo siento, no tienes permiso para ver eso."
@@ -3048,7 +3051,7 @@ msgstr "Ver por"
 msgid "of"
 msgstr "de"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:162
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:163
 msgid "Replace or save as new?"
 msgstr "¿Reemplazar o guardar como nuevo?"
 
@@ -3072,7 +3075,7 @@ msgstr "Guardar pregunta"
 msgid "What is the name of your card?"
 msgstr "¿Cuál es el nombre de tu tarjeta?"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:245
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:246
 msgid "Which collection should this go in?"
 msgstr "¿En qué colección debería ir esto?"
 
@@ -3115,11 +3118,11 @@ msgstr ""
 "Asegúrate de hacer una selección para cada serie, o el filtro no funcionará "
 "en esta tarjeta."
 
-#: frontend/src/metabase/dashboard/components/Dashboard.jsx:282
+#: frontend/src/metabase/dashboard/components/Dashboard.jsx:284
 msgid "This dashboard is looking empty."
 msgstr "Este cuadro de mando parece estar vacío."
 
-#: frontend/src/metabase/dashboard/components/Dashboard.jsx:285
+#: frontend/src/metabase/dashboard/components/Dashboard.jsx:287
 msgid "Add a question to start making it useful!"
 msgstr "¡Añade una pregunta para hacerlo útil!"
 
@@ -3231,9 +3234,17 @@ msgstr "Actualizando en"
 msgid "Remove this question?"
 msgstr "¿Eliminar esta pregunta?"
 
-#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:56
-msgid "View your recently created dashboard"
-msgstr "Ver tu cuadro de mando"
+#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:69
+msgid "Your dashboard was saved"
+msgstr "Se ha guardado tu cuadro de mando."
+
+#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:74
+msgid "See it"
+msgstr "Verlo"
+
+#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:123
+msgid "Save this"
+msgstr "Guardalo"
 
 #: frontend/src/metabase/dashboard/containers/DashCardCardParameterMapper.jsx:140
 msgid ""
@@ -3312,6 +3323,16 @@ msgstr "Crea un Cuadro de Mando"
 msgid "No dashboards have been {0} archived yet"
 msgstr "Todavía no se ha archivado {0} ninguno cuadro de mando"
 
+#: frontend/src/metabase/entities/collections.js:18
+#: frontend/src/metabase/questions/containers/CollectionEditorForm.jsx:21
+msgid "Name must be 100 characters or less"
+msgstr "El nombre debe tener 100 caracteres o menos"
+
+#: frontend/src/metabase/entities/collections.js:30
+#: frontend/src/metabase/questions/containers/CollectionEditorForm.jsx:24
+msgid "Color is required"
+msgstr "Color es obligatorio"
+
 #: frontend/src/metabase/home/components/Activity.jsx:92
 msgid "did some super awesome stuff that's hard to describe"
 msgstr "he hecho algunas cosas geniales que son difíciles de describir"
@@ -3388,6 +3409,7 @@ msgstr "a la"
 #: frontend/src/metabase/home/components/Activity.jsx:323
 #: frontend/src/metabase/home/components/Activity.jsx:373
 #: frontend/src/metabase/home/components/Activity.jsx:414
+#: src/metabase/automagic_dashboards/core.clj
 msgid " table"
 msgstr "tabla"
 
@@ -3691,11 +3713,23 @@ msgstr "Margen Bruto"
 msgid "Birthday"
 msgstr "Cumpleaños"
 
+#: frontend/src/metabase/lib/core.js:216
+msgid "Search box"
+msgstr "Caja de Búsqueda"
+
+#: frontend/src/metabase/lib/core.js:217
+msgid "A list of all values"
+msgstr "Una lista con todos los valores"
+
 #: frontend/src/metabase/lib/core.js:218
+msgid "Plain input box"
+msgstr "Caja de Texto"
+
+#: frontend/src/metabase/lib/core.js:224
 msgid "Everywhere"
 msgstr "En todas partes"
 
-#: frontend/src/metabase/lib/core.js:219
+#: frontend/src/metabase/lib/core.js:225
 msgid ""
 "The default setting. This field will be displayed normally in tables and "
 "charts."
@@ -3703,11 +3737,11 @@ msgstr ""
 "La configuración predeterminada. Este campo se mostrará normalmente en "
 "tablas y gráficos."
 
-#: frontend/src/metabase/lib/core.js:223
+#: frontend/src/metabase/lib/core.js:229
 msgid "Only in Detail Views"
 msgstr "Solo en vistas detalladas"
 
-#: frontend/src/metabase/lib/core.js:224
+#: frontend/src/metabase/lib/core.js:230
 msgid ""
 "This field will only be displayed when viewing the details of a single "
 "record. Use this for information that's lengthy or that isn't useful in a "
@@ -3717,11 +3751,11 @@ msgstr ""
 "Úsalo para obtener información larga o que no sea útil en una tabla o "
 "gráfico."
 
-#: frontend/src/metabase/lib/core.js:228
+#: frontend/src/metabase/lib/core.js:234
 msgid "Do Not Include"
 msgstr "No Incluir"
 
-#: frontend/src/metabase/lib/core.js:229
+#: frontend/src/metabase/lib/core.js:235
 msgid ""
 "Metabase will never retrieve this field. Use this for sensitive or "
 "irrelevant information."
@@ -4342,11 +4376,11 @@ msgstr "Referencia de Datos"
 msgid "New Question"
 msgstr "Nueva Pregunta"
 
-#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:73
+#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:77
 msgid "Which metric?"
 msgstr "¿Qué Métrica?"
 
-#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:88
+#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:92
 #: frontend/src/metabase/reference/metrics/MetricList.jsx:24
 msgid ""
 "Defining common metrics for your team makes it even easier to ask questions"
@@ -4354,7 +4388,7 @@ msgstr ""
 "La definición de métricas comunes para tu equipo hace que sea aún más fácil "
 "hacer preguntas"
 
-#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:92
+#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:96
 msgid "How to create metrics"
 msgstr "Cómo crear métricas"
 
@@ -4394,7 +4428,7 @@ msgstr ""
 "Para preguntas más complicadas, puedes escribir tu propia consulta SQL o "
 "nativa."
 
-#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:243
+#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:238
 msgid "Select a default value…"
 msgstr "Selecciona un valor por defecto…"
 
@@ -4761,7 +4795,7 @@ msgstr "Adjunto"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:103
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:110
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:651
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:660
 msgid "Heads up"
 msgstr "Aviso"
 
@@ -4970,7 +5004,7 @@ msgstr "Analiza los resultados de esta consulta"
 msgid "Count of rows by time"
 msgstr "Número de filas por tiempo"
 
-#: frontend/src/metabase/qb/components/actions/GenerateDashboardAction.jsx:25
+#: frontend/src/metabase/qb/components/actions/GenerateDashboardAction.jsx:36
 msgid "See an exploration of this question"
 msgstr "Ver una exploración de esta pregunta"
 
@@ -4998,16 +5032,16 @@ msgstr "Analiza esta pregunta"
 msgid "X-ray {0}"
 msgstr "Aplicar Rayos-X a {0}"
 
-#: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:31
+#: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:32
 msgid "X-ray {0} {1}"
 msgstr "Rayos-X {0} {1}"
 
-#: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:31
+#: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:32
 #: frontend/src/metabase/qb/components/drill/UnderlyingRecordsDrill.jsx:30
 msgid "these"
 msgstr "estos"
 
-#: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:31
+#: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:32
 #: frontend/src/metabase/qb/components/drill/UnderlyingRecordsDrill.jsx:30
 msgid "this"
 msgstr "este"
@@ -5033,7 +5067,7 @@ msgstr "Ascendente"
 msgid "Descending"
 msgstr "Descendente"
 
-#: frontend/src/metabase/qb/components/drill/SummarizeColumnByTimeDrill.js:44
+#: frontend/src/metabase/qb/components/drill/SummarizeColumnByTimeDrill.js:47
 msgid "by time"
 msgstr "por tiempo"
 
@@ -5101,133 +5135,133 @@ msgstr "Estás recibiendo las alertas de {0}"
 msgid "{0} set up an alert"
 msgstr "{0} has configurado una alerta"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:149
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:152
 msgid "alerts"
 msgstr "alertas"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:172
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:175
 msgid "Let's set up your alert"
 msgstr "Vamos a configurar tu alerta"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:203
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:206
 msgid "The wide world of alerts"
 msgstr "El amplio mundo de las alertas"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:204
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:207
 msgid "There are a few different kinds of alerts you can get"
 msgstr "Hay algunos tipos diferentes de alertas que puedes obtener"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:217
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:220
 msgid "When a raw data question {0}"
 msgstr "Cuando una pregunta de datos {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:218
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:221
 msgid "returns any results"
 msgstr "arroja resultados"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:228
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:231
 msgid "When a line or bar {0}"
 msgstr "Cuando una línea o barra {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:229
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:232
 msgid "crosses a goal line"
 msgstr "supera un objetivo"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:239
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:242
 msgid "When a progress bar {0}"
 msgstr "Cuando una barra de progreso {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:240
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:243
 msgid "reaches its goal"
 msgstr "alcanza su objetivo"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:248
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:251
 msgid "Set up an alert"
 msgstr "Crea una alerta"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:311
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:320
 msgid "Edit your alert"
 msgstr "Edita tu alerta"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:311
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:320
 msgid "Edit alert"
 msgstr "Editar alerta"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:354
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:363
 msgid "This alert will no longer be emailed to {0}."
 msgstr "Esta alerta ya no se enviará por correo electrónico a {0}."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:360
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:369
 msgid "Slack channel {0} will no longer get this alert."
 msgstr "El canal Slack {0} ya no recibirá esta alerta."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:364
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:373
 msgid "Channel {0} will no longer receive this alert."
 msgstr "El canal {0} ya no recibirá esta alerta."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:381
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:390
 msgid "Delete this alert"
 msgstr "Elimina esta alerta"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:383
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:392
 msgid "Stop delivery and delete this alert. There's no undo, so be careful."
 msgstr ""
 "Detener el envío y elimina esta alerta. No se puede deshacer, así que ten "
 "cuidado."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:391
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:400
 msgid "Delete this alert?"
 msgstr "¿Eliminar esta alerta?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:475
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:484
 msgid "Alert me when the line…"
 msgstr "Avísame cuando la línea…"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:476
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:485
 msgid "Alert me when the progress bar…"
 msgstr "Avísame cuando la barra de progreso…"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:479
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:488
 msgid "Goes above the goal line"
 msgstr "Va por encima de la línea de objetivo"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:479
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:488
 msgid "Reaches the goal"
 msgstr "Llega al objetivo"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:482
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:491
 msgid "Goes below the goal line"
 msgstr "Va por debajo de la línea de objetivo"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:482
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:491
 msgid "Goes below the goal"
 msgstr "Va por debajo del objetivo"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:490
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:499
 msgid "The first time it crosses, or every time?"
 msgstr "¿La primera vez que cruza, o cada vez?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:491
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:500
 msgid "The first time it reaches the goal, or every time?"
 msgstr "¿La primera vez que alcanza el objetivo, o cada vez?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:493
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:502
 msgid "The first time"
 msgstr "La primera vez"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:494
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:503
 msgid "Every time"
 msgstr "Cada vez"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:597
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:606
 msgid "Where do you want to send these alerts?"
 msgstr "¿A dónde quieres enviar estas alertas?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:608
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:617
 msgid "Email alerts to:"
 msgstr "Envía emails de alerta a:"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:650
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:659
 msgid ""
 "{0} Goal-based alerts aren't yet supported for charts with more than one "
 "line, so this alert will be sent whenever the chart has {1}."
@@ -5236,11 +5270,11 @@ msgstr ""
 "con más de una línea, por lo que esta alerta se enviará siempre que el "
 "gráfico tenga {1}."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:653
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:662
 msgid "results"
 msgstr "resultados"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:657
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:666
 msgid ""
 "{0} This kind of alert is most useful when your saved question doesn’t {1} "
 "return any results, but you want to know when it does."
@@ -5248,11 +5282,11 @@ msgstr ""
 "{0} Este tipo de alerta es más útil cuando tu pregunta {1} no arroja ningún "
 "resultado, pero quieres saber cuándo lo hace."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:658
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:667
 msgid "Tip"
 msgstr "Consejo:"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:660
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:669
 msgid "usually"
 msgstr "generalmente"
 
@@ -5540,11 +5574,11 @@ msgstr "Lo siento. Algo salió mal."
 msgid "Group time by"
 msgstr "Agrupar tiempo por"
 
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:45
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:46
 msgid "Your question took too long"
 msgstr "Tu pregunta tardó demasiado tiempo"
 
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:46
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:47
 msgid ""
 "We didn't get an answer back from your database in time, so we had to stop. "
 "You can try again in a minute, or if the problem persists, you can email an "
@@ -5554,11 +5588,11 @@ msgstr ""
 "parar.Puedes volver a intentarlo en un minuto, o si el problema persiste, "
 "puedes enviar un correo electrónico a un administrador para avisarle."
 
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:54
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:55
 msgid "We're experiencing server issues"
 msgstr "Estamos experimentando problemas con el servidor"
 
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:55
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:56
 msgid ""
 "Try refreshing the page after waiting a minute or two. If the problem "
 "persists we'd recommend you contact an admin."
@@ -5567,11 +5601,11 @@ msgstr ""
 "problema persiste, te recomendamos que te pongas en contacto con un "
 "administrador."
 
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:87
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:88
 msgid "There was a problem with your question"
 msgstr "Hubo un problema con tu pregunta"
 
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:88
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:89
 msgid ""
 "Most of the time this is caused by an invalid selection or bad input value. "
 "Double check your inputs and retry your query."
@@ -5579,14 +5613,6 @@ msgstr ""
 "La mayoría de las veces esto es causado por una selección no válida o un "
 "valor de entrada incorrecto.Revisa tus entradas y vuelva a intentar la "
 "consulta."
-
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:93
-msgid "Show error details"
-msgstr "Mostrar detalles del error"
-
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:99
-msgid "Here's the full error message"
-msgstr "Aquí está el mensaje de error completo"
 
 #: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:60
 msgid ""
@@ -5613,7 +5639,7 @@ msgid "Visualization"
 msgstr "Visualización"
 
 #: frontend/src/metabase/query_builder/components/dataref/DetailPane.jsx:17
-#: frontend/src/metabase/query_builder/components/dataref/TablePane.jsx:146
+#: frontend/src/metabase/query_builder/components/dataref/TablePane.jsx:148
 msgid "No description set."
 msgstr "Sin descripción"
 
@@ -5693,7 +5719,7 @@ msgstr "Se produjo un error al cargar la tabla"
 msgid "See the raw data for {0}"
 msgstr "Ver los datos de {0}"
 
-#: frontend/src/metabase/query_builder/components/dataref/TablePane.jsx:199
+#: frontend/src/metabase/query_builder/components/dataref/TablePane.jsx:202
 msgid "More"
 msgstr "Más"
 
@@ -6050,14 +6076,6 @@ msgstr "Archivar esta colección?"
 msgid "The saved questions in this collection will also be archived."
 msgstr "Las preguntas guardadas en esta colección también se archivarán."
 
-#: frontend/src/metabase/questions/containers/CollectionEditorForm.jsx:21
-msgid "Name must be 100 characters or less"
-msgstr "El nombre debe tener 100 caracteres o menos"
-
-#: frontend/src/metabase/questions/containers/CollectionEditorForm.jsx:24
-msgid "Color is required"
-msgstr "Color es obligatorio"
-
 #: frontend/src/metabase/questions/containers/CollectionEditorForm.jsx:82
 msgid "My new fantastic collection"
 msgstr "Mi nueva colección fantástica"
@@ -6402,12 +6420,6 @@ msgstr "Nombre de campo"
 #: frontend/src/metabase/reference/databases/FieldSidebar.jsx:53
 msgid "X-ray this field"
 msgstr "Aplica rayos-X a este campo"
-
-#: frontend/src/metabase/reference/databases/FieldSidebar.jsx:62
-#: frontend/src/metabase/reference/databases/TableSidebar.jsx:58
-#: frontend/src/metabase/reference/segments/SegmentSidebar.jsx:52
-msgid "See an in-depth analysis"
-msgstr "Ver un análisis detallado"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:8
 msgid "Metabase is no fun without any data"
@@ -6886,19 +6898,19 @@ msgstr ""
 msgid "If you feel stuck"
 msgstr "Si te sientes abrumado"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:50
+#: frontend/src/metabase/setup/components/Setup.jsx:52
 msgid "our getting started guide"
 msgstr "nuestra guía de inicio"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:51
+#: frontend/src/metabase/setup/components/Setup.jsx:53
 msgid "is just a click away."
 msgstr "esta a un solo click."
 
-#: frontend/src/metabase/setup/components/Setup.jsx:93
+#: frontend/src/metabase/setup/components/Setup.jsx:95
 msgid "Welcome to Metabase"
 msgstr "Bienvenid@ a Metabase"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:94
+#: frontend/src/metabase/setup/components/Setup.jsx:96
 msgid ""
 "Looks like everything is working. Now let’s get to know you, connect to your "
 "data, and start finding you some answers!"
@@ -6906,15 +6918,15 @@ msgstr ""
 "Parece que todo está funcionando. ¡Ahora vamos a conocerte, conectarte con "
 "tus datos y comenzar a encontrarte algunas respuestas!"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:98
+#: frontend/src/metabase/setup/components/Setup.jsx:100
 msgid "Let's get started"
 msgstr "Empecemos"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:143
+#: frontend/src/metabase/setup/components/Setup.jsx:145
 msgid "You're all set up!"
 msgstr "¡Estás listo!"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:154
+#: frontend/src/metabase/setup/components/Setup.jsx:156
 msgid "Take me to Metabase"
 msgstr "Llévame a Metabase"
 
@@ -6951,35 +6963,35 @@ msgstr "El nombre de tu empresa o equipo"
 msgid "Department of awesome"
 msgstr "Departamento impresionante"
 
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:20
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:23
 msgid "Metabot is admiring your integers…"
 msgstr "Metabot está admirando tus enteros…"
 
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:21
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:24
 msgid "Metabot is performing billions of differential equations…"
 msgstr "Metabot está realizando miles de millones de ecuaciones diferenciales…"
 
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:22
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:25
 msgid "Metabot is doing science…"
 msgstr "Metabot está haciendo ciencia…"
 
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:23
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:26
 msgid "Metabot is checking out your metrics…"
 msgstr "Metabot está revisando tus métricas…"
 
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:24
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:27
 msgid "Metabot is looking for trends and outliers…"
 msgstr "Metabot está buscando tendencias y valores atípicos…"
 
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:25
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:28
 msgid "Metabot is consulting the quantum abacus…"
 msgstr "Metabot está consultando el ábaco cuántico…"
 
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:26
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:29
 msgid "Metabot is feeling pretty good about all this…"
 msgstr "Metabot se siente bien con todo esto…"
 
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:137
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:140
 msgid ""
 "We’ll show you some interesting explorations of your data in\n"
 "just a few minutes."
@@ -6987,7 +6999,7 @@ msgstr ""
 "Te mostraremos algunas exploraciones interesantes de tus datos\n"
 "en solo unos minutos."
 
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:154
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:160
 msgid ""
 "This seems to be taking a while. In the meantime, you can check out one of "
 "these example explorations to see what Metabase can do for you."
@@ -6995,7 +7007,7 @@ msgstr ""
 "Esto parece que está tardando un tiempo. Mientras tanto, puedes ver una de "
 "estas exploraciones de ejemplo para ver lo qué Metabase puede hacer por ti."
 
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:165
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:171
 msgid ""
 "Once you connect your own data, I can show you some automatic explorations "
 "called x-rays. Here are some examples with sample data."
@@ -7003,7 +7015,7 @@ msgstr ""
 "En cuanto conectas tus propios datos, puedo mostrarte algunas exploraciones "
 "automáticas llamadas rayos-X. Aquí hay algunos ejemplos con datos de muestra."
 
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:166
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:172
 msgid ""
 "I took a look at the data you just connected, and I have some explorations "
 "of interesting things I found. Hope you like them!"
@@ -7011,7 +7023,7 @@ msgstr ""
 "He revisado los datos que acabas de conectar, y tengo algunas exploraciones "
 "de cosas interesantes que he encontrado. ¡Espero que te gusten!"
 
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:176
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:182
 msgid "I'm done exploring for now"
 msgstr "He terminado de explorar por ahora"
 
@@ -7231,7 +7243,7 @@ msgstr "Cancelar Filtro"
 msgid "Pin Map"
 msgstr "Mapa de Pin"
 
-#: frontend/src/metabase/visualizations/components/TableInteractive.jsx:315
+#: frontend/src/metabase/visualizations/components/TableInteractive.jsx:420
 msgid "Unset"
 msgstr "Desmarcar"
 
@@ -7742,6 +7754,10 @@ msgstr "Pivote la tabla"
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:67
 msgid "Fields to include"
 msgstr "Campos a incluir"
+
+#: frontend/src/metabase/visualizations/visualizations/Text.jsx:167
+msgid "Write here, and use Markdown if you''d like"
+msgstr "Escribe aquí. Puedes utilizar Markdown"
 
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:73
 msgid "Vertical Alignment"
@@ -8424,6 +8440,30 @@ msgstr "Agrupa cada 20 grados"
 #: src/metabase/api/tiles.clj src/metabase/pulse/render.clj
 msgid "No appropriate image writer found!"
 msgstr "¡No se encontró un escritor de imágenes apropiado!"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid " segment"
+msgstr " segmento"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid " metric"
+msgstr " métrica"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid " field"
+msgstr " campo"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "A closer look at "
+msgstr "Ver más detalles de "
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "Show more about this"
+msgstr "Mostrar más sobre este/a"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid " question"
+msgstr " pregunta"
 
 #: src/metabase/cmd/reset_password.clj
 msgid "No user found with email address ''{0}''. "
@@ -9128,6 +9168,10 @@ msgstr "La tarjeta tiene errores: {0}"
 #: src/metabase/pulse/render.clj
 msgid "Pulse card render error"
 msgstr "Error al procesar Pulso"
+
+#: src/metabase/query_processor/middleware/fetch_source_query.clj
+msgid "Trimming trailing comment from card with id {0}"
+msgstr "Eliminando el comentario final de la tarjeta con id {0}"
 
 #: src/metabase/query_processor/middleware/parameters/sql.clj
 msgid "Found ''{0}'' with no terminating ''{1}'' in query ''{2}''"
