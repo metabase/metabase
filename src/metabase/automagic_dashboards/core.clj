@@ -645,10 +645,7 @@
                                                                     (:url root))}]
                                              []))))))
     (throw (ex-info (format "Can't create dashboard for %s" full-name)
-             {:path            (or rule rules-prefix)
-              :path-type       (if rule
-                                 :path
-                                 :prefix)
+             {:root            root
               :available-rules (map :rule (or (some-> rule rules/get-rule vector)
                                               (rules/get-rules rules-prefix)))}))))
 
