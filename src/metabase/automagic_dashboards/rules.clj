@@ -12,7 +12,7 @@
              [core :as s]]
             [yaml.core :as yaml])
   (:import java.nio.file.Path java.nio.file.FileSystems java.nio.file.FileSystem
-           java.nio.file.Files ))
+           java.nio.file.Files))
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
@@ -186,7 +186,8 @@
           schema
           (partition 2 constraints)))
 
-(def ^:private Rules
+(def Rule
+  "Rules defining an automagic dashboard."
   (constrained-all
    {(s/required-key :title)             s/Str
     (s/required-key :dimensions)        [Dimension]
@@ -234,7 +235,7 @@
 
 (def ^:private rules-validator
   (sc/coercer!
-   Rules
+   Rule
    {[s/Str]         ensure-seq
     [OrderByPair]   ensure-seq
     OrderByPair     (fn [x]
@@ -277,7 +278,7 @@
 (def ^:private rules-dir "automagic_dashboards/")
 
 (def ^:private ^{:arglists '([f])} file->entity-type
-  (comp (partial re-find #".+(?=\.yaml)") str (memfn ^Path getFileName)))
+  (comp (partial re-find #".+(?=\.yaml$)") str (memfn ^Path getFileName)))
 
 (defn- load-rule
   [^Path f]
@@ -300,6 +301,12 @@
                              e)))
       nil)))
 
+(defn- trim-trailing-slash
+  [s]
+  (if (str/ends-with? s "/")
+    (subs s 0 (-> s count dec))
+    s))
+
 (defn- load-rule-dir
   ([dir] (load-rule-dir dir [] {}))
   ([dir path rules]
@@ -307,7 +314,7 @@
      (reduce (fn [rules ^Path f]
                (cond
                  (Files/isDirectory f (into-array java.nio.file.LinkOption []))
-                 (load-rule-dir f (conj path (str (.getFileName f))) rules)
+                 (load-rule-dir f (->> f (.getFileName) str trim-trailing-slash (conj path)) rules)
 
                  (file->entity-type f)
                  (assoc-in rules (concat path [(file->entity-type f) ::leaf]) (load-rule f))
