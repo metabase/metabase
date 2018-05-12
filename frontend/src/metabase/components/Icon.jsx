@@ -2,7 +2,8 @@
 
 import React, { Component } from "react";
 import RetinaImage from "react-retina-image";
-import sys from "system-components";
+import styled from "styled-components";
+import { color, space, hover } from "styled-system";
 import cx from "classnames";
 
 import { loadIcon } from "metabase/icon_paths";
@@ -63,15 +64,10 @@ class BaseIcon extends Component {
   }
 }
 
-const Icon = sys(
-  {
-    is: BaseIcon,
-  },
-  props => ({
-    flexShrink: 0, // ensure the icon doesn't shrink when in a flex context
-  }),
-  "space",
-  "color",
-);
-
+const Icon = styled(BaseIcon)`
+  ${space}
+  ${color}
+  ${hover}
+  flex-shrink: 0
+`;
 export default Tooltipify(Icon);

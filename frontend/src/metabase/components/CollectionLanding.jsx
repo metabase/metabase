@@ -1,18 +1,24 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
 import { Subhead, Truncate } from "rebass";
-import { Link, withRouter } from "react-router";
 import { t } from "c-3po";
 import { connect } from "react-redux";
+import { withRouter } from "react-router";
+
+import styled from "styled-components";
+import { space, color, hover } from "styled-system";
 
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
+import Link from "metabase/components/Link";
+
 import CollectionListLoader from "metabase/components/CollectionListLoader";
 import CollectionItemsLoader from "metabase/components/CollectionItemsLoader";
-import EntityMenu from "metabase/components/EntityMenu";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
+
+import EntityMenu from "metabase/components/EntityMenu";
 
 import LandingNav from "metabase/components/LandingNav";
 
@@ -24,7 +30,10 @@ const mapStateToProps = (state, props) => ({
     {},
 });
 
-const Card = Box.extend`
+const Card = styled.div`
+  ${space}
+  ${color}
+  ${hover}
   background-color: white;
   border: 1px solid ${normal.grey1};
   border-radius: 6px;
@@ -32,8 +41,8 @@ const Card = Box.extend`
 `;
 
 const CollectionItem = ({ collection }) => (
-  <Link to={`collection/${collection.id}`}>
-    <Card className="text-brand-hover">
+  <Link to={`collection/${collection.id}`} hover={{ color: normal.blue }}>
+    <Card hover={{ boxShadow: `0 1px 4px ${normal.grey1}` }}>
       <Flex
         align="center"
         my={1}
@@ -41,7 +50,7 @@ const CollectionItem = ({ collection }) => (
         py={1}
         key={`collection-${collection.id}`}
       >
-        <Icon name="all" mx={2} />
+        <Icon name="all" mx={1} />
         <Truncate>{collection.name}</Truncate>
       </Flex>
     </Card>
@@ -92,7 +101,7 @@ const ItemCard = Card.extend`
 
 const Item = ({ children }) => {
   return (
-    <ItemCard className="text-brand-hover" p={2}>
+    <ItemCard hover={{ color: normal.blue }} p={2}>
       <Flex direction="column" style={{ height: "100%" }}>
         {children}
       </Flex>
@@ -135,11 +144,13 @@ class DefaultLanding extends React.Component {
   }
   render() {
     const { collectionId, location } = this.props;
+
+    // Show the
+    const showCollectionList = !collectionId && !location.query.show;
+
     return (
       <Box w="100%">
-        {// HACK for now to only show the colleciton list on the root
-        // colleciton until we have a notion of nested collections
-        !collectionId && <CollectionList />}
+        {showCollectionList && <CollectionList />}
         <CollectionItemsLoader collectionId={collectionId || "root"}>
           {({ allItems, pulses, cards, dashboards, empty }) => {
             let items = allItems;
@@ -183,8 +194,9 @@ class DefaultLanding extends React.Component {
 @connect(mapStateToProps)
 class CollectionLanding extends React.Component {
   render() {
-    const { children, params, currentCollection } = this.props;
+    const { params, currentCollection } = this.props;
     const collectionId = params.collectionId;
+
     return (
       <Box>
         <Box className="wrapper lg-wrapper--trim">
@@ -193,7 +205,11 @@ class CollectionLanding extends React.Component {
               <Flex align="center">
                 <Flex>
                   {/* TODO - figure out the right way to grab this */}
-                  <Link to="/" className="text-brand-hover">
+                  <Link
+                    to="/"
+                    hover={{ color: normal.blue }}
+                    color={currentCollection.name ? normal.grey2 : normal.text}
+                  >
                     {window.MetabaseBootstrap.site_name}
                   </Link>
                 </Flex>
@@ -251,14 +267,7 @@ class CollectionLanding extends React.Component {
         <Box className="relative">
           <LandingNav collectionId={collectionId} />
           <Box className="wrapper lg-wrapper--trim">
-            {children ? (
-              children
-            ) : (
-              <DefaultLanding
-                currentCollection={currentCollection}
-                collectionId={collectionId}
-              />
-            )}
+            <DefaultLanding collectionId={collectionId} />
           </Box>
         </Box>
       </Box>
