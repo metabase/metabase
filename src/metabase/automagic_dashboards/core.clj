@@ -30,7 +30,7 @@
             [metabase.related :as related]
             [metabase.sync.analyze.classify :as classify]
             [metabase.util :as u]
-            [puppetlabs.i18n.core :as i18n :refer [tru]]
+            [puppetlabs.i18n.core :as i18n :refer [tru trs]]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -618,16 +618,16 @@
                                    ;; `first` realises one element at a time (no chunking).
                                    first))]
     (do
-      (log/info (format "Applying heuristic %s to %s." (:rule rule) full-name))
-      (log/info (format "Dimensions bindings:\n%s"
-                        (->> dashboard
-                             :context
-                             :dimensions
-                             (m/map-vals #(update % :matches (partial map :name)))
-                             u/pprint-to-str)))
-      (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
-                        (-> dashboard :context :metrics u/pprint-to-str)
-                        (-> dashboard :context :filters u/pprint-to-str)))
+      (log/infof (trs "Applying heuristic %s to %s.") (:rule rule) full-name)
+      (log/infof (trs "Dimensions bindings:\n%s")
+                 (->> dashboard
+                      :context
+                      :dimensions
+                      (m/map-vals #(update % :matches (partial map :name)))
+                      u/pprint-to-str))
+      (log/infof (trs "Using definitions:\nMetrics:\n%s\nFilters:\n%s")
+                 (-> dashboard :context :metrics u/pprint-to-str)
+                 (-> dashboard :context :filters u/pprint-to-str))
       (-> (cond-> dashboard
             (or query-filter cell-query)
             (assoc :title (str (tru "A closer look at ") full-name)))
@@ -644,7 +644,7 @@
                                                :url         (format "%s#show=all"
                                                                     (:url root))}]
                                              []))))))
-    (throw (ex-info (format "Can't create dashboard for %s" full-name)
+    (throw (ex-info (format (trs "Can't create dashboard for %s") full-name)
              {:root            root
               :available-rules (map :rule (or (some-> rule rules/get-rule vector)
                                               (rules/get-rules rules-prefix)))}))))

@@ -7,6 +7,7 @@
             [metabase.types]
             [metabase.util :as u]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]
             [schema
              [coerce :as sc]
              [core :as s]]
@@ -19,7 +20,7 @@
   100)
 
 (def ^:private Score (s/constrained s/Int #(<= 0 % max-score)
-                                    (str "0 <= score <= " max-score)))
+                                    (format (trs "0 <= score <= %s") max-score)))
 
 (def ^:private MBQL [s/Any])
 
@@ -80,7 +81,7 @@
 (def ^:private Visualization [(s/one s/Str "visualization") su/Map])
 
 (def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
-                                     (format "1 <= width <= %s"
+                                     (format (trs "1 <= width <= %s")
                                              populate/grid-width)))
 (def ^:private Height (s/constrained s/Int pos?))
 
@@ -202,13 +203,13 @@
     (s/optional-key :groups)            Groups
     (s/optional-key :indepth)           [s/Any]
     (s/optional-key :dashboard_filters) [s/Str]}
-   valid-metrics-references?            "Valid metrics references"
-   valid-filters-references?            "Valid filters references"
-   valid-group-references?              "Valid group references"
-   valid-order-by-references?           "Valid order_by references"
-   valid-dashboard-filters-references?  "Valid dashboard filters references"
-   valid-dimension-references?          "Valid dimension references"
-   valid-breakout-dimension-references? "Valid card dimension references"))
+   valid-metrics-references?            (trs "Valid metrics references")
+   valid-filters-references?            (trs "Valid filters references")
+   valid-group-references?              (trs "Valid group references")
+   valid-order-by-references?           (trs "Valid order_by references")
+   valid-dashboard-filters-references?  (trs "Valid dashboard filters references")
+   valid-dimension-references?          (trs "Valid dimension references")
+   valid-breakout-dimension-references? (trs "Valid card dimension references")))
 
 (defn- with-defaults
   [defaults]
@@ -292,13 +293,13 @@
           (update :applies_to #(or % entity-type))
           rules-validator))
     (catch Exception e
-      (log/error (format "Error parsing %s:\n%s"
-                         (.getFileName f)
-                         (or (some-> e
-                                     ex-data
-                                     (select-keys [:error :value])
-                                     u/pprint-to-str)
-                             e)))
+      (log/errorf (trs "Error parsing %s:\n%s")
+                  (.getFileName f)
+                  (or (some-> e
+                              ex-data
+                              (select-keys [:error :value])
+                              u/pprint-to-str)
+                      e))
       nil)))
 
 (defn- trim-trailing-slash
