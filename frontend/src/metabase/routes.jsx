@@ -38,6 +38,7 @@ import Archive from "metabase/questions/containers/Archive.jsx";
 import CollectionEdit from "metabase/questions/containers/CollectionEdit.jsx";
 import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx";
 import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
+import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
@@ -213,7 +214,9 @@ export const getRoutes = store => (
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />
 
-        <Route path="collection/:collectionId" component={CollectionLanding} />
+        <Route path="collection/:collectionId" component={CollectionLanding}>
+          <ModalRoute path="archive" modal={ArchiveCollectionModal} />
+        </Route>
 
         <Route path="activity" component={HomepageApp} />
 

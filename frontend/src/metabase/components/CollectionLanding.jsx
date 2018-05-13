@@ -213,11 +213,14 @@ class CollectionLanding extends React.Component {
                     {window.MetabaseBootstrap.site_name}
                   </Link>
                 </Flex>
-                {currentCollection.name && (
+                {collectionId && (
                   <Flex align="center">
-                    <Icon name="chevronright" m={2} />
+                    <Icon name="chevronright" m={2} color={normal.grey2} />
                     <Flex>
-                      <Link to={`/collection/${currentCollection.id}`}>
+                      <Link
+                        to={`/collection/${collectionId}`}
+                        hover={{ color: normal.blue }}
+                      >
                         {currentCollection.name}
                       </Link>
                     </Flex>
@@ -241,6 +244,11 @@ class CollectionLanding extends React.Component {
                       link: `/collections/permissions?collectionId=${
                         currentCollection.id
                       }`,
+                    },
+                    {
+                      title: t`Archive this collection`,
+                      icon: "viewArchive",
+                      link: `/collection/${collectionId}/archive`,
                     },
                   ]}
                   triggerIcon="pencil"
@@ -268,6 +276,10 @@ class CollectionLanding extends React.Component {
           <LandingNav collectionId={collectionId} />
           <Box className="wrapper lg-wrapper--trim">
             <DefaultLanding collectionId={collectionId} />
+            {
+              // Need to have this here so the child modals will show up
+              this.props.children
+            }
           </Box>
         </Box>
       </Box>
