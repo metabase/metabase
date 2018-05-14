@@ -42,16 +42,33 @@ Java version 9 has introduced a new module system that places some additional re
 Metabase drivers that require extra external dependencies, you'll need to include them as part of the classpath at
 launch time. Run Metabase as follows:
 
-```
+```bash
 # Unix
 java -cp metabase.jar:plugins/* metabase.core
 ```
 
 On Windows, use a semicolon instead:
 
-```
+```powershell
 # Windows
 java -cp metabase.jar;plugins/* metabase.core
 ```
 
 The default Docker images use Java 8 so this step is only needed when running the JAR directly.
+
+
+### Using SparkSQL with a Custom Metabase Build
+
+The SparkSQL dependencies JAR contains additional classes inside the `metabase` Java package, the same package
+the core  Metabase code lives in. When multiple JARs include classes in the same package, Java requires them to
+be signed with the same signing certificate. The official Metabase JAR and SparkSQL dependencies JAR are signed
+with the same certificate, so everything works as expected.
+
+If you build a custom Metabase JAR, however, Java will refuse to load the SparkSQL dependencies JAR provided
+above, because your JAR will not be signed with the same certificate (if you signed it at all). You will need to
+build the SparkSQL dependencies JAR yourself, and, if applicable, sign it with the same certificate you signed
+your custom Metabase JAR with.
+
+The SparkSQL dependencies project can be found at
+[https://github.com/metabase/sparksql-deps](https://github.com/metabase/sparksql-deps). Instructions for building
+the JAR are provided in the README.

@@ -45,14 +45,14 @@ Java version 9 has introduced a new module system that places some additional re
 Metabase drivers that require extra external dependencies, you'll need to include them as part of the classpath at
 launch time. Run Metabase as follows:
 
-```
+```bash
 # Unix
 java -cp metabase.jar:plugins/* metabase.core
 ```
 
 On Windows, use a semicolon instead:
 
-```
+```powershell
 # Windows
 java -cp metabase.jar;plugins/* metabase.core
 ```
