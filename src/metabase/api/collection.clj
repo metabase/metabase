@@ -15,7 +15,8 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]))
+             [hydrate :refer [hydrate]]]
+            [metabase.util :as u]))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for.
@@ -110,22 +111,18 @@
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it."
-  [id, :as {{:keys [name color description archived]} :body}]
-  {name        su/NonBlankString
-   color       collection/hex-color-regex
+  [id, :as {{:keys [name color description archived], :as body} :body}]
+  {name        (s/maybe su/NonBlankString)
+   color       (s/maybe collection/hex-color-regex)
    description (s/maybe su/NonBlankString)
    archived    (s/maybe s/Bool)}
   ;; you have to be a superuser to modify a Collection itself, but `/collection/:id/` perms are sufficient for
   ;; adding/removing Cards
   (api/check-superuser)
   (api/api-let [404 "Not Found"] [collection-before-update (Collection id)]
+    ;; ok, go ahead and update it! Only update keys that were specified in the `body`
     (db/update! Collection id
-      :name        name
-      :color       color
-      :description description
-      :archived    (if (nil? archived)
-                     false
-                     archived))
+      (u/select-keys-when body :present [:name :color :description :archived :location]))
     (when (and (not (:archived collection-before-update))
                archived)
       (when-let [alerts (seq (apply pulse/retrieve-alerts-for-cards (db/select-ids Card, :collection_id id)))]

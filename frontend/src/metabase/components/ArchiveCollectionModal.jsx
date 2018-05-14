@@ -2,6 +2,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { Box, Flex, Text } from "rebass";
 import { withRouter } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "c-3po";
 
 import Button from "metabase/components/Button";
@@ -13,15 +14,18 @@ const mapStateToProps = () => ({});
 
 const mapDispatchToProps = {
   setCollectionArchived,
+  push,
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
 @withRouter
 class ArchiveCollectionModal extends React.Component {
   async _archive() {
-    try {
-      await this.props.setCollectionArchived(this.props.params.collectionId);
-    } catch (error) {}
+    await this.props.setCollectionArchived(
+      this.props.params.collectionId,
+      true,
+    );
+    this.props.push("/");
   }
   render() {
     return (

@@ -12,11 +12,13 @@ import _ from "underscore";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { CollectionsApi } from "metabase/services";
+import Collections from "metabase/entities/collections";
+
+// TODO: replace all of this with Collections entity
 
 export const LOAD_COLLECTION = "metabase/collections/LOAD_COLLECTION";
 export const LOAD_COLLECTIONS = "metabase/collections/LOAD_COLLECTIONS";
 export const SAVE_COLLECTION = "metabase/collections/SAVE_COLLECTION";
-export const DELETE_COLLECTION = "metabase/collections/DELETE_COLLECTION";
 export const SET_COLLECTION_ARCHIVED =
   "metabase/collections/SET_COLLECTION_ARCHIVED";
 
@@ -66,26 +68,8 @@ export const setCollectionArchived = createThunkAction(
   SET_COLLECTION_ARCHIVED,
   (id, archived) => async (dispatch, getState) => {
     MetabaseAnalytics.trackEvent("Collections", "Set Archived", archived);
-    // HACK: currently the only way to archive/unarchive a collection is to PUT it along with name/description/color, so grab it from the list
-    const collection = _.findWhere(
-      await CollectionsApi.list({ archived: !archived }),
-      { id },
-    );
-    return await CollectionsApi.update({ ...collection, archived: archived });
-  },
-);
-
-export const deleteCollection = createThunkAction(
-  DELETE_COLLECTION,
-  id => async (dispatch, getState) => {
-    try {
-      MetabaseAnalytics.trackEvent("Collections", "Delete");
-      await CollectionsApi.delete({ id });
-      return id;
-    } catch (e) {
-      // TODO: handle error
-      return null;
-    }
+    // return await CollectionsApi.update({ id, archived: archived });
+    return dispatch(Collections.actions.update({ id, archived: archived }));
   },
 );
 
@@ -95,9 +79,6 @@ const collections = handleActions(
     [SAVE_COLLECTION]: {
       next: (state, { payload }) =>
         state.filter(c => c.id !== payload.id).concat(payload),
-    },
-    [DELETE_COLLECTION]: {
-      next: (state, { payload }) => state.filter(c => c.id !== payload),
     },
     [SET_COLLECTION_ARCHIVED]: {
       next: (state, { payload }) => state.filter(c => c.id !== payload.id),
