@@ -44,7 +44,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       section: "distribution",
       title: (
         <span>
-          {capitalize(aggregator.short)} {t`by time`}
+          {capitalize(aggregator.short)} {t`over time`}
         </span>
       ),
       question: () =>
