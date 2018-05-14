@@ -191,7 +191,7 @@ export class Dashboards extends Component {
                   <br />
                 )}frequently in a single, handy place.`}</span>
               }
-              image="/app/img/dashboard_illustration"
+              image="app/img/dashboard_illustration"
               action={t`Create a dashboard`}
               onActionClick={this.showCreateDashboard}
               className="mt2"
@@ -222,7 +222,7 @@ export class Dashboards extends Component {
                       <p className="text-grey-4">{t`Try adjusting your filter to find what you’re looking for.`}</p>
                     </div>
                   }
-                  image="/app/img/empty_dashboard"
+                  image="app/img/empty_dashboard"
                   imageHeight="210px"
                   action={t`Create a dashboard`}
                   imageClassName="mln2"
