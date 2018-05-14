@@ -60,7 +60,12 @@ const CollectionItem = ({ collection }) => (
 const CollectionList = () => {
   return (
     <Box mb={2}>
-      <CollectionListLoader>
+      <CollectionListLoader
+        // NOTE: preferably we wouldn't need to reload each time the page is shown
+        // but until we port everything to the Collections entity it will be difficult
+        // to ensure it's up to date
+        reload
+      >
         {({ collections }) => {
           return (
             <Grid>
