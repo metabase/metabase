@@ -8,7 +8,6 @@ import CommonMetricsAction from "../actions/CommonMetricsAction";
 import CountByTimeAction from "../actions/CountByTimeAction";
 import SummarizeColumnDrill from "../drill/SummarizeColumnDrill";
 import SummarizeColumnByTimeDrill from "../drill/SummarizeColumnByTimeDrill";
-import CountByColumnDrill from "../drill/CountByColumnDrill";
 import DistributionDrill from "../drill/DistributionDrill";
 // import PlotSegmentField from "../actions/PlotSegmentField";
 
@@ -28,7 +27,6 @@ const SegmentMode: QueryMode = {
     ...DEFAULT_DRILLS,
     SummarizeColumnDrill,
     SummarizeColumnByTimeDrill,
-    CountByColumnDrill,
     DistributionDrill,
   ],
 };

@@ -41,7 +41,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     .filter(aggregator => isCompatibleAggregatorForField(aggregator, column))
     .map(aggregator => ({
       name: "summarize-by-time",
-      section: "sum",
+      section: "distribution",
       title: (
         <span>
           {capitalize(aggregator.short)} {t`by time`}

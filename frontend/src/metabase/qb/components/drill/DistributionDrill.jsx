@@ -1,33 +1,31 @@
 /* @flow */
 
 import { t } from "c-3po";
+import { isPK } from "metabase/lib/schema_metadata";
+
 import type {
   ClickAction,
   ClickActionProps,
 } from "metabase/meta/types/Visualization";
-import { isPK } from "metabase/lib/schema_metadata";
 
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   if (
     !clicked ||
     !clicked.column ||
     clicked.value !== undefined ||
-    clicked.column.source !== "fields"
+    clicked.column.source !== "fields" ||
+    isPK(clicked.column)
   ) {
     return [];
   }
   const { column } = clicked;
 
-  if (!isPK(column)) {
-    return [
-      {
-        name: "distribution",
-        title: t`Distribution`,
-        section: "averages",
-        question: () => question.distribution(column),
-      },
-    ];
-  } else {
-    return [];
-  }
+  return [
+    {
+      name: "distribution",
+      title: t`Distribution`,
+      section: "distribution",
+      question: () => question.distribution(column),
+    },
+  ];
 };
