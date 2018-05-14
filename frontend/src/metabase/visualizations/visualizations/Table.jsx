@@ -8,15 +8,19 @@ import { t } from "c-3po";
 import * as DataGrid from "metabase/lib/data_grid";
 
 import Query from "metabase/lib/query";
-import { isMetric, isDimension } from "metabase/lib/schema_metadata";
+import { isMetric, isDimension, isNumeric } from "metabase/lib/schema_metadata";
 import {
   columnsAreValid,
   getFriendlyName,
 } from "metabase/visualizations/lib/utils";
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
+import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx";
 
 import _ from "underscore";
 import cx from "classnames";
+import d3 from "d3";
+import Color from "color";
+
 import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
@@ -32,6 +36,85 @@ type Props = {
 type State = {
   data: ?DatasetData,
 };
+
+function compileFormatter(format, data, isRowFormatter = false) {
+  if (format.type === "single") {
+    let { operator, value, color } = format;
+    if (isRowFormatter) {
+      color = Color(color)
+        .fade(0.5)
+        .string();
+    }
+    switch (operator) {
+      case "<":
+        return v => (v < value ? color : null);
+      case "<=":
+        return v => (v <= value ? color : null);
+      case ">=":
+        return v => (v >= value ? color : null);
+      case ">":
+        return v => (v > value ? color : null);
+      case "=":
+        return v => (v === value ? color : null);
+      case "!=":
+        return v => (v !== value ? color : null);
+    }
+  } else if (format.type === "range") {
+    const extent = format.columns
+      .map(colName => {
+        const colIndex = _.findIndex(data.cols, col => col.name === colName);
+        return d3.extent(data.rows, row => row[colIndex]);
+      })
+      .reduce(
+        ([minA, maxA], [minB, maxB]) => [
+          Math.min(minA, minB),
+          Math.max(maxA, maxB),
+        ],
+        [Infinity, -Infinity],
+      );
+    if (format.min_type === "custom") {
+      extent[0] = format.min_value;
+    }
+    if (format.max_type === "custom") {
+      extent[1] = format.max_value;
+    }
+    return d3.scale
+      .linear()
+      .domain(extent)
+      .range(format.colors)
+      .clamp(true);
+  } else {
+    console.warn("Unknown format type", format.type);
+    return () => null;
+  }
+}
+
+function compileFormatters(formats, data) {
+  const formatters = {};
+  for (const format of formats) {
+    const formatter = compileFormatter(format, data);
+    for (const colName of format.columns) {
+      formatters[colName] = formatters[colName] || [];
+      formatters[colName].push(formatter);
+    }
+  }
+  return formatters;
+}
+
+function compileRowFormatters(formats, data) {
+  const rowFormatters = [];
+  for (const format of formats.filter(
+    format => format.type === "single" && format.highlight_row,
+  )) {
+    const formatter = compileFormatter(format, data, true);
+    for (const colName of format.columns) {
+      rowFormatters.push((row, colIndexes) =>
+        formatter(row[colIndexes[colName]]),
+      );
+    }
+  }
+  return rowFormatters;
+}
 
 export default class Table extends Component {
   props: Props;
@@ -53,6 +136,7 @@ export default class Table extends Component {
 
   static settings = {
     "table.pivot": {
+      section: "Data",
       title: t`Pivot the table`,
       widget: "toggle",
       getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
@@ -64,6 +148,7 @@ export default class Table extends Component {
         data.cols.filter(isDimension).length === 2,
     },
     "table.columns": {
+      section: "Data",
       title: t`Fields to include`,
       widget: ChartSettingOrderedFields,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
@@ -86,6 +171,47 @@ export default class Table extends Component {
       }),
     },
     "table.column_widths": {},
+    "table.column_formatting": {
+      section: "Formatting",
+      widget: ChartSettingsTableFormatting,
+      default: [],
+      getProps: ([{ data: { cols } }]) => ({ cols }),
+    },
+    "table._cell_background_getter": {
+      getValue([{ data }], settings) {
+        const { rows, cols } = data;
+        const formats = settings["table.column_formatting"];
+        let formatters = {};
+        let rowFormatters = [];
+        try {
+          formatters = compileFormatters(formats, data);
+          rowFormatters = compileRowFormatters(formats, data);
+        } catch (e) {
+          console.error(e);
+        }
+        const colIndexes = _.object(
+          cols.map((col, index) => [col.name, index]),
+        );
+        return function(rowIndex, colName) {
+          if (formatters[colName]) {
+            const value = rows[rowIndex][colIndexes[colName]];
+            for (const formatter of formatters[colName]) {
+              const color = formatter(value);
+              if (color != null) {
+                return color;
+              }
+            }
+          }
+          for (const rowFormatter of rowFormatters) {
+            const color = rowFormatter(rows[rowIndex], colIndexes);
+            if (color != null) {
+              return color;
+            }
+          }
+        };
+      },
+      readDependencies: ["table.column_formatting"],
+    },
   };
 
   constructor(props: Props) {
@@ -176,6 +302,7 @@ export default class Table extends Component {
           data={data}
           isPivoted={isPivoted}
           sort={sort}
+          getCellBackgroundColor={settings["table._cell_background_getter"]}
         />
       );
     }

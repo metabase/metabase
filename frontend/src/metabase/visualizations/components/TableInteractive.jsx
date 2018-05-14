@@ -309,6 +309,10 @@ export default class TableInteractive extends Component {
       isPivoted,
     );
     const isClickable = this.visualizationIsClickable(clicked);
+    const backgroundColor = this.props.getCellBackgroundColor(
+      rowIndex,
+      cols[columnIndex].name,
+    );
 
     return (
       <div
@@ -319,6 +323,7 @@ export default class TableInteractive extends Component {
           left: this.getColumnLeft(style, columnIndex),
           // add a transition while dragging column
           transition: dragColIndex != null ? "left 200ms" : null,
+          backgroundColor,
         }}
         className={cx("TableInteractive-cellWrapper", {
           "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,

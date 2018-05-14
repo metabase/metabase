@@ -13,31 +13,6 @@ import {
   extractRemappings,
 } from "metabase/visualizations";
 
-const ChartSettingsTab = ({ name, active, onClick }) => (
-  <a
-    className={cx("block text-brand py1 text-centered", {
-      "bg-brand text-white": active,
-    })}
-    onClick={() => onClick(name)}
-  >
-    {name.toUpperCase()}
-  </a>
-);
-
-const ChartSettingsTabs = ({ tabs, selectTab, activeTab }) => (
-  <ul className="bordered rounded flex justify-around overflow-hidden">
-    {tabs.map((tab, index) => (
-      <li className="flex-full border-left" key={index}>
-        <ChartSettingsTab
-          name={tab}
-          active={tab === activeTab}
-          onClick={selectTab}
-        />
-      </li>
-    ))}
-  </ul>
-);
-
 const Widget = ({
   title,
   hidden,
@@ -146,22 +121,32 @@ class ChartSettings extends Component {
     const widgets = tabs[currentTab];
 
     return (
-      <div className="flex flex-column spread p4">
-        <h2 className="my2">{t`Customize this ${this.getChartTypeName()}`}</h2>
-
+      <div className="flex flex-column spread">
         {tabNames.length > 1 && (
-          <ChartSettingsTabs
-            tabs={tabNames}
-            selectTab={this.selectTab}
-            activeTab={currentTab}
-          />
+          <div className="border-bottom flex pl4">
+            {tabNames.map(tabName => (
+              <div
+                className={cx(
+                  "h3 py2 mr2 border-bottom cursor-pointer text-brand-hover border-brand-hover",
+                  {
+                    "text-brand border-brand": currentTab === tabName,
+                    "border-transparent": currentTab !== tabName,
+                  },
+                )}
+                style={{ borderWidth: 3 }}
+                onClick={() => this.setState({ currentTab: tabName })}
+              >
+                {tabName}
+              </div>
+            ))}
+          </div>
         )}
-        <div className="Grid flex-full mt3">
-          <div className="Grid-cell Cell--1of3 scroll-y p1">
+        <div className="Grid flex-full">
+          <div className="Grid-cell Cell--1of3 scroll-y border-right p4">
             {widgets &&
               widgets.map(widget => <Widget key={widget.id} {...widget} />)}
           </div>
-          <div className="Grid-cell flex flex-column">
+          <div className="Grid-cell flex flex-column p4">
             <div className="flex flex-column">
               <Warnings
                 className="mx2 align-self-end text-gold"
@@ -183,7 +168,7 @@ class ChartSettings extends Component {
             </div>
           </div>
         </div>
-        <div className="pt1">
+        <div className="py2 px4">
           {!_.isEqual(this.state.settings, {}) && (
             <a
               className="Button Button--danger float-right"
@@ -194,12 +179,12 @@ class ChartSettings extends Component {
 
           <div className="float-left">
             <a
-              className="Button Button--primary ml2"
+              className="Button Button--primary mr2"
               onClick={() => this.onDone()}
               data-metabase-event="Chart Settings;Done"
             >{t`Done`}</a>
             <a
-              className="Button ml2"
+              className="Button mr2"
               onClick={onClose}
               data-metabase-event="Chart Settings;Cancel"
             >{t`Cancel`}</a>

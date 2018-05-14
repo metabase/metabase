@@ -90,6 +90,7 @@ export default class TableSimple extends Component {
       onVisualizationClick,
       visualizationIsClickable,
       isPivoted,
+      getCellBackgroundColor,
     } = this.props;
     const { rows, cols } = data;
 
@@ -169,7 +170,13 @@ export default class TableSimple extends Component {
                       return (
                         <td
                           key={columnIndex}
-                          style={{ whiteSpace: "nowrap" }}
+                          style={{
+                            whiteSpace: "nowrap",
+                            backgroundColor: getCellBackgroundColor(
+                              rowIndex,
+                              cols[columnIndex].name,
+                            ),
+                          }}
                           className={cx("px1 border-bottom", {
                             "text-right": isColumnRightAligned(
                               cols[columnIndex],
