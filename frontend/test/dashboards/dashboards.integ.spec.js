@@ -25,6 +25,8 @@ import ArchivedItem from "metabase/components/ArchivedItem";
  * dashboard listing. the same functionality tested here should be re-tested
  * with a new set of tests that works for the new layout in collection landings
  */
+const DashboardListItem =
+  "HACK: placeholder to appease linter. this component was removed";
 xdescribe("dashboards list", () => {
   beforeAll(async () => {
     useSharedAdminLogin();
