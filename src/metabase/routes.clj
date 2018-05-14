@@ -60,6 +60,7 @@
                         :localization_json (escape-script (load-localization))
                         :uri               (escape-script (json/generate-string uri))
                         :base_href         (escape-script (json/generate-string (base-href)))
+                        :custom_stylesheet (escape-script (json/generate-string (public-settings/custom-stylesheet)))
                         :embed_code        (when embeddable? (embed/head uri))})
         (load-file-at-path "frontend_client/init.html"))
       resp/response

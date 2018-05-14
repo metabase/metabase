@@ -76,6 +76,10 @@
   :type    :boolean
   :default false)
 
+(defsetting custom-stylesheet
+  (tru "If provided, Metabase will include a <link> to this stylesheet in embedded dashboards and questions.")
+  :default "")
+
 (defsetting enable-embedding
   (tru "Allow admins to securely embed questions and dashboards within other applications?")
   :type    :boolean
@@ -171,6 +175,7 @@
    :password_complexity   password/active-password-complexity
    :premium_token         (metastore/premium-embedding-token)
    :public_sharing        (enable-public-sharing)
+   :custom_stylesheet     (custom-stylesheet)
    :report_timezone       (setting/get :report-timezone)
    :setup_token           ((resolve 'metabase.setup/token-value))
    :site_name             (site-name)

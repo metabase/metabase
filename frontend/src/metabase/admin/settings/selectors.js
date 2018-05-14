@@ -313,6 +313,12 @@ const SECTIONS = [
         type: "boolean",
       },
       {
+        key: "custom-stylesheet",
+        display_name: t`Custom CSS URL`,
+        type: "string",
+        getHidden: settings => !settings["enable-public-sharing"],
+      },
+      {
         key: "-public-sharing-dashboards",
         display_name: t`Shared Dashboards`,
         widget: PublicLinksDashboardListing,
