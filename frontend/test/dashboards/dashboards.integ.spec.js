@@ -1,4 +1,3 @@
-/*
 import {
   createTestStore,
   useSharedAdminLogin,
@@ -21,7 +20,12 @@ import Dashboard from "metabase/dashboard/components/Dashboard";
 import ListFilterWidget from "metabase/components/ListFilterWidget";
 import ArchivedItem from "metabase/components/ArchivedItem";
 
-describe("dashboards list", () => {
+/*
+ * disable these tests for now since they break with the new way we're doing
+ * dashboard listing. the same functionality tested here should be re-tested
+ * with a new set of tests that works for the new layout in collection landings
+ */
+xdescribe("dashboards list", () => {
   beforeAll(async () => {
     useSharedAdminLogin();
   });
@@ -36,11 +40,6 @@ describe("dashboards list", () => {
     );
   });
 
-  /*
-   * disable these tests for now since they break with the new way we're doing
-   * dashboard listing. the same functionality tested here should be re-tested
-   * with a new set of tests that works for the new layout in collection landings
-   * *
   it("should let you create a dashboard when there are no existing dashboards", async () => {
     const store = await createTestStore();
     store.pushPath("/dashboards");
@@ -157,4 +156,3 @@ describe("dashboards list", () => {
     expect(app.find(ArchivedItem).length).toBeGreaterThan(0);
   });
 });
-  */
