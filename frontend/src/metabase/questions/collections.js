@@ -7,8 +7,6 @@ import {
 import { reset } from "redux-form";
 import { replace } from "react-router-redux";
 
-import _ from "underscore";
-
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { CollectionsApi } from "metabase/services";
