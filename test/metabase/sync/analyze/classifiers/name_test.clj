@@ -29,7 +29,7 @@
   (-> {:name "foo"} table/map->TableInstance infer-entity-type :entity_type))
 
 
-;; Don't overwrite PK/FK `specail_type`s.
+;; Don't overwrite PK/FK `special_type`s.
 (expect
   nil
   (tt/with-temp* [Table [{table-id :id}]
