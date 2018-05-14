@@ -101,7 +101,7 @@ export default class MetadataTable extends Component {
     }
 
     return (
-      <div className="MetadataTable px3 flex-full">
+      <div className="MetadataTable px3">
         <div className="MetadataTable-title flex flex-column bordered rounded">
           <Input
             className="AdminInput TableEditor-table-name text-bold border-bottom rounded-top"

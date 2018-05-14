@@ -126,12 +126,12 @@ export class NewQueryOptions extends Component {
 
     return (
       <div className="full-height flex">
-        <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim flex-full px4 mt4 mb2 align-center">
+        <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim  px4 mt4 mb2 align-center">
           <div
             className="flex align-center justify-center"
             style={{ minHeight: "100%" }}
           >
-            <ol className="flex-full Grid Grid--guttersXl Grid--full sm-Grid--normal">
+            <ol className="Grid Grid--guttersXl Grid--full sm-Grid--normal">
               {showMetricOption && (
                 <li className="Grid-cell">
                   <NewQueryOption
