@@ -238,11 +238,15 @@ class CollectionLanding extends React.Component {
               <Box mx={1}>
                 <EntityMenu
                   items={[
-                    {
-                      title: t`Edit this collection`,
-                      icon: "editdocument",
-                      link: `/collections/${currentCollection.id}`,
-                    },
+                    ...(collectionId
+                      ? [
+                          {
+                            title: t`Edit this collection`,
+                            icon: "editdocument",
+                            link: `/collections/${currentCollection.id}`,
+                          },
+                        ]
+                      : []),
                     {
                       title: t`Edit permissions`,
                       icon: "lock",
@@ -250,11 +254,15 @@ class CollectionLanding extends React.Component {
                         currentCollection.id
                       }`,
                     },
-                    {
-                      title: t`Archive this collection`,
-                      icon: "viewArchive",
-                      link: `/collection/${collectionId}/archive`,
-                    },
+                    ...(collectionId
+                      ? [
+                          {
+                            title: t`Archive this collection`,
+                            icon: "viewArchive",
+                            link: `/collection/${collectionId}/archive`,
+                          },
+                        ]
+                      : []),
                   ]}
                   triggerIcon="pencil"
                 />
