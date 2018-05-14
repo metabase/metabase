@@ -2,6 +2,7 @@ import React from "react";
 import { Box } from "grid-styled";
 import { Text, Subhead } from "rebass";
 import { t } from "c-3po";
+import RetinaImage from "react-retina-image";
 
 import { normal } from "metabase/lib/colors";
 
@@ -9,11 +10,9 @@ const CollectionEmptyState = () => {
   return (
     <Box py={2}>
       <Box mb={3}>
-        <img
-          src="/app/assets/img/collection-empty-state.svg"
-          width={200}
-          height={200}
-          className="ml-auto mr-auto block"
+        <RetinaImage
+          src="app/img/collection-empty-state.png"
+          className="block ml-auto mr-auto"
         />
       </Box>
       <Box className="text-centered">
