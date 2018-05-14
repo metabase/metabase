@@ -36,15 +36,22 @@ Finally, you can choose a custom plugins directory if the default doesn't suit y
 `MB_PLUGINS_DIR`.
 
 
-### Enabling Plugins on Java 9
+### Adding Additional Dependencies with Java 9
 
-Java 9 disables dynamically adding JARs to the Java classpath by default for security reasons. For the time being, we recommend you
-run Metabase with Java 8 when using the SparkSQL driver.
+Java version 9 has introduced a new module system that places some additional restrictions on class loading. To use
+Metabase drivers that require extra external dependencies, you'll need to include them as part of the classpath at
+launch time. Run Metabase as follows:
 
-You may be able to get Java 9 to work by passing an extra JVM option:
-
-```bash
-java --add-opens=java.base/java.net=ALL-UNNAMED -jar metabase.jar
+```
+# Unix
+java -cp metabase.jar:plugins/* metabase.core
 ```
 
-The default Docker images already include this option.
+On Windows, use a semicolon instead:
+
+```
+# Windows
+java -cp metabase.jar;plugins/* metabase.core
+```
+
+The default Docker images use Java 8 so this step is only needed when running the JAR directly.

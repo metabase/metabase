@@ -353,6 +353,24 @@ Running on Java 8 is the easiest path to running Metabase. There are no addition
 
 ## Running on Java 9
 
-Java version 9 has introduced a new module system that places some additional restrictions on class loading. Metabase (and it's dependencies) still rely on the old behavior. Metabase runs on Java 9, but requires an additional argument to work around these changes in the module system:
+To use Metabase on Java 9 with Oracle, Vertica, SparkSQL, or other drivers that require external dependencies,
+you'll need to tweak the way you launch Metabase.
 
-    java --add-opens=java.base/java.net=ALL-UNNAMED -jar metabase.jar
+Java version 9 has introduced a new module system that places some additional restrictions on class loading. To use
+Metabase drivers that require extra external dependencies, you'll need to include them as part of the classpath at
+launch time. Run Metabase as follows:
+
+
+```
+# Unix
+java -cp metabase.jar:plugins/* metabase.core
+```
+
+On Windows, use a semicolon instead:
+
+```
+# Windows
+java -cp metabase.jar;plugins/* metabase.core
+```
+
+The default Docker images use Java 8 so this step is only needed when running the JAR directly.
