@@ -150,10 +150,10 @@ class AutomaticDashboardApp extends React.Component {
                 to={more}
                 className="ml2"
                 onClick={() =>
-			 MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
-			 }
-			 >
-			 <Button iconRight="chevronright">{t`Show more about this`}</Button>
+                  MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
+                }
+              >
+                <Button iconRight="chevronright">{t`Show more about this`}</Button>
               </Link>
             </div>
           )}
