@@ -1,5 +1,7 @@
 (ns metabase.driver.csv
-  (:require [clojure.string :as s]
+  (:require  [clojure
+             [set :as set]
+             [string :as s]]
             [honeysql.core :as hsql]
             [metabase
              [db :as mdb]
@@ -77,39 +79,11 @@
    (keyword "DOUBLE PRECISION") :type/Float})
 
 
-;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
-;; options users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can
-;; replace that and make the connection read-only.
-
-(defn- connection-string->file+options
-  "Explode a CONNECTION-STRING like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
-
-    (connection-string->file+options \"file:my-crazy-db;OPTION=100;OPTION_X=TRUE\")
-      -> [\"file:my-crazy-db\" {\"OPTION\" \"100\", \"OPTION_X\" \"TRUE\"}]"
-  [^String connection-string]
-  {:pre [connection-string]}
-  (let [[file & options] (s/split connection-string #";+")
-        options          (into {} (for [option options]
-                                    (s/split option #"=")))]
-    [file options]))
-
-(defn- file+options->connection-string
-  "Implode the results of `connection-string->file+options` back into a connection string."
-  [file options]
-  (apply str file (for [[k v] options]
-                    (str ";" k "=" v))))
-
-(defn- connection-string-set-safe-options
-  "Add Metabase Security Settings™ to this CONNECTION-STRING (i.e. try to keep shady users from writing nasty SQL)."
-  [connection-string]
-  (let [[file options] (connection-string->file+options connection-string)]
-    (file+options->connection-string file (merge options {}))))
-
 (defn- connection-details->spec [details]
-  (dbspec/csv (if mdb/*allow-potentailly-unsafe-connections*
-               details
-               (update details :db connection-string-set-safe-options))))
-
+  (-> details
+      (set/rename-keys {:dbname :db})
+      dbspec/csv
+      (sql/handle-additional-options details)))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (hsql/call :timestampadd
@@ -197,9 +171,45 @@
           :details-fields                    (constantly [{:name         "db"
                                                            :display-name "Path to CSV file."
                                                            :placeholder  "file path to folder containing csv file"
-                                                           :required     true}])
+                                                           :required     true}
+                                                          {:name         "separator"
+                                                           :display-name "separator"
+                                                           :placeholder  ","
+                                                           :required     false
+                                                           }
+                                                          {:name         "quotechar"
+                                                           :display-name "quotechar"
+                                                           :placeholder  "\""
+                                                           :required     false
+                                                           }
+                                                           {:name         "indexedFiles"
+                                                            :display-name "indexedFiles"
+                                                            :placeholder  "true"
+                                                            :type         :boolean
+                                                            :required     false
+                                                           }
+                                                           {:name         "fileTailPattern"
+                                                            :display-name "fileTailPattern"
+                                                            :placeholder  "_(.*)"
+                                                            :required     false
+                                                           }
+                                                           {:name         "fileTailParts"
+                                                            :display-name "fileTailParts"
+                                                            :placeholder  "junk"
+                                                            :required     false
+                                                           }
+                                                           {:name         "fileTailPrepend"
+                                                            :display-name "fileTailPrepend"
+                                                            :placeholder  "true"
+                                                            :type         :boolean
+                                                            :required     false
+                                                           }
+                                                           {:name         "fileExtension"
+                                                            :display-name "fileExtension"
+                                                            :placeholder  ".csv"
+                                                            :required     true
+                                                           }                                                           ])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          ; :process-query-in-context          (u/drop-first-arg process-query-in-context)
           :current-db-time                   (driver/make-current-db-time-fn h2-db-time-query h2-date-formatters)})
 
   sql/ISQLDriver
