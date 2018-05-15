@@ -241,8 +241,8 @@ const RuleEditor = ({ rule, onChange, cols }) => (
   <div>
     <h3 className="mb1">{t`Which columns should be affected?`}</h3>
     <Select
-      value={rule.columns[0]}
-      onChange={e => onChange({ ...rule, columns: [e.target.value] })}
+      value={rule.columns}
+      onChange={e => onChange({ ...rule, columns: e.target.value })}
       multiple
     >
       {cols
