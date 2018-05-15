@@ -294,9 +294,10 @@ export default class TableInteractive extends Component {
   }
 
   cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
-    const { data, isPivoted } = this.props;
+    const { data, isPivoted, settings } = this.props;
     const { dragColIndex } = this.state;
     const { rows, cols } = data;
+    const getCellBackgroundColor = settings["table._cell_background_getter"];
 
     const column = cols[columnIndex];
     const row = rows[rowIndex];
@@ -309,10 +310,9 @@ export default class TableInteractive extends Component {
       isPivoted,
     );
     const isClickable = this.visualizationIsClickable(clicked);
-    const backgroundColor = this.props.getCellBackgroundColor(
-      rowIndex,
-      cols[columnIndex].name,
-    );
+    const backgroundColor =
+      getCellBackgroundColor &&
+      getCellBackgroundColor(rowIndex, cols[columnIndex].name);
 
     return (
       <div

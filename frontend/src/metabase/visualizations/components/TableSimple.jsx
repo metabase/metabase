@@ -90,9 +90,10 @@ export default class TableSimple extends Component {
       onVisualizationClick,
       visualizationIsClickable,
       isPivoted,
-      getCellBackgroundColor,
+      settings,
     } = this.props;
     const { rows, cols } = data;
+    const getCellBackgroundColor = settings["table._cell_background_getter"];
 
     const { page, pageSize, sortColumn, sortDescending } = this.state;
 
@@ -172,10 +173,12 @@ export default class TableSimple extends Component {
                           key={columnIndex}
                           style={{
                             whiteSpace: "nowrap",
-                            backgroundColor: getCellBackgroundColor(
-                              rowIndex,
-                              cols[columnIndex].name,
-                            ),
+                            backgroundColor:
+                              getCellBackgroundColor &&
+                              getCellBackgroundColor(
+                                rowIndex,
+                                cols[columnIndex].name,
+                              ),
                           }}
                           className={cx("px1 border-bottom", {
                             "text-right": isColumnRightAligned(

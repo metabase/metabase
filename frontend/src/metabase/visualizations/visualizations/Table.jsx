@@ -107,10 +107,12 @@ function compileRowFormatters(formats, data) {
     format => format.type === "single" && format.highlight_row,
   )) {
     const formatter = compileFormatter(format, data, true);
-    for (const colName of format.columns) {
-      rowFormatters.push((row, colIndexes) =>
-        formatter(row[colIndexes[colName]]),
-      );
+    if (formatter) {
+      for (const colName of format.columns) {
+        rowFormatters.push((row, colIndexes) =>
+          formatter(row[colIndexes[colName]]),
+        );
+      }
     }
   }
   return rowFormatters;
@@ -192,23 +194,30 @@ export default class Table extends Component {
         const colIndexes = _.object(
           cols.map((col, index) => [col.name, index]),
         );
-        return function(rowIndex, colName) {
-          if (formatters[colName]) {
-            const value = rows[rowIndex][colIndexes[colName]];
-            for (const formatter of formatters[colName]) {
-              const color = formatter(value);
+        if (
+          Object.values(formatters).length === 0 &&
+          Object.values(formatters).length === 0
+        ) {
+          return null;
+        } else {
+          return function(rowIndex, colName) {
+            if (formatters[colName]) {
+              const value = rows[rowIndex][colIndexes[colName]];
+              for (const formatter of formatters[colName]) {
+                const color = formatter(value);
+                if (color != null) {
+                  return color;
+                }
+              }
+            }
+            for (const rowFormatter of rowFormatters) {
+              const color = rowFormatter(rows[rowIndex], colIndexes);
               if (color != null) {
                 return color;
               }
             }
-          }
-          for (const rowFormatter of rowFormatters) {
-            const color = rowFormatter(rows[rowIndex], colIndexes);
-            if (color != null) {
-              return color;
-            }
-          }
-        };
+          };
+        }
       },
       readDependencies: ["table.column_formatting"],
     },
@@ -302,7 +311,6 @@ export default class Table extends Component {
           data={data}
           isPivoted={isPivoted}
           sort={sort}
-          getCellBackgroundColor={settings["table._cell_background_getter"]}
         />
       );
     }
