@@ -351,7 +351,7 @@
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
-   (card-for-signed-token token dashcard-id card-id query-params ))
+  (card-for-signed-token token dashcard-id card-id query-params ))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
@@ -423,9 +423,12 @@
     (public-api/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 
-(api/defendpoint GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format" , :export-format dataset-api/export-format-regex]
-  "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the `embedding-secret-key` return the data in one of the export formats"
+(api/defendpoint GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format",
+                      :export-format dataset-api/export-format-regex]
+  "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the `embedding-secret-key`
+   return the data in one of the export formats"
   [token export-format dashcard-id card-id & query-params]
-   {export-format dataset-api/ExportFormat} (dataset-api/as-format export-format (card-for-signed-token token dashcard-id card-id query-params )))
+  {export-format dataset-api/ExportFormat}
+  (dataset-api/as-format export-format (card-for-signed-token token dashcard-id card-id query-params )))
 
 (api/define-routes)
