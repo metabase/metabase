@@ -245,7 +245,7 @@ export default class Navbar extends Component {
           <Box mx={2}>
             <Tooltip tooltip={t`Browse data`}>
               <Link to="browse">
-                <Icon name="reference" />
+                <Icon name="grid" />
               </Link>
             </Tooltip>
           </Box>
