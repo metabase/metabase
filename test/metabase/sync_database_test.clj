@@ -1,16 +1,20 @@
 (ns metabase.sync-database-test
   "Tests for sync behavior that use a imaginary `SyncTestDriver`. These are kept around mainly because they've already
   been written. For newer sync tests see `metabase.sync.*` test namespaces."
-  (:require [expectations :refer :all]
+  (:require [clojure.java.jdbc :as jdbc]
+            [expectations :refer :all]
             [metabase
+             [db :as mdb]
              [driver :as driver]
-             [sync :refer :all]
+             [sync :as sync :refer :all]
              [util :as u]]
+            [metabase.driver.generic-sql :as sql]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
              [field-values :as field-values :refer [FieldValues]]
              [table :refer [Table]]]
+            [metabase.sync.field-values-test :as sync-field-values-test]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -252,6 +256,7 @@
   [[1 2 3]
    nil]
   (tt/with-temp* [Database [db {:engine :sync-test}]]
+    ()
     (sync-database! db)
     (let [table-id (db/select-one-id Table, :schema "default", :name "movie")
           field-id (db/select-one-id Field, :table_id table-id, :name "studio")]
@@ -359,15 +364,6 @@
      (do (sync-table! (Table (data/id :venues)))
          (get-field-values))]))
 
-;; Make sure that if a Field's cardinality passes `list-cardinality-threshold` (currently 100) the corresponding
-;; FieldValues entry will be deleted (#3215)
-(defn- insert-range-sql
-  "Generate SQL to insert a row for each number in `rang`."
-  [rang]
-  (str "INSERT INTO blueberries_consumed (num) VALUES "
-       (str/join ", " (for [n rang]
-                        (str "(" n ")")))))
-
 (defn- exec! [conn statements]
   (doseq [statement statements]
     (jdbc/execute! conn [statement])))
@@ -383,24 +379,6 @@
            (let [~db-sym db#
                  ~conn-sym conn#]
              ~@body))))))
-
-(expect
-  false
-  (with-new-mem-db db conn
-    ;; create the `blueberries_consumed` table and insert 50 values
-    (exec! conn ["CREATE TABLE blueberries_consumed (num INTEGER NOT NULL);"
-                 (insert-range-sql (range 50))])
-    (sync-database! db)
-    (let [table-id (db/select-one-id Table :db_id (u/get-id db))
-          field-id (db/select-one-id Field :table_id table-id)]
-      ;; field values should exist...
-      (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
-                 50))
-      ;; ok, now insert enough rows to push the field past the `list-cardinality-threshold` and sync again,
-      ;; there should be no more field values
-      (exec! conn [(insert-range-sql (range 50 (+ 100 field-values/list-cardinality-threshold)))])
-      (sync-database! db)
-      (db/exists? FieldValues :field_id field-id))))
 
 ;; TODO - hey, what is this testing? If you wrote this test, please explain what's going on here
 (defn- narrow-to-min-max [row]
@@ -439,7 +417,7 @@
     (let [get-table #(db/select-one Table :db_id (u/get-id db))]
       ;; create the `blueberries_consumed` table and insert 50 values
       (exec! conn ["CREATE TABLE blueberries_consumed (num SMALLINT NOT NULL);"
-                   (insert-range-sql (range 50))])
+                   (sync-field-values-test/insert-range-sql (range 50))])
       (sync-database! db)
       ;; After this sync, we know about the new table and it's SMALLINT column
       (let [table-id                     (u/get-id (get-table))
@@ -483,7 +461,7 @@
     (let [get-table #(db/select-one Table :db_id (u/get-id db))]
       ;; create the `blueberries_consumed` table and insert 50 values
       (exec! conn ["CREATE TABLE blueberries_consumed (num SMALLINT NOT NULL)"
-                   (insert-range-sql (range 50))])
+                   (sync-field-values-test/insert-range-sql (range 50))])
       (sync-database! db)
       ;; We should now have a hash value for num as a SMALLINT
       (let [table-id        (u/get-id (get-table))
@@ -510,7 +488,7 @@
     (let [get-table #(db/select-one Table :db_id (u/get-id db))]
       ;; create the `blueberries_consumed` table and insert 50 values
       (exec! conn ["CREATE TABLE blueberries_consumed (num SMALLINT NOT NULL, weight FLOAT)"
-                   (insert-range-sql (range 50))])
+                   (sync-field-values-test/insert-range-sql (range 50))])
       (sync-database! db)
       ;; We should now have a hash value for num as a SMALLINT
       (let [table-id        (u/get-id (get-table))
@@ -537,7 +515,7 @@
     (let [get-table #(db/select-one Table :db_id (u/get-id db))]
       ;; create the `blueberries_consumed` table and insert 50 values
       (exec! conn ["CREATE TABLE blueberries_consumed (num SMALLINT NOT NULL, weight FLOAT)"
-                   (insert-range-sql (range 50))])
+                   (sync-field-values-test/insert-range-sql (range 50))])
       (sync-database! db)
       ;; We should now have a hash value for num as a SMALLINT
       (let [table-id        (u/get-id (get-table))

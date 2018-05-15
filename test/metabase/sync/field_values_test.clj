@@ -20,7 +20,7 @@
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
-(defn- insert-range-sql
+(defn insert-range-sql
   "Generate SQL to insert a row for each number in `rang`."
   [rang]
   (str "INSERT INTO blueberries_consumed (num) VALUES "
