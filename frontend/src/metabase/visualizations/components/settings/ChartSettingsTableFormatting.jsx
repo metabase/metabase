@@ -10,6 +10,8 @@ import Toggle from "metabase/components/Toggle";
 import ColorPicker from "metabase/components/ColorPicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
+import { SortableContainer, SortableElement } from "react-sortable-hoc";
+
 import { formatNumber, capitalize } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 
@@ -70,7 +72,6 @@ export default class ChartSettingsTableFormatting extends React.Component {
             ])
           }
           cols={cols}
-          onBack={() => this.setState({ editingRule: null })}
         />
       );
     } else {
@@ -78,21 +79,53 @@ export default class ChartSettingsTableFormatting extends React.Component {
         <RuleListing
           rules={value}
           cols={cols}
-          onEdit={index => this.setState({ editingRule: index })}
+          onEdit={index => {
+            this.setState({ editingRule: index });
+            this.props.onEnterModal("Update rule");
+          }}
           onAdd={() => {
             onChange(value.concat({ ...DEFAULTS_BY_TYPE["single"] }));
             this.setState({ editingRule: value.length });
+            this.props.onEnterModal("Add rule");
           }}
           onRemove={index =>
             onChange([...value.slice(0, index), ...value.slice(index + 1)])
           }
+          onMove={(from, to) => {
+            const newValue = [...value];
+            newValue.splice(to, 0, newValue.splice(from, 1)[0]);
+            onChange(newValue);
+          }}
         />
       );
     }
   }
 }
 
-const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove }) => (
+const SortableRuleItem = SortableElement(({ rule, cols, onEdit, onRemove }) => (
+  <RulePreview rule={rule} cols={cols} onClick={onEdit} onRemove={onRemove} />
+));
+
+const SortableRuleList = SortableContainer(
+  ({ rules, cols, onEdit, onRemove }) => {
+    return (
+      <div>
+        {rules.map((rule, index) => (
+          <SortableRuleItem
+            key={`item-${index}`}
+            index={index}
+            rule={rule}
+            cols={cols}
+            onEdit={() => onEdit(index)}
+            onRemove={() => onRemove(index)}
+          />
+        ))}
+      </div>
+    );
+  },
+);
+
+const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
   <div>
     <h3>{t`Conditional formatting`}</h3>
     <div className="mt2">
@@ -107,23 +140,22 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove }) => (
     {rules.length > 0 ? (
       <div className="mt2">
         <h3>{t`Rules will be applied in this order`}</h3>
-        <div>
-          {rules.map((rule, index) => (
-            <RulePreview
-              rule={rule}
-              cols={cols}
-              onClick={() => onEdit(index)}
-              onRemove={() => onRemove(index)}
-            />
-          ))}
-        </div>
+        <SortableRuleList
+          rules={rules}
+          cols={cols}
+          onEdit={onEdit}
+          onRemove={onRemove}
+          onSortEnd={({ oldIndex, newIndex }) => onMove(oldIndex, newIndex)}
+          distance={10}
+          helperClass="z5"
+        />
       </div>
     ) : null}
   </div>
 );
 
 const RulePreview = ({ rule, cols, onClick, onRemove }) => (
-  <div className="bordered rounded shadowed my2">
+  <div className="bordered rounded shadowed my2 overflow-hidden bg-white">
     <div className="border-bottom relative p1">
       <RuleBackground rule={rule} className="absolute spread" />
       <div
@@ -147,7 +179,10 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         <Icon
           name="close"
           className="cursor-pointer text-grey-2 text-grey-4-hover"
-          onClick={onRemove}
+          onClick={e => {
+            e.stopPropagation();
+            onRemove();
+          }}
         />
       </div>
     </div>
@@ -161,8 +196,16 @@ const RuleBackground = ({ rule, className }) =>
   rule.type === "range" ? (
     <RangePreview colors={rule.colors} className={className} />
   ) : rule.type === "single" ? (
-    <div className={className} style={{ background: rule.color }} />
+    <SinglePreview color={rule.color} className={className} />
   ) : null;
+
+const SinglePreview = ({ color, className, style, ...props }) => (
+  <div
+    className={className}
+    style={{ ...style, background: color }}
+    {...props}
+  />
+);
 
 const RangePreview = ({ colors, className, ...props }) => (
   <div className={cx(className, "flex")} {...props}>
@@ -194,7 +237,7 @@ const RuleDescription = ({ rule }) => (
   </span>
 );
 
-const RuleEditor = ({ rule, onChange, cols, onBack }) => (
+const RuleEditor = ({ rule, onChange, cols }) => (
   <div>
     <h3 className="mb1">{t`Which columns should be affected?`}</h3>
     <Select
@@ -255,7 +298,7 @@ const RuleEditor = ({ rule, onChange, cols, onBack }) => (
           value={rule.min_type}
           onChange={min_type => onChange({ ...rule, min_type })}
           options={[
-            { name: t`Smallet value in the table`, value: "min" },
+            { name: t`Smallest value in the table`, value: "min" },
             { name: t`Custom value`, value: "custom" },
           ]}
           isVertical
@@ -284,9 +327,6 @@ const RuleEditor = ({ rule, onChange, cols, onBack }) => (
         )}
       </div>
     ) : null}
-    <div className="mt3">
-      <Button onClick={onBack}>Back</Button>
-    </div>
   </div>
 );
 

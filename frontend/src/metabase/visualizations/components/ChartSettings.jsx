@@ -20,13 +20,21 @@ const Widget = ({
   widget,
   value,
   onChange,
+  onEnterModal,
   props,
 }) => {
   const W = widget;
   return (
     <div className={cx("mb2", { hide: hidden, disable: disabled })}>
       {title && <h4 className="mb1">{title}</h4>}
-      {W && <W value={value} onChange={onChange} {...props} />}
+      {W && (
+        <W
+          value={value}
+          onChange={onChange}
+          onEnterModal={onEnterModal}
+          {...props}
+        />
+      )}
     </div>
   );
 };
@@ -39,6 +47,8 @@ class ChartSettings extends Component {
       currentTab: null,
       settings: initialSettings,
       series: this._getSeries(props.series, initialSettings),
+      backButtonName: null,
+      stateBustingId: 0,
     };
   }
 
@@ -95,6 +105,18 @@ class ChartSettings extends Component {
     }
   }
 
+  handleEnterModal = backButtonName => {
+    this.setState({ backButtonName });
+  };
+
+  handleExitModal = () => {
+    // HACK: incrementing stateBustingId causes widgets internal state to be reset
+    this.setState({
+      backButtonName: null,
+      stateBustingId: this.state.stateBustingId + 1,
+    });
+  };
+
   render() {
     const { onClose, isDashboard } = this.props;
     const { series } = this.state;
@@ -123,7 +145,7 @@ class ChartSettings extends Component {
     return (
       <div className="flex flex-column spread">
         {tabNames.length > 1 && (
-          <div className="border-bottom flex pl4">
+          <div className="border-bottom flex flex-no-shrink pl4">
             {tabNames.map(tabName => (
               <div
                 className={cx(
@@ -144,7 +166,13 @@ class ChartSettings extends Component {
         <div className="Grid flex-full">
           <div className="Grid-cell Cell--1of3 scroll-y border-right p4">
             {widgets &&
-              widgets.map(widget => <Widget key={widget.id} {...widget} />)}
+              widgets.map(widget => (
+                <Widget
+                  key={`${widget.id}-${this.state.stateBustingId}`}
+                  onEnterModal={this.handleEnterModal}
+                  {...widget}
+                />
+              ))}
           </div>
           <div className="Grid-cell flex flex-column p4">
             <div className="flex flex-column">
@@ -176,19 +204,30 @@ class ChartSettings extends Component {
               data-metabase-event="Chart Settings;Reset"
             >{t`Reset to defaults`}</a>
           )}
-
-          <div className="float-left">
-            <a
-              className="Button Button--primary mr2"
-              onClick={() => this.onDone()}
-              data-metabase-event="Chart Settings;Done"
-            >{t`Done`}</a>
-            <a
-              className="Button mr2"
-              onClick={onClose}
-              data-metabase-event="Chart Settings;Cancel"
-            >{t`Cancel`}</a>
-          </div>
+          {this.state.backButtonName ? (
+            <div className="float-left">
+              <a
+                className="Button Button--primary mr2"
+                onClick={this.handleExitModal}
+                data-metabase-event="Chart Settings;Back"
+              >
+                {this.state.backButtonName}
+              </a>
+            </div>
+          ) : (
+            <div className="float-left">
+              <a
+                className="Button Button--primary mr2"
+                onClick={() => this.onDone()}
+                data-metabase-event="Chart Settings;Done"
+              >{t`Done`}</a>
+              <a
+                className="Button mr2"
+                onClick={onClose}
+                data-metabase-event="Chart Settings;Cancel"
+              >{t`Cancel`}</a>
+            </div>
+          )}
         </div>
       </div>
     );

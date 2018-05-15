@@ -8,7 +8,7 @@ import { t } from "c-3po";
 import * as DataGrid from "metabase/lib/data_grid";
 
 import Query from "metabase/lib/query";
-import { isMetric, isDimension, isNumeric } from "metabase/lib/schema_metadata";
+import { isMetric, isDimension } from "metabase/lib/schema_metadata";
 import {
   columnsAreValid,
   getFriendlyName,
