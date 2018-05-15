@@ -177,12 +177,17 @@ export default class Table extends Component {
       section: "Formatting",
       widget: ChartSettingsTableFormatting,
       default: [],
-      getProps: ([{ data: { cols } }]) => ({ cols }),
+      getProps: ([{ data: { cols } }], settings) => ({
+        cols,
+        isPivoted: settings["table.pivot"],
+      }),
+      readDependencies: ["table.pivot"],
     },
     "table._cell_background_getter": {
       getValue([{ data }], settings) {
         const { rows, cols } = data;
         const formats = settings["table.column_formatting"];
+        const pivot = settings["table.pivot"];
         let formatters = {};
         let rowFormatters = [];
         try {
@@ -200,9 +205,9 @@ export default class Table extends Component {
         ) {
           return null;
         } else {
-          return function(rowIndex, colName) {
+          return function(value, rowIndex, colName) {
             if (formatters[colName]) {
-              const value = rows[rowIndex][colIndexes[colName]];
+              // const value = rows[rowIndex][colIndexes[colName]];
               for (const formatter of formatters[colName]) {
                 const color = formatter(value);
                 if (color != null) {
@@ -210,16 +215,19 @@ export default class Table extends Component {
                 }
               }
             }
-            for (const rowFormatter of rowFormatters) {
-              const color = rowFormatter(rows[rowIndex], colIndexes);
-              if (color != null) {
-                return color;
+            // don't highlight row for pivoted tables
+            if (!pivot) {
+              for (const rowFormatter of rowFormatters) {
+                const color = rowFormatter(rows[rowIndex], colIndexes);
+                if (color != null) {
+                  return color;
+                }
               }
             }
           };
         }
       },
-      readDependencies: ["table.column_formatting"],
+      readDependencies: ["table.column_formatting", "table.pivot"],
     },
   };
 

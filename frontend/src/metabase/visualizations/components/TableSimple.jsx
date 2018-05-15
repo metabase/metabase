@@ -176,6 +176,7 @@ export default class TableSimple extends Component {
                             backgroundColor:
                               getCellBackgroundColor &&
                               getCellBackgroundColor(
+                                cell,
                                 rowIndex,
                                 cols[columnIndex].name,
                               ),

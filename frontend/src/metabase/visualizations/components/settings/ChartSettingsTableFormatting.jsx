@@ -53,6 +53,9 @@ const DEFAULTS_BY_TYPE = {
   },
 };
 
+// predicate for columns that can be formatted
+const isFormattable = isNumeric;
+
 export default class ChartSettingsTableFormatting extends React.Component {
   state = {
     editingRule: null,
@@ -60,6 +63,7 @@ export default class ChartSettingsTableFormatting extends React.Component {
   render() {
     const { value, onChange, cols } = this.props;
     const { editingRule } = this.state;
+    const formattableCols = cols.filter(isFormattable);
     if (editingRule !== null && value[editingRule]) {
       return (
         <RuleEditor
@@ -84,7 +88,14 @@ export default class ChartSettingsTableFormatting extends React.Component {
             this.props.onEnterModal("Update rule");
           }}
           onAdd={() => {
-            onChange(value.concat({ ...DEFAULTS_BY_TYPE["single"] }));
+            onChange(
+              value.concat({
+                ...DEFAULTS_BY_TYPE["single"],
+                // if there's a single column use that by default
+                columns:
+                  formattableCols.length === 1 ? [formattableCols[0].name] : [],
+              }),
+            );
             this.setState({ editingRule: value.length });
             this.props.onEnterModal("Add rule");
           }}
@@ -207,21 +218,24 @@ const SinglePreview = ({ color, className, style, ...props }) => (
   />
 );
 
-const RangePreview = ({ colors, className, ...props }) => (
-  <div className={cx(className, "flex")} {...props}>
-    {d3.range(0, 1.25, 0.25).map(value => (
-      <div
-        className="flex-full"
-        style={{
-          background: d3.scale
-            .linear()
-            .domain([0, 1])
-            .range(colors || [])(value),
-        }}
-      />
-    ))}
-  </div>
-);
+const RangePreview = ({ colors, className, sections = 5, ...props }) => {
+  const scale = d3.scale
+    .linear()
+    .domain([0, sections - 1])
+    .range(colors || []);
+  return (
+    <div className={cx(className, "flex")} {...props}>
+      {d3.range(0, sections).map(value => (
+        <div
+          className="flex-full"
+          style={{
+            background: scale(value),
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 const RuleDescription = ({ rule }) => (
   <span>
@@ -246,7 +260,7 @@ const RuleEditor = ({ rule, onChange, cols }) => (
       multiple
     >
       {cols
-        .filter(col => isNumeric(col))
+        .filter(isFormattable)
         .map(col => <Option value={col.name}>{col.display_name}</Option>)}
     </Select>
     <h3 className="mt3 mb1">{t`Formatting style`}</h3>
@@ -335,7 +349,7 @@ const ColorRangePicker = ({ colors, onChange, className, style }) => (
     triggerElement={
       <RangePreview
         colors={colors}
-        className={cx(className, "bordered rounded")}
+        className={cx(className, "bordered rounded overflow-hidden")}
         style={{ height: 30, ...style }}
       />
     }
@@ -346,7 +360,7 @@ const ColorRangePicker = ({ colors, onChange, className, style }) => (
           <RangePreview
             colors={range}
             onClick={() => onChange(range)}
-            className={cx("bordered rounded")}
+            className={cx("bordered rounded overflow-hidden")}
             style={{ height: 30, width: 200 }}
           />
         </div>

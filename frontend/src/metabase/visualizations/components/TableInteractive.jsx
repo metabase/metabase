@@ -312,7 +312,7 @@ export default class TableInteractive extends Component {
     const isClickable = this.visualizationIsClickable(clicked);
     const backgroundColor =
       getCellBackgroundColor &&
-      getCellBackgroundColor(rowIndex, cols[columnIndex].name);
+      getCellBackgroundColor(value, rowIndex, column.name);
 
     return (
       <div
