@@ -598,3 +598,13 @@
   (first (keep-indexed (fn [i x]
                          (when (pred x) i))
                        coll)))
+
+
+(defn is-java-9-or-higher?
+  "Are we running on Java 9 or above?"
+  []
+  (when-let [java-major-version (some-> (System/getProperty "java.version")
+                                        (s/split #"\.")
+                                        first
+                                        Integer/parseInt)]
+    (>= java-major-version 9)))

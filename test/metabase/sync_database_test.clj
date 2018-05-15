@@ -1,15 +1,11 @@
 (ns metabase.sync-database-test
   "Tests for sync behavior that use a imaginary `SyncTestDriver`. These are kept around mainly because they've already
   been written. For newer sync tests see `metabase.sync.*` test namespaces."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [expectations :refer :all]
+  (:require [expectations :refer :all]
             [metabase
-             [db :as mdb]
              [driver :as driver]
              [sync :refer :all]
              [util :as u]]
-            [metabase.driver.generic-sql :as sql]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
@@ -21,7 +17,6 @@
             [metabase.test.mock.util :as mock-util]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
-
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name   "movie"
@@ -407,6 +402,7 @@
       (sync-database! db)
       (db/exists? FieldValues :field_id field-id))))
 
+;; TODO - hey, what is this testing? If you wrote this test, please explain what's going on here
 (defn- narrow-to-min-max [row]
   (-> row
       (get-in [:type :type/Number])
