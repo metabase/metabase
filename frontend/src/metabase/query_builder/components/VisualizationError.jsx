@@ -4,7 +4,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
 import MetabaseSettings from "metabase/lib/settings";
-import VisualizationErrorMessage from "./VisualizationErrorMessage";
+import ErrorMessage from "metabase/components/ErrorMessage";
+import ErrorDetails from "metabase/components/ErrorDetails";
 
 const EmailAdmin = () => {
   const adminEmail = MetabaseSettings.adminEmail();
@@ -40,7 +41,7 @@ class VisualizationError extends Component {
       // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
       if (duration > 15 * 1000) {
         return (
-          <VisualizationErrorMessage
+          <ErrorMessage
             type="timeout"
             title={t`Your question took too long`}
             message={t`We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.`}
@@ -49,7 +50,7 @@ class VisualizationError extends Component {
         );
       } else {
         return (
-          <VisualizationErrorMessage
+          <ErrorMessage
             type="serverError"
             title={t`We're experiencing server issues`}
             message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}
@@ -86,24 +87,7 @@ class VisualizationError extends Component {
           <div className="QueryError2-details">
             <h1 className="text-bold">{t`There was a problem with your question`}</h1>
             <p className="QueryError-messageText">{t`Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query.`}</p>
-            <div className="pt2">
-              <a
-                onClick={() => this.setState({ showError: true })}
-                className="link cursor-pointer"
-              >{t`Show error details`}</a>
-            </div>
-            <div
-              style={{ display: this.state.showError ? "inherit" : "none" }}
-              className="pt3 text-left"
-            >
-              <h2>{t`Here's the full error message`}</h2>
-              <div
-                style={{ fontFamily: "monospace" }}
-                className="QueryError2-detailBody bordered rounded bg-grey-0 text-bold p2 mt1"
-              >
-                {error}
-              </div>
-            </div>
+            <ErrorDetails className="pt2" details={error} />
           </div>
         </div>
       );

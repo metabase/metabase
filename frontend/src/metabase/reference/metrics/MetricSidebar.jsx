@@ -36,7 +36,7 @@ const MetricSidebar = ({ metric, user, style, className }) => (
         key={`/auto/dashboard/metric/${metric.id}`}
         href={`/auto/dashboard/metric/${metric.id}`}
         icon="bolt"
-        name={t`See an exploration of this metric`}
+        name={t`X-ray this metric`}
       />
       {user &&
         user.is_superuser && (

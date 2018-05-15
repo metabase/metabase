@@ -128,6 +128,11 @@
   (with-api-error-message (s/pred #(isa? (keyword %) :type/*) (tru "Valid field type (keyword or string)"))
     (tru "value must be a valid field type (keyword or string).")))
 
+(def EntityTypeKeywordOrString
+  "Validates entity type derivatives of `:entity/*`. Allows strings or keywords"
+  (with-api-error-message (s/pred #(isa? (keyword %) :entity/*) (tru "Valid entity type (keyword or string)"))
+   (tru "value must be a valid entity type (keyword or string).")))
+
 (def Map
   "Schema for a valid map."
   (with-api-error-message (s/pred map? (tru "Valid map"))

@@ -117,6 +117,10 @@ export default class DashCard extends Component {
 
     const params = getParametersBySlug(dashboard.parameters , parameterValues);
 
+    const hideBackground =
+      !isEditing &&
+      mainCard.visualization_settings["dashcard.background"] === false;
+
     return (
       <div
         className={cx(
@@ -126,6 +130,11 @@ export default class DashCard extends Component {
             "Card--slow": isSlow === "usually-slow",
           },
         )}
+        style={
+          hideBackground
+            ? { border: 0, background: "transparent", boxShadow: "none" }
+            : null
+        }
       >
         <Visualization
           className="flex-full"

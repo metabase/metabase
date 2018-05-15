@@ -24,7 +24,6 @@ import { isObscured } from "metabase/lib/dom";
 
 const inputBoxClasses = cxs({
   maxHeight: 130,
-  overflow: "scroll",
 });
 
 type Value = any;
@@ -146,7 +145,6 @@ export default class TokenField extends Component {
   static defaultProps = {
     removeSelected: true,
 
-    // $FlowFixMe
     valueKey: "value",
     labelKey: "label",
 
@@ -544,7 +542,7 @@ export default class TokenField extends Component {
       >
         {value.map((v, index) => (
           <li
-            key={v}
+            key={index}
             className={cx(
               `mt1 ml1 py1 pl2 rounded bg-grey-05`,
               multi ? "pr1" : "pr2",

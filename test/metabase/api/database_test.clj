@@ -12,6 +12,7 @@
              [field-values :refer [FieldValues]]
              [table :refer [Table]]]
             [metabase.sync
+             [analyze :as analyze]
              [field-values :as field-values]
              [sync-metadata :as sync-metadata]]
             [metabase.test
@@ -172,7 +173,8 @@
                 :id              $
                 :db_id           $
                 :raw_table_id    $
-                :created_at      $}))
+                :created_at      $
+                :fields_hash     $}))
       (update :entity_type (comp (partial str "entity/") name))))
 
 
@@ -325,7 +327,8 @@
                                    :id           (data/id :categories)
                                    :raw_table_id $
                                    :db_id        (data/id)
-                                   :created_at   $}))]}))
+                                   :created_at   $
+                                   :fields_hash  $}))]}))
   (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (data/id)))]
     (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
 
@@ -545,15 +548,27 @@
     (-> ((user->client :crowberto) :get 200 (format "database/%d" (u/get-id db)))
         (select-keys [:cache_field_values_schedule :metadata_sync_schedule :schedules]))))
 
+;; Five minutes
+(def ^:private long-timeout (* 5 60 1000))
+
+(defn- deliver-when-db [promise-to-deliver expected-db]
+  (fn [db]
+    (when (= (u/get-id db) (u/get-id expected-db))
+      (deliver promise-to-deliver true))))
+
 ;; Can we trigger a metadata sync for a DB?
 (expect
-  (let [sync-called? (atom false)]
+  [true true]
+  (let [sync-called?    (promise)
+        analyze-called? (promise)]
     (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
-      (with-redefs [sync-metadata/sync-db-metadata! (fn [synced-db]
-                                                      (when (= (u/get-id synced-db) (u/get-id db))
-                                                        (reset! sync-called? true)))]
+      (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
+                    analyze/analyze-db!             (deliver-when-db analyze-called? db)]
         ((user->client :crowberto) :post 200 (format "database/%d/sync_schema" (u/get-id db)))
-        @sync-called?))))
+        ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
+        ;; however if something went wrong, don't hang forever, eventually timeout and fail
+        [(deref sync-called? long-timeout :sync-never-called)
+         (deref analyze-called? long-timeout :analyze-never-called)]))))
 
 ;; (Non-admins should not be allowed to trigger sync)
 (expect

@@ -105,7 +105,7 @@
   ([data]
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
-                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id}
+                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id :fields_hash}
                          #(.endsWith (name %) "_id")))
     data))
   ([pred data]
@@ -152,7 +152,7 @@
 (u/strict-extend (class Database)
   test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:details   {}
-                                :engine    :yeehaw ; wtf?
+                                :engine    :h2
                                 :is_sample false
                                 :name      (random-name)})})
 

@@ -138,7 +138,7 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(
 ) {
   return async function(dispatch, getState) {
     let cards = await CardApi.list({ f: filterMode });
-    for (var c of cards) {
+    for (let c of cards) {
       c.updated_at = moment(c.updated_at);
     }
     return normalize(cards, [card]);

@@ -31,6 +31,7 @@
              [table :as table :refer [Table]]
              [user :refer [User]]]
             [metabase.query-processor.util :as qputil]
+            [metabase.util.date :as du]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -51,7 +52,7 @@
       (@migration-var)
       (db/insert! DataMigrations
         :id        migration-name
-        :timestamp (u/new-sql-timestamp)))))
+        :timestamp (du/new-sql-timestamp)))))
 
 (def ^:private data-migrations (atom []))
 
@@ -393,7 +394,13 @@
 (defmigration ^{:author "salsakran", :added "0.28.3"} repopulate-card-read-permissions
   (run!
    (fn [card]
-     (db/update! Card (u/get-id card) card))
+     (try
+       (db/update! Card (u/get-id card) card)
+       (catch Throwable e
+         (log/error "Error updating Card to set its read_permissions:"
+                    (class e)
+                    (.getMessage e)
+                    (u/filtered-stacktrace e)))))
    (db/select-reducible Card :archived false)))
 
 ;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields

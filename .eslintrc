@@ -39,7 +39,8 @@
         "react/no-did-update-set-state": 0,
         "react/no-find-dom-node": 0,
         "flowtype/define-flow-type": 1,
-        "flowtype/use-flow-type": 1
+        "flowtype/use-flow-type": 1,
+        "no-var": 1
     },
     "globals": {
         "pending": false

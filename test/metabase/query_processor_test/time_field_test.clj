@@ -17,7 +17,7 @@
          ~@filter-clauses))))
 
 ;; Basic between query on a time field
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift}
+(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
   (if (= :sqlite *engine*)
     [[1 "Plato Yeshua" "08:30:00"]
      [4 "Simcha Yan"   "08:30:00"]]
@@ -29,7 +29,7 @@
                                      "09:00:00"))))
 
 ;; Basic between query on a time field with milliseconds
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift}
+(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
   (if (= :sqlite *engine*)
     [[1 "Plato Yeshua" "08:30:00"]
      [4 "Simcha Yan"   "08:30:00"]]
@@ -41,7 +41,7 @@
                                      "09:00:00.000"))))
 
 ;; Basic > query with a time field
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift}
+(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
   (if (= :sqlite *engine*)
     [[3 "Kaneonuskatew Eiran" "16:15:00"]
      [5 "Quentin Sören" "17:30:00"]
@@ -53,7 +53,7 @@
   (time-query (ql/filter (ql/> $last_login_time "16:00:00.000Z"))))
 
 ;; Basic query with an = filter on a time field
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift}
+(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
   (if (= :sqlite *engine*)
     [[3 "Kaneonuskatew Eiran" "16:15:00"]]
 
@@ -61,7 +61,7 @@
   (time-query (ql/filter (ql/= $last_login_time "16:15:00.000Z"))))
 
 ;; Query with a time filter and a report timezone
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift}
+(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
   (cond
     (= :sqlite *engine*)
     [[1 "Plato Yeshua" "08:30:00"]

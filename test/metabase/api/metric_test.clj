@@ -369,3 +369,9 @@
                         (assoc metric-2 :database_id (data/id))]
                        :creator))
   ((user->client :rasta) :get 200 "metric/"))
+
+;; Test related/recommended entities
+(expect
+  #{:table :metrics :segments}
+  (tt/with-temp* [Metric [{metric-id :id}]]
+    (-> ((user->client :crowberto) :get 200 (format "metric/%s/related" metric-id)) keys set)))

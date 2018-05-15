@@ -7,6 +7,7 @@
              [computation-job :refer [ComputationJob]]
              [computation-job-result :refer [ComputationJobResult]]]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [toucan.db :as db]))
 
 (defonce ^:private running-jobs (atom {}))
@@ -44,7 +45,7 @@
         :payload    payload)
       (db/update! ComputationJob id
         :status   :done
-        :ended_at (u/new-sql-timestamp)))
+        :ended_at (du/new-sql-timestamp)))
     (when callback
       (callback job payload)))
   (swap! running-jobs dissoc id)
@@ -63,7 +64,7 @@
           :payload    error)
         (db/update! ComputationJob id
           :status :error
-          :ended_at (u/new-sql-timestamp)))
+          :ended_at (du/new-sql-timestamp)))
       (when callback
         (callback job error)))
     (swap! running-jobs dissoc id)

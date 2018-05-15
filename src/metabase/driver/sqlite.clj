@@ -12,7 +12,9 @@
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util
+             [date :as du]
+             [honeysql-extensions :as hx]])
   (:import [java.sql Time Timestamp]))
 
 (defrecord SQLiteDriver []
@@ -67,7 +69,7 @@
   [unit expr]
   ;; Convert Timestamps to ISO 8601 strings before passing to SQLite, otherwise they don't seem to work correctly
   (let [v (if (instance? Timestamp expr)
-            (hx/literal (u/date->iso-8601 expr))
+            (hx/literal (du/date->iso-8601 expr))
             expr)]
     (case unit
       :default         v
@@ -147,7 +149,7 @@
     ;; for anything that's a Date (usually a java.sql.Timestamp) convert it to a yyyy-MM-dd formatted date literal
     ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`
     ;; sometimes so we need to use just the date rather than a full ISO-8601 string
-    (u/format-date "yyyy-MM-dd" obj)
+    (du/format-date "yyyy-MM-dd" obj)
     ;; every other prepared statement arg can be returned as-is
     obj))
 

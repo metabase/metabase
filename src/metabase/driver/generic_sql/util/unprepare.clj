@@ -3,7 +3,9 @@
   (:require [clojure.string :as str]
             [honeysql.core :as hsql]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util
+             [date :as du]
+             [honeysql-extensions :as hx]])
   (:import java.sql.Time
            java.util.Date))
 
@@ -11,7 +13,7 @@
   (^:private unprepare-arg ^String [this settings]))
 
 (defn- unprepare-date [date-or-time iso-8601-fn]
-  (hsql/call iso-8601-fn (hx/literal (u/date->iso-8601 date-or-time))))
+  (hsql/call iso-8601-fn (hx/literal (du/date->iso-8601 date-or-time))))
 
 (extend-protocol IUnprepare
   nil     (unprepare-arg [this _] "NULL")

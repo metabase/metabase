@@ -200,12 +200,23 @@ export const field_special_types = [
     name: t`Gross margin`,
     section: t`Common`,
   },
+  {
+    id: TYPE.Birthdate,
+    name: t`Birthday`,
+    section: t`Common`,
+  },
 ];
 
 export const field_special_types_map = field_special_types.reduce(
   (map, type) => Object.assign({}, map, { [type.id]: type }),
   {},
 );
+
+export const has_field_values_options = [
+  { name: t`Search box`, value: "search" },
+  { name: t`A list of all values`, value: "list" },
+  { name: t`Plain input box`, value: "none" },
+];
 
 export const field_visibility_types = [
   {
