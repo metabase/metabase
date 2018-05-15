@@ -69,7 +69,7 @@ export default class DashCard extends Component {
       navigateToNewCardFromDashboard,
       metadata,
       dashboard,
-      parameterValues
+      parameterValues,
     } = this.props;
 
     const mainCard = {
@@ -115,7 +115,7 @@ export default class DashCard extends Component {
       errorIcon = "warning";
     }
 
-    const params = getParametersBySlug(dashboard.parameters , parameterValues);
+    const params = getParametersBySlug(dashboard.parameters, parameterValues);
 
     const hideBackground =
       !isEditing &&

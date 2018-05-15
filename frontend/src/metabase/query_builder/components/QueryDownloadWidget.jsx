@@ -19,7 +19,17 @@ import cx from "classnames";
 
 const EXPORT_FORMATS = ["csv", "xlsx", "json"];
 
-const QueryDownloadWidget = ({className, classNameClose, card, result, uuid, token, dashcardId, icon, params}) => (
+const QueryDownloadWidget = ({
+  className,
+  classNameClose,
+  card,
+  result,
+  uuid,
+  token,
+  dashcardId,
+  icon,
+  params,
+}) => (
   <PopoverWithTrigger
     triggerElement={
       <Tooltip tooltip={t`Download full results`}>
@@ -32,12 +42,12 @@ const QueryDownloadWidget = ({className, classNameClose, card, result, uuid, tok
     <div className="p2" style={{ maxWidth: 320 }}>
       <h4>{t`Download full results`}</h4>
       {result.data != null &&
-      result.data.rows_truncated != null && (
-        <FieldSet className="my2 text-gold border-gold" legend={t`Warning`}>
-          <div className="my1">{t`Your answer has a large number of rows so it could take a while to download.`}</div>
-          <div>{t`The maximum download size is 1 million rows.`}</div>
-        </FieldSet>
-      )}
+        result.data.rows_truncated != null && (
+          <FieldSet className="my2 text-gold border-gold" legend={t`Warning`}>
+            <div className="my1">{t`Your answer has a large number of rows so it could take a while to download.`}</div>
+            <div>{t`The maximum download size is 1 million rows.`}</div>
+          </FieldSet>
+        )}
       <div className="flex flex-row mt2">
         {EXPORT_FORMATS.map(
           type =>
@@ -121,7 +131,12 @@ const SavedQueryButton = ({
   </DownloadButton>
 );
 
-const PublicQueryButton = ({className, type, uuid, result: {json_query}}) => (
+const PublicQueryButton = ({
+  className,
+  type,
+  uuid,
+  result: { json_query },
+}) => (
   <DownloadButton
     className={className}
     method="GET"
@@ -154,18 +169,26 @@ const EmbedQueryButton = ({ className, type, token }) => {
   );
 };
 
-const DashboardEmbedQueryButton = ({className, type, dashcardId, token, card, params}) => (
+const DashboardEmbedQueryButton = ({
+  className,
+  type,
+  dashcardId,
+  token,
+  card,
+  params,
+}) => (
   <DownloadButton
     className={className}
     method="GET"
-    url={`/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${card.id}/${type}`}
+    url={`/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${
+      card.id
+    }/${type}`}
     extensions={[type]}
     params={params}
   >
     {type}
   </DownloadButton>
 );
-
 
 QueryDownloadWidget.propTypes = {
   className: PropTypes.string,
@@ -174,13 +197,13 @@ QueryDownloadWidget.propTypes = {
   result: PropTypes.object,
   uuid: PropTypes.string,
   icon: PropTypes.string,
-  params: PropTypes.object
+  params: PropTypes.object,
 };
 
 QueryDownloadWidget.defaultProps = {
   result: {},
   icon: "downarrow",
-  params: {}
+  params: {},
 };
 
 export default QueryDownloadWidget;
