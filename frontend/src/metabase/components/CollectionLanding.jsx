@@ -9,6 +9,7 @@ import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
+import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
@@ -69,24 +70,6 @@ const CollectionList = () => {
     </Box>
   );
 };
-
-const GridItem = ({ children, w, px, py }) => (
-  <Box w={w} px={px} py={py}>
-    {children}
-  </Box>
-);
-
-GridItem.defaultProps = {
-  w: 1 / 4,
-  px: 1,
-  py: 1,
-};
-
-const Grid = ({ children }) => (
-  <Flex wrap mx={-2}>
-    {children}
-  </Flex>
-);
 
 const ItemCard = Card.extend`
   height: 140px;

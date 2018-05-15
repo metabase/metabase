@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex, Subhead } from "rebass";
+import { Box, Flex, Subhead, Text } from "rebass";
 import { t } from "c-3po";
 
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
@@ -9,6 +9,7 @@ import { normal } from "metabase/lib/colors";
 import Question from "metabase-lib/lib/Question";
 
 import Card from "metabase/components/Card";
+import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
@@ -105,8 +106,10 @@ export class TableBrowser extends React.Component {
                       <Card p={2} mb={1}>
                         <Flex align="center">
                           <Icon mr={1} name="table" />
-                          {table.display_name || table.name}
-                          {table.description}
+                          <Box>
+                            {table.display_name || table.name}
+                            <Text>{table.description}</Text>
+                          </Box>
                         </Flex>
                       </Card>
                     </Link>
@@ -137,18 +140,18 @@ export class DatabaseBrowser extends React.Component {
         <DatabaseListLoader>
           {({ databases, loading, error }) => {
             return (
-              <Flex wrap>
+              <Grid>
                 {databases.map(database => (
-                  <Box flex={1}>
+                  <GridItem>
                     <Link to={`browse/${database.id}`}>
                       <Card p={3} hover={{ color: normal.blue }}>
-                        <Icon name="database" color={normal.grey2} />
+                        <Icon name="database" color={normal.grey2} mb={3} />
                         <Subhead>{database.name}</Subhead>
                       </Card>
                     </Link>
-                  </Box>
+                  </GridItem>
                 ))}
-              </Flex>
+              </Grid>
             );
           }}
         </DatabaseListLoader>
