@@ -178,7 +178,9 @@ QueryDownloadWidget.propTypes = {
 };
 
 QueryDownloadWidget.defaultProps = {
+  result: {},
   icon: "downarrow",
+  params: {}
 };
 
 export default QueryDownloadWidget;
