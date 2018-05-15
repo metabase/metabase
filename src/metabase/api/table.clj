@@ -87,7 +87,7 @@
              (map (fn [[name param]]
                     {:name name
                      :mbql ["datetime-field" nil param]
-                     :type "type/DateTime"})
+                     :type "type/Date"})
                   ;; note the order of these options corresponds to the order they will be shown to the user in the UI
                   [[(tru "Minute") "minute"]
                    [(tru "Hour") "hour"]
@@ -141,8 +141,8 @@
        sort
        (map str)))
 
-(def ^:private datetime-dimension-indexes
-  (create-dim-index-seq "type/DateTime"))
+(def ^:private date-dimension-indexes
+  (create-dim-index-seq "type/Date"))
 
 (def ^:private numeric-dimension-indexes
   (create-dim-index-seq "type/Number"))
@@ -156,7 +156,7 @@
                               (pred v))) dimension-options-for-response)))
 
 (def ^:private date-default-index
-  (dimension-index-for-type "type/DateTime" #(= day-str (:name %))))
+  (dimension-index-for-type "type/Date" #(= day-str (:name %))))
 
 (def ^:private numeric-default-index
   (dimension-index-for-type "type/Number" #(.contains ^String (:name %) auto-bin-str)))
@@ -168,18 +168,17 @@
   (and driver (contains? (driver/features driver) :binning)))
 
 (defn- supports-date-binning?
-  "Time fields don't support binning, returns true if it's a DateTime field and not a time field"
+  "Time fields don't support binning, returns true if it's a Date (or DateTime) field."
   [{:keys [base_type special_type]}]
-  (and (or (isa? base_type :type/DateTime)
-           (isa? special_type :type/DateTime))
-       (not (isa? base_type :type/Time))))
+  (or (isa? base_type :type/Date)
+      (isa? special_type :type/Date)))
 
 (defn- assoc-field-dimension-options [driver {:keys [base_type special_type fingerprint] :as field}]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
 
                                        (supports-date-binning? field)
-                                       [date-default-index datetime-dimension-indexes]
+                                       [date-default-index date-dimension-indexes]
 
                                        (and min_value max_value
                                             (isa? special_type :type/Coordinate)

@@ -20,7 +20,9 @@
 (def ^:private int-type         #{:type/Integer})
 (def ^:private int-or-text-type #{:type/Integer :type/Text})
 (def ^:private text-type        #{:type/Text})
-(def ^:private timestamp-type   #{:type/DateTime})
+(def ^:private datetime-type    #{:type/DateTime})
+(def ^:private time-type        #{:type/Time})
+(def ^:private date-type        #{:type/Date})
 (def ^:private number-type      #{:type/Number})
 
 
@@ -70,8 +72,12 @@
    [#"count$"                      int-type         :type/Quantity]
    [#"number"                      int-type         :type/Quantity]
    [#"^num_"                       int-type         :type/Quantity]
-   [#"join"                        timestamp-type   :type/JoinTimestamp]
-   [#"create"                      timestamp-type   :type/CreationTimestamp]
+   [#"join"                        datetime-type    :type/JoinTimestamp]
+   [#"join"                        date-type        :type/JoinDate]
+   [#"join"                        time-type        :type/JoinTime]
+   [#"create"                      datetime-type    :type/CreationTimestamp]
+   [#"create"                      date-type        :type/CreationDate]
+   [#"create"                      time-type        :type/CreationTime]
    [#"source"                      int-or-text-type :type/Source]
    [#"channel"                     int-or-text-type :type/Source]
    [#"share"                       float-type       :type/Share]
@@ -93,8 +99,8 @@
    [#"description"                 text-type        :type/Description]
    [#"title"                       text-type        :type/Title]
    [#"comment"                     text-type        :type/Comment]
-   [#"birthda(?:te|y)"             timestamp-type   :type/Birthdate]
-   [#"(?:te|y)(?:_?)or(?:_?)birth" timestamp-type   :type/Birthdate]])
+   [#"birthda(?:te|y)"             date-type        :type/Birthdate]
+   [#"(?:te|y)(?:_?)or(?:_?)birth" date-type        :type/Birthdate]])
 
 ;; Check that all the pattern tuples are valid
 (when-not config/is-prod?

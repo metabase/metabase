@@ -248,7 +248,7 @@
                              :database_type            "TIMESTAMP"
                              :base_type                "type/DateTime"
                              :visibility_type          "normal"
-                             :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
+                             :dimension_options        (var-get #'table-api/date-dimension-indexes)
                              :default_dimension_option (var-get #'table-api/date-default-index)
                              :has_field_values         "none")
                            (assoc (field-details (Field (data/id :users :name)))
@@ -301,7 +301,7 @@
                              :display_name             "Last Login"
                              :database_type            "TIMESTAMP"
                              :base_type                "type/DateTime"
-                             :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
+                             :dimension_options        (var-get #'table-api/date-dimension-indexes)
                              :default_dimension_option (var-get #'table-api/date-default-index)
                              :has_field_values         "none")
                            (assoc (field-details (Field (data/id :users :name)))
@@ -491,7 +491,7 @@
                           :id                       ["field-literal" "LAST_LOGIN" "type/DateTime"]
                           :special_type             nil
                           :default_dimension_option (var-get #'table-api/date-default-index)
-                          :dimension_options        (var-get #'table-api/datetime-dimension-indexes)}]})
+                          :dimension_options        (var-get #'table-api/date-dimension-indexes)}]})
   (do
     ;; run the Card which will populate its result_metadata column
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
@@ -580,8 +580,8 @@
 
 ;; Ensure dimensions options are sorted numerically, but returned as strings
 (expect
-  (map str (sort (map #(Long/parseLong %) (var-get #'table-api/datetime-dimension-indexes))))
-  (var-get #'table-api/datetime-dimension-indexes))
+  (map str (sort (map #(Long/parseLong %) (var-get #'table-api/date-dimension-indexes))))
+  (var-get #'table-api/date-dimension-indexes))
 
 (expect
   (map str (sort (map #(Long/parseLong %) (var-get #'table-api/numeric-dimension-indexes))))
@@ -635,20 +635,20 @@
 
 ;; Ensure unix timestamps show date binning options, not numeric binning options
 (expect
-  (var-get #'table-api/datetime-dimension-indexes)
+  (var-get #'table-api/date-dimension-indexes)
   (data/dataset sad-toucan-incidents
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :incidents)))]
       (dimension-options-for-field response "timestamp"))))
 
 ;; Datetime binning options should showup whether the backend supports binning of numeric values or not
 (datasets/expect-with-engines #{:druid}
-  (var-get #'table-api/datetime-dimension-indexes)
+  (var-get #'table-api/date-dimension-indexes)
   (tqpt/with-flattened-dbdef
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
       (dimension-options-for-field response "timestamp"))))
 
 (qpt/expect-with-non-timeseries-dbs
- (var-get #'table-api/datetime-dimension-indexes)
+ (var-get #'table-api/date-dimension-indexes)
  (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
    (dimension-options-for-field response "date")))
 

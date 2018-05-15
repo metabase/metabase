@@ -47,7 +47,8 @@
          (contains? field :base_type)
          (contains? field :has_field_values)]}
   (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
-       (not (isa? (keyword base-type) :type/DateTime))
+       (not (isa? (keyword base-type) :type/Date))
+       (not (isa? (keyword base-type) :type/Time))
        (= has-field-values "list")))
 
 

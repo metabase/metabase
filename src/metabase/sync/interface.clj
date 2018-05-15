@@ -109,7 +109,7 @@
    (s/optional-key :average-length) (s/constrained Double #(>= % 0) "Valid number greater than or equal to zero")})
 
 (def DateTimeFingerprint
-  "Schema for fingerprint information for Fields deriving from `:type/DateTime`."
+  "Schema for fingerprint information for Fields deriving from `:type/Date`."
   {(s/optional-key :earliest) s/Str
    (s/optional-key :latest)   s/Str})
 

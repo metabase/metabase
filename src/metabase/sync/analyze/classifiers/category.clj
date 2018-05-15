@@ -21,7 +21,8 @@
 
 (s/defn ^:private cannot-be-category-or-list? :- s/Bool
   [base-type :- su/FieldType, special-type :- (s/maybe su/FieldType)]
-  (or (isa? base-type    :type/DateTime)
+  (or (isa? base-type    :type/Date)
+      (isa? base-type    :type/Time)
       (isa? base-type    :type/Collection)
       ;; Don't let IDs become list Fields (they already can't become categories, because they already have a special
       ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful

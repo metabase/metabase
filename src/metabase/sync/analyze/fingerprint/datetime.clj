@@ -10,7 +10,7 @@
             [schema.core :as s]))
 
 (s/defn datetime-fingerprint :- i/DateTimeFingerprint
-  "Generate a fingerprint containing information about values that belong to a `DateTime` Field."
+  "Generate a fingerprint containing information about values that belong to a `Date` Field."
   [values :- i/FieldSample]
   (transduce (map u/str->date-time)
              (redux/post-complete

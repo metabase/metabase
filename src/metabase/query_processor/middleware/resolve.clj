@@ -190,9 +190,8 @@
                                                                (merge-non-nils (select-keys this [:fk-field-id :remapped-from :remapped-to :field-display-name])))]
     ;; try to resolve the Field with the ones available in field-id->field
     (cond
-      (and (or (isa? base-type :type/DateTime)
-               (isa? special-type :type/DateTime))
-           (not (isa? base-type :type/Time)))
+      (and (or (isa? base-type :type/Date)
+               (isa? special-type :type/Date)))
       (i/map->DateTimeField {:field field
                              :unit  (or datetime-unit :day)}) ; default to `:day` if a unit wasn't specified
 

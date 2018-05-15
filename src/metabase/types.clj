@@ -78,17 +78,26 @@
 
 ;;; DateTime Types
 
-(derive :type/DateTime :type/*)
+(derive :type/Time :type/*)
+(derive :type/Date :type/*)
 
-(derive :type/Time :type/DateTime)
-(derive :type/Date :type/DateTime)
+(derive :type/DateTime :type/Date)
+(derive :type/DateTime :type/Time)
 
 (derive :type/UNIXTimestamp :type/DateTime)
 (derive :type/UNIXTimestamp :type/Integer)
 (derive :type/UNIXTimestampSeconds :type/UNIXTimestamp)
 (derive :type/UNIXTimestampMilliseconds :type/UNIXTimestamp)
 
+(derive :type/CreationTime :type/Time)
+(derive :type/CreationDate :type/Date)
+(derive :type/CreationTimestamp :type/CreationTime)
+(derive :type/CreationTimestamp :type/CreationDate)
 (derive :type/CreationTimestamp :type/DateTime)
+(derive :type/JoinTime :type/Time)
+(derive :type/JoinDate :type/Date)
+(derive :type/JoinTimestamp :type/JoinTime)
+(derive :type/JoinTimestamp :type/JoinDate)
 (derive :type/JoinTimestamp :type/DateTime)
 (derive :type/Birthdate :type/Date)
 

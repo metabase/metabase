@@ -279,30 +279,30 @@
 
 (expect
   :month
-  (#'magic/optimal-datetime-resolution
+  (#'magic/optimal-date-resolution
    {:fingerprint {:type {:type/DateTime {:earliest "2015"
                                          :latest   "2017"}}}}))
 
 (expect
   :day
-  (#'magic/optimal-datetime-resolution
+  (#'magic/optimal-date-resolution
    {:fingerprint {:type {:type/DateTime {:earliest "2017-01-01"
                                          :latest   "2017-03-04"}}}}))
 
 (expect
   :year
-  (#'magic/optimal-datetime-resolution
+  (#'magic/optimal-date-resolution
    {:fingerprint {:type {:type/DateTime {:earliest "2005"
                                          :latest   "2017"}}}}))
 
 (expect
   :hour
-  (#'magic/optimal-datetime-resolution
+  (#'magic/optimal-date-resolution
    {:fingerprint {:type {:type/DateTime {:earliest "2017-01-01"
                                          :latest   "2017-01-02"}}}}))
 
 (expect
   :minute
-  (#'magic/optimal-datetime-resolution
+  (#'magic/optimal-date-resolution
    {:fingerprint {:type {:type/DateTime {:earliest "2017-01-01T00:00:00"
                                          :latest   "2017-01-01T00:02:00"}}}}))

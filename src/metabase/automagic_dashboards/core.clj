@@ -91,7 +91,7 @@
   ->reference (fn [template-type model]
                 [template-type (type model)]))
 
-(defn- optimal-datetime-resolution
+(defn- optimal-date-resolution
   [field]
   (if-let [[earliest latest] (some->> field
                                       :fingerprint
@@ -115,9 +115,9 @@
                     id                 [:field-id id]
                     :else              [:field-literal name base_type])]
     (cond
-      (isa? base_type :type/DateTime)
+      (isa? base_type :type/Date)
       [:datetime-field reference (or aggregation
-                                     (optimal-datetime-resolution field))]
+                                     (optimal-date-resolution field))]
 
       (and aggregation
            ; We don't handle binning on non-analyzed fields gracefully

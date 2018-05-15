@@ -137,10 +137,10 @@
    (or (ui-logic/y-axis-rowfn card data)
        second)])
 
-(defn- datetime-field?
+(defn- date-field?
   [field]
-  (or (isa? (:base_type field)    :type/DateTime)
-      (isa? (:special_type field) :type/DateTime)))
+  (or (isa? (:base_type field)    :type/Date)
+      (isa? (:special_type field) :type/Date)))
 
 (defn- number-field?
   [field]
@@ -165,7 +165,7 @@
            (= row-count 1))                                        :scalar
       (and (= col-count 2)
            (> row-count 1)
-           (datetime-field? col-1)
+           (date-field? col-1)
            (number-field? col-2))                                  :sparkline
       (and (= col-count 2)
            (number-field? col-2))                                  :bar
@@ -278,8 +278,8 @@
 (defn- format-cell
   [timezone value col]
   (cond
-    (datetime-field? col) (format-timestamp timezone value col)
-    (and (number? value) (not (datetime-field? col))) (format-number value)
+    (date-field? col) (format-timestamp timezone value col)
+    (and (number? value) (not (date-field? col))) (format-number value)
     :else (str value)))
 
 (defn- render-img-data-uri
@@ -648,7 +648,7 @@
 (s/defn ^:private render:sparkline :- RenderedPulseCard
   [render-type timezone card {:keys [rows cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
-        ft-row (if (datetime-field? (x-axis-rowfn cols))
+        ft-row (if (date-field? (x-axis-rowfn cols))
                  #(.getTime ^Date (u/->Timestamp %))
                  identity)
         rows   (if (> (ft-row (x-axis-rowfn (first rows)))

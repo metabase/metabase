@@ -111,7 +111,8 @@
     (instance? DateTimeValue v)         v
     (instance? RelativeDatetime v)      (i/map->RelativeDateTimeValue (assoc v :unit (datetime-unit f v), :field (datetime-field f (datetime-unit f v))))
     (instance? DateTimeField f)         (i/map->DateTimeValue {:value (u/->Timestamp v), :field f})
-    (instance? FieldLiteral f)          (if (isa? (:base-type f) :type/DateTime)
+    (instance? FieldLiteral f)          (if (clojure.core/or (isa? (:base-type f) :type/Date)
+                                                             (isa? (:base-type f) :type/Time))
                                           (i/map->DateTimeValue {:value (u/->Timestamp v)
                                                                  :field (i/map->DateTimeField {:field f :unit :default})})
                                           (i/map->Value {:value v, :field f}))

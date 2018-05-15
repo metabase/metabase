@@ -87,7 +87,9 @@
   "Given `column-metadata` find the `:type/Date` columns"
   [column-metadata]
   (transduce (comp (map-indexed (fn [idx col-map] [idx (:base_type col-map)]))
-                   (filter (fn [[idx base-type]] (isa? base-type :type/Date)))
+                   (filter (fn [[idx base-type]]
+                             (and (isa? base-type :type/Date)
+                                  (not (isa? base-type :type/DateTime)))))
                    (map first))
              conj [] column-metadata))
 

@@ -25,7 +25,7 @@
   (condp #(isa? %2 %1) (:base_type field)
     :type/Text     {:type/Text (text/text-fingerprint values)}
     :type/Number   {:type/Number (number/number-fingerprint values)}
-    :type/DateTime {:type/DateTime (datetime/datetime-fingerprint values)}
+    :type/Date     {:type/DateTime (datetime/datetime-fingerprint values)}
     nil))
 
 (s/defn ^:private fingerprint :- i/Fingerprint

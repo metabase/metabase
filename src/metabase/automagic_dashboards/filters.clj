@@ -44,15 +44,15 @@
        (tree-seq (some-fn sequential? map?) identity)
        (filter field-reference?)))
 
-(def ^:private ^{:arglists '([field])} periodic-datetime?
+(def ^:private ^{:arglists '([field])} periodic-time-component?
   (comp #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year
           :month-of-year :quarter-of-year}
         :unit))
 
-(defn- datetime?
+(defn- date?
   [field]
-  (and (not (periodic-datetime? field))
-       (or (isa? (:base_type field) :type/DateTime)
+  (and (not (periodic-time-component? field))
+       (or (isa? (:base_type field) :type/Date)
            (field/unix-timestamp? field))))
 
 (defn- candidates-for-filtering
@@ -63,7 +63,7 @@
        distinct
        (map fieldset)
        (filter (fn [{:keys [special_type] :as field}]
-                 (or (datetime? field)
+                 (or (date? field)
                      (isa? special_type :type/Category))))))
 
 (defn- build-fk-map
@@ -101,7 +101,7 @@
   "Return filter type for a given field."
   [{:keys [base_type special_type] :as field}]
   (cond
-    (datetime? field)                  "date/all-options"
+    (date? field)                      "date/all-options"
     (isa? special_type :type/State)    "location/state"
     (isa? special_type :type/Country)  "location/country"
     (isa? special_type :type/Category) "category"))
@@ -113,9 +113,9 @@
     (some-> fingerprint :global :distinct-count (> 20)) dec
     ((descendants :type/Category) special_type)         inc
     (field/unix-timestamp? field)                       inc
-    (isa? base_type :type/DateTime)                     inc
-    ((descendants :type/DateTime) special_type)         inc
-    (isa? special_type :type/CreationTimestamp)         inc
+    (isa? base_type :type/Date)                         inc
+    ((descendants :type/Date) special_type)             inc
+    (isa? special_type :type/CreationDate)              inc
     (#{:type/State :type/Country} special_type)         inc))
 
 (def ^:private ^{:arglists '([dimensions])} remove-unqualified
@@ -195,7 +195,7 @@
   [fieldset [_ field-reference value & values]]
   (let [field (field-reference->field fieldset field-reference)]
     [{:field field-reference
-      :value (if (datetime? field)
+      :value (if (date? field)
                (format "is on %s" (humanize-datetime value))
                (format "is %s" (apply either value values)))}]))
 
@@ -203,7 +203,7 @@
   [fieldset [_ field-reference value & values]]
   (let [field (field-reference->field fieldset field-reference)]
     [{:field field-reference
-      :value (if (datetime? field)
+      :value (if (date? field)
                (format "is not on %s" (humanize-datetime value))
                (format "is not %s" (apply either value values)))}]))
 
@@ -211,7 +211,7 @@
   [fieldset [_ field-reference value]]
   (let [field (field-reference->field fieldset field-reference)]
     [{:field field-reference
-      :value (if (datetime? field)
+      :value (if (date? field)
                (format "is after %s" (humanize-datetime value))
                (format "is greater than %s" value))}]))
 
@@ -219,7 +219,7 @@
   [fieldset [_ field-reference value]]
   (let [field (field-reference->field fieldset field-reference)]
   [{:field field-reference
-    :value (if (datetime? field)
+    :value (if (date? field)
              (format "is before %s" (humanize-datetime value))
              (format "is less than %s" value))}]))
 
@@ -306,7 +306,7 @@
 (defn- field-name
   [field field-reference]
   (let [full-name (cond->> (:display_name field)
-                    (periodic-datetime? field)
+                    (periodic-time-component? field)
                     (format "%s of %s" (-> field :unit unit-name str/capitalize)))]
     (if (-> field-reference first qp.util/normalize-token (= :fk->))
       [(-> field :table_id Table :display_name) full-name]

@@ -17,8 +17,10 @@
 (defn datetime-field?
   "Is FIELD a `DateTime` field?"
   [{:keys [base-type special-type]}]
-  (or (isa? base-type :type/DateTime)
-      (isa? special-type :type/DateTime)))
+  (or (isa? base-type :type/Date)
+      (isa? base-type :type/Time)
+      (isa? special-type :type/Date)
+      (isa? special-type :type/Time)))
 
 (defn query-without-aggregations-or-limits?
   "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
