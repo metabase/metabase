@@ -1,46 +1,52 @@
 import React from "react";
 import { Box, Flex, Heading } from "rebass";
-import { Link } from 'react-router'
+import { Link } from "react-router";
 
-import Icon from "metabase/components/Icon"
-import Tooltip from "metabase/components/Tooltip"
-import UserAvatar from "metabase/components/UserAvatar"
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
+import UserAvatar from "metabase/components/UserAvatar";
 
 const EntityInfo = ({ entity }) => (
   <Box>
     <Box my={4}>
       <Heading>
-        {entity.displayName() || "Good title" }
-        { entity.query().segments().length > 0  && <span> filtered by</span> }
-        {entity.query().segments().map(s =>
-          <div className="inline-block">
-            <Tooltip tooltip={s.description}>
-              <span className="bg-purple text-white p2 rounded flex align-center">
-                {s.name}
-                <Link to={entity.query().removeFilter(0).question().getUrl()}>
-                  <Icon
-                    name="close"
-                    className="ml1"
-                  />
-                </Link>
-              </span>
-            </Tooltip>
-          </div>
-        )}
+        {entity.displayName() || "Good title"}
+        {entity.query().segments().length > 0 && <span> filtered by</span>}
+        {entity
+          .query()
+          .segments()
+          .map(s => (
+            <div className="inline-block">
+              <Tooltip tooltip={s.description}>
+                <span className="bg-purple text-white p2 rounded flex align-center">
+                  {s.name}
+                  <Link
+                    to={entity
+                      .query()
+                      .removeFilter(0)
+                      .question()
+                      .getUrl()}
+                  >
+                    <Icon name="close" className="ml1" />
+                  </Link>
+                </span>
+              </Tooltip>
+            </div>
+          ))}
       </Heading>
       <p>{entity.card().description}</p>
 
-      { entity.card().creator && (
-        <Flex align='center'>
+      {entity.card().creator && (
+        <Flex align="center">
           <UserAvatar user={entity.card().creator} />
-          { entity.card().creator.common_name } created this question
+          {entity.card().creator.common_name} created this question
         </Flex>
       )}
     </Box>
     <Box my={4}>
       <div className="bordered rounded shadowed p3">
-        <h2>{ entity.query().table().display_name }</h2>
-        <p>{ entity.query().table().description }</p>
+        <h2>{entity.query().table().display_name}</h2>
+        <p>{entity.query().table().description}</p>
       </div>
     </Box>
     <Box>

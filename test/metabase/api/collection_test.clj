@@ -7,17 +7,23 @@
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
+             [dashboard :refer [Dashboard]]
+             [database :refer [Database]]
              [permissions :as perms]
              [permissions-group :as group]
              [pulse :refer [Pulse]]
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
-             [pulse-channel-recipient :refer [PulseChannelRecipient]]]
+             [pulse-channel-recipient :refer [PulseChannelRecipient]]
+             [table :refer [Table]]]
             [metabase.test.data.users :refer [user->client user->id]]
             [metabase.test.util :as tu]
-            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                GET /collection                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; check that we can get a basic list of collections
 (tt/expect-with-temp [Collection [collection]]
@@ -50,6 +56,11 @@
     (perms/grant-collection-read-permissions! (group/all-users) collection-2)
     (map :name ((user->client :rasta) :get 200 "collection" :archived :true))))
 
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              GET /collection/:id                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 ;; check that we can see collection details (GET /api/collection/:id)
 (expect
   "Coin Collection"
@@ -66,7 +77,7 @@
 ;; check that cards are returned with the collections detail endpoint
 (tt/expect-with-temp [Collection [collection]
                       Card       [card        {:collection_id (u/get-id collection)}]]
-  (tu/obj->json->obj (assoc collection :cards [card]))
+  (tu/obj->json->obj (assoc collection :cards [(select-keys card [:name :id])], :dashboards [], :pulses []))
   (tu/obj->json->obj ((user->client :crowberto) :get 200 (str "collection/" (u/get-id collection)))))
 
 ;; check that collections detail doesn't return archived collections
@@ -75,6 +86,100 @@
   (tt/with-temp Collection [collection {:archived true}]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     ((user->client :rasta) :get 404 (str "collection/" (u/get-id collection)))))
+
+(defn- remove-ids-from-collection-detail [results & {:keys [keep-collection-id?]
+                                                     :or {keep-collection-id? false}}]
+  (into {} (for [[k items] (select-keys results (cond->> [:name :cards :dashboards :pulses]
+                                                  keep-collection-id? (cons :id)))]
+             [k (if-not (sequential? items)
+                  items
+                  (for [item items]
+                    (dissoc item :id)))])))
+
+(defn- do-with-some-children-of-collection [collection-or-id-or-nil f]
+  (let [collection-id-or-nil (when collection-or-id-or-nil
+                               (u/get-id collection-or-id-or-nil))]
+    (tt/with-temp* [Card       [_ {:name "Birthday Card",          :collection_id collection-id-or-nil}]
+                    Dashboard  [_ {:name "Dine & Dashboard",       :collection_id collection-id-or-nil}]
+                    Pulse      [_ {:name "Electro-Magnetic Pulse", :collection_id collection-id-or-nil}]]
+      (f))))
+
+(defmacro ^:private with-some-children-of-collection {:style/indent 1} [collection-or-id-or-nil & body]
+  `(do-with-some-children-of-collection ~collection-or-id-or-nil (fn [] ~@body)))
+
+;; check that you get to see the children as appropriate
+(expect
+  {:name       "Debt Collection"
+   :cards      [{:name "Birthday Card"}]
+   :dashboards [{:name "Dine & Dashboard"}]
+   :pulses     [{:name "Electro-Magnetic Pulse"}]}
+  (tt/with-temp Collection [collection {:name "Debt Collection"}]
+    (perms/grant-collection-read-permissions! (group/all-users) collection)
+    (with-some-children-of-collection collection
+      (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection)))
+          remove-ids-from-collection-detail))))
+
+;; ...and that you can also filter so that you only see the children you want to see
+(expect
+  {:name       "Art Collection"
+   :dashboards [{:name "Dine & Dashboard"}]}
+  (tt/with-temp Collection [collection {:name "Art Collection"}]
+    (perms/grant-collection-read-permissions! (group/all-users) collection)
+    (with-some-children-of-collection collection
+      (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "?model=dashboards"))
+          remove-ids-from-collection-detail))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              GET /collection/root                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Check that we can see stuff that isn't in any Collection -- meaning they're in the so-called "Root" Collection
+
+;; Make sure you can see everything for Users that can see everything
+(expect
+  {:name       "Root Collection"
+   :id         "root"
+   :cards      [{:name "Birthday Card"}]
+   :dashboards [{:name "Dine & Dashboard"}]
+   :pulses     [{:name "Electro-Magnetic Pulse"}]}
+  (with-some-children-of-collection nil
+    (-> ((user->client :crowberto) :get 200 "collection/root")
+        (remove-ids-from-collection-detail :keep-collection-id? true))))
+
+;; ...but we don't let you see stuff you wouldn't otherwise be allowed to see
+(expect
+  {:name       "Root Collection"
+   :id         "root"
+   :cards      []
+   :dashboards [{:name "Dine & Dashboard"}]
+   :pulses     [{:name "Electro-Magnetic Pulse"}]}
+  ;; create a fake DB and don't give all users perms to it
+  (tt/with-temp* [Database [db]
+                  Table    [table {:db_id (u/get-id db)}]]
+    (perms/revoke-permissions! (group/all-users) (u/get-id db))
+    ;; create the normal 'Child' objects
+    (with-some-children-of-collection nil
+      ;; move the Card into the DB that we have no perms for
+      (db/update! Card (db/select-one-id Card :name "Birthday Card")
+        :dataset_query {:database (u/get-id db), :type :query, :query {:source-table (u/get-id table)}})
+      ;; ok, a regular user shouldn't get to see it any more :(
+      (-> ((user->client :rasta) :get 200 "collection/root")
+          (remove-ids-from-collection-detail :keep-collection-id? true)))))
+
+;; Make sure this endpoint can also filter things
+(expect
+  {:name  "Root Collection"
+   :id    "root"
+   :cards [{:name "Birthday Card"}]}
+  (with-some-children-of-collection nil
+    (-> ((user->client :crowberto) :get 200 "collection/root?model=cards")
+        (remove-ids-from-collection-detail :keep-collection-id? true))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              POST /api/collection                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; test that we can create a new collection (POST /api/collection)
 (expect
@@ -94,6 +199,11 @@
   "You don't have permissions to do that."
   ((user->client :rasta) :post 403 "collection"
    {:name "Stamp Collection", :color "#123456"}))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            PUT /api/collection/:id                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; test that we can update a collection (PUT /api/collection/:id)
 (tt/expect-with-temp [Collection [collection]]

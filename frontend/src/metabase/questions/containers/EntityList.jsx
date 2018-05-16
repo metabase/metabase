@@ -12,7 +12,6 @@ import ListFilterWidget from "metabase/components/ListFilterWidget";
 import S from "../components/List.css";
 
 import List from "../components/List";
-import SearchHeader from "metabase/components/SearchHeader";
 import ActionHeader from "../components/ActionHeader";
 
 import _ from "underscore";
@@ -188,8 +187,6 @@ export default class EntityList extends Component {
       error,
       entityType,
       items,
-      searchText,
-      setSearchText,
       showSearchWidget,
       visibleCount,
       selectedCount,
@@ -229,13 +226,6 @@ export default class EntityList extends Component {
                 setArchived={setArchived}
                 labels={labels}
               />
-            ) : showSearchHeader ? (
-              <div style={{ marginLeft: "10px" }}>
-                <SearchHeader
-                  searchText={searchText}
-                  setSearchText={setSearchText}
-                />
-              </div>
             ) : null}
             {showEntityFilterWidget &&
               hasEntitiesInPlainState && (

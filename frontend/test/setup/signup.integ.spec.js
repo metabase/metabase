@@ -207,7 +207,8 @@ describe("setup wizard", () => {
     expect(allSetUpSection.find('a[href="/explore"]').length).toBe(1);
   });
 
-  it("should show you the onboarding modal", async () => {
+  // NOTE: disabling until we determine a new onboarding flow
+  xit("should show you the onboarding modal", async () => {
     // we can't persist the cookies of previous step so do the login manually here
     await login({ username: email, password: strongPassword });
     // redirect to `?new` caused some trouble in tests so create a new store for testing the modal interaction

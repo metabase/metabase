@@ -27,7 +27,6 @@ export default class LoadingAndErrorWrapper extends Component {
   };
 
   static defaultProps = {
-    className: "flex flex-full",
     error: false,
     loading: false,
     noBackground: false,

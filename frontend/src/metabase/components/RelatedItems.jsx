@@ -1,119 +1,123 @@
-import React from 'react'
-import { CardApi } from 'metabase/services'
-import { Link } from 'react-router'
+import React from "react";
+import { CardApi } from "metabase/services";
+import { Link } from "react-router";
 
-import Icon from 'metabase/components/Icon'
+import Icon from "metabase/components/Icon";
 
-import * as Urls from 'metabase/lib/urls'
+import * as Urls from "metabase/lib/urls";
 
-const RelatedDashboards = ({ dashboards }) =>
+const RelatedDashboards = ({ dashboards }) => (
   <div className="my2">
     <h2>Dashboards this appears in</h2>
     <ol>
-      { dashboards.map(dashboard =>
+      {dashboards.map(dashboard => (
         <li className="bordered rounded p3 shadowed mb1" key={dashboard.id}>
-          <Link to={Urls.dashboard(dashboard.id)} className="flex align-center link">
+          <Link
+            to={Urls.dashboard(dashboard.id)}
+            className="flex align-center link"
+          >
             <Icon name="dashboard" className="mr1" />
-            <h3>{ dashboard.name }</h3>
+            <h3>{dashboard.name}</h3>
           </Link>
         </li>
-      )}
+      ))}
     </ol>
   </div>
+);
 
-const RelatedDashCards = ({ cards }) =>
+const RelatedDashCards = ({ cards }) => (
   <div className="my2">
     <h2>This question is in dashboards with</h2>
     <ol>
-      { cards.map(card =>
+      {cards.map(card => (
         <li className="bordered rounded p1" key={card.id}>
           <Link to={Urls.question(card.id)} className="link">
-            <h3>{ card.name }</h3>
+            <h3>{card.name}</h3>
           </Link>
         </li>
-      )}
+      ))}
     </ol>
   </div>
-
+);
 
 class RelatedItems extends React.Component {
-
   state = {
     loading: false,
     relatedItems: null,
-    error: null
-  }
-
+    error: null,
+  };
 
   componentWillMount() {
-    const { questionId, questionHash } = this.props
-    if(this.props.questionId) {
-      this._loadRelatedForCard(questionId)
+    const { questionId, questionHash } = this.props;
+    if (this.props.questionId) {
+      this._loadRelatedForCard(questionId);
     }
 
-    if(this.props.questionHash) {
-      this._loadRelatedForQuery(questionHash)
+    if (this.props.questionHash) {
+      this._loadRelatedForQuery(questionHash);
     }
   }
 
   componentDidUpdate(nextProps) {
-
-    if(nextProps.questionId !== this.props.questionId) {
-      this._loadRelatedForCard(nextProps.questionId)
+    if (nextProps.questionId !== this.props.questionId) {
+      this._loadRelatedForCard(nextProps.questionId);
     }
 
-    if(nextProps.questionHash !== this.props.questionHash) {
-      this._loadRelatedForQuery(nextProps.questionHash)
+    if (nextProps.questionHash !== this.props.questionHash) {
+      this._loadRelatedForQuery(nextProps.questionHash);
     }
   }
 
   async _loadRelatedForCard(cardId) {
-    this.setState({ loading: true })
+    this.setState({ loading: true });
 
-    const relatedItems = await CardApi.related({ cardId })
+    const relatedItems = await CardApi.related({ cardId });
 
-    if(relatedItems) {
-      this.setState({ relatedItems, loading: false, error: false })
+    if (relatedItems) {
+      this.setState({ relatedItems, loading: false, error: false });
     }
   }
 
   async _loadRelatedForQuery(questionHash) {
-    this.setState({ loading: true })
+    this.setState({ loading: true });
 
-    const relatedItems = await CardApi.adHocRelated(questionHash)
+    const relatedItems = await CardApi.adHocRelated(questionHash);
 
-    if(relatedItems) {
+    if (relatedItems) {
       this.setState({
         relatedItems,
         loading: false,
-        error: false
-      })
+        error: false,
+      });
     }
-
   }
 
-  render () {
-    const { relatedItems } = this.state
-    if(this.state.loading || !relatedItems) {
-      return <div>"Loading"</div>
+  render() {
+    const { relatedItems } = this.state;
+    if (this.state.loading || !relatedItems) {
+      return <div>"Loading"</div>;
     }
-    if(this.state.error) {
-      return <div>Sometihng was wrong</div>
+    if (this.state.error) {
+      return <div>Sometihng was wrong</div>;
     }
 
     return (
       <div className="my2">
         <h1>Related Items</h1>
 
-        { relatedItems && (
+        {relatedItems && (
           <div>
-            { relatedItems['dashboards'] && <RelatedDashboards dashboards={relatedItems['dashboards']} /> }
-            { relatedItems['dashboard-mates'] && <RelatedDashCards cards={relatedItems['dashboard-mates']} /> }
+            {relatedItems["dashboards"] && (
+              <RelatedDashboards dashboards={relatedItems["dashboards"]} />
+            )}
+            {relatedItems["dashboard-mates"] && (
+              <RelatedDashCards cards={relatedItems["dashboard-mates"]} />
+            )}
           </div>
         )}
       </div>
-    )
+    );
   }
 }
 
-export default RelatedItems
+export default RelatedItems;

@@ -15,6 +15,9 @@
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
              [dashboard-card-series :refer [DashboardCardSeries]]
+             [dashboard-test :as dashboard-test]
+             [permissions :as perms]
+             [permissions-group :as group]
              [revision :refer [Revision]]]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]
@@ -76,7 +79,9 @@
 (expect (get middleware/response-unauthentic :body) (http/client :put 401 "dashboard/13"))
 
 
-;; ## POST /api/dash
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              POST /api/dashboard                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; test validations
 (expect {:errors {:name "value must be a non-blank string."}}
@@ -90,6 +95,7 @@
 (def ^:private ^:const dashboard-defaults
   {:archived                false
    :caveats                 nil
+   :collection_id           nil
    :created_at              true ; assuming you call dashboard-response on the results
    :description             nil
    :embedding_params        nil
@@ -109,12 +115,16 @@
           :parameters [{:hash "abc123", :name "test", :type "date"}]
           :updated_at true
           :created_at true})
-  (-> ((user->client :rasta) :post 200 "dashboard" {:name       "Test Create Dashboard"
-                                                    :parameters [{:hash "abc123", :name "test", :type "date"}]})
-      dashboard-response))
+  (tu/with-model-cleanup [Dashboard]
+    (-> ((user->client :rasta) :post 200 "dashboard" {:name       "Test Create Dashboard"
+                                                      :parameters [{:hash "abc123", :name "test", :type "date"}]})
+        dashboard-response)))
 
 
-;; ## GET /api/dashboard/:id
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             GET /api/dashboard/:id                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (expect
   (merge dashboard-defaults
          {:name          "Test Dashboard"
@@ -159,7 +169,11 @@
                   DashboardCardSeries [_                  {:dashboardcard_id dbc_id, :card_id card-id2, :position 0}]]
     ((user->client :rasta) :get 403 (format "dashboard/%d" dashboard-id))))
 
-;; ## PUT /api/dashboard/:id
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             PUT /api/dashboard/:id                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (expect
   [(merge dashboard-defaults {:name        "Test Dashboard"
                               :creator_id  (user->id :rasta)})
@@ -171,10 +185,11 @@
                               :creator_id  (user->id :rasta)})]
   (tt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
     (mapv dashboard-response [(Dashboard dashboard-id)
-                              ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id) {:name         "My Cool Dashboard"
-                                                                                               :description  "Some awesome description"
-                                                                                               ;; these things should fail to update
-                                                                                               :creator_id   (user->id :trashbird)})
+                              ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id)
+                               {:name         "My Cool Dashboard"
+                                :description  "Some awesome description"
+                                ;; these things should fail to update
+                                :creator_id   (user->id :trashbird)})
                               (Dashboard dashboard-id)])))
 
 ;; allow "caveats" and "points_of_interest" to be empty strings, and "show_in_getting_started" should be a boolean
@@ -185,9 +200,10 @@
                              :points_of_interest      ""
                              :show_in_getting_started true})
   (tt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
-    (dashboard-response ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id) {:caveats                 ""
-                                                                                         :points_of_interest      ""
-                                                                                         :show_in_getting_started true}))))
+    (dashboard-response ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id)
+                         {:caveats                 ""
+                          :points_of_interest      ""
+                          :show_in_getting_started true}))))
 
 ;; Can we clear the description of a Dashboard? (#4738)
 (expect
@@ -202,8 +218,44 @@
     ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard)) {:description ""})
     (db/select-one-field :description Dashboard :id (u/get-id dashboard))))
 
+;; Can we change the Collection a Dashboard is in (assuming we have the permissions to do so)?
+(expect
+  (dashboard-test/with-dash-in-collection [db collection dash]
+    (tt/with-temp Collection [new-collection]
+      ;; grant Permissions for both new and old collections
+      (doseq [coll [collection new-collection]]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) coll))
+      ;; now make an API call to move collections
+      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dash)) {:collection_id (u/get-id new-collection)})
+      ;; Check to make sure the ID has changed in the DB
+      (= (db/select-one-field :collection_id Dashboard :id (u/get-id dash))
+         (u/get-id new-collection)))))
 
-;; ## DELETE /api/dashboard/:id
+;; ...but if we don't have the Permissions for the old collection, we should get an Exception
+(expect
+  "You don't have permissions to do that."
+  (dashboard-test/with-dash-in-collection [db collection dash]
+    (tt/with-temp Collection [new-collection]
+      ;; grant Permissions for only the *new* collection
+      (perms/grant-collection-readwrite-permissions! (group/all-users) new-collection)
+      ;; now make an API call to move collections. Should fail
+      ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dash)) {:collection_id (u/get-id new-collection)}))))
+
+;; ...and if we don't have the Permissions for the new collection, we should get an Exception
+(expect
+  "You don't have permissions to do that."
+  (dashboard-test/with-dash-in-collection [db collection dash]
+    (tt/with-temp Collection [new-collection]
+      ;; grant Permissions for only the *old* collection
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+      ;; now make an API call to move collections. Should fail
+      ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dash)) {:collection_id (u/get-id new-collection)}))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           DELETE /api/dashboard/:id                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (expect
   [nil nil]
   (tt/with-temp Dashboard [{dashboard-id :id}]
@@ -211,9 +263,10 @@
      (Dashboard dashboard-id)]))
 
 
-;; # DASHBOARD CARD ENDPOINTS
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         POST /api/dashboard/:id/cards                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; ## POST /api/dashboard/:id/cards
 ;; simple creation with no additional series
 (expect
   [{:sizeX                  2
@@ -233,16 +286,18 @@
      :visualization_settings {}}]]
   (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]]
-    [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId                 card-id
-                                                                                      :row                    4
-                                                                                      :col                    4
-                                                                                      :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
-                                                                                      :visualization_settings {}})
+    [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id)
+          {:cardId                 card-id
+           :row                    4
+           :col                    4
+           :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+           :visualization_settings {}})
          (dissoc :id :dashboard_id :card_id)
          (update :created_at boolean)
          (update :updated_at boolean))
      (map (partial into {})
-          (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings], :dashboard_id dashboard-id))]))
+          (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings]
+            :dashboard_id dashboard-id))]))
 
 ;; new dashboard card w/ additional series
 (expect
@@ -267,17 +322,21 @@
   (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]
                   Card      [{series-id-1 :id} {:name "Series Card"}]]
-    (let [dashboard-card ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
-                                                                                                      :row    4
-                                                                                                      :col    4
-                                                                                                      :series [{:id series-id-1}]})]
+    (let [dashboard-card ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id)
+                          {:cardId card-id
+                           :row    4
+                           :col    4
+                           :series [{:id series-id-1}]})]
       [(remove-ids-and-boolean-timestamps dashboard-card)
        (map (partial into {})
             (db/select [DashboardCard :sizeX :sizeY :col :row], :dashboard_id dashboard-id))
        (db/select-field :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card))])))
 
 
-;; ## DELETE /api/dashboard/:id/cards
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        DELETE /api/dashboard/:id/cards                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (expect
   [1
    {:success true}
@@ -295,7 +354,10 @@
      (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))]))
 
 
-;; ## PUT /api/dashboard/:id/cards
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          PUT /api/dashboard/:id/cards                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (expect
   [[{:sizeX                  2
      :sizeY                  2
@@ -361,8 +423,9 @@
       (remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-2))]]))
 
 
-
-;; ## GET /api/dashboard/:id/revisions
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        GET /api/dashboard/:id/revisions                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (expect
   [{:is_reversion false
@@ -412,7 +475,9 @@
              (dissoc revision :timestamp :id)))))
 
 
-;; ## POST /api/dashboard/:id/revert
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         POST /api/dashboard/:id/revert                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (expect {:errors {:revision_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "dashboard/1/revert" {}))
@@ -469,20 +534,22 @@
                                                                :description  nil
                                                                :cards        []}
                                                 :message      "updated"}]]
-    [(dissoc ((user->client :crowberto) :post 200 (format "dashboard/%d/revert" dashboard-id) {:revision_id revision-id}) :id :timestamp)
+    [(dissoc ((user->client :crowberto) :post 200 (format "dashboard/%d/revert" dashboard-id)
+              {:revision_id revision-id})
+             :id :timestamp)
      (doall (for [revision ((user->client :crowberto) :get 200 (format "dashboard/%d/revisions" dashboard-id))]
               (dissoc revision :timestamp :id)))]))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                    PUBLIC SHARING ENDPOINTS                                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- shared-dashboard []
   {:public_uuid       (str (UUID/randomUUID))
    :made_public_by_id (user->id :crowberto)})
 
-;;; ------------------------------------------------------------ POST /api/dashboard/:id/public_link ------------------------------------------------------------
+;;; -------------------------------------- POST /api/dashboard/:id/public_link ---------------------------------------
 
 ;; Test that we can share a Dashboard
 (expect
@@ -520,7 +587,7 @@
 
 
 
-;;; ------------------------------------------------------------ DELETE /api/dashboard/:id/public_link ------------------------------------------------------------
+;;; ------------------------------------- DELETE /api/dashboard/:id/public_link --------------------------------------
 
 ;; Test that we can unshare a Dashboard
 (expect
@@ -567,7 +634,9 @@
         (m/map-vals boolean (select-keys dash [:name :id]))))))
 
 
-;;; -------------------------------- Tests for including query average duration info ---------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                Tests for including query average duration info                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (expect
   [[-109 -42 53 92 -31 19 -111 13 -11 -111 127 -110 -12 53 -42 -3 -58 -61 60 97 123 -65 -117 -110 -27 -2 -99 102 -59 -29 49 27]
@@ -621,7 +690,11 @@
     [-84 -2 87 22 -4 105 68 48 -113 93 -29 52 3 102 123 -70 -123 36 31 76 -16 87 70 116 -93 109 -88 108 125 -36 -43 73]          777
     [90 127 103 -71 -76 -36 41 -107 -7 -13 -83 -87 28 86 -94 110 74 -86 110 -54 -128 124 102 -73 -127 88 77 -36 62 5 -84 -100]   888}))
 
-;; Test related/recommended entities
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Test related/recommended entities                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (expect
   #{:cards}
   (tt/with-temp* [Dashboard [{dashboard-id :id}]]

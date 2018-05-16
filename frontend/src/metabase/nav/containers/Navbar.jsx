@@ -2,14 +2,26 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "c-3po";
+import { Box, Flex } from "rebass";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { Link } from "react-router";
 
+import { createDashboard } from "metabase/dashboards/dashboards";
+
+import { normal, saturated } from "metabase/lib/colors";
+
+import Button from "metabase/components/Button.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
-import * as Urls from "metabase/lib/urls";
+import Tooltip from "metabase/components/Tooltip";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+
+import Modal from "metabase/components/Modal";
+
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+import CollectionEdit from "metabase/questions/containers/CollectionCreate";
 
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
@@ -23,22 +35,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
   onChangeLocation: push,
-};
-
-const BUTTON_PADDING_STYLES = {
-  navButton: {
-    paddingLeft: "1.0rem",
-    paddingRight: "1.0rem",
-    paddingTop: "0.75rem",
-    paddingBottom: "0.75rem",
-  },
-
-  newQuestion: {
-    paddingLeft: "1.0rem",
-    paddingRight: "1.0rem",
-    paddingTop: "0.75rem",
-    paddingBottom: "0.75rem",
-  },
+  createDashboard,
 };
 
 const AdminNavItem = ({ name, path, currentPath }) => (
@@ -55,23 +52,41 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
-const MainNavLink = ({ to, name, eventName, icon }) => (
-  <Link
-    to={to}
-    data-metabase-event={`NavBar;${eventName}`}
-    style={BUTTON_PADDING_STYLES.navButton}
-    className={
-      "NavItem cursor-pointer flex-full text-white text-bold no-decoration flex align-center px2 transition-background"
-    }
-    activeClassName="NavItem--selected"
-  >
-    <Icon name={icon} className="md-hide" />
-    <span className="hide md-show">{name}</span>
-  </Link>
-);
+/*
+class SearchBar extends React.Component {
+  state = {
+    active: false,
+  };
+
+  render() {
+    return (
+      <Flex align="center">
+        <Icon name="search" />
+        <input
+          type="text"
+          placeholder="Search for anything..."
+          className="input bg-transparent borderless"
+          onClick={() => this.setState({ active: true })}
+          style={{
+            width: this.state.active ? 600 : 320,
+            maxWidth: 600,
+          }}
+        />
+      </Flex>
+    );
+  }
+}
+*/
+
+const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
+const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
+  state = {
+    modal: null,
+  };
+
   static propTypes = {
     context: PropTypes.string.isRequired,
     path: PropTypes.string.isRequired,
@@ -80,6 +95,22 @@ export default class Navbar extends Component {
 
   isActive(path) {
     return this.props.path.startsWith(path);
+  }
+
+  setModal(modal) {
+    this.setState({ modal });
+    if (this._newPopover) {
+      this._newPopover.close();
+    }
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.location !== this.props.location) {
+      this.setState({ modal: null });
+      if (this._newPopover) {
+        this._newPopover.close();
+      }
+    }
   }
 
   renderAdminNav() {
@@ -121,6 +152,7 @@ export default class Navbar extends Component {
 
           <ProfileLink {...this.props} />
         </div>
+        {this.renderModal()}
       </nav>
     );
   }
@@ -139,74 +171,122 @@ export default class Navbar extends Component {
             </Link>
           </li>
         </ul>
+        {this.renderModal()}
       </nav>
     );
   }
 
   renderMainNav() {
     return (
-      <nav className="Nav relative bg-brand">
-        <ul className="md-pl4 flex align-center md-pr1">
-          <li>
-            <Link
-              to="/"
-              data-metabase-event={"Navbar;Logo"}
-              className="LogoNavItem NavItem cursor-pointer text-white flex align-center transition-background justify-center"
-              activeClassName="NavItem--selected"
-            >
-              <LogoIcon dark={true} />
-            </Link>
-          </li>
-          <li className="md-pl3 hide xs-show">
-            <MainNavLink
-              to="/dashboards"
-              name={t`Dashboards`}
-              eventName="Dashboards"
-              icon="dashboard"
-            />
-          </li>
-          <li className="md-pl1 hide xs-show">
-            <MainNavLink
-              to="/questions"
-              name={t`Questions`}
-              eventName="Questions"
-              icon="all"
-            />
-          </li>
-          <li className="md-pl1 hide xs-show">
-            <MainNavLink
-              to="/pulse"
-              name={t`Pulses`}
-              eventName="Pulses"
-              icon="pulse"
-            />
-          </li>
-          <li className="md-pl1 hide xs-show">
-            <MainNavLink
-              to="/reference/guide"
-              name={t`Data Reference`}
-              eventName="DataReference"
-              icon="reference"
-            />
-          </li>
-          <li className="md-pl3 hide sm-show">
-            <Link
-              to={Urls.newQuestion()}
-              data-metabase-event={"Navbar;New Question"}
-              style={BUTTON_PADDING_STYLES.newQuestion}
-              className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all"
-            >
-              {t`New Question`}
-            </Link>
-          </li>
-          <li className="flex-align-right transition-background hide sm-show">
-            <div className="inline-block text-white">
-              <ProfileLink {...this.props} />
-            </div>
-          </li>
-        </ul>
-      </nav>
+      <Flex className="relative bg-brand text-white z4" align="center">
+        <Box ml={1}>
+          <Link
+            to="/"
+            data-metabase-event={"Navbar;Logo"}
+            className="LogoNavItem NavItem cursor-pointer flex align-center transition-background justify-center"
+            activeClassName="NavItem--selected"
+          >
+            <LogoIcon dark />
+          </Link>
+        </Box>
+        <Box my={1} p={1} className="wrapper lg-wrapper--trim">
+          {/* <SearchBar /> */}
+        </Box>
+        <Flex ml="auto" align="center">
+          <PopoverWithTrigger
+            ref={e => (this._newPopover = e)}
+            triggerElement={
+              <Button medium mr={3} color="#509ee3">
+                New
+              </Button>
+            }
+          >
+            <Box py={2} px={3} style={{ minWidth: 300 }}>
+              <Box my={2}>
+                <Link to="question/new">
+                  <Flex align="center" style={{ color: normal.red }}>
+                    <Icon name="beaker" mr={1} />
+                    <h3>Question</h3>
+                  </Flex>
+                </Link>
+              </Box>
+              <Box my={2}>
+                <Flex
+                  align="center"
+                  style={{ color: normal.blue }}
+                  className="cursor-pointer"
+                  onClick={() => this.setModal(MODAL_NEW_DASHBOARD)}
+                >
+                  <Icon name="dashboard" mr={1} />
+                  <h3>Dashboard</h3>
+                </Flex>
+              </Box>
+              <Box my={2}>
+                <Link to="pulse/new">
+                  <Flex align="center" style={{ color: saturated.yellow }}>
+                    <Icon name="pulse" mr={1} />
+                    <h3>Pulse</h3>
+                  </Flex>
+                </Link>
+              </Box>
+              <Box my={2}>
+                <Flex
+                  align="center"
+                  style={{ color: "#93B3C9" }}
+                  className="cursor-pointer"
+                  onClick={() => this.setModal(MODAL_NEW_COLLECTION)}
+                >
+                  <Icon name="all" mr={1} />
+                  <h3>Collection</h3>
+                </Flex>
+              </Box>
+            </Box>
+          </PopoverWithTrigger>
+          <Box mx={2}>
+            <Tooltip tooltip={t`Browse data`}>
+              <Link to="browse">
+                <Icon name="grid" />
+              </Link>
+            </Tooltip>
+          </Box>
+          <Box mx={2}>
+            <Tooltip tooltip={t`Reference`}>
+              <Link to="reference">
+                <Icon name="reference" />
+              </Link>
+            </Tooltip>
+          </Box>
+          <Box mx={2}>
+            <Tooltip tooltip={t`Activity`}>
+              <Link to="activity">
+                <Icon name="alert" />
+              </Link>
+            </Tooltip>
+          </Box>
+          <ProfileLink {...this.props} />
+        </Flex>
+        {this.renderModal()}
+      </Flex>
     );
+  }
+
+  renderModal() {
+    const { modal } = this.state;
+    if (modal) {
+      return (
+        <Modal onClose={() => this.setState({ modal: null })}>
+          {modal === MODAL_NEW_COLLECTION ? (
+            <CollectionEdit />
+          ) : modal === MODAL_NEW_DASHBOARD ? (
+            <CreateDashboardModal
+              createDashboard={this.props.createDashboard}
+            />
+          ) : null}
+        </Modal>
+      );
+    } else {
+      return null;
+    }
   }
 
   render() {
