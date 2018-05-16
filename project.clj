@@ -10,8 +10,7 @@
             "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
             "profile" ["with-profile" "+profile" "run" "profile"]
-            "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]
-            "validate-automagic-dashboards" ["with-profile" "+validate-automagic-dashboards" "run"]}
+            "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.3.442"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
@@ -93,16 +92,6 @@
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
                  [org.postgresql/postgresql "42.1.4.jre7"]            ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
-                 [org.spark-project.hive/hive-jdbc "1.2.1.spark2"     ; JDBC Driver for Apache Spark
-                  :exclusions [org.apache.curator/curator-framework
-                               org.apache.curator/curator-recipes
-                               org.apache.thrift/libfb303
-                               org.apache.zookeeper/zookeeper
-                               org.eclipse.jetty.aggregate/jetty-all
-                               org.spark-project.hive/hive-common
-                               org.spark-project.hive/hive-metastore
-                               org.spark-project.hive/hive-serde
-                               org.spark-project.hive/hive-shims]]
                  [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
                  [org.xerial/sqlite-jdbc "3.21.0.1"]                  ; SQLite driver
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
@@ -129,7 +118,6 @@
              "-Xverify:none"                                          ; disable bytecode verification when running in dev so it starts slightly faster
              "-XX:+CMSClassUnloadingEnabled"                          ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
              "-XX:+UseConcMarkSweepGC"                                ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
-             "--add-opens=java.base/java.net=ALL-UNNAMED"             ; let Java 9 dynamically add to classpath -- see https://github.com/tobias/dynapath#note-on-java-9
              "--add-modules=java.xml.bind"                            ; tell Java 9 (Oracle VM only) to add java.xml.bind to classpath. No longer on it by default. See https://stackoverflow.com/questions/43574426/how-to-resolve-java-lang-noclassdeffounderror-javax-xml-bind-jaxbexception-in-j
              "-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
@@ -165,10 +153,7 @@
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"]
                    ;; Log appender class needs to be compiled for log4j to use it,
-                   ;; classes for fixed Hive driver in must be compiled for tests
-                   :aot [metabase.logger
-                         metabase.driver.FixedHiveConnection
-                         metabase.driver.FixedHiveDriver]}
+                   :aot [metabase.logger]}
              :ci {:jvm-opts ["-Xmx3g"]}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup  ; for test setup stuff
@@ -195,5 +180,4 @@
              :profile {:jvm-opts ["-XX:+CITime"                       ; print time spent in JIT compiler
                                   "-XX:+PrintGC"]}                    ; print a message when garbage collection takes place
              ;; get the H2 shell with 'lein h2'
-             :h2-shell {:main org.h2.tools.Shell}
-             :validate-automagic-dashboards {:main metabase.automagic-dashboards.rules}})
+             :h2-shell {:main org.h2.tools.Shell}})
