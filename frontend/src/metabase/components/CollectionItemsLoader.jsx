@@ -17,13 +17,15 @@ const CollectionItemsLoader = ({ collectionId, children }: Props) => (
         dashboards: object.dashboards,
         cards: object.cards,
         pulses: object.pulses,
-        allItems:
-          [].concat(
-            object.cards.map(c => ({ ...c, type: "card" })),
-            object.dashboards.map(d => ({ ...d, type: "dashboard" })),
-            object.pulses.map(p => ({ ...p, type: "pulse" })),
-          ) || [],
-        empty: !object.dashboards && !object.cards && !object.pulses,
+        allItems: [].concat(
+          object.cards.map(c => ({ ...c, type: "card" })),
+          object.dashboards.map(d => ({ ...d, type: "dashboard" })),
+          object.pulses.map(p => ({ ...p, type: "pulse" })),
+        ),
+        empty:
+          object.dashboards.length === 0 &&
+          object.cards.length === 0 &&
+          object.pulses.length,
       })
     }
   />
