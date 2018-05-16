@@ -94,7 +94,7 @@
    `:password`, `:s3_staging_dir` `:log_path` and `region`"
   [{:keys [user password s3_staging_dir log_path region] :as details}]
   (assert (or user password s3_staging_dir log_path region))
-  {:classname "com.amazonaws.athena.jdbc.AthenaDriver"
+  {:classname "com.simba.athena.jdbc.Driver"
    :log_path log_path
    :subprotocol "awsathena"
    :subname (str "//athena." region ".amazonaws.com:443")
@@ -276,5 +276,5 @@
 
 
 (when (u/ignore-exceptions
-       (Class/forName "com.amazonaws.athena.jdbc.AthenaDriver"))
+       (Class/forName "com.simba.athena.jdbc.Driver"))
   (driver/register-driver! :athena (AthenaDriver.)))

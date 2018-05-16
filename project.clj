@@ -18,7 +18,7 @@
                  [org.clojure/core.memoize "0.5.9"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
                  [org.clojure/java.classpath "0.2.3"]                 ; examine the Java classpath from Clojure programs
-                 [org.clojure/java.jdbc "0.7.5"]                      ; basic JDBC access from Clojure
+                 [org.clojure/java.jdbc "0.7.6"]                      ; basic JDBC access from Clojure
                  [org.clojure/math.combinatorics "0.1.4"]             ; combinatorics functions
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
@@ -152,7 +152,8 @@
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
                                 #"^metabase\.http-client$"]}
-  :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]              ; unit tests
+  :profiles {:dev {:resource-paths ["src/resource/AthenaJDBC42_2.0.2.jar"]
+                   :dependencies [[expectations "2.2.0-beta2"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
                    :plugins [[docstring-checker "1.0.2"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
                              [jonase/eastwood "0.2.3"
