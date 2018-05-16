@@ -53,7 +53,7 @@ function fitViewport(ComposedComponent) {
       return (
         <ComposedComponent
           {...this.props}
-          fitClasses="relative flex flex-full"
+          fitClassNames="relative flex flex-full"
         />
       );
     }

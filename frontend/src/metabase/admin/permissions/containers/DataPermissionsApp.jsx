@@ -20,7 +20,7 @@ export default class DataPermissionsApp extends Component {
         {...this.props}
         load={PermissionsApi.graph}
         save={PermissionsApi.updateGraph}
-        fitClasses={this.props.fitClasses}
+        fitClassNames={this.props.fitClassNames}
       />
     );
   }

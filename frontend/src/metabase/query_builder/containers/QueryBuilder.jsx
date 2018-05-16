@@ -241,7 +241,7 @@ class LegacyQueryBuilder extends Component {
     const ModeFooter = mode && mode.ModeFooter;
 
     return (
-      <div className={this.props.fitClasses}>
+      <div className={this.props.fitClassNames}>
         <div
           className={cx("QueryBuilder flex flex-column bg-white spread", {
             "QueryBuilder--showSideDrawer": showDrawer,
