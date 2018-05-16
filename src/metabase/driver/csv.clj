@@ -208,7 +208,68 @@
                                                             :display-name "fileExtension"
                                                             :placeholder  ".csv"
                                                             :required     true
-                                                           }                                                           ])
+                                                           } 
+                                                           {:name         "columnTypes"
+                                                            :display-name "columnTypes"
+                                                            :placeholder  ""
+                                                            :required     false
+                                                           }
+                                                           {:name         "suppressHeaders"
+                                                            :display-name "suppressHeaders"
+                                                            :placeholder  false
+                                                            :type         :boolean
+                                                            :required     false
+                                                           }
+                                                           {:name         "commentChar"
+                                                            :display-name "commentChar"
+                                                            :placeholder  nil
+                                                            :required     false
+                                                           }
+                                                           {:name         "ignoreNonParseableLines"
+                                                            :display-name "ignoreNonParseableLines"
+                                                            :placeholder  false
+                                                            :type         :boolean
+                                                            :required     false
+                                                           }
+                                                           {:name         "missingValue"
+                                                            :display-name "missingValue"
+                                                            :placeholder  nil
+                                                            :required     false
+                                                           }
+                                                           {:name         "headerline"
+                                                            :display-name "headerline"
+                                                            :placeholder  ""
+                                                            :required     false
+                                                           }
+                                                           {:name         "trimValues"
+                                                            :display-name "trimValues"
+                                                            :type         :boolean
+                                                            :placeholder  false
+                                                            :required     false
+                                                           }
+                                                           {:name         "trimHeaders"
+                                                            :display-name "trimHeaders"
+                                                            :type         :boolean
+                                                            :placeholder  false
+                                                            :required     false
+                                                           }
+                                                           {:name         "timestampFormat"
+                                                            :display-name "timestampFormat"
+                                                            :placeholder  "yyyy-MM-dd HH:mm:ss"
+                                                            :required     false
+                                                           }
+                                                           {:name         "timeFormat"
+                                                            :display-name "timeFormat"
+                                                            :placeholder  "HH:mm:ss"
+                                                            :required     false
+                                                           }
+                                                           {:name         "dateFormat"
+                                                            :display-name "dateFormat"
+                                                            :placeholder  "yyyy-MM-dd"
+                                                            :required     false
+                                                           }
+                                                           
+                                                                                                                      ])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :current-db-time                   (driver/make-current-db-time-fn h2-db-time-query h2-date-formatters)})
 
