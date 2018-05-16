@@ -11,6 +11,7 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
+            [metabase.sync.util-test :as sut]
             [metabase.test.data :as data]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan
@@ -150,47 +151,27 @@
   (db/select-one-field :fk_target_field_id Field, :id (data/id :venues :category_id)))
 
 ;; Check that sync-table! causes FKs to be set like we'd expect
-(expect [{:special_type :type/FK, :fk_target_field_id true}
+(expect [{:total-fks 3, :updated-fks 0, :total-failed 0}
+         {:special_type :type/FK, :fk_target_field_id true}
          {:special_type nil,      :fk_target_field_id false}
+         {:total-fks 3, :updated-fks 1, :total-failed 0}
          {:special_type :type/FK, :fk_target_field_id true}]
   (let [field-id (data/id :checkins :user_id)
         get-special-type-and-fk-exists? (fn []
                                           (into {} (-> (db/select-one [Field :special_type :fk_target_field_id],
                                                          :id field-id)
                                                        (update :fk_target_field_id #(db/exists? Field :id %)))))]
-    [ ;; FK should exist to start with
+    [
+     (sut/only-step-keys (sut/sync-database! "sync-fks" (Database (data/id))))
+     ;; FK should exist to start with
      (get-special-type-and-fk-exists?)
      ;; Clear out FK / special_type
      (do (db/update! Field field-id, :special_type nil, :fk_target_field_id nil)
          (get-special-type-and-fk-exists?))
+
      ;; Run sync-table and they should be set again
-     (let [table (Table (data/id :checkins))]
-       (sync/sync-table! table)
-       (get-special-type-and-fk-exists?))]))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         mystery narrow-to-min-max test                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; TODO - hey, what is this testing? If you wrote this test, please explain what's going on here
-(defn- narrow-to-min-max [row]
-  (-> row
-      (get-in [:type :type/Number])
-      (select-keys [:min :max])
-      (update :min #(u/round-to-decimals 4 %))
-      (update :max #(u/round-to-decimals 4 %))))
-
-(expect
-  [{:min -165.374 :max -73.9533}
-   {:min 10.0646 :max 40.7794}]
-  (tt/with-temp* [Database [database {:details (:details (Database (data/id))), :engine :h2}]
-                  Table    [table    {:db_id (u/get-id database), :name "VENUES"}]]
-    (sync/sync-table! table)
-    (map narrow-to-min-max
-         [(db/select-one-field :fingerprint Field, :id (data/id :venues :longitude))
-          (db/select-one-field :fingerprint Field, :id (data/id :venues :latitude))])))
-
+     (sut/only-step-keys (sut/sync-database! "sync-fks" (Database (data/id))))
+     (get-special-type-and-fk-exists?)]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     tests related to sync's Field hashes                                       |
