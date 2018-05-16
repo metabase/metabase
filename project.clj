@@ -52,7 +52,7 @@
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
                    "v2-rev368-1.23.0"]
                  [com.jcraft/jsch "0.1.54"]                           ; SSH client for tunnels
-                 [com.h2database/h2 "1.4.194"]                        ; embedded SQL database
+                 [com.h2database/h2 "1.4.197"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
                  [com.microsoft.sqlserver/mssql-jdbc "6.2.1.jre7"]    ; SQLServer JDBC driver. TODO - Switch this to `.jre8` once we officially switch to Java 8
@@ -102,7 +102,7 @@
                  [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
-                 [toucan "1.1.4"                                      ; Model layer, hydration, and DB utilities
+                 [toucan "1.1.5"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
                  ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]

@@ -288,9 +288,8 @@
 (defmacro with-metadata
   "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
   [[binding _ database] & body]
-  `(with-open [^java.sql.Connection conn# (jdbc/get-connection (db->jdbc-connection-spec ~database))]
-     (let [~binding (.getMetaData conn#)]
-       ~@body)))
+  `(jdbc/with-db-metadata [~binding (db->jdbc-connection-spec ~database)]
+     ~@body))
 
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."

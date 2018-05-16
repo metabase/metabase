@@ -346,9 +346,8 @@
         (parse formatter time-str))))
 
 (defn make-current-db-time-fn
-  "Takes a clj-time date formatter `DATE-FORMATTER` and a native query
-  for the current time. Returns a function that executes the query and
-  parses the date returned preserving it's timezone"
+  "Takes a clj-time date formatter `DATE-FORMATTER` and a native query for the current time. Returns a function that
+  executes the query and parses the date returned preserving it's timezone"
   [native-query date-formatters]
   (fn [driver database]
     (let [settings (when-let [report-tz (report-timezone-if-supported driver)]
