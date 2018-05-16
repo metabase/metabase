@@ -335,15 +335,7 @@ Diagnosing performance related issues can be a challenge. Luckily the JVM ships 
 
 # Java Versions
 
-Metabase will run on Java version 7 or greater, but Java 8 is the easiest and most common chioce. Java 7 was End of Life'd by Oracle in April of 2015 and as such, *Metabase support for Java 7 has been deprecated*. Users are encouraged to upgrade to Java 8 as we will drop support for Java 7 in a future release. For more information on installing/upgrading a Windows or macOS system, see the [Oracle installation instructions](https://docs.oracle.com/javase/8/docs/technotes/guides/install/install_overview.html). Linux users likely find OpenJDK easier to install/upgrade, more information is available on [the OpenJDK install page](http://openjdk.java.net/install/).
-
-## Running on Java 7
-
-Running Metabase on Java version 7 requires additional arguments to the Java invocation:
-
-    java -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m -jar metabase.jar
-
-Note that these extra arguments are not required on Java 8. *Support for Java 7 has been deprecated and users are encouraged to upgrade*.
+Metabase will run on Java version 8 or greater; Java 8 is the easiest and most common choice.
 
 ## Running on Java 8
 
@@ -351,7 +343,7 @@ Running on Java 8 is the easiest path to running Metabase. There are no addition
 
     java -jar metabase.jar
 
-## Running on Java 9
+## Running on Java 9 or Newer
 
 To use Metabase on Java 9 with Oracle, Vertica, SparkSQL, or other drivers that require external dependencies,
 you'll need to tweak the way you launch Metabase.

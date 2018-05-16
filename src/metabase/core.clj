@@ -23,7 +23,7 @@
              [setting :as setting]
              [user :refer [User]]]
             [metabase.util.i18n :refer [set-locale]]
-            [puppetlabs.i18n.core :refer [locale-negotiator]]
+            [puppetlabs.i18n.core :refer [locale-negotiator trs]]
             [ring.adapter.jetty :as ring-jetty]
             [ring.middleware
              [cookies :refer [wrap-cookies]]
@@ -106,9 +106,7 @@
       wrap-gzip))                        ; GZIP response if client can handle it
 
 
-;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
-
-
+;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- -init-create-setup-token
   "Create and set a new setup token and log it."
@@ -120,21 +118,24 @@
                          (or hostname "localhost")
                          (when-not (= 80 port) (str ":" port))
                          "/setup/")]
-    (log/info (u/format-color 'green "Please use the following url to setup your Metabase installation:\n\n%s\n\n"
-                              setup-url))))
+    (log/info (u/format-color 'green
+                  (str (trs "Please use the following URL to setup your Metabase installation:")
+                       "\n\n"
+                       setup-url
+                       "\n\n")))))
 
 (defn- destroy!
   "General application shutdown function which should be called once at application shuddown."
   []
-  (log/info "Metabase Shutting Down ...")
+  (log/info (trs "Metabase Shutting Down ..."))
   (task/stop-scheduler!)
-  (log/info "Metabase Shutdown COMPLETE"))
+  (log/info (trs "Metabase Shutdown COMPLETE")))
 
 (defn init!
   "General application initialization function which should be run once at application startup."
   []
-  (log/info (format "Starting Metabase version %s ..." config/mb-version-string))
-  (log/info (format "System timezone is '%s' ..." (System/getProperty "user.timezone")))
+  (log/info (trs (format "Starting Metabase version {0} ..." config/mb-version-string)))
+  (log/info (trs (format "System timezone is ''{0}'' ..." (System/getProperty "user.timezone"))))
   (init-status/set-progress! 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
@@ -150,7 +151,7 @@
   (init-status/set-progress! 0.4)
 
   ;; startup database.  validates connection & runs any necessary migrations
-  (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
+  (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
   (mdb/setup-db! :auto-migrate (config/config-bool :mb-db-automigrate))
   (init-status/set-progress! 0.5)
 
@@ -167,7 +168,7 @@
     (init-status/set-progress! 0.8)
 
     (when new-install?
-      (log/info "Looks like this is a new installation ... preparing setup wizard")
+      (log/info (trs "Looks like this is a new installation ... preparing setup wizard"))
       ;; create setup token
       (-init-create-setup-token)
       ;; publish install event
@@ -187,7 +188,7 @@
   (set-locale (setting/get :site-locale))
 
   (init-status/set-complete!)
-  (log/info "Metabase Initialization COMPLETE"))
+  (log/info (trs "Metabase Initialization COMPLETE")))
 
 
 ;;; ## ---------------------------------------- Jetty (Web) Server ----------------------------------------
@@ -210,8 +211,10 @@
                              (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
                              (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
                                                                       (merge jetty-ssl-config)))]
-      (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (pprint/pprint (m/filter-keys #(not (re-matches #".*password.*" (str %)))
-                                                                                                                jetty-config))))
+      (log/info (trs "Launching Embedded Jetty Webserver with config:")
+                "\n"
+                (with-out-str (pprint/pprint (m/filter-keys #(not (re-matches #".*password.*" (str %)))
+                                                            jetty-config))))
       ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
       (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false))
            (reset! jetty-instance)))))
@@ -220,38 +223,16 @@
   "Stop the embedded Jetty web server."
   []
   (when @jetty-instance
-    (log/info "Shutting Down Embedded Jetty Webserver")
+    (log/info (trs "Shutting Down Embedded Jetty Webserver"))
     (.stop ^Server @jetty-instance)
     (reset! jetty-instance nil)))
 
-(defn- wrap-with-asterisk [strings-to-wrap]
-  ;; Adding 4 extra asterisks so that we account for the leading asterisk and space, and add two more after the end of the sentence
-  (let [string-length (+ 4 (apply max (map count strings-to-wrap)))]
-    (str (apply str (repeat string-length \* ))
-         "\n"
-         "*\n"
-         (apply str (map #(str "* " % "\n") strings-to-wrap))
-         "*\n"
-         (apply str (repeat string-length \* )))))
 
-(defn- check-jdk-version []
-  (let [java-spec-version (System/getProperty "java.specification.version")]
-    ;; Note for java 7, this is 1.7, but newer versions drop the 1. Java 9 just returns "9" here.
-    (when (= "1.7" java-spec-version)
-      (let [java-version (System/getProperty "java.version")
-            deprecation-messages [(str "DEPRECATION WARNING: You are currently running JDK '" java-version "'. "
-                                       "Support for Java 7 has been deprecated and will be dropped from a future release.")
-                                  (str "See the operation guide for more information: https://metabase.com/docs/latest/operations-guide/start.html.")]]
-        (binding [*out* *err*]
-          (println (wrap-with-asterisk deprecation-messages))
-          (log/warn deprecation-messages))))))
-
-;;; ## ---------------------------------------- Normal Start ----------------------------------------
+;;; -------------------------------------------------- Normal Start --------------------------------------------------
 
 (defn- start-normally []
-  (log/info "Starting Metabase in STANDALONE mode")
+  (log/info (trs "Starting Metabase in STANDALONE mode"))
   (try
-    (check-jdk-version)
     ;; launch embedded webserver async
     (start-jetty!)
     ;; run our initialization process
@@ -260,8 +241,7 @@
     (when (config/config-bool :mb-jetty-join)
       (.join ^Server @jetty-instance))
     (catch Throwable e
-      (.printStackTrace e)
-      (log/error "Metabase Initialization FAILED: " (.getMessage e))
+      (log/error e (trs "Metabase Initialization FAILED"))
       (System/exit 1))))
 
 (defn- run-cmd [cmd args]
@@ -269,7 +249,7 @@
   ((resolve 'metabase.cmd/run-cmd) cmd args))
 
 
-;;; ---------------------------------------- App Entry Point ----------------------------------------
+;;; ------------------------------------------------ App Entry Point -------------------------------------------------
 
 (defn -main
   "Launch Metabase in standalone mode."
