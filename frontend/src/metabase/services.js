@@ -42,6 +42,10 @@ export const CardApi = {
   listEmbeddable: GET("/api/card/embeddable"),
   createPublicLink: POST("/api/card/:id/public_link"),
   deletePublicLink: DELETE("/api/card/:id/public_link"),
+
+  // related
+  related: GET("/api/card/:cardId/related"),
+  adHocRelated: POST("/api/card/related")
 };
 
 export const DashboardApi = {
