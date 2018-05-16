@@ -7,21 +7,20 @@
             [medley.core :as m]
             [metabase
              [events :as events]
-             [middleware :as middleware]
              [public-settings :as public-settings]
              [query-processor :as qp]
+             [related :as related]
              [util :as u]]
             [metabase.api
              [common :as api]
              [dataset :as dataset-api]
              [label :as label-api]]
-            [metabase.api.common.internal :refer [route-fn-name]]
             [metabase.email.messages :as messages]
             [metabase.models
              [card :as card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
              [card-label :refer [CardLabel]]
-             [collection :refer [Collection]]
+             [collection :as collection :refer [Collection]]
              [database :refer [Database]]
              [interface :as mi]
              [label :refer [Label]]
@@ -36,7 +35,6 @@
             [metabase.query-processor.middleware
              [cache :as cache]
              [results-metadata :as results-metadata]]
-            [metabase.related :as related]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]
@@ -269,8 +267,7 @@
                    (card/query-perms-set dataset_query :write)))
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (when collection_id
-    (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                     (perms/collection-readwrite-path collection_id))))
+    (collection/check-write-perms-for-collection collection_id))
   ;; everything is g2g, now save the card
   (let [card (db/insert! Card
                :creator_id             api/*current-user-id*
@@ -288,19 +285,6 @@
 
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
-
-(defn- check-permissions-for-collection
-  "Check that we have permissions to add or remove cards from `Collection` with COLLECTION-ID."
-  [collection-id]
-  (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                                  (perms/collection-readwrite-path collection-id))))
-
-(defn- check-allowed-to-change-collection
-  "If we're changing the `collection_id` of the Card, make sure we have write permissions for the new group."
-  [card collection-id]
-  (when (and collection-id
-             (not= collection-id (:collection_id card)))
-    (check-permissions-for-collection collection-id)))
 
 (defn check-data-permissions-for-query
   "Check that we have *data* permissions to run the QUERY in question."
@@ -424,7 +408,7 @@
 
 (defn- delete-alerts-if-needed! [old-card {card-id :id :as new-card}]
   ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (seq (pulse/retrieve-alerts-for-card card-id))]
+  (when-let [alerts (seq (pulse/retrieve-alerts-for-cards card-id))]
     (cond
 
       (card-archived? old-card new-card)
@@ -456,7 +440,7 @@
    metadata_checksum      (s/maybe su/NonBlankString)}
   (let [card-before-update (api/write-check Card id)]
     ;; Do various permissions checks
-    (check-allowed-to-change-collection card-before-update collection_id)
+    (collection/check-allowed-to-change-collection card-before-update collection_id)
     (check-allowed-to-modify-query card-before-update dataset_query)
     (check-allowed-to-unarchive card-before-update archived)
     (check-allowed-to-change-embedding card-before-update enable_embedding embedding_params)

@@ -4,7 +4,6 @@ import { t } from "c-3po";
 import HeaderWithBack from "metabase/components/HeaderWithBack";
 
 import ExpandingSearchField from "../components/ExpandingSearchField";
-import EntityList from "./EntityList";
 
 import { inflect } from "metabase/lib/formatting";
 
@@ -45,12 +44,6 @@ class SearchResults extends Component {
               }
             />
           </div>
-          <EntityList
-            entityType="cards"
-            entityQuery={this.props.location.query}
-            showSearchWidget={false}
-            defaultEmptyState={t`No matching questions found`}
-          />
         </div>
       </div>
     );

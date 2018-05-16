@@ -29,11 +29,13 @@ export default class EntitiesListLoader extends React.Component {
 
   static defaultProps = {
     loadingAndErrorWrapper: true,
+    query: null,
+    reload: false,
   };
 
   componentWillMount() {
     // $FlowFixMe: provided by @connect
-    this.props.fetchList();
+    this.props.fetchList(this.props.query, this.props.reload);
   }
   renderChildren = () => {
     // $FlowFixMe: provided by @connect

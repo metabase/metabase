@@ -441,6 +441,7 @@
       (assoc (response/response output-channel)
         :content-type "applicaton/json"))))
 
+
 ;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
 
 (defn check-public-sharing-enabled

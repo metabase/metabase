@@ -35,7 +35,7 @@
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
-;;; # ------------------------------------------------------------ STYLES ------------------------------------------------------------
+;;; ----------------------------------------------------- Styles -----------------------------------------------------
 
 (def ^:private ^:const card-width 400)
 (def ^:private ^:const rows-limit 20)
@@ -121,7 +121,7 @@
   {:attachments (s/maybe {s/Str URL})
    :content [s/Any]})
 
-;;; # ------------------------------------------------------------ HELPER FNS ------------------------------------------------------------
+;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defn style
   "Compile one or more CSS style maps into a string.
@@ -198,7 +198,7 @@
   [cols]
   (count (filter show-in-table? cols)))
 
-;;; # ------------------------------------------------------------ FORMATTING ------------------------------------------------------------
+;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
 (defrecord NumericWrapper [num-str]
   hutil/ToString
@@ -229,7 +229,8 @@
                           " - "
                           (t/year timestamp-obj)))
 
-    (:year :hour-of-day :day-of-week :week-of-year :month-of-year); TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+    ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+    (:year :hour-of-day :day-of-week :week-of-year :month-of-year)
     (str timestamp)
 
     (reformat-timestamp timezone timestamp "MMM d, YYYY")))
@@ -270,7 +271,8 @@
       nil)))
 
 (defn- format-timestamp-pair
-  "Formats a pair of timestamps, using relative formatting for the first timestamps if possible and 'Previous :unit' for the second, otherwise absolute timestamps for both"
+  "Formats a pair of timestamps, using relative formatting for the first timestamps if possible and 'Previous :unit' for
+  the second, otherwise absolute timestamps for both"
   [timezone [a b] col]
   (if-let [a' (format-timestamp-relative timezone a col)]
     [a' (str "Previous " (-> col :unit name))]
@@ -288,7 +290,8 @@
   [img-bytes]
   (str "data:image/png;base64," (String. (Base64Coder/encode img-bytes))))
 
-;;; # ------------------------------------------------------------ RENDERING ------------------------------------------------------------
+
+;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"
@@ -395,9 +398,8 @@
                  (rest header+rows))]])
 
 (defn- create-remapping-lookup
-  "Creates a map with from column names to a column index. This is
-  used to figure out what a given column name or value should be
-  replaced with"
+  "Creates a map with from column names to a column index. This is used to figure out what a given column name or value
+  should be replaced with"
   [cols]
   (into {}
         (for [[col-idx {:keys [remapped_from]}] (map vector (range) cols)
@@ -405,8 +407,7 @@
           [remapped_from col-idx])))
 
 (defn- query-results->header-row
-  "Returns a row structure with header info from `COLS`. These values
-  are strings that are ready to be rendered as HTML"
+  "Returns a row structure with header info from `COLS`. These values are strings that are ready to be rendered as HTML"
   [remapping-lookup cols include-bar?]
   {:row (for [maybe-remapped-col cols
               :when (show-in-table? maybe-remapped-col)
@@ -440,8 +441,8 @@
             (format-cell timezone row-cell col))}))
 
 (defn- prep-for-html-rendering
-  "Convert the query results (`COLS` and `ROWS`) into a formatted seq
-  of rows (list of strings) that can be rendered as HTML"
+  "Convert the query results (`COLS` and `ROWS`) into a formatted seq of rows (list of strings) that can be rendered as
+  HTML"
   [timezone cols rows bar-column max-value column-limit]
   (let [remapping-lookup (create-remapping-lookup cols)
         limited-cols (take column-limit cols)]

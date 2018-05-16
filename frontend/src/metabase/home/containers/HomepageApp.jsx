@@ -9,7 +9,6 @@ import Modal from "metabase/components/Modal";
 
 import Activity from "../components/Activity";
 import RecentViews from "../components/RecentViews";
-import Smile from "../components/Smile";
 import NewUserOnboardingModal from "../components/NewUserOnboardingModal";
 import NextStep from "../components/NextStep";
 
@@ -68,16 +67,6 @@ export default class HomepageApp extends Component {
           </Modal>
         ) : null}
 
-        <div className="bg-white md-bg-brand text-brand md-text-white md-pl4">
-          <div className="HomepageGreeting">
-            <div className="Layout-mainColumn">
-              <header className="flex align-center px2 py3 md-pb4">
-                <Smile />
-                <div className="h1 text-bold md-ml2">{this.state.greeting}</div>
-              </header>
-            </div>
-          </div>
-        </div>
         <div className="flex">
           <div className="wrapper">
             <div className="Layout-mainColumn pl2">

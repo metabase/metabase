@@ -4,6 +4,8 @@ import Question from "metabase-lib/lib/Question";
 
 // provides functions for building urls to things we care about
 
+export const activity = "/activity";
+
 export const newQuestion = () => "/question/new";
 export function question(cardId, hash = "", query = "") {
   if (hash && typeof hash === "object") {
@@ -59,6 +61,10 @@ export function modelToUrl(model, modelId) {
 
 export function pulse(pulseId) {
   return `/pulse/#${pulseId}`;
+}
+
+export function pulseEdit(pulseId) {
+  return `/pulse/${pulseId}`;
 }
 
 export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
