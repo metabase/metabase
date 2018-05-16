@@ -5,12 +5,11 @@ import { t } from "c-3po";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 
-import styled from "styled-components";
-import { space, color, hover } from "styled-system";
-
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 
+import Card from "metabase/components/Card";
+import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
@@ -29,16 +28,6 @@ const mapStateToProps = (state, props) => ({
       state.entities.collections[props.params.collectionId]) ||
     {},
 });
-
-const Card = styled.div`
-  ${space}
-  ${color}
-  ${hover}
-  background-color: white;
-  border: 1px solid ${normal.grey1};
-  border-radius: 6px;
-  box-shadow: 0 1px 3px ${normal.grey1};
-`;
 
 const CollectionItem = ({ collection }) => (
   <Link to={`collection/${collection.id}`} hover={{ color: normal.blue }}>
@@ -81,24 +70,6 @@ const CollectionList = () => {
     </Box>
   );
 };
-
-const GridItem = ({ children, w, px, py }) => (
-  <Box w={w} px={px} py={py}>
-    {children}
-  </Box>
-);
-
-GridItem.defaultProps = {
-  w: 1 / 4,
-  px: 1,
-  py: 1,
-};
-
-const Grid = ({ children }) => (
-  <Flex wrap mx={-2}>
-    {children}
-  </Flex>
-);
 
 const ItemCard = Card.extend`
   height: 140px;

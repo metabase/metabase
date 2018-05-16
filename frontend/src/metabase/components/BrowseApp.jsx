@@ -1,36 +1,27 @@
 import React from "react";
-import { Box, Subhead } from "rebass";
-import { Link } from "react-router";
+import { Box, Flex, Subhead, Text } from "rebass";
+import { t } from "c-3po";
 
+import EntityListLoader from "metabase/entities/containers/EntityListLoader";
+//import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader"
+
+import { normal } from "metabase/lib/colors";
 import Question from "metabase-lib/lib/Question";
+
+import Card from "metabase/components/Card";
+import { Grid, GridItem } from "metabase/components/Grid";
+import Icon from "metabase/components/Icon";
+import Link from "metabase/components/Link";
 
 import { MetabaseApi } from "metabase/services";
 
-export class DatabaseListLoader extends React.Component {
-  state = {
-    databases: null,
-    loading: false,
-    error: null,
-  };
-
-  componentWillMount() {
-    this._loadDatabases();
-  }
-
-  async _loadDatabases() {
-    try {
-      this.setState({ loading: true });
-      const databases = await MetabaseApi.db_list();
-      this.setState({ databases, loading: false });
-    } catch (error) {
-      this.setState({ loading: false, error });
-    }
-  }
-  render() {
-    const { databases, loading, error } = this.state;
-    return this.props.children({ databases, loading, error });
-  }
-}
+const DatabaseListLoader = ({ children, ...props }) => (
+  <EntityListLoader
+    entityType="databases"
+    children={({ list, ...rest }) => children({ databases: list, ...rest })}
+    {...props}
+  />
+);
 
 export class TableListLoader extends React.Component {
   state = {
@@ -65,6 +56,22 @@ const BrowseHeader = ({ children }) => (
   </Box>
 );
 
+/*
+const TableListLoader = ({ children,  dbId }) =>
+  <EntityObjectLoader
+    entityType="databases"
+    entityId={dbId}
+    query={{ include_tables: true }}
+    children={({ object }) => {
+      console.log(object)
+      return children({
+        tables: object.tables,
+        db_info: object
+      })
+    }}
+  />
+  */
+
 export class TableBrowser extends React.Component {
   render() {
     return (
@@ -81,7 +88,13 @@ export class TableBrowser extends React.Component {
 
             return (
               <Box>
-                <BrowseHeader>{db_info.name}</BrowseHeader>
+                <Flex align="center">
+                  <Link to="browse">
+                    <BrowseHeader>{t`Your data`}</BrowseHeader>
+                  </Link>
+                  <Icon name="chevronright" mx={2} />
+                  <BrowseHeader>{db_info.name}</BrowseHeader>
+                </Flex>
                 {tables.map(table => {
                   const link = Question.create({
                     databaseId: db_info.id,
@@ -89,9 +102,17 @@ export class TableBrowser extends React.Component {
                   }).getUrl();
 
                   return (
-                    <Box>
-                      <Link to={link}>{table.display_name || table.name}</Link>
-                    </Box>
+                    <Link to={link} mb={1} hover={{ color: normal.blue }}>
+                      <Card p={2} mb={1}>
+                        <Flex align="center">
+                          <Icon mr={1} name="table" />
+                          <Box>
+                            {table.display_name || table.name}
+                            <Text>{table.description}</Text>
+                          </Box>
+                        </Flex>
+                      </Card>
+                    </Link>
                   );
                 })}
               </Box>
@@ -106,9 +127,7 @@ export class TableBrowser extends React.Component {
 export class BrowseApp extends React.Component {
   render() {
     return (
-      <Box>
-        <Box className="wrapper lg-wrapper--trim">{this.props.children}</Box>
-      </Box>
+      <Box className="wrapper lg-wrapper--trim">{this.props.children}</Box>
     );
   }
 }
@@ -120,22 +139,19 @@ export class DatabaseBrowser extends React.Component {
         <BrowseHeader>Your data</BrowseHeader>
         <DatabaseListLoader>
           {({ databases, loading, error }) => {
-            if (loading) {
-              return <Box>Loading...</Box>;
-            }
-
-            if (error) {
-              alert(error);
-            }
-
             return (
-              <Box>
+              <Grid>
                 {databases.map(database => (
-                  <Box>
-                    <Link to={`browse/${database.id}`}>{database.name}</Link>
-                  </Box>
+                  <GridItem>
+                    <Link to={`browse/${database.id}`}>
+                      <Card p={3} hover={{ color: normal.blue }}>
+                        <Icon name="database" color={normal.grey2} mb={3} />
+                        <Subhead>{database.name}</Subhead>
+                      </Card>
+                    </Link>
+                  </GridItem>
                 ))}
-              </Box>
+              </Grid>
             );
           }}
         </DatabaseListLoader>
