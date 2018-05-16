@@ -1,7 +1,7 @@
 (ns metabase.plugins
   "The Metabase 'plugins' system automatically adds JARs in the `./plugins/` directory (parallel to `metabase.jar`) to
-  the classpath at runtime. This works great on Java 7 and 8, but never really worked properly on Java 9; as of 0.29.4
-  we're planning on telling people to just add extra external dependencies with `-cp` when using Java 9."
+  the classpath at runtime. This works great on Java 8, but never really worked properly on Java 9; as of 0.29.4 we're
+  planning on telling people to just add extra external dependencies with `-cp` when using Java 9."
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [dynapath.util :as dynapath]
@@ -11,7 +11,7 @@
             [puppetlabs.i18n.core :refer [trs]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   Java 7 + 8                                                   |
+;;; |                                                     Java 8                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- plugins-dir
@@ -48,7 +48,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                     Java 9                                                     |
+;;; |                                                    Java 9+                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- show-java-9-message
@@ -71,8 +71,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn load-plugins!
-  "Dynamically add JARs if we're running on Java 7 or 8. For Java 9, where this doesn't work, just display a nice
-  message instead."
+  "Dynamically add JARs if we're running on Java 8. For Java 9+, where this doesn't work, just display a nice message
+  instead."
   []
   (if (u/is-java-9-or-higher?)
     (show-java-9-message)
