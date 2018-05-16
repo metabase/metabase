@@ -173,33 +173,6 @@
      (sut/only-step-keys (sut/sync-database! "sync-fks" (Database (data/id))))
      (get-special-type-and-fk-exists?)]))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         mystery narrow-to-min-max test                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; TODO - hey, what is this testing? If you wrote this test, please explain what's going on here
-(defn- narrow-to-min-max [row]
-  (-> row
-      (get-in [:type :type/Number])
-      (select-keys [:min :max])
-      (update :min #(u/round-to-decimals 4 %))
-      (update :max #(u/round-to-decimals 4 %))))
-
-(expect
-  [{:no-data-fingerprints 0,  :failed-fingerprints    0,
-    :updated-fingerprints 16, :fingerprints-attempted 16}
-   {:min -165.374 :max -73.9533}
-   {:min 10.0646 :max 40.7794}]
-  (tt/with-temp* [Database [database {:details (:details (Database (data/id))), :engine :h2}]
-                  Table    [table    {:db_id (u/get-id database), :name "VENUES"}]]
-    (cons
-     (sut/only-step-keys (sut/sync-database! "fingerprint-fields" database))
-     (map narrow-to-min-max
-          [(db/select-one-field :fingerprint Field, :id (data/id :venues :longitude))
-           (db/select-one-field :fingerprint Field, :id (data/id :venues :latitude))]))))
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     tests related to sync's Field hashes                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
