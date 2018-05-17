@@ -37,7 +37,7 @@ export function momentifyTimestamps(
 ) {
   object = { ...object };
   for (let timestamp of keys) {
-    if (timestamp in object) {
+    if (object[timestamp]) {
       object[timestamp] = moment(object[timestamp]);
     }
   }

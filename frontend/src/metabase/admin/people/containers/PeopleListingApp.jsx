@@ -516,12 +516,14 @@ export default class PeopleListingApp extends Component {
                       <td>{user.email}</td>
                       {showDeactivated
                         ? [
-                            <td key="deactivated_at">{t`Deactivated`}</td>,
+                            <td key="deactivated_at">
+                              {user.updated_at.fromNow()}
+                            </td>,
                             <td key="actions">
                               <Tooltip tooltip={t`Reactivate this account`}>
                                 <Icon
                                   name="refresh"
-                                  className="text-grey-4 text-brand-hover cursor-pointer"
+                                  className="text-grey-1 text-brand-hover cursor-pointer"
                                   size={20}
                                   onClick={() =>
                                     this.props.showModal({
