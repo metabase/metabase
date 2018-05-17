@@ -86,21 +86,21 @@
                   :exclusions [org.clojure/clojurescript]]
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
-                 [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
+                 [com.clearspring.analytics/stream "2.9.6"            ; Various sketching algorithms
                   :exclusions [org.slf4j/slf4j-api
                                it.unimi.dsi/fastutil]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
-                 [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
+                 [org.liquibase/liquibase-core "3.6.1"]               ; migration management (Java lib)
                  [org.postgresql/postgresql "42.1.4.jre7"]            ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
-                 [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
+                 [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath. Don't upgrade -- remove once we drop Java 8 support
                  [org.xerial/sqlite-jdbc "3.21.0.1"]                  ; SQLite driver
-                 [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
-                 [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
+                 [org.yaml/snakeyaml "1.21"]                          ; YAML parser (required by liquibase)
+                 [prismatic/schema "1.1.9"]                           ; Data schema declaration and validation library
                  [puppetlabs/i18n "0.8.0"]                            ; Internationalization library
                  [redux "0.1.4"]                                      ; Utility functions for building and composing transducers
                  [ring/ring-core "1.6.0"]
-                 [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+                 [ring/ring-jetty-adapter "1.6.3"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.1.4"                                      ; Model layer, hydration, and DB utilities
@@ -139,7 +139,7 @@
                       :exclude [#"test"
                                 #"^metabase\.http-client$"]}
   :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]              ; unit tests
-                                  [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
+                                  [ring/ring-mock "0.3.2"]]           ; Library to create mock Ring requests for unit tests
                    :plugins [[docstring-checker "1.0.2"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
                              [jonase/eastwood "0.2.3"
                               :exclusions [org.clojure/clojure]]      ; Linting
@@ -169,7 +169,7 @@
              ;; build the uberjar with `lein uberjar`
              :uberjar {:aot :all}
              ;; generate sample dataset with `lein generate-sample-dataset`
-             :generate-sample-dataset {:dependencies [[faker "0.2.2"]]                   ; Fake data generator -- port of Perl/Ruby library
+             :generate-sample-dataset {:dependencies [[faker "0.3.2"]]                   ; Fake data generator -- port of Perl/Ruby library
                                        :source-paths ["sample_dataset"]
                                        :main ^:skip-aot metabase.sample-dataset.generate}
              ;; Profile Metabase start time with `lein profile`
