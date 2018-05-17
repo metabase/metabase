@@ -109,56 +109,66 @@ export const createUser = createThunkAction(
   },
 );
 
-export const deactivateUser = createAction(DEACTIVATE_USER, async user => {
-  await UserApi.delete({
-    userId: user.id,
-  });
+export const deactivateUser = createThunkAction(
+  DEACTIVATE_USER,
+  user => async () => {
+    await UserApi.delete({
+      userId: user.id,
+    });
 
-  MetabaseAnalytics.trackEvent("People Admin", "User Removed");
+    MetabaseAnalytics.trackEvent("People Admin", "User Removed");
 
-  // NOTE: DELETE doesn't return the object, so just fake it:
-  return { ...user, is_active: false };
-});
+    // NOTE: DELETE doesn't return the object, so just fake it:
+    return { ...user, is_active: false };
+  },
+);
 
-export const reactivateUser = createAction(REACTIVATE_USER, async user => {
-  const newUser = await UserApi.reactivate({
-    userId: user.id,
-  });
+export const reactivateUser = createThunkAction(
+  REACTIVATE_USER,
+  user => async () => {
+    const newUser = await UserApi.reactivate({
+      userId: user.id,
+    });
 
-  MetabaseAnalytics.trackEvent("People Admin", "User Reactivated");
+    MetabaseAnalytics.trackEvent("People Admin", "User Reactivated");
 
-  return newUser;
-});
+    return newUser;
+  },
+);
 
-export const fetchUsers = createAction(FETCH_USERS, async () => {
+export const fetchUsers = createThunkAction(FETCH_USERS, () => async () => {
   let users = await UserApi.list({ include_deactivated: true });
   return normalize(users, [user]);
 });
 
-export const resendInvite = createAction(RESEND_INVITE, async user => {
-  MetabaseAnalytics.trackEvent("People Admin", "Resent Invite");
-  return await UserApi.send_invite({ id: user.id });
-});
+export const resendInvite = createThunkAction(
+  RESEND_INVITE,
+  user => async () => {
+    MetabaseAnalytics.trackEvent("People Admin", "Resent Invite");
+    return await UserApi.send_invite({ id: user.id });
+  },
+);
 
-export const resetPasswordManually = createAction(
+export const resetPasswordManually = createThunkAction(
   RESET_PASSWORD_MANUAL,
-  async (user, password) => {
+  (user, password) => async () => {
     MetabaseAnalytics.trackEvent("People Admin", "Manual Password Reset");
     return await UserApi.update_password({ id: user.id, password: password });
   },
 );
 
-export const resetPasswordViaEmail = createAction(
+export const resetPasswordViaEmail = createThunkAction(
   RESET_PASSWORD_EMAIL,
-  async user => {
+  user => async () => {
     MetabaseAnalytics.trackEvent("People Admin", "Trigger User Password Reset");
     return await SessionApi.forgot_password({ email: user.email });
   },
 );
 
-export const updateUser = createAction(UPDATE_USER, async user => {
+export const updateUser = createThunkAction(UPDATE_USER, user => async () => {
   MetabaseAnalytics.trackEvent("People Admin", "Update Updated");
-  return await UserApi.update(user);
+  const newUser = await UserApi.update(user);
+  return newUser;
 });
 
 const modal = handleActions(
