@@ -11,11 +11,11 @@
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
             "profile" ["with-profile" "+profile" "run" "profile"]
             "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]}
-  :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/core.async "0.3.442"]
+  :dependencies [[org.clojure/clojure "1.9.0"]
+                 [org.clojure/core.async "0.4.474"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
-                 [org.clojure/core.memoize "0.5.9"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
-                 [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
+                 [org.clojure/core.memoize "0.7.1"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
+                 [org.clojure/data.csv "0.1.4"]                       ; CSV parsing / generation
                  [org.clojure/java.classpath "0.2.3"]                 ; examine the Java classpath from Clojure programs
                  [org.clojure/java.jdbc "0.7.5"]                      ; basic JDBC access from Clojure
                  [org.clojure/math.combinatorics "0.1.4"]             ; combinatorics functions
@@ -29,14 +29,14 @@
                  [aleph "0.4.5-alpha2"]                               ; Async HTTP library; WebSockets
                  [bigml/histogram "4.1.3"]                            ; Streaming one-pass Histogram data structure
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
-                 [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
-                 [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
-                 [clj-http "3.4.1"                                    ; HTTP client
+                 [buddy/buddy-sign "2.2.0"]                           ; JSON Web Tokens; High-Level message signing library
+                 [cheshire "5.8.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
+                 [clj-http "3.9.0"                                    ; HTTP client
                   :exclusions [commons-codec
                                commons-io
                                slingshot]]
-                 [clj-time "0.13.0"]                                  ; library for dealing with date/time
-                 [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
+                 [clj-time "0.14.4"]                                  ; library for dealing with date/time
+                 [clojurewerkz/quartzite "2.1.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.amazon.redshift/redshift-jdbc41-no-awssdk       ; Redshift JDBC driver without embedded Amazon SDK
                   "1.2.8.1005"]
@@ -46,7 +46,7 @@
                                net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
                  [com.draines/postal "2.0.2"]                         ; SMTP library
-                 [com.github.brandtg/stl-java "0.1.1"]                ; STL decomposition
+                 [com.github.brandtg/stl-java "0.1.2"]                ; STL decomposition
                  [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
                   "v3-rev142-1.23.0"]
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
@@ -57,13 +57,14 @@
                  [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
                  [com.microsoft.sqlserver/mssql-jdbc "6.2.1.jre7"]    ; SQLServer JDBC driver. TODO - Switch this to `.jre8` once we officially switch to Java 8
                  [com.novemberain/monger "3.1.0"]                     ; MongoDB Driver
-                 [com.taoensso/nippy "2.13.0"]                        ; Fast serialization (i.e., GZIP) library for Clojure
+                 [com.taoensso/nippy "2.14.0"]                        ; Fast serialization (i.e., GZIP) library for Clojure
                  [compojure "1.5.2"]                                  ; HTTP Routing library built on Ring
                  [crypto-random "1.2.0"]                              ; library for generating cryptographically secure random bytes and strings
                  [dk.ative/docjure "1.11.0"]                          ; Excel export
                  [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
-                 [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
+                 [honeysql "0.8.2"                                    ; Transform Clojure data structures to SQL
+                  :exclusions [org.clojure/clojurescript]]
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
                  [io.forward/yaml "1.0.6"                             ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
                   :exclusions [org.clojure/clojure
@@ -166,9 +167,7 @@
                                        "-Dmb.api.key=test-api-key"
                                        "-Duser.language=en"]}
              ;; build the uberjar with `lein uberjar`
-             :uberjar {:aot :all
-                       :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]" ; strip out metadata for faster load / smaller uberjar size
-                                  "-Dmanifold.disable-jvm8-primitives=true"]}               ; disable Manifold Java 8 primitives (see https://github.com/ztellman/manifold#java-8-extensions)
+             :uberjar {:aot :all}
              ;; generate sample dataset with `lein generate-sample-dataset`
              :generate-sample-dataset {:dependencies [[faker "0.2.2"]]                   ; Fake data generator -- port of Perl/Ruby library
                                        :source-paths ["sample_dataset"]
