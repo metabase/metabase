@@ -19,8 +19,6 @@ import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 
 import EntityMenu from "metabase/components/EntityMenu";
 
-import LandingNav from "metabase/components/LandingNav";
-
 // TODO - this should be a selector
 const mapStateToProps = (state, props) => ({
   currentCollection:
@@ -257,7 +255,6 @@ class CollectionLanding extends React.Component {
           </Flex>
         </Box>
         <Box className="relative">
-          <LandingNav collectionId={collectionId} />
           <Box className="wrapper lg-wrapper--trim">
             <DefaultLanding collectionId={collectionId} />
             {
