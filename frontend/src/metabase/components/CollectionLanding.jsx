@@ -1,15 +1,14 @@
 import React from "react";
-import { Box, Flex } from "grid-styled";
-import { Subhead, Truncate } from "rebass";
+import { Box, Flex, Subhead, Truncate } from "rebass";
 import { t } from "c-3po";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
+import { withBackground } from "metabase/hoc/Background";
 
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
-import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
@@ -27,9 +26,12 @@ const mapStateToProps = (state, props) => ({
     {},
 });
 
+const CollectionCard = Card.extend`
+  border-color: #dce1e4;
+`;
 const CollectionItem = ({ collection }) => (
   <Link to={`collection/${collection.id}`} hover={{ color: normal.blue }}>
-    <Card hover={{ boxShadow: `0 1px 4px ${normal.grey1}` }}>
+    <CollectionCard hover={{ boxShadow: `0 1px 4px ${normal.grey1}` }}>
       <Flex
         align="center"
         my={1}
@@ -37,10 +39,10 @@ const CollectionItem = ({ collection }) => (
         py={1}
         key={`collection-${collection.id}`}
       >
-        <Icon name="all" mx={1} />
+        <Icon name="all" mx={1} color="#93B3C9" />
         <Truncate>{collection.name}</Truncate>
       </Flex>
-    </Card>
+    </CollectionCard>
   </Link>
 );
 
@@ -55,13 +57,13 @@ const CollectionList = () => {
       >
         {({ collections }) => {
           return (
-            <Grid>
+            <Box>
               {collections.map(collection => (
-                <GridItem key={collection.id}>
+                <Box key={collection.id} mb={1}>
                   <CollectionItem collection={collection} />
-                </GridItem>
+                </Box>
               ))}
-            </Grid>
+            </Box>
           );
         }}
       </CollectionListLoader>
@@ -69,51 +71,55 @@ const CollectionList = () => {
   );
 };
 
-const ItemCard = Card.extend`
-  height: 140px;
+const CollectionEntity = Flex.extend`
+  border-bottom: 1px solid #f8f9fa;
+  /* TODO - figure out how to use the prop instead of this? */
+  align-items: center;
+  &:hover {
+    color: ${normal.blue};
+  }
 `;
 
-const Item = ({ children }) => {
+const IconWrapper = Flex.extend`
+  background: #f4f5f6;
+  border-radius: 6px;
+`;
+
+const Item = ({ name, iconName, iconColor }) => {
   return (
-    <ItemCard hover={{ color: normal.blue }} p={2}>
-      <Flex direction="column" style={{ height: "100%" }}>
-        {children}
-      </Flex>
-    </ItemCard>
+    <CollectionEntity py={2} px={2}>
+      <IconWrapper p={1} mr={1} align="center" justify="center">
+        <Icon name={iconName} color={iconColor} />
+      </IconWrapper>
+      <h3>
+        <Truncate>{name}</Truncate>
+      </h3>
+    </CollectionEntity>
   );
 };
 
 @withRouter
 class DefaultLanding extends React.Component {
-  _renderItem(item) {
+  _getItemProps(item) {
     switch (item.type) {
       case "card":
-        return (
-          <Link to={Urls.question(item.id)}>
-            <Item>
-              <Icon name="beaker" />
-              <Truncate mt="auto">{item.name}</Truncate>
-            </Item>
-          </Link>
-        );
+        return {
+          url: Urls.question(item.id),
+          iconName: "beaker",
+          iconColor: "#93B3C9",
+        };
       case "dashboard":
-        return (
-          <Link to={Urls.dashboard(item.id)}>
-            <Item>
-              <Icon name="dashboard" color={normal.blue} />
-              <Truncate mt="auto">{item.name}</Truncate>
-            </Item>
-          </Link>
-        );
+        return {
+          url: Urls.dashboard(item.id),
+          iconName: "dashboard",
+          iconColor: normal.blue,
+        };
       case "pulse":
-        return (
-          <Link to={Urls.pulseEdit(item.id)}>
-            <Item>
-              <Icon name="pulse" color={normal.yellow} />
-              <Truncate mt="auto">{item.name}</Truncate>
-            </Item>
-          </Link>
-        );
+        return {
+          url: Urls.pulseEdit(item.id),
+          iconName: "pulse",
+          iconColor: normal.yellow,
+        };
     }
   }
   render() {
@@ -123,57 +129,78 @@ class DefaultLanding extends React.Component {
     const showCollectionList = !collectionId && !location.query.show;
 
     return (
-      <Box w="100%">
-        {showCollectionList && <CollectionList />}
-        <CollectionItemsLoader collectionId={collectionId || "root"}>
-          {({ allItems, pulses, cards, dashboards, empty }) => {
-            let items = allItems;
+      <Flex>
+        <Box w={2 / 3} mr={2}>
+          <Card>
+            <CollectionItemsLoader collectionId={collectionId || "root"}>
+              {({ allItems, pulses, cards, dashboards, empty }) => {
+                let items = allItems;
 
-            if (!items.length) {
-              return <CollectionEmptyState />;
-            }
+                if (!items.length) {
+                  return <CollectionEmptyState />;
+                }
 
-            // Hack in filtering
-            if (location.query.show) {
-              switch (location.query.show) {
-                case "dashboards":
-                  items = dashboards.map(d => ({ ...d, type: "dashboard" }));
-                  break;
-                case "pulses":
-                  items = pulses.map(p => ({ ...p, type: "pulse" }));
-                  break;
-                case "questions":
-                  items = cards.map(c => ({ ...c, type: "card" }));
-                  break;
-                default:
-                  items = allItems;
-                  break;
-              }
-            }
+                // Hack in filtering
+                if (location.query.show) {
+                  switch (location.query.show) {
+                    case "dashboards":
+                      items = dashboards.map(d => ({
+                        ...d,
+                        type: "dashboard",
+                      }));
+                      break;
+                    case "pulses":
+                      items = pulses.map(p => ({ ...p, type: "pulse" }));
+                      break;
+                    case "questions":
+                      items = cards.map(c => ({ ...c, type: "card" }));
+                      break;
+                    default:
+                      items = allItems;
+                      break;
+                  }
+                }
 
-            return (
-              <Grid>
-                {items.map(item => (
-                  <GridItem>{this._renderItem(item)}</GridItem>
-                ))}
-              </Grid>
-            );
-          }}
-        </CollectionItemsLoader>
-      </Box>
+                return (
+                  <Box>
+                    {items.map(item => {
+                      const { url, iconName, iconColor } = this._getItemProps(
+                        item,
+                      );
+                      return (
+                        <Box>
+                          <Link to={url}>
+                            <Item
+                              name={item.name}
+                              iconName={iconName}
+                              iconColor={iconColor}
+                            />
+                          </Link>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                );
+              }}
+            </CollectionItemsLoader>
+          </Card>
+        </Box>
+        <Box w={1 / 3}>{showCollectionList && <CollectionList />}</Box>
+      </Flex>
     );
   }
 }
 
 @connect(mapStateToProps)
+@withBackground("bg-slate-extra-light")
 class CollectionLanding extends React.Component {
   render() {
     const { params, currentCollection } = this.props;
     const collectionId = params.collectionId;
 
     return (
-      <Box>
-        <Box className="wrapper lg-wrapper--trim">
+      <Box mx={4}>
+        <Box>
           <Flex py={3} align="center">
             <Subhead>
               <Flex align="center">
@@ -204,6 +231,28 @@ class CollectionLanding extends React.Component {
             </Subhead>
 
             <Flex ml="auto">
+              <Box mx={1}>
+                <EntityMenu
+                  items={[
+                    {
+                      title: t`New dashboard`,
+                      icon: "dashboard",
+                      link: `/questions/archive/`,
+                    },
+                    {
+                      title: t`New pulse`,
+                      icon: "pulse",
+                      link: `/dashboards/archive`,
+                    },
+                    {
+                      title: t`New collection`,
+                      icon: "all",
+                      link: `/dashboards/archive`,
+                    },
+                  ]}
+                  triggerIcon="add"
+                />
+              </Box>
               <Box mx={1}>
                 <EntityMenu
                   items={[
@@ -254,14 +303,12 @@ class CollectionLanding extends React.Component {
             </Flex>
           </Flex>
         </Box>
-        <Box className="relative">
-          <Box className="wrapper lg-wrapper--trim">
-            <DefaultLanding collectionId={collectionId} />
-            {
-              // Need to have this here so the child modals will show up
-              this.props.children
-            }
-          </Box>
+        <Box>
+          <DefaultLanding collectionId={collectionId} />
+          {
+            // Need to have this here so the child modals will show up
+            this.props.children
+          }
         </Box>
       </Box>
     );

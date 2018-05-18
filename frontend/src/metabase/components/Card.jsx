@@ -7,7 +7,7 @@ const Card = styled.div`
   ${color}
   ${hover}
   background-color: white;
-  border: 1px solid ${normal.grey1};
+  border: 1px solid #F5F6F7;
   border-radius: 6px;
   box-shadow: 0 1px 3px ${normal.grey1};
 `;
