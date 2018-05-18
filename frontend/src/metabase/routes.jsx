@@ -241,7 +241,8 @@ export const getRoutes = store => (
             />
           </Route>
         </Route>
-        <Route path="/question/:cardId" component={EntityPage} />
+        <Route path="/question/:cardId" component={QueryBuilder} />
+        <Route path="/question/:cardId/entity" component={EntityPage} />
 
         <Route path="/ready" component={PostSetupApp} />
 
