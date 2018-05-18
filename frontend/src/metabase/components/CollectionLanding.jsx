@@ -28,10 +28,14 @@ const mapStateToProps = (state, props) => ({
 
 const CollectionCard = Card.extend`
   border-color: #dce1e4;
+  &:hover > Icon {
+    background-color: ${normal.blue};
+  }
 `;
+
 const CollectionItem = ({ collection }) => (
   <Link to={`collection/${collection.id}`} hover={{ color: normal.blue }}>
-    <CollectionCard hover={{ boxShadow: `0 1px 4px ${normal.grey1}` }}>
+    <CollectionCard hoverable>
       <Flex
         align="center"
         my={1}
