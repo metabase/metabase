@@ -24,9 +24,7 @@ else
         login
         source /root/kms/tls-config.sh
 	    source /root/kms/truststore-config.sh
-	    if [ "$MB_DB_SSL" = "true" ]; then
-            source /root/kms/psql-tls.sh
-        fi
+        source /root/kms/psql-connection.sh
 	    cp /root/kms/secrets/* /root/.crossdata/
         if [ $? != 0 ]; then
             log "ERROR" "login using dynamic authentication failed!"
@@ -36,9 +34,7 @@ else
         log "INFO" "login using VAULT TOKEN"
         source /root/kms/tls-config.sh
 	    source /root/kms/truststore-config.sh
-	    if [ "$MB_DB_SSL" = "true" ]; then
-            source /root/kms/psql-tls.sh
-        fi
+        source /root/kms/psql-connection.sh
 	    cp /root/kms/secrets/* /root/.crossdata/
         if [ $? != 0 ]; then
             log "ERROR" "VAULT TOKEN"
