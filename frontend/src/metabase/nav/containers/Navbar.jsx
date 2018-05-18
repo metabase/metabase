@@ -3,10 +3,11 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "c-3po";
 import { Box, Flex } from "rebass";
+import styled from "styled-components";
+import { space, width } from "styled-system";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { Link } from "react-router";
 
 import { createDashboard } from "metabase/dashboards/dashboards";
 
@@ -14,6 +15,7 @@ import { normal, saturated } from "metabase/lib/colors";
 
 import Button from "metabase/components/Button.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -52,31 +54,40 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
-/*
-class SearchBar extends React.Component {
-  state = {
-    active: false,
-  };
+const SearchWrapper = Flex.extend`
+  ${width} background-color: #60A6E4;
+  border-radius: 6px;
+  align-items: center;
+`;
 
+const SearchInput = styled.input`
+  ${space} ${width} background-color: transparent;
+  border: none;
+  color: white;
+  font-size: 1em;
+  &:focus {
+    outline: none;
+  }
+  &:placeholder {
+    color: white;
+  }
+`;
+
+class SearchBar extends React.Component {
   render() {
     return (
-      <Flex align="center">
-        <Icon name="search" />
-        <input
-          type="text"
+      <SearchWrapper w={2 / 3}>
+        <Icon name="search" ml={2} />
+        <SearchInput
+          w={1}
+          p={2}
           placeholder="Search for anything..."
-          className="input bg-transparent borderless"
           onClick={() => this.setState({ active: true })}
-          style={{
-            width: this.state.active ? 600 : 320,
-            maxWidth: 600,
-          }}
         />
-      </Flex>
+      </SearchWrapper>
     );
   }
 }
-*/
 
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
@@ -184,14 +195,11 @@ export default class Navbar extends Component {
             to="/"
             data-metabase-event={"Navbar;Logo"}
             className="LogoNavItem NavItem cursor-pointer flex align-center transition-background justify-center"
-            activeClassName="NavItem--selected"
           >
             <LogoIcon dark />
           </Link>
         </Box>
-        <Box my={1} p={1} className="wrapper lg-wrapper--trim">
-          {/* <SearchBar /> */}
-        </Box>
+        <SearchBar />
         <Flex ml="auto" align="center">
           <PopoverWithTrigger
             ref={e => (this._newPopover = e)}
