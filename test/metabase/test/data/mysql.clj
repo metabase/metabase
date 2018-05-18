@@ -1,10 +1,10 @@
 (ns metabase.test.data.mysql
   "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
-  (:require [metabase.test.data
+  (:require [metabase.driver.mysql :as mysql]
+            [metabase.test.data
              [generic-sql :as generic]
              [interface :as i]]
-            [metabase.util :as u])
-  (:import metabase.driver.mysql.MySQLDriver))
+            [metabase.util :as u]))
 
 (def ^:private ^:const field-base-type->sql-type
   {:type/BigInteger "BIGINT"
@@ -34,7 +34,7 @@
 (defn- quote-name [nm]
   (str \` nm \`))
 
-(u/strict-extend MySQLDriver
+(u/strict-extend (class (mysql/->MySQLDriver))
   generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:database->spec            (comp add-connection-params (:database->spec generic/DefaultsMixin))

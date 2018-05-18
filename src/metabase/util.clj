@@ -465,8 +465,7 @@
      (key-by :id [{:id 1, :name :a} {:id 2, :name :b}]) -> {1 {:id 1, :name :a}, 2 {:id 2, :name :b}}"
   {:style/indent 1}
   [f coll]
-  (into {} (for [item coll]
-             {(f item) item})))
+  (into {} (map (juxt f identity)) coll))
 
 (defn keyword->qualified-name
   "Return keyword K as a string, including its namespace, if any (unlike `name`).
