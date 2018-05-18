@@ -51,6 +51,7 @@
 
 ;; TODO - I'm 90% sure we could just reüse the "MovieDB" instead of having this subset of it used here
 (defrecord SyncTestDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "SyncTestDriver"))
 

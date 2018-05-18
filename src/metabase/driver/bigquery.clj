@@ -39,6 +39,7 @@
            [metabase.query_processor.interface AggregationWithField AggregationWithoutField DateTimeValue Expression TimeValue Value]))
 
 (defrecord BigQueryDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "BigQuery"))
 

@@ -2,11 +2,10 @@
   (:require [cheshire.core :as json]
             [clojure.tools.logging :as log]
             [metabase.api.common :as api]
-            [metabase.public-settings :as public-settings]
             [metabase.models
              [computation-job :refer [ComputationJob]]
              [computation-job-result :refer [ComputationJobResult]]]
-            [metabase.util :as u]
+            [metabase.public-settings :as public-settings]
             [metabase.util.date :as du]
             [toucan.db :as db]))
 
