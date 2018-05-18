@@ -162,7 +162,7 @@ export default class TableSimple extends Component {
                     {rows[rowIndex].map((cell, columnIndex) => {
                       if (
                         columnIndex !== 0 ||
-                        !groupingManager.shouldHide(rowIndex, start)
+                        !groupingManager.isVisible(rowIndex, columnIndex, {start, stop:end})
                       ) {
                         const clicked = getTableCellClickedObject(
                           data,
@@ -173,11 +173,11 @@ export default class TableSimple extends Component {
                         const isClickable =
                           onVisualizationClick &&
                           visualizationIsClickable(clicked);
-                        const rowSpan =
-                          columnIndex === 0 &&
-                          !groupingManager.shouldHide(rowIndex, start)
-                            ? groupingManager.getRowSpan(rowIndex, start)
-                            : undefined;
+                        const rowSpan = undefined;
+                          // columnIndex === 0 &&
+                          // !groupingManager.isVisible(rowIndex, columnIndex, {start, stop:end})
+                          //   ? undefined //groupingManager.getRowSpan(rowIndex, start)
+                          //   : undefined;
                         const res = (
                           <td
                             key={columnIndex}

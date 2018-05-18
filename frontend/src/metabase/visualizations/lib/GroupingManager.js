@@ -1,83 +1,62 @@
 import {Row} from "metabase/meta/types/Dataset";
 import _ from 'lodash';
 
+type ColumnAcc = {
+  prevRow : Row,
+  firstInGroupIndexes : Set
+}
 
 export class GroupingManager {
-  indexesOfGroupedColumns : Number[];
-  rowsOrdered: Row[];
   defaultRowHeight: Number;
+  columnIndexToFirstInGroupIndexes: {};
+  rowsOrdered: Row[];
 
 
-  constructor(defaultRowHeight: Number, rows: Row[]) {
-    const i = 0;
+  constructor( defaultRowHeight: Number, columnsIndexesForGrouping: Number[], rows: Row[]) {
     this.defaultRowHeight = defaultRowHeight;
-    this.rowsOrdered = _.sortBy(rows, funGen(i));
-    this.indexesOfGroupedColumns = [i];
+    this.rowsOrdered = _.sortBy(rows, columnsIndexesForGrouping.map(funGen));
+    const foo = getFirstInGroupMap(this.rowsOrdered);
+    const res = columnsIndexesForGrouping.map(foo).map(p => p.firstInGroupIndexes);
+    const res2 = res.reduce(({resArr, prevElem}, elem) =>{const r = new Set([...prevElem, ...elem]); resArr.push(r); return {resArr, prevElem : r} },{ resArr: [], prevElem : new Set()}).resArr;
+    const res3 = res2.map((v, i) => [columnsIndexesForGrouping[i], v]);
+    this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
+
   }
 
 
-  shouldHide = (rowIndex: Number, visibleRowIndexes: Range): Boolean => {
-    const firstVisibleRowIndex = visibleRowIndexes.start;
 
-    if ((firstVisibleRowIndex <= rowIndex && isFirstInGroup(this.rowsOrdered)(rowIndex)))//, firstVisibleRowIndex))
-      // || firstVisibleRowIndex < rowIndex && isLastInGroup(this.rowsOrdered)(rowIndex))// this.isLastInFirstVisibleGroup(rowIndex, firstVisibleRowIndex))
+  isVisible = (rowIndex: Number, columnIndex: Number, visibleRowIndices: Range): Boolean => {
+
+    if(rowIndex < visibleRowIndices.start  || visibleRowIndices.stop < rowIndex)
       return false;
 
-    // console.log(rowIndex);
-    // console.log(visibleRowIndexes);
+    if(!(columnIndex in this.columnIndexToFirstInGroupIndexes))
+      return true;
 
-    return true;
+    if(rowIndex === visibleRowIndices.start)
+      return true;
+
+    return rowIndex in this.columnIndexToFirstInGroupIndexes[columnIndex];//
   };
 
 
+  mapStyle = (rowIndex: Number, columnIndex: Number, visibleRowIndices: Range, cellStyle: {}): {} => {
 
-  //
-  //
-  // isLastInFirstVisibleGroup = (rowIndex: Number, firstVisibleRowIndex: Number) => {
-  //   if (!(rowIndex in this.groupStopIndexToStartIndex))
-  //     return false;
-  //
-  //   const firstRowInGroup = this.groupStopIndexToStartIndex[rowIndex];
-  //   return firstRowInGroup < firstVisibleRowIndex;
-  // };
-
-  mapStyle = (rowIndex: Number, visibleRowIndexes: Range, cellStyle: {}): {} => {
+    if(columnIndex in this.columnIndexToFirstInGroupIndexes)
+    {
     if ("height" in cellStyle) {
-      // console.log(this.groupStartIndexToGroupSize);
-      if (isFirstInGroup(rowIndex)) {
-        // console.log('firstInGroup');
-        // console.log(rowIndex);
-        // console.log(visibleRowIndexes);
-        // console.log(cellStyle.height);
-        const rowSpan = getRowSpan(this.rowsOrdered)(rowIndex);
-        // console.log(rowSpan);
-        // console.log("h " + cellStyle.height);
-        // console.log("span " + rowSpan);
-        const visibleRealRowSpan = Math.min(rowSpan, visibleRowIndexes.stop - rowIndex + 1);
-        // console.log("v span " + visibleRealRowSpan);
-        const res = {...cellStyle, height: (this.defaultRowHeight * visibleRealRowSpan), 'flex-direction': 'column'};
-        // console.log(res);
+      const tmp = this.columnIndexToFirstInGroupIndexes[columnIndex];
+      const ri = getFirstRowInGroupIndex(tmp, rowIndex);
+      const endIndex = tmp[ri];
+
+      const visibleEndIndex = Math.min(endIndex, visibleRowIndices.stop);
+
+      const rowSpan = visibleEndIndex - rowIndex + 1;
+        const res = {...cellStyle, height: (this.defaultRowHeight * rowSpan), 'flex-direction': 'column'};
         return res;
+
       }
-      // else {
-      //   console.log('lastInGroup');
-      //   console.log(rowIndex);
-      //   console.log(visibleRowIndexes);
-      //   const tmp = this.groupStopIndexToStartIndex[rowIndex];
-      //   const rowSpan = this.getRowSpan(tmp);
-      //   console.log("h " + cellStyle.height);
-      //   console.log("span " + rowSpan);
-      //   const visibleRealRowSpan = Math.min(rowSpan, rowIndex + 1 - visibleRowIndexes.start);
-      //   console.log("v span " + visibleRealRowSpan);
-      //   const res = {
-      //     ...cellStyle,
-      //     height: (this.defaultRowHeight * visibleRealRowSpan),
-      //     top: (cellStyle.top - this.defaultRowHeight * visibleRealRowSpan),
-      //     'flex-direction': 'column'
-      //   };
-      //   console.log(res);
-      //   return res;
-      }
+    }
     // }
     return cellStyle;
   };
@@ -101,34 +80,41 @@ const funGen = columnNumber => {
   }
 };
 
-const hasTheSameValue = (columnIndex : Number) => (row1 : Row, row2 : Row) : Boolean => row1[columnIndex] === row2[columnIndex];
+const hasTheSameValueByColumn = (columnIndex : Number) => (row1 : Row, row2 : Row) : Boolean => row1[columnIndex] === row2[columnIndex];
 const getRow = (rows : Row[]) => (rowIndex: Number) : Row => rows[rowIndex] || [];
 
 
-const isFirstInGroup = (rows : Row[]) => (rowIndex: Number): Boolean => {
+const isFirstInGroup = (columns: Number[], rows : Row[]) => (rowIndex: Number): Boolean => {
   const prevRow = getRow(rows)(rowIndex - 1);
   const currentRow = getRow(rows)(rowIndex);
-  return !hasTheSameValue(0)(prevRow, currentRow);
+  return columns.reduce(false, (acc, columnIndex) => acc || !hasTheSameValueByColumn(columnIndex)(prevRow, currentRow)) ;
 };
 
-const isLastInGroup = (rows : Row[]) => (rowIndex: Number): Boolean => {
-  const currentRow = getRow(rows)(rowIndex);
-  const nextRow = getRow(rows)(rowIndex + 1);
-  return !hasTheSameValue(0)(currentRow, nextRow);
+const updateFirstInGroup = (hasTheSameValue) => ({prevRow, firstInGroupIndexes}: ColumnAcc, currentRow, index: Number) => {
+  if(!hasTheSameValue(prevRow, currentRow))
+    firstInGroupIndexes.add(index);
+
+  return {prevRow : currentRow, firstInGroupIndexes};
 };
 
-const getRowSpan = (rows : Row[]) =>(rowIndex: Number): Number => {
-  const currentRow = getRow(rows)(rowIndex);
-  let currentRowIndex = rowIndex;
-  while(currentRowIndex < rows.length){
-    const tmpRow = getRow(rows)(currentRowIndex);
-    if(!hasTheSameValue(0)(tmpRow, currentRow))
-      return currentRowIndex - rowIndex;
+const getFirstInGroupMap = (rows:Row) => (columnIndex :  Number) => {
+  return rows.reduce(updateFirstInGroup(hasTheSameValueByColumn(columnIndex)), {
+    prevRow: [],
+    firstInGroupIndexes: new Set().add(0).add((rows.length))
+  });
+};
 
-    currentRowIndex ++;
-  }
+const getFirstRowInGroupIndex = (firstInGroup, rowIndex: Number) : Number => {
+  while(!(rowIndex in firstInGroup))
+    rowIndex--;
 
-  return currentRowIndex - rowIndex;
+  return rowIndex;
+};
+
+const getStartGroupIndexToEndGroupIndex = (startIndexes : Set) : {} =>{
+  const sortedIndexes = Array.from(startIndexes).sort((p,q) => p >= q);
+  const [_, ...tail] = sortedIndexes;
+  return tail.reduce((acc, currentValue, index) => {acc[sortedIndexes[index]] = currentValue - 1; return acc}, {});
 };
 
 

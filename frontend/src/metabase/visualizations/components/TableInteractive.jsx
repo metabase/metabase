@@ -181,7 +181,7 @@ export default class TableInteractive extends Component {
               style: {},
             })}
             {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
-              this.cellRenderer({visibleRowIndices : { start: 0, stop : 100}, visibleColumnIndices: { start: 0, stop : rowIndex}},{
+              this.cellRenderer({visibleRowIndices : { start: 0, stop : 100}, visibleColumnIndices: { start: 0, stop : columnIndex}}, {
                 rowIndex,
                 columnIndex,
                 key: "row-" + rowIndex,
@@ -254,20 +254,13 @@ export default class TableInteractive extends Component {
     setTimeout(() => this.recomputeGridSize(), 1);
   }
 
-  cellRenderer = ({visibleRowIndices, visibleColumnIndices}: CellRangeProps,{ key, style, rowIndex, columnIndex }: CellRendererProps) => {
+
+  cellRenderer = ({visibleRowIndices, visibleColumnIndices}: CellRangeProps, { key, style, rowIndex, columnIndex }: CellRendererProps) => {
     const groupingManager = this.props.groupingManager;
 
- // console.log(visibleRowIndices.start + " " + visibleRowIndices.stop + " " + visibleColumnIndices.start + " " + visibleColumnIndices.stop);
- //    if(columnIndex === 0 && rowIndex === 0)
-      // console.log(groupingManager.shouldHide(rowIndex, visibleRowIndices.start));
-      if (
-        // !isVisible ||
-        columnIndex === 0 &&
-        groupingManager.shouldHide(rowIndex, visibleRowIndices)
-      ) {
-        return null;
-      }
-
+    if(!groupingManager.isVisible(rowIndex, columnIndex, visibleRowIndices)) {
+      return null;
+    }
 
     const {
       data,
@@ -281,17 +274,12 @@ export default class TableInteractive extends Component {
     const row = rows[rowIndex];
     const value = row[columnIndex];
 
-    const mappedStyle =
-      columnIndex === 0
-        ? groupingManager.mapStyle(rowIndex, visibleRowIndices, style)
-        : style;
+    const mappedStyle = groupingManager.mapStyle(rowIndex, columnIndex, visibleRowIndices, style);
 
-
-    // if(rowIndex === 0 && columnIndex === 0){
-    //   console.log(visibleRowIndices.start + " " + visibleRowIndices.stop + " " + visibleColumnIndices.start + " " + visibleColumnIndices.stop);
-    //   console.log(mappedStyle);
-    // }
-
+    if(columnIndex === 1)
+      key = (columnIndex + '-' + row[0] + row[1]);
+    if(columnIndex === 0)
+      key = (columnIndex + '-' + row[0]);
 
     const clicked = getTableCellClickedObject(
       data,
@@ -539,8 +527,17 @@ export default class TableInteractive extends Component {
               overscanRowCount={20}
               cellRangeRenderer={rangeArgs => {
                 const res = defaultCellRangeRenderer({...rangeArgs, cellRenderer: (renderArgs => this.cellRenderer(rangeArgs, renderArgs))});
-                // console.log(res[0]);
-                return res;
+
+                                // console.log(res[0]);
+                const a = []
+                return res.filter(p => {
+                  const r = a.indexOf(p.key) === -1;
+                  if(r)
+                    a.push(p.key);
+                  else
+                    console.log(r);
+                  return r;
+                });
               }}
             />
           </div>
