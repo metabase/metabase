@@ -2,31 +2,36 @@
   "Snowflake Driver."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [honeysql.core :as hsql]
+            [honeysql
+             [core :as hsql]
+             [helpers :as h]]
             [metabase
              [config :as config]
              [driver :as driver]
              [util :as u]]
             [metabase.driver
-             [generic-sql :as sql]
-             [postgres :as postgres]]
+             [generic-sql :as sql]]
+            ;; TODO delete
+            [metabase.models
+             [field :as field]
+             [table :as table]]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]]))
 
 (defn connection-details->spec
   "Create a database specification for a snowflake database."
-  [{:keys [account regionid] :as opts}]
+  [{:keys [account regionid dbname] :as opts}]
   (let [host (if regionid
                (str account "." regionid)
                account)]
     (merge {:subprotocol                                "snowflake"
             :classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
             :subname                                    (str "//" host ".snowflakecomputing.com/")
-            ;; Don't fetch schemas for databases if the user supplies a single database.
+            :db                                         dbname
             :client_metadata_request_use_connection_ctx true
             :ssl                                        true}
-           (dissoc opts :host :port))))
+           (dissoc opts :host :port :dbname))))
 
 (defrecord SnowflakeDriver []
   clojure.lang.Named
@@ -35,7 +40,7 @@
 (def ^:private snowflake-date-formatter
   "The default timestamp format for Snowflake.
   See https://docs.snowflake.net/manuals/sql-reference/data-types-datetime.html#timestamp."
-  (driver/create-db-time-formatter "EEE, dd MMM yyyy HH:mm:ss Z"))
+  (driver/create-db-time-formatters "EEE, dd MMM yyyy HH:mm:ss Z"))
 
 (def ^:private snowflake-db-time-query
   "Snowflake current database time, with hour and minute timezone offset."
@@ -133,8 +138,9 @@
                                                    {:name         "warehouse"
                                                     :display-name "Warehouse"
                                                     :placeholder  "my_warehouse"}
-                                                   {:name         "db"
+                                                   {:name         "dbname"
                                                     :display-name "Database name"
+                                                    :required     true
                                                     :placeholder  "cockerel"}
                                                    {:name         "regionid"
                                                     :display-name "Region Id"
@@ -154,26 +160,16 @@
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg connection-details->spec)
           :string-length-fn          (u/drop-first-arg string-length-fn)
+          :excluded-schemas          (constantly #{"information_schema"})
           :date                      (u/drop-first-arg date)
           :current-datetime-fn       (constantly :%current_timestamp)
           :set-timezone-sql          (constantly "alter session set time_zone = %s")
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
-          :column->base-type         (u/drop-first-arg column->base-type)}
-         ;; HACK ! When we test against Snowflake we use a session-unique schema so we can run simultaneous tests
-         ;; against a single remote host; when running tests tell the sync process to ignore all the other schemas
-         #_(when config/is-test?
-             {:excluded-schemas (memoize
-                                 (fn [_]
-                                   (require 'metabase.test.data.snowflake)
-                                   (let [session-schema-number @(resolve 'metabase.test.data.snowflake/session-schema-number)]
-                                     (set (conj (for [i     (range 240)
-                                                      :when (not= i session-schema-number)]
-                                                  (str "schema_" i))
-                                                "public")))))})))
+          :column->base-type         (u/drop-first-arg column->base-type)}))
 
 
 
 (defn -init-driver
   "Register the Snowflake driver"
   []
-  (driver/register-driver! :Snowflake (SnowflakeDriver.)))
+  (driver/register-driver! :snowflake (SnowflakeDriver.)))
