@@ -172,6 +172,11 @@
                                                            :display-name "Path to CSV file."
                                                            :placeholder  "file path to folder containing csv file"
                                                            :required     true}
+                                                           {:name         "fileExtension"
+                                                            :display-name "fileExtension"
+                                                            :placeholder  ".csv"
+                                                            :required     true
+                                                           } 
                                                           {:name         "separator"
                                                            :display-name "separator"
                                                            :placeholder  ","
@@ -204,11 +209,12 @@
                                                             :type         :boolean
                                                             :required     false
                                                            }
-                                                           {:name         "fileExtension"
-                                                            :display-name "fileExtension"
-                                                            :placeholder  ".csv"
-                                                            :required     true
-                                                           } 
+                                                           
+                                                           {:name         "headerline"
+                                                            :display-name "headerline"
+                                                            :placeholder  ""
+                                                            :required     false
+                                                           }
                                                            {:name         "columnTypes"
                                                             :display-name "columnTypes"
                                                             :placeholder  ""
@@ -245,6 +251,11 @@
                                                             :display-name "trimValues"
                                                             :type         :boolean
                                                             :placeholder  false
+                                                            :required     false
+                                                           }
+                                                           {:name         "logs"
+                                                            :display-name "Enable Logging"
+                                                            :placeholder  "filename or out.."
                                                             :required     false
                                                            }
                                                            {:name         "trimHeaders"
