@@ -134,6 +134,7 @@ class DefaultLanding extends React.Component {
 
     return (
       <Flex>
+        <Box w={1 / 3}>{showCollectionList && <CollectionList />}</Box>
         <Box w={2 / 3} mr={2}>
           <Card>
             <CollectionItemsLoader collectionId={collectionId || "root"}>
@@ -189,7 +190,6 @@ class DefaultLanding extends React.Component {
             </CollectionItemsLoader>
           </Card>
         </Box>
-        <Box w={1 / 3}>{showCollectionList && <CollectionList />}</Box>
       </Flex>
     );
   }
