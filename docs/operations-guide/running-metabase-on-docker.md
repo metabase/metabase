@@ -109,6 +109,14 @@ It's best to set your Java timezone to match the timezone you'd like all your re
       -e "JAVA_TIMEZONE=US/Pacific" \
       --name metabase metabase/metabase
 
+### Setting memory limits on metabase
+
+It is considered good practice when running docker containers to set the memory limit, see [Understand the risks of running out of memory](https://docs.docker.com/config/containers/resource_constraints/#memory), so your container doesn't take up resource of containers running on the same host. We have added custom java settings, so when you do set memory limits for the container the JVM will utilise all of that memory. For example:
+
+    docker run -d -p 3000:3000 \
+      --memory="512m" \
+      -e "MB_CONTAINER_DEFAULT_MEMORY=true" \
+      --name metabase metabase/metabase
 
 ### Additional custom settings
 
