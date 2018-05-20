@@ -502,31 +502,19 @@ function addGoalChartAndGetOnGoalHover(
   };
 }
 
-function applyXAxisSettings({ settings, series }, xAxisProps, parent) {
-  if (isTimeseries(settings))
-    applyChartTimeseriesXAxis(parent, settings, series, xAxisProps);
-  else if (isQuantitative(settings))
-    applyChartQuantitativeXAxis(parent, settings, series, xAxisProps);
-  else applyChartOrdinalXAxis(parent, settings, series, xAxisProps);
+function applyXAxisSettings(parent, series, xAxisProps) {
+  if (isTimeseries(parent.settings))
+    applyChartTimeseriesXAxis(parent, series, xAxisProps);
+  else if (isQuantitative(parent.settings))
+    applyChartQuantitativeXAxis(parent, series, xAxisProps);
+  else applyChartOrdinalXAxis(parent, series, xAxisProps);
 }
 
-function applyYAxisSettings({ settings }, { yLeftSplit, yRightSplit }, parent) {
+function applyYAxisSettings(parent, { yLeftSplit, yRightSplit }) {
   if (yLeftSplit && yLeftSplit.series.length > 0)
-    applyChartYAxis(
-      parent,
-      settings,
-      yLeftSplit.series,
-      yLeftSplit.extent,
-      "left",
-    );
+    applyChartYAxis(parent, yLeftSplit.series, yLeftSplit.extent, "left");
   if (yRightSplit && yRightSplit.series.length > 0)
-    applyChartYAxis(
-      parent,
-      settings,
-      yRightSplit.series,
-      yRightSplit.extent,
-      "right",
-    );
+    applyChartYAxis(parent, yRightSplit.series, yRightSplit.extent, "right");
 }
 
 // TODO - better name
@@ -602,15 +590,17 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
   checkSeriesIsValid(props);
 
   // force histogram to be ordinal axis with zero-filled missing points
+  settings["graph.x_axis._scale_original"] = settings["graph.x_axis.scale"];
   if (isHistogram(settings)) {
     settings["line.missing"] = "zero";
     settings["graph.x_axis.scale"] = "ordinal";
   }
 
-  const datas = getDatas(props, warn);
-  const xAxisProps = getXAxisProps(props, datas);
+  let datas = getDatas(props, warn);
+  let xAxisProps = getXAxisProps(props, datas);
 
-  fillMissingValuesInDatas(props, xAxisProps, datas);
+  datas = fillMissingValuesInDatas(props, xAxisProps, datas);
+  xAxisProps = getXAxisProps(props, datas);
 
   if (isScalarSeries) xAxisProps.xValues = datas.map(data => data[0][0]); // TODO - what is this for?
 
@@ -627,6 +617,8 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
 
   const parent = dc.compositeChart(element);
   initChart(parent, element);
+
+  parent.settings = settings;
 
   const brushChangeFunctions = makeBrushChangeFunctions(props);
 
@@ -648,18 +640,21 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
 
   parent.compose(charts);
 
-  if (groups.length > 1 && !props.isScalarSeries) doGroupedBarStuff(parent);
-  else if (isHistogramBar(props)) doHistogramBarStuff(parent);
+  if (groups.length > 1 && !props.isScalarSeries) {
+    doGroupedBarStuff(parent);
+  } else if (isHistogramBar(props)) {
+    doHistogramBarStuff(parent);
+  }
 
   // HACK: compositeChart + ordinal X axis shenanigans. See https://github.com/dc-js/dc.js/issues/678 and https://github.com/dc-js/dc.js/issues/662
   parent._rangeBandPadding(chartType === "bar" ? BAR_PADDING_RATIO : 1); //
 
-  applyXAxisSettings(props, xAxisProps, parent);
+  applyXAxisSettings(parent, props.series, xAxisProps);
 
   // override tick format for bars. ticks are aligned with beginning of bar, so just show the start value
   if (isHistogramBar(props)) parent.xAxis().tickFormat(d => formatNumber(d));
 
-  applyYAxisSettings(props, yAxisProps, parent);
+  applyYAxisSettings(parent, yAxisProps);
 
   setupTooltips(props, datas, parent, brushChangeFunctions);
 
@@ -668,14 +663,13 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
   // apply any on-rendering functions (this code lives in `LineAreaBarPostRenderer`)
   lineAndBarOnRender(
     parent,
-    settings,
     onGoalHover,
     yAxisProps.isSplit,
-    isStacked(settings, datas),
+    isStacked(parent.settings, datas),
   );
 
   // only ordinal axis can display "null" values
-  if (isOrdinal(settings)) delete warnings[NULL_DIMENSION_WARNING];
+  if (isOrdinal(parent.settings)) delete warnings[NULL_DIMENSION_WARNING];
 
   if (onRender)
     onRender({

@@ -24,19 +24,22 @@ export default ComposedComponent =>
         this._mql.addListener(this._updateSize);
       }
 
-      // resize observer, ensure re-layout when container element changes size
-      this._ro = new ResizeObserver((entries, observer) => {
-        const element = ReactDOM.findDOMNode(this);
-        for (const entry of entries) {
-          if (entry.target === element) {
-            this._updateSize();
-            break;
+      const element = ReactDOM.findDOMNode(this);
+      if (element) {
+        // resize observer, ensure re-layout when container element changes size
+        this._ro = new ResizeObserver((entries, observer) => {
+          const element = ReactDOM.findDOMNode(this);
+          for (const entry of entries) {
+            if (entry.target === element) {
+              this._updateSize();
+              break;
+            }
           }
-        }
-      });
-      this._ro.observe(ReactDOM.findDOMNode(this));
+        });
+        this._ro.observe(element);
 
-      this._updateSize();
+        this._updateSize();
+      }
     }
 
     componentDidUpdate() {
@@ -53,11 +56,12 @@ export default ComposedComponent =>
     }
 
     _updateSize = () => {
-      const { width, height } = ReactDOM.findDOMNode(
-        this,
-      ).getBoundingClientRect();
-      if (this.state.width !== width || this.state.height !== height) {
-        this.setState({ width, height });
+      const element = ReactDOM.findDOMNode(this);
+      if (element) {
+        const { width, height } = element.getBoundingClientRect();
+        if (this.state.width !== width || this.state.height !== height) {
+          this.setState({ width, height });
+        }
       }
     };
 

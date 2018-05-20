@@ -1,5 +1,7 @@
 (ns metabase.models.collection-revision
   (:require [metabase.util :as u]
+            [metabase.util.date :as du]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -7,7 +9,7 @@
 (models/defmodel CollectionRevision :collection_revision)
 
 (defn- pre-insert [revision]
-  (assoc revision :created_at (u/new-sql-timestamp)))
+  (assoc revision :created_at (du/new-sql-timestamp)))
 
 (u/strict-extend (class CollectionRevision)
   models/IModel
@@ -16,7 +18,7 @@
                                    :after  :json
                                    :remark :clob})
           :pre-insert pre-insert
-          :pre-update (fn [& _] (throw (Exception. "You cannot update a CollectionRevision!")))}))
+          :pre-update (fn [& _] (throw (Exception. (str (tru "You cannot update a CollectionRevision!")))))}))
 
 
 (defn latest-id

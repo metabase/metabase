@@ -1,9 +1,17 @@
+/* @flow */
+
 import React, { Component } from "react";
-import { Link } from "react-router";
+import { Link, Route } from "react-router";
 
 import { slugify } from "metabase/lib/formatting";
+
+// $FlowFixMe: react-virtualized ignored
 import reactElementToJSXString from "react-element-to-jsx-string";
+
 import COMPONENTS from "../lib/components-webpack";
+
+import AceEditor from "metabase/components/TextEditor";
+import CopyButton from "metabase/components/CopyButton";
 
 const Section = ({ title, children }) => (
   <div className="mb2">
@@ -13,6 +21,7 @@ const Section = ({ title, children }) => (
 );
 
 export default class ComponentsApp extends Component {
+  static routes: ?[React$Element<Route>];
   render() {
     const componentName = slugify(this.props.params.componentName);
     const exampleName = slugify(this.props.params.exampleName);
@@ -98,9 +107,18 @@ export default class ComponentsApp extends Component {
                             <div className="p2 bordered flex align-center flex-full">
                               <div className="full">{element}</div>
                             </div>
-                            <div className="border-left border-right border-bottom text-code">
-                              <div className="p1">
-                                {reactElementToJSXString(element)}
+                            <div className="relative">
+                              <AceEditor
+                                value={reactElementToJSXString(element)}
+                                mode="ace/mode/jsx"
+                                theme="ace/theme/metabase"
+                                readOnly
+                              />
+                              <div className="absolute top right text-brand-hover cursor-pointer z2">
+                                <CopyButton
+                                  className="p1"
+                                  value={reactElementToJSXString(element)}
+                                />
                               </div>
                             </div>
                           </div>
@@ -116,3 +134,12 @@ export default class ComponentsApp extends Component {
     );
   }
 }
+
+ComponentsApp.routes = [
+  <Route path="components" component={ComponentsApp} />,
+  <Route path="components/:componentName" component={ComponentsApp} />,
+  <Route
+    path="components/:componentName/:exampleName"
+    component={ComponentsApp}
+  />,
+];

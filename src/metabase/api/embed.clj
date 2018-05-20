@@ -145,15 +145,19 @@
   [card]
   (update card :parameters concat (template-tag-parameters card)))
 
-(defn- apply-parameter-values
+(s/defn ^:private apply-parameter-values :- (s/maybe [{:slug   su/NonBlankString
+                                                       :type   su/NonBlankString
+                                                       :target s/Any
+                                                       :value  s/Any}])
   "Adds `value` to parameters with `slug` matching a key in `parameter-values` and removes parameters without a
    `value`."
   [parameters parameter-values]
-  (for [param parameters
-        :let  [value (get parameter-values (keyword (:slug param)))]
-        :when (some? value)]
-    (assoc (select-keys param [:type :target])
-      :value value)))
+  (when (seq parameters)
+    (for [param parameters
+          :let  [value (get parameter-values (keyword (:slug param)))]
+          :when (some? value)]
+      (assoc (select-keys param [:type :target :slug])
+        :value value))))
 
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
@@ -393,6 +397,8 @@
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
 (api/defendpoint GET "/card/:token/field/:field-id/remapping/:remapped-id"
+  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
+  embedded Cards."
   [token field-id remapped-id value]
   {value su/NonBlankString}
   (let [unsigned-token (eu/unsign token)
@@ -401,6 +407,8 @@
     (public-api/card-field-remapped-values card-id field-id remapped-id value)))
 
 (api/defendpoint GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
+  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
+  embedded Dashboards."
   [token field-id remapped-id value]
   {value su/NonBlankString}
   (let [unsigned-token (eu/unsign token)

@@ -84,12 +84,12 @@ export function isCardRunnable(card, tableMetadata) {
 
 // TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
 export function serializeCardForUrl(card) {
-  var dataset_query = Utils.copy(card.dataset_query);
+  let dataset_query = Utils.copy(card.dataset_query);
   if (dataset_query.query) {
     dataset_query.query = Query.cleanQuery(dataset_query.query);
   }
 
-  var cardCopy = {
+  let cardCopy = {
     name: card.name,
     description: card.description,
     dataset_query: dataset_query,
@@ -134,8 +134,8 @@ export function urlForCardState(state, dirty) {
 }
 
 export function cleanCopyCard(card) {
-  var cardCopy = {};
-  for (var name in card) {
+  let cardCopy = {};
+  for (let name in card) {
     if (name.charAt(0) !== "$") {
       cardCopy[name] = card[name];
     }

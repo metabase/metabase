@@ -10,8 +10,14 @@ import "./mocks";
 
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
-import { defer } from "metabase/lib/promise";
-import { DashboardApi, SessionApi } from "metabase/services";
+import { defer, delay } from "metabase/lib/promise";
+import {
+  DashboardApi,
+  SessionApi,
+  CardApi,
+  MetricApi,
+  SegmentApi,
+} from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
@@ -22,8 +28,13 @@ import { Provider } from "react-redux";
 import { createMemoryHistory } from "history";
 import { getStore } from "metabase/store";
 import { createRoutes, Router, useRouterHistory } from "react-router";
+
 import _ from "underscore";
 import chalk from "chalk";
+import moment from "moment";
+
+import EventEmitter from "events";
+const events = new EventEmitter();
 
 // Importing isomorphic-fetch sets the global `fetch` and `Headers` objects that are used here
 import fetch from "isomorphic-fetch";
@@ -33,8 +44,6 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 import { getRoutes as getNormalRoutes } from "metabase/routes";
 import { getRoutes as getPublicRoutes } from "metabase/routes-public";
 import { getRoutes as getEmbedRoutes } from "metabase/routes-embed";
-
-import moment from "moment";
 
 let hasStartedCreatingStore = false;
 let hasFinishedCreatingStore = false;
@@ -114,16 +123,12 @@ export function restorePreviousLogin() {
  * Calls the provided function while simulating that the browser is offline
  */
 export async function whenOffline(callWhenOffline) {
-  simulateOfflineMode = true;
-  return callWhenOffline()
-    .then(result => {
-      simulateOfflineMode = false;
-      return result;
-    })
-    .catch(e => {
-      simulateOfflineMode = false;
-      throw e;
-    });
+  try {
+    simulateOfflineMode = true;
+    return await callWhenOffline();
+  } finally {
+    simulateOfflineMode = false;
+  }
 }
 
 export function switchToPlainDatabase() {
@@ -203,6 +208,8 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
        * Redux dispatch method middleware that records all dispatched actions
        */
       dispatch: action => {
+        events.emit("action", action);
+
         const result = store._originalDispatch(action);
 
         const actionWithTimestamp = [
@@ -487,6 +494,89 @@ export async function withApiMocks(mocks, test) {
   }
 }
 
+// async function that tries running an assertion multiple times until it succeeds
+// useful for reducing race conditions in tests
+// TODO: log API calls and Redux actions that occurred in the meantime
+export const eventually = async (assertion, timeout = 5000, period = 250) => {
+  const start = Date.now();
+
+  const errors = [];
+  const actions = [];
+  const requests = [];
+  const addAction = a => actions.push(a);
+  const addRequest = r => requests.push(r);
+  events.addListener("action", addAction);
+  events.addListener("request", addRequest);
+  const cleanup = () => {
+    events.removeListener("action", addAction);
+    events.removeListener("request", addRequest);
+  };
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      await assertion();
+      if (errors.length > 0) {
+        console.warn(
+          "eventually asserted after " + (Date.now() - start) + " ms",
+          "\n + error:\n",
+          errors[errors.length - 1],
+          "\n + actions:\n    ",
+          actions.map(a => a && a.type).join("\n     "),
+          "\n + requests:\n    ",
+          requests.map(r => r && r.url).join("\n     "),
+        );
+      }
+      cleanup();
+      return;
+    } catch (e) {
+      if (Date.now() - start >= timeout) {
+        cleanup();
+        throw e;
+      }
+      errors.push(e);
+    }
+    await delay(period);
+  }
+};
+
+// to help tests cleanup after themselves, since integration tests don't use
+// isolated environments, e.x.
+//
+// beforeAll(async () => {
+//   cleanup.metric(await MetricApi.create({ ... }))
+// })
+// afterAll(cleanup);
+//
+export const cleanup = () => {
+  useSharedAdminLogin();
+  Promise.all(
+    cleanup.actions.splice(0, cleanup.actions.length).map(action => action()),
+  );
+};
+cleanup.actions = [];
+cleanup.fn = action => cleanup.actions.push(action);
+cleanup.metric = metric => cleanup.fn(() => deleteMetric(metric));
+cleanup.segment = segment => cleanup.fn(() => deleteSegment(segment));
+cleanup.question = question => cleanup.fn(() => deleteQuestion(question));
+
+export const deleteQuestion = question =>
+  CardApi.delete({ cardId: getId(question) });
+export const deleteSegment = segment =>
+  SegmentApi.delete({ segmentId: getId(segment), revision_message: "Please" });
+export const deleteMetric = metric =>
+  MetricApi.delete({ metricId: getId(metric), revision_message: "Please" });
+
+const getId = o =>
+  typeof o === "object" && o != null
+    ? typeof o.id === "function" ? o.id() : o.id
+    : o;
+
+export const deleteAllSegments = async () =>
+  Promise.all((await SegmentApi.list()).map(deleteSegment));
+export const deleteAllMetrics = async () =>
+  Promise.all((await MetricApi.list()).map(deleteMetric));
+
 let pendingRequests = 0;
 let pendingRequestsDeferred = null;
 
@@ -533,6 +623,8 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
 
     apiRequestCompletedCallback &&
       setTimeout(() => apiRequestCompletedCallback(method, url), 0);
+
+    events.emit("request", { method, url });
 
     if (result.status >= 200 && result.status <= 299) {
       if (options.transformResponse) {

@@ -1,9 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+import { CSSTransitionGroup } from "react-transition-group";
 
-import FormField from "metabase/components/FormField.jsx";
+import FormField from "metabase/components/form/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Radio from "metabase/components/Radio.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
@@ -135,9 +135,9 @@ export default class SaveQuestionModal extends Component {
 
   render() {
     let { error, details } = this.state;
-    var formError;
+    let formError;
     if (error) {
-      var errorMessage;
+      let errorMessage;
       if (error.status === 500) {
         errorMessage = t`Server error encountered`;
       }
@@ -155,13 +155,13 @@ export default class SaveQuestionModal extends Component {
       }
     }
 
-    var saveOrUpdate = null;
+    let saveOrUpdate = null;
     if (!this.props.card.id && this.props.originalCard) {
       saveOrUpdate = (
         <FormField
+          name="saveType"
           displayName={t`Replace or save as new?`}
-          fieldName="saveType"
-          errors={this.state.errors}
+          formError={this.state.errors}
         >
           <Radio
             value={this.state.details.saveType}
@@ -201,7 +201,7 @@ export default class SaveQuestionModal extends Component {
       >
         <form className="Form-inputs" onSubmit={this.formSubmitted}>
           {saveOrUpdate}
-          <ReactCSSTransitionGroup
+          <CSSTransitionGroup
             transitionName="saveQuestionModalFields"
             transitionEnterTimeout={500}
             transitionLeaveTimeout={500}
@@ -212,9 +212,9 @@ export default class SaveQuestionModal extends Component {
                 className="saveQuestionModalFields"
               >
                 <FormField
+                  name="name"
                   displayName={t`Name`}
-                  fieldName="name"
-                  errors={this.state.errors}
+                  formError={this.state.errors}
                 >
                   <input
                     className="Form-input full"
@@ -226,9 +226,9 @@ export default class SaveQuestionModal extends Component {
                   />
                 </FormField>
                 <FormField
+                  name="description"
                   displayName={t`Description`}
-                  fieldName="description"
-                  errors={this.state.errors}
+                  formError={this.state.errors}
                 >
                   <textarea
                     className="Form-input full"
@@ -242,9 +242,9 @@ export default class SaveQuestionModal extends Component {
                   {collections =>
                     collections.length > 0 && (
                       <FormField
+                        name="collection_id"
                         displayName={t`Which collection should this go in?`}
-                        fieldName="collection_id"
-                        errors={this.state.errors}
+                        formError={this.state.errors}
                       >
                         <Select
                           className="block"
@@ -275,7 +275,7 @@ export default class SaveQuestionModal extends Component {
                 </CollectionList>
               </div>
             )}
-          </ReactCSSTransitionGroup>
+          </CSSTransitionGroup>
         </form>
       </ModalContent>
     );

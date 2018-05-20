@@ -77,10 +77,10 @@ const initialState = {
       groups,
     },
   },
-  metadata: normalizedMetadata,
+  entities: normalizedMetadata,
 };
 
-var state = initialState;
+let state = initialState;
 const resetState = () => {
   state = initialState;
 };

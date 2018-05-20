@@ -12,7 +12,8 @@
             [metabase.test
              [data :as data :refer :all]
              [util :as tu]]
-            [metabase.test.data.dataset-definitions :as defs]))
+            [metabase.test.data.dataset-definitions :as defs]
+            [metabase.util.date :as du]))
 
 ;; this is here because expectations has issues comparing and object w/ a map and most of the output
 ;; below has objects for the various place holders in the expanded/resolved query
@@ -235,9 +236,11 @@
                                                                :special-type       nil
                                                                :table-id           (id :users)
                                                                :table-name         "USERS__via__USER_ID"
-                                                               :fingerprint        {:global {:distinct-count 11}}})
+                                                               :fingerprint        {:global {:distinct-count 11}
+                                                                                    :type   {:type/DateTime {:earliest "2014-01-01T00:00:00.000Z"
+                                                                                                             :latest   "2014-12-05T00:00:00.000Z"}}}})
                                                 :unit  :year}
-                                  :value       {:value (u/->Timestamp "1980-01-01")
+                                  :value       {:value (du/->Timestamp "1980-01-01")
                                                 :field {:field
                                                         (merge field-defaults
                                                                {:field-id           (id :users :last_login)
@@ -250,7 +253,9 @@
                                                                 :visibility-type    :normal
                                                                 :table-id           (id :users)
                                                                 :table-name         "USERS__via__USER_ID"
-                                                                :fingerprint        {:global {:distinct-count 11}}})
+                                                                :fingerprint        {:global {:distinct-count 11}
+                                                                                     :type   {:type/DateTime {:earliest "2014-01-01T00:00:00.000Z"
+                                                                                                              :latest   "2014-12-05T00:00:00.000Z"}}}})
                                                         :unit :year}}}
                    :join-tables  [{:source-field {:field-id   (id :checkins :user_id)
                                                   :field-name "USER_ID"}
@@ -314,7 +319,9 @@
                                                   :field-id           true
                                                   :table-name         "CHECKINS"
                                                   :schema-name        "PUBLIC"
-                                                  :fingerprint        {:global {:distinct-count 618}}})
+                                                  :fingerprint        {:global {:distinct-count 618}
+                                                                       :type   {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
+                                                                                                :latest   "2015-12-29T00:00:00.000Z"}}}})
                                    :unit  :day-of-week}]
                    :join-tables  [{:source-field {:field-id   true
                                                   :field-name "VENUE_ID"}

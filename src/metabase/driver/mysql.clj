@@ -15,6 +15,7 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
   (:import java.sql.Time
@@ -149,7 +150,7 @@
       ;; preferable to have timezones slightly wrong in these rare theoretical situations, instead of all the time, as
       ;; was the previous behavior.
       (hsql/call :convert_tz
-        (hx/literal (u/format-date :date-hour-minute-second-ms date))
+        (hx/literal (du/format-date :date-hour-minute-second-ms date))
         (hx/literal system-timezone-offset-str)
         (hx/literal report-timezone-offset-str))
       ;; otherwise if we don't have a report timezone we can continue to pass the object as-is, e.g. as a prepared

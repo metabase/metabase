@@ -10,6 +10,7 @@ import Value from "metabase/components/Value";
 
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { hasFilterOptions } from "metabase/lib/query/filter";
+import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -76,10 +77,20 @@ export default class FilterWidget extends Component {
     } else if (dimension.field().isDate() && !dimension.field().isTime()) {
       formattedValues = generateTimeFilterValuesDescriptions(filter);
     } else {
-      formattedValues = values
-        .filter(value => value !== undefined)
-        .map((value, index) => (
-          <Value key={index} value={value} column={dimension.field()} remap />
+      const valuesWithOptions = values.map((value, index) => [
+        value,
+        getFilterArgumentFormatOptions(operator, index),
+      ]);
+      formattedValues = valuesWithOptions
+        .filter(([value, options]) => value !== undefined && !options.hide)
+        .map(([value, options], index) => (
+          <Value
+            key={index}
+            value={value}
+            column={dimension.field()}
+            remap
+            {...options}
+          />
         ));
     }
 

@@ -1,16 +1,21 @@
+/* @flow */
+
 import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 
 const SIZES = [12, 16];
 
+type Props = {};
+type State = {
+  size: number,
+};
+
 export default class IconsApp extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      size: 32,
-    };
-  }
+  props: Props;
+  state: State = {
+    size: 32,
+  };
   render() {
     let sizes = SIZES.concat(this.state.size);
     return (

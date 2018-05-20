@@ -13,6 +13,7 @@
              [util :as hutil]]
             [metabase.util :as u]
             [metabase.util
+             [date :as du]
              [ui-logic :as ui-logic]
              [urls :as urls]]
             [puppetlabs.i18n.core :refer [tru trs]]
@@ -56,64 +57,64 @@
 (def ^:private ^:const color-row-border "#EDF0F1")
 
 
-(def ^:private ^:const font-style    {:font-family "Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif"})
-(def ^:const section-style
+(defn- primary-color []
+  color-brand)
+
+(defn- font-style []
+  {:font-family "Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif"})
+
+(defn section-style
   "CSS style for a Pulse section."
-  font-style)
+  []
+  (font-style))
 
-(def ^:private ^:const header-style
-  (merge font-style {:font-size       :16px
-                     :font-weight     700
-                     :color           color-gray-4
-                     :text-decoration :none}))
+(defn- header-style []
+  (merge (font-style) {:font-size       :16px
+                       :font-weight     700
+                       :color           color-gray-4
+                       :text-decoration :none}))
 
-(def ^:private ^:const scalar-style
-  (merge font-style {:font-size   :24px
-                     :font-weight 700
-                     :color       color-brand}))
+(defn- scalar-style []
+  (merge (font-style) {:font-size   :24px
+                       :font-weight 700
+                       :color       (primary-color)}))
 
-(def ^:private ^:const bar-th-style
-  (merge font-style {:font-size       :14.22px
-                     :font-weight     700
-                     :color           color-gray-4
-                     :border-bottom   (str "1px solid " color-row-border)
-                     :padding-top     :20px
-                     :padding-bottom  :5px}))
+(defn- bar-th-style []
+  (merge (font-style) {:font-size       :14.22px
+                       :font-weight     700
+                       :color           color-gray-4
+                       :border-bottom   (str "1px solid " color-row-border)
+                       :padding-top     :20px
+                       :padding-bottom  :5px}))
+
+(defn- bar-td-style []
+  (merge (font-style) {:font-size     :16px
+                       :font-weight   400
+                       :text-align    :left
+                       :padding-right :1em
+                       :padding-top   :8px}))
 
 ;; TO-DO for @senior: apply this style to headings of numeric columns
-(def ^:private ^:const bar-th-numeric-style
-  (merge font-style {:text-align      :right
-                     :font-size       :14.22px
-                     :font-weight     700
-                     :color           color-gray-4
-                     :border-bottom   (str "1px solid " color-row-border)
-                     :padding-top     :20px
-                     :padding-bottom  :5px}))
-
-(def ^:private ^:const bar-td-style
-  (merge font-style {:font-size      :14.22px
-                     :font-weight    400
-                     :color          color-dark-gray
-                     :text-align     :left
-                     :padding-right  :1em
-                     :padding-top    :2px
-                     :padding-bottom :1px
-                     :max-width      :500px
-                     :overflow       :hidden
-                     :text-overflow  :ellipsis
-                     :border-bottom  (str "1px solid " color-row-border)}))
+(defn- bar-th-numeric-style []
+  (merge (font-style) {:text-align      :right
+                       :font-size       :14.22px
+                       :font-weight     700
+                       :color           color-gray-4
+                       :border-bottom   (str "1px solid " color-row-border)
+                       :padding-top     :20px
+                       :padding-bottom  :5px}))
 
 ;; TO-DO for @senior: apply this style to numeric cells
-(def ^:private ^:const bar-td-style-numeric
-  (merge font-style {:font-size      :14.22px
-                     :font-weight    400
-                     :color          color-dark-gray
-                     :text-align     :right
-                     :padding-right  :1em
-                     :padding-top    :2px
-                     :padding-bottom :1px
-                     :font-family    "Courier, Monospace"
-                     :border-bottom  (str "1px solid " color-row-border)}))
+(defn- bar-td-style-numeric []
+  (merge (font-style) {:font-size      :14.22px
+                       :font-weight    400
+                       :color          color-dark-gray
+                       :text-align     :right
+                       :padding-right  :1em
+                       :padding-top    :2px
+                       :padding-bottom :1px
+                       :font-family    "Courier, Monospace"
+                       :border-bottom  (str "1px solid " color-row-border)}))
 
 (def ^:private RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"
@@ -212,7 +213,7 @@
 (defn- reformat-timestamp [timezone old-format-timestamp new-format-string]
   (f/unparse (f/with-zone (f/formatter new-format-string)
                (DateTimeZone/forTimeZone timezone))
-             (u/str->date-time old-format-timestamp timezone)))
+             (du/str->date-time old-format-timestamp timezone)))
 
 (defn- format-timestamp
   "Formats timestamps with human friendly absolute dates based on the column :unit"
@@ -221,7 +222,7 @@
     :hour          (reformat-timestamp timezone timestamp "h a - MMM YYYY")
     :week          (str "Week " (reformat-timestamp timezone timestamp "w - YYYY"))
     :month         (reformat-timestamp timezone timestamp "MMMM YYYY")
-    :quarter       (let [timestamp-obj (u/str->date-time timestamp timezone)]
+    :quarter       (let [timestamp-obj (du/str->date-time timestamp timezone)]
                      (str "Q"
                           (inc (int (/ (t/month timestamp-obj)
                                        3)))
@@ -249,7 +250,7 @@
 (defn- format-timestamp-relative
   "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible, otherwie returns nil"
   [timezone timestamp, {:keys [unit]}]
-  (let [parsed-timestamp (u/str->date-time timestamp timezone)]
+  (let [parsed-timestamp (du/str->date-time timestamp timezone)]
     (case unit
       :day     (date->interval-name parsed-timestamp
                                     (t/date-midnight (year) (month) (day))
@@ -356,14 +357,14 @@
 (defn- heading-style-for-type
   [cell]
   (if (instance? NumericWrapper cell)
-    bar-th-numeric-style
-    bar-th-style))
+    (bar-th-numeric-style)
+    (bar-th-style)))
 
 (defn- row-style-for-type
   [cell]
   (if (instance? NumericWrapper cell)
-    bar-td-style-numeric
-    bar-td-style))
+    (bar-td-style-numeric)
+    (bar-td-style)))
 
 (defn- render-table
   [header+rows]
@@ -375,7 +376,7 @@
          [:th {:style (style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :60px})}
           (h header-cell)])
        (when bar-width
-         [:th {:style (style bar-td-style bar-th-style {:width (str bar-width "%")})}])]])
+         [:th {:style (style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
    [:tbody
     (map-indexed (fn [row-idx {:keys [row bar-width]}]
                    [:tr {:style (style {:color color-gray-3})}
@@ -384,7 +385,7 @@
                                     (h cell)])
                                  row)
                     (when bar-width
-                      [:td {:style (style bar-td-style {:width :99%})}
+                      [:td {:style (style (bar-td-style) {:width :99%})}
                        [:div {:style (style {:background-color color-purple
                                              :max-height       :10px
                                              :height           :10px
@@ -514,7 +515,7 @@
 (s/defn ^:private render:scalar :- RenderedPulseCard
   [timezone card {:keys [cols rows]}]
   {:attachments nil
-   :content     [:div {:style (style scalar-style)}
+   :content     [:div {:style (style (scalar-style))}
                  (h (format-cell timezone (ffirst rows) (first cols)))]})
 
 (defn- render-sparkline-to-png
@@ -649,7 +650,7 @@
   [render-type timezone card {:keys [rows cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
         ft-row (if (datetime-field? (x-axis-rowfn cols))
-                 #(.getTime ^Date (u/->Timestamp %))
+                 #(.getTime ^Date (du/->Timestamp %))
                  identity)
         rows   (if (> (ft-row (x-axis-rowfn (first rows)))
                       (ft-row (x-axis-rowfn (last rows))))
@@ -704,7 +705,7 @@
      :content     [:div {:style (style {:text-align :center})}
                    [:img {:style (style {:width :104px})
                           :src   (:image-src image-bundle)}]
-                   [:div {:style (style font-style
+                   [:div {:style (style (font-style)
                                         {:margin-top :8px
                                          :color      color-gray-4})}
                     "No results"]]}))
@@ -716,7 +717,7 @@
      :content     [:div {:style (style {:text-align :center})}
                    [:img {:style (style {:width :30px})
                           :src   (:image-src image-bundle)}]
-                   [:div {:style (style font-style
+                   [:div {:style (style (font-style)
                                         {:margin-top :8px
                                          :color      color-gray-4})}
                     "This question has been included as a file attachment"]]}))
@@ -724,7 +725,7 @@
 (s/defn ^:private render:unknown :- RenderedPulseCard
   [_ _]
   {:attachments nil
-   :content     [:div {:style (style font-style
+   :content     [:div {:style (style (font-style)
                                      {:color       color-gold
                                       :font-weight 700})}
                  "We were unable to display this card."
@@ -734,7 +735,7 @@
 (s/defn ^:private render:error :- RenderedPulseCard
   [_ _]
   {:attachments nil
-   :content     [:div {:style (style font-style
+   :content     [:div {:style (style (font-style)
                                      {:color       color-error
                                       :font-weight 700
                                       :padding     :16px})}
@@ -754,7 +755,7 @@
                       [:tr
                        [:td {:style (style {:padding :0
                                             :margin  :0})}
-                        [:span {:style (style header-style)}
+                        [:span {:style (style (header-style))}
                              (-> card :name h)]]
                        [:td {:style (style {:text-align :right})}
                         (when *include-buttons*
@@ -783,7 +784,11 @@
         (render:attached render-type card data)
         (render:unknown card data)))
     (catch Throwable e
-      (log/error e (trs "Pulse card render error"))
+      (log/error (trs "Pulse card render error")
+                 (class e)
+                 (.getMessage e)
+                 "\n"
+                 (u/pprint-to-str (u/filtered-stacktrace e)))
       (render:error card data))))
 
 (s/defn ^:private render-pulse-card :- RenderedPulseCard
@@ -794,7 +799,7 @@
     {:attachments (merge title-attachments body-attachments)
      :content     [:a {:href   (card-href card)
                        :target "_blank"
-                       :style  (style section-style
+                       :style  (style (section-style)
                                       {:margin          :16px
                                        :margin-bottom   :16px
                                        :display         :block

@@ -1,9 +1,8 @@
 (ns metabase.api.automagic-dashboards
-  (:require [cheshire.core :as json]
+  (:require [buddy.core.codecs :as codecs]
+            [cheshire.core :as json]
             [compojure.core :refer [GET POST]]
-            [metabase.api
-             [card :as card.api]
-             [common :as api]]
+            [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [core :as magic]
              [comparison :as magic.comparison]
@@ -14,13 +13,46 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
-             [query :refer [Query]]
+             [query :refer [Query] :as query]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [tru]]
             [ring.util.codec :as codec]
+            [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
+
+(def ^:private Show
+  (su/with-api-error-message (s/maybe (s/enum "all"))
+    (tru "invalid show value")))
+
+(def ^:private Prefix
+  (su/with-api-error-message
+      (s/pred (fn [prefix]
+                (some #(not-empty (rules/get-rules [% prefix])) ["table" "metric" "field"])))
+    (tru "invalid value for prefix")))
+
+(def ^:private Rule
+  (su/with-api-error-message
+      (s/pred (fn [rule]
+                (some (fn [toplevel]
+                        (some (comp rules/get-rule
+                                    (fn [prefix]
+                                      [toplevel prefix rule])
+                                    :rule)
+                              (rules/get-rules [toplevel])))
+                      ["table" "metric" "field"])))
+    (tru "invalid value for rule name")))
+
+(def ^:private ^{:arglists '([s])} decode-base64-json
+  (comp #(json/decode % keyword) codecs/bytes->str codec/base64-decode))
+
+(def ^:private Base64EncodedJSON
+  (su/with-api-error-message
+      (s/pred decode-base64-json)
+    (tru "value couldn''t be parsed as base64 encoded JSON")))
 
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
@@ -29,77 +61,153 @@
       api/check-404
       magic/candidate-tables))
 
+
 ;; ----------------------------------------- API Endpoints for viewing a transient dashboard ----------------
 
 (api/defendpoint GET "/table/:id"
   "Return an automagic dashboard for table with id `ìd`."
-  [id]
-  (-> id Table api/check-404 magic/automagic-dashboard))
+  [id show]
+  {show Show}
+  (-> id Table api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
-(api/defendpoint GET "/table/:id/:prefix/:rule"
+(api/defendpoint GET "/table/:id/rule/:prefix/:rule"
   "Return an automagic dashboard for table with id `ìd` using rule `rule`."
-  [id prefix rule]
-  (->> id
-       Table
-       api/check-404
-       (magic/automagic-dashboard (rules/load-rule (str prefix "/" rule ".yaml")))))
+  [id prefix rule show]
+  {show   Show
+   prefix Prefix
+   rule   Rule}
+  (-> id
+      Table
+      api/check-404
+      (magic/automagic-analysis
+       {:rule ["table" prefix rule]
+        :show (keyword show)})))
 
 (api/defendpoint GET "/segment/:id"
   "Return an automagic dashboard analyzing segment with id `id`."
-  [id]
-  (-> id Segment api/check-404 magic/automagic-dashboard))
+  [id show]
+  {show Show}
+  (-> id Segment api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
-(api/defendpoint GET "/segment/:id/:prefix/:rule"
+(api/defendpoint GET "/segment/:id/rule/:prefix/:rule"
   "Return an automagic dashboard analyzing segment with id `id`. using rule `rule`."
-  [id prefix rule]
+  [id prefix rule show]
+  {show   Show
+   prefix Prefix
+   rule   Rule}
   (-> id
       Segment
       api/check-404
-      (magic/automagic-dashboard (rules/load-rule (str prefix "/" rule ".yaml")))))
+      (magic/automagic-analysis
+       {:rule ["table" prefix rule]
+        :show (keyword show)})))
 
-(api/defendpoint GET "/question/:id/:cell-query"
+(api/defendpoint GET "/question/:id/cell/:cell-query"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry`."
-  [id cell-query]
-  (-> (card.api/adhoc-query {:query {:filter (-> cell-query
-                                                 codec/base64-decode
-                                                 json/decode)}})
-      (magic/inject-segment (-> id Card api/check-404))
-      magic/automagic-dashboard))
+  [id cell-query show]
+  {show       Show
+   cell-query Base64EncodedJSON}
+  (-> id
+      Card
+      api/check-404
+      (magic/automagic-analysis {:show       (keyword show)
+                                 :cell-query (decode-base64-json cell-query)})))
 
-(api/defendpoint GET "/question/:id/:cell-query/:prefix/:rule"
+(api/defendpoint GET "/question/:id/cell/:cell-query/rule/:prefix/:rule"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry` using rule `rule`."
-  [id cell-query prefix rule]
-  (-> (card.api/adhoc-query {:query {:filter (-> cell-query
-                                                 codec/base64-decode
-                                                 json/decode)}})
-      (magic/inject-segment (-> id Card api/check-404))
-      (magic/automagic-dashboard (rules/load-rule (str prefix "/" rule ".yaml")))))
+  [id cell-query prefix rule show]
+  {show       Show
+   prefix     Prefix
+   rule       Rule
+   cell-query Base64EncodedJSON}
+  (-> id
+      Card
+      api/check-404
+      (magic/automagic-analysis {:show       (keyword show)
+                                 :rule       ["table" prefix rule]
+                                 :cell-query (decode-base64-json cell-query)})))
 
 (api/defendpoint GET "/metric/:id"
   "Return an automagic dashboard analyzing metric with id `id`."
-  [id]
-  (-> id Metric api/check-404 magic/automagic-analysis))
+  [id show]
+  {show Show}
+  (-> id Metric api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/field/:id"
   "Return an automagic dashboard analyzing field with id `id`."
-  [id]
-  (-> id Field api/check-404 magic/automagic-analysis))
+  [id show]
+  {show Show}
+  (-> id Field api/check-404 (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/question/:id"
   "Return an automagic dashboard analyzing question with id `id`."
-  [id]
-  (-> id Card api/check-404 magic/automagic-analysis))
+  [id show]
+  {show Show}
+  (-> id Card api/check-404 (magic/automagic-analysis {:show (keyword show)})))
+
+(api/defendpoint GET "/question/:id/rule/:prefix/:rule"
+  "Return an automagic dashboard analyzing question with id `id` using rule `rule`."
+  [id prefix rule show]
+  {show Show
+   prefix Prefix
+   rule   Rule}
+  (-> id Card api/check-404 (magic/automagic-analysis {:show (keyword show)
+                                                       :rule ["table" prefix rule]})))
 
 (api/defendpoint GET "/adhoc/:query"
   "Return an automagic dashboard analyzing ad hoc query."
-  [query]
+  [query show]
+  {show  Show
+   query Base64EncodedJSON}
   (-> query
-      codec/base64-decode
-      json/decode
-      card.api/adhoc-query
-      magic/automagic-analysis))
+      decode-base64-json
+      query/adhoc-query
+      (magic/automagic-analysis {:show (keyword show)})))
+
+(api/defendpoint GET "/adhoc/:query/rule/:prefix/:rule"
+  "Return an automagic dashboard analyzing ad hoc query."
+  [query prefix rule show]
+  {show   Show
+   query  Base64EncodedJSON
+   prefix Prefix
+   rule   Rule}
+  (-> query
+      decode-base64-json
+      query/adhoc-query
+      (magic/automagic-analysis {:show (keyword show)
+                                 :rule ["table" prefix rule]})))
+
+(api/defendpoint GET "/adhoc/:query/cell/:cell-query"
+  "Return an automagic dashboard analyzing ad hoc query."
+  [query cell-query show]
+  {show       Show
+   query      Base64EncodedJSON
+   cell-query Base64EncodedJSON}
+  (let [query      (decode-base64-json query)
+        cell-query (decode-base64-json cell-query)]
+    (-> query
+        query/adhoc-query
+        (magic/automagic-analysis {:show       (keyword show)
+                                   :cell-query cell-query}))))
+
+(api/defendpoint GET "/adhoc/:query/cell/:cell-query/rule/:prefix/:rule"
+  "Return an automagic dashboard analyzing cell in question  with id `id` defined by
+   query `cell-querry` using rule `rule`."
+  [query cell-query prefix rule show]
+  {show       Show
+   prefix     Prefix
+   rule       Rule
+   query      Base64EncodedJSON
+   cell-query Base64EncodedJSON}
+  (let [query      (decode-base64-json query)
+        cell-query (decode-base64-json cell-query)]
+    (-> query
+        query/adhoc-query
+        (magic/automagic-analysis {:show       (keyword show)
+                                   :cell-query cell-query
+                                   :rule       ["table" prefix rule]}))))
 
 (def ^:private valid-comparison-pair?
   #{["segment" "segment"]
@@ -128,7 +236,7 @@
 (defmethod ->segment :adhoc
   [{:keys [query name]}]
   (-> query
-      card.api/adhoc-query
+      query/adhoc-query
       (assoc :name name)))
 
 (api/defendpoint POST "/compare"

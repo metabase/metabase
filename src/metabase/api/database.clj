@@ -23,6 +23,7 @@
              [table :refer [Table]]]
             [metabase.query-processor.util :as qputil]
             [metabase.sync
+             [analyze :as analyze]
              [field-values :as sync-field-values]
              [sync-metadata :as sync-metadata]]
             [metabase.util
@@ -198,7 +199,7 @@
 
 (defn- db-metadata [id]
   (-> (api/read-check Database id)
-      (hydrate [:tables [:fields :target :has_field_values] :segments :metrics])
+      (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
       (update :tables (fn [tables]
                         (for [table tables
                               :when (mi/can-read? table)]
@@ -507,7 +508,8 @@
   ;; just wrap this in a future so it happens async
   (api/let-404 [db (Database id)]
     (future
-      (sync-metadata/sync-db-metadata! db)))
+      (sync-metadata/sync-db-metadata! db)
+      (analyze/analyze-db! db)))
   {:status :ok})
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?

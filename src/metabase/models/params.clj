@@ -15,7 +15,7 @@
 ;;; |                                                     SHARED                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- field-form->id
+(defn field-form->id
   "Expand a `field-id` or `fk->` FORM and return the ID of the Field it references.
 
      (field-form->id [:field-id 100])  ; -> 100"
@@ -62,16 +62,20 @@
   just the column identifiers, perhaps for use with something like `select-keys`. Clutch!
 
     (db/select Field:params-columns-only)"
-  ['Field :id :table_id :display_name :base_type :special_type])
+  ['Field :id :table_id :display_name :base_type :special_type :has_field_values])
 
 (defn- fields->table-id->name-field
   "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (u/key-by :table_id (db/select Field:params-columns-only
-                          :table_id     [:in table-ids]
-                          :special_type (mdb/isa :type/Name)))))
+    (u/key-by :table_id (-> (db/select Field:params-columns-only
+                              :table_id     [:in table-ids]
+                              :special_type (mdb/isa :type/Name))
+                            ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
+                            ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
+                            ;; `list` instead of `auto-list`.)
+                            (hydrate :has_field_values)))))
 
 (defn add-name-field
   "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each

@@ -1,5 +1,5 @@
 import React from "react";
-
+import { t } from "c-3po";
 import DashCardCardParameterMapper from "../containers/DashCardCardParameterMapper.jsx";
 
 const DashCardParameterMapper = ({ dashcard }) => (
@@ -14,8 +14,7 @@ const DashCardParameterMapper = ({ dashcard }) => (
             marginTop: -10,
           }}
         >
-          Make sure to make a selection for each series, or the filter won't
-          work on this card.
+          {t`Make sure to make a selection for each series, or the filter won't work on this card.`}
         </div>
       )}
     <div className="flex mx4 z1" style={{ justifyContent: "space-around" }}>

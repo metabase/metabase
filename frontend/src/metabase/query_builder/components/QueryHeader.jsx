@@ -173,7 +173,7 @@ export default class QueryHeader extends Component {
 
   async onFetchRevisions({ entity, id }) {
     // TODO: reduxify
-    var revisions = await RevisionApi.list({ entity, id });
+    let revisions = await RevisionApi.list({ entity, id });
     this.setState({ revisions });
   }
 
@@ -203,7 +203,7 @@ export default class QueryHeader extends Component {
       id: card && card.dataset_query && card.dataset_query.database,
     });
 
-    var buttonSections = [];
+    let buttonSections = [];
 
     // A card that is either completely new or it has been derived from a saved question
     if (isNew && isDirty) {
@@ -213,7 +213,7 @@ export default class QueryHeader extends Component {
           key="save"
           ref="saveModal"
           triggerClasses="h4 text-grey-4 text-brand-hover text-uppercase"
-          triggerElement="Save"
+          triggerElement={t`Save`}
         >
           <SaveQuestionModal
             card={this.props.card}
@@ -222,7 +222,7 @@ export default class QueryHeader extends Component {
             // if saving modified question, don't show "add to dashboard" modal
             saveFn={card => this.onSave(card, false)}
             createFn={this.onCreate}
-            onClose={() => this.refs.saveModal.toggle()}
+            onClose={() => this.refs.saveModal && this.refs.saveModal.toggle()}
           />
         </ModalWithTrigger>,
       ]);
@@ -437,7 +437,7 @@ export default class QueryHeader extends Component {
     ]);
 
     // data reference button
-    var dataReferenceButtonClasses = cx("transition-color", {
+    let dataReferenceButtonClasses = cx("transition-color", {
       "text-brand": this.props.isShowingDataReference,
       "text-brand-hover": !this.state.isShowingDataReference,
     });

@@ -8,6 +8,7 @@ import { formatValue } from "metabase/lib/formatting";
 
 import { initChart, forceSortedGroup, makeIndexMap } from "./renderer_utils";
 import { getFriendlyName } from "./utils";
+import { checkXAxisLabelOverlap } from "./LineAreaBarPostRender";
 
 export default function rowRenderer(
   element,
@@ -167,5 +168,10 @@ export default function rowRenderer(
   if (labelsOutside) {
     chart.margins().left += maxTextWidth;
     chart.render();
+  }
+
+  // hide overlapping x-axis labels
+  if (checkXAxisLabelOverlap(chart, ".axis text")) {
+    chart.selectAll(".axis").remove();
   }
 }

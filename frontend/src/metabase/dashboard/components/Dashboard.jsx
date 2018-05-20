@@ -1,12 +1,14 @@
 /* @flow */
 
+// TODO: merge with metabase/dashboard/containers/Dashboard.jsx
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-
+import { t } from "c-3po";
 import Parameters from "metabase/parameters/components/Parameters.jsx";
 
 import DashboardControls from "../hoc/DashboardControls";
@@ -279,10 +281,10 @@ export default class Dashboard extends Component {
                 <div className="absolute z1 top bottom left right flex flex-column layout-centered">
                   <span className="QuestionCircle">?</span>
                   <div className="text-normal mt3 mb1">
-                    This dashboard is looking empty.
+                    {t`This dashboard is looking empty.`}
                   </div>
                   <div className="text-normal text-grey-2">
-                    Add a question to start making it useful!
+                    {t`Add a question to start making it useful!`}
                   </div>
                 </div>
               ) : (

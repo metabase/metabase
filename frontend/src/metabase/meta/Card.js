@@ -214,6 +214,10 @@ export function applyParameters(
   return datasetQuery;
 }
 
+export function isTransientId(id: ?any) {
+  return id != null && typeof id === "string" && isNaN(parseInt(id));
+}
+
 /** returns a question URL with parameters added to query string or MBQL filters */
 export function questionUrlWithParameters(
   card: Card,
@@ -240,6 +244,7 @@ export function questionUrlWithParameters(
   // If we have a clean question without parameters applied, don't add the dataset query hash
   if (
     !cardIsDirty &&
+    !isTransientId(card.id) &&
     datasetQuery.parameters &&
     datasetQuery.parameters.length === 0
   ) {
@@ -268,5 +273,13 @@ export function questionUrlWithParameters(
       console.warn("UNHANDLED PARAMETER", datasetParameter);
     }
   }
+
+  if (isTransientId(card.id)) {
+    card = assoc(card, "id", null);
+  }
+  if (isTransientId(card.original_card_id)) {
+    card = assoc(card, "original_card_id", null);
+  }
+
   return Urls.question(null, card.dataset_query ? card : undefined, query);
 }

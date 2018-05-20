@@ -191,6 +191,32 @@
             :aggregation [:count]
             :breakout    [[:field-literal (keyword (data/format-name :price)) :type/Integer]]))))))
 
+;; Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail
+(expect
+  breakout-results
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM VENUES -- small comment here"}}}]
+    (rows+cols
+      (format-rows-by [int int]
+        (qp/process-query
+          (query-with-source-card card
+            :aggregation [:count]
+            :breakout    [[:field-literal (keyword (data/format-name :price)) :type/Integer]]))))))
+
+;; Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail
+(expect
+  breakout-results
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM VENUES -- small comment here\n"}}}]
+    (rows+cols
+      (format-rows-by [int int]
+        (qp/process-query
+          (query-with-source-card card
+            :aggregation [:count]
+            :breakout    [[:field-literal (keyword (data/format-name :price)) :type/Integer]]))))))
+
 
 ;; make sure we can filter by a field literal
 (expect
@@ -499,7 +525,7 @@
   (tt/with-temp Card [card {:dataset_query {:database db-id
                                             :type     :native
                                             :native   {:query "SELECT * FROM VENUES"}}}]
-    ((user->client :rasta) :post "card"
+    ((user->client :rasta) :post expected-status-code "card"
      {:name                   (tu/random-name)
       :display                "scalar"
       :visualization_settings {}

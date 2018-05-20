@@ -71,7 +71,7 @@ export function updatePermission(
   } else {
     newValue = value;
   }
-  for (var i = 0; i < fullPath.length; i++) {
+  for (let i = 0; i < fullPath.length; i++) {
     if (typeof getIn(permissions, fullPath.slice(0, i)) === "string") {
       permissions = setIn(permissions, fullPath.slice(0, i), {});
     }
