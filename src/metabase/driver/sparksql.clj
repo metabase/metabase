@@ -23,6 +23,7 @@
            metabase.query_processor.interface.Field))
 
 (defrecord SparkSQLDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Spark SQL"))
 
@@ -116,28 +117,28 @@
     (s/replace s #"-" "_")))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
-(defn- describe-database [driver {:keys [details] :as database}]
+(defn- describe-database [_ {:keys [details] :as database}]
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
              (set (for [result (jdbc/query {:connection conn}
-                                 ["show tables"])]
-                    {:name (:tablename result)
+                                           ["show tables"])]
+                    {:name   (:tablename result)
                      :schema (when (> (count (:database result)) 0)
                                (:database result))})))})
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
-(defn- describe-table [driver {:keys [details] :as database} table]
+(defn- describe-table [_ {:keys [details] :as database} table]
   (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-    {:name (:name table)
+    {:name   (:name table)
      :schema (:schema table)
      :fields (set (for [result (jdbc/query {:connection conn}
-                                 [(if (:schema table)
-                                    (format "describe `%s`.`%s`"
-                                            (dash-to-underscore (:schema table))
-                                            (dash-to-underscore (:name table)))
-                                    (str "describe " (dash-to-underscore (:name table))))])]
-                    {:name (:col_name result)
+                                           [(if (:schema table)
+                                              (format "describe `%s`.`%s`"
+                                                      (dash-to-underscore (:schema table))
+                                                      (dash-to-underscore (:name table)))
+                                              (str "describe " (dash-to-underscore (:name table))))])]
+                    {:name          (:col_name result)
                      :database-type (:data_type result)
-                     :base-type (hive-like/column->base-type (keyword (:data_type result)))}))}))
+                     :base-type     (hive-like/column->base-type (keyword (:data_type result)))}))}))
 
 ;; we need this because transactions are not supported in Hive 1.2.1
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)

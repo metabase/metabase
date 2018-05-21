@@ -5,7 +5,6 @@
    Fields, or do a better job getting a more-random sample of rows."
   (:require [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.models.database :refer [Database]]
             [metabase.sync.interface :as i]
             [schema.core :as s]))
 

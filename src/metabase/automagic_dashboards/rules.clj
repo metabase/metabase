@@ -4,7 +4,6 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.automagic-dashboards.populate :as populate]
-            [metabase.types]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :as i18n :refer [trs]]
@@ -12,8 +11,7 @@
              [coerce :as sc]
              [core :as s]]
             [yaml.core :as yaml])
-  (:import java.nio.file.Path java.nio.file.FileSystems java.nio.file.FileSystem
-           java.nio.file.Files))
+  (:import [java.nio.file Files FileSystem FileSystems Path]))
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."

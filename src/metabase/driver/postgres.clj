@@ -12,15 +12,15 @@
             [metabase.db.spec :as dbspec]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            metabase.query-processor.interface
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
-  (:import java.util.UUID
-           java.sql.Time
+  (:import java.sql.Time
+           java.util.UUID
            metabase.query_processor.interface.Value))
 
 (defrecord PostgresDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "PostgreSQL"))
 
@@ -97,7 +97,7 @@
 
 (defn- column->special-type
   "Attempt to determine the special-type of a Field given its name and Postgres column type."
-  [column-name column-type]
+  [_ column-type]
   ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON special-type
   (case column-type
     :json :type/SerializedJSON
@@ -201,7 +201,7 @@
       :else                               (sqlqp/->honeysql driver value))))
 
 (defmethod sqlqp/->honeysql [PostgresDriver Time]
-  [driver time-value]
+  [_ time-value]
   (hx/->time time-value))
 
 (defn- string-length-fn [field-key]

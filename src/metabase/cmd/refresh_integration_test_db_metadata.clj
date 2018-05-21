@@ -3,13 +3,11 @@
             [environ.core :refer [env]]
             [metabase
              [db :as mdb]
-             [util :as u]]
+             [sample-data :as sample-data]
+             [sync :as sync]]
             [metabase.models
              [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
-            [metabase.sample-data :as sample-data]
-            [metabase.sync :as sync]
+             [field :refer [Field]]]
             [toucan.db :as db]))
 
 (defn- test-fixture-db-path
