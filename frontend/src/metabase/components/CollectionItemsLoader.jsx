@@ -18,8 +18,8 @@ const CollectionItemsLoader = ({ collectionId, children }: Props) => (
         cards: object.cards,
         pulses: object.pulses,
         allItems: [].concat(
-          object.cards.map(c => ({ ...c, type: "card" })),
           object.dashboards.map(d => ({ ...d, type: "dashboard" })),
+          object.cards.map(c => ({ ...c, type: "card" })),
           object.pulses.map(p => ({ ...p, type: "pulse" })),
         ),
         empty:
