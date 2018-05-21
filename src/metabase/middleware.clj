@@ -16,9 +16,7 @@
              [user :as user :refer [User]]]
             [metabase.util.date :as du]
             [puppetlabs.i18n.core :refer [tru]]
-            [toucan
-             [db :as db]
-             [models :as models]])
+            [toucan.db :as db])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
