@@ -160,7 +160,7 @@
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg connection-details->spec)
           :string-length-fn          (u/drop-first-arg string-length-fn)
-          :excluded-schemas          (constantly #{"information_schema"})
+          :excluded-schemas          (constantly #{"INFORMATION_SCHEMA"})
           :date                      (u/drop-first-arg date)
           :current-datetime-fn       (constantly :%current_timestamp)
           :set-timezone-sql          (constantly "alter session set time_zone = %s")

@@ -14,7 +14,7 @@
   {:type/BigInteger "BIGINT"
    :type/Boolean    "BOOLEAN"
    :type/Date       "DATE"
-   :type/DateTime   "TIMESTAMP"
+   :type/DateTime   "TIMESTAMPLTZ"
    :type/Decimal    "DECIMAL"
    :type/Float      "FLOAT"
    :type/Integer    "INTEGER"
@@ -22,10 +22,11 @@
    :type/Time       "TIME"})
 
 (defn- database->connection-details [context {:keys [database-name]}]
-  (merge {:account   (i/db-test-env-var-or-throw :snowflake :account)
-          :user      (i/db-test-env-var-or-throw :snowflake :user)
-          :password  (i/db-test-env-var-or-throw :snowflake :password)
-          :warehouse (i/db-test-env-var-or-throw :snowflake :warehouse)}
+  (merge {:account                        (i/db-test-env-var-or-throw :snowflake :account)
+          :user                           (i/db-test-env-var-or-throw :snowflake :user)
+          :password                       (i/db-test-env-var-or-throw :snowflake :password)
+          :warehouse                      (i/db-test-env-var-or-throw :snowflake :warehouse)
+          :QUOTED_IDENTIFIERS_IGNORE_CASE true}
          (when (= context :db)
            {:db database-name})))
 
@@ -60,5 +61,6 @@
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (u/drop-first-arg database->connection-details)
+          :format-name                  (u/drop-first-arg s/upper-case)
           :default-schema               (constantly "foo")
           :engine                       (constantly :snowflake)}))
