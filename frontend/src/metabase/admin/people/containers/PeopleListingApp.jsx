@@ -17,6 +17,7 @@ import Button from "metabase/components/Button.jsx";
 import Radio from "metabase/components/Radio";
 
 import { t, jt } from "c-3po";
+import _ from "underscore";
 import EditUserForm from "../components/EditUserForm.jsx";
 import UserActionsSelect from "../components/UserActionsSelect.jsx";
 import UserGroupSelect from "../components/UserGroupSelect.jsx";
