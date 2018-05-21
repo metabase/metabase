@@ -134,8 +134,10 @@ class DefaultLanding extends React.Component {
 
     return (
       <Flex>
-        <Box w={1 / 3}>{showCollectionList && <CollectionList />}</Box>
-        <Box w={2 / 3} mr={2}>
+        <Box w={1 / 3} mr={2}>
+          {showCollectionList && <CollectionList />}
+        </Box>
+        <Box w={2 / 3}>
           <Card>
             <CollectionItemsLoader collectionId={collectionId || "root"}>
               {({ allItems, pulses, cards, dashboards, empty }) => {
