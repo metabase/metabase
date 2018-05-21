@@ -51,6 +51,7 @@
 
 ;; TODO - I'm 90% sure we could just reüse the "MovieDB" instead of having this subset of it used here
 (defrecord SyncTestDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "SyncTestDriver"))
 
@@ -209,9 +210,9 @@
     (table-details (Table (:id table)))))
 
 
-;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-;; !!                                                                                                                 !!
-;; !!  HEY! Your tests probably don't belong in this namespace! Put them in one appropriate to the specific part of   !!
-;; !!                                             sync they are testing.                                              !!
-;; !!                                                                                                                 !!
-;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!                                                                                                               !!
+;; !! HEY! Your tests probably don't belong in this namespace! Put them in one appropriate to the specific part of  !!
+;; !!                                            sync they are testing.                                             !!
+;; !!                                                                                                               !!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -4,15 +4,12 @@
    The new implementation uses prepared statement args instead of substituting them directly into the query,
    and is much better-organized and better-documented."
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [instaparse.core :as insta]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.models.field :as field :refer [Field]]
-            [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.query-processor.middleware.expand :as ql]
-            [metabase.util :as u]
+            [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.util
              [date :as du]
              [schema :as su]]

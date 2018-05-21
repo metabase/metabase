@@ -1,22 +1,16 @@
 (ns metabase.api.dataset
   "/api/dataset endpoints."
   (:require [cheshire.core :as json]
-            [clj-time.format :as tformat]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
-            [metabase
-             [middleware :as middleware]
-             [query-processor :as qp]
-             [util :as u]]
             [metabase.api.common :as api]
-            [metabase.api.common.internal :refer [route-fn-name]]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [query :as query]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.util :as qputil]
-            [metabase.util :as util]
             [metabase.util
              [date :as du]
              [export :as ex]

@@ -3,16 +3,13 @@
              [coerce :as coerce]
              [core :as t]
              [format :as time]]
-            [clojure.tools.logging :as log]
             [clojure.math.numeric-tower :as math]
-            [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [trs]])
-  (:import [clojure.lang Keyword]
-           [java.util Calendar Date TimeZone]
+            [metabase.util :as u])
+  (:import clojure.lang.Keyword
            [java.sql Time Timestamp]
-           [org.joda.time DateTime DateTimeZone]
-           [org.joda.time.format DateTimeFormatter]))
-
+           [java.util Calendar Date TimeZone]
+           org.joda.time.DateTime
+           org.joda.time.format.DateTimeFormatter))
 
 (defprotocol ITimestampCoercible
   "Coerce object to a `java.sql.Timestamp`."

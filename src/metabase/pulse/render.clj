@@ -1,6 +1,5 @@
 (ns metabase.pulse.render
   (:require [clj-time
-             [coerce :as c]
              [core :as t]
              [format :as f]]
             [clojure
@@ -16,7 +15,7 @@
              [date :as du]
              [ui-logic :as ui-logic]
              [urls :as urls]]
-            [puppetlabs.i18n.core :refer [tru trs]]
+            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
            [java.awt BasicStroke Color Dimension RenderingHints]
@@ -188,19 +187,15 @@
             (< cols-limit (count cols))
             (< rows-limit (count rows))))))
 
-(defn include-xls-attachment?
-  "Returns true if this card and resultset should include an XLS attachment"
-  [{:keys [include_csv] :as card} result-data]
-  (:include_xls card))
-
 (defn count-displayed-columns
   "Return a count of the number of columns to be included in a table display"
   [cols]
   (count (filter show-in-table? cols)))
 
+
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
-(defrecord NumericWrapper [num-str]
+(defrecord ^:private NumericWrapper [num-str]
   hutil/ToString
   (to-str [_] num-str)
   java.lang.Object
@@ -249,7 +244,8 @@
                                                                                  3))))))
 
 (defn- format-timestamp-relative
-  "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible, otherwie returns nil"
+  "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible,
+  otherwie returns nil"
   [timezone timestamp, {:keys [unit]}]
   (let [parsed-timestamp (du/str->date-time timestamp timezone)]
     (case unit
@@ -407,7 +403,7 @@
           [remapped_from col-idx])))
 
 (defn- query-results->header-row
-  "Returns a row structure with header info from `COLS`. These values are strings that are ready to be rendered as HTML"
+  "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
   [remapping-lookup cols include-bar?]
   {:row (for [maybe-remapped-col cols
               :when (show-in-table? maybe-remapped-col)
@@ -441,7 +437,7 @@
             (format-cell timezone row-cell col))}))
 
 (defn- prep-for-html-rendering
-  "Convert the query results (`COLS` and `ROWS`) into a formatted seq of rows (list of strings) that can be rendered as
+  "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
   [timezone cols rows bar-column max-value column-limit]
   (let [remapping-lookup (create-remapping-lookup cols)
@@ -578,7 +574,7 @@
 
 (defmulti ^:private make-image-bundle
   "Create an image bundle. An image bundle contains the data needed to either encode the image inline (when
-  `RENDER-TYPE` is `:inline`), or create the hashes/references needed for an attached image (`RENDER-TYPE` of
+  `render-type` is `:inline`), or create the hashes/references needed for an attached image (`render-type` of
   `:attachment`)"
   (fn [render-type url-or-bytes]
     [render-type (class url-or-bytes)]))
@@ -833,6 +829,6 @@
                    content]}))
 
 (defn render-pulse-card-to-png
-  "Render a PULSE-CARD as a PNG. DATA is the `:data` from a QP result (I think...)"
+  "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
   ^bytes [timezone pulse-card result]
   (render-html-to-png (render-pulse-card :inline timezone pulse-card result) card-width))

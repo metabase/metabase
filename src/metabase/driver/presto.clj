@@ -28,6 +28,7 @@
            [metabase.query_processor.interface TimeValue]))
 
 (defrecord PrestoDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Presto"))
 
