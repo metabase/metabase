@@ -1,11 +1,10 @@
 (ns metabase.models.params
   "Utility functions for dealing with parameters for Dashboards and Cards."
   (:require [clojure.set :as set]
-            [metabase.query-processor.middleware.expand :as ql]
-            metabase.query-processor.interface
             [metabase
              [db :as mdb]
              [util :as u]]
+            [metabase.query-processor.middleware.expand :as ql]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]])

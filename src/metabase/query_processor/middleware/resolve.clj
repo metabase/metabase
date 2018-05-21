@@ -4,11 +4,9 @@
   `FieldPlaceholder` or similar. During this phase, we'll take those placeholder objects and fetch information from
   the DB and replace them with actual objects like `Field`."
   (:refer-clojure :exclude [resolve])
-  (:require [clj-time.coerce :as tcoerce]
-            [clojure
+  (:require [clojure
              [set :as set]
              [walk :as walk]]
-            [medley.core :as m]
             [metabase
              [db :as mdb]
              [util :as u]]

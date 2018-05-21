@@ -19,7 +19,7 @@
 
 (defonce ^:private calls-to-describe-database (atom 0))
 
-(defrecord ConcurrentSyncTestDriver []
+(defrecord ^:private ConcurrentSyncTestDriver []
   clojure.lang.Named
   (getName [_] "ConcurrentSyncTestDriver"))
 

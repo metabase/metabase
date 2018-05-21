@@ -5,15 +5,12 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.models
-             [field :refer [Field]]
-             [database :refer [Database]]]
+            [metabase.models.database :refer [Database]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+            [schema.core :as s]))
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})

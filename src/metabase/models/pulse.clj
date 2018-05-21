@@ -23,7 +23,6 @@
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.models
              [card :refer [Card]]
-             [permissions :as perms]
              [collection :as collection]
              [interface :as i]
              [pulse-card :refer [PulseCard]]
@@ -35,7 +34,6 @@
              [db :as db]
              [hydrate :refer [hydrate]]
              [models :as models]]))
-
 
 ;;; ------------------------------------------------- Perms Checking -------------------------------------------------
 

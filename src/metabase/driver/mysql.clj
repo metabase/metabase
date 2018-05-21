@@ -23,6 +23,7 @@
            org.joda.time.format.DateTimeFormatter))
 
 (defrecord MySQLDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "MySQL"))
 

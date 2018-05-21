@@ -47,12 +47,12 @@
 ;; difference between this and `streaming-json-response`?
 (defn- streamed-json-response
   "Write `RESPONSE-SEQ` to a PipedOutputStream as JSON, returning the connected PipedInputStream"
-  [response-seq options]
+  [response-seq opts]
   (rui/piped-input-stream
    (fn [^OutputStream output-stream]
      (with-open [output-writer   (OutputStreamWriter. ^OutputStream output-stream ^Charset StandardCharsets/UTF_8)
                  buffered-writer (BufferedWriter. output-writer)]
-       (json/generate-stream response-seq buffered-writer)))))
+       (json/generate-stream response-seq buffered-writer opts)))))
 
 (defn- wrap-streamed-json-response
   "Similar to ring.middleware/wrap-json-response in that it will serialize the response's body to JSON if it's a

@@ -7,8 +7,7 @@
              [core :as fe]
              [costs :as costs]]
             [metabase.models
-             [card :refer [Card] :as card]
-             [database :refer [Database] :as database]
+             [card :as card :refer [Card]]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [query :as query]
