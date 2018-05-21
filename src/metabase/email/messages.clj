@@ -218,7 +218,7 @@
                       (export/export-to-csv-writer temp-file result)
                       (create-result-attachment-map "csv" card-name temp-file))
 
-                    (when-let [temp-file (and (render/include-xls-attachment? card result-data)
+                    (when-let [temp-file (and (:include_xls card)
                                               (create-temp-file "xlsx"))]
                       (export/export-to-xlsx-file temp-file result)
                       (create-result-attachment-map "xlsx" card-name temp-file))]))))

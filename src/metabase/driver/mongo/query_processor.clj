@@ -14,7 +14,7 @@
              [interface :as i]]
             [metabase.util :as u]
             [metabase.util.date :as du]
-            [monger joda-time
+            [monger
              [collection :as mc]
              [operators :refer :all]])
   (:import java.sql.Timestamp

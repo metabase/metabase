@@ -3,8 +3,7 @@
             [clojure.walk :as walk]
             [metabase
              [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.query-processor.interface])
+             [util :as u]])
   (:import [metabase.query_processor.interface BetweenFilter BinnedField ComparisonFilter]))
 
 (defn- update!
@@ -13,9 +12,8 @@
   (assoc! coll k (f (get coll k))))
 
 (defn- filter->field-map
-  "A bit of a stateful hack using clojure.walk/prewalk to find any
-  comparison or between filter. This should be replaced by a zipper
-  for a more functional/composable approach to this problem."
+  "A bit of a stateful hack using clojure.walk/prewalk to find any comparison or between filter. This should be replaced
+  by a zipper for a more functional/composable approach to this problem."
   [mbql-filter]
   (let [acc (transient {})]
     (walk/prewalk
@@ -31,24 +29,21 @@
     (persistent! acc)))
 
 (defn calculate-bin-width
-  "Calculate bin width required to cover interval [`min-value`, `max-value`] with
-   `num-bins`."
+  "Calculate bin width required to cover interval [`min-value`, `max-value`] with `num-bins`."
   [min-value max-value num-bins]
   (u/round-to-decimals 5 (/ (- max-value min-value)
                             num-bins)))
 
 (defn calculate-num-bins
-  "Calculate number of bins of width `bin-width` required to cover interval
-   [`min-value`, `max-value`]."
+  "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."
   [min-value max-value bin-width]
   (long (Math/ceil (/ (- max-value min-value)
                          bin-width))))
 
 (defn- extract-bounds
-  "Given query criteria, find a min/max value for the binning strategy
-  using the greatest user specified min value and the smallest user
-  specified max value. When a user specified min or max is not found,
-  use the global min/max for the given field."
+  "Given query criteria, find a min/max value for the binning strategy using the greatest user specified min value and
+  the smallest user specified max value. When a user specified min or max is not found, use the global min/max for the
+  given field."
   [{:keys [field-id fingerprint]} field-filter-map]
   (let [{global-min :min, global-max :max} (get-in fingerprint [:type :type/Number])
         user-maxes (for [{:keys [filter-type] :as query-filter} (get field-filter-map field-id)
@@ -105,8 +100,8 @@
          ffirst)))
 
 (def ^{:arglists '([binned-field])} nicer-breakout
-  "Humanize binning: extend interval to start and end on a \"nice\" number and,
-   when number of bins is fixed, have a \"nice\" step (bin width)."
+  "Humanize binning: extend interval to start and end on a \"nice\" number and, when number of bins is fixed, have a
+  \"nice\" step (bin width)."
   (fixed-point
    (fn
      [{:keys [min-value max-value bin-width num-bins strategy] :as binned-field}]
@@ -134,10 +129,9 @@
        :bin-width (calculate-bin-width min-value max-value num-bins)})))
 
 (defn- update-binned-field
-  "Given a field, resolve the binning strategy (either provided or
-  found if default is specified) and calculate the number of bins and
-  bin width for this file. `FILTER-FIELD-MAP` contains related
-  criteria that could narrow the domain for the field."
+  "Given a field, resolve the binning strategy (either provided or found if default is specified) and calculate the
+  number of bins and bin width for this file. `filter-field-map` contains related criteria that could narrow the
+  domain for the field."
   [{:keys [field num-bins strategy bin-width] :as binned-field} filter-field-map]
   (let [[min-value max-value] (extract-bounds field filter-field-map)]
     (when-not (and min-value max-value)
@@ -161,11 +155,9 @@
       (or (nicer-breakout resolved-binned-field) resolved-binned-field))))
 
 (defn update-binning-strategy
-  "When a binned field is found, it might need to be updated if a
-  relevant query criteria affects the min/max value of the binned
-  field. This middleware looks for that criteria, then updates the
-  related min/max values and calculates the bin-width based on the
-  criteria values (or global min/max information)."
+  "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of
+  the binned field. This middleware looks for that criteria, then updates the related min/max values and calculates
+  the bin-width based on the criteria values (or global min/max information)."
   [qp]
   (fn [query]
     (let [filter-field-map (filter->field-map (get-in query [:query :filter]))]

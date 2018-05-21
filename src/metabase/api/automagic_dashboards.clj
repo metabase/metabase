@@ -4,25 +4,23 @@
             [compojure.core :refer [GET POST]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
-             [core :as magic]
              [comparison :as magic.comparison]
+             [core :as magic]
              [rules :as rules]]
             [metabase.models
              [card :refer [Card]]
-             [dashboard :refer [Dashboard] :as dashboard]
+             [dashboard :as dashboard :refer [Dashboard]]
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
-             [query :refer [Query] :as query]
+             [query :as query]
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [tru]]
             [ring.util.codec :as codec]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private Show
   (su/with-api-error-message (s/maybe (s/enum "all"))

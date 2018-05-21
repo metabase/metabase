@@ -11,7 +11,7 @@
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
             "profile" ["with-profile" "+profile" "run" "profile"]
             "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]}
-  :dependencies [[org.clojure/clojure "1.8.0"]
+  :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/core.async "0.3.442"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
                  [org.clojure/core.memoize "0.5.9"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
@@ -124,24 +124,27 @@
          :init metabase.core/init!
          :destroy metabase.core/destroy
          :reload-paths ["src"]}
-  :eastwood {:exclude-namespaces [:test-paths
-                                  metabase.driver.generic-sql]        ; ISQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
+  :eastwood {:exclude-namespaces
+             [:test-paths
+              metabase.driver.generic-sql                             ; SQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
+              metabase.query-processor.middleware.binning]            ; Similarly Eastwood gets confused because this namespace relies on defrecord :load-ns options which it seems to ignore :(
              :add-linters [:unused-private-vars
-                           ;; These linters are pretty useful but give a few false positives and can't be selectively disabled. See https://github.com/jonase/eastwood/issues/192
-                           ;; and https://github.com/jonase/eastwood/issues/193
-                           ;; It's still useful to re-enable them and run them every once in a while because they catch a lot of actual errors too. Keep an eye on the issues above
-                           ;; and re-enable them if they ever get resolved
-                           #_:unused-locals
-                           #_:unused-namespaces]
-             :exclude-linters [:constant-test                         ; gives us false positives with forms like (when config/is-test? ...)
-                               :deprecations]}                        ; Turn this off temporarily until we finish removing self-deprecated DB functions & macros like `upd`, `del`, and `sel`
+                           :unused-namespaces
+                           ;; These linters are pretty useful but give a few false positives and can't be selectively disabled (yet)
+                           ;; For example see https://github.com/jonase/eastwood/issues/193
+                           ;; It's still useful to re-enable them and run them every once in a while because they catch a lot of actual errors too. Keep an eye on the issue above
+                           ;; and re-enable them if we can get them to work
+                           #_:unused-fn-args
+                           #_:unused-locals]
+             :exclude-linters [#_:constant-test                         ; gives us false positives with forms like (when config/is-test? ...)
+                               :deprecations]}                        ; Turn this off temporarily until we finish removing self-deprecated functions & macros
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
                                 #"^metabase\.http-client$"]}
   :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
                    :plugins [[docstring-checker "1.0.2"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
-                             [jonase/eastwood "0.2.3"
+                             [jonase/eastwood "0.2.6"
                               :exclusions [org.clojure/clojure]]      ; Linting
                              [lein-bikeshed "0.4.1"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'

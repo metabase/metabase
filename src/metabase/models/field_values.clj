@@ -8,22 +8,22 @@
              [db :as db]
              [models :as models]]))
 
-(def ^:const ^Integer category-cardinality-threshold
+(def ^Integer category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`.
   This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
   frontend behavior such as widget choices."
   (int 30))
 
-(def ^:const ^Integer auto-list-cardinality-threshold
+(def ^Integer auto-list-cardinality-threshold
   "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means
   the Field should have FieldValues."
   (int 100))
 
-(def ^:private ^:const ^Integer entry-max-length
+(def ^:private ^Integer entry-max-length
   "The maximum character length for a stored `FieldValues` entry."
   (int 100))
 
-(def ^:private ^:const ^Integer total-max-length
+(def ^:private ^Integer total-max-length
   "Maximum total length for a `FieldValues` entry (combined length of all values for the field)."
   (int (* auto-list-cardinality-threshold entry-max-length)))
 

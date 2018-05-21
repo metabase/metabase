@@ -234,7 +234,7 @@
      (assoc field :binning-strategy strategy, :binning-param strategy-param))))
 
 (defn- fields-list-clause
-  ([k query] query)
+  ([_ query] query)
   ([k query & fields] (assoc query k (mapv field fields))))
 
 (def ^:ql ^{:arglists '([query & fields])} breakout "Specify which fields to breakout by." (partial fields-list-clause :breakout))

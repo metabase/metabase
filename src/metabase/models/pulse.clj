@@ -3,7 +3,6 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase
-             [db :as mdb]
              [events :as events]
              [util :as u]]
             [metabase.api.common :refer [*current-user*]]
@@ -18,7 +17,7 @@
              [hydrate :refer [hydrate]]
              [models :as models]]))
 
-;;; ------------------------------------------------------------ Perms Checking ------------------------------------------------------------
+;;; ------------------------------------------------- Perms Checking -------------------------------------------------
 
 (defn- perms-objects-set [pulse read-or-write]
   (set (when-let [card-ids (db/select-field :card_id PulseCard, :pulse_id (u/get-id pulse))]
@@ -26,15 +25,15 @@
                             (i/perms-objects-set card read-or-write))))))
 
 (defn- channels-with-recipients
-  "Get the 'channels' associated with this PULSE, including recipients of those 'channels'.
-   If `:channels` is already hydrated, as it will be when using `retrieve-pulses`, this doesn't need to make any DB calls."
+  "Get the 'channels' associated with this `pulse`, including recipients of those 'channels'. If `:channels` is already
+  hydrated, as it will be when using `retrieve-pulses`, this doesn't need to make any DB calls."
   [pulse]
   (or (:channels pulse)
       (-> (db/select PulseChannel, :pulse_id (u/get-id pulse))
           (hydrate :recipients))))
 
 (defn- emails
-  "Get the set of emails this PULSE will be sent to."
+  "Get the set of emails this `pulse` will be sent to."
   [pulse]
   (set (for [channel   (channels-with-recipients pulse)
              recipient (:recipients channel)]
@@ -45,7 +44,7 @@
       (contains? (emails pulse) (:email @*current-user*))))
 
 
-;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Pulse :pulse)
 
@@ -62,21 +61,22 @@
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:perms-objects-set  perms-objects-set
-          ;; I'm not 100% sure this covers everything. If a user is subscribed to a pulse they're still allowed to know it exists, right?
+          ;; I'm not 100% sure this covers everything. If a user is subscribed to a pulse they're still allowed to
+          ;; know it exists, right?
           :can-read?          can-read?
           :can-write?         (partial i/current-user-has-full-permissions? :write)}))
 
 
-;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn ^:hydrate channels
-  "Return the `PulseChannels` associated with this PULSE."
+  "Return the `PulseChannels` associated with this `pulse`."
   [{:keys [id]}]
   (db/select PulseChannel, :pulse_id id))
 
 
 (defn ^:hydrate cards
-  "Return the `Cards` associated with this PULSE."
+  "Return the `Cards` associated with this `pulse`."
   [{:keys [id]}]
   (map #(models/do-post-select Card %)
        (db/query
@@ -89,7 +89,7 @@
                      [:= :c.archived false]]
          :order-by [[:pc.position :asc]]})))
 
-;;; ------------------------------------------------------------ Pulse Fetching Helper Fns ------------------------------------------------------------
+;;; ------------------------------------------- Pulse Fetching Helper Fns --------------------------------------------
 
 (defn- hydrate-pulse [pulse]
   (-> pulse
@@ -100,7 +100,7 @@
   (dissoc pulse :alert_condition :alert_above_goal :alert_first_only))
 
 (defn retrieve-pulse
-  "Fetch a single `Pulse` by its ID value."
+  "Fetch a single `Pulse` by its `id` value."
   [id]
   {:pre [(integer? id)]}
   (-> (db/select-one Pulse {:where [:and
@@ -110,7 +110,7 @@
       remove-alert-fields))
 
 (defn retrieve-pulse-or-alert
-  "Fetch an alert or pulse by its ID value."
+  "Fetch an alert or pulse by its `id` value."
   [id]
   {:pre [(integer? id)]}
   (-> (db/select-one Pulse {:where [:= :id id]})
@@ -124,7 +124,7 @@
       (dissoc :cards)))
 
 (defn retrieve-alert
-  "Fetch a single alert by its pulse `ID` value."
+  "Fetch a single alert by its pulse `id` value."
   [id]
   {:pre [(integer? id)]}
   (-> (db/select-one Pulse {:where [:and
@@ -156,7 +156,7 @@
   (db/do-post-select model (db/query query)))
 
 (defn retrieve-user-alerts-for-card
-  "Find all alerts for `CARD-ID` that `USER-ID` is set to receive"
+  "Find all alerts for `card-id` that `user-id` is set to receive"
   [card-id user-id]
   (map (comp pulse->alert hydrate-pulse)
        (query-as Pulse
@@ -171,7 +171,7 @@
                            [:= :pcr.user_id user-id]]})))
 
 (defn retrieve-alerts-for-card
-  "Find all alerts for `CARD-IDS`, used for admin users"
+  "Find all alerts for `card-ids`, used for admin users"
   [& card-ids]
   (when (seq card-ids)
     (map (comp pulse->alert hydrate-pulse)
@@ -190,15 +190,15 @@
    :include_csv (get card :include_csv false)
    :include_xls (get card :include_xls false)})
 
-;;; ------------------------------------------------------------ Other Persistence Functions ------------------------------------------------------------
+;;; ------------------------------------------ Other Persistence Functions -------------------------------------------
 
 (defn update-pulse-cards!
-  "Update the `PulseCards` for a given PULSE.
-   CARD-IDS should be a definitive collection of *all* IDs of cards for the pulse in the desired order.
+  "Update the `PulseCards` for a given `pulse`.
+   `card-ids` should be a definitive collection of *all* IDs of cards for the pulse in the desired order.
 
    *  If an ID in CARD-IDS has no corresponding existing `PulseCard` object, one will be created.
-   *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
-   *  All cards will be updated with a `position` according to their place in the collection of CARD-IDS"
+   *  If an existing `PulseCard` has no corresponding ID in `card-ids`, it will be deleted.
+   *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
   {:arglists '([pulse card-refs])}
   [{:keys [id]} card-refs]
   {:pre [(integer? id)
@@ -238,11 +238,11 @@
       :else nil)))
 
 (defn update-pulse-channels!
-  "Update the `PulseChannels` for a given PULSE.
-   CHANNELS should be a definitive collection of *all* of the channels for the the pulse.
+  "Update the `PulseChannels` for a given `pulse`.
+   `channels` should be a definitive collection of *all* of the channels for the the pulse.
 
    * If a channel in the list has no existing `PulseChannel` object, one will be created.
-   * If an existing `PulseChannel` has no corresponding entry in CHANNELS, it will be deleted.
+   * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
    * All previously existing channels will be updated with their most recent information."
   {:arglists '([pulse channels])}
   [{:keys [id]} channels]
@@ -312,7 +312,8 @@
     (update-pulse-channels! pulse channels)))
 
 (defn update-pulse!
-  "Update an existing `Pulse`, including all associated data such as: `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
+  "Update an existing `Pulse`, including all associated data such as: `PulseCards`, `PulseChannels`, and
+  `PulseChannelRecipients`.
 
    Returns the updated `Pulse` or throws an Exception."
   [{:keys [id name cards channels skip-if-empty?] :as pulse}]
@@ -340,7 +341,7 @@
        (events/publish-event! :pulse-update)))
 
 (defn unsubscribe-from-alert
-  "Removes `USER-ID` from `PULSE-ID`"
+  "Removes `USER-ID` from ``pulse`-ID`"
   [pulse-id user-id]
   (let [[result] (db/execute! {:delete-from PulseChannelRecipient
                                ;; The below select * clause is required for the query to work on MySQL (PG and H2 work
