@@ -253,13 +253,14 @@
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
-  [:as {{:keys [dataset_query description display name visualization_settings collection_id result_metadata
-                metadata_checksum]} :body}]
+  [:as {{:keys [collection_id collection_position dataset_query description display metadata_checksum name
+                result_metadata visualization_settings], :as body} :body}]
   {name                   su/NonBlankString
    description            (s/maybe su/NonBlankString)
    display                su/NonBlankString
    visualization_settings su/Map
    collection_id          (s/maybe su/IntGreaterThanZero)
+   collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe results-metadata/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)}
   ;; check that we have permissions to run the query that we're trying to save
@@ -277,6 +278,7 @@
                :name                   name
                :visualization_settings visualization_settings
                :collection_id          collection_id
+               :collection_position    collection_position
                :result_metadata        (result-metadata dataset_query result_metadata metadata_checksum))]
     (events/publish-event! :card-create card)
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has
@@ -426,7 +428,8 @@
 (api/defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   enable_embedding embedding_params result_metadata metadata_checksum], :as body} :body}]
+                   collection_position enable_embedding embedding_params result_metadata metadata_checksum]
+            :as card-updates} :body}]
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
    display                (s/maybe su/NonBlankString)
@@ -436,6 +439,7 @@
    enable_embedding       (s/maybe s/Bool)
    embedding_params       (s/maybe su/EmbeddingParams)
    collection_id          (s/maybe su/IntGreaterThanZero)
+   collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe results-metadata/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)}
   (let [card-before-update (api/write-check Card id)]
@@ -445,21 +449,20 @@
     (check-allowed-to-unarchive card-before-update archived)
     (check-allowed-to-change-embedding card-before-update enable_embedding embedding_params)
     ;; make sure we have the correct `result_metadata`
-    (let [body (assoc body :result_metadata (result-metadata-for-updating card-before-update dataset_query
-                                                                          result_metadata metadata_checksum))]
+    (let [card-updates (assoc card-updates
+                         :result_metadata (result-metadata-for-updating card-before-update dataset_query
+                                                                        result_metadata metadata_checksum))]
       ;; ok, now save the Card
       (db/update! Card id
         ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
         ;; modified if they're passed in as non-nil
-        (u/select-keys-when body
-          :present #{:collection_id :description}
+        (u/select-keys-when card-updates
+          :present #{:collection_id :collection_position :description}
           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
                      :embedding_params :result_metadata})))
     ;; Fetch the updated Card from the DB
     (let [card (Card id)]
-
       (delete-alerts-if-needed! card-before-update card)
-
       (publish-card-update! card archived)
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
       ;; returned one -- See #4142

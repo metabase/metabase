@@ -59,20 +59,22 @@
 
 (api/defendpoint POST "/"
   "Create a new `Dashboard`."
-  [:as {{:keys [name description parameters collection_id], :as dashboard} :body}]
-  {name          su/NonBlankString
-   parameters    [su/Map]
-   description   (s/maybe s/Str)
-   collection_id (s/maybe su/IntGreaterThanZero)}
+  [:as {{:keys [name description parameters collection_id collection_position], :as dashboard} :body}]
+  {name                su/NonBlankString
+   parameters          [su/Map]
+   description         (s/maybe s/Str)
+   collection_id       (s/maybe su/IntGreaterThanZero)
+   collection_position (s/maybe su/IntGreaterThanZero)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   ;; Ok, now save the Dashboard
   (->> (db/insert! Dashboard
-         :name          name
-         :description   description
-         :parameters    (or parameters [])
-         :creator_id    api/*current-user-id*
-         :collection_id collection_id)
+         :name                name
+         :description         description
+         :parameters          (or parameters [])
+         :creator_id          api/*current-user-id*
+         :collection_id       collection_id
+         :collection_position collection_position)
        ;; publish an event and return the newly created Dashboard
        (events/publish-event! :dashboard-create)))
 
@@ -215,7 +217,8 @@
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id], :as dashboard} :body}]
+                   embedding_params position archived collection_id collection_position]
+            :as dashboard-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
    caveats                 (s/maybe s/Str)
@@ -226,16 +229,18 @@
    parameters              (s/maybe [su/Map])
    position                (s/maybe su/IntGreaterThanZero)
    archived                (s/maybe s/Bool)
-   collection_id           (s/maybe su/IntGreaterThanZero)}
+   collection_id           (s/maybe su/IntGreaterThanZero)
+   collection_position     (s/maybe su/IntGreaterThanZero)}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update collection_id)
     (check-allowed-to-change-embedding dash-before-update enable_embedding embedding_params))
   (api/check-500
    (db/update! Dashboard id
-     ;; description, position, and collection_id are allowed to be `nil`. Everything else must be non-nil
-     (u/select-keys-when dashboard
-       :present #{:description :position :collection_id}
+     ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
+     ;; non-nil
+     (u/select-keys-when dashboard-updates
+       :present #{:description :position :collection_id :collection_position}
        :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                   :embedding_params :archived})))
   ;; now publish an event and return the updated Dashboard

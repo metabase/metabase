@@ -44,12 +44,13 @@
 
 (api/defendpoint POST "/"
   "Create a new `Pulse`."
-  [:as {{:keys [name cards channels skip_if_empty collection_id]} :body}]
-  {name          su/NonBlankString
-   cards         (su/non-empty [pulse/CardRef])
-   channels      (su/non-empty [su/Map])
-   skip_if_empty (s/maybe s/Bool)
-   collection_id (s/maybe su/IntGreaterThanZero)}
+  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position]} :body}]
+  {name                su/NonBlankString
+   cards               (su/non-empty [pulse/CardRef])
+   channels            (su/non-empty [su/Map])
+   skip_if_empty       (s/maybe s/Bool)
+   collection_id       (s/maybe su/IntGreaterThanZero)
+   collection_position (s/maybe su/IntGreaterThanZero)}
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
   ;; if we're trying to create this Pulse inside a Collection, make sure we have write permissions for that collection
@@ -57,10 +58,11 @@
   ;; ok, now create the Pulse
   (api/check-500
    (pulse/create-pulse! (map pulse/card->ref cards) channels
-     {:name          name
-      :creator_id    api/*current-user-id*
-      :skip_if_empty skip_if_empty
-      :collection_id collection_id})))
+     {:name                name
+      :creator_id          api/*current-user-id*
+      :skip_if_empty       skip_if_empty
+      :collection_id       collection_id
+      :collection_position collection_position})))
 
 
 (api/defendpoint GET "/:id"
@@ -71,7 +73,7 @@
 
 (api/defendpoint PUT "/:id"
   "Update a Pulse with `id`."
-  [id :as {{:keys [name cards channels skip_if_empty collection_id], :as pulse} :body}]
+  [id :as {{:keys [name cards channels skip_if_empty collection_id], :as pulse-updates} :body}]
   {name          (s/maybe su/NonBlankString)
    cards         (s/maybe (su/non-empty [pulse/CardRef]))
    channels      (s/maybe (su/non-empty [su/Map]))
@@ -83,8 +85,9 @@
   (when collection_id
     (collection/check-allowed-to-change-collection (db/select-one [Pulse :collection_id] :id id) collection_id))
   ;; ok, now update the Pulse
-  (pulse/update-pulse! (assoc (select-keys pulse [:name :cards :channels :skip_if_empty :collection_id])
-                         :id id))
+  (pulse/update-pulse!
+   (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position])
+     :id id))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 

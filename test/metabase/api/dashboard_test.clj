@@ -96,6 +96,7 @@
   {:archived                false
    :caveats                 nil
    :collection_id           nil
+   :collection_position     nil
    :created_at              true ; assuming you call dashboard-response on the results
    :description             nil
    :embedding_params        nil
@@ -119,6 +120,31 @@
     (-> ((user->client :rasta) :post 200 "dashboard" {:name       "Test Create Dashboard"
                                                       :parameters [{:hash "abc123", :name "test", :type "date"}]})
         dashboard-response)))
+
+;; Make sure we can create a Dashboard with a Collection position
+(expect
+  #metabase.models.dashboard.DashboardInstance{:collection_id true, :collection_position 1000}
+  (tu/with-model-cleanup [Dashboard]
+    (let [dashboard-name (tu/random-name)]
+      (tt/with-temp Collection [collection]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+        ((user->client :rasta) :post 200 "dashboard" {:name                dashboard-name
+                                                      :collection_id       (u/get-id collection)
+                                                      :collection_position 1000})
+        (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
+                (update :collection_id (partial = (u/get-id collection))))))))
+
+;; ...but not if we don't have permissions for the Collection
+(expect
+  nil
+  (tu/with-model-cleanup [Dashboard]
+    (let [dashboard-name (tu/random-name)]
+      (tt/with-temp Collection [collection]
+        ((user->client :rasta) :post 403 "dashboard" {:name                dashboard-name
+                                                      :collection_id       (u/get-id collection)
+                                                      :collection_position 1000})
+        (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
+                (update :collection_id (partial = (u/get-id collection))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -250,6 +276,44 @@
       (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
       ;; now make an API call to move collections. Should fail
       ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dash)) {:collection_id (u/get-id new-collection)}))))
+
+;; Can we change the Collection position of a Dashboard?
+(expect
+  1
+  (tt/with-temp* [Collection [collection]
+                  Dashboard  [dashboard {:collection_id (u/get-id collection)}]]
+    (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard))
+     {:collection_position 1})
+    (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard))))
+
+;; ...and unset (unpin) it as well?
+(expect
+  nil
+  (tt/with-temp* [Collection [collection]
+                  Dashboard  [dashboard {:collection_id (u/get-id collection), :collection_position 1}]]
+    (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard))
+     {:collection_position nil})
+    (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard))))
+
+;; ...we shouldn't be able to if we don't have permissions for the Collection
+(expect
+  nil
+  (tt/with-temp* [Collection [collection]
+                  Dashboard  [dashboard {:collection_id (u/get-id collection)}]]
+    ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dashboard))
+     {:collection_position 1})
+    (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard))))
+
+(expect
+  1
+  (tt/with-temp* [Collection [collection]
+                  Dashboard  [dashboard {:collection_id (u/get-id collection), :collection_position 1}]]
+    ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dashboard))
+     {:collection_position nil})
+    (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard))))
+
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
