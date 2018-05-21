@@ -40,11 +40,11 @@ else
 fi
 
 if [[ -z "$MB_DB_CONNECTION_URI" ]]; then
-    JDBC_PARAMETERS=${JDBC_PARAMETERS:=""}
-    if [[ -z "$JDBC_PARAMETERS" ]]; then
+    MB_JDBC_PARAMETERS=${MB_JDBC_PARAMETERS:=""}
+    if [[ -z "$MB_JDBC_PARAMETERS" ]]; then
         export MB_DB_CONNECTION_URI=${CONNECTION_STRING}
     else
         log "INFO" "Found additional JDBC parameters"
-        export MB_DB_CONNECTION_URI="$CONNECTION_STRING&$JDBC_PARAMETERS"
+        export MB_DB_CONNECTION_URI="$CONNECTION_STRING&$MB_JDBC_PARAMETERS"
     fi
 fi

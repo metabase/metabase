@@ -39,14 +39,14 @@ hose {
         | -DDCOS_IP=10.200.0.156
         | -DBOOTSTRAP_IP=10.200.0.155
         | -DREMOTE_USER=operador
-	| -DDISC_POSTGRES_VERSION=1.1.3
-	| -DPOSTGRES_DISCOVERY_SERVICE=postgresdisc
-	| -DPOSTGRES_DISCOVERY_FWK_MESOS_ROLE=postgresdisc
+	    | -DDISC_POSTGRES_VERSION=1.1.3
+	    | -DPOSTGRES_DISCOVERY_SERVICE=postgresdisc
+	    | -DPOSTGRES_DISCOVERY_FWK_MESOS_ROLE=postgresdisc
         | -DSTRATIO_DISCOVERY_VERSION=0.28.9
         | -DDISCOVERY_NAME_DB=discovery
-	| -Dquietasdefault=false
+	    | -DMARATHON_LB_DNS=nightlypublic.labs.stratio.com
+	    | -Dquietasdefault=false
         | """.stripMargin().stripIndent()
-	| -DMARATHON_LB_DNS=nightlypublic.labs.stratio.com
 
     INSTALL = { config ->
         if (config.INSTALLPARAMETERS.contains('GROUPS_DISCOVERY')) {
