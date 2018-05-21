@@ -27,9 +27,11 @@
   is true, return all users (active and inactive)."
   [include_deactivated]
   {include_deactivated (s/maybe su/BooleanString)}
-  (apply db/select all-user-fields (if include_deactivated
-                                     []
-                                     [:is_active true])))
+  (db/select all-user-fields
+    (merge {:order-by [[:%lower.last_name :asc]
+                       [:%lower.first_name :asc]]}
+           (when-not include_deactivated
+             {:where [:= :is_active true]}))))
 
 (defn- fetch-user [& query-criteria]
   (apply db/select-one all-user-fields query-criteria))

@@ -24,14 +24,12 @@ import {
 } from "metabase/lib/schema_metadata";
 import { getIn } from "icepick";
 
-export const getNormalizedMetadata = state => state.metadata;
-
-// fully denomalized, raw "entities"
-export const getNormalizedDatabases = state => state.metadata.databases;
-export const getNormalizedTables = state => state.metadata.tables;
-export const getNormalizedFields = state => state.metadata.fields;
-export const getNormalizedMetrics = state => state.metadata.metrics;
-export const getNormalizedSegments = state => state.metadata.segments;
+// fully nomalized, raw "entities"
+export const getNormalizedDatabases = state => state.entities.databases;
+export const getNormalizedTables = state => state.entities.tables;
+export const getNormalizedFields = state => state.entities.fields;
+export const getNormalizedMetrics = state => state.entities.metrics;
+export const getNormalizedSegments = state => state.entities.segments;
 
 export const getMetadataFetched = state =>
   state.requests.fetched.metadata || {};
@@ -122,8 +120,8 @@ export const getDatabases = createSelector(
 );
 
 export const getDatabasesList = createSelector(
-  [getDatabases, state => state.metadata.databasesList],
-  (databases, ids) => ids.map(id => databases[id]),
+  [getDatabases, state => state.entities.databases_list],
+  (databases, ids) => (ids || []).map(id => databases[id]),
 );
 
 export const getTables = createSelector([getMetadata], ({ tables }) => tables);
@@ -148,7 +146,7 @@ const getParameterFieldValuesByFieldId = (state, props) => {
   // NOTE Atte Keinänen 9/14/17: Reading the state directly instead of using `getFields` selector
   // because `getMetadata` doesn't currently work with fields of public dashboards
   return (
-    _.chain(getIn(state, ["metadata", "fields"]))
+    _.chain(getIn(state, ["entities", "fields"]))
       // SQL template tags provide `field_id` instead of `field_ids`
       .pick(...(props.parameter.field_ids || [props.parameter.field_id]))
       .mapObject(getFieldValues)

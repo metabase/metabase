@@ -14,15 +14,11 @@
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
             [puppetlabs.i18n.core :refer [trs tru]]
-            [ring.util
-             [io :as rui]
-             [response :as rr]]
             [ring.core.protocols :as protocols]
             [ring.util.response :as response]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
-           [java.nio.charset Charset StandardCharsets]))
+  (:import java.io.OutputStream))
 
 (declare check-403 check-404)
 
@@ -255,6 +251,7 @@
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
+;; e.g. `catch-api-exceptions` and `auto-parse`
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:

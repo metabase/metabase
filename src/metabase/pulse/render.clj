@@ -1,6 +1,5 @@
 (ns metabase.pulse.render
   (:require [clj-time
-             [coerce :as c]
              [core :as t]
              [format :as f]]
             [clojure
@@ -16,7 +15,7 @@
              [date :as du]
              [ui-logic :as ui-logic]
              [urls :as urls]]
-            [puppetlabs.i18n.core :refer [tru trs]]
+            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
            [java.awt BasicStroke Color Dimension RenderingHints]
@@ -35,7 +34,7 @@
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
-;;; # ------------------------------------------------------------ STYLES ------------------------------------------------------------
+;;; ----------------------------------------------------- STYLES -----------------------------------------------------
 
 (def ^:private ^:const card-width 400)
 (def ^:private ^:const rows-limit 20)
@@ -121,7 +120,7 @@
   {:attachments (s/maybe {s/Str URL})
    :content [s/Any]})
 
-;;; # ------------------------------------------------------------ HELPER FNS ------------------------------------------------------------
+;;; --------------------------------------------------- HELPER FNS ---------------------------------------------------
 
 (defn style
   "Compile one or more CSS style maps into a string.
@@ -188,19 +187,15 @@
             (< cols-limit (count cols))
             (< rows-limit (count rows))))))
 
-(defn include-xls-attachment?
-  "Returns true if this card and resultset should include an XLS attachment"
-  [{:keys [include_csv] :as card} result-data]
-  (:include_xls card))
-
 (defn count-displayed-columns
   "Return a count of the number of columns to be included in a table display"
   [cols]
   (count (filter show-in-table? cols)))
 
-;;; # ------------------------------------------------------------ FORMATTING ------------------------------------------------------------
 
-(defrecord NumericWrapper [num-str]
+;;; --------------------------------------------------- FORMATTING ---------------------------------------------------
+
+(defrecord ^:private NumericWrapper [num-str]
   hutil/ToString
   (to-str [_] num-str)
   java.lang.Object
@@ -248,7 +243,8 @@
                                                                                  3))))))
 
 (defn- format-timestamp-relative
-  "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible, otherwie returns nil"
+  "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible,
+  otherwie returns nil"
   [timezone timestamp, {:keys [unit]}]
   (let [parsed-timestamp (du/str->date-time timestamp timezone)]
     (case unit
@@ -270,7 +266,8 @@
       nil)))
 
 (defn- format-timestamp-pair
-  "Formats a pair of timestamps, using relative formatting for the first timestamps if possible and 'Previous :unit' for the second, otherwise absolute timestamps for both"
+  "Formats a pair of timestamps, using relative formatting for the first timestamps if possible and 'Previous :unit' for
+  the second, otherwise absolute timestamps for both"
   [timezone [a b] col]
   (if-let [a' (format-timestamp-relative timezone a col)]
     [a' (str "Previous " (-> col :unit name))]
@@ -288,7 +285,8 @@
   [img-bytes]
   (str "data:image/png;base64," (String. (Base64Coder/encode img-bytes))))
 
-;;; # ------------------------------------------------------------ RENDERING ------------------------------------------------------------
+
+;;; --------------------------------------------------- RENDERING ----------------------------------------------------
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"
@@ -395,9 +393,8 @@
                  (rest header+rows))]])
 
 (defn- create-remapping-lookup
-  "Creates a map with from column names to a column index. This is
-  used to figure out what a given column name or value should be
-  replaced with"
+  "Creates a map with from column names to a column index. This is used to figure out what a given column name or value
+  should be replaced with"
   [cols]
   (into {}
         (for [[col-idx {:keys [remapped_from]}] (map vector (range) cols)
@@ -405,8 +402,7 @@
           [remapped_from col-idx])))
 
 (defn- query-results->header-row
-  "Returns a row structure with header info from `COLS`. These values
-  are strings that are ready to be rendered as HTML"
+  "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
   [remapping-lookup cols include-bar?]
   {:row (for [maybe-remapped-col cols
               :when (show-in-table? maybe-remapped-col)
@@ -440,8 +436,8 @@
             (format-cell timezone row-cell col))}))
 
 (defn- prep-for-html-rendering
-  "Convert the query results (`COLS` and `ROWS`) into a formatted seq
-  of rows (list of strings) that can be rendered as HTML"
+  "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
+  HTML"
   [timezone cols rows bar-column max-value column-limit]
   (let [remapping-lookup (create-remapping-lookup cols)
         limited-cols (take column-limit cols)]
@@ -577,7 +573,7 @@
 
 (defmulti ^:private make-image-bundle
   "Create an image bundle. An image bundle contains the data needed to either encode the image inline (when
-  `RENDER-TYPE` is `:inline`), or create the hashes/references needed for an attached image (`RENDER-TYPE` of
+  `render-type` is `:inline`), or create the hashes/references needed for an attached image (`render-type` of
   `:attachment`)"
   (fn [render-type url-or-bytes]
     [render-type (class url-or-bytes)]))
@@ -832,6 +828,6 @@
                    content]}))
 
 (defn render-pulse-card-to-png
-  "Render a PULSE-CARD as a PNG. DATA is the `:data` from a QP result (I think...)"
+  "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
   ^bytes [timezone pulse-card result]
   (render-html-to-png (render-pulse-card :inline timezone pulse-card result) card-width))

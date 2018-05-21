@@ -237,7 +237,7 @@ export default class EntitySearch extends Component {
                       <p className="text-grey-4">{t`Try adjusting your filter to find what you’re looking for.`}</p>
                     </div>
                   }
-                  image="/app/img/empty_question"
+                  image="app/img/empty_question"
                   imageHeight="213px"
                   imageClassName="mln2"
                   smallDescription

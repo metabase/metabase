@@ -18,6 +18,7 @@
   (:import [java.sql Time Timestamp]))
 
 (defrecord SQLiteDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "SQLite"))
 

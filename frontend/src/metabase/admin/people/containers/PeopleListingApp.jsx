@@ -2,7 +2,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import _ from "underscore";
 import { connect } from "react-redux";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -33,7 +32,7 @@ export const MODAL_RESET_PASSWORD_EMAIL = "MODAL_RESET_PASSWORD_EMAIL";
 export const MODAL_USER_ADDED_WITH_INVITE = "MODAL_USER_ADDED_WITH_INVITE";
 export const MODAL_USER_ADDED_WITH_PASSWORD = "MODAL_USER_ADDED_WITH_PASSWORD";
 
-import { getUsers, getModal, getGroups } from "../selectors";
+import { getSortedUsers, getModal, getGroups } from "../selectors";
 import {
   createUser,
   deactivateUser,
@@ -52,7 +51,7 @@ import {
 
 const mapStateToProps = (state, props) => {
   return {
-    users: getUsers(state, props),
+    users: getSortedUsers(state, props),
     modal: getModal(state, props),
     user: state.currentUser,
     groups: getGroups(state, props),
