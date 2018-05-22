@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Flex, Subhead } from "rebass";
 
-import CollectionItemsLoader from "metabase/components/CollectionItemsLoader";
+import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
 import { DatabaseListLoader } from "metabase/components/BrowseApp";
 
 import * as Urls from "metabase/lib/urls";
@@ -32,7 +32,10 @@ class Overworld extends React.Component {
                 {pinnedDashboards.map(pin => {
                   return (
                     <GridItem>
-                      <Link to={Urls.dashboard(pin.id)}>
+                      <Link
+                        to={Urls.dashboard(pin.id)}
+                        hover={{ color: normal.blue }}
+                      >
                         <Card hoverable p={3}>
                           <Icon
                             name="dashboard"
@@ -49,10 +52,14 @@ class Overworld extends React.Component {
                   );
                 })}
                 <GridItem>
-                  <Link to="/collection/root" hover={{ color: normal.blue }}>
+                  <Link
+                    to="/collection/root"
+                    color={normal.grey2}
+                    hover={{ color: normal.blue }}
+                  >
                     <Flex p={4} align="center">
                       <h3>See more items</h3>
-                      <Icon name="chevronright" />
+                      <Icon name="chevronright" size={14} ml={1} />
                     </Flex>
                   </Link>
                 </GridItem>
@@ -60,31 +67,34 @@ class Overworld extends React.Component {
             );
           }}
         </CollectionItemsLoader>
+
         <Box mt={4}>
           <h4>Our data</h4>
-          <DatabaseListLoader>
-            {({ databases, loading, error }) => {
-              return (
-                <Grid w={1 / 3}>
-                  {databases.map(database => (
-                    <GridItem>
-                      <Link to={`browse/${database.id}`}>
-                        <Card p={3} hover={{ color: normal.blue }} hoverable>
-                          <Icon
-                            name="database"
-                            color={normal.green}
-                            mb={3}
-                            size={28}
-                          />
-                          <Subhead>{database.name}</Subhead>
-                        </Card>
-                      </Link>
-                    </GridItem>
-                  ))}
-                </Grid>
-              );
-            }}
-          </DatabaseListLoader>
+          <Box mt={2}>
+            <DatabaseListLoader>
+              {({ databases }) => {
+                return (
+                  <Grid w={1 / 3}>
+                    {databases.map(database => (
+                      <GridItem>
+                        <Link to={`browse/${database.id}`}>
+                          <Card p={3} hover={{ color: normal.blue }} hoverable>
+                            <Icon
+                              name="database"
+                              color={normal.green}
+                              mb={3}
+                              size={28}
+                            />
+                            <Subhead>{database.name}</Subhead>
+                          </Card>
+                        </Link>
+                      </GridItem>
+                    ))}
+                  </Grid>
+                );
+              }}
+            </DatabaseListLoader>
+          </Box>
         </Box>
       </Box>
     );

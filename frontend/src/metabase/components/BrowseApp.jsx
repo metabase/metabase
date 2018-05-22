@@ -13,7 +13,7 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
-const DatabaseListLoader = props => (
+export const DatabaseListLoader = props => (
   <EntityListLoader entityType="databases" {...props} />
 );
 
