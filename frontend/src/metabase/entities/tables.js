@@ -6,6 +6,14 @@ import _ from "underscore";
 import { MetabaseApi } from "metabase/services";
 import { TableSchema } from "metabase/schema";
 
+import { GET } from "metabase/lib/api";
+
+const listTables = GET("/api/table");
+const listTablesForDatabase = async (...args) =>
+  // HACK: no /api/database/:dbId/tables endpoint
+  (await GET("/api/database/:dbId/metadata")(...args)).tables;
+const listTablesForSchema = GET("/api/database/:dbId/schema/:schemaName");
+
 // OBJECT ACTIONS
 export const FETCH_TABLE_METADATA = "metabase/entities/FETCH_TABLE_METADATA";
 
@@ -13,6 +21,18 @@ export default createEntity({
   name: "tables",
   path: "/api/table",
   schema: TableSchema,
+
+  api: {
+    list: async (params, ...args) => {
+      if (params.dbId && params.schemaName) {
+        return listTablesForSchema(params, ...args);
+      } else if (params.dbId) {
+        return listTablesForDatabase(params, ...args);
+      } else {
+        return listTables(params, ...args);
+      }
+    },
+  },
 
   // ACTION CREATORS
   objectActions: {

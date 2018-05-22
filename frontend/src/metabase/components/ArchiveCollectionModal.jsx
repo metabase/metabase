@@ -8,21 +8,19 @@ import { t } from "c-3po";
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent.jsx";
 
-import { setCollectionArchived } from "metabase/questions/collections";
-
-const mapStateToProps = () => ({});
+import Collections from "metabase/entities/collections";
 
 const mapDispatchToProps = {
-  setCollectionArchived,
+  setCollectionArchived: Collections.actions.setArchived,
   push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(null, mapDispatchToProps)
 @withRouter
 class ArchiveCollectionModal extends React.Component {
   async _archive() {
     await this.props.setCollectionArchived(
-      this.props.params.collectionId,
+      { id: this.props.params.collectionId },
       true,
     );
     this.props.push("/");
@@ -35,7 +33,7 @@ class ArchiveCollectionModal extends React.Component {
       >
         <Box px={3}>
           <Text>
-            {t`The dashboards, collections, and pulses in this colleciton will also be archived.`}
+            {t`The dashboards, collections, and pulses in this collection will also be archived.`}
           </Text>
           <Flex py={3}>
             <Button warning ml="auto" onClick={() => this._archive()}>

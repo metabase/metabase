@@ -23,18 +23,18 @@ import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
 import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
 /* Dashboards */
-import DashboardsArchive from "metabase/dashboards/containers/DashboardsArchive";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
 import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashboardApp";
 
 import {
   BrowseApp,
   DatabaseBrowser,
+  SchemaBrowser,
   TableBrowser,
 } from "metabase/components/BrowseApp";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
-import Archive from "metabase/questions/containers/Archive.jsx";
+
 import CollectionEdit from "metabase/questions/containers/CollectionEdit.jsx";
 import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx";
 import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
@@ -114,6 +114,9 @@ import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import CollectionLanding from "metabase/components/CollectionLanding";
+
+import ArchiveApp from "metabase/home/containers/ArchiveApp.jsx";
+import SearchApp from "metabase/home/containers/SearchApp";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => !authData.hasSetupToken,
@@ -214,6 +217,9 @@ export const getRoutes = store => (
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />
 
+        <Route path="search" title={t`Search`} component={SearchApp} />
+        <Route path="archive" title={t`Archive`} component={ArchiveApp} />
+
         <Route path="collection/:collectionId" component={CollectionLanding}>
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
         </Route>
@@ -248,15 +254,9 @@ export const getRoutes = store => (
 
         <Route path="browse" component={BrowseApp}>
           <IndexRoute component={DatabaseBrowser} />
-          <Route path=":dbId" component={TableBrowser} />
+          <Route path=":dbId" component={SchemaBrowser} />
+          <Route path=":dbId/schema/:schemaName" component={TableBrowser} />
         </Route>
-
-        {/* DASHBOARD LIST */}
-        <Route
-          path="/dashboards/archive"
-          title={t`Dashboards`}
-          component={DashboardsArchive}
-        />
 
         {/* INDIVIDUAL DASHBOARDS */}
 
@@ -268,8 +268,6 @@ export const getRoutes = store => (
         <Route path="permissions" component={CollectionPermissions} />
         <Route path=":collectionId" component={CollectionEdit} />
       </Route>
-
-      <Route path="questions/archive" title={t`Archive`} component={Archive} />
 
       {/* REFERENCE */}
       <Route path="/reference" title={`Data Reference`}>

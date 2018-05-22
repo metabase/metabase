@@ -3,7 +3,7 @@ import { Box, Flex, Subhead, Text } from "rebass";
 import { t } from "c-3po";
 
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
-//import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader"
+import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 
 import { normal } from "metabase/lib/colors";
 import Question from "metabase-lib/lib/Question";
@@ -13,42 +13,32 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
-import { MetabaseApi } from "metabase/services";
+const DatabaseListLoader = props => (
+  <EntityListLoader entityType="databases" {...props} />
+);
 
-const DatabaseListLoader = ({ children, ...props }) => (
+const SchemaListLoader = ({ dbId, ...props }) => (
+  <EntityListLoader entityType="schemas" entityQuery={{ dbId }} {...props} />
+);
+
+const TableListLoader = ({ dbId, schemaName, ...props }) => (
   <EntityListLoader
-    entityType="databases"
-    children={({ list, ...rest }) => children({ databases: list, ...rest })}
+    entityType="tables"
+    entityQuery={{ dbId, schemaName }}
     {...props}
   />
 );
 
-export class TableListLoader extends React.Component {
-  state = {
-    tables: null,
-    db_info: null,
-    loading: false,
-    error: null,
-  };
-
-  componentWillMount() {
-    this._loadTables(this.props.dbId);
-  }
-
-  async _loadTables(dbId) {
-    try {
-      this.setState({ loading: true });
-      const { tables, ...db_info } = await MetabaseApi.db_metadata({ dbId });
-      this.setState({ tables, db_info, loading: false });
-    } catch (error) {
-      this.setState({ loading: false, error });
-    }
-  }
-  render() {
-    const { tables, db_info, loading, error } = this.state;
-    return this.props.children({ tables, loading, db_info, error });
-  }
-}
+const DatabaseName = ({ dbId }) => (
+  <EntityObjectLoader
+    entityType="databases"
+    entityId={dbId}
+    properties={["name"]}
+    loadingAndErrorWrapper={false}
+  >
+    {({ object }) => (object ? <span>{object.name}</span> : null)}
+  </EntityObjectLoader>
+);
 
 const BrowseHeader = ({ children }) => (
   <Box my={3}>
@@ -56,48 +46,69 @@ const BrowseHeader = ({ children }) => (
   </Box>
 );
 
-/*
-const TableListLoader = ({ children,  dbId }) =>
-  <EntityObjectLoader
-    entityType="databases"
-    entityId={dbId}
-    query={{ include_tables: true }}
-    children={({ object }) => {
-      console.log(object)
-      return children({
-        tables: object.tables,
-        db_info: object
-      })
-    }}
-  />
-  */
+export class SchemaBrowser extends React.Component {
+  render() {
+    const { dbId } = this.props.params;
+    return (
+      <Box>
+        <SchemaListLoader dbId={dbId}>
+          {({ schemas }) =>
+            schemas.length > 1 ? (
+              <Box>
+                <BrowserCrumbs
+                  crumbs={[
+                    { title: t`Your data`, to: "browse" },
+                    { title: <DatabaseName dbId={dbId} /> },
+                  ]}
+                />
+                {schemas.map(schema => (
+                  <Link
+                    to={`/browse/${dbId}/schema/${schema.name}`}
+                    mb={1}
+                    hover={{ color: normal.blue }}
+                  >
+                    <Card p={2} mb={1}>
+                      <Flex align="center">
+                        {/* TODO: schema icon? */}
+                        {/* <Icon mr={1} name="table" /> */}
+                        <Box>{schema.name}</Box>
+                      </Flex>
+                    </Card>
+                  </Link>
+                ))}
+              </Box>
+            ) : (
+              <TableBrowser {...this.props} />
+            )
+          }
+        </SchemaListLoader>
+      </Box>
+    );
+  }
+}
 
 export class TableBrowser extends React.Component {
   render() {
+    const { dbId, schemaName } = this.props.params;
     return (
       <Box>
-        <TableListLoader dbId={this.props.params.dbId}>
-          {({ tables, db_info, loading, error }) => {
-            if (loading) {
-              return <Box>Loading...</Box>;
-            }
-
-            if (error) {
-              alert(error);
-            }
-
+        <TableListLoader dbId={dbId} schemaName={schemaName}>
+          {({ tables, loading, error }) => {
             return (
               <Box>
-                <Flex align="center">
-                  <Link to="browse">
-                    <BrowseHeader>{t`Your data`}</BrowseHeader>
-                  </Link>
-                  <Icon name="chevronright" mx={2} />
-                  <BrowseHeader>{db_info.name}</BrowseHeader>
-                </Flex>
+                <BrowserCrumbs
+                  crumbs={[
+                    { title: t`Your data`, to: "browse" },
+                    {
+                      title: <DatabaseName dbId={dbId} />,
+                      to: `browse/${dbId}`,
+                    },
+                    schemaName != null && { title: schemaName },
+                  ]}
+                />
                 {tables.map(table => {
                   const link = Question.create({
-                    databaseId: db_info.id,
+                    databaseId: parseInt(dbId),
                     tableId: table.id,
                   }).getUrl();
 
@@ -136,7 +147,7 @@ export class DatabaseBrowser extends React.Component {
   render() {
     return (
       <Box>
-        <BrowseHeader>Your data</BrowseHeader>
+        <BrowserCrumbs crumbs={[{ title: t`Your data` }]} />
         <DatabaseListLoader>
           {({ databases, loading, error }) => {
             return (
@@ -159,3 +170,20 @@ export class DatabaseBrowser extends React.Component {
     );
   }
 }
+
+const BrowserCrumbs = ({ crumbs }) => (
+  <Flex align="center">
+    {crumbs.filter(c => c).map((crumb, index, crumbs) => [
+      crumb.to ? (
+        <Link key={"title" + index} to={crumb.to}>
+          <BrowseHeader>{crumb.title}</BrowseHeader>
+        </Link>
+      ) : (
+        <BrowseHeader>{crumb.title}</BrowseHeader>
+      ),
+      index < crumbs.length - 1 ? (
+        <Icon key={"divider" + index} name="chevronright" mx={2} />
+      ) : null,
+    ])}
+  </Flex>
+);

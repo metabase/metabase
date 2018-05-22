@@ -1,10 +1,15 @@
 export collections from "./collections";
 export dashboards from "./dashboards";
-export databases from "./databases";
-export fields from "./fields";
-export metrics from "./metrics";
 export pulses from "./pulses";
 export questions from "./questions";
-export segments from "./segments";
+
+export databases from "./databases";
+export schemas from "./schemas";
 export tables from "./tables";
+export fields from "./fields";
+export metrics from "./metrics";
+export segments from "./segments";
+
 export users from "./users";
+
+export search from "./search";

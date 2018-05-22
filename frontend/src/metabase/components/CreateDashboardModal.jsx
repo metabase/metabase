@@ -8,7 +8,7 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 import Button from "metabase/components/Button.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
 
-import CollectionListLoader from "metabase/components/CollectionListLoader";
+import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
 export default class CreateDashboardModal extends Component {
   constructor(props, context) {

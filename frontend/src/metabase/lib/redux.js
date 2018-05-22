@@ -65,9 +65,21 @@ export const fetchData = async ({
   requestStatePath,
   existingStatePath,
   getData,
-  reload,
+  reload = false,
+  properties = null,
 }) => {
   const existingData = getIn(getState(), existingStatePath);
+
+  // short circuit if we have loaded data, and we're givein a list of required properties, and they all existing in the loaded data
+  if (
+    !reload &&
+    existingData &&
+    properties &&
+    _.all(properties, p => existingData[p] !== undefined)
+  ) {
+    return existingData;
+  }
+
   const statePath = requestStatePath.concat(["fetch"]);
   try {
     const requestState = getIn(getState(), [

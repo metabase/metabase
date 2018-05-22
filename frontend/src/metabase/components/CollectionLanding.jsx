@@ -12,22 +12,24 @@ import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
+import EntityItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-
-import CollectionListLoader from "metabase/components/CollectionListLoader";
-import CollectionItemsLoader from "metabase/components/CollectionItemsLoader";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
-
 import EntityMenu from "metabase/components/EntityMenu";
+
+import CollectionListLoader from "metabase/containers/CollectionListLoader";
+import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
+
+import Collections from "metabase/entities/collections";
 
 // TODO - this should be a selector
 const mapStateToProps = (state, props) => ({
   currentCollection:
-    (state.entities.collections &&
-      state.entities.collections[props.params.collectionId]) ||
-    {},
+    Collections.selectors.getObject(state, {
+      entityId: props.params.collectionId,
+    }) || {},
 });
 
 const mapDispatchToProps = {
@@ -81,44 +83,6 @@ const CollectionList = () => {
         }}
       </CollectionListLoader>
     </Box>
-  );
-};
-
-const CollectionEntity = Flex.extend`
-  border-bottom: 1px solid #f8f9fa;
-  /* TODO - figure out how to use the prop instead of this? */
-  align-items: center;
-  &:hover {
-    color: ${normal.blue};
-  }
-`;
-
-const IconWrapper = Flex.extend`
-  background: #f4f5f6;
-  border-radius: 6px;
-`;
-
-const Item = ({ item, iconName, iconColor, pinItem }) => {
-  return (
-    <CollectionEntity py={2} px={2} className="hover-parent hover--visibility">
-      <IconWrapper p={1} mr={1} align="center" justify="center">
-        <Icon name={iconName} color={iconColor} />
-      </IconWrapper>
-      <h3>
-        <Truncate>{item.name}</Truncate>
-      </h3>
-
-      <Box
-        className="hover-child"
-        ml="auto"
-        onClick={ev => {
-          ev.preventDefault();
-          pinItem(item);
-        }}
-      >
-        <Icon name="star" />
-      </Box>
-    </CollectionEntity>
   );
 };
 
@@ -280,11 +244,12 @@ class DefaultLanding extends React.Component {
                         return (
                           <Box>
                             <Link to={url}>
-                              <Item
+                              <EntityItem
                                 item={item}
+                                name={item.name}
                                 iconName={iconName}
                                 iconColor={iconColor}
-                                pinItem={this._pinItem.bind(this)}
+                                onPin={this._pinItem.bind(this)}
                               />
                             </Link>
                           </Box>
@@ -399,14 +364,9 @@ class CollectionLanding extends React.Component {
               <EntityMenu
                 items={[
                   {
-                    title: t`View the question archive`,
+                    title: t`View the archive`,
                     icon: "viewArchive",
-                    link: `/questions/archive/`,
-                  },
-                  {
-                    title: t`View the dashboard archive`,
-                    icon: "viewArchive",
-                    link: `/dashboards/archive`,
+                    link: `/archive`,
                   },
                 ]}
                 triggerIcon="burger"

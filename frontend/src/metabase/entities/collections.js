@@ -2,12 +2,33 @@
 
 import { createEntity } from "metabase/lib/entities";
 import { normal, getRandomColor } from "metabase/lib/colors";
+import { CollectionSchema } from "metabase/schema";
 
 import { t } from "c-3po";
 
-export default createEntity({
+const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
+  schema: CollectionSchema,
+
+  objectActions: {
+    setArchived: ({ id }, archived) =>
+      Collections.actions.update({ id, archived }),
+    setCollection: ({ id }, collection) =>
+      Collections.actions.update({
+        id,
+        collection_id: collection && collection.id,
+      }),
+  },
+
+  objectSelectors: {
+    getName: collection => collection && collection.name,
+    getUrl: collection =>
+      collection &&
+      (collection.id === "root" ? `/` : `/collection/${collection.id}`),
+    getIcon: collection => "collection",
+  },
+
   form: {
     fields: [
       {
@@ -32,3 +53,5 @@ export default createEntity({
     ],
   },
 });
+
+export default Collections;
