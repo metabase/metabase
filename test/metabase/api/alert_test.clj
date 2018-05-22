@@ -139,27 +139,36 @@
                                     body-map)}))
 
 (defn- default-alert [card]
-  {:id               true
-   :name             nil
-   :creator_id       true
-   :creator          (user-details :rasta)
-   :created_at       true
-   :updated_at       true
-   :card             (pulse-card-details card)
-   :alert_condition  "rows"
-   :alert_first_only false
-   :alert_above_goal nil
-   :channels         [(merge pulse-channel-defaults
-                             {:channel_type  "email"
-                              :schedule_type "hourly"
-                              :schedule_hour nil
-                              :recipients    [(recipient-details :rasta)]
-                              :updated_at    true
-                              :pulse_id      true
-                              :id            true
-                              :created_at    true})]
-   :skip_if_empty    true
-   :collection_id    false})
+  {:id                  true
+   :name                nil
+   :creator_id          true
+   :creator             (user-details :rasta)
+   :created_at          true
+   :updated_at          true
+   :card                (pulse-card-details card)
+   :alert_condition     "rows"
+   :alert_first_only    false
+   :alert_above_goal    nil
+   :channels            [(merge pulse-channel-defaults
+                                {:channel_type  "email"
+                                 :schedule_type "hourly"
+                                 :schedule_hour nil
+                                 :recipients    [(recipient-details :rasta)]
+                                 :updated_at    true
+                                 :pulse_id      true
+                                 :id            true
+                                 :created_at    true})]
+   :skip_if_empty       true
+   :collection_id       false
+   :collection_position nil})
+
+(def ^:private daily-email-channel
+  {:enabled       true
+   :channel_type  "email"
+   :schedule_type "daily"
+   :schedule_hour 12
+   :schedule_day  nil
+   :recipients    []})
 
 ;; Check creation of a new rows alert with email notification
 (tt/expect-with-temp [Card [card1 {:name "My question"}]]
@@ -173,12 +182,7 @@
         {:card             {:id (u/get-id card1), :include_csv false, :include_xls false}
          :alert_condition  "rows"
          :alert_first_only false
-         :channels         [{:enabled       true
-                             :channel_type  "email"
-                             :schedule_type "daily"
-                             :schedule_hour 12
-                             :schedule_day  nil
-                             :recipients    []}]}))
+         :channels         [daily-email-channel]}))
      (et/regex-email-bodies #"https://metabase.com/testmb"
                             #"has any results"
                             #"My question")]))
@@ -210,13 +214,9 @@
             {:card             {:id (u/get-id card1), :include_csv false, :include_xls false}
              :alert_condition  "rows"
              :alert_first_only false
-             :channels         [{:enabled       true
-                                 :channel_type  "email"
-                                 :schedule_type "daily"
-                                 :schedule_hour 12
-                                 :schedule_day  nil
-                                 :details       {:emails nil}
-                                 :recipients    (mapv fetch-user [:crowberto :rasta])}]})
+             :channels         [(assoc daily-email-channel
+                                  :details       {:emails nil}
+                                  :recipients    (mapv fetch-user [:crowberto :rasta]))]})
            setify-recipient-emails))
      (et/regex-email-bodies #"https://metabase.com/testmb"
                             #"now getting alerts"
@@ -235,12 +235,7 @@
           :alert_condition  "goal"
           :alert_above_goal false
           :alert_first_only false
-          :channels         [{:enabled       true
-                              :channel_type  "email"
-                              :schedule_type "daily"
-                              :schedule_hour 12
-                              :schedule_day  nil
-                              :recipients    []}]}))
+          :channels         [daily-email-channel]}))
       (et/regex-email-bodies #"https://metabase.com/testmb"
                              #"goes below its goal"
                              #"My question"))))
@@ -257,15 +252,46 @@
           :alert_condition  "goal"
           :alert_above_goal true
           :alert_first_only false
-          :channels         [{:enabled       true
-                              :channel_type  "email"
-                              :schedule_type "daily"
-                              :schedule_hour 12
-                              :schedule_day  nil
-                              :recipients    []}]}))
+          :channels         [daily-email-channel]}))
       (et/regex-email-bodies #"https://metabase.com/testmb"
                              #"meets its goal"
                              #"My question"))))
+
+;; Make sure we can create a Pulse with a Collection position
+(expect
+ #metabase.models.pulse.PulseInstance{:collection_id true, :collection_position 1}
+ (tu/with-model-cleanup [Pulse]
+   (tt/with-temp* [Card       [card]
+                   Collection [collection]]
+     (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+     ((user->client :rasta) :post 200 "alert" {:card                {:id          (u/get-id card)
+                                                                     :include_csv false
+                                                                     :include_xls false}
+                                               :alert_condition     "goal"
+                                               :alert_above_goal    false
+                                               :alert_first_only    false
+                                               :channels            [daily-email-channel]
+                                               :collection_id       (u/get-id collection)
+                                               :collection_position 1})
+     (some-> (db/select-one [Pulse :collection_id :collection_position] :collection_id (u/get-id collection))
+             (update :collection_id (partial = (u/get-id collection)))))))
+
+;; ...but not if we don't have permissions for the Collection
+(expect
+  nil
+  (tt/with-temp* [Card       [card]
+                  Collection [collection]]
+    ((user->client :rasta) :post 403 "alert" {:card                {:id          (u/get-id card)
+                                                                    :include_csv false
+                                                                    :include_xls false}
+                                              :alert_condition     "goal"
+                                              :alert_above_goal    false
+                                              :alert_first_only    false
+                                              :channels            [daily-email-channel]
+                                              :collection_id       (u/get-id collection)
+                                              :collection_position 1})
+    (some-> (db/select-one [Pulse :collection_id :collection_position] :collection_id (u/get-id collection))
+            (update :collection_id (partial = (u/get-id collection))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -462,7 +488,7 @@
 
 ;; Can we change the Collection a Alert is in (assuming we have the permissions to do so)?
 (expect
-  (with-alert-in-collection [db collection alert]
+  (with-alert-in-collection [_ collection alert]
     (tt/with-temp Collection [new-collection]
       ;; grant Permissions for both new and old collections
       (doseq [coll [collection new-collection]]
@@ -476,7 +502,7 @@
 ;; ...but if we don't have the Permissions for the old collection, we should get an Exception
 (expect
   "You don't have permissions to do that."
-  (with-alert-in-collection [db collection alert]
+  (with-alert-in-collection [_ collection alert]
     (tt/with-temp Collection [new-collection]
       ;; grant Permissions for only the *new* collection
       (perms/grant-collection-readwrite-permissions! (group/all-users) new-collection)
@@ -486,12 +512,47 @@
 ;; ...and if we don't have the Permissions for the new collection, we should get an Exception
 (expect
   "You don't have permissions to do that."
-  (with-alert-in-collection [db collection alert]
+  (with-alert-in-collection [_ collection alert]
     (tt/with-temp Collection [new-collection]
       ;; grant Permissions for only the *old* collection
       (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
       ;; now make an API call to move collections. Should fail
       ((user->client :rasta) :put 403 (str "alert/" (u/get-id alert)) {:collection_id (u/get-id new-collection)}))))
+
+;; Can we change the Collection position of an Alert?
+(expect
+  1
+  (with-alert-in-collection [_ collection pulse]
+    (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "alert/" (u/get-id pulse))
+     {:collection_position 1})
+    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
+
+;; ...and unset (unpin) it as well?
+(expect
+  nil
+  (with-alert-in-collection [_ collection pulse]
+    (db/update! Pulse (u/get-id pulse) :collection_position 1)
+    (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "alert/" (u/get-id pulse))
+     {:collection_position nil})
+    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
+
+;; ...we shouldn't be able to if we don't have permissions for the Collection
+(expect
+  nil
+  (with-alert-in-collection [_ collection pulse]
+    ((user->client :rasta) :put 403 (str "alert/" (u/get-id pulse))
+     {:collection_position 1})
+    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
+
+(expect
+  1
+  (with-alert-in-collection [_ collection pulse]
+    (db/update! Pulse (u/get-id pulse) :collection_position 1)
+    ((user->client :rasta) :put 403 (str "alert/" (u/get-id pulse))
+     {:collection_position nil})
+    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

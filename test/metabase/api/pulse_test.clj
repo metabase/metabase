@@ -44,16 +44,17 @@
 
 (defn- pulse-details [pulse]
   (tu/match-$ pulse
-    {:id            $
-     :name          $
-     :created_at    $
-     :updated_at    $
-     :creator_id    $
-     :creator       (user-details (db/select-one 'User :id (:creator_id pulse)))
-     :cards         (map pulse-card-details (:cards pulse))
-     :channels      (map pulse-channel-details (:channels pulse))
-     :collection_id $
-     :skip_if_empty $}))
+    {:id                  $
+     :name                $
+     :created_at          $
+     :updated_at          $
+     :creator_id          $
+     :creator             (user-details (db/select-one 'User :id (:creator_id pulse)))
+     :cards               (map pulse-card-details (:cards pulse))
+     :channels            (map pulse-channel-details (:channels pulse))
+     :collection_id       $
+     :collection_position $
+     :skip_if_empty       $}))
 
 (defn- pulse-response [{:keys [created_at updated_at], :as pulse}]
   (-> pulse
@@ -120,10 +121,19 @@
     (dissoc channel :id :pulse_id :created_at :updated_at)))
 
 (def ^:private pulse-defaults
-  {:created_at    true
-   :updated_at    true
-   :skip_if_empty false
-   :collection_id nil})
+  {:collection_id       nil
+   :collection_position nil
+   :created_at          true
+   :skip_if_empty       false
+   :updated_at          true})
+
+(def ^:private daily-email-channel
+  {:enabled       true
+   :channel_type  "email"
+   :schedule_type "daily"
+   :schedule_hour 12
+   :schedule_day  nil
+   :recipients    []})
 
 (tt/expect-with-temp [Card [card-1]
                       Card [card-2]]
@@ -146,12 +156,7 @@
                                                                                   {:id          (u/get-id card-2)
                                                                                    :include_csv false
                                                                                    :include_xls false}]
-                                                                  :channels      [{:enabled       true
-                                                                                   :channel_type  "email"
-                                                                                   :schedule_type "daily"
-                                                                                   :schedule_hour 12
-                                                                                   :schedule_day  nil
-                                                                                   :recipients    []}]
+                                                                  :channels      [daily-email-channel]
                                                                   :skip_if_empty false}))
         (update :channels remove-extra-channels-fields))))
 
@@ -170,21 +175,54 @@
                          :schedule_type "daily"
                          :schedule_hour 12
                          :recipients    []})]})
-  (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
-                                                                :cards         [{:id          (u/get-id card-1)
-                                                                                 :include_csv true
-                                                                                 :include_xls true}
-                                                                                {:id          (u/get-id card-2)
-                                                                                 :include_csv false
-                                                                                 :include_xls false}]
-                                                                :channels      [{:enabled       true
-                                                                                 :channel_type  "email"
-                                                                                 :schedule_type "daily"
-                                                                                 :schedule_hour 12
-                                                                                 :schedule_day  nil
-                                                                                 :recipients    []}]
-                                                                :skip_if_empty false}))
-      (update :channels remove-extra-channels-fields)))
+  (tu/with-model-cleanup [Pulse]
+    (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
+                                                                  :cards         [{:id          (u/get-id card-1)
+                                                                                   :include_csv true
+                                                                                   :include_xls true}
+                                                                                  {:id          (u/get-id card-2)
+                                                                                   :include_csv false
+                                                                                   :include_xls false}]
+                                                                  :channels      [daily-email-channel]
+                                                                  :skip_if_empty false}))
+        (update :channels remove-extra-channels-fields))))
+
+;; Make sure we can create a Pulse with a Collection position
+(expect
+  #metabase.models.pulse.PulseInstance{:collection_id true, :collection_position 1}
+  (tu/with-model-cleanup [Pulse]
+    (let [pulse-name (tu/random-name)]
+      (tt/with-temp* [Card       [card]
+                      Collection [collection]]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        ((user->client :rasta) :post 200 "pulse" {:name                pulse-name
+                                                  :cards               [{:id          (u/get-id card)
+                                                                         :include_csv false
+                                                                         :include_xls false}]
+                                                  :channels            [daily-email-channel]
+                                                  :skip_if_empty       false
+                                                  :collection_id       (u/get-id collection)
+                                                  :collection_position 1})
+        (some-> (db/select-one [Pulse :collection_id :collection_position] :name pulse-name)
+                (update :collection_id (partial = (u/get-id collection))))))))
+
+;; ...but not if we don't have permissions for the Collection
+(expect
+  nil
+  (tu/with-model-cleanup [Pulse]
+    (let [pulse-name (tu/random-name)]
+      (tt/with-temp* [Card       [card]
+                      Collection [collection]]
+        ((user->client :rasta) :post 403 "pulse" {:name                pulse-name
+                                                  :cards               [{:id          (u/get-id card)
+                                                                         :include_csv false
+                                                                         :include_xls false}]
+                                                  :channels            [daily-email-channel]
+                                                  :skip_if_empty       false
+                                                  :collection_id       (u/get-id collection)
+                                                  :collection_position 1})
+        (some-> (db/select-one [Pulse :collection_id :collection_position] :name pulse-name)
+                (update :collection_id (partial = (u/get-id collection))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -296,6 +334,41 @@
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       ;; now make an API call to move collections. Should fail
       ((user->client :rasta) :put 403 (str "pulse/" (u/get-id pulse)) {:collection_id (u/get-id new-collection)}))))
+
+;; Can we change the Collection position of a Pulse?
+(expect
+  1
+  (pulse-test/with-pulse-in-collection [_ collection pulse]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "pulse/" (u/get-id pulse))
+     {:collection_position 1})
+    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
+
+;; ...and unset (unpin) it as well?
+(expect
+  nil
+  (pulse-test/with-pulse-in-collection [_ collection pulse]
+    (db/update! Pulse (u/get-id pulse) :collection_position 1)
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "pulse/" (u/get-id pulse))
+     {:collection_position nil})
+    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
+
+;; ...we shouldn't be able to if we don't have permissions for the Collection
+(expect
+  nil
+  (pulse-test/with-pulse-in-collection [_ collection pulse]
+    ((user->client :rasta) :put 403 (str "pulse/" (u/get-id pulse))
+     {:collection_position 1})
+    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
+
+(expect
+  1
+  (pulse-test/with-pulse-in-collection [_ collection pulse]
+    (db/update! Pulse (u/get-id pulse) :collection_position 1)
+    ((user->client :rasta) :put 403 (str "pulse/" (u/get-id pulse))
+     {:collection_position nil})
+    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

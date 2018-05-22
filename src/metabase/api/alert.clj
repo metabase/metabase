@@ -41,7 +41,7 @@
 
 (defn- only-alert-keys [request]
   (u/select-keys-when request
-    :present [:alert_condition :alert_first_only :alert_above_goal :collection_id]))
+    :present [:alert_condition :alert_first_only :alert_above_goal :collection_id :collection_position]))
 
 (defn- email-channel [alert]
   (m/find-first #(= :email (:channel_type %)) (:channels alert)))
@@ -113,23 +113,24 @@
 
 (api/defendpoint POST "/"
   "Create a new Alert."
-  [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal collection_id] :as req} :body}]
-  {alert_condition   pulse/AlertConditions
-   alert_first_only  s/Bool
-   alert_above_goal  (s/maybe s/Bool)
-   card              pulse/CardRef
-   channels          (su/non-empty [su/Map])
-   collection_id     (s/maybe su/IntGreaterThanZero)}
+  [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal collection_id collection_position]
+         :as new-alert-request-body} :body}]
+  {alert_condition     pulse/AlertConditions
+   alert_first_only    s/Bool
+   alert_above_goal    (s/maybe s/Bool)
+   card                pulse/CardRef
+   channels            (su/non-empty [su/Map])
+   collection_id       (s/maybe su/IntGreaterThanZero)
+   collection_position (s/maybe su/IntGreaterThanZero)}
   ;; do various perms checks as needed
   (pulse-api/check-card-read-permissions [card])
   (collection/check-write-perms-for-collection collection_id)
   ;; ok, now create the Alert
   (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/card->ref)
-        new-alert (api/check-500
-                   (-> req
-                       only-alert-keys
-                       (pulse/create-alert! api/*current-user-id* alert-card channels)))]
-
+        new-alert  (api/check-500
+                    (-> new-alert-request-body
+                        only-alert-keys
+                        (pulse/create-alert! api/*current-user-id* alert-card channels)))]
     (notify-new-alert-created! new-alert)
     ;; return our new Alert
     new-alert))
@@ -137,31 +138,32 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Alert` with ID."
-  [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels collection_id]
-            :as   request} :body}]
-  {alert_condition  (s/maybe pulse/AlertConditions)
-   alert_first_only (s/maybe s/Bool)
-   alert_above_goal (s/maybe s/Bool)
-   card             (s/maybe pulse/CardRef)
-   channels         (s/maybe (su/non-empty [su/Map]))
-   collection_id    (s/maybe su/IntGreaterThanZero)}
+  [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels collection_id
+                   collection_position] :as alert-updates} :body}]
+  {alert_condition     (s/maybe pulse/AlertConditions)
+   alert_first_only    (s/maybe s/Bool)
+   alert_above_goal    (s/maybe s/Bool)
+   card                (s/maybe pulse/CardRef)
+   channels            (s/maybe (su/non-empty [su/Map]))
+   collection_id       (s/maybe su/IntGreaterThanZero)
+   collection_position (s/maybe su/IntGreaterThanZero)}
   ;; fethc the existing Alert in the DB
-  (let [old-alert (api/check-404 (pulse/retrieve-alert id))]
+  (let [alert-before-update (api/check-404 (pulse/retrieve-alert id))]
     ;; check permissions as needed
-    (api/write-check old-alert)
-    (collection/check-allowed-to-change-collection old-alert collection_id)
+    (api/write-check alert-before-update)
+    (collection/check-allowed-to-change-collection alert-before-update collection_id)
     ;; now update the Alert
     (let [updated-alert (pulse/update-alert!
                          (merge
-                          (assoc (only-alert-keys request)
+                          (assoc (only-alert-keys alert-updates)
                             :id id)
                           (when card
                             {:card (pulse/card->ref card)})
-                          (when (contains? request :channels)
+                          (when (contains? alert-updates :channels)
                             {:channels channels})))]
       ;; Only admins can update recipients
       (when (and api/*is-superuser?* (email/email-configured?))
-        (notify-recipient-changes! old-alert updated-alert))
+        (notify-recipient-changes! alert-before-update updated-alert))
       ;; Finally, return the updated Alert
       updated-alert)))
 
