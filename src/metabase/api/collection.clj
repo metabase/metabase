@@ -56,27 +56,27 @@
 
 (def ^:private model->collection-children-fn
   "Functions for fetching the 'children' of a Collection."
-  {:cards      #(db/select [Card :name :id],      :collection_id %, :archived false)
-   :dashboards #(db/select [Dashboard :name :id], :collection_id %, :archived false)
-   :pulses     #(db/select [Pulse :name :id],     :collection_id %)})
+  {:cards      #(db/select [Card :name :id :collection_position],      :collection_id %, :archived false)
+   :dashboards #(db/select [Dashboard :name :id :collection_position], :collection_id %, :archived false)
+   :pulses     #(db/select [Pulse :name :id :collection_position],     :collection_id %)})
 
 (def ^:private model->root-collection-children-fn
   "Functions for fetching the 'children' of the root Collection."
-  (let [just-names-and-ids (fn [items]
+  (let [basic-item-info (fn [items]
                              (for [item items]
-                               (select-keys item [:name :id])))]
-    {:cards      #(->> (db/select [Card :name :id :public_uuid :read_permissions :dataset_query]
+                               (select-keys item [:name :id :collection_position])))]
+    {:cards      #(->> (db/select [Card :name :id :public_uuid :read_permissions :dataset_query :collection_position]
                          :collection_id nil, :archived false)
                        (filter mi/can-read?)
-                       just-names-and-ids)
-     :dashboards #(->> (db/select [Dashboard :name :id :public_uuid]
+                       basic-item-info)
+     :dashboards #(->> (db/select [Dashboard :name :id :public_uuid :collection_position]
                          :collection_id nil, :archived false)
                        (filter mi/can-read?)
-                       just-names-and-ids)
-     :pulses     #(->> (db/select [Pulse :name :id]
+                       basic-item-info)
+     :pulses     #(->> (db/select [Pulse :name :id :collection_position]
                          :collection_id nil)
                        (filter mi/can-read?)
-                       just-names-and-ids)}))
+                       basic-item-info)}))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific (non-archived) Collection, including objects of a specific `model` that belong to it. If `model` is

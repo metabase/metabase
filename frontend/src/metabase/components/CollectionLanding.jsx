@@ -5,10 +5,13 @@ import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import { withBackground } from "metabase/hoc/Background";
 
+import { CardApi, DashboardApi } from "metabase/services";
+
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
+import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
@@ -89,21 +92,36 @@ const IconWrapper = Flex.extend`
   border-radius: 6px;
 `;
 
-const Item = ({ name, iconName, iconColor }) => {
+const Item = ({ item, iconName, iconColor, pinItem }) => {
   return (
-    <CollectionEntity py={2} px={2}>
+    <CollectionEntity py={2} px={2} className="hover-parent hover--visibility">
       <IconWrapper p={1} mr={1} align="center" justify="center">
         <Icon name={iconName} color={iconColor} />
       </IconWrapper>
       <h3>
-        <Truncate>{name}</Truncate>
+        <Truncate>{item.name}</Truncate>
       </h3>
+
+      <Box
+        className="hover-child"
+        ml="auto"
+        onClick={ev => {
+          ev.preventDefault();
+          pinItem(item);
+        }}
+      >
+        <Icon name="star" />
+      </Box>
     </CollectionEntity>
   );
 };
 
 @withRouter
 class DefaultLanding extends React.Component {
+  state = {
+    reload: false,
+  };
+
   _getItemProps(item) {
     switch (item.type) {
       case "card":
@@ -126,6 +144,35 @@ class DefaultLanding extends React.Component {
         };
     }
   }
+  _reload() {
+    this.setState({ reload: true });
+    setTimeout(() => this.setState({ relaod: false }), 2000);
+  }
+  async _pinItem({ id, type, collection_position }) {
+    switch (type) {
+      case "card":
+        // hack in 1 as the collection position just to be able to get "pins"
+        await CardApi.update({ id, collection_position: 1 });
+        break;
+      case "dashboard":
+        await DashboardApi.update({ id, collection_position: 1 });
+        break;
+    }
+    this._reload();
+  }
+
+  async _unPinItem({ id, type, collection_position }) {
+    switch (type) {
+      case "card":
+        await CardApi.update({ id, collection_position: null });
+        break;
+      case "dashboard":
+        await DashboardApi.update({ id, collection_position: null });
+        break;
+    }
+    this._reload();
+  }
+
   render() {
     const { collectionId, location } = this.props;
 
@@ -140,8 +187,11 @@ class DefaultLanding extends React.Component {
           </Box>
         )}
         <Box w={2 / 3}>
-          <Card>
-            <CollectionItemsLoader collectionId={collectionId || "root"}>
+          <Box>
+            <CollectionItemsLoader
+              collectionId={collectionId || "root"}
+              reload={this.state.reload}
+            >
               {({ allItems, pulses, cards, dashboards, empty }) => {
                 let items = allItems;
 
@@ -170,29 +220,76 @@ class DefaultLanding extends React.Component {
                   }
                 }
 
+                const pinned = items.filter(i => i.collection_position);
+                const other = items.filter(i => !i.collection_position);
+
                 return (
                   <Box>
-                    {items.map(item => {
-                      const { url, iconName, iconColor } = this._getItemProps(
-                        item,
-                      );
-                      return (
-                        <Box>
-                          <Link to={url}>
-                            <Item
-                              name={item.name}
-                              iconName={iconName}
-                              iconColor={iconColor}
-                            />
-                          </Link>
-                        </Box>
-                      );
-                    })}
+                    <Box mb={2}>
+                      <Grid>
+                        {pinned.map(item => {
+                          const {
+                            url,
+                            iconName,
+                            iconColor,
+                          } = this._getItemProps(item);
+                          return (
+                            <GridItem w={1 / 2}>
+                              <Link
+                                to={url}
+                                className="hover-parent hover--visibility"
+                              >
+                                <Card hoverable p={2}>
+                                  <Icon
+                                    name={iconName}
+                                    color={iconColor}
+                                    size={28}
+                                    mb={2}
+                                  />
+                                  <Flex align="center">
+                                    <h3>{item.name}</h3>
+                                    <Box
+                                      ml="auto"
+                                      className="hover-child"
+                                      onClick={ev => {
+                                        ev.preventDefault();
+                                        this._unPinItem(item);
+                                      }}
+                                    >
+                                      <Icon name="staroutline" />
+                                    </Box>
+                                  </Flex>
+                                </Card>
+                              </Link>
+                            </GridItem>
+                          );
+                        })}
+                      </Grid>
+                    </Box>
+                    <Card>
+                      {other.map(item => {
+                        const { url, iconName, iconColor } = this._getItemProps(
+                          item,
+                        );
+                        return (
+                          <Box>
+                            <Link to={url}>
+                              <Item
+                                item={item}
+                                iconName={iconName}
+                                iconColor={iconColor}
+                                pinItem={this._pinItem.bind(this)}
+                              />
+                            </Link>
+                          </Box>
+                        );
+                      })}
+                    </Card>
                   </Box>
                 );
               }}
             </CollectionItemsLoader>
-          </Card>
+          </Box>
         </Box>
       </Flex>
     );

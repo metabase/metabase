@@ -14,7 +14,7 @@ GridItem.defaultProps = {
 };
 
 export const Grid = ({ children }) => (
-  <Flex wrap mx={-2}>
+  <Flex wrap mx={-1}>
     {children}
   </Flex>
 );
