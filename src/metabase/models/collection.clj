@@ -282,9 +282,9 @@
         :children)))
 
 
-(s/defn effective-children ;; :- #{CollectionInstance}
-  "Return the descendants of a `collection` that should be presented to the current user as the children of this
-  Collection. This takes into account descendants that get filtered out when the current user can't see them. For
+(s/defn effective-children :- #{CollectionInstance}
+  "Return the descendant Collections of a `collection` that should be presented to the current user as the children of
+  this Collection. This takes into account descendants that get filtered out when the current user can't see them. For
   example, suppose we have some Collections with a hierarchy like this:
 
        +-> B
@@ -414,7 +414,8 @@
 
 (def ^:private GroupPermissionsGraph
   "collection-id -> status"
-  {su/IntGreaterThanZero CollectionPermissions})
+  {(s/optional-key :root) CollectionPermissions   ; when doing a delta between old graph and new graph root won't always
+   su/IntGreaterThanZero  CollectionPermissions}) ; be present, which is why it's *optional*
 
 (def ^:private PermissionsGraph
   {:revision s/Int
@@ -428,17 +429,19 @@
              {group-id (set (map :object perms))})))
 
 (s/defn ^:private perms-type-for-collection :- CollectionPermissions
-  [permissions-set collection-id]
+  [permissions-set collection-or-id]
   (cond
-    (perms/set-has-full-permissions? permissions-set (perms/collection-readwrite-path collection-id)) :write
-    (perms/set-has-full-permissions? permissions-set (perms/collection-read-path collection-id))      :read
-    :else                                                                                             :none))
+    (perms/set-has-full-permissions? permissions-set (perms/collection-readwrite-path collection-or-id)) :write
+    (perms/set-has-full-permissions? permissions-set (perms/collection-read-path collection-or-id))      :read
+    :else                                                                                                :none))
 
 (s/defn ^:private group-permissions-graph :- GroupPermissionsGraph
   "Return the permissions graph for a single group having PERMISSIONS-SET."
   [permissions-set collection-ids]
-  (into {} (for [collection-id collection-ids]
-             {collection-id (perms-type-for-collection permissions-set collection-id)})))
+  (into
+   {:root (perms-type-for-collection permissions-set root-collection)}
+   (for [collection-id collection-ids]
+     {collection-id (perms-type-for-collection permissions-set collection-id)})))
 
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
@@ -456,14 +459,17 @@
 
 (s/defn ^:private update-collection-permissions!
   [group-id             :- su/IntGreaterThanZero
-   collection-id        :- su/IntGreaterThanZero
+   collection-id        :- (s/cond-pre (s/eq :root) su/IntGreaterThanZero)
    new-collection-perms :- CollectionPermissions]
-  ;; remove whatever entry is already there (if any) and add a new entry if applicable
-  (perms/revoke-collection-permissions! group-id collection-id)
-  (case new-collection-perms
-    :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
-    :read  (perms/grant-collection-read-permissions! group-id collection-id)
-    :none  nil))
+  (let [collection-id (if (= collection-id :root)
+                        root-collection
+                        collection-id)]
+    ;; remove whatever entry is already there (if any) and add a new entry if applicable
+    (perms/revoke-collection-permissions! group-id collection-id)
+    (case new-collection-perms
+      :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
+      :read  (perms/grant-collection-read-permissions! group-id collection-id)
+      :none  nil)))
 
 (s/defn ^:private update-group-permissions!
   [group-id :- su/IntGreaterThanZero, new-group-perms :- GroupPermissionsGraph]
@@ -509,19 +515,32 @@
 
 (defn check-write-perms-for-collection
   "Check that we have write permissions for Collection with `collection-id`, or throw a 403 Exception. If
-  `collection-id` is `nil`, this check is skipped."
-  [collection-or-id]
-  (when collection-or-id
-    (api/check-403 (perms/set-has-full-permissions? @*current-user-permissions-set*
-                     (perms/collection-readwrite-path collection-or-id)))))
+  `collection-id` is `nil`, this check is done for the Root Collection."
+  [collection-or-id-or-nil]
+  (api/check-403 (perms/set-has-full-permissions? @*current-user-permissions-set*
+                   (perms/collection-readwrite-path (if collection-or-id-or-nil
+                                                      collection-or-id-or-nil
+                                                      root-collection)))))
 
 (defn check-allowed-to-change-collection
-  "If we're changing the `collection_id` of an `object`, make sure we have write permissions for the new Collection, and
-  throw a 403 if not. If `collection-id` is `nil`, or hasn't changed from the original `object`, this check does
-  nothing."
-  [object collection-or-id]
-  ;; TODO - what about when someone wants to *unset* the Collection? We should tweak this check to handle that case as
-  ;; well
-  (when (and collection-or-id
-             (not= (u/get-id collection-or-id) (:collection_id object)))
-    (check-write-perms-for-collection collection-or-id)))
+  "If we're changing the `collection_id` of an object, make sure we have write permissions for both the old and new
+  Collections, or throw a 403 if not. If `collection_id` isn't present in `object-updates`, or the value is the same
+  as the original, this check is a no-op.
+
+  As usual, an `collection-id` of `nil` represents the Root Collection.
+
+
+  Intended for use with `PUT` or `PATCH`-style operations. Usage should look something like:
+
+    ;; `object-before-update` is the object as it currently exists in the application DB
+    ;; `object-updates` is a map of updated values for the object
+    (check-allowed-to-change-collection (Card 100) http-request-body)"
+  [object-before-update object-updates]
+  ;; if collection_id is set to change...
+  (when (contains? object-updates :collection_id)
+    (when (not= (:collection_id object-updates)
+                (:collection_id object-before-update))
+      ;; check that we're allowed to modify the old Collection
+      (check-write-perms-for-collection (:collection_id object-before-update))
+      ;; check that we're allowed to modify the new Collection
+      (check-write-perms-for-collection (:collection_id object-updates)))))

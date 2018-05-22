@@ -9,6 +9,7 @@
              [collection :as collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [interface :as mi]
+             [permissions :as perms]
              [pulse :as pulse :refer [Pulse]]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -36,47 +37,28 @@
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
+(def ^:private model->collection-children-fn
+  "Functions for fetching the 'children' of a Collection. Each function takes `collection-id` as a param."
+  {:cards      #(db/select [Card :name :id :collection_position],      :collection_id %, :archived false)
+   :dashboards #(db/select [Dashboard :name :id :collection_position], :collection_id %, :archived false)
+   :pulses     #(db/select [Pulse :name :id :collection_position],     :collection_id %)})
+
 (defn- collection-children
   "Fetch a map of the 'child' objects belonging to a Collection of type `model`, or of all available types if `model` is
-  nil. `model->children-fn` should be a map of the different types of children that can be included to a function used
-  to fetch them. Optional `children-fn-params` will be passed to each children-fetching fn.
+  `nil`.
 
       (collection-children :cards model->collection-children-fn 1)
       ;; -> {:cards [...cards for Collection 1...]}
 
       (collection-children nil model->collection-children-fn  1)
       ;; -> {:cards [...], :dashboards [...], :pulses [...]}"
-  [model model->children-fn & children-fn-params]
-  (into {} (for [[a-model children-fn] model->children-fn
+  [model collection-id]
+  (into {} (for [[a-model children-fn] model->collection-children-fn
                  ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
                  :when (or (nil? model)
                            (= (name model) (name a-model)))]
              ;; return the results like {:card <results-of-card-children-fn>}
-             {a-model (apply children-fn children-fn-params)})))
-
-(def ^:private model->collection-children-fn
-  "Functions for fetching the 'children' of a Collection."
-  {:cards      #(db/select [Card :name :id :collection_position],      :collection_id %, :archived false)
-   :dashboards #(db/select [Dashboard :name :id :collection_position], :collection_id %, :archived false)
-   :pulses     #(db/select [Pulse :name :id :collection_position],     :collection_id %)})
-
-(def ^:private model->root-collection-children-fn
-  "Functions for fetching the 'children' of the root Collection."
-  (let [basic-item-info (fn [items]
-                             (for [item items]
-                               (select-keys item [:name :id :collection_position])))]
-    {:cards      #(->> (db/select [Card :name :id :public_uuid :read_permissions :dataset_query :collection_position]
-                         :collection_id nil, :archived false)
-                       (filter mi/can-read?)
-                       basic-item-info)
-     :dashboards #(->> (db/select [Dashboard :name :id :public_uuid :collection_position]
-                         :collection_id nil, :archived false)
-                       (filter mi/can-read?)
-                       basic-item-info)
-     :pulses     #(->> (db/select [Pulse :name :id :collection_position]
-                         :collection_id nil)
-                       (filter mi/can-read?)
-                       basic-item-info)}))
+             {a-model (children-fn collection-id)})))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific (non-archived) Collection, including objects of a specific `model` that belong to it. If `model` is
@@ -87,20 +69,40 @@
    (as-> (api/read-check Collection id, :archived false) <>
      (hydrate <> :effective_location :effective_children :effective_ancestors)
      (assoc <> :can_write (mi/can-write? <>)))
-   (collection-children model model->collection-children-fn id)))
+   (collection-children model id)))
+
+
+(defn- current-user-has-root-collection-read-perms? []
+  (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+    (perms/collection-read-path collection/root-collection)))
 
 (api/defendpoint GET "/root"
-  "Fetch objects in the 'root' Collection. (The 'root' Collection doesn't actually exist at this point, so this just
-  returns objects that aren't in *any* Collection."
+  "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
+  doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
+  `collection_id` exist. It does, however, have its own set of Permissions.
+
+  This endpoint will actually show objects with no `collection_id` for Users that have Root Collection
+  permissions, but for people without Root Collection perms, we'll just show the objects that have an effective
+  location of `/`.
+
+  This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the
+  top-level objects you're allowed to access."
   [model]
   {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
   (merge
    {:name                (tru "Root Collection")
     :id                  "root"
-    :effective_location  "/"
-    :effective_children  (collection/effective-children collection/root-collection)
-    :effective_ancestors []}
-   (collection-children model model->root-collection-children-fn)))
+    :effective_location  nil
+    :effective_ancestors []
+    ;; anybody gets to see other Collections that have an Effective Location of being in the Root Collection.
+    :effective_children  (collection/effective-children collection/root-collection)}
+   ;; Only people with Root Collection Read Permissions get to see objects that have no `collection_id`.
+   (if (current-user-has-root-collection-read-perms?)
+     (collection-children model nil)
+     ;; for people who can't see the loose items in the Root Collection just return empty arrays to avoid confusion
+     {:cards      []
+      :dashboards []
+      :pulses     []})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
@@ -191,7 +193,10 @@
 
 (defn- dejsonify-collections [collections]
   (into {} (for [[collection-id perms] collections]
-             {(->int collection-id) (keyword perms)})))
+             [(if (= (keyword collection-id) :root)
+                :root
+                (->int collection-id))
+              (keyword perms)])))
 
 (defn- dejsonify-groups [groups]
   (into {} (for [[group-id collections] groups]

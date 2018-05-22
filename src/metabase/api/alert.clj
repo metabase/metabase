@@ -151,7 +151,7 @@
   (let [alert-before-update (api/check-404 (pulse/retrieve-alert id))]
     ;; check permissions as needed
     (api/write-check alert-before-update)
-    (collection/check-allowed-to-change-collection alert-before-update collection_id)
+    (collection/check-allowed-to-change-collection alert-before-update alert-updates)
     ;; now update the Alert
     (let [updated-alert (pulse/update-alert!
                          (merge

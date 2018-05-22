@@ -14,17 +14,15 @@
   functions for fetching a specific Pulse). At some point in the future, we can clean this namespace up and bring the
   code in line with the rest of the codebase, but for the time being, it probably makes sense to follow the existing
   patterns in this namespace rather than further confuse things."
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase
              [events :as events]
              [util :as u]]
-            [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.models
              [card :refer [Card]]
-             [collection :as collection]
              [interface :as i]
+             [permissions :as perms]
              [pulse-card :refer [PulseCard]]
              [pulse-channel :as pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
@@ -34,66 +32,6 @@
              [db :as db]
              [hydrate :refer [hydrate]]
              [models :as models]]))
-
-;;; ------------------------------------------------- Perms Checking -------------------------------------------------
-
-(defn- channels-with-recipients
-  "Get the 'channels' associated with this `notification`, including recipients of those 'channels'. If `:channels` is
-  already hydrated, as it will be when using `retrieve-pulses`, this doesn't need to make any DB calls."
-  [notifcation]
-  (or (:channels notifcation)
-      (-> (db/select PulseChannel, :pulse_id (u/get-id notifcation))
-          (hydrate :recipients))))
-
-(defn- emails
-  "Get the set of emails this `notification` will be sent to."
-  [notification]
-  (set (for [channel   (channels-with-recipients notification)
-             recipient (:recipients channel)]
-         (:email recipient))))
-
-(defn- notification-perms-based-on-cards
-  "Calculate permissions required to read a `notification` based on its Cards alone. Unlike Dashboards, to view or edit
-  a Notification you must have permissions to do the same for *all* the Cards in the Notification."
-  ;; TODO - I don't think the Permissions for Notification make a ton of sense. Shouldn't you just need read
-  ;; permissions for all the Cards in the Notification in order to edit it? Either way it doesn't matter a ton since
-  ;; these artifact perms are being phased out.
-  [notification]
-  (set
-   (when-let [card-ids (seq (db/select-field :card_id PulseCard, :pulse_id (u/get-id notification)))]
-     (reduce set/union (for [card (db/select [Card :public_uuid :dataset_query :read_permissions], :id [:in card-ids])]
-                         (i/perms-objects-set card :read))))))
-
-(defn- current-user-is-recipient? [notification]
-  (contains? (emails notification) (:email @*current-user*)))
-
-(defn- perms-objects-set
-  "Calculate the set of permissions required to `read-or-write` a `notification`."
-  [{collection-id :collection_id, creator-id :creator_id, :as notification} read-or-write]
-  (cond
-    ;; First things first:
-    ;; *  A User can *read* a Notification if they are a recipient
-    ;; *  A User can *write* a Notification if they are a recipient *and* the original creator
-    (and (current-user-is-recipient? notification)
-         (or (= read-or-write :read)
-             (and (= creator-id *current-user-id*))))
-    #{}
-
-    ;; if this Pulse is in a Collection you're allowed to read or write the Pulse based on your permissions for the
-    ;; Collection
-    collection-id
-    (collection/perms-objects-set collection-id read-or-write)
-
-    ;; If the Notification is not in a Collection and you are not a recipient and the original creator, you're not
-    ;; allowed to edit it unless you're an admin...
-    (= read-or-write :write)
-    #{"/"}
-
-    ;; ...but for read permissions, fall back to the traditional artifact-based Permissions. At some point in the
-    ;; furture this entry will be phased out when we move to the 'everything is in a Collection' model.
-    :else
-    (notification-perms-based-on-cards notification)))
-
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -109,11 +47,9 @@
          {:hydration-keys (constantly [:pulse])
           :properties     (constantly {:timestamped? true})
           :pre-delete     pre-delete})
+  ;; You can read/write a Pulse if you can read/write its parent Collection
   i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:perms-objects-set perms-objects-set
-          :can-read?         (partial i/current-user-has-full-permissions? :read)
-          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
+  perms/IObjectPermissionsForParentCollection)
 
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------

@@ -9,17 +9,15 @@
              [collection :as collection :refer [Collection]]
              [collection-test :as collection-test]
              [dashboard :refer [Dashboard]]
-             [database :refer [Database]]
              [permissions :as perms]
-             [permissions-group :as group]
+             [permissions-group :as group :refer [PermissionsGroup]]
+             [permissions-group-membership :refer [PermissionsGroupMembership]]
              [pulse :refer [Pulse]]
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
-             [pulse-channel-recipient :refer [PulseChannelRecipient]]
-             [table :refer [Table]]]
+             [pulse-channel-recipient :refer [PulseChannelRecipient]]]
             [metabase.test.data.users :refer [user->client user->id]]
             [metabase.test.util :as tu]
-            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -255,29 +253,26 @@
   {:name       "Root Collection"
    :id         "root"
    :cards      []
-   :dashboards [{:name "Dine & Dashboard",       :collection_position nil}]
-   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]}
-  ;; create a fake DB and don't give all users perms to it
-  (tt/with-temp* [Database [db]
-                  Table    [table {:db_id (u/get-id db)}]]
-    (perms/revoke-permissions! (group/all-users) (u/get-id db))
-    ;; create the normal 'Child' objects
-    (with-some-children-of-collection nil
-      ;; move the Card into the DB that we have no perms for
-      (db/update! Card (db/select-one-id Card :name "Birthday Card")
-        :dataset_query {:database (u/get-id db), :type :query, :query {:source-table (u/get-id table)}})
-      ;; ok, a regular user shouldn't get to see it any more :(
+   :dashboards []
+   :pulses     []}
+  ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no collection_id
+  (with-some-children-of-collection nil
+    (-> ((user->client :rasta) :get 200 "collection/root")
+        (remove-ids-from-collection-detail :keep-collection-id? true))))
+
+;; ...but if they have read perms for the Root Collection they should get to see them
+(expect
+  {:name       "Root Collection"
+   :id         "root"
+   :cards      [{:name "Birthday Card"          :collection_position nil}]
+   :dashboards [{:name "Dine & Dashboard"       :collection_position nil}]
+   :pulses     [{:name "Electro-Magnetic Pulse" :collection_position nil}]}
+  (with-some-children-of-collection nil
+    (tt/with-temp* [PermissionsGroup           [group]
+                    PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
+      (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
       (-> ((user->client :rasta) :get 200 "collection/root")
           (remove-ids-from-collection-detail :keep-collection-id? true)))))
-
-;; Make sure this endpoint can also filter things
-(expect
-  {:name  "Root Collection"
-   :id    "root"
-   :cards [{:name "Birthday Card", :collection_position nil}]}
-  (with-some-children-of-collection nil
-    (-> ((user->client :crowberto) :get 200 "collection/root?model=cards")
-        (remove-ids-from-collection-detail :keep-collection-id? true))))
 
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
@@ -291,19 +286,19 @@
 
 ;; Do top-level collections show up as children of the Root Collection?
 (expect
-  {:effective_children #{{:name "A", :id true}}
+  {:effective_children  #{{:name "A", :id true}}
    :effective_ancestors []
-   :effective_location "/"}
+   :effective_location  nil}
   (with-collection-hierarchy [a b c d e f g]
     (api-get-root-collection-ancestors-and-children)))
 
 ;; ...and collapsing children should work for the Root Collection as well
 (expect
-  {:effective_children #{{:name "B", :id true}
-                         {:name "D", :id true}
-                         {:name "F", :id true}}
+  {:effective_children  #{{:name "B", :id true}
+                          {:name "D", :id true}
+                          {:name "F", :id true}}
    :effective_ancestors []
-   :effective_location "/"}
+   :effective_location  nil}
   (with-collection-hierarchy [b d e f g]
     (api-get-root-collection-ancestors-and-children)))
 
@@ -374,33 +369,34 @@
      {:name "My Beautiful Collection", :color "#ABCDEF"})))
 
 ;; Archiving a collection should delete any alerts associated with questions in the collection
-(tt/expect-with-temp [Collection            [{collection-id :id}]
-                      Card                  [{card-id :id :as card} {:collection_id collection-id}]
-                      Pulse                 [{pulse-id :id} {:alert_condition  "rows"
-                                                             :alert_first_only false
-                                                             :creator_id       (user->id :rasta)
-                                                             :name             "Original Alert Name"}]
+(expect
+  {:emails (merge (et/email-to :crowberto {:subject "One of your alerts has stopped working",
+                                           :body    {"the question was archived by Crowberto Corv" true}})
+                  (et/email-to :rasta {:subject "One of your alerts has stopped working",
+                                       :body    {"the question was archived by Crowberto Corv" true}}))
+   :pulse  nil}
+  (tt/with-temp* [Collection            [{collection-id :id}]
+                  Card                  [{card-id :id :as card} {:collection_id collection-id}]
+                  Pulse                 [{pulse-id :id} {:alert_condition  "rows"
+                                                         :alert_first_only false
+                                                         :creator_id       (user->id :rasta)
+                                                         :name             "Original Alert Name"}]
 
-                      PulseCard             [_              {:pulse_id pulse-id
-                                                             :card_id  card-id
-                                                             :position 0}]
-                      PulseChannel          [{pc-id :id}    {:pulse_id pulse-id}]
-                      PulseChannelRecipient [{pcr-id-1 :id} {:user_id          (user->id :crowberto)
-                                                             :pulse_channel_id pc-id}]
-                      PulseChannelRecipient [{pcr-id-2 :id} {:user_id          (user->id :rasta)
-                                                             :pulse_channel_id pc-id}]]
-
-  [(merge (et/email-to :crowberto {:subject "One of your alerts has stopped working",
-                                   :body    {"the question was archived by Crowberto Corv" true}})
-          (et/email-to :rasta {:subject "One of your alerts has stopped working",
-                               :body    {"the question was archived by Crowberto Corv" true}}))
-   nil]
-  (et/with-fake-inbox
-    (et/with-expected-messages 2
-      ((user->client :crowberto) :put 200 (str "collection/" collection-id)
-       {:name "My Beautiful Collection", :color "#ABCDEF", :archived true}))
-    [(et/regex-email-bodies #"the question was archived by Crowberto Corv")
-     (Pulse pulse-id)]))
+                  PulseCard             [_              {:pulse_id pulse-id
+                                                         :card_id  card-id
+                                                         :position 0}]
+                  PulseChannel          [{pc-id :id}    {:pulse_id pulse-id}]
+                  PulseChannelRecipient [{pcr-id-1 :id} {:user_id          (user->id :crowberto)
+                                                         :pulse_channel_id pc-id}]
+                  PulseChannelRecipient [{pcr-id-2 :id} {:user_id          (user->id :rasta)
+                                                         :pulse_channel_id pc-id}]]
+    (et/with-fake-inbox
+      (et/with-expected-messages 2
+        ((user->client :crowberto) :put 200 (str "collection/" collection-id)
+         {:name "My Beautiful Collection", :color "#ABCDEF", :archived true}))
+      (array-map
+       :emails (et/regex-email-bodies #"the question was archived by Crowberto Corv")
+       :pulse  (Pulse pulse-id)))))
 
 ;; Can I *change* the `location` of a Collection? (i.e. move it into a different parent Colleciton)
 (expect
