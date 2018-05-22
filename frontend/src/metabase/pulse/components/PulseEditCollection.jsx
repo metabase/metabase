@@ -3,7 +3,8 @@ import { Box } from "rebass";
 import { t } from "c-3po";
 
 import Select, { Option } from "metabase/components/Select";
-import CollectionListLoader from "metabase/components/CollectionListLoader";
+
+import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
 export default class PulseEditCollection extends React.Component {
   render() {

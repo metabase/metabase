@@ -5,9 +5,10 @@ import { withRouter } from "react-router";
 
 import { DashboardApi } from "metabase/services";
 
-import CollectionListLoader from "metabase/components/CollectionListLoader";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
+
+import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
 @withRouter
 class DashboardMoveModal extends React.Component {

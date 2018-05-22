@@ -303,7 +303,7 @@ export default class QueryHeader extends Component {
               initialCollectionId={
                 this.props.card && this.props.card.collection_id
               }
-              setCollection={(questionId, collection) => {
+              setCollection={({ id }, collection) => {
                 this.props.onSetCardAttribute("collection", collection);
                 this.props.onSetCardAttribute("collection_id", collection.id);
               }}
