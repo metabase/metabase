@@ -7744,7 +7744,7 @@ prop-types@15.5.8:
   dependencies:
     fbjs "^0.8.9"
 
-prop-types@15.x, prop-types@^15.5.10, prop-types@^15.5.4, prop-types@^15.5.6, prop-types@^15.5.7, prop-types@^15.5.8, prop-types@^15.6.0:
+prop-types@15.6.0, prop-types@15.x, prop-types@^15.5.10, prop-types@^15.5.4, prop-types@^15.5.6, prop-types@^15.5.7, prop-types@^15.5.8, prop-types@^15.6.0:
   version "15.6.0"
   resolved "https://registry.yarnpkg.com/prop-types/-/prop-types-15.6.0.tgz#ceaf083022fc46b4a35f69e13ef75aed0d639856"
   dependencies:
@@ -7933,7 +7933,7 @@ react-copy-to-clipboard@^5.0.1:
     copy-to-clipboard "^3"
     prop-types "^15.5.8"
 
-react-dom@15:
+react-dom@^15.6.2:
   version "15.6.2"
   resolved "https://registry.yarnpkg.com/react-dom/-/react-dom-15.6.2.tgz#41cfadf693b757faf2708443a1d1fd5a02bef730"
   dependencies:
@@ -7972,6 +7972,12 @@ react-hot-loader@^1.3.0:
   dependencies:
     react-hot-api "^0.4.5"
     source-map "^0.4.4"
+
+react-image@^1.3.1:
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/react-image/-/react-image-1.3.1.tgz#32af60126ea92f4860df46697eea42c1661cef87"
+  dependencies:
+    prop-types "15.6.0"
 
 react-lazy-cache@^3.0.1:
   version "3.0.1"
@@ -8079,7 +8085,7 @@ react-virtualized@^9.7.2:
     loose-envify "^1.3.0"
     prop-types "^15.5.4"
 
-react@15:
+react@^15.6.2:
   version "15.6.2"
   resolved "https://registry.yarnpkg.com/react/-/react-15.6.2.tgz#dba0434ab439cfe82f108f0f511663908179aa72"
   dependencies:

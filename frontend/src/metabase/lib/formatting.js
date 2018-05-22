@@ -300,19 +300,20 @@ export function formatEmail(
   }
 }
 
+
+const IMAGE_REGEX = /(http(s?):)([/|.|\w|\s|-])*\.(?:jpg|gif|png)/g;
+ 
 // based on https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L25
 const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i;
 
 export function formatUrl(value: Value, { jsx, rich }: FormattingOptions = {}) {
   const url = String(value);
+  //console.log(url);
+  //alert("format image");
   if (jsx && rich && URL_WHITELIST_REGEX.test(url)) {
-    return (
-      <ExternalLink className="link link--wrappable" href={url}>
-        {url}
-      </ExternalLink>
-    );
+    return (<img style={{ height: 34 }} src={url} />);
   } else {
-    return url;
+		return url;
   }
 }
 
@@ -350,8 +351,8 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
 
   if (value == undefined) {
     return null;
-  } else if (column && isa(column.special_type, TYPE.URL)) {
-    return formatUrl(value, options);
+  } else if (column && isa(column.special_type, TYPE.URL) && IMAGE_REGEX.test(value)) {
+		return formatUrl(value, options);
   } else if (column && isa(column.special_type, TYPE.Email)) {
     return formatEmail(value, options);
   } else if (column && isa(column.base_type, TYPE.Time)) {
