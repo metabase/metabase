@@ -149,21 +149,13 @@
                    (.setQuery query-string))]
      (google/execute (.query (.jobs client) project-id request)))))
 
-(def ^:private ^java.util.TimeZone default-timezone
-  (java.util.TimeZone/getDefault))
-
 (defn- parse-timestamp-str [s]
   ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
   (or
-   (du/->Timestamp s)
-   ;; If parsing as ISO-8601 fails parse as a double then convert to ms. Add the appropriate number of milliseconds to
-   ;; the number to convert it to the local timezone. We do this because the dates come back in UTC but we want the
-   ;; grouping to match the local time (HUH?) This gives us the same results as the other
-   ;; `has-questionable-timezone-support?` drivers. Not sure if this is actually desirable, but if it's not, it
-   ;; probably means all of those other drivers are doing it wrong
-   (du/->Timestamp (- (* (Double/parseDouble s) 1000)
-                      (.getDSTSavings default-timezone)
-                      (.getRawOffset  default-timezone)))))
+   (du/->Timestamp s time/utc)
+   ;; If parsing as ISO-8601 fails parse as a double then convert to ms. This is ms since epoch in UTC. By using
+   ;; `->Timestamp`, it will convert from ms in UTC to a timestamp object in the JVM timezone
+   (du/->Timestamp (* (Double/parseDouble s) 1000))))
 
 (def ^:private bigquery-time-format (tformat/formatter "HH:mm:SS" time/utc))
 

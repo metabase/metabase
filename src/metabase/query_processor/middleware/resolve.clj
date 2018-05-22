@@ -10,6 +10,7 @@
             [metabase
              [db :as mdb]
              [util :as u]]
+            [metabase.util.date :as du]
             [metabase.models
              [database :refer [Database]]
              [field :as field]
@@ -229,11 +230,7 @@
 
   DateTimeField
   (parse-value [this value]
-    (let [tz                 (when-let [tz-id ^String (setting/get :report-timezone)]
-                               (TimeZone/getTimeZone tz-id))
-          parsed-string-date (some-> value
-                                     (du/str->date-time tz)
-                                     du/->Timestamp)]
+    (let [parsed-string-date (some-> value du/->Timestamp)]
       (cond
         parsed-string-date
         (s/validate DateTimeValue (i/map->DateTimeValue {:field this, :value parsed-string-date}))
