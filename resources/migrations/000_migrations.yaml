@@ -4079,6 +4079,5 @@ databaseChangeLog:
               name: updated_at
               type: datetime
               remarks: 'When was this User last updated?'
-              constraints:
-                nullable: false
-              defaultValueComputed: now()
+        - sql:
+            sql: update core_user set updated_at=date_joined
