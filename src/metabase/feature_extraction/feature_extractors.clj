@@ -12,9 +12,7 @@
              [values :as values]]
             [metabase.models.field :as field]
             [metabase.query-processor.middleware.binning :as binning]
-            [metabase
-             [query-processor :as qp]
-             [util :as u]]
+            [metabase.util :as u]
             [net.cgrand.xforms :as x]
             [redux.core :as redux]
             [toucan.db :as db])

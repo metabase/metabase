@@ -10,6 +10,7 @@
             [metabase.test.data :as data]
             [metabase.test.util]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -140,63 +141,74 @@
                   fingerprint/save-fingerprint!                                (fn [& _] (reset! fingerprinted? true))]
       (tt/with-temp* [Table [table]
                       Field [_ (assoc field-properties :table_id (u/get-id table))]]
-        (fingerprint/fingerprint-fields! table))
-      @fingerprinted?)))
+        [(fingerprint/fingerprint-fields! table)
+         @fingerprinted?]))))
+
+(def ^:private default-stat-map
+  {:no-data-fingerprints 0, :failed-fingerprints 0, :updated-fingerprints 0, :fingerprints-attempted 0})
+
+(def ^:private one-updated-map
+  (merge default-stat-map {:updated-fingerprints 1, :fingerprints-attempted 1}))
 
 ;; Field is a subtype of newer fingerprint version
 (expect
+  [one-updated-map true]
   (field-was-fingerprinted?
     {2 #{:type/Float}}
     {:base_type :type/Decimal, :fingerprint_version 1}))
 
 ;; field is *not* a subtype of newer fingerprint version
 (expect
-  false
+  [default-stat-map false]
   (field-was-fingerprinted?
     {2 #{:type/Text}}
     {:base_type :type/Decimal, :fingerprint_version 1}))
 
 ;; Field is a subtype of one of several types for newer fingerprint version
 (expect
+  [one-updated-map true]
   (field-was-fingerprinted?
     {2 #{:type/Float :type/Text}}
     {:base_type :type/Decimal, :fingerprint_version 1}))
 
 ;; Field has same version as latest fingerprint version
 (expect
-  false
+  [default-stat-map false]
   (field-was-fingerprinted?
     {1 #{:type/Float}}
     {:base_type :type/Decimal, :fingerprint_version 1}))
 
 ;; field has newer version than latest fingerprint version (should never happen)
 (expect
-  false
+  [default-stat-map false]
   (field-was-fingerprinted?
     {1 #{:type/Float}}
     {:base_type :type/Decimal, :fingerprint_version 2}))
 
 ;; field has same exact type as newer fingerprint version
 (expect
+  [one-updated-map true]
   (field-was-fingerprinted?
     {2 #{:type/Float}}
     {:base_type :type/Float, :fingerprint_version 1}))
 
 ;; field is parent type of newer fingerprint version type
 (expect
-  false
+  [default-stat-map false]
   (field-was-fingerprinted?
     {2 #{:type/Decimal}}
     {:base_type :type/Float, :fingerprint_version 1}))
 
 ;; several new fingerprint versions exist
 (expect
+  [one-updated-map true]
   (field-was-fingerprinted?
     {2 #{:type/Float}
      3 #{:type/Text}}
     {:base_type :type/Decimal, :fingerprint_version 1}))
 
 (expect
+  [one-updated-map true]
   (field-was-fingerprinted?
     {2 #{:type/Text}
      3 #{:type/Float}}
@@ -205,16 +217,18 @@
 
 ;; Make sure the `fingerprint!` function is correctly updating the correct columns of Field
 (expect
-  {:fingerprint         {:experimental {:fake-fingerprint? true}}
-   :fingerprint_version 3
-   :last_analyzed       nil}
+  [{:no-data-fingerprints 0, :failed-fingerprints    0,
+    :updated-fingerprints 1, :fingerprints-attempted 1}
+   {:fingerprint         {:experimental {:fake-fingerprint? true}}
+    :fingerprint_version 3
+    :last_analyzed       nil}]
   (tt/with-temp Field [field {:base_type           :type/Integer
                               :table_id            (data/id :venues)
                               :fingerprint         nil
                               :fingerprint_version 1
-                              :last_analyzed       (u/->Timestamp "2017-08-09")}]
+                              :last_analyzed       (du/->Timestamp #inst "2017-08-09")}]
     (with-redefs [i/latest-fingerprint-version 3
                   sample/sample-fields         (constantly [[field [1 2 3 4 5]]])
                   fingerprint/fingerprint      (constantly {:experimental {:fake-fingerprint? true}})]
-      (#'fingerprint/fingerprint-table! (Table (data/id :venues)) [field])
-      (db/select-one [Field :fingerprint :fingerprint_version :last_analyzed] :id (u/get-id field)))))
+      [(#'fingerprint/fingerprint-table! (Table (data/id :venues)) [field])
+       (into {} (db/select-one [Field :fingerprint :fingerprint_version :last_analyzed] :id (u/get-id field)))])))

@@ -15,6 +15,7 @@
              [ssh :as ssh]]))
 
 (defrecord OracleDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Oracle"))
 
@@ -78,7 +79,7 @@
   "Apply truncation / extraction to a date field or value for Oracle."
   [unit v]
   (case unit
-    :default         (hx/->date v)
+    :default         (some-> v hx/->date)
     :minute          (trunc :mi v)
     ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
     :minute-of-hour  (hsql/call :extract :minute (hx/->timestamp v))

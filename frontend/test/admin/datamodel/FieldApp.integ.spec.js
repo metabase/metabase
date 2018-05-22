@@ -1,6 +1,7 @@
 import {
   useSharedAdminLogin,
   createTestStore,
+  eventually,
 } from "__support__/integrated_tests";
 
 import {
@@ -45,8 +46,7 @@ import SelectButton from "metabase/components/SelectButton";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import { getMetadata } from "metabase/selectors/metadata";
 
-const getRawFieldWithId = (store, fieldId) =>
-  store.getState().metadata.fields[fieldId];
+import { MetabaseApi } from "metabase/services";
 
 // TODO: Should we use the metabase/lib/urls methods for constructing urls also here?
 
@@ -117,17 +117,11 @@ describe("FieldApp", () => {
     });
 
     afterAll(async () => {
-      const store = await createTestStore();
-      await store.dispatch(fetchTableMetadata(1));
-      const createdAtField = getRawFieldWithId(store, CREATED_AT_ID);
-
-      await store.dispatch(
-        updateField({
-          ...createdAtField,
-          display_name: staticFixtureMetadata.fields[1].display_name,
-          description: staticFixtureMetadata.fields[1].description,
-        }),
-      );
+      await MetabaseApi.field_update({
+        id: CREATED_AT_ID,
+        display_name: staticFixtureMetadata.fields[1].display_name,
+        description: staticFixtureMetadata.fields[1].description,
+      });
     });
   });
 
@@ -165,16 +159,10 @@ describe("FieldApp", () => {
     });
 
     afterAll(async () => {
-      const store = await createTestStore();
-      await store.dispatch(fetchTableMetadata(1));
-      const createdAtField = getRawFieldWithId(store, CREATED_AT_ID);
-
-      await store.dispatch(
-        updateField({
-          ...createdAtField,
-          visibility_type: "normal",
-        }),
-      );
+      await MetabaseApi.field_update({
+        id: CREATED_AT_ID,
+        visibility_type: "normal",
+      });
     });
   });
 
@@ -263,17 +251,11 @@ describe("FieldApp", () => {
     });
 
     afterAll(async () => {
-      const store = await createTestStore();
-      await store.dispatch(fetchTableMetadata(1));
-      const createdAtField = getRawFieldWithId(store, CREATED_AT_ID);
-
-      await store.dispatch(
-        updateField({
-          ...createdAtField,
-          special_type: "type/CreationTimestamp",
-          fk_target_field_id: null,
-        }),
-      );
+      await MetabaseApi.field_update({
+        id: CREATED_AT_ID,
+        special_type: "type/CreationTimestamp",
+        fk_target_field_id: null,
+      });
     });
   });
 
@@ -286,7 +268,7 @@ describe("FieldApp", () => {
 
       click(mappingTypePicker);
       const pickerOptions = mappingTypePicker.find(Popover).find("li");
-      expect(pickerOptions.length).toBe(1);
+      expect(pickerOptions.map(o => o.text())).toEqual(["Use original value"]);
     });
 
     it("lets you change to 'Use foreign key' and change the target for field with fk", async () => {
@@ -307,12 +289,14 @@ describe("FieldApp", () => {
         .first();
       click(useFKButton);
       store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA]);
-      // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
-      await delay(500);
 
-      const fkFieldSelect = section.find(SelectButton);
+      let fkFieldSelect;
 
-      expect(fkFieldSelect.text()).toBe("Name");
+      await eventually(() => {
+        fkFieldSelect = section.find(SelectButton);
+        expect(fkFieldSelect.text()).toBe("Name");
+      });
+
       click(fkFieldSelect);
 
       const sourceField = fkFieldSelect
@@ -326,9 +310,11 @@ describe("FieldApp", () => {
 
       click(sourceField);
       store.waitForActions([FETCH_TABLE_METADATA]);
-      // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
-      await delay(500);
-      expect(fkFieldSelect.text()).toBe("Source");
+
+      await eventually(() => {
+        fkFieldSelect = section.find(SelectButton);
+        expect(fkFieldSelect.text()).toBe("Source");
+      });
     });
 
     it("doesn't show date fields in fk options", async () => {

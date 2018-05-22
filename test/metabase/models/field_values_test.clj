@@ -16,19 +16,19 @@
 
 ;;; ---------------------------------------- field-should-have-field-values? -----------------------------------------
 
-(expect (field-should-have-field-values? {:has_field_values "list"
+(expect (field-should-have-field-values? {:has_field_values :list
                                           :visibility_type  :normal
                                           :base_type        :type/Text}))
 
-(expect false (field-should-have-field-values? {:has_field_values "list"
+(expect false (field-should-have-field-values? {:has_field_values :list
                                                 :visibility_type  :sensitive
                                                 :base_type        :type/Text}))
 
-(expect false (field-should-have-field-values? {:has_field_values "list"
+(expect false (field-should-have-field-values? {:has_field_values :list
                                                 :visibility_type  :hidden
                                                 :base_type        :type/Text}))
 
-(expect false (field-should-have-field-values? {:has_field_values "list"
+(expect false (field-should-have-field-values? {:has_field_values :list
                                                 :visibility_type  :details-only
                                                 :base_type        :type/Text}))
 
@@ -36,11 +36,11 @@
                                                 :visibility_type :normal
                                                 :base_type       :type/Text}))
 
-(expect (field-should-have-field-values? {:has_field_values "list"
+(expect (field-should-have-field-values? {:has_field_values :list
                                           :visibility_type  :normal
                                           :base_type        :type/Text}))
 
-(expect (field-should-have-field-values? {:has_field_values "list"
+(expect (field-should-have-field-values? {:has_field_values :list
                                           :special_type     :type/Category
                                           :visibility_type  :normal
                                           :base_type        "type/Boolean"}))
@@ -48,32 +48,32 @@
 
 ;; retired/sensitive/hidden/details-only fields should always be excluded
 (expect false (field-should-have-field-values? {:base_type        :type/Boolean
-                                                :has_field_values "list"
+                                                :has_field_values :list
                                                 :visibility_type  :retired}))
 
 (expect false (field-should-have-field-values? {:base_type        :type/Boolean
-                                                :has_field_values "list"
+                                                :has_field_values :list
                                                 :visibility_type  :sensitive}))
 
 (expect false (field-should-have-field-values? {:base_type        :type/Boolean
-                                                :has_field_values "list"
+                                                :has_field_values :list
                                                 :visibility_type  :hidden}))
 
 (expect false (field-should-have-field-values? {:base_type        :type/Boolean
-                                                :has_field_values "list"
+                                                :has_field_values :list
                                                 :visibility_type  :details-only}))
 
 ;; date/time based fields should always be excluded
 (expect false (field-should-have-field-values? {:base_type        :type/Date
-                                                :has_field_values "list"
+                                                :has_field_values :list
                                                 :visibility_type  :normal}))
 
 (expect false (field-should-have-field-values? {:base_type        :type/DateTime
-                                                :has_field_values "list"
+                                                :has_field_values :list
                                                 :visibility_type  :normal}))
 
 (expect false (field-should-have-field-values? {:base_type        :type/Time
-                                                :has_field_values "list"
+                                                :has_field_values :list
                                                 :visibility_type  :normal}))
 
 

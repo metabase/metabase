@@ -67,12 +67,12 @@ describe("The Reference Section", () => {
     });
 
     describe("With Metrics State", async () => {
-      var metricIds = [];
+      let metricIds = [];
 
       beforeAll(async () => {
         // Create some metrics to have something to look at
-        var metric = await MetricApi.create(metricDef);
-        var metric2 = await MetricApi.create(anotherMetricDef);
+        let metric = await MetricApi.create(metricDef);
+        let metric2 = await MetricApi.create(anotherMetricDef);
 
         metricIds.push(metric.id);
         metricIds.push(metric2.id);
@@ -116,7 +116,7 @@ describe("The Reference Section", () => {
       });
 
       it("Should see a newly asked question in its questions list", async () => {
-        var card = await CardApi.create(metricCardDef);
+        let card = await CardApi.create(metricCardDef);
         expect(card.name).toBe(metricCardDef.name);
 
         try {

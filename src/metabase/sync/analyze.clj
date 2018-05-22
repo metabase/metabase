@@ -13,6 +13,8 @@
              [fingerprint :as fingerprint]
              #_[table-row-count :as table-row-count]]
             [metabase.util :as u]
+            [metabase.util.date :as du]
+            [puppetlabs.i18n.core :refer [trs]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -61,7 +63,7 @@
     (db/update-where! Field {:table_id            [:in ids]
                              :fingerprint_version i/latest-fingerprint-version
                              :last_analyzed       nil}
-      :last_analyzed (u/new-sql-timestamp))))
+      :last_analyzed (du/new-sql-timestamp))))
 
 (s/defn ^:private update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
@@ -91,6 +93,29 @@
       (when progress-bar-result
         (log/info (u/format-color 'blue "%s Analyzed %s %s" step progress-bar-result (sync-util/name-for-logging table)))))))
 
+(defn- fingerprint-fields-summary [{:keys [fingerprints-attempted updated-fingerprints no-data-fingerprints failed-fingerprints]}]
+  (trs "Fingerprint updates attempted {0}, updated {1}, no data found {2}, failed {3}"
+       fingerprints-attempted updated-fingerprints no-data-fingerprints failed-fingerprints))
+
+(defn- classify-fields-summary [{:keys [fields-classified fields-failed]}]
+  (trs "Total number of fields classified {0}, {1} failed"
+       fields-classified fields-failed))
+
+(defn- classify-tables-summary [{:keys [total-tables tables-classified]}]
+  (trs "Total number of tables classified {0}, {1} updated"
+       total-tables tables-classified))
+
+(defn ^:private make-analyze-steps [tables log-fn]
+  [(sync-util/create-sync-step "fingerprint-fields"
+                               #(fingerprint/fingerprint-fields-for-db! % tables log-fn)
+                               fingerprint-fields-summary)
+   (sync-util/create-sync-step "classify-fields"
+                               #(classify/classify-fields-for-db! % tables log-fn)
+                               classify-fields-summary)
+   (sync-util/create-sync-step "classify-tables"
+                               #(classify/classify-tables-for-db! % tables log-fn)
+                               classify-tables-summary)])
+
 (s/defn analyze-db!
   "Perform in-depth analysis on the data for all Tables in a given DATABASE.
    This is dependent on what each database driver supports, but includes things like cardinality testing and table row
@@ -99,8 +124,5 @@
   (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)]
       (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 3 (count tables)))]
-        (let [log-progress-fn (maybe-log-progress emoji-progress-bar)]
-          (fingerprint/fingerprint-fields-for-db! database tables log-progress-fn)
-          (classify/classify-fields-for-db! database tables log-progress-fn)
-          (classify/classify-tables-for-db! database tables log-progress-fn)
-          (update-fields-last-analyzed-for-db! database tables))))))
+        (sync-util/run-sync-operation "analyze" database (make-analyze-steps tables (maybe-log-progress emoji-progress-bar)))
+        (update-fields-last-analyzed-for-db! database tables)))))

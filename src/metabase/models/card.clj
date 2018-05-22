@@ -1,8 +1,7 @@
 (ns metabase.models.card
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase
              [public-settings :as public-settings]
@@ -23,6 +22,7 @@
             [metabase.query-processor.middleware.permissions :as qp-perms]
             [metabase.query-processor.util :as qputil]
             [metabase.util.query :as q]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -164,8 +164,8 @@
        (when ((set disallowed-source-card-ids) source-card-id)
          (throw
           (Exception.
-           (str "Cannot calculate permissions due to circular references. This means a question is either using itself "
-                "as a source or one or more questions are using each other as sources."))))
+           (str (tru "Cannot calculate permissions due to circular references.")
+                (tru "This means a question is either using itself as a source or one or more questions are using each other as sources.")))))
        ;; ok, if we've decided that this is not a loooopy situation then go ahead and recurse
        (query-perms-set (db/select-one-field :dataset_query Card :id source-card-id)
                         :read
@@ -199,7 +199,7 @@
     (empty? query)                   #{}
     (= (keyword query-type) :native) #{(native-permissions-path read-or-write database)}
     (= (keyword query-type) :query)  (mbql-permissions-path-set read-or-write query disallowed-source-card-ids throw-exceptions?)
-    :else                            (throw (Exception. (str "Invalid query type: " query-type)))))
+    :else                            (throw (Exception. (str (tru "Invalid query type: {0}" query-type))))))
 
 
 (defn- card-perms-set-for-query
@@ -232,7 +232,7 @@
     outer-query :dataset_query, card-id :id, :as card}
    read-or-write]
   (when-not (seq card)
-    (throw (Exception. "`card` is nil or empty. Cannot calculate permissions.")))
+    (throw (Exception. (str (tru "`card` is nil or empty. Cannot calculate permissions.")))))
   (let [source-card-id (qputil/query->source-card-id outer-query)]
     (cond
       ;; you don't need any permissions to READ a public card, which is PUBLIC by definition :D

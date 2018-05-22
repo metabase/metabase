@@ -5,7 +5,6 @@
             [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
-             [format :as hformat]
              [helpers :as h]]
             [metabase
              [driver :as driver]
@@ -15,9 +14,11 @@
              [annotate :as annotate]
              [interface :as i]
              [util :as qputil]]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import clojure.lang.Keyword
-           [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
+            [metabase.util
+             [date :as du]
+             [honeysql-extensions :as hx]]
+            [puppetlabs.i18n.core :refer [trs]])
+  (:import [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
            [java.util Calendar Date TimeZone]
            [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression
             ExpressionRef Field FieldLiteral RelativeDateTimeValue TimeField TimeValue Value]))
@@ -31,12 +32,6 @@
   find referenced aggregations (otherwise something like [:aggregate-field 0] could be ambiguous in a nested query).
   Each nested query increments this counter by 1."
   0)
-
-;; register the function "distinct-count" with HoneySQL
-;; (hsql/format :%distinct-count.x) -> "count(distinct x)"
-(defmethod hformat/fn-handler "distinct-count" [_ field]
-  (str "count(distinct " (hformat/to-sql field) ")"))
-
 
 ;;; ## Formatting
 
@@ -390,7 +385,7 @@
   land"
   [^TimeZone tz ^ResultSet rs ^Integer i]
   (let [date-string (.getString rs i)]
-    (if-let [parsed-date (u/str->date-time tz date-string)]
+    (if-let [parsed-date (du/str->date-time date-string tz)]
       parsed-date
       (throw (Exception. (format "Unable to parse date '%s'" date-string))))))
 
@@ -539,19 +534,21 @@
     (log/debug (u/format-color 'green "Setting timezone with statement: %s" sql))
     (jdbc/db-do-prepared connection [sql])))
 
-(defn- run-query-without-timezone [driver settings connection query]
+(defn- run-query-without-timezone [_ _ connection query]
   (do-in-transaction connection (partial run-query query nil)))
 
 (defn- run-query-with-timezone [driver {:keys [^String report-timezone] :as settings} connection query]
   (try
     (do-in-transaction connection (fn [transaction-connection]
                                     (set-timezone! driver settings transaction-connection)
-                                    (run-query query (some-> report-timezone TimeZone/getTimeZone) transaction-connection)))
+                                    (run-query query
+                                               (some-> report-timezone TimeZone/getTimeZone)
+                                               transaction-connection)))
     (catch SQLException e
-      (log/error "Failed to set timezone:\n" (with-out-str (jdbc/print-sql-exception-chain e)))
+      (log/error (trs "Failed to set timezone:") "\n" (with-out-str (jdbc/print-sql-exception-chain e)))
       (run-query-without-timezone driver settings connection query))
     (catch Throwable e
-      (log/error "Failed to set timezone:\n" (.getMessage e))
+      (log/error (trs "Failed to set timezone:") "\n" (.getMessage e))
       (run-query-without-timezone driver settings connection query))))
 
 

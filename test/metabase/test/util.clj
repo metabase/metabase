@@ -10,6 +10,7 @@
              [driver :as driver]
              [task :as task]
              [util :as u]]
+            [metabase.driver.generic-sql :as sql]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -105,7 +106,7 @@
   ([data]
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
-                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id}
+                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id :fields_hash}
                          #(.endsWith (name %) "_id")))
     data))
   ([pred data]
@@ -152,7 +153,7 @@
 (u/strict-extend (class Database)
   test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:details   {}
-                                :engine    :yeehaw ; wtf?
+                                :engine    :h2
                                 :is_sample false
                                 :name      (random-name)})})
 
@@ -436,16 +437,27 @@
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)
                                    :data          (into {} (.getJobDataMap trigger))}))))}))))))
 
+(defn- clear-connection-pool
+  "It's possible that a previous test ran and set the session's timezone to something, then returned the session to
+  the pool. Sometimes that connection's session can remain intact and subsequent queries will continue in that
+  timezone. That causes problems for tests that we can determine the database's timezone. This function will reset the
+  connections in the connection pool for `db` to ensure that we get fresh session with no timezone specified"
+  [db]
+  (when-let [conn-pool (:datasource (sql/db->pooled-connection-spec db))]
+    (.softResetAllUsers conn-pool)))
+
 (defn db-timezone-id
   "Return the timezone id from the test database. Must be called with `metabase.test.data.datasets/*driver*` bound,
   such as via `metabase.test.data.datasets/with-engine`"
   []
   (assert (bound? #'*driver*))
-  (data/dataset test-data
-    (-> (driver/current-db-time *driver* (data/db))
-        .getChronology
-        .getZone
-        .getID)))
+  (let [db (data/db)]
+    (clear-connection-pool db)
+    (data/dataset test-data
+      (-> (driver/current-db-time *driver* db)
+          .getChronology
+          .getZone
+          .getID))))
 
 (defn call-with-jvm-tz
   "Invokes the thunk `F` with the JVM timezone set to `DTZ`, puts the various timezone settings back the way it found

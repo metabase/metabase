@@ -79,7 +79,7 @@ const SORTABLE_AGGREGATION_TYPES = new Set([
   "max",
 ]);
 
-var Query = {
+const Query = {
   isStructured(dataset_query) {
     return dataset_query && dataset_query.type === "query";
   },
@@ -211,7 +211,7 @@ var Query = {
   },
 
   canAddDimensions(query) {
-    var MAX_DIMENSIONS = 2;
+    let MAX_DIMENSIONS = 2;
     return query && query.breakout && query.breakout.length < MAX_DIMENSIONS;
   },
 
@@ -266,7 +266,7 @@ var Query = {
       return fields;
     } else if (Query.hasValidBreakout(query)) {
       // further filter field list down to only fields in our breakout clause
-      var breakoutFieldList = [];
+      let breakoutFieldList = [];
 
       const breakouts = Query.getBreakouts(query);
       breakouts.map(function(breakoutField) {
@@ -518,7 +518,7 @@ var Query = {
     filterFn = _.identity,
     usedFields = {},
   ) {
-    var results = {
+    let results = {
       count: 0,
       fields: null,
       fks: [],
@@ -532,7 +532,7 @@ var Query = {
       results.fks = fields
         .filter(f => isFK(f.special_type) && f.target)
         .map(joinField => {
-          var targetFields = filterFn(joinField.target.table.fields).filter(
+          let targetFields = filterFn(joinField.target.table.fields).filter(
             f =>
               (!Array.isArray(f.id) || f.id[0] !== "aggregation") &&
               !usedFields[f.id],
@@ -676,7 +676,7 @@ var Query = {
   },
 
   getFilterClauseDescription(tableMetadata, filter, options) {
-    if (filter[0] === "AND" || filter[0] === "OR") {
+    if (mbqlEq(filter[0], "AND") || mbqlEq(filter[0], "OR")) {
       let clauses = filter
         .slice(1)
         .map(f => Query.getFilterClauseDescription(tableMetadata, f, options));

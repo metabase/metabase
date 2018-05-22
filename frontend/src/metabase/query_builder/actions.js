@@ -126,8 +126,8 @@ export const updateUrl = createThunkAction(
     if (!card) {
       return;
     }
-    var copy = cleanCopyCard(card);
-    var newState = {
+    let copy = cleanCopyCard(card);
+    let newState = {
       card: copy,
       cardId: copy.id,
       serializedCard: serializeCardForUrl(copy),
@@ -139,7 +139,7 @@ export const updateUrl = createThunkAction(
       return;
     }
 
-    var url = urlForCardState(newState, dirty);
+    let url = urlForCardState(newState, dirty);
 
     // if the serialized card is identical replace the previous state instead of adding a new one
     // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
@@ -204,11 +204,12 @@ export const initializeQB = (location, params) => {
       databasesList = getDatabasesList(getState());
     } catch (error) {
       console.error("error fetching dbs", error);
-
-      // if we can't actually get the databases list then bail now
-      dispatch(setErrorPage(error));
-
-      return { uiControls };
+      // NOTE: don't actually error if dbs can't be fetched for some reason,
+      // we may still be able to run the query
+      // NOTE: for some reason previously fetchDatabases would fall back to []
+      // if there was an API error so this would never be hit
+      // dispatch(setErrorPage(error));
+      // return { uiControls };
     }
 
     // load up or initialize the card we'll be working on
@@ -774,7 +775,7 @@ export const apiCreateQuestion = question => {
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(clearRequestState({ statePath: ["metadata", "databases"] }));
+    dispatch(clearRequestState({ statePath: ["entities", "databases"] }));
 
     dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(
@@ -811,7 +812,7 @@ export const apiUpdateQuestion = question => {
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(clearRequestState({ statePath: ["metadata", "databases"] }));
+    dispatch(clearRequestState({ statePath: ["entities", "databases"] }));
 
     dispatch(updateUrl(updatedQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(
@@ -1319,8 +1320,8 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     if (!queryResult || !fk) return false;
 
     // extract the value we will use to filter our new query
-    var originValue;
-    for (var i = 0; i < queryResult.data.cols.length; i++) {
+    let originValue;
+    for (let i = 0; i < queryResult.data.cols.length; i++) {
       if (isPK(queryResult.data.cols[i].special_type)) {
         originValue = queryResult.data.rows[0][i];
       }
@@ -1351,8 +1352,8 @@ export const loadObjectDetailFKReferences = createThunkAction(
       const { qb: { card, queryResult, tableForeignKeys } } = getState();
 
       function getObjectDetailIdValue(data) {
-        for (var i = 0; i < data.cols.length; i++) {
-          var coldef = data.cols[i];
+        for (let i = 0; i < data.cols.length; i++) {
+          let coldef = data.cols[i];
           if (isPK(coldef.special_type)) {
             return data.rows[0][i];
           }

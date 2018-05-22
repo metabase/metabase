@@ -10,6 +10,7 @@
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu :refer [match-$]]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -22,19 +23,19 @@
 ;; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
 (tt/expect-with-temp [Activity [activity1 {:topic     "install"
                                            :details   {}
-                                           :timestamp (u/->Timestamp "2015-09-09T12:13:14.888Z")}]
+                                           :timestamp (du/->Timestamp #inst "2015-09-09T12:13:14.888Z")}]
                       Activity [activity2 {:topic     "dashboard-create"
                                            :user_id   (user->id :crowberto)
                                            :model     "dashboard"
                                            :model_id  1234
                                            :details   {:description  "Because I can!"
                                                        :name         "Bwahahaha"}
-                                           :timestamp (u/->Timestamp "2015-09-10T18:53:01.632Z")}]
+                                           :timestamp (du/->Timestamp #inst "2015-09-10T18:53:01.632Z")}]
                       Activity [activity3 {:topic     "user-joined"
                                            :user_id   (user->id :rasta)
                                            :model     "user"
                                            :details   {}
-                                           :timestamp (u/->Timestamp "2015-09-10T05:33:43.641Z")}]]
+                                           :timestamp (du/->Timestamp #inst "2015-09-10T05:33:43.641Z")}]]
   [(match-$ (Activity (:id activity2))
      {:id           $
       :topic        "dashboard-create"
@@ -116,7 +117,7 @@
     :user_id  user
     :model    model
     :model_id model-id
-    :timestamp (u/new-sql-timestamp))
+    :timestamp (du/new-sql-timestamp))
   ;; we sleep a bit to ensure no events have the same timestamp
   ;; sadly, MySQL doesn't support milliseconds so we have to wait a second
   ;; otherwise our records are out of order and this test fails :(
