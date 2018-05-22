@@ -64,6 +64,7 @@
 (derive :type/City :type/Text)
 (derive :type/State :type/Text)
 (derive :type/Country :type/Text)
+(derive :type/ZipCode :type/Text)
 
 (derive :type/Name :type/Text)
 (derive :type/Title :type/Text)
@@ -81,6 +82,7 @@
 
 (derive :type/Time :type/DateTime)
 (derive :type/Date :type/DateTime)
+(derive :type/DateTimeWithTZ :type/DateTime)
 
 (derive :type/UNIXTimestamp :type/DateTime)
 (derive :type/UNIXTimestamp :type/Integer)
@@ -89,6 +91,7 @@
 
 (derive :type/CreationTimestamp :type/DateTime)
 (derive :type/JoinTimestamp :type/DateTime)
+(derive :type/Birthdate :type/Date)
 
 
 ;;; Other

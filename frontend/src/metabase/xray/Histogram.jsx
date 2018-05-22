@@ -5,7 +5,6 @@ import { normal } from "metabase/lib/colors";
 
 const Histogram = ({ histogram, color, showAxis }) => (
   <Visualization
-    className="full-height"
     rawSeries={[
       {
         card: {

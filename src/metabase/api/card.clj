@@ -7,15 +7,14 @@
             [medley.core :as m]
             [metabase
              [events :as events]
-             [middleware :as middleware]
              [public-settings :as public-settings]
              [query-processor :as qp]
+             [related :as related]
              [util :as u]]
             [metabase.api
              [common :as api]
              [dataset :as dataset-api]
              [label :as label-api]]
-            [metabase.api.common.internal :refer [route-fn-name]]
             [metabase.email.messages :as messages]
             [metabase.models
              [card :as card :refer [Card]]
@@ -230,7 +229,7 @@
 ;; we'll also pass a simple checksum and have the frontend pass it back to us.  See the QP `results-metadata`
 ;; middleware namespace for more details
 
-(s/defn result-metadata-for-query :- results-metadata/ResultsMetadata
+(s/defn ^:private result-metadata-for-query :- results-metadata/ResultsMetadata
   "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return.
    This is obviously a bit wasteful so hopefully we can avoid having to do this."
   [query]
@@ -669,11 +668,14 @@
   (api/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
-(defn adhoc-query
-  "Wrap query map into a Query object (mostly to fascilitate type dispatch)."
-  [query]
-  (->> {:dataset_query query}
-       (merge (card/query->database-and-table-ids query))
-       query/map->QueryInstance))
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Card api/read-check related/related))
+
+(api/defendpoint POST "/related"
+  "Return related entities for an ad-hoc query."
+  [:as {query :body}]
+  (related/related (query/adhoc-query query)))
 
 (api/define-routes)

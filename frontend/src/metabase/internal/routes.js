@@ -1,15 +1,20 @@
+/* @flow */
+
 import React from "react";
-import { Route, IndexRoute } from "react-router";
+import { Link, Route, IndexRoute } from "react-router";
 
-import IconsApp from "metabase/internal/components/IconsApp";
-import ColorsApp from "metabase/internal/components/ColorsApp";
-import ComponentsApp from "metabase/internal/components/ComponentsApp";
+// $FlowFixMe: doesn't know about require.context
+const req = require.context(
+  "metabase/internal/components",
+  true,
+  /(\w+)App.jsx$/,
+);
 
-const PAGES = {
-  Icons: IconsApp,
-  Colors: ColorsApp,
-  Components: ComponentsApp,
-};
+const PAGES = {};
+for (const key of req.keys()) {
+  const name = key.match(/(\w+)App.jsx$/)[1];
+  PAGES[name] = req(key).default;
+}
 
 const WelcomeApp = () => {
   return (
@@ -34,9 +39,12 @@ const InternalLayout = ({ children }) => {
         <ul className="flex ml-auto">
           {Object.keys(PAGES).map(name => (
             <li key={name}>
-              <a className="link mx2" href={"/_internal/" + name.toLowerCase()}>
+              <Link
+                className="link mx2"
+                to={"/_internal/" + name.toLowerCase()}
+              >
                 {name}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
@@ -49,13 +57,12 @@ const InternalLayout = ({ children }) => {
 export default (
   <Route component={InternalLayout}>
     <IndexRoute component={WelcomeApp} />
-    {Object.entries(PAGES).map(([name, Component]) => (
-      <Route path={name.toLowerCase()} component={Component} />
-    ))}
-    <Route path="components/:componentName" component={ComponentsApp} />
-    <Route
-      path="components/:componentName/:exampleName"
-      component={ComponentsApp}
-    />
+    {Object.entries(PAGES).map(
+      ([name, Component]) =>
+        Component &&
+        (Component.routes || (
+          <Route path={name.toLowerCase()} component={Component} />
+        )),
+    )}
   </Route>
 );

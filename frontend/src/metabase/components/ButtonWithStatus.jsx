@@ -12,6 +12,8 @@ let defaultTitleForState = {
 // TODO Atte Keinänen 7/14/17: This could use Button component underneath and pass parameters to it
 // (Didn't want to generalize too much for the first version of this component
 
+// TODO: Tom Robinson 4/16/2018: Is this the same functionality as ActionButton?
+
 /**
  * Renders a button that triggers a promise-returning `onClickOperation` when user clicks the button.
  * When the button is clicked, `inProgress` text is shown, and when the promise resolves, `completed` text is shown.

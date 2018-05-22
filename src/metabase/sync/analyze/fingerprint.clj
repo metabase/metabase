@@ -9,12 +9,15 @@
              [interface :as i]
              [util :as sync-util]]
             [metabase.sync.analyze.fingerprint
+             [datetime :as datetime]
              [global :as global]
              [number :as number]
              [sample :as sample]
              [text :as text]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -22,8 +25,9 @@
   "Return type-specific fingerprint info for FIELD AND. a FieldSample of Values if it has an elligible base type"
   [field :- i/FieldInstance, values :- i/FieldSample]
   (condp #(isa? %2 %1) (:base_type field)
-    :type/Text   {:type/Text (text/text-fingerprint values)}
-    :type/Number {:type/Number (number/number-fingerprint values)}
+    :type/Text     {:type/Text (text/text-fingerprint values)}
+    :type/Number   {:type/Number (number/number-fingerprint values)}
+    :type/DateTime {:type/DateTime (datetime/datetime-fingerprint values)}
     nil))
 
 (s/defn ^:private fingerprint :- i/Fingerprint
@@ -49,13 +53,26 @@
       :fingerprint_version i/latest-fingerprint-version
       :last_analyzed       nil)))
 
+(defn- empty-stats-map [fields-count]
+  {:no-data-fingerprints   0
+   :failed-fingerprints    0
+   :updated-fingerprints   0
+   :fingerprints-attempted fields-count})
+
 (s/defn ^:private fingerprint-table!
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
-  (doseq [[field sample] (sample/sample-fields table fields)]
-    (when sample
-      (sync-util/with-error-handling (format "Error generating fingerprint for %s" (sync-util/name-for-logging field))
-        (let [fingerprint (fingerprint field sample)]
-          (save-fingerprint! field fingerprint))))))
+  (let [fields-to-sample (sample/sample-fields table fields)]
+    (reduce (fn [count-info [field sample]]
+              (if-not sample
+                (update count-info :no-data-fingerprints inc)
+                (let [result (sync-util/with-error-handling (format "Error generating fingerprint for %s"
+                                                                    (sync-util/name-for-logging field))
+                               (save-fingerprint! field (fingerprint field sample)))]
+                  (if (instance? Exception result)
+                    (update count-info :failed-fingerprints inc)
+                    (update count-info :updated-fingerprints inc)))))
+            (empty-stats-map (count fields-to-sample))
+            fields-to-sample)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -152,5 +169,18 @@
 (s/defn fingerprint-fields!
   "Generate and save fingerprints for all the Fields in TABLE that have not been previously analyzed."
   [table :- i/TableInstance]
-  (when-let [fields (fields-to-fingerprint table)]
-    (fingerprint-table! table fields)))
+  (if-let [fields (fields-to-fingerprint table)]
+    (fingerprint-table! table fields)
+    (empty-stats-map 0)))
+
+(s/defn fingerprint-fields-for-db!
+  "Invokes `fingerprint-fields!` on every table in `database`"
+  [database :- i/DatabaseInstance
+   tables :- [i/TableInstance]
+   log-progress-fn]
+  (du/with-effective-timezone database
+    (apply merge-with + (for [table tables
+                              :let [result (fingerprint-fields! table)]]
+                          (do
+                            (log-progress-fn "fingerprint-fields" table)
+                            result)))))

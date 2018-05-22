@@ -8,7 +8,7 @@ function s4() {
 }
 
 // provides functions for building urls to things we care about
-var MetabaseUtils = {
+let MetabaseUtils = {
   generatePassword: function(length, complexity) {
     const len = length || 14;
 
@@ -25,10 +25,10 @@ var MetabaseUtils = {
     }
 
     function isStrongEnough(password) {
-      var uc = password.match(/([A-Z])/g);
-      var lc = password.match(/([a-z])/g);
-      var di = password.match(/([\d])/g);
-      var sc = password.match(/([!@#\$%\^\&*\)\(+=._-{}])/g);
+      let uc = password.match(/([A-Z])/g);
+      let lc = password.match(/([a-z])/g);
+      let di = password.match(/([\d])/g);
+      let sc = password.match(/([!@#\$%\^\&*\)\(+=._-{}])/g);
 
       return (
         uc &&
@@ -50,7 +50,7 @@ var MetabaseUtils = {
 
   // pretty limited.  just does 0-9 for right now.
   numberToWord: function(num) {
-    var names = [
+    let names = [
       t`zero`,
       t`one`,
       t`two`,
@@ -113,7 +113,7 @@ var MetabaseUtils = {
   },
 
   validEmail: function(email) {
-    var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    let re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     return re.test(email);
   },
 

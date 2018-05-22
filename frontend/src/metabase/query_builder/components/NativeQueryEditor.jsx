@@ -178,7 +178,13 @@ export default class NativeQueryEditor extends Component {
     const { query } = this.props;
 
     let editorElement = ReactDOM.findDOMNode(this.refs.editor);
+
     // $FlowFixMe
+    if (typeof ace === "undefined" || !ace || !ace.edit) {
+      // fail gracefully-ish if ace isn't available, e.x. in integration tests
+      return;
+    }
+
     this._editor = ace.edit(editorElement);
 
     // listen to onChange events

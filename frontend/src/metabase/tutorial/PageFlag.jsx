@@ -2,16 +2,39 @@ import React, { Component } from "react";
 
 import "./PageFlag.css";
 
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+import { CSSTransitionGroup } from "react-transition-group";
 
-import BodyComponent from "metabase/components/BodyComponent.jsx";
+import BodyComponent from "metabase/components/BodyComponent";
 
 import cx from "classnames";
 
 @BodyComponent
 export default class PageFlag extends Component {
+  componentWillMount() {
+    // sometimes the position of target changes, track it here
+    this._timer = setInterval(() => {
+      if (this.props.target) {
+        const p1 = this._position;
+        const p2 = this.props.target.getBoundingClientRect();
+        if (
+          !p1 ||
+          p1.left !== p2.left ||
+          p1.top !== p2.top ||
+          p1.width !== p2.width ||
+          p1.height !== p2.height
+        ) {
+          this.forceUpdate();
+        }
+      }
+    }, 100);
+  }
+
+  componentWillUnmount() {
+    clearInterval(this._timer);
+  }
+
   renderPageFlag() {
-    let position = this.props.target.getBoundingClientRect();
+    let position = (this._position = this.props.target.getBoundingClientRect());
     let isLarge = !!this.props.text;
     let style = {
       position: "absolute",
@@ -34,13 +57,13 @@ export default class PageFlag extends Component {
 
   render() {
     return (
-      <ReactCSSTransitionGroup
+      <CSSTransitionGroup
         transitionName="PageFlag"
         transitionEnterTimeout={250}
         transitionLeaveTimeout={250}
       >
         {this.props.target ? [this.renderPageFlag()] : []}
-      </ReactCSSTransitionGroup>
+      </CSSTransitionGroup>
     );
   }
 }

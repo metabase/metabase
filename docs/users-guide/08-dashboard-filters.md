@@ -29,8 +29,7 @@ Now we’ve entered a new mode where we’ll need to wire up each card on our da
 So here’s what we’re doing — when we pick a month and year with our new filter, the filter needs to know which field in the card to filter on. For example, if we have a `Total Orders` card, and each order has a `Date Ordered` as well as a `Date Delivered`, we have to pick which of those fields to filter — do we want to see all the orders *placed* in January, or do we want to see all the orders *delivered* in January? So, for each card on our dashboard, we’ll pick a date field to connect to the filter. If one of your cards says there aren’t any valid fields, that just means that card doesn’t contain any fields that match the kind of filter you chose.
 
 #### Filtering SQL-based cards
-Note that if your dashboard includes cards that were created using the SQL/native query editor, you'll need to add a bit of additional markup to the SQL in those cards in order to use a dashboard filter on them. [Using SQL parameters](13-sql-parameters.md)
-
+**Important:** note that if your dashboard includes saved questions that were created using the SQL/native query editor, you'll need to [add a bit of additional markup to your query](13-sql-parameters.md) to add a "field filter variable" in order to use a dashboard filter with your SQL/native questions.
 
 ![Select fields](images/dashboard-filters/04-select-fields.png)
 
@@ -57,6 +56,24 @@ If you want one of your filters to start with a default value when you load the 
 Once you’ve added a filter to your dashboard, just click on it to select a value and activate the filter. To stop filtering, just click the blue X. To change the filter, click anywhere else on it.
 
 ![Using a filter](images/dashboard-filters/08-use-filter.png)
+
+### Choosing between a dropdown or autocomplete for your filter
+
+Picking selections for a filter with lots of options is easier than ever before. If the field you're using for a filter has more than 100 unique values, you'll now automatically see a search box with autocomplete suggestions.
+
+![Autocomplete](images/dashboard-filters/autocomplete.png)
+
+Fields with fewer than 100 distinct values will have display a list of all the options.
+
+![List](images/dashboard-filters/list.png)
+
+In both cases, you can pick one or multiple selections for your filter.
+
+![Multi-select](images/dashboard-filters/multi-select.png)
+
+If Metabase somehow picked the wrong behavior for your field, admins can go to the Data Model section of the admin panel and click on the gear icon by the field in question to manually choose between a list, a search box, or just a plain input box.
+
+![Search options](images/dashboard-filters/search-options.png)
 
 ### Best practices
 

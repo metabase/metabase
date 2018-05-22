@@ -5,10 +5,9 @@
             [metabase
              [events :as events]
              [query-processor :as qp]
+             [related :as related]
              [util :as u]]
-            [metabase.api
-             [common :as api]
-             [dataset :as dataset]]
+            [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
              [dashboard :as dashboard :refer [Dashboard]]
@@ -366,12 +365,17 @@
   (api/check-embedding-enabled)
   (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Dashboard api/read-check related/related))
 
 ;;; --------------------------------------------------- Transient dashboards ---------------------------------------------------
 
 (api/defendpoint POST "/save"
   "Save a denormalized description of dashboard."
   [:as {dashboard :body}]
+  (api/check-superuser)
   (->> (dashboard/save-transient-dashboard! dashboard)
        (events/publish-event! :dashboard-create)))
 

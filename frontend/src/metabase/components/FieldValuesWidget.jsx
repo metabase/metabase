@@ -7,7 +7,6 @@ import { t, jt } from "c-3po";
 import TokenField from "metabase/components/TokenField";
 import RemappedValue from "metabase/containers/RemappedValue";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Icon from "metabase/components/Icon";
 
 import AutoExpanding from "metabase/hoc/AutoExpanding";
 
@@ -20,6 +19,7 @@ import { stripId } from "metabase/lib/formatting";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type { FieldId } from "metabase/meta/types/Field";
 import type { Value } from "metabase/meta/types/Dataset";
+import type { FormattingOptions } from "metabase/lib/formatting";
 import type { LayoutRendererProps } from "metabase/components/TokenField";
 
 const MAX_SEARCH_RESULTS = 100;
@@ -41,6 +41,7 @@ type Props = {
   maxResults: number,
   style?: { [key: string]: string | number },
   placeholder?: string,
+  formatOptions?: FormattingOptions,
   maxWidth?: number,
   minWidth?: number,
   alwaysShowOptions?: boolean,
@@ -73,6 +74,7 @@ export class FieldValuesWidget extends Component {
     maxResults: MAX_SEARCH_RESULTS,
     alwaysShowOptions: true,
     style: {},
+    formatOptions: {},
     maxWidth: 500,
   };
 
@@ -148,7 +150,7 @@ export class FieldValuesWidget extends Component {
     }
 
     this.setState({
-      loadingState: "INIT",
+      loadingState: "LOADING",
     });
 
     if (this._cancel) {
@@ -204,16 +206,10 @@ export class FieldValuesWidget extends Component {
           return <EveryOptionState />;
         }
       } else if (this.isSearchable()) {
-        if (loadingState === "INIT") {
-          return alwaysShowOptions && <SearchState />;
-        } else if (loadingState === "LOADING") {
+        if (loadingState === "LOADING") {
           return <LoadingState />;
         } else if (loadingState === "LOADED") {
-          if (isAllSelected) {
-            return alwaysShowOptions && <SearchState />;
-          } else {
-            return <NoMatchState field={searchField || field} />;
-          }
+          return <NoMatchState field={searchField || field} />;
         }
       }
     }
@@ -228,6 +224,7 @@ export class FieldValuesWidget extends Component {
       multi,
       autoFocus,
       color,
+      formatOptions,
     } = this.props;
     const { loadingState } = this.state;
 
@@ -283,12 +280,15 @@ export class FieldValuesWidget extends Component {
           }}
           updateOnInputChange
           options={options}
+          // $FlowFixMe
           valueKey={0}
           valueRenderer={value => (
             <RemappedValue
               value={value}
               column={field}
+              {...formatOptions}
               round={false}
+              compact={false}
               autoLoad={true}
             />
           )}
@@ -298,6 +298,7 @@ export class FieldValuesWidget extends Component {
               column={field}
               round={false}
               autoLoad={false}
+              {...formatOptions}
             />
           )}
           layoutRenderer={props => (
@@ -341,14 +342,11 @@ export class FieldValuesWidget extends Component {
 }
 
 const LoadingState = () => (
-  <div className="flex layout-centered align-center" style={{ minHeight: 100 }}>
+  <div
+    className="flex layout-centered align-center border-bottom"
+    style={{ minHeight: 82 }}
+  >
     <LoadingSpinner size={32} />
-  </div>
-);
-
-const SearchState = () => (
-  <div className="flex layout-centered align-center" style={{ minHeight: 100 }}>
-    <Icon name="search" size={35} className="text-grey-1" />
   </div>
 );
 
@@ -367,7 +365,7 @@ const EveryOptionState = () => (
 );
 
 const OptionsMessage = ({ message }) => (
-  <div className="flex layout-centered p4">{message}</div>
+  <div className="flex layout-centered p4 border-bottom">{message}</div>
 );
 
 export default connect(null, mapDispatchToProps)(FieldValuesWidget);

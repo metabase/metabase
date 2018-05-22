@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="v0.29.0-snapshot"
+VERSION="v0.30.0-snapshot"
 
 # dynamically pull more interesting stuff from latest git commit
 HASH=$(git show-ref --head --hash=7 head)            # first 7 letters of hash should be enough; that's what GitHub uses

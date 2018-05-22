@@ -1,13 +1,14 @@
 (ns metabase.models.dashboard
   (:require [clojure
              [data :refer [diff]]
-             [set :as set]]
+             [set :as set]
+             [string :as str]]
             [clojure.tools.logging :as log]
+            [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase
              [events :as events]
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.api.card :as card.api]
             [metabase.models
              [card :as card :refer [Card]]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
@@ -15,6 +16,8 @@
              [interface :as i]
              [params :as params]
              [revision :as revision]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.interface :as qpi]
             [metabase.models.revision.diff :refer [build-sentence]]
             [toucan
              [db :as db]
@@ -184,9 +187,9 @@
 
 
 (defn- update-field-values-for-on-demand-dbs!
-  "If the parameters have changed since last time this dashboard was saved, we need to update the FieldValues
+  "If the parameters have changed since last time this Dashboard was saved, we need to update the FieldValues
    for any Fields that belong to an 'On-Demand' synced DB."
-  [dashboard-or-id old-param-field-ids new-param-field-ids]
+  [old-param-field-ids new-param-field-ids]
   (when (and (seq new-param-field-ids)
              (not= old-param-field-ids new-param-field-ids))
     (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
@@ -211,7 +214,7 @@
                                 (update :series #(filter identity (map u/get-id %))))]
     (u/prog1 (dashboard-card/create-dashboard-card! dashboard-card)
       (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
-        (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids)))))
+        (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
 (defn update-dashcards!
   "Update the DASHCARDS belonging to DASHBOARD-OR-ID.
@@ -227,34 +230,69 @@
       (when (contains? dashcard-ids dashcard-id)
         (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))))
     (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
-      (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids))))
+      (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids))))
+
+
+(defn- result-metadata-for-query
+  "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return."
+  [query]
+  (binding [qpi/*disable-qp-logging* true]
+    (get-in (qp/process-query query) [:data :results_metadata :columns])))
 
 (defn- save-card!
   [card]
-  (when (:dataset_query card)
-    (db/insert! 'Card
-      (-> card
-          (update :result_metadata #(or % (-> card
-                                              :dataset_query
-                                              card.api/result-metadata-for-query)))
-          (dissoc :id)))))
+  (when (-> card :dataset_query not-empty)
+    (let [card (db/insert! 'Card
+                 (-> card
+                     (update :result_metadata #(or % (-> card
+                                                         :dataset_query
+                                                         result-metadata-for-query)))
+                     (dissoc :id)))]
+      (events/publish-event! :card-create card)
+      (hydrate card :creator :dashboard_count :labels :can_write :collection))))
+
+(defn- applied-filters-blurb
+  [applied-filters]
+  (some->> applied-filters
+           not-empty
+           (map (fn [{:keys [field value]}]
+                  (format "%s %s" (str/join " " field) value)))
+           (str/join ", ")
+           (str "Filtered by: ")))
+
+(defn- ensure-unique-collection-name
+  [collection]
+  (let [c (db/count 'Collection :name [:like (format "%s%%" collection)])]
+    (if (zero? c)
+      collection
+      (format "%s %s" collection (inc c)))))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of dashboard."
   [dashboard]
-  (let [dashcards (:ordered_cards dashboard)
-        dashboard (db/insert! Dashboard
-                    (dissoc dashboard :ordered_cards :rule :related))]
+  (let [dashcards  (:ordered_cards dashboard)
+        dashboard  (db/insert! Dashboard
+                     (-> dashboard
+                         (dissoc :ordered_cards :rule :related :transient_name
+                                 :transient_filters)
+                         (assoc :description (->> dashboard
+                                                  :transient_filters
+                                                  applied-filters-blurb))))
+        collection (magic.populate/create-collection!
+                    (ensure-unique-collection-name
+                     (format "Questions for the dashboard \"%s\"" (:name dashboard)))
+                    (rand-nth magic.populate/colors)
+                    "Automatically generated cards.")]
     (doseq [dashcard dashcards]
-      (let [card     (some->> dashcard :card save-card!)
-            series   (some->> dashcard :series (map save-card!))
+      (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
+            series   (some->> dashcard :series (map (fn [card]
+                                                      (-> card
+                                                          (assoc :collection_id (:id collection))
+                                                          save-card!))))
             dashcard (-> dashcard
                          (dissoc :card :id :card_id)
                          (update :parameter_mappings
                                  (partial map #(assoc % :card_id (:id card))))
                          (assoc :series series))]
-        (doseq [card (concat series (some-> card vector))]
-          (events/publish-event! :card-create card)
-          (hydrate card :creator :dashboard_count :labels :can_write :collection))
         (add-dashcard! dashboard card dashcard)))
     dashboard))

@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import { connect } from "react-redux";
 import { t } from "c-3po";
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+import { CSSTransitionGroup } from "react-transition-group";
 
 import S from "./Formula.css";
 
@@ -52,7 +52,7 @@ export default class Formula extends Component {
           <Icon name="beaker" size={24} />
           <span className={S.formulaTitle}>{t`View the ${type} formula`}</span>
         </div>
-        <ReactCSSTransitionGroup
+        <CSSTransitionGroup
           transitionName="formulaDefinition"
           transitionEnterTimeout={300}
           transitionLeaveTimeout={300}
@@ -66,7 +66,7 @@ export default class Formula extends Component {
               />
             </div>
           )}
-        </ReactCSSTransitionGroup>
+        </CSSTransitionGroup>
       </div>
     );
   }

@@ -7,20 +7,19 @@
              [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set*
-                                         *is-superuser?*]]
+            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
             [metabase.api.common.internal :refer [*automatically-catch-api-exceptions*]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models
              [session :refer [Session]]
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
-            monger.json
+            [metabase.util.date :as du]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
              [models :as models]])
-  (:import com.fasterxml.jackson.core.JsonGenerator
-           java.io.OutputStream))
+  (:import com.fasterxml.jackson.core.JsonGenerator))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
 
@@ -172,7 +171,7 @@
   []
   {"Cache-Control" "max-age=0, no-cache, must-revalidate, proxy-revalidate"
    "Expires"        "Tue, 03 Jul 2001 06:00:00 GMT"
-   "Last-Modified"  (u/format-date :rfc822)})
+   "Last-Modified"  (du/format-date :rfc822)})
 
 (def ^:private ^:const strict-transport-security-header
   "Tell browsers to only access this resource over HTTPS for the next year (prevent MTM attacks). (This only applies if
@@ -213,8 +212,9 @@
                 (format "%s %s; " (name k) (apply str (interpose " " vs)))))})
 
 (defsetting ssl-certificate-public-key
-  "Base-64 encoded public key for this site's SSL certificate. Specify this to enable HTTP Public Key Pinning.
-   See http://mzl.la/1EnfqBf for more information.")
+  (str (tru "Base-64 encoded public key for this site's SSL certificate.")
+       (tru "Specify this to enable HTTP Public Key Pinning.")
+       (tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 #_(defn- public-key-pins-header []
@@ -298,6 +298,9 @@
 (add-encoder org.postgresql.util.PGobject       encode-jdbc-clob) ; Postgres
 
 ;; Encode BSON undefined like `nil`
+;;
+;; TODO - not sure this is actually needed anymore now that we are loading monger.json --
+;; see http://clojuremongodb.info/articles/integration.html
 (add-encoder org.bson.BsonUndefined encode-nil)
 
 ;; Binary arrays ("[B") -- hex-encode their first four bytes, e.g. "0xC42360D7"
@@ -334,9 +337,9 @@
                    (str "\n" (u/pprint-to-str body)))))))
 
 (defn log-api-call
-  "Takes a handler and a `jetty-stats-fn`. Logs `:request` and/or `:response` by passing corresponding
-  OPTIONS. `jetty-stats-fn` returns threadpool metadata that is included in the api request log"
-  [handler jetty-stats-fn & options]
+  "Takes a handler and a `jetty-stats-fn`. Logs info about request such as status code, number of DB calls, and time
+  taken to complete. `jetty-stats-fn` returns threadpool metadata that is included in the api request log"
+  [handler jetty-stats-fn]
   (fn [{:keys [uri], :as request}]
     (if (or (not (api-call? request))
             (= uri "/api/health")     ; don't log calls to /health or /util/logs because they clutter up
@@ -345,7 +348,7 @@
       (let [start-time (System/nanoTime)]
         (db/with-call-counting [call-count]
           (u/prog1 (handler request)
-            (log-response jetty-stats-fn request <> (u/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
+            (log-response jetty-stats-fn request <> (du/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
 
 
 ;;; ----------------------------------------------- EXCEPTION HANDLING -----------------------------------------------

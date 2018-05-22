@@ -131,10 +131,10 @@ describe("Pulse", () => {
     expect(previews.length).toBe(2);
 
     // NOTE: check text content since enzyme doesn't doesn't seem to work well with dangerouslySetInnerHTML
-    expect(previews.at(0).text()).toBe("count12,805");
+    expect(previews.at(0).text()).toBe("count18,760");
     expect(previews.at(0).find(".Icon-attachment").length).toBe(1);
     expect(previews.at(1).text()).toEqual(
-      expect.stringContaining("Showing 20 of 12,805 rows"),
+      expect.stringContaining("Showing 20 of 18,760 rows"),
     );
     expect(previews.at(1).find(".Icon-attachment").length).toBe(0);
 
@@ -142,10 +142,10 @@ describe("Pulse", () => {
     click(app.find(Toggle).first());
 
     previews = app.find(PulseCardPreview);
-    expect(previews.at(0).text()).toBe("count12,805");
+    expect(previews.at(0).text()).toBe("count18,760");
     expect(previews.at(0).find(".Icon-attachment").length).toBe(0);
     expect(previews.at(1).text()).toEqual(
-      expect.stringContaining("Showing 20 of 12,805 rows"),
+      expect.stringContaining("Showing 20 of 18,760 rows"),
     );
     expect(previews.at(1).find(".Icon-attachment").length).toBe(0);
 

@@ -8,6 +8,7 @@
              [field-values :as field-values :refer [FieldValues]]
              [table :refer [Table]]]
             [metabase.query-processor :as qp]
+            [metabase.related :as related]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -74,7 +75,7 @@
    points_of_interest (s/maybe su/NonBlankString)
    special_type       (s/maybe FieldType)
    visibility_type    (s/maybe FieldVisibilityType)
-   has_field_values   (s/maybe (s/enum "search" "list" "none"))}
+   has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-special-type   (keyword (get body :special_type (:special_type field)))
         removed-fk?        (removed-fk-special-type? (:special_type field) new-special-type)
@@ -351,5 +352,9 @@
         value          (parse-query-param-value-for-field field value)]
     (remapped-value field remapped-field value)))
 
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Field api/read-check related/related))
 
 (api/define-routes)

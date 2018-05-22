@@ -152,4 +152,6 @@
     ;; mark old tables as inactive
     (when (seq old-tables)
       (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
-        (retire-tables! database old-tables)))))
+        (retire-tables! database old-tables)))
+    {:updated-tables (+ (count new-tables) (count old-tables))
+     :total-tables   (count our-metadata)}))

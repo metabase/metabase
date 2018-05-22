@@ -1,8 +1,9 @@
+/* @flow weak */
+
 import { createSelector } from "reselect";
 import moment from "moment";
 import { getIn } from "icepick";
 import _ from "underscore";
-import { t } from "c-3po";
 import visualizations from "metabase/visualizations";
 import { caseInsensitiveSearch } from "metabase/lib/string";
 
@@ -13,8 +14,6 @@ export const getEntityQuery = (state, props) =>
     ? JSON.stringify(props.entityQuery)
     : state.questions.lastEntityQuery;
 
-export const getSection = (state, props) =>
-  props.entityQuery && JSON.stringify(props.entityQuery);
 export const getLoadingInitialEntities = (state, props) =>
   state.questions.loadingInitialEntities;
 export const getEntities = (state, props) => state.questions.entities;
@@ -67,49 +66,16 @@ export const getEntityIds = createSelector(
       : [],
 );
 
-const getEntity = (state, props) =>
-  getEntities(state, props)[props.entityType][props.entityId];
-
-const getEntitySelected = (state, props) =>
-  getSelectedIds(state, props)[props.entityId] || false;
-
-const getEntityVisible = (state, props) =>
-  caseInsensitiveSearch(
-    getEntity(state, props).name,
-    getSearchText(state, props),
-  );
-
 const getLabelEntities = (state, props) => state.labels.entities.labels;
 
-export const makeGetItem = () => {
-  const getItem = createSelector(
-    [getEntity, getEntitySelected, getEntityVisible, getLabelEntities],
-    (entity, selected, visible, labelEntities) => ({
-      name: entity.name,
-      id: entity.id,
-      created: entity.created_at ? moment(entity.created_at).fromNow() : null,
-      by: entity.creator && entity.creator.common_name,
-      icon: visualizations.get(entity.display).iconName,
-      favorite: entity.favorite,
-      archived: entity.archived,
-      collection: entity.collection,
-      labels: entity.labels
-        ? entity.labels.map(labelId => labelEntities[labelId]).filter(l => l)
-        : [],
-      selected,
-      visible,
-      description: entity.description,
-    }),
-  );
-  return getItem;
-};
-
+// returns raw entity objects for the current section
 export const getAllEntities = createSelector(
   [getEntityIds, getEntityType, getEntities],
   (entityIds, entityType, entities) =>
     entityIds.map(entityId => getIn(entities, [entityType, entityId])),
 );
 
+// returns visible raw entity objects for the current section
 export const getVisibleEntities = createSelector(
   [getAllEntities, getSearchText],
   (allEntities, searchText) =>
@@ -118,47 +84,86 @@ export const getVisibleEntities = createSelector(
     ),
 );
 
+// returns selected raw entity objects for the current section
 export const getSelectedEntities = createSelector(
   [getVisibleEntities, getSelectedIds],
   (visibleEntities, selectedIds) =>
     visibleEntities.filter(entity => selectedIds[entity.id]),
 );
 
+function iconForEntity(entity) {
+  const viz = visualizations.get(entity.display);
+  return viz && viz.iconName;
+}
+
+function labelsForEntity(entity, labelEntities) {
+  return entity.labels
+    ? entity.labels.map(labelId => labelEntities[labelId]).filter(l => l)
+    : [];
+}
+
+function itemForEntity(entity, selectedIds, labelEntities) {
+  return {
+    entity: entity,
+    id: entity.id,
+    name: entity.name,
+    created: entity.created_at ? moment(entity.created_at).fromNow() : null,
+    by: entity.creator && entity.creator.common_name,
+    icon: iconForEntity(entity),
+    favorite: entity.favorite,
+    archived: entity.archived,
+    collection: entity.collection,
+    labels: labelsForEntity(entity, labelEntities),
+    selected: selectedIds[entity.id] || false,
+    visible: true,
+    description: entity.description,
+  };
+}
+
+// return enhanced "item" objects suitable for diplay by List/Item components
+export const getAllItems = createSelector(
+  [getAllEntities, getLabelEntities, getSelectedIds],
+  (entities, labelEntities, selectedIds) =>
+    entities.map(entity => itemForEntity(entity, selectedIds, labelEntities)),
+);
+
+// returns visible items
+export const getVisibleItems = createSelector(
+  [getAllItems, getSearchText],
+  (allItems, searchText) =>
+    allItems.filter(item => caseInsensitiveSearch(item.name, searchText)),
+);
+
+// return total item count
 export const getTotalCount = createSelector(
   [getAllEntities],
   entities => entities.length,
 );
 
+// returns visible item count
 export const getVisibleCount = createSelector(
   [getVisibleEntities],
   visibleEntities => visibleEntities.length,
 );
 
+// returns selected item count
 export const getSelectedCount = createSelector(
   [getSelectedEntities],
   selectedEntities => selectedEntities.length,
 );
 
+// returns true if all visible items are selected
 export const getAllAreSelected = createSelector(
   [getSelectedCount, getVisibleCount],
   (selectedCount, visibleCount) =>
     selectedCount === visibleCount && visibleCount > 0,
 );
 
+// returns true if the current section is the archive
 export const getSectionIsArchive = createSelector(
   [getQuery],
   query => query && query.f === "archived",
 );
-
-const sections = [
-  { id: "all", name: t`All questions`, icon: "all" },
-  { id: "fav", name: t`Favorites`, icon: "star" },
-  { id: "recent", name: t`Recently viewed`, icon: "recents" },
-  { id: "mine", name: t`Saved by me`, icon: "mine" },
-  { id: "popular", name: t`Most popular`, icon: "popular" },
-];
-
-export const getSections = (state, props) => sections;
 
 export const getEditingLabelId = (state, props) => state.labels.editing;
 
@@ -202,27 +207,4 @@ export const getLabelsWithSelectedState = createSelector(
           ? false
           : counts[label.id] === selectedCount ? true : null,
     })),
-);
-
-export const getSectionName = createSelector(
-  [getSection, getSections, getLabels],
-  (sectionId, sections, labels) => {
-    let match = sectionId && sectionId.match(/^(.*)-(.*)/);
-    if (match) {
-      if (match[1] === "label") {
-        let label = _.findWhere(labels, { slug: match[2] });
-        if (label && label.name) {
-          return label.name;
-        }
-      }
-    } else {
-      let section = _.findWhere(sections, { id: sectionId });
-      if (section) {
-        return section.name || "";
-      } else if (sectionId === "archived") {
-        return t`Archive`;
-      }
-    }
-    return "";
-  },
 );

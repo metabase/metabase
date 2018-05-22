@@ -1,25 +1,21 @@
 (ns metabase.api.dataset
   "/api/dataset endpoints."
   (:require [cheshire.core :as json]
-            [clj-time.format :as tformat]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
-            [metabase
-             [middleware :as middleware]
-             [query-processor :as qp]
-             [util :as u]]
             [metabase.api.common :as api]
-            [metabase.api.common.internal :refer [route-fn-name]]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [query :as query]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.util :as qputil]
-            [metabase.util :as util]
             [metabase.util
+             [date :as du]
              [export :as ex]
              [schema :as su]]
+            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -31,7 +27,7 @@
   well."
   [outer-query]
   (when-let [source-card-id (qputil/query->source-card-id outer-query)]
-    (log/info (str "Source query for this query is Card " source-card-id))
+    (log/info (trs "Source query for this query is Card {0}" source-card-id))
     (api/read-check Card source-card-id)
     source-card-id))
 
@@ -63,7 +59,7 @@
     (export-format->context :json) ;-> :json-download"
   [export-format]
   (or (get-in ex/export-formats [export-format :context])
-      (throw (Exception. (str "Invalid export format: " export-format)))))
+      (throw (Exception. (str (tru "Invalid export format: {0}" export-format))))))
 
 (defn- datetime-str->date
   "Dates are iso formatted, i.e. 2014-09-18T00:00:00.000-07:00. We can just drop the T and everything after it since
@@ -107,7 +103,7 @@
       {:status  200
        :body    ((:export-fn export-conf) columns (maybe-modify-date-values cols rows))
        :headers {"Content-Type"        (str (:content-type export-conf) "; charset=utf-8")
-                 "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) "." (:ext export-conf) "\"")}}
+                 "Content-Disposition" (str "attachment; filename=\"query_result_" (du/date->iso-8601) "." (:ext export-conf) "\"")}}
       ;; failed query, send error message
       {:status 500
        :body   (:error response)})))
