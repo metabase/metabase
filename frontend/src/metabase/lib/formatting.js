@@ -308,8 +308,6 @@ const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:
 
 export function formatUrl(value: Value, { jsx, rich }: FormattingOptions = {}) {
   const url = String(value);
-  //console.log(url);
-  //alert("format image");
   if (jsx && rich && URL_WHITELIST_REGEX.test(url)) {
     return (<img style={{ height: 34 }} src={url} />);
   } else {
