@@ -114,6 +114,7 @@ import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import CollectionLanding from "metabase/components/CollectionLanding";
+import Overworld from "metabase/containers/Overworld";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp.jsx";
 import SearchApp from "metabase/home/containers/SearchApp";
@@ -212,7 +213,7 @@ export const getRoutes = store => (
       {/* MAIN */}
       <Route component={IsAuthenticated}>
         {/* The global all hands rotues, things in here are for all the folks */}
-        <Route path="/" component={CollectionLanding} />
+        <Route path="/" component={Overworld} />
 
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />

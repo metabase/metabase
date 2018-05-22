@@ -150,7 +150,7 @@ class DefaultLanding extends React.Component {
     const { collectionId, location } = this.props;
 
     // Show the
-    const showCollectionList = !collectionId && !location.query.show;
+    const showCollectionList = collectionId === "root";
 
     return (
       <Flex>
