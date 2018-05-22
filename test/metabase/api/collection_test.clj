@@ -77,7 +77,10 @@
 ;; check that cards are returned with the collections detail endpoint
 (tt/expect-with-temp [Collection [collection]
                       Card       [card        {:collection_id (u/get-id collection)}]]
-  (tu/obj->json->obj (assoc collection :cards [(select-keys card [:name :id])], :dashboards [], :pulses []))
+  (tu/obj->json->obj (assoc collection
+                       :cards      [(select-keys card [:name :id :collection_position])]
+                       :dashboards []
+                       :pulses     []))
   (tu/obj->json->obj ((user->client :crowberto) :get 200 (str "collection/" (u/get-id collection)))))
 
 ;; check that collections detail doesn't return archived collections
@@ -110,9 +113,9 @@
 ;; check that you get to see the children as appropriate
 (expect
   {:name       "Debt Collection"
-   :cards      [{:name "Birthday Card"}]
-   :dashboards [{:name "Dine & Dashboard"}]
-   :pulses     [{:name "Electro-Magnetic Pulse"}]}
+   :cards      [{:name "Birthday Card",          :collection_position nil}]
+   :dashboards [{:name "Dine & Dashboard",       :collection_position nil}]
+   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]}
   (tt/with-temp Collection [collection {:name "Debt Collection"}]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
@@ -122,7 +125,7 @@
 ;; ...and that you can also filter so that you only see the children you want to see
 (expect
   {:name       "Art Collection"
-   :dashboards [{:name "Dine & Dashboard"}]}
+   :dashboards [{:name "Dine & Dashboard", :collection_position nil}]}
   (tt/with-temp Collection [collection {:name "Art Collection"}]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
@@ -140,9 +143,9 @@
 (expect
   {:name       "Root Collection"
    :id         "root"
-   :cards      [{:name "Birthday Card"}]
-   :dashboards [{:name "Dine & Dashboard"}]
-   :pulses     [{:name "Electro-Magnetic Pulse"}]}
+   :cards      [{:name "Birthday Card",          :collection_position nil}]
+   :dashboards [{:name "Dine & Dashboard",       :collection_position nil}]
+   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]}
   (with-some-children-of-collection nil
     (-> ((user->client :crowberto) :get 200 "collection/root")
         (remove-ids-from-collection-detail :keep-collection-id? true))))
@@ -152,8 +155,8 @@
   {:name       "Root Collection"
    :id         "root"
    :cards      []
-   :dashboards [{:name "Dine & Dashboard"}]
-   :pulses     [{:name "Electro-Magnetic Pulse"}]}
+   :dashboards [{:name "Dine & Dashboard",       :collection_position nil}]
+   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]}
   ;; create a fake DB and don't give all users perms to it
   (tt/with-temp* [Database [db]
                   Table    [table {:db_id (u/get-id db)}]]
@@ -171,7 +174,7 @@
 (expect
   {:name  "Root Collection"
    :id    "root"
-   :cards [{:name "Birthday Card"}]}
+   :cards [{:name "Birthday Card", :collection_position nil}]}
   (with-some-children-of-collection nil
     (-> ((user->client :crowberto) :get 200 "collection/root?model=cards")
         (remove-ids-from-collection-detail :keep-collection-id? true))))
