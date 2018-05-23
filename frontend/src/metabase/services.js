@@ -36,7 +36,6 @@ export const CardApi = {
   // isfavorite:                  GET("/api/card/:cardId/favorite"),
   favorite: POST("/api/card/:cardId/favorite"),
   unfavorite: DELETE("/api/card/:cardId/favorite"),
-  updateLabels: POST("/api/card/:cardId/labels"),
 
   listPublic: GET("/api/card/public"),
   listEmbeddable: GET("/api/card/embeddable"),
@@ -266,13 +265,6 @@ export const RevisionApi = {
 
 export const RevisionsApi = {
   get: GET("/api/:entity/:id/revisions"),
-};
-
-export const LabelApi = {
-  list: GET("/api/label"),
-  create: POST("/api/label"),
-  update: PUT("/api/label/:id"),
-  delete: DELETE("/api/label/:id"),
 };
 
 export const SessionApi = {

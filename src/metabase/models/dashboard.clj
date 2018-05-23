@@ -267,7 +267,7 @@
                                                          result-metadata-for-query)))
                      (dissoc :id)))]
       (events/publish-event! :card-create card)
-      (hydrate card :creator :dashboard_count :labels :can_write :collection))))
+      (hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- applied-filters-blurb
   [applied-filters]
