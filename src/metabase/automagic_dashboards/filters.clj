@@ -27,7 +27,9 @@
 
 (defmethod field-reference->id :field-id
   [[_ id]]
-  id)
+  (if (sequential? id)
+    (second id)
+    id))
 
 (defmethod field-reference->id :fk->
   [[_ _ id]]
