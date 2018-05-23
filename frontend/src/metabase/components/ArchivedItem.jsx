@@ -5,6 +5,7 @@ import PropTypes from "prop-types";
 import { t } from "c-3po";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
+import CheckBox from "metabase/components/CheckBox.jsx";
 
 const ArchivedItem = ({
   name,
@@ -13,9 +14,15 @@ const ArchivedItem = ({
   color = "#DEEAF1",
   isAdmin = false,
   onUnarchive,
+
+  selected,
+  onToggleSelected,
 }) => (
   <div className="flex align-center p2 hover-parent hover--visibility border-bottom bg-grey-0-hover">
     <Icon name={icon} className="mr2" style={{ color: color }} size={20} />
+    {onToggleSelected && (
+      <CheckBox checked={selected} onChange={onToggleSelected} />
+    )}
     {name}
     {isAdmin && (
       <Tooltip tooltip={t`Unarchive this ${type}`}>
