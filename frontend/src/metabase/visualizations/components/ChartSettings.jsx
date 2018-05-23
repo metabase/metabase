@@ -54,45 +54,6 @@ class ChartSettings extends Component {
     };
   }
 
-  selectTab = tab => {
-    this.setState({ currentTab: tab });
-  };
-
-  _getSeries(series, settings) {
-    if (settings) {
-      series = assocIn(series, [0, "card", "visualization_settings"], settings);
-    }
-    const transformed = getVisualizationTransformed(extractRemappings(series));
-    return transformed.series;
-  }
-
-  onResetSettings = () => {
-    MetabaseAnalytics.trackEvent("Chart Settings", "Reset Settings");
-    this.setState({
-      settings: {},
-      series: this._getSeries(this.props.series, {}),
-    });
-  };
-
-  onChangeSettings = newSettings => {
-    for (const key of Object.keys(newSettings)) {
-      MetabaseAnalytics.trackEvent("Chart Settings", "Change Setting", key);
-    }
-    const settings = {
-      ...this.state.settings,
-      ...newSettings,
-    };
-    this.setState({
-      settings: settings,
-      series: this._getSeries(this.props.series, settings),
-    });
-  };
-
-  onDone() {
-    this.props.onChange(this.state.settings);
-    this.props.onClose();
-  }
-
   getChartTypeName() {
     let { CardVisualization } = getVisualizationTransformed(this.props.series);
     switch (CardVisualization.identifier) {
@@ -107,6 +68,50 @@ class ChartSettings extends Component {
     }
   }
 
+  _getSeries(series, settings) {
+    if (settings) {
+      series = assocIn(series, [0, "card", "visualization_settings"], settings);
+    }
+    const transformed = getVisualizationTransformed(extractRemappings(series));
+    return transformed.series;
+  }
+
+  handleSelectTab = tab => {
+    this.setState({ currentTab: tab });
+  };
+
+  handleResetSettings = () => {
+    MetabaseAnalytics.trackEvent("Chart Settings", "Reset Settings");
+    this.setState({
+      settings: {},
+      series: this._getSeries(this.props.series, {}),
+    });
+    this.handleExitModal();
+  };
+
+  handleChangeSettings = newSettings => {
+    for (const key of Object.keys(newSettings)) {
+      MetabaseAnalytics.trackEvent("Chart Settings", "Change Setting", key);
+    }
+    const settings = {
+      ...this.state.settings,
+      ...newSettings,
+    };
+    this.setState({
+      settings: settings,
+      series: this._getSeries(this.props.series, settings),
+    });
+  };
+
+  handleDone = () => {
+    this.props.onChange(this.state.settings);
+    this.props.onClose();
+  };
+
+  handleCancel = () => {
+    this.props.onClose();
+  };
+
   handleEnterModal = backButtonName => {
     this.setState({ backButtonName });
   };
@@ -120,13 +125,13 @@ class ChartSettings extends Component {
   };
 
   render() {
-    const { onClose, isDashboard } = this.props;
+    const { isDashboard } = this.props;
     const { series } = this.state;
 
     const tabs = {};
     for (const widget of getSettingsWidgets(
       series,
-      this.onChangeSettings,
+      this.handleChangeSettings,
       isDashboard,
     )) {
       tabs[widget.section] = tabs[widget.section] || [];
@@ -158,7 +163,7 @@ class ChartSettings extends Component {
                   },
                 )}
                 style={{ borderWidth: 3 }}
-                onClick={() => this.setState({ currentTab: tabName })}
+                onClick={() => this.handleSelectTab(tabName)}
               >
                 {tabName}
               </div>
@@ -176,15 +181,15 @@ class ChartSettings extends Component {
                 />
               ))}
           </div>
-          <div className="Grid-cell flex flex-column p4">
-            <div className="flex flex-column">
+          <div className="Grid-cell flex flex-column pt2">
+            <div className="mx4 flex flex-column">
               <Warnings
                 className="mx2 align-self-end text-gold"
                 warnings={this.state.warnings}
                 size={20}
               />
             </div>
-            <div className="flex-full relative">
+            <div className="mx4 flex-full relative">
               <Visualization
                 className="spread"
                 rawSeries={series}
@@ -192,47 +197,47 @@ class ChartSettings extends Component {
                 showTitle
                 isDashboard
                 showWarnings
-                onUpdateVisualizationSettings={this.onChangeSettings}
+                onUpdateVisualizationSettings={this.handleChangeSettings}
                 onUpdateWarnings={warnings => this.setState({ warnings })}
               />
             </div>
+            <div className="py2 px4 border-top">
+              {this.state.backButtonName ? (
+                <div className="float-right">
+                  <a
+                    className="Button Button--primary ml2"
+                    onClick={this.handleExitModal}
+                    data-metabase-event="Chart Settings;Back"
+                  >
+                    {this.state.backButtonName}
+                  </a>
+                </div>
+              ) : (
+                <div className="float-right">
+                  <Button
+                    className="ml2"
+                    onClick={this.handleCancel}
+                    data-metabase-event="Chart Settings;Cancel"
+                  >{t`Cancel`}</Button>
+                  <Button
+                    primary
+                    className="ml2"
+                    onClick={this.handleDone}
+                    data-metabase-event="Chart Settings;Done"
+                  >{t`Done`}</Button>
+                </div>
+              )}
+              {!_.isEqual(this.state.settings, {}) && (
+                <Button
+                  borderless
+                  icon="refresh"
+                  className="float-right ml2"
+                  data-metabase-event="Chart Settings;Reset"
+                  onClick={this.handleResetSettings}
+                >{t`Reset to defaults`}</Button>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="py2 px4 border-top">
-          {this.state.backButtonName ? (
-            <div className="float-right">
-              <a
-                className="Button Button--primary ml2"
-                onClick={this.handleExitModal}
-                data-metabase-event="Chart Settings;Back"
-              >
-                {this.state.backButtonName}
-              </a>
-            </div>
-          ) : (
-            <div className="float-right">
-              <Button
-                className="ml2"
-                onClick={onClose}
-                data-metabase-event="Chart Settings;Cancel"
-              >{t`Cancel`}</Button>
-              <Button
-                primary
-                className="ml2"
-                onClick={() => this.onDone()}
-                data-metabase-event="Chart Settings;Done"
-              >{t`Done`}</Button>
-            </div>
-          )}
-          {!_.isEqual(this.state.settings, {}) && (
-            <Button
-              borderless
-              icon="refresh"
-              className="float-right ml2"
-              data-metabase-event="Chart Settings;Reset"
-              onClick={this.onResetSettings}
-            >{t`Reset to defaults`}</Button>
-          )}
         </div>
       </div>
     );
