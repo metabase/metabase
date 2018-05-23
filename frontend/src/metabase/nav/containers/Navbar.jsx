@@ -286,13 +286,6 @@ export default class Navbar extends Component {
             </Box>
           </PopoverWithTrigger>
           <Box mx={2}>
-            <Tooltip tooltip={t`Browse data`}>
-              <Link to="browse">
-                <Icon name="grid" />
-              </Link>
-            </Tooltip>
-          </Box>
-          <Box mx={2}>
             <Tooltip tooltip={t`Reference`}>
               <Link to="reference">
                 <Icon name="reference" />
