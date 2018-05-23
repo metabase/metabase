@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <properties>
-        <stratio-test-bdd.version>0.7.0</stratio-test-bdd.version>
+        <stratio-test-bdd.version>0.8.0-SNAPSHOT</stratio-test-bdd.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <postgresql.version>9.4-1205-jdbc42</postgresql.version>
