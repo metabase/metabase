@@ -166,6 +166,7 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
     {rules.length > 0 ? (
       <div className="mt2">
         <h3>{t`Rules will be applied in this order`}</h3>
+        <div className="mt2">{t`Click and drag to reorder.`}</div>
         <SortableRuleList
           rules={rules}
           cols={cols}
