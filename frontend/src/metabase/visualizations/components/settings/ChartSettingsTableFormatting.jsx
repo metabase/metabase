@@ -75,6 +75,7 @@ export default class ChartSettingsTableFormatting extends React.Component {
       return (
         <RuleEditor
           rule={value[editingRule]}
+          cols={cols}
           onChange={rule =>
             onChange([
               ...value.slice(0, editingRule),
@@ -82,7 +83,16 @@ export default class ChartSettingsTableFormatting extends React.Component {
               ...value.slice(editingRule + 1),
             ])
           }
-          cols={cols}
+          onRemove={() => {
+            onChange([
+              ...value.slice(0, editingRule),
+              ...value.slice(editingRule + 1),
+            ]);
+            this.setState({ editingRule: null });
+          }}
+          onDone={() => {
+            this.setState({ editingRule: null });
+          }}
         />
       );
     } else {
@@ -92,7 +102,6 @@ export default class ChartSettingsTableFormatting extends React.Component {
           cols={cols}
           onEdit={index => {
             this.setState({ editingRule: index });
-            this.props.onEnterModal("Update rule");
           }}
           onAdd={() => {
             onChange([
@@ -104,7 +113,6 @@ export default class ChartSettingsTableFormatting extends React.Component {
               ...value,
             ]);
             this.setState({ editingRule: 0 });
-            this.props.onEnterModal("Add rule");
           }}
           onRemove={index =>
             onChange([...value.slice(0, index), ...value.slice(index + 1)])
@@ -259,7 +267,7 @@ const RuleDescription = ({ rule }) => (
   </span>
 );
 
-const RuleEditor = ({ rule, onChange, cols }) => (
+const RuleEditor = ({ rule, cols, onChange, onDone, onRemove }) => (
   <div>
     <h3 className="mb1">{t`Which columns should be affected?`}</h3>
     <Select
@@ -349,6 +357,17 @@ const RuleEditor = ({ rule, onChange, cols }) => (
         )}
       </div>
     ) : null}
+    <div className="mt4">
+      {rule.columns.length === 0 ? (
+        <Button primary onClick={onRemove}>
+          Cancel
+        </Button>
+      ) : (
+        <Button primary onClick={onDone}>
+          Update rule
+        </Button>
+      )}
+    </div>
   </div>
 );
 

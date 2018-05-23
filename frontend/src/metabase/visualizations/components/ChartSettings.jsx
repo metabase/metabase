@@ -22,21 +22,13 @@ const Widget = ({
   widget,
   value,
   onChange,
-  onEnterModal,
   props,
 }) => {
   const W = widget;
   return (
     <div className={cx("mb2", { hide: hidden, disable: disabled })}>
       {title && <h4 className="mb1">{title}</h4>}
-      {W && (
-        <W
-          value={value}
-          onChange={onChange}
-          onEnterModal={onEnterModal}
-          {...props}
-        />
-      )}
+      {W && <W value={value} onChange={onChange} {...props} />}
     </div>
   );
 };
@@ -49,8 +41,6 @@ class ChartSettings extends Component {
       currentTab: null,
       settings: initialSettings,
       series: this._getSeries(props.series, initialSettings),
-      exitModalButtonName: null,
-      stateBustingId: 0,
     };
   }
 
@@ -78,7 +68,6 @@ class ChartSettings extends Component {
 
   handleSelectTab = tab => {
     this.setState({ currentTab: tab });
-    this.handleExitModal();
   };
 
   handleResetSettings = () => {
@@ -87,7 +76,6 @@ class ChartSettings extends Component {
       settings: {},
       series: this._getSeries(this.props.series, {}),
     });
-    this.handleExitModal();
   };
 
   handleChangeSettings = newSettings => {
@@ -113,21 +101,9 @@ class ChartSettings extends Component {
     this.props.onClose();
   };
 
-  handleEnterModal = exitModalButtonName => {
-    this.setState({ exitModalButtonName });
-  };
-
-  handleExitModal = () => {
-    // HACK: incrementing stateBustingId causes widgets internal state to be reset
-    this.setState({
-      exitModalButtonName: null,
-      stateBustingId: this.state.stateBustingId + 1,
-    });
-  };
-
   render() {
     const { isDashboard } = this.props;
-    const { series, exitModalButtonName } = this.state;
+    const { series } = this.state;
 
     const tabs = {};
     for (const widget of getSettingsWidgets(
@@ -159,10 +135,7 @@ class ChartSettings extends Component {
                 className={cx(
                   "h3 py2 mr2 border-bottom cursor-pointer text-brand-hover border-brand-hover",
                   {
-                    "text-brand border-brand":
-                      currentTab === tabName && !exitModalButtonName,
-                    "border-grey-4":
-                      currentTab === tabName && exitModalButtonName,
+                    "text-brand border-brand": currentTab === tabName,
                     "border-transparent": currentTab !== tabName,
                   },
                 )}
@@ -179,11 +152,7 @@ class ChartSettings extends Component {
             <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right p4">
               {widgets &&
                 widgets.map(widget => (
-                  <Widget
-                    key={`${widget.id}-${this.state.stateBustingId}`}
-                    onEnterModal={this.handleEnterModal}
-                    {...widget}
-                  />
+                  <Widget key={`${widget.id}`} {...widget} />
                 ))}
             </div>
             <div className="Grid-cell flex flex-column pt2">
@@ -206,47 +175,25 @@ class ChartSettings extends Component {
                   onUpdateWarnings={warnings => this.setState({ warnings })}
                 />
               </div>
+              <ChartSettingsFooter
+                onDone={this.handleDone}
+                onCancel={this.handleCancel}
+                onReset={
+                  !_.isEqual(this.state.settings, {})
+                    ? this.handleResetSettings
+                    : null
+                }
+              />
             </div>
           </div>
         </div>
-
-        <ChartSettingsFooter
-          className="flex-no-shrink"
-          exitModalButtonName={exitModalButtonName}
-          onDone={this.handleDone}
-          onCancel={this.handleCancel}
-          onReset={
-            !_.isEqual(this.state.settings, {})
-              ? this.handleResetSettings
-              : null
-          }
-          onExitModal={this.handleExitModal}
-        />
       </div>
     );
   }
 }
 
-const ChartSettingsFooter = ({
-  className,
-  onDone,
-  onCancel,
-  onReset,
-  onExitModal,
-  exitModalButtonName,
-}) => (
-  <div className={cx("py2 px4 border-top", className)}>
-    {exitModalButtonName && (
-      <div className="float-left">
-        <a
-          className="Button Button--primary mr2"
-          onClick={onExitModal}
-          data-metabase-event="Chart Settings;Back"
-        >
-          {exitModalButtonName}
-        </a>
-      </div>
-    )}
+const ChartSettingsFooter = ({ className, onDone, onCancel, onReset }) => (
+  <div className={cx("py2 px4", className)}>
     <div className="float-right">
       <Button
         className="ml2"
