@@ -267,6 +267,7 @@ const RuleEditor = ({ rule, onChange, cols }) => (
     <Select
       value={rule.columns}
       onChange={e => onChange({ ...rule, columns: e.target.value })}
+      isInitiallyOpen={rule.columns.length === 0}
       multiple
     >
       {cols
