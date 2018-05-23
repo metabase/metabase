@@ -7,8 +7,7 @@
              [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set*
-                                         *is-superuser?*]]
+            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
             [metabase.api.common.internal :refer [*automatically-catch-api-exceptions*]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models
@@ -16,13 +15,11 @@
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
             [metabase.util.date :as du]
-            monger.json
             [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
              [models :as models]])
-  (:import com.fasterxml.jackson.core.JsonGenerator
-           java.io.OutputStream))
+  (:import com.fasterxml.jackson.core.JsonGenerator))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
 
@@ -301,6 +298,9 @@
 (add-encoder org.postgresql.util.PGobject       encode-jdbc-clob) ; Postgres
 
 ;; Encode BSON undefined like `nil`
+;;
+;; TODO - not sure this is actually needed anymore now that we are loading monger.json --
+;; see http://clojuremongodb.info/articles/integration.html
 (add-encoder org.bson.BsonUndefined encode-nil)
 
 ;; Binary arrays ("[B") -- hex-encode their first four bytes, e.g. "0xC42360D7"
@@ -337,9 +337,9 @@
                    (str "\n" (u/pprint-to-str body)))))))
 
 (defn log-api-call
-  "Takes a handler and a `jetty-stats-fn`. Logs `:request` and/or `:response` by passing corresponding
-  OPTIONS. `jetty-stats-fn` returns threadpool metadata that is included in the api request log"
-  [handler jetty-stats-fn & options]
+  "Takes a handler and a `jetty-stats-fn`. Logs info about request such as status code, number of DB calls, and time
+  taken to complete. `jetty-stats-fn` returns threadpool metadata that is included in the api request log"
+  [handler jetty-stats-fn]
   (fn [{:keys [uri], :as request}]
     (if (or (not (api-call? request))
             (= uri "/api/health")     ; don't log calls to /health or /util/logs because they clutter up

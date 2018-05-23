@@ -60,7 +60,7 @@
   (hsql/call :char_length field-key))
 
 (defn- describe-table-fields
-  [database, driver, {:keys [schema name]}]
+  [database _ {:keys [schema name]}]
   (let [columns (jdbc/query
                  (sql/db->jdbc-connection-spec database)
                  [(format "select column_name, data_type as type_name
@@ -95,6 +95,7 @@
          (add-table-pks metadata))))
 
 (defrecord CrateDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Crate"))
 

@@ -16,9 +16,9 @@
              [util :as qputil]]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]])
-  (:import clojure.lang.Keyword
-           [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
+             [honeysql-extensions :as hx]]
+            [puppetlabs.i18n.core :refer [trs]])
+  (:import [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
            [java.util Calendar Date TimeZone]
            [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression
             ExpressionRef Field FieldLiteral RelativeDateTimeValue TimeField TimeValue Value]))
@@ -534,19 +534,21 @@
     (log/debug (u/format-color 'green "Setting timezone with statement: %s" sql))
     (jdbc/db-do-prepared connection [sql])))
 
-(defn- run-query-without-timezone [driver settings connection query]
+(defn- run-query-without-timezone [_ _ connection query]
   (do-in-transaction connection (partial run-query query nil)))
 
 (defn- run-query-with-timezone [driver {:keys [^String report-timezone] :as settings} connection query]
   (try
     (do-in-transaction connection (fn [transaction-connection]
                                     (set-timezone! driver settings transaction-connection)
-                                    (run-query query (some-> report-timezone TimeZone/getTimeZone) transaction-connection)))
+                                    (run-query query
+                                               (some-> report-timezone TimeZone/getTimeZone)
+                                               transaction-connection)))
     (catch SQLException e
-      (log/error "Failed to set timezone:\n" (with-out-str (jdbc/print-sql-exception-chain e)))
+      (log/error (trs "Failed to set timezone:") "\n" (with-out-str (jdbc/print-sql-exception-chain e)))
       (run-query-without-timezone driver settings connection query))
     (catch Throwable e
-      (log/error "Failed to set timezone:\n" (.getMessage e))
+      (log/error (trs "Failed to set timezone:") "\n" (.getMessage e))
       (run-query-without-timezone driver settings connection query))))
 
 

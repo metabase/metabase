@@ -1,7 +1,6 @@
 (ns metabase.related
   "Related entities recommendations."
   (:require [clojure.set :as set]
-            [clojure.string :as str]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.models

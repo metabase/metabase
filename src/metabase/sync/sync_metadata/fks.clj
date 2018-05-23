@@ -55,7 +55,8 @@
                 (sync-util/name-for-logging dest-field)))
     (db/update! Field (u/get-id source-field)
       :special_type       :type/FK
-      :fk_target_field_id (u/get-id dest-field))))
+      :fk_target_field_id (u/get-id dest-field))
+    true))
 
 
 (s/defn sync-fks-for-table!
@@ -64,12 +65,24 @@
    (sync-fks-for-table! (table/database table) table))
   ([database :- i/DatabaseInstance, table :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
-     (doseq [fk (fetch-metadata/fk-metadata database table)]
-       (mark-fk! database table fk)))))
+     (let [fks-to-update (fetch-metadata/fk-metadata database table)]
+       {:total-fks (count fks-to-update)
+        :updated-fks (sync-util/sum-numbers (fn [fk]
+                                              (if (mark-fk! database table fk)
+                                                1
+                                                0))
+                                            fks-to-update)}))))
 
 (s/defn sync-fks!
   "Sync the foreign keys in a DATABASE. This sets appropriate values for relevant Fields in the Metabase application DB
    based on values from the `FKMetadata` returned by `describe-table-fks`."
   [database :- i/DatabaseInstance]
-  (doseq [table (sync-util/db->sync-tables database)]
-    (sync-fks-for-table! database table)))
+  (reduce (fn [update-info table]
+            (let [table-fk-info (sync-fks-for-table! database table)]
+              (if (instance? Exception table-fk-info)
+                (update update-info :total-failed inc)
+                (merge-with + update-info table-fk-info))))
+          {:total-fks    0
+           :updated-fks  0
+           :total-failed 0}
+          (sync-util/db->sync-tables database)))

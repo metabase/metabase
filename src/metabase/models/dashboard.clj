@@ -187,9 +187,9 @@
 
 
 (defn- update-field-values-for-on-demand-dbs!
-  "If the parameters have changed since last time this dashboard was saved, we need to update the FieldValues
+  "If the parameters have changed since last time this Dashboard was saved, we need to update the FieldValues
    for any Fields that belong to an 'On-Demand' synced DB."
-  [dashboard-or-id old-param-field-ids new-param-field-ids]
+  [old-param-field-ids new-param-field-ids]
   (when (and (seq new-param-field-ids)
              (not= old-param-field-ids new-param-field-ids))
     (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
@@ -214,7 +214,7 @@
                                 (update :series #(filter identity (map u/get-id %))))]
     (u/prog1 (dashboard-card/create-dashboard-card! dashboard-card)
       (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
-        (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids)))))
+        (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
 (defn update-dashcards!
   "Update the DASHCARDS belonging to DASHBOARD-OR-ID.
@@ -230,7 +230,7 @@
       (when (contains? dashcard-ids dashcard-id)
         (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))))
     (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
-      (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids))))
+      (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids))))
 
 
 (defn- result-metadata-for-query

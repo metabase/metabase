@@ -1,22 +1,19 @@
 (ns metabase.query-processor.middleware.add-dimension-projections
   "Middleware for adding remapping and other dimension related projections"
-  (:require [metabase.models.field :refer [with-dimensions with-values]]
-            [metabase.query-processor
-             [interface :as i]
-             [util :as qputil]]))
+  (:require [metabase.query-processor.interface :as i]))
 
 (defn- create-remapped-col [col-name remapped-from]
-  {:description nil,
-   :id nil,
-   :table_id nil,
-   :expression-name col-name,
-   :source :fields,
-   :name col-name,
-   :display_name col-name,
-   :target nil,
-   :extra_info {}
-   :remapped_from remapped-from
-   :remapped_to nil})
+  {:description     nil
+   :id              nil
+   :table_id        nil
+   :expression-name col-name
+   :source          :fields
+   :name            col-name
+   :display_name    col-name
+   :target          nil
+   :extra_info      {}
+   :remapped_from   remapped-from
+   :remapped_to     nil})
 
 (defn- create-fk-remap-col [fk-field-id dest-field-id remapped-from field-display-name]
   (i/map->FieldPlaceholder {:fk-field-id fk-field-id
@@ -32,9 +29,8 @@
                         dim-seq))))
 
 (defn- transform-values-for-col
-  "Converts `VALUES` to a type compatible with the base_type found for
-  `COL`. These values should be directly comparable with the values
-  returned from the database for the given `COL`."
+  "Converts `VALUES` to a type compatible with the base_type found for `COL`. These values should be directly comparable
+  with the values returned from the database for the given `COL`."
   [{:keys [base_type] :as col} values]
   (cond
     (isa? base_type :type/Decimal)
@@ -74,9 +70,8 @@
        :dimension-type remap-type})))
 
 (defn- create-remap-col-pairs
-  "Return pairs of field id and the new remapped column that the field
-  should be remapped to. This is a list of pairs as we want to
-  preserve order"
+  "Return pairs of field id and the new remapped column that the field should be remapped to. This is a list of pairs as
+  we want to preserve order"
   [fields]
   (for [{{:keys [field-id human-readable-field-id dimension-type dimension-name]} :dimensions,
          field-name :field-name, source-field-id :field-id} fields
@@ -87,10 +82,9 @@
                                           dimension-name)]))
 
 (defn- update-remapped-order-by
-  "Order by clauses that include an external remapped column should be
-  replace that original column in the order by with the newly remapped
-  column. This should order by the text of the remapped column vs. the
-  id of the source column before the remapping"
+  "Order by clauses that include an external remapped column should be replace that original column in the order by with
+  the newly remapped column. This should order by the text of the remapped column vs. the id of the source column
+  before the remapping"
   [remap-cols-by-id order-by-seq]
   (when (seq order-by-seq)
     (mapv (fn [{{:keys [field-id]} :field :as order-by-clause}]
@@ -100,9 +94,8 @@
           order-by-seq)))
 
 (defn- add-fk-remaps
-  "Function that will include FK references needed for external
-  remappings. This will then flow through to the resolver to get the
-  new tables included in the join."
+  "Function that will include FK references needed for external remappings. This will then flow through to the resolver
+  to get the new tables included in the join."
   [query]
   (let [remap-col-pairs (create-remap-col-pairs (get-in query [:query :fields]))]
     (if (seq remap-col-pairs)
@@ -112,12 +105,10 @@
       query)))
 
 (defn- remap-results
-  "Munges results for remapping after the query has been executed. For
-  internal remappings, a new column needs to be added and each row
-  flowing through needs to include the remapped data for the new
-  column. For external remappings, the column information needs to be
-  updated with what it's being remapped from and the user specified
-  name for the remapped column."
+  "Munges results for remapping after the query has been executed. For internal remappings, a new column needs to be
+  added and each row flowing through needs to include the remapped data for the new column. For external remappings,
+  the column information needs to be updated with what it's being remapped from and the user specified name for the
+  remapped column."
   [results]
   (let [indexed-dims (keep-indexed col->dim-map (:cols results))
         internal-only-dims (filter #(= :internal (:dimension-type %)) indexed-dims)
@@ -131,17 +122,16 @@
                          {} columns)]
     (-> results
         (update :columns into (map :to internal-only-dims))
-        (update :cols (fn [cols]
+        ;; TODO - this code doesn't look right... why use `update` if we're not using the value we're updating?
+        (update :cols (fn [_]
                         (mapv (comp #(dissoc % :dimensions :values)
                                     (assoc-remapped-to from->to))
                               columns)))
         (update :rows #(map remap-fn %)))))
 
 (defn add-remapping
-  "Query processor middleware. `QP` is the query processor, returns a
-  function that works on a `QUERY` map. Delgates to `add-fk-remaps`
-  for making remapping changes to the query (before executing the
-  query). Then delegates to `remap-results` to munge the results after
-  query execution."
+  "Query processor middleware. `QP` is the query processor, returns a function that works on a `QUERY` map. Delgates to
+  `add-fk-remaps` for making remapping changes to the query (before executing the query). Then delegates to
+  `remap-results` to munge the results after query execution."
   [qp]
   (comp remap-results qp add-fk-remaps))
