@@ -5,6 +5,8 @@ import _ from "underscore";
 import { t } from "c-3po";
 import Warnings from "metabase/query_builder/components/Warnings.jsx";
 
+import Button from "metabase/components/Button";
+
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { getSettingsWidgets } from "metabase/visualizations/lib/settings";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -196,18 +198,11 @@ class ChartSettings extends Component {
             </div>
           </div>
         </div>
-        <div className="py2 px4">
-          {!_.isEqual(this.state.settings, {}) && (
-            <a
-              className="Button Button--danger float-right"
-              onClick={this.onResetSettings}
-              data-metabase-event="Chart Settings;Reset"
-            >{t`Reset to defaults`}</a>
-          )}
+        <div className="py2 px4 border-top">
           {this.state.backButtonName ? (
-            <div className="float-left">
+            <div className="float-right">
               <a
-                className="Button Button--primary mr2"
+                className="Button Button--primary ml2"
                 onClick={this.handleExitModal}
                 data-metabase-event="Chart Settings;Back"
               >
@@ -215,18 +210,28 @@ class ChartSettings extends Component {
               </a>
             </div>
           ) : (
-            <div className="float-left">
-              <a
-                className="Button Button--primary mr2"
-                onClick={() => this.onDone()}
-                data-metabase-event="Chart Settings;Done"
-              >{t`Done`}</a>
-              <a
-                className="Button mr2"
+            <div className="float-right">
+              <Button
+                className="ml2"
                 onClick={onClose}
                 data-metabase-event="Chart Settings;Cancel"
-              >{t`Cancel`}</a>
+              >{t`Cancel`}</Button>
+              <Button
+                primary
+                className="ml2"
+                onClick={() => this.onDone()}
+                data-metabase-event="Chart Settings;Done"
+              >{t`Done`}</Button>
             </div>
+          )}
+          {!_.isEqual(this.state.settings, {}) && (
+            <Button
+              borderless
+              icon="refresh"
+              className="float-right ml2"
+              data-metabase-event="Chart Settings;Reset"
+              onClick={this.onResetSettings}
+            >{t`Reset to defaults`}</Button>
           )}
         </div>
       </div>
