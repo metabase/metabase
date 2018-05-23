@@ -175,13 +175,12 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
 );
 
 const RulePreview = ({ rule, cols, onClick, onRemove }) => (
-  <div className="bordered rounded shadowed my2 overflow-hidden bg-white">
-    <div className="border-bottom relative p1">
-      <RuleBackground rule={rule} className="absolute spread" />
-      <div
-        className="flex align-center relative cursor-pointer p1"
-        onClick={onClick}
-      >
+  <div
+    className="my2 bordered rounded shadowed cursor-pointer overflow-hidden bg-white"
+    onClick={onClick}
+  >
+    <div className="p1 border-bottom relative bg-grey-0">
+      <div className="px1 flex align-center relative">
         <span className="h4 flex-full text-dark">
           {rule.columns.length > 0 ? (
             rule.columns
@@ -206,17 +205,25 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         />
       </div>
     </div>
-    <div className="p2">
+    <div className="p2 flex align-center">
+      <RuleBackground
+        rule={rule}
+        className={cx(
+          "mr2 flex-no-shrink rounded overflow-hidden border-grey-1",
+          { bordered: rule.type === "range" },
+        )}
+        style={{ width: 40, height: 40 }}
+      />
       <RuleDescription rule={rule} />
     </div>
   </div>
 );
 
-const RuleBackground = ({ rule, className }) =>
+const RuleBackground = ({ rule, className, style }) =>
   rule.type === "range" ? (
-    <RangePreview colors={rule.colors} className={className} />
+    <RangePreview colors={rule.colors} className={className} style={style} />
   ) : rule.type === "single" ? (
-    <SinglePreview color={rule.color} className={className} />
+    <SinglePreview color={rule.color} className={className} style={style} />
   ) : null;
 
 const SinglePreview = ({ color, className, style, ...props }) => (
