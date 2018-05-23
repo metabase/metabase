@@ -49,7 +49,7 @@ class ChartSettings extends Component {
       currentTab: null,
       settings: initialSettings,
       series: this._getSeries(props.series, initialSettings),
-      backButtonName: null,
+      exitModalButtonName: null,
       stateBustingId: 0,
     };
   }
@@ -113,21 +113,21 @@ class ChartSettings extends Component {
     this.props.onClose();
   };
 
-  handleEnterModal = backButtonName => {
-    this.setState({ backButtonName });
+  handleEnterModal = exitModalButtonName => {
+    this.setState({ exitModalButtonName });
   };
 
   handleExitModal = () => {
     // HACK: incrementing stateBustingId causes widgets internal state to be reset
     this.setState({
-      backButtonName: null,
+      exitModalButtonName: null,
       stateBustingId: this.state.stateBustingId + 1,
     });
   };
 
   render() {
     const { isDashboard } = this.props;
-    const { series } = this.state;
+    const { series, exitModalButtonName } = this.state;
 
     const tabs = {};
     for (const widget of getSettingsWidgets(
@@ -159,7 +159,10 @@ class ChartSettings extends Component {
                 className={cx(
                   "h3 py2 mr2 border-bottom cursor-pointer text-brand-hover border-brand-hover",
                   {
-                    "text-brand border-brand": currentTab === tabName,
+                    "text-brand border-brand":
+                      currentTab === tabName && !exitModalButtonName,
+                    "border-grey-4":
+                      currentTab === tabName && exitModalButtonName,
                     "border-transparent": currentTab !== tabName,
                   },
                 )}
@@ -203,48 +206,71 @@ class ChartSettings extends Component {
                   onUpdateWarnings={warnings => this.setState({ warnings })}
                 />
               </div>
-              <div className="py2 px4 border-top">
-                {this.state.backButtonName ? (
-                  <div className="float-right">
-                    <a
-                      className="Button Button--primary ml2"
-                      onClick={this.handleExitModal}
-                      data-metabase-event="Chart Settings;Back"
-                    >
-                      {this.state.backButtonName}
-                    </a>
-                  </div>
-                ) : (
-                  <div className="float-right">
-                    <Button
-                      className="ml2"
-                      onClick={this.handleCancel}
-                      data-metabase-event="Chart Settings;Cancel"
-                    >{t`Cancel`}</Button>
-                    <Button
-                      primary
-                      className="ml2"
-                      onClick={this.handleDone}
-                      data-metabase-event="Chart Settings;Done"
-                    >{t`Done`}</Button>
-                  </div>
-                )}
-                {!_.isEqual(this.state.settings, {}) && (
-                  <Button
-                    borderless
-                    icon="refresh"
-                    className="float-right ml2"
-                    data-metabase-event="Chart Settings;Reset"
-                    onClick={this.handleResetSettings}
-                  >{t`Reset to defaults`}</Button>
-                )}
-              </div>
             </div>
           </div>
         </div>
+
+        <ChartSettingsFooter
+          className="flex-no-shrink"
+          exitModalButtonName={exitModalButtonName}
+          onDone={this.handleDone}
+          onCancel={this.handleCancel}
+          onReset={
+            !_.isEqual(this.state.settings, {})
+              ? this.handleResetSettings
+              : null
+          }
+          onExitModal={this.handleExitModal}
+        />
       </div>
     );
   }
 }
+
+const ChartSettingsFooter = ({
+  className,
+  onDone,
+  onCancel,
+  onReset,
+  onExitModal,
+  exitModalButtonName,
+}) => (
+  <div className={cx("py2 px4 border-top", className)}>
+    {exitModalButtonName && (
+      <div className="float-left">
+        <a
+          className="Button Button--primary mr2"
+          onClick={onExitModal}
+          data-metabase-event="Chart Settings;Back"
+        >
+          {exitModalButtonName}
+        </a>
+      </div>
+    )}
+    <div className="float-right">
+      <Button
+        className="ml2"
+        onClick={onCancel}
+        data-metabase-event="Chart Settings;Cancel"
+      >{t`Cancel`}</Button>
+      <Button
+        primary
+        className="ml2"
+        onClick={onDone}
+        data-metabase-event="Chart Settings;Done"
+      >{t`Done`}</Button>
+    </div>
+
+    {onReset && (
+      <Button
+        borderless
+        icon="refresh"
+        className="float-right ml2"
+        data-metabase-event="Chart Settings;Reset"
+        onClick={onReset}
+      >{t`Reset to defaults`}</Button>
+    )}
+  </div>
+);
 
 export default ChartSettings;
