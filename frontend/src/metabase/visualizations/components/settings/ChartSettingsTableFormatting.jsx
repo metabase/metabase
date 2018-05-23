@@ -67,15 +67,17 @@ export const isFormattable = isNumeric;
 export default class ChartSettingsTableFormatting extends React.Component {
   state = {
     editingRule: null,
+    editingRuleIsNew: null,
   };
   render() {
     const { value, onChange, cols } = this.props;
-    const { editingRule } = this.state;
+    const { editingRule, editingRuleIsNew } = this.state;
     if (editingRule !== null && value[editingRule]) {
       return (
         <RuleEditor
           rule={value[editingRule]}
           cols={cols}
+          isNew={editingRuleIsNew}
           onChange={rule =>
             onChange([
               ...value.slice(0, editingRule),
@@ -88,10 +90,10 @@ export default class ChartSettingsTableFormatting extends React.Component {
               ...value.slice(0, editingRule),
               ...value.slice(editingRule + 1),
             ]);
-            this.setState({ editingRule: null });
+            this.setState({ editingRule: null, editingRuleIsNew: null });
           }}
           onDone={() => {
-            this.setState({ editingRule: null });
+            this.setState({ editingRule: null, editingRuleIsNew: null });
           }}
         />
       );
@@ -101,7 +103,7 @@ export default class ChartSettingsTableFormatting extends React.Component {
           rules={value}
           cols={cols}
           onEdit={index => {
-            this.setState({ editingRule: index });
+            this.setState({ editingRule: index, editingRuleIsNew: false });
           }}
           onAdd={() => {
             onChange([
@@ -112,7 +114,7 @@ export default class ChartSettingsTableFormatting extends React.Component {
               },
               ...value,
             ]);
-            this.setState({ editingRule: 0 });
+            this.setState({ editingRule: 0, editingRuleIsNew: true });
           }}
           onRemove={index =>
             onChange([...value.slice(0, index), ...value.slice(index + 1)])
@@ -268,7 +270,7 @@ const RuleDescription = ({ rule }) => (
   </span>
 );
 
-const RuleEditor = ({ rule, cols, onChange, onDone, onRemove }) => (
+const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => (
   <div>
     <h3 className="mb1">{t`Which columns should be affected?`}</h3>
     <Select
@@ -361,11 +363,11 @@ const RuleEditor = ({ rule, cols, onChange, onDone, onRemove }) => (
     <div className="mt4">
       {rule.columns.length === 0 ? (
         <Button primary onClick={onRemove}>
-          Cancel
+          {isNew ? t`Cancel` : t`Delete`}
         </Button>
       ) : (
         <Button primary onClick={onDone}>
-          Update rule
+          {isNew ? t`Add rule` : t`Update rule`}
         </Button>
       )}
     </div>
