@@ -28,10 +28,18 @@ const OPERATOR_NAMES = {
   "!=": t`not equal to`,
 };
 
-import { desaturated } from "metabase/lib/colors";
+import { desaturated as colors, getColorScale } from "metabase/lib/colors";
 
-const COLORS = Object.values(desaturated);
-const COLOR_RANGES = COLORS.map(color => ["white", color]);
+const COLORS = Object.values(colors);
+const COLOR_RANGES = [].concat(
+  ...COLORS.map(color => [["white", color], [color, "white"]]),
+  [
+    [colors.red, "white", colors.green],
+    [colors.green, "white", colors.red],
+    [colors.red, colors.yellow, colors.green],
+    [colors.green, colors.yellow, colors.red],
+  ],
+);
 
 const DEFAULTS_BY_TYPE = {
   single: {
@@ -218,21 +226,15 @@ const SinglePreview = ({ color, className, style, ...props }) => (
   />
 );
 
-const RangePreview = ({ colors, className, sections = 5, ...props }) => {
-  const scale = d3.scale
-    .linear()
-    .domain([0, sections - 1])
-    .range(colors || []);
+const RangePreview = ({ colors = [], sections = 5, className, ...props }) => {
+  const scale = getColorScale([0, sections - 1], colors);
   return (
     <div className={cx(className, "flex")} {...props}>
-      {d3.range(0, sections).map(value => (
-        <div
-          className="flex-full"
-          style={{
-            background: scale(value),
-          }}
-        />
-      ))}
+      {d3
+        .range(0, sections)
+        .map(value => (
+          <div className="flex-full" style={{ background: scale(value) }} />
+        ))}
     </div>
   );
 };
@@ -354,14 +356,14 @@ const ColorRangePicker = ({ colors, onChange, className, style }) => (
       />
     }
   >
-    <div className="pt1 px1">
+    <div className="pt1 mr1 flex flex-wrap" style={{ width: 300 }}>
       {COLOR_RANGES.map(range => (
-        <div className="mb1">
+        <div className={"mb1 pl1"} style={{ flex: "1 1 50%" }}>
           <RangePreview
             colors={range}
             onClick={() => onChange(range)}
-            className={cx("bordered rounded overflow-hidden")}
-            style={{ height: 30, width: 200 }}
+            className={cx("bordered rounded overflow-hidden cursor-pointer")}
+            style={{ height: 30 }}
           />
         </div>
       ))}

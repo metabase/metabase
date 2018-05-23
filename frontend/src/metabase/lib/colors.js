@@ -1,5 +1,7 @@
 // @flow
 
+import d3 from "d3";
+
 type ColorName = string;
 type Color = string;
 type ColorFamily = { [name: ColorName]: Color };
@@ -72,4 +74,21 @@ export const getRandomColor = (family: ColorFamily): Color => {
   // $FlowFixMe: Object.values doesn't preserve the type :-/
   const colors: Color[] = Object.values(family);
   return colors[Math.floor(Math.random() * colors.length)];
+};
+
+type ColorScale = (input: number) => Color;
+
+export const getColorScale = (
+  extent: [number, number],
+  colors: string[],
+): ColorScale => {
+  const [start, end] = extent;
+  return d3.scale
+    .linear()
+    .domain(
+      colors.length === 3
+        ? [start, start + (end - start) / 2, end]
+        : [start, end],
+    )
+    .range(colors);
 };

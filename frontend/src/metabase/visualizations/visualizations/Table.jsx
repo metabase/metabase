@@ -20,12 +20,17 @@ import _ from "underscore";
 import cx from "classnames";
 import d3 from "d3";
 import Color from "color";
+import { getColorScale } from "metabase/lib/colors";
 
 import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
 import type { DatasetData } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
+
+const CELL_ALPHA = 0.65;
+const ROW_ALPHA = 0.2;
+const GRADIENT_ALPHA = 0.75;
 
 type Props = {
   card: Card,
@@ -37,13 +42,18 @@ type State = {
   data: ?DatasetData,
 };
 
+const alpha = (color, amount) =>
+  Color(color)
+    .alpha(amount)
+    .string();
+
 function compileFormatter(format, data, isRowFormatter = false) {
   if (format.type === "single") {
     let { operator, value, color } = format;
     if (isRowFormatter) {
-      color = Color(color)
-        .fade(0.5)
-        .string();
+      color = alpha(color, ROW_ALPHA);
+    } else {
+      color = alpha(color, CELL_ALPHA);
     }
     switch (operator) {
       case "<":
@@ -78,11 +88,10 @@ function compileFormatter(format, data, isRowFormatter = false) {
     if (format.max_type === "custom") {
       extent[1] = format.max_value;
     }
-    return d3.scale
-      .linear()
-      .domain(extent)
-      .range(format.colors)
-      .clamp(true);
+    return getColorScale(
+      extent,
+      format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
+    ).clamp(true);
   } else {
     console.warn("Unknown format type", format.type);
     return () => null;
