@@ -30,6 +30,7 @@ import {
   UPDATE_QUESTION,
   SET_DATASET_QUERY,
   RUN_QUERY,
+  CLEAR_QUERY_RESULT,
   CANCEL_QUERY,
   QUERY_COMPLETED,
   QUERY_ERRORED,
@@ -271,6 +272,7 @@ export const queryResults = handleActions(
     [QUERY_ERRORED]: {
       next: (state, { payload }) => (payload ? payload : state),
     },
+    [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
   },
   null,
 );

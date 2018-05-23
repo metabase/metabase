@@ -29,7 +29,7 @@ import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
 import { addUndo, createUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
-import { cardIsEquivalent } from "metabase/meta/Card";
+import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
 import {
   getTableMetadata,
@@ -705,14 +705,14 @@ export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
   ({ nextCard, previousCard }) => {
     return async (dispatch, getState) => {
-      const nextCardIsClean =
-        _.isEqual(previousCard.dataset_query, nextCard.dataset_query) &&
-        previousCard.display === nextCard.display;
-
-      if (nextCardIsClean) {
+      if (cardIsEquivalent(previousCard, nextCard)) {
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(setCardAndRun(await loadCard(nextCard.id)));
       } else {
+        if (!cardQueryIsEquivalent(previousCard, nextCard)) {
+          // clear the query result so we don't try to display the new visualization before running the new query
+          dispatch(clearQueryResult());
+        }
         dispatch(
           setCardAndRun(getCardAfterVisualizationClick(nextCard, previousCard)),
         );
@@ -1216,6 +1216,9 @@ export const runQuestionQuery = ({
     dispatch.action(RUN_QUERY, { cancelQueryDeferred });
   };
 };
+
+export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
+export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
 export const getDisplayTypeForCard = (card, queryResults) => {
   // TODO Atte Keinänen 6/1/17: Make a holistic decision based on all queryResults, not just one
