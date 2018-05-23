@@ -89,7 +89,17 @@
 (derive :type/UNIXTimestampMilliseconds :type/UNIXTimestamp)
 
 (derive :type/CreationTimestamp :type/DateTime)
+(derive :type/CreationTime :type/Time)
+(derive :type/CreationTime :type/CreationTimestamp)
+(derive :type/CreationDate :type/Date)
+(derive :type/CreationDate :type/CreationTimestamp)
+
 (derive :type/JoinTimestamp :type/DateTime)
+(derive :type/JoinTime :type/Date)
+(derive :type/JoinTime :type/CreationTimestamp)
+(derive :type/JoinDate :type/Date)
+(derive :type/JoinDate :type/CreationTimestamp)
+
 (derive :type/Birthdate :type/Date)
 
 

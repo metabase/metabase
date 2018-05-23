@@ -15,8 +15,16 @@ dimensions:
 - State: GenericTable.State
 - Timestamp:
     field_type: CreationTimestamp
+    score: 100
+- Timestamp:
+    field_type: CreationDate
+    score: 100
 - Timestamp:
     field_type: DateTime
+    score: 90
+- Timestamp:
+    field_type: Date
+    score: 90
 - Source:
     field_type: UserTable.Source
     max_cardinality: 10
