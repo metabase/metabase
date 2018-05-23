@@ -1,10 +1,6 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clj-time
-             [coerce :as coerce]
-             [core :as t]
-             [format :as time]]
-            [clojure
+  (:require [clojure
              [data :as data]
              [pprint :refer [pprint]]
              [string :as s]]
@@ -14,17 +10,13 @@
             [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
-            colorize.core ; this needs to be loaded for `format-color`
+            [colorize.core :as colorize]
             [metabase.config :as config]
             [puppetlabs.i18n.core :as i18n :refer [trs]]
             [ring.util.codec :as codec])
-  (:import clojure.lang.Keyword
-           [java.net InetAddress InetSocketAddress Socket]
-           [java.sql SQLException Time Timestamp]
-           [java.text Normalizer Normalizer$Form]
-           [java.util Calendar Date TimeZone]
-           org.joda.time.DateTime
-           org.joda.time.format.DateTimeFormatter))
+  (:import [java.net InetAddress InetSocketAddress Socket]
+           java.sql.SQLException
+           [java.text Normalizer Normalizer$Form]))
 
 ;; This is the very first log message that will get printed.  It's here because this is one of the very first
 ;; namespaces that gets loaded, and the first that has access to the logger It shows up a solid 10-15 seconds before
@@ -223,39 +215,38 @@
      ~'<>))
 
 (def ^String ^{:arglists '([emoji-string])} emoji
-  "Returns the EMOJI-STRING passed in if emoji in logs are enabled, otherwise always returns an empty string."
+  "Returns the `emoji-string` passed in if emoji in logs are enabled, otherwise always returns an empty string."
   (if (config/config-bool :mb-emoji-in-logs)
     identity
     (constantly "")))
 
 (def ^:private ^{:arglists '([color-symb x])} colorize
-  "Colorize string X with the function matching COLOR-SYMB, but only if `MB_COLORIZE_LOGS` is enabled (the default)."
+  "Colorize string `x` with the function matching `color` symbol or keyword, but only if `MB_COLORIZE_LOGS` is
+  enabled (the default)."
   (if (config/config-bool :mb-colorize-logs)
-    (fn [color-symb x]
-      (let [color-fn (or (ns-resolve 'colorize.core color-symb)
-                         (throw (Exception. (str "Invalid color symbol: " color-symb))))]
-        (color-fn x)))
+    (fn [color x]
+      (colorize/color (keyword color) x))
     (fn [_ x]
       x)))
 
 (defn format-color
-  "Like `format`, but uses a function in `colorize.core` to colorize the output.
-   COLOR-SYMB should be a quoted symbol like `green`, `red`, `yellow`, `blue`,
-   `cyan`, `magenta`, etc. See the entire list of avaliable colors
-   [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
+  "Like `format`, but colorizes the output. `color` should be a symbol or keyword like `green`, `red`, `yellow`, `blue`,
+  `cyan`, `magenta`, etc. See the entire list of avaliable
+  colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
 
-     (format-color 'red \"Fatal error: %s\" error-message)"
+     (format-color :red \"Fatal error: %s\" error-message)"
   {:style/indent 2}
-  (^String [color-symb x]
-   {:pre [(symbol? color-symb)]}
-   (colorize color-symb x))
-  (^String [color-symb format-string & args]
-   (colorize color-symb (apply format format-string args))))
+  (^String [color x]
+   {:pre [((some-fn symbol? keyword?) color)]}
+   (colorize color x))
+
+  (^String [color format-string & args]
+   (colorize color (apply format format-string args))))
 
 (defn pprint-to-str
-  "Returns the output of pretty-printing X as a string.
-   Optionally accepts COLOR-SYMB, which colorizes the output with the corresponding
-   function from `colorize.core`.
+  "Returns the output of pretty-printing `x` as a string.
+  Optionally accepts `color-symb`, which colorizes the output with the corresponding
+  function from `colorize.core`.
 
      (pprint-to-str 'green some-obj)"
   {:style/indent 1}
@@ -465,8 +456,7 @@
      (key-by :id [{:id 1, :name :a} {:id 2, :name :b}]) -> {1 {:id 1, :name :a}, 2 {:id 2, :name :b}}"
   {:style/indent 1}
   [f coll]
-  (into {} (for [item coll]
-             {(f item) item})))
+  (into {} (map (juxt f identity)) coll))
 
 (defn keyword->qualified-name
   "Return keyword K as a string, including its namespace, if any (unlike `name`).
@@ -598,3 +588,13 @@
   (first (keep-indexed (fn [i x]
                          (when (pred x) i))
                        coll)))
+
+
+(defn is-java-9-or-higher?
+  "Are we running on Java 9 or above?"
+  []
+  (when-let [java-major-version (some-> (System/getProperty "java.version")
+                                        (s/split #"\.")
+                                        first
+                                        Integer/parseInt)]
+    (>= java-major-version 9)))

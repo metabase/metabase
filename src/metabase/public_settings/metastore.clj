@@ -3,11 +3,11 @@
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
-            [clj-http.client :as client]
             [environ.core :refer [env]]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.config :as config]
-            [metabase.util :as u]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]))

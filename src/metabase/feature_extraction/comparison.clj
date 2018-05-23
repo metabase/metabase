@@ -69,15 +69,15 @@
                         t a b)}))
 
 (defmethod difference [nil Object]
-  [a b]
+  [_ _]
   {:difference nil})
 
 (defmethod difference [Object nil]
-  [a b]
+  [_ _]
   {:difference nil})
 
 (defmethod difference [nil nil]
-  [a b]
+  [_ _]
   {:difference nil})
 
 (defn- unify-categories

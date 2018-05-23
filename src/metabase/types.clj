@@ -83,6 +83,7 @@
 
 (derive :type/Time :type/DateTime)
 (derive :type/Date :type/DateTime)
+(derive :type/DateTimeWithTZ :type/DateTime)
 
 (derive :type/UNIXTimestamp :type/DateTime)
 (derive :type/UNIXTimestamp :type/Integer)

@@ -1,11 +1,10 @@
 (ns metabase.models.params
   "Utility functions for dealing with parameters for Dashboards and Cards."
   (:require [clojure.set :as set]
-            [metabase.query-processor.middleware.expand :as ql]
-            metabase.query-processor.interface
             [metabase
              [db :as mdb]
              [util :as u]]
+            [metabase.query-processor.middleware.expand :as ql]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]])
@@ -69,9 +68,13 @@
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (u/key-by :table_id (db/select Field:params-columns-only
-                          :table_id     [:in table-ids]
-                          :special_type (mdb/isa :type/Name)))))
+    (u/key-by :table_id (-> (db/select Field:params-columns-only
+                              :table_id     [:in table-ids]
+                              :special_type (mdb/isa :type/Name))
+                            ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
+                            ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
+                            ;; `list` instead of `auto-list`.)
+                            (hydrate :has_field_values)))))
 
 (defn add-name-field
   "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each
