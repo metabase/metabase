@@ -62,7 +62,7 @@ const DEFAULTS_BY_TYPE = {
 };
 
 // predicate for columns that can be formatted
-const isFormattable = isNumeric;
+export const isFormattable = isNumeric;
 
 export default class ChartSettingsTableFormatting extends React.Component {
   state = {
@@ -71,7 +71,6 @@ export default class ChartSettingsTableFormatting extends React.Component {
   render() {
     const { value, onChange, cols } = this.props;
     const { editingRule } = this.state;
-    const formattableCols = cols.filter(isFormattable);
     if (editingRule !== null && value[editingRule]) {
       return (
         <RuleEditor
@@ -100,8 +99,7 @@ export default class ChartSettingsTableFormatting extends React.Component {
               {
                 ...DEFAULTS_BY_TYPE["single"],
                 // if there's a single column use that by default
-                columns:
-                  formattableCols.length === 1 ? [formattableCols[0].name] : [],
+                columns: cols.length === 1 ? [cols[0].name] : [],
               },
               ...value,
             ]);
@@ -270,9 +268,7 @@ const RuleEditor = ({ rule, onChange, cols }) => (
       isInitiallyOpen={rule.columns.length === 0}
       multiple
     >
-      {cols
-        .filter(isFormattable)
-        .map(col => <Option value={col.name}>{col.display_name}</Option>)}
+      {cols.map(col => <Option value={col.name}>{col.display_name}</Option>)}
     </Select>
     <h3 className="mt3 mb1">{t`Formatting style`}</h3>
     <Radio

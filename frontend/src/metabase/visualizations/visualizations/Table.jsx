@@ -14,7 +14,9 @@ import {
   getFriendlyName,
 } from "metabase/visualizations/lib/utils";
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
-import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx";
+import ChartSettingsTableFormatting, {
+  isFormattable,
+} from "metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -187,9 +189,11 @@ export default class Table extends Component {
       widget: ChartSettingsTableFormatting,
       default: [],
       getProps: ([{ data: { cols } }], settings) => ({
-        cols,
+        cols: cols.filter(isFormattable),
         isPivoted: settings["table.pivot"],
       }),
+      getHidden: ([{ data: { cols } }], settings) =>
+        cols.filter(isFormattable).length === 0,
       readDependencies: ["table.pivot"],
     },
     "table._cell_background_getter": {
