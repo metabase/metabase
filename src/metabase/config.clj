@@ -94,3 +94,14 @@
    with database connections so admins can identify them as Metabase ones.
    Looks something like `Metabase v0.25.0.RC1`."
   (str "Metabase " (mb-version-info :tag)))
+
+
+;; This only affects dev:
+;;
+;; If for some wacky reason the test namespaces are getting loaded (e.g. when running via
+;; `lein ring` or `lein ring sever`, DO NOT RUN THE EXPECTATIONS TESTS AT SHUTDOWN! THIS WILL NUKE YOUR APPLICATION DB
+(try
+  (require 'expectations)
+  ((resolve 'expectations/disable-run-on-shutdown))
+  ;; This will fail if the test dependencies aren't present (e.g. in a JAR situation) which is totally fine
+  (catch Throwable _))
