@@ -150,7 +150,7 @@ class ChartSettings extends Component {
     const widgets = tabs[currentTab];
 
     return (
-      <div className="flex relative flex-column spread">
+      <div className="flex flex-column spread">
         {tabNames.length > 1 && (
           <div className="border-bottom flex flex-no-shrink pl4">
             {tabNames.map(tabName => (
@@ -170,7 +170,7 @@ class ChartSettings extends Component {
             ))}
           </div>
         )}
-        <div className="full-height flex relative">
+        <div className="full-height relative">
           <div className="Grid spread">
             <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right p4">
               {widgets &&
