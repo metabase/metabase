@@ -161,7 +161,7 @@ class DefaultLanding extends React.Component {
         )}
         <Box w={2 / 3}>
           <Box>
-            <CollectionItemsLoader collectionId={collectionId || "root"} reload>
+            <CollectionItemsLoader collectionId={collectionId || "root"}>
               {({ allItems, pulses, cards, dashboards, empty }) => {
                 let items = allItems;
 
@@ -198,6 +198,7 @@ class DefaultLanding extends React.Component {
                     <Box mb={2}>
                       <Grid>
                         {pinned.map(item => {
+                          // TODO - move this over to use item fns like getUrl()
                           const {
                             url,
                             iconName,

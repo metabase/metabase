@@ -22,6 +22,7 @@ const Questions = createEntity({
   objectSelectors: {
     getName: question => question && question.name,
     getUrl: question => question && Urls.question(question.id),
+    getColor: () => "#93B3C9",
     getIcon: question =>
       //
       (require("metabase/visualizations").default.get(question.display) || {})

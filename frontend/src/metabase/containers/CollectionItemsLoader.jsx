@@ -28,6 +28,7 @@ const CollectionItemsLoader = ({ collectionId, children }: Props) => (
           object.pulses.length,
       })
     }
+    wrapped
   />
 );
 
