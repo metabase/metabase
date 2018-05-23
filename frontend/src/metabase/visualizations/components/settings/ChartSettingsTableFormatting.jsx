@@ -96,15 +96,16 @@ export default class ChartSettingsTableFormatting extends React.Component {
             this.props.onEnterModal("Update rule");
           }}
           onAdd={() => {
-            onChange(
-              value.concat({
+            onChange([
+              {
                 ...DEFAULTS_BY_TYPE["single"],
                 // if there's a single column use that by default
                 columns:
                   formattableCols.length === 1 ? [formattableCols[0].name] : [],
-              }),
-            );
-            this.setState({ editingRule: value.length });
+              },
+              ...value,
+            ]);
+            this.setState({ editingRule: 0 });
             this.props.onEnterModal("Add rule");
           }}
           onRemove={index =>
