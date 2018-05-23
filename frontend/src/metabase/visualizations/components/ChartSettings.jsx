@@ -150,7 +150,7 @@ class ChartSettings extends Component {
     const widgets = tabs[currentTab];
 
     return (
-      <div className="flex flex-column spread">
+      <div className="flex relative flex-column spread">
         {tabNames.length > 1 && (
           <div className="border-bottom flex flex-no-shrink pl4">
             {tabNames.map(tabName => (
@@ -170,72 +170,74 @@ class ChartSettings extends Component {
             ))}
           </div>
         )}
-        <div className="Grid flex-full">
-          <div className="Grid-cell Cell--1of3 scroll-y border-right p4">
-            {widgets &&
-              widgets.map(widget => (
-                <Widget
-                  key={`${widget.id}-${this.state.stateBustingId}`}
-                  onEnterModal={this.handleEnterModal}
-                  {...widget}
+        <div className="full-height flex relative">
+          <div className="Grid spread">
+            <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right p4">
+              {widgets &&
+                widgets.map(widget => (
+                  <Widget
+                    key={`${widget.id}-${this.state.stateBustingId}`}
+                    onEnterModal={this.handleEnterModal}
+                    {...widget}
+                  />
+                ))}
+            </div>
+            <div className="Grid-cell flex flex-column pt2">
+              <div className="mx4 flex flex-column">
+                <Warnings
+                  className="mx2 align-self-end text-gold"
+                  warnings={this.state.warnings}
+                  size={20}
                 />
-              ))}
-          </div>
-          <div className="Grid-cell flex flex-column pt2">
-            <div className="mx4 flex flex-column">
-              <Warnings
-                className="mx2 align-self-end text-gold"
-                warnings={this.state.warnings}
-                size={20}
-              />
-            </div>
-            <div className="mx4 flex-full relative">
-              <Visualization
-                className="spread"
-                rawSeries={series}
-                isEditing
-                showTitle
-                isDashboard
-                showWarnings
-                onUpdateVisualizationSettings={this.handleChangeSettings}
-                onUpdateWarnings={warnings => this.setState({ warnings })}
-              />
-            </div>
-            <div className="py2 px4 border-top">
-              {this.state.backButtonName ? (
-                <div className="float-right">
-                  <a
-                    className="Button Button--primary ml2"
-                    onClick={this.handleExitModal}
-                    data-metabase-event="Chart Settings;Back"
-                  >
-                    {this.state.backButtonName}
-                  </a>
-                </div>
-              ) : (
-                <div className="float-right">
+              </div>
+              <div className="mx4 flex-full relative">
+                <Visualization
+                  className="spread"
+                  rawSeries={series}
+                  isEditing
+                  showTitle
+                  isDashboard
+                  showWarnings
+                  onUpdateVisualizationSettings={this.handleChangeSettings}
+                  onUpdateWarnings={warnings => this.setState({ warnings })}
+                />
+              </div>
+              <div className="py2 px4 border-top">
+                {this.state.backButtonName ? (
+                  <div className="float-right">
+                    <a
+                      className="Button Button--primary ml2"
+                      onClick={this.handleExitModal}
+                      data-metabase-event="Chart Settings;Back"
+                    >
+                      {this.state.backButtonName}
+                    </a>
+                  </div>
+                ) : (
+                  <div className="float-right">
+                    <Button
+                      className="ml2"
+                      onClick={this.handleCancel}
+                      data-metabase-event="Chart Settings;Cancel"
+                    >{t`Cancel`}</Button>
+                    <Button
+                      primary
+                      className="ml2"
+                      onClick={this.handleDone}
+                      data-metabase-event="Chart Settings;Done"
+                    >{t`Done`}</Button>
+                  </div>
+                )}
+                {!_.isEqual(this.state.settings, {}) && (
                   <Button
-                    className="ml2"
-                    onClick={this.handleCancel}
-                    data-metabase-event="Chart Settings;Cancel"
-                  >{t`Cancel`}</Button>
-                  <Button
-                    primary
-                    className="ml2"
-                    onClick={this.handleDone}
-                    data-metabase-event="Chart Settings;Done"
-                  >{t`Done`}</Button>
-                </div>
-              )}
-              {!_.isEqual(this.state.settings, {}) && (
-                <Button
-                  borderless
-                  icon="refresh"
-                  className="float-right ml2"
-                  data-metabase-event="Chart Settings;Reset"
-                  onClick={this.handleResetSettings}
-                >{t`Reset to defaults`}</Button>
-              )}
+                    borderless
+                    icon="refresh"
+                    className="float-right ml2"
+                    data-metabase-event="Chart Settings;Reset"
+                    onClick={this.handleResetSettings}
+                  >{t`Reset to defaults`}</Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
