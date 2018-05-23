@@ -19,6 +19,7 @@ import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import Modal from "metabase/components/Modal";
 
@@ -54,10 +55,19 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
+const DefaultSearchColor = "#60A6E4";
+const ActiveSearchColor = "#7bb7ec";
+
 const SearchWrapper = Flex.extend`
-  ${width} background-color: #60A6E4;
+  ${width} background-color: ${props =>
+      props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
   align-items: center;
+  color: white;
+  transition: background 300ms ease-in;
+  &:hover {
+    background-color: ${ActiveSearchColor};
+  }
 `;
 
 const SearchInput = styled.input`
@@ -68,8 +78,8 @@ const SearchInput = styled.input`
   &:focus {
     outline: none;
   }
-  &:placeholder {
-    color: white;
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.85);
   }
 `;
 
@@ -98,25 +108,33 @@ class SearchBar extends React.Component {
 
   render() {
     return (
-      <SearchWrapper w={2 / 3}>
-        <Icon name="search" ml={2} />
-        <SearchInput
-          w={1}
-          p={2}
-          value={this.state.searchText}
-          placeholder="Search for anything..."
+      <OnClickOutsideWrapper
+        handleDismissal={() => this.setState({ active: false })}
+      >
+        <SearchWrapper
+          w={2 / 3}
           onClick={() => this.setState({ active: true })}
-          onChange={e => this.setState({ searchText: e.target.value })}
-          onKeyPress={e => {
-            if (e.key === "Enter") {
-              this.props.onChangeLocation({
-                pathname: "search",
-                query: { q: this.state.searchText },
-              });
-            }
-          }}
-        />
-      </SearchWrapper>
+          active={this.state.active}
+        >
+          <Icon name="search" ml={2} />
+          <SearchInput
+            w={1}
+            p={2}
+            value={this.state.searchText}
+            placeholder="Search for anything..."
+            onClick={() => this.setState({ active: true })}
+            onChange={e => this.setState({ searchText: e.target.value })}
+            onKeyPress={e => {
+              if (e.key === "Enter") {
+                this.props.onChangeLocation({
+                  pathname: "search",
+                  query: { q: this.state.searchText },
+                });
+              }
+            }}
+          />
+        </SearchWrapper>
+      </OnClickOutsideWrapper>
     );
   }
 }
