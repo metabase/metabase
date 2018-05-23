@@ -266,6 +266,7 @@ const RuleEditor = ({ rule, onChange, cols }) => (
       value={rule.columns}
       onChange={e => onChange({ ...rule, columns: e.target.value })}
       isInitiallyOpen={rule.columns.length === 0}
+      placeholder="Choose a column"
       multiple
     >
       {cols.map(col => <Option value={col.name}>{col.display_name}</Option>)}
