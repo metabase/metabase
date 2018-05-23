@@ -2,9 +2,11 @@
 
 import React, { Component } from "react";
 
-import TableInteractive from "../components/TableInteractive.jsx";
-import TableSimple from "../components/TableSimple.jsx";
+import TableInteractiveSummary from "../components/TableInteractiveSummary.jsx";
+import TableSimpleSummary from "../components/TableSimpleSummary.jsx";
 import { t } from "c-3po";
+
+//todo: remove
 import * as DataGrid from "metabase/lib/data_grid";
 
 import Query from "metabase/lib/query";
@@ -23,6 +25,8 @@ import { getIn } from "icepick";
 import type { DatasetData } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 
+import { GroupingManager } from "../lib/GroupingManager";
+
 type Props = {
   card: Card,
   data: DatasetData,
@@ -33,12 +37,14 @@ type State = {
   data: ?DatasetData,
 };
 
-export default class Table extends Component {
+const GRAND_TOTAL = SummaryTable.identifier + "." + "grandTotal";
+
+export default class SummaryTable extends Component {
   props: Props;
   state: State;
 
-  static uiName = t`Table`;
-  static identifier = "table";
+  static uiName = t`Summary Table`;
+  static identifier = "summaryTable";
   static iconName = "table";
 
   static minSize = { width: 4, height: 3 };
@@ -62,6 +68,12 @@ export default class Table extends Component {
         Query.isStructured(card.dataset_query) &&
         data.cols.filter(isMetric).length === 1 &&
         data.cols.filter(isDimension).length === 2,
+    },
+    "table.dupa": {
+      title: t`Dupa the table`,
+      widget: "toggle",
+      getHidden: ([{ card, data }]) => false,
+      getDefault: ([{ card, data }]) => true,
     },
     "table.columns": {
       title: t`Fields to include`,
@@ -145,11 +157,16 @@ export default class Table extends Component {
     const isPivoted = settings["table.pivot"];
     const isColumnsDisabled =
       (settings["table.columns"] || []).filter(f => f.enabled).length < 1;
-    const TableComponent = isDashboard ? TableSimple : TableInteractive;
+    const TableComponent = isDashboard ? TableSimpleSummary : TableInteractiveSummary;
 
     if (!data) {
       return null;
     }
+
+    //todo: fix 30
+    const groupingManager = new GroupingManager(30, [0,1], data.rows);
+
+    const dataUpdated = { ...data, rows: groupingManager.rowsOrdered };
 
     if (isColumnsDisabled) {
       return (
@@ -173,9 +190,10 @@ export default class Table extends Component {
         // $FlowFixMe
         <TableComponent
           {...this.props}
-          data={data}
+          data={dataUpdated}
           isPivoted={isPivoted}
           sort={sort}
+          groupingManager={groupingManager}
         />
       );
     }
@@ -188,10 +206,11 @@ export default class Table extends Component {
  * TableInteractive uses react-virtualized library which requires a real browser viewport.
  */
 export const TestTable = (props: Props) => (
-  <Table {...props} isDashboard={true} />
+  <SummaryTable {...props} isDashboard={true} />
 );
-TestTable.uiName = Table.uiName;
-TestTable.identifier = Table.identifier;
-TestTable.iconName = Table.iconName;
-TestTable.minSize = Table.minSize;
-TestTable.settings = Table.settings;
+TestTable.uiName = SummaryTable.uiName;
+TestTable.identifier = SummaryTable.identifier;
+TestTable.iconName = SummaryTable.iconName;
+TestTable.minSize = SummaryTable.minSize;
+TestTable.settings = SummaryTable.settings;
+

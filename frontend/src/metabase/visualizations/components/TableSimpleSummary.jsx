@@ -19,11 +19,13 @@ import cx from "classnames";
 import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import { GroupingManager } from "metabase/visualizations/lib/GroupingManager";
 
 type Props = VisualizationProps & {
   height: number,
   className?: string,
   isPivoted: boolean,
+  groupingManager: GroupingManager,
 };
 
 type State = {
@@ -34,7 +36,7 @@ type State = {
 };
 
 @ExplicitSize
-export default class TableSimple extends Component {
+export default class TableSimpleSummary extends Component {
   props: Props;
   state: State;
 
@@ -90,6 +92,7 @@ export default class TableSimple extends Component {
       onVisualizationClick,
       visualizationIsClickable,
       isPivoted,
+      groupingManager,
     } = this.props;
     const { rows, cols } = data;
 
@@ -157,50 +160,62 @@ export default class TableSimple extends Component {
                 {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
                   <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
                     {rows[rowIndex].map((cell, columnIndex) => {
-                      const clicked = getTableCellClickedObject(
-                        data,
-                        rowIndex,
-                        columnIndex,
-                        isPivoted,
-                      );
-                      const isClickable =
-                        onVisualizationClick &&
-                        visualizationIsClickable(clicked);
-                      return (
-                        <td
-                          key={columnIndex}
-                          style={{ whiteSpace: "nowrap" }}
-                          className={cx("px1 border-bottom", {
-                            "text-right": isColumnRightAligned(
-                              cols[columnIndex],
-                            ),
-                          })}
-                        >
-                          <span
-                            className={cx({
-                              "cursor-pointer text-brand-hover": isClickable,
+                      if (
+                        columnIndex !== 0 ||
+                        !groupingManager.isVisible(rowIndex, columnIndex, {start, stop:end})
+                      ) {
+                        const clicked = getTableCellClickedObject(
+                          data,
+                          rowIndex,
+                          columnIndex,
+                          isPivoted,
+                        );
+                        const isClickable =
+                          onVisualizationClick &&
+                          visualizationIsClickable(clicked);
+                        const rowSpan = undefined;
+                          // columnIndex === 0 &&
+                          // !groupingManager.isVisible(rowIndex, columnIndex, {start, stop:end})
+                          //   ? undefined //groupingManager.getRowSpan(rowIndex, start)
+                          //   : undefined;
+                        const res = (
+                          <td
+                            key={columnIndex}
+                            style={{ whiteSpace: "nowrap" }}
+                            className={cx("px1 border-bottom", {
+                              "text-right": isColumnRightAligned(
+                                cols[columnIndex],
+                              ),
                             })}
-                            onClick={
-                              isClickable
-                                ? e => {
-                                    onVisualizationClick({
-                                      ...clicked,
-                                      element: e.currentTarget,
-                                    });
-                                  }
-                                : undefined
-                            }
+                            rowSpan={rowSpan}
                           >
-                            {cell == null
-                              ? "-"
-                              : formatValue(cell, {
-                                  column: cols[columnIndex],
-                                  jsx: true,
-                                  rich: true,
-                                })}
-                          </span>
-                        </td>
-                      );
+                            <span
+                              className={cx({
+                                "cursor-pointer text-brand-hover": isClickable,
+                              })}
+                              onClick={
+                                isClickable
+                                  ? e => {
+                                      onVisualizationClick({
+                                        ...clicked,
+                                        element: e.currentTarget,
+                                      });
+                                    }
+                                  : undefined
+                              }
+                            >
+                              {cell == null
+                                ? "-"
+                                : formatValue(cell, {
+                                    column: cols[columnIndex],
+                                    jsx: true,
+                                    rich: true,
+                                  })}
+                            </span>
+                          </td>
+                        );
+                        return res;
+                      } else return <td style={{ display: "none" }} />;
                     })}
                   </tr>
                 ))}
