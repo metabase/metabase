@@ -361,18 +361,23 @@ const ColorRangePicker = ({ colors, onChange, className, style }) => (
       />
     }
   >
-    <div className="pt1 mr1 flex flex-wrap" style={{ width: 300 }}>
-      {COLOR_RANGES.map(range => (
-        <div className={"mb1 pl1"} style={{ flex: "1 1 50%" }}>
-          <RangePreview
-            colors={range}
-            onClick={() => onChange(range)}
-            className={cx("bordered rounded overflow-hidden cursor-pointer")}
-            style={{ height: 30 }}
-          />
-        </div>
-      ))}
-    </div>
+    {({ onClose }) => (
+      <div className="pt1 mr1 flex flex-wrap" style={{ width: 300 }}>
+        {COLOR_RANGES.map(range => (
+          <div className={"mb1 pl1"} style={{ flex: "1 1 50%" }}>
+            <RangePreview
+              colors={range}
+              onClick={() => {
+                onChange(range);
+                onClose();
+              }}
+              className={cx("bordered rounded overflow-hidden cursor-pointer")}
+              style={{ height: 30 }}
+            />
+          </div>
+        ))}
+      </div>
+    )}
   </PopoverWithTrigger>
 );
 
