@@ -41,11 +41,8 @@
 (defn- describe-database->clj
   "Workaround for wrong getColumnCount response by the driver"
   [^ResultSet rs]
-  (-> rs
-      (.getString 1)
-      (string/split #"\t")
-      (#(map string/trim %))
-      ((fn [[name type]] {:name name :type type}))))
+  {:name (string/trim (.getString rs 1))
+    :type (string/trim (.getString rs 2))})
 
 (defn- describe-all-database->clj
   [^ResultSet rs]
