@@ -10,7 +10,8 @@
             "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
             "profile" ["with-profile" "+profile" "run" "profile"]
-            "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]}
+            "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]
+            "run-server" ["with-profile" "+no-tests" "run"]}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/core.async "0.3.442"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
@@ -156,6 +157,7 @@
                    ;; Log appender class needs to be compiled for log4j to use it,
                    :aot [metabase.logger]}
              :ci {:jvm-opts ["-Xmx3g"]}
+             :no-tests {:test-paths ^:replace []}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup  ; for test setup stuff
                                                   'metabase.test.util)] ; for the toucan.util.test default values for temp models
