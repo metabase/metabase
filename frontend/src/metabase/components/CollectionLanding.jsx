@@ -160,6 +160,9 @@ class DefaultLanding extends React.Component {
       <Flex>
         {showCollectionList && (
           <Box w={1 / 3} mr={3}>
+            <Box>
+              <h4>{t`Collections`}</h4>
+            </Box>
             <CollectionList />
           </Box>
         )}
@@ -200,6 +203,11 @@ class DefaultLanding extends React.Component {
                 return (
                   <Box>
                     <Box mb={2}>
+                      {pinned.length > 0 && (
+                        <Box mb={2}>
+                          <h4>{t`Pinned items`}</h4>
+                        </Box>
+                      )}
                       <Grid>
                         {pinned.map(item => {
                           // TODO - move this over to use item fns like getUrl()
@@ -242,6 +250,13 @@ class DefaultLanding extends React.Component {
                         })}
                       </Grid>
                     </Box>
+                    <Flex align="center" mb={2}>
+                      {pinned.length > 0 && (
+                        <Box>
+                          <h4>{t`Saved here`}</h4>
+                        </Box>
+                      )}
+                    </Flex>
                     <Card>
                       {other.map(item => {
                         const { url, iconName, iconColor } = this._getItemProps(

@@ -312,6 +312,13 @@ export default class Navbar extends Component {
               </Box>
             </Box>
           </PopoverWithTrigger>
+          <Box>
+            <Link to="collection/root">
+              <Box p={1} bg="#69ABE6" className="text-bold rounded">
+                Saved items
+              </Box>
+            </Link>
+          </Box>
           <Box mx={2}>
             <Tooltip tooltip={t`Reference`}>
               <Link to="reference">

@@ -69,14 +69,15 @@ export class SchemaBrowser extends React.Component {
                       <Link
                         to={`/browse/${dbId}/schema/${schema.name}`}
                         mb={1}
-                        hover={{ color: normal.blue }}
+                        hover={{ color: normal.purple }}
                       >
-                        <Card p={2} mb={1}>
-                          <Flex align="center">
-                            {/* TODO: schema icon? */}
-                            {/* <Icon mr={1} name="table" /> */}
-                            <Box>{schema.name}</Box>
-                          </Flex>
+                        <Card hoverable>
+                          <EntityItem
+                            name={schema.name}
+                            iconName="folder"
+                            iconColor={normal.purple}
+                            item={schema}
+                          />
                         </Card>
                       </Link>
                     </GridItem>
