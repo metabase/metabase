@@ -77,19 +77,28 @@ function compileFormatter(
         return v => (v !== value ? color : null);
     }
   } else if (format.type === "range") {
+    const columnMin = name =>
+      columnExtents && columnExtents[name] && columnExtents[name][0];
+    const columnMax = name =>
+      columnExtents && columnExtents[name] && columnExtents[name][1];
+
     const min =
       format.min_type === "custom"
         ? format.min_value
         : format.min_type === "all"
-          ? Math.min(...format.columns.map(name => columnExtents[name][0]))
-          : columnExtents[columnName][0];
-
+          ? Math.min(...format.columns.map(columnMin))
+          : columnMin(columnName);
     const max =
       format.max_type === "custom"
         ? format.max_value
         : format.max_type === "all"
-          ? Math.max(...format.columns.map(name => columnExtents[name][1]))
-          : columnExtents[columnName][1];
+          ? Math.max(...format.columns.map(columnMax))
+          : columnMax(columnName);
+
+    if (typeof max !== "number" || typeof min !== "number") {
+      console.warn("Invalid range min/max", min, max);
+      return () => null;
+    }
 
     return getColorScale(
       [min, max],
