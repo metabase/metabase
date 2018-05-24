@@ -49,7 +49,12 @@ const alpha = (color, amount) =>
     .alpha(amount)
     .string();
 
-function compileFormatter(format, data, isRowFormatter = false) {
+function compileFormatter(
+  format,
+  columnName,
+  columnExtents,
+  isRowFormatter = false,
+) {
   if (format.type === "single") {
     let { operator, value, color } = format;
     if (isRowFormatter) {
@@ -72,26 +77,22 @@ function compileFormatter(format, data, isRowFormatter = false) {
         return v => (v !== value ? color : null);
     }
   } else if (format.type === "range") {
-    const extent = format.columns
-      .map(colName => {
-        const colIndex = _.findIndex(data.cols, col => col.name === colName);
-        return d3.extent(data.rows, row => row[colIndex]);
-      })
-      .reduce(
-        ([minA, maxA], [minB, maxB]) => [
-          Math.min(minA, minB),
-          Math.max(maxA, maxB),
-        ],
-        [Infinity, -Infinity],
-      );
-    if (format.min_type === "custom") {
-      extent[0] = format.min_value;
-    }
-    if (format.max_type === "custom") {
-      extent[1] = format.max_value;
-    }
+    const min =
+      format.min_type === "custom"
+        ? format.min_value
+        : format.min_type === "all"
+          ? Math.min(...format.columns.map(name => columnExtents[name][0]))
+          : columnExtents[columnName][0];
+
+    const max =
+      format.max_type === "custom"
+        ? format.max_value
+        : format.max_type === "all"
+          ? Math.max(...format.columns.map(name => columnExtents[name][1]))
+          : columnExtents[columnName][1];
+
     return getColorScale(
-      extent,
+      [min, max],
       format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
     ).clamp(true);
   } else {
@@ -100,24 +101,38 @@ function compileFormatter(format, data, isRowFormatter = false) {
   }
 }
 
-function compileFormatters(formats, data) {
+function computeColumnExtents(formats, data) {
+  return _.chain(formats)
+    .map(format => format.columns)
+    .flatten()
+    .uniq()
+    .map(columnName => {
+      const colIndex = _.findIndex(data.cols, col => col.name === columnName);
+      return [columnName, d3.extent(data.rows, row => row[colIndex])];
+    })
+    .object()
+    .value();
+}
+
+function compileFormatters(formats, columnExtents) {
   const formatters = {};
   for (const format of formats) {
-    const formatter = compileFormatter(format, data);
-    for (const colName of format.columns) {
-      formatters[colName] = formatters[colName] || [];
-      formatters[colName].push(formatter);
+    for (const columnName of format.columns) {
+      formatters[columnName] = formatters[columnName] || [];
+      formatters[columnName].push(
+        compileFormatter(format, columnName, columnExtents, false),
+      );
     }
   }
   return formatters;
 }
 
-function compileRowFormatters(formats, data) {
+function compileRowFormatters(formats) {
   const rowFormatters = [];
   for (const format of formats.filter(
     format => format.type === "single" && format.highlight_row,
   )) {
-    const formatter = compileFormatter(format, data, true);
+    const formatter = compileFormatter(format, null, null, true);
     if (formatter) {
       for (const colName of format.columns) {
         rowFormatters.push((row, colIndexes) =>
@@ -204,8 +219,9 @@ export default class Table extends Component {
         let formatters = {};
         let rowFormatters = [];
         try {
-          formatters = compileFormatters(formats, data);
-          rowFormatters = compileRowFormatters(formats, data);
+          const columnExtents = computeColumnExtents(formats, data);
+          formatters = compileFormatters(formats, columnExtents);
+          rowFormatters = compileRowFormatters(formats, columnExtents);
         } catch (e) {
           console.error(e);
         }

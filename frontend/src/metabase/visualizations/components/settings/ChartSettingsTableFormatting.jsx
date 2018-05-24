@@ -54,8 +54,8 @@ const DEFAULTS_BY_TYPE = {
     columns: [],
     type: "range",
     colors: COLOR_RANGES[0],
-    min_type: "min",
-    max_type: "max",
+    min_type: null,
+    max_type: null,
     min_value: 0,
     max_value: 100,
   },
@@ -330,10 +330,16 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => (
         <Radio
           value={rule.min_type}
           onChange={min_type => onChange({ ...rule, min_type })}
-          options={[
-            { name: t`Smallest value in the table`, value: "min" },
-            { name: t`Custom value`, value: "custom" },
-          ]}
+          options={(rule.columns.length <= 1
+            ? [{ name: t`Smallest value in this column`, value: null }]
+            : [
+                { name: t`Smallest value in each column`, value: null },
+                {
+                  name: t`Smallest value in all of these columns`,
+                  value: "all",
+                },
+              ]
+          ).concat([{ name: t`Custom value`, value: "custom" }])}
           isVertical
         />
         {rule.min_type === "custom" && (
@@ -346,10 +352,16 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => (
         <Radio
           value={rule.max_type}
           onChange={max_type => onChange({ ...rule, max_type })}
-          options={[
-            { name: t`Largest value in the table`, value: "max" },
-            { name: t`Custom value`, value: "custom" },
-          ]}
+          options={(rule.columns.length <= 1
+            ? [{ name: t`Largest value in this column`, value: null }]
+            : [
+                { name: t`Largest value in each column`, value: null },
+                {
+                  name: t`Largest value in all of these columns`,
+                  value: "all",
+                },
+              ]
+          ).concat([{ name: t`Custom value`, value: "custom" }])}
           isVertical
         />
         {rule.max_type === "custom" && (
