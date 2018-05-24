@@ -98,11 +98,11 @@
       (db/delete! model k id))))
 
 (def ^:private default-user-fields
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :is_active])
 
 (def all-user-fields
   "Seq of all the columns stored for a user"
-  (vec (concat default-user-fields [:google_auth :ldap_auth :is_active :updated_at])))
+  (vec (concat default-user-fields [:google_auth :ldap_auth :updated_at])))
 
 (u/strict-extend (class User)
   models/IModel

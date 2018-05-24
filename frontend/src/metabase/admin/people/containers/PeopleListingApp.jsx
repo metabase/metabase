@@ -18,6 +18,7 @@ import Radio from "metabase/components/Radio";
 
 import { t, jt } from "c-3po";
 import _ from "underscore";
+import moment from "moment";
 import EditUserForm from "../components/EditUserForm.jsx";
 import UserActionsSelect from "../components/UserActionsSelect.jsx";
 import UserGroupSelect from "../components/UserGroupSelect.jsx";
@@ -517,7 +518,7 @@ export default class PeopleListingApp extends Component {
                       {showDeactivated
                         ? [
                             <td key="deactivated_at">
-                              {user.updated_at.fromNow()}
+                              {moment(user.updated_at).fromNow()}
                             </td>,
                             <td key="actions">
                               <Tooltip tooltip={t`Reactivate this account`}>
@@ -546,7 +547,7 @@ export default class PeopleListingApp extends Component {
                             </td>,
                             <td key="last_login">
                               {user.last_login
-                                ? user.last_login.fromNow()
+                                ? moment(user.last_login).fromNow()
                                 : t`Never`}
                             </td>,
                             <td key="actions" className="text-right">
