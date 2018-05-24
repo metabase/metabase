@@ -15,6 +15,7 @@
              [add-settings :as add-settings]
              [annotate-and-sort :as annotate-and-sort]
              [binning :as binning]
+             [bind-effective-timezone :as bind-timezone]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
              [cumulative-aggregations :as cumulative-ags]
@@ -34,7 +35,9 @@
              [resolve :as resolve]
              [source-table :as source-table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -106,6 +109,7 @@
       driver-specific/process-query-in-context         ; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
       add-settings/add-settings
       resolve-driver/resolve-driver                    ; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲ All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
+      bind-timezone/bind-effective-timezone
       fetch-source-query/fetch-source-query
       log-query/log-initial-query
       cache/maybe-return-cached-results
@@ -140,7 +144,8 @@
        expand-macros/expand-macros
        driver-specific/process-query-in-context
        resolve-driver/resolve-driver
-       fetch-source-query/fetch-source-query))
+       fetch-source-query/fetch-source-query
+       bind-timezone/bind-effective-timezone))
 ;; ▲▲▲ This only does PRE-PROCESSING, so it happens from bottom to top, eventually returning the preprocessed query
 ;; instead of running it
 
@@ -229,7 +234,7 @@
    :hash              (or query-hash (throw (Exception. "Missing query hash!")))
    :native            (= query-type "native")
    :json_query        (dissoc query :info)
-   :started_at        (u/new-sql-timestamp)
+   :started_at        (du/new-sql-timestamp)
    :running_time      0
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})

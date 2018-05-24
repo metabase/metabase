@@ -13,7 +13,7 @@
             [metabase.query-processor.util :as qputil]
             [toucan.db :as db]))
 
-(def ^:const activity-feed-topics
+(def activity-feed-topics
   "The `Set` of event topics which are subscribed to for use in the Metabase activity feed."
   #{:alert-create
     :alert-delete
@@ -40,7 +40,7 @@
   (async/chan))
 
 
-;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
+;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
 
 (defn- inner-query->source-table-id
   "Recurse through INNER-QUERY source-queries as needed until we can return the ID of this query's source-table."
@@ -64,15 +64,18 @@
       :table-id    table-id)))
 
 (defn- process-dashboard-activity! [topic object]
-  (let [create-delete-details #(select-keys % [:description :name])
-        add-remove-card-details (fn [{:keys [dashcards] :as obj}]
-                                  ;; we expect that the object has just a dashboard :id at the top level
-                                  ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-                                  (-> (db/select-one [Dashboard :description :name], :id (events/object->model-id topic obj))
-                                      (assoc :dashcards (for [{:keys [id card_id]} dashcards]
-                                                          (-> (db/select-one [Card :name :description], :id card_id)
-                                                              (assoc :id id)
-                                                              (assoc :card_id card_id))))))]
+  (let [create-delete-details
+        #(select-keys % [:description :name])
+
+        add-remove-card-details
+        (fn [{:keys [dashcards] :as obj}]
+          ;; we expect that the object has just a dashboard :id at the top level
+          ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
+          (-> (db/select-one [Dashboard :description :name], :id (events/object->model-id topic obj))
+              (assoc :dashcards (for [{:keys [id card_id]} dashcards]
+                                  (-> (db/select-one [Card :name :description], :id card_id)
+                                      (assoc :id id)
+                                      (assoc :card_id card_id))))))]
     (activity/record-activity!
       :topic      topic
       :object     object
@@ -157,8 +160,7 @@
       (log/warn (format "Failed to process activity event. %s" (:topic activity-event)) e))))
 
 
-;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
-
+;;; ---------------------------------------------------- LIFECYLE ----------------------------------------------------
 
 (defn events-init
   "Automatically called during startup; start the events listener for the activity feed."

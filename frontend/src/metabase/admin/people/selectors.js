@@ -23,3 +23,19 @@ export const getUsers = createSelector(
           .value(),
     })),
 );
+
+// sort the users list by last_name, ignore case or diacritical marks. If last names are the same then compare by first
+// name
+const compareNames = (a, b) =>
+  a.localeCompare(b, undefined, { sensitivty: "base" });
+
+export const getSortedUsers = createSelector(
+  [getUsers],
+  users =>
+    users &&
+    _.values(users).sort(
+      (a, b) =>
+        compareNames(a.last_name, b.last_name) ||
+        compareNames(a.first_name, b.first_name),
+    ),
+);

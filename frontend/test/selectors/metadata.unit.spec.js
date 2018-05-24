@@ -11,11 +11,11 @@ import {
 
 import { copyObjects } from "../../src/metabase/selectors/metadata";
 
-const NUM_TABLES = Object.keys(state.metadata.tables).length;
-const NUM_DBS = Object.keys(state.metadata.databases).length;
-const NUM_FIELDS = Object.keys(state.metadata.fields).length;
-const NUM_METRICS = Object.keys(state.metadata.metrics).length;
-const NUM_SEGMENTS = Object.keys(state.metadata.segments).length;
+const NUM_TABLES = Object.keys(state.entities.tables).length;
+const NUM_DBS = Object.keys(state.entities.databases).length;
+const NUM_FIELDS = Object.keys(state.entities.fields).length;
+const NUM_METRICS = Object.keys(state.entities.metrics).length;
+const NUM_SEGMENTS = Object.keys(state.entities.segments).length;
 
 // NOTE: Also tests in redux/metadata.spec.js cover the use of metadata selectors
 describe("getMetadata", () => {
@@ -60,7 +60,7 @@ describe("getMetadata", () => {
 describe("copyObjects", () => {
   it("should clone each object in the provided mapping of objects", () => {
     const meta = new Metadata();
-    const databases = state.metadata.databases;
+    const databases = state.entities.databases;
     const copiedDatabases = copyObjects(meta, databases, Database);
 
     expect(Object.keys(copiedDatabases).length).toEqual(NUM_DBS);

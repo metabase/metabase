@@ -1,8 +1,6 @@
 /* @flow */
 
-import api from "metabase/lib/api";
-const { GET, PUT, POST, DELETE } = api;
-
+import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 // use different endpoints for embed previews

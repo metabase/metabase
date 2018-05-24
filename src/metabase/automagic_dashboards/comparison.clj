@@ -1,8 +1,8 @@
 (ns metabase.automagic-dashboards.comparison
-  (:require [clojure.string :as str]
-            [metabase.api.common :as api]
-            [metabase.automagic-dashboards
-             [populate :as populate]]))
+  #_(:require [clojure.string :as str]
+              [metabase.api.common :as api]
+              [metabase.automagic-dashboards
+               [populate :as populate]]))
 
 ;; (defn- dashboard->cards
 ;;   [dashboard]

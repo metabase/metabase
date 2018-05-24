@@ -1,8 +1,7 @@
 (ns metabase.models.card
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase
              [public-settings :as public-settings]

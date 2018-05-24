@@ -30,6 +30,9 @@ import * as qb from "metabase/query_builder/reducers";
 /* data reference */
 import reference from "metabase/reference/reference";
 
+/* revisions */
+import revisions from "metabase/redux/revisions";
+
 /* alerts */
 import alert from "metabase/alert/alert";
 
@@ -54,6 +57,7 @@ export default {
   collections,
   labels,
   reference,
+  revisions,
   xray,
   setup: combineReducers(setup),
   user: combineReducers(user),

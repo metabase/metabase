@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { t } from "c-3po";
 import Button from "metabase/components/Button";
 import ColorPicker from "metabase/components/ColorPicker";
-import FormField from "metabase/components/FormField";
+import FormField from "metabase/components/form/FormField";
 import Input from "metabase/components/Input";
 import Modal from "metabase/components/Modal";
 

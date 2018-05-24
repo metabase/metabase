@@ -212,6 +212,12 @@ export const field_special_types_map = field_special_types.reduce(
   {},
 );
 
+export const has_field_values_options = [
+  { name: t`Search box`, value: "search" },
+  { name: t`A list of all values`, value: "list" },
+  { name: t`Plain input box`, value: "none" },
+];
+
 export const field_visibility_types = [
   {
     id: "normal",

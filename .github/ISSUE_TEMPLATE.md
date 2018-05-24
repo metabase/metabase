@@ -7,6 +7,10 @@ If there's an existing issue, please add a :+1: reaction to the description of
 the issue. One way we prioritize issues is by the number of :+1: reactions on
 their descriptions. Please DO NOT add `+1` or :+1: comments.
 
+### Security Disclosure
+
+Security is very important to us. If discover any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a GitHub issue.
+
 ### Database support
 
 For requests for new database drivers, please include the name

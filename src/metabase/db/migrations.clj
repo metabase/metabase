@@ -10,9 +10,8 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
-             [db :as mdb]
              [config :as config]
-             [driver :as driver]
+             [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.events.activity-feed :refer [activity-feed-topics]]
@@ -31,6 +30,7 @@
              [table :as table :refer [Table]]
              [user :refer [User]]]
             [metabase.query-processor.util :as qputil]
+            [metabase.util.date :as du]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -51,7 +51,7 @@
       (@migration-var)
       (db/insert! DataMigrations
         :id        migration-name
-        :timestamp (u/new-sql-timestamp)))))
+        :timestamp (du/new-sql-timestamp)))))
 
 (def ^:private data-migrations (atom []))
 

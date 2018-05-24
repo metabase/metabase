@@ -119,7 +119,7 @@ export class Dashboards extends Component {
                       <p className="text-grey-4">{t`Try adjusting your filter to find what you’re looking for.`}</p>
                     </div>
                   }
-                  image="/app/img/empty_dashboard"
+                  image="app/img/empty_dashboard"
                   imageClassName="mln2"
                   smallDescription
                 />
