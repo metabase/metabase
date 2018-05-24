@@ -273,7 +273,7 @@
   (let [dashcards  (:ordered_cards dashboard)
         dashboard  (db/insert! Dashboard
                      (-> dashboard
-                         (dissoc :ordered_cards :rule :related :transient_name
+                         (dissoc :ordered_cards :rule :related :more :transient_name
                                  :transient_filters)
                          (assoc :description (->> dashboard
                                                   :transient_filters
