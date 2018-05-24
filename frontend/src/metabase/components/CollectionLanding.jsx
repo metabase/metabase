@@ -286,27 +286,16 @@ class CollectionLanding extends React.Component {
           <Flex py={3} align="center">
             <Subhead>
               <Flex align="center">
-                <Flex>
-                  {/* TODO - figure out the right way to grab this */}
-                  <Link
-                    to="/"
-                    hover={{ color: normal.blue }}
-                    color={currentCollection.name ? normal.grey2 : normal.text}
-                  >
-                    {window.MetabaseBootstrap.site_name}
-                  </Link>
-                </Flex>
                 {collectionId && (
                   <Flex align="center">
-                    <Icon name="chevronright" m={2} color={normal.grey2} />
-                    <Flex>
-                      <Link
-                        to={`/collection/${collectionId}`}
-                        hover={{ color: normal.blue }}
-                      >
-                        {currentCollection.name}
-                      </Link>
-                    </Flex>
+                    <Link
+                      to={`/collection/${collectionId}`}
+                      hover={{ color: normal.blue }}
+                    >
+                      {collectionId === "root"
+                        ? "Saved items"
+                        : currentCollection.name}
+                    </Link>
                   </Flex>
                 )}
               </Flex>
