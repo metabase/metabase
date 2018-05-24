@@ -42,24 +42,26 @@
   (some-fn :id :name))
 
 (defn- ->field
-  [root]
+  [root id-or-name]
   (if (->> root :source (instance? (type Table)))
-    Field
-    (->> root
-         :source
-         :result_metadata
-         (map (fn [field]
-                [(:name field) (-> field
-                                   (update :base_type keyword)
-                                   (update :special_type keyword)
-                                   field/map->FieldInstance
-                                   (classify/run-classifiers {}))]))
-         (into {}))))
+    (Field id-or-name)
+    (let [field (->> root
+                     :source
+                     :result_metadata
+                     (some (comp #{id-or-name} :name)))]
+      (-> field
+          (update :base_type keyword)
+          (update :special_type keyword)
+          field/map->FieldInstance
+          (classify/run-classifiers {})))))
 
 (defn- metric->description
-  [->field metric]
+  [root metric]
   (let [aggregation-clause (-> metric :definition :aggregation first)
-        field              (some-> aggregation-clause second filters/field-reference->id ->field)]
+        field              (some->> aggregation-clause
+                                    second
+                                    filters/field-reference->id
+                                    (->field root))]
     (if field
       (format (tru "%s of %s")
               (-> aggregation-clause first name str/capitalize)
@@ -76,7 +78,7 @@
       :else       (recur (format "%s, %s" acc x) xs))))
 
 (defn- question-description
-  [->field question]
+  [root question]
   (let [aggregations (->> (qp.util/get-in-normalized question [:dataset_query :query :aggregation])
                           (map (fn [[op arg]]
                                  (cond
@@ -86,17 +88,17 @@
                                    arg
                                    (format (tru "%s of %s")
                                            (name op)
-                                           (-> arg
-                                               filters/field-reference->id
-                                               ->field
-                                               :display_name))
+                                           (->> arg
+                                                filters/field-reference->id
+                                                (->field root)
+                                                :display_name))
 
                                    :else
                                    (name op))))
                           join-enumeration)
         dimensions   (->> (qp.util/get-in-normalized question [:dataset_query :query :breakout])
                           (mapcat filters/collect-field-references)
-                          (map (comp :display_name ->field filters/field-reference->id))
+                          (map (comp :display_name (partial ->field root) filters/field-reference->id))
                           join-enumeration)]
     (format "%s by %s" aggregations dimensions)))
 
@@ -198,7 +200,7 @@
      :full-name    (cond
                      (native-query? query) (tru "Native query")
                      (table-like? query)   (-> source ->root :full-name)
-                     :else                 (question-description (->field {:source source}) query))
+                     :else                 (question-description {:source source} query))
      :url          (format "%sadhoc/%s" public-endpoint (encode-base64-json query))
      :rules-prefix (if (table-like? query)
                      "table"
@@ -803,9 +805,9 @@
                                                          :source_table (:table_id question)}
                                             :table_id   (:table_id question)})]
                                (-> metric
-                                   (assoc :name (metric->description (->field root) metric))))))))
+                                   (assoc :name (metric->description root metric))))))))
                (->> (qp.util/get-in-normalized question [:dataset_query :query :breakout])
-                    (map (comp (->field root)
+                    (map (comp (partial ->field root)
                                filters/field-reference->id
                                first
                                filters/collect-field-references))))
@@ -846,7 +848,7 @@
               (update opts :cell-query merge-filter-clauses
                       (qp.util/get-in-normalized query [:dataset_query :query :filter]))))
       (let [opts (assoc opts :show :all)]
-        (->> (decompose-question query opts)
+        (->> (decompose-question root query opts)
              (apply populate/merge-dashboards (automagic-dashboard root))
              (merge {:related (related {:entity query} nil)}))))))
 
