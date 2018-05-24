@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Flex, Subhead } from "rebass";
 import { connect } from "react-redux";
+import { t } from "c-3po";
 
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
 import { DatabaseListLoader } from "metabase/components/BrowseApp";
@@ -31,6 +32,9 @@ class Overworld extends React.Component {
       <Box px={4}>
         <Box my={3}>
           <Subhead>{Greeting.sayHello(this.props.user.first_name)}</Subhead>
+        </Box>
+        <Box mt={3} mb={1}>
+          <h4>{t`Pinned dashboards`}</h4>
         </Box>
         <CollectionItemsLoader collectionId="root">
           {({ dashboards }) => {
@@ -79,7 +83,7 @@ class Overworld extends React.Component {
         </CollectionItemsLoader>
 
         <Box mt={4}>
-          <h4>Our data</h4>
+          <h4>{t`Our data`}</h4>
           <Box mt={2}>
             <DatabaseListLoader>
               {({ databases }) => {
@@ -95,7 +99,7 @@ class Overworld extends React.Component {
                               mb={3}
                               size={28}
                             />
-                            <Subhead>{database.name}</Subhead>
+                            <h3>{database.name}</h3>
                           </Card>
                         </Link>
                       </GridItem>
