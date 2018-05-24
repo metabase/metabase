@@ -1,5 +1,7 @@
 import React from "react";
 import { Box, Flex, Subhead } from "rebass";
+import { connect } from "react-redux";
+import { t } from "c-3po";
 
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
 import { DatabaseListLoader } from "metabase/components/BrowseApp";
@@ -13,14 +15,26 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
+import { getUser } from "metabase/home/selectors";
+
+import Greeting from "metabase/lib/greeting";
+
+const mapStateToProps = state => ({
+  user: getUser(state),
+});
+
 //class Overworld extends Zelda
+@connect(mapStateToProps)
 @withBackground("bg-slate-extra-light")
 class Overworld extends React.Component {
   render() {
     return (
       <Box px={4}>
         <Box my={3}>
-          <Subhead>Hi, Kyle</Subhead>
+          <Subhead>{Greeting.sayHello(this.props.user.first_name)}</Subhead>
+        </Box>
+        <Box mt={3} mb={1}>
+          <h4>{t`Pinned dashboards`}</h4>
         </Box>
         <CollectionItemsLoader collectionId="root">
           {({ dashboards }) => {
@@ -69,7 +83,7 @@ class Overworld extends React.Component {
         </CollectionItemsLoader>
 
         <Box mt={4}>
-          <h4>Our data</h4>
+          <h4>{t`Our data`}</h4>
           <Box mt={2}>
             <DatabaseListLoader>
               {({ databases }) => {
@@ -78,15 +92,19 @@ class Overworld extends React.Component {
                     {databases.map(database => (
                       <GridItem>
                         <Link to={`browse/${database.id}`}>
-                          <Card p={3} hover={{ color: normal.blue }} hoverable>
+                          <Box
+                            p={3}
+                            hover={{ color: normal.blue }}
+                            bg="#f5f5f5"
+                          >
                             <Icon
                               name="database"
                               color={normal.green}
                               mb={3}
                               size={28}
                             />
-                            <Subhead>{database.name}</Subhead>
-                          </Card>
+                            <h3>{database.name}</h3>
+                          </Box>
                         </Link>
                       </GridItem>
                     ))}

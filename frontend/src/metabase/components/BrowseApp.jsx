@@ -1,10 +1,12 @@
 import React from "react";
-import { Box, Flex, Subhead, Text } from "rebass";
+import { Box, Flex, Subhead } from "rebass";
 import { t } from "c-3po";
 
+import EntityItem from "metabase/components/EntityItem";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 
+import { withBackground } from "metabase/hoc/Background";
 import { normal } from "metabase/lib/colors";
 import Question from "metabase-lib/lib/Question";
 
@@ -61,21 +63,26 @@ export class SchemaBrowser extends React.Component {
                     { title: <DatabaseName dbId={dbId} /> },
                   ]}
                 />
-                {schemas.map(schema => (
-                  <Link
-                    to={`/browse/${dbId}/schema/${schema.name}`}
-                    mb={1}
-                    hover={{ color: normal.blue }}
-                  >
-                    <Card p={2} mb={1}>
-                      <Flex align="center">
-                        {/* TODO: schema icon? */}
-                        {/* <Icon mr={1} name="table" /> */}
-                        <Box>{schema.name}</Box>
-                      </Flex>
-                    </Card>
-                  </Link>
-                ))}
+                <Grid>
+                  {schemas.map(schema => (
+                    <GridItem w={1 / 3}>
+                      <Link
+                        to={`/browse/${dbId}/schema/${schema.name}`}
+                        mb={1}
+                        hover={{ color: normal.purple }}
+                      >
+                        <Card hoverable>
+                          <EntityItem
+                            name={schema.name}
+                            iconName="folder"
+                            iconColor={normal.purple}
+                            item={schema}
+                          />
+                        </Card>
+                      </Link>
+                    </GridItem>
+                  ))}
+                </Grid>
               </Box>
             ) : (
               <TableBrowser {...this.props} />
@@ -106,26 +113,29 @@ export class TableBrowser extends React.Component {
                     schemaName != null && { title: schemaName },
                   ]}
                 />
-                {tables.map(table => {
-                  const link = Question.create({
-                    databaseId: parseInt(dbId),
-                    tableId: table.id,
-                  }).getUrl();
+                <Grid>
+                  {tables.map(table => {
+                    const link = Question.create({
+                      databaseId: parseInt(dbId),
+                      tableId: table.id,
+                    }).getUrl();
 
-                  return (
-                    <Link to={link} mb={1} hover={{ color: normal.blue }}>
-                      <Card p={2} mb={1}>
-                        <Flex align="center">
-                          <Icon mr={1} name="table" />
-                          <Box>
-                            {table.display_name || table.name}
-                            <Text>{table.description}</Text>
-                          </Box>
-                        </Flex>
-                      </Card>
-                    </Link>
-                  );
-                })}
+                    return (
+                      <GridItem w={1 / 3}>
+                        <Link to={link} mb={1} hover={{ color: normal.purple }}>
+                          <Card hoverable>
+                            <EntityItem
+                              item={table}
+                              name={table.display_name || table.name}
+                              iconName="table"
+                              iconColor={normal.purple}
+                            />
+                          </Card>
+                        </Link>
+                      </GridItem>
+                    );
+                  })}
+                </Grid>
               </Box>
             );
           }}
@@ -135,11 +145,10 @@ export class TableBrowser extends React.Component {
   }
 }
 
+@withBackground("bg-slate-extra-light")
 export class BrowseApp extends React.Component {
   render() {
-    return (
-      <Box className="wrapper lg-wrapper--trim">{this.props.children}</Box>
-    );
+    return <Box mx={4}>{this.props.children}</Box>;
   }
 }
 

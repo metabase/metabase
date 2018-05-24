@@ -2,6 +2,7 @@
 
 import { createEntity } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
+import { normal } from "metabase/lib/colors";
 
 const Dashboards = createEntity({
   name: "dashboards",
@@ -21,6 +22,7 @@ const Dashboards = createEntity({
     getName: dashboard => dashboard && dashboard.name,
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard.id),
     getIcon: dashboard => "dashboard",
+    getColor: () => normal.blue,
   },
 
   form: {

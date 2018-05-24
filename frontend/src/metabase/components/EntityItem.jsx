@@ -12,6 +12,9 @@ const EntityItemWrapper = Flex.extend`
   &:hover {
     color: ${normal.blue};
   }
+  &:last-child {
+    border-bottom: none;
+  }
 `;
 
 const IconWrapper = Flex.extend`
@@ -38,7 +41,7 @@ const EntityItem = ({ name, iconName, iconColor, item, onPin }) => {
             onPin(item);
           }}
         >
-          <Icon name="star" />
+          <Icon name="pin" />
         </Box>
       )}
     </EntityItemWrapper>

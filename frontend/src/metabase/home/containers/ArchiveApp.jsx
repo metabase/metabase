@@ -2,10 +2,13 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "c-3po";
 
+import { Box, Flex } from "rebass";
+
 import HeaderWithBack from "metabase/components/HeaderWithBack";
-import SearchHeader from "metabase/components/SearchHeader";
+import Card from "metabase/components/Card";
 import ArchivedItem from "../../components/ArchivedItem";
 
+import { withBackground } from "metabase/hoc/Background";
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 import listSearch from "metabase/hoc/ListSearch";
 
@@ -23,34 +26,38 @@ const mapStateToProps = (state, props) => ({
 })
 @listSearch()
 @connect(mapStateToProps, null)
+@withBackground("bg-slate-extra-light")
 export default class ArchiveApp extends Component {
   render() {
-    const { isAdmin, list, reload, searchText, onSetSearchText } = this.props;
+    const { isAdmin, list, reload } = this.props;
     return (
-      <div className="px4 pt3">
-        <div className="flex align-center mb2">
+      <Box mx={4}>
+        <Flex align="center" mb={2} py={3}>
           <HeaderWithBack name={t`Archive`} />
-        </div>
-        <SearchHeader searchText={searchText} setSearchText={onSetSearchText} />
-        {list.map(item => (
-          <ArchivedItem
-            key={item.type + item.id}
-            type={item.type}
-            name={item.getName()}
-            icon={item.getIcon()}
-            color={item.getColor()}
-            isAdmin={isAdmin}
-            onUnarchive={
-              item.setArchived
-                ? async () => {
-                    await item.setArchived(false);
-                    reload();
-                  }
-                : null
-            }
-          />
-        ))}
-      </div>
+        </Flex>
+        <Box w={2 / 3}>
+          <Card>
+            {list.map(item => (
+              <ArchivedItem
+                key={item.type + item.id}
+                type={item.type}
+                name={item.getName()}
+                icon={item.getIcon()}
+                color={item.getColor()}
+                isAdmin={isAdmin}
+                onUnarchive={
+                  item.setArchived
+                    ? async () => {
+                        await item.setArchived(false);
+                        reload();
+                      }
+                    : null
+                }
+              />
+            ))}
+          </Card>
+        </Box>
+      </Box>
     );
   }
 }

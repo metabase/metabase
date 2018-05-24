@@ -26,7 +26,7 @@ const Collections = createEntity({
     getUrl: collection =>
       collection &&
       (collection.id === "root" ? `/` : `/collection/${collection.id}`),
-    getIcon: collection => "collection",
+    getIcon: collection => "all",
   },
 
   form: {

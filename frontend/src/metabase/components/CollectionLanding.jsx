@@ -37,27 +37,24 @@ const mapDispatchToProps = {
   updateDashboard: Dashboard.actions.update,
 };
 
-const CollectionCard = Card.extend`
-  border-color: #dce1e4;
-  &:hover > Icon {
-    background-color: ${normal.blue};
-  }
-`;
-
 const CollectionItem = ({ collection }) => (
-  <Link to={`collection/${collection.id}`} hover={{ color: normal.blue }}>
-    <CollectionCard hoverable>
-      <Flex
-        align="center"
-        my={1}
-        px={1}
-        py={1}
-        key={`collection-${collection.id}`}
-      >
-        <Icon name="all" mx={1} color="#93B3C9" />
+  <Link
+    to={`collection/${collection.id}`}
+    hover={{ color: normal.blue }}
+    color={normal.grey2}
+  >
+    <Flex
+      align="center"
+      my={1}
+      px={1}
+      py={1}
+      key={`collection-${collection.id}`}
+    >
+      <Icon name="all" mx={1} />
+      <h4>
         <Truncate>{collection.name}</Truncate>
-      </Flex>
-    </CollectionCard>
+      </h4>
+    </Flex>
   </Link>
 );
 
@@ -155,13 +152,16 @@ class DefaultLanding extends React.Component {
     return (
       <Flex>
         {showCollectionList && (
-          <Box w={1 / 3} mr={2}>
+          <Box w={1 / 3} mr={3}>
+            <Box>
+              <h4>{t`Collections`}</h4>
+            </Box>
             <CollectionList />
           </Box>
         )}
         <Box w={2 / 3}>
           <Box>
-            <CollectionItemsLoader collectionId={collectionId || "root"} reload>
+            <CollectionItemsLoader collectionId={collectionId || "root"}>
               {({ allItems, pulses, cards, dashboards, empty }) => {
                 let items = allItems;
 
@@ -196,8 +196,14 @@ class DefaultLanding extends React.Component {
                 return (
                   <Box>
                     <Box mb={2}>
+                      {pinned.length > 0 && (
+                        <Box mb={2}>
+                          <h4>{t`Pinned items`}</h4>
+                        </Box>
+                      )}
                       <Grid>
                         {pinned.map(item => {
+                          // TODO - move this over to use item fns like getUrl()
                           const {
                             url,
                             iconName,
@@ -208,8 +214,9 @@ class DefaultLanding extends React.Component {
                               <Link
                                 to={url}
                                 className="hover-parent hover--visibility"
+                                hover={{ color: normal.blue }}
                               >
-                                <Card hoverable p={2}>
+                                <Card hoverable p={3}>
                                   <Icon
                                     name={iconName}
                                     color={iconColor}
@@ -226,7 +233,7 @@ class DefaultLanding extends React.Component {
                                         this._unPinItem(item);
                                       }}
                                     >
-                                      <Icon name="staroutline" />
+                                      <Icon name="pin" />
                                     </Box>
                                   </Flex>
                                 </Card>
@@ -236,6 +243,13 @@ class DefaultLanding extends React.Component {
                         })}
                       </Grid>
                     </Box>
+                    <Flex align="center" mb={2}>
+                      {pinned.length > 0 && (
+                        <Box>
+                          <h4>{t`Saved here`}</h4>
+                        </Box>
+                      )}
+                    </Flex>
                     <Card>
                       {other.map(item => {
                         const { url, iconName, iconColor } = this._getItemProps(
@@ -280,27 +294,16 @@ class CollectionLanding extends React.Component {
           <Flex py={3} align="center">
             <Subhead>
               <Flex align="center">
-                <Flex>
-                  {/* TODO - figure out the right way to grab this */}
-                  <Link
-                    to="/"
-                    hover={{ color: normal.blue }}
-                    color={currentCollection.name ? normal.grey2 : normal.text}
-                  >
-                    {window.MetabaseBootstrap.site_name}
-                  </Link>
-                </Flex>
                 {collectionId && (
                   <Flex align="center">
-                    <Icon name="chevronright" m={2} color={normal.grey2} />
-                    <Flex>
-                      <Link
-                        to={`/collection/${collectionId}`}
-                        hover={{ color: normal.blue }}
-                      >
-                        {currentCollection.name}
-                      </Link>
-                    </Flex>
+                    <Link
+                      to={`/collection/${collectionId}`}
+                      hover={{ color: normal.blue }}
+                    >
+                      {collectionId === "root"
+                        ? "Saved items"
+                        : currentCollection.name}
+                    </Link>
                   </Flex>
                 )}
               </Flex>

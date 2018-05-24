@@ -19,6 +19,7 @@ import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import Modal from "metabase/components/Modal";
 
@@ -54,10 +55,20 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
+const DefaultSearchColor = "#60A6E4";
+const ActiveSearchColor = "#7bb7ec";
+
 const SearchWrapper = Flex.extend`
-  ${width} background-color: #60A6E4;
+  ${width} background-color: ${props =>
+      props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
   align-items: center;
+  color: white;
+  border: 1px solid ${props => (props.active ? "#4894d8" : "transparent")};
+  transition: background 300ms ease-in;
+  &:hover {
+    background-color: ${ActiveSearchColor};
+  }
 `;
 
 const SearchInput = styled.input`
@@ -65,11 +76,12 @@ const SearchInput = styled.input`
   border: none;
   color: white;
   font-size: 1em;
+  font-weight: 700;
   &:focus {
     outline: none;
   }
-  &:placeholder {
-    color: white;
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.85);
   }
 `;
 
@@ -98,25 +110,32 @@ class SearchBar extends React.Component {
 
   render() {
     return (
-      <SearchWrapper w={2 / 3}>
-        <Icon name="search" ml={2} />
-        <SearchInput
-          w={1}
-          p={2}
-          value={this.state.searchText}
-          placeholder="Search for anything..."
+      <OnClickOutsideWrapper
+        handleDismissal={() => this.setState({ active: false })}
+      >
+        <SearchWrapper
           onClick={() => this.setState({ active: true })}
-          onChange={e => this.setState({ searchText: e.target.value })}
-          onKeyPress={e => {
-            if (e.key === "Enter") {
-              this.props.onChangeLocation({
-                pathname: "search",
-                query: { q: this.state.searchText },
-              });
-            }
-          }}
-        />
-      </SearchWrapper>
+          active={this.state.active}
+        >
+          <Icon name="search" ml={2} />
+          <SearchInput
+            w={1}
+            p={2}
+            value={this.state.searchText}
+            placeholder="Search for anything..."
+            onClick={() => this.setState({ active: true })}
+            onChange={e => this.setState({ searchText: e.target.value })}
+            onKeyPress={e => {
+              if (e.key === "Enter") {
+                this.props.onChangeLocation({
+                  pathname: "search",
+                  query: { q: this.state.searchText },
+                });
+              }
+            }}
+          />
+        </SearchWrapper>
+      </OnClickOutsideWrapper>
     );
   }
 }
@@ -226,16 +245,24 @@ export default class Navbar extends Component {
           <Link
             to="/"
             data-metabase-event={"Navbar;Logo"}
-            className="LogoNavItem NavItem cursor-pointer flex align-center transition-background justify-center"
+            className="LogoNavItem NavItem cursor-pointer relative z2 flex align-center transition-background justify-center"
           >
             <LogoIcon dark />
           </Link>
         </Box>
-        <SearchBar
-          location={this.props.location}
-          onChangeLocation={this.props.onChangeLocation}
-        />
-        <Flex ml="auto" align="center">
+        <Flex
+          className="absolute top left right bottom z1"
+          px={4}
+          align="center"
+        >
+          <Box w={2 / 3}>
+            <SearchBar
+              location={this.props.location}
+              onChangeLocation={this.props.onChangeLocation}
+            />
+          </Box>
+        </Flex>
+        <Flex ml="auto" align="center" className="relative z2">
           <PopoverWithTrigger
             ref={e => (this._newPopover = e)}
             triggerElement={
@@ -285,12 +312,12 @@ export default class Navbar extends Component {
               </Box>
             </Box>
           </PopoverWithTrigger>
-          <Box mx={2}>
-            <Tooltip tooltip={t`Browse data`}>
-              <Link to="browse">
-                <Icon name="grid" />
-              </Link>
-            </Tooltip>
+          <Box>
+            <Link to="collection/root">
+              <Box p={1} bg="#69ABE6" className="text-bold rounded">
+                Saved items
+              </Box>
+            </Link>
           </Box>
           <Box mx={2}>
             <Tooltip tooltip={t`Reference`}>
