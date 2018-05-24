@@ -409,6 +409,6 @@ const NumericInput = ({ value, onChange }) => (
     className="AdminSelect input mt1 full"
     type="number"
     value={value}
-    onChange={e => onChange(e.target.value)}
+    onChange={e => onChange(parseFloat(e.target.value))}
   />
 );
