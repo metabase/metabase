@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Flex, Subhead } from "rebass";
+import { connect } from "react-redux";
 
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
 import { DatabaseListLoader } from "metabase/components/BrowseApp";
@@ -13,16 +14,23 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
+import { getUser } from "metabase/home/selectors";
+
 import Greeting from "metabase/lib/greeting";
 
+const mapStateToProps = state => ({
+  user: getUser(state),
+});
+
 //class Overworld extends Zelda
+@connect(mapStateToProps)
 @withBackground("bg-slate-extra-light")
 class Overworld extends React.Component {
   render() {
     return (
       <Box px={4}>
         <Box my={3}>
-          <Subhead>{Greeting.sayHello()}</Subhead>
+          <Subhead>{Greeting.sayHello(this.props.user.first_name)}</Subhead>
         </Box>
         <CollectionItemsLoader collectionId="root">
           {({ dashboards }) => {
