@@ -97,8 +97,7 @@
                     (and (or (nil? visibility_type)
                              (= (name visibility_type) "normal"))
                          (not archived)
-                         ;(mi/can-read? entity)
-                         ))))
+                         (mi/can-read? entity)))))
 
 (defn- metrics-for-table
   [table]
