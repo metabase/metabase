@@ -63,21 +63,25 @@ export class SchemaBrowser extends React.Component {
                     { title: <DatabaseName dbId={dbId} /> },
                   ]}
                 />
-                {schemas.map(schema => (
-                  <Link
-                    to={`/browse/${dbId}/schema/${schema.name}`}
-                    mb={1}
-                    hover={{ color: normal.blue }}
-                  >
-                    <Card p={2} mb={1}>
-                      <Flex align="center">
-                        {/* TODO: schema icon? */}
-                        {/* <Icon mr={1} name="table" /> */}
-                        <Box>{schema.name}</Box>
-                      </Flex>
-                    </Card>
-                  </Link>
-                ))}
+                <Grid>
+                  {schemas.map(schema => (
+                    <GridItem w={1 / 3}>
+                      <Link
+                        to={`/browse/${dbId}/schema/${schema.name}`}
+                        mb={1}
+                        hover={{ color: normal.blue }}
+                      >
+                        <Card p={2} mb={1}>
+                          <Flex align="center">
+                            {/* TODO: schema icon? */}
+                            {/* <Icon mr={1} name="table" /> */}
+                            <Box>{schema.name}</Box>
+                          </Flex>
+                        </Card>
+                      </Link>
+                    </GridItem>
+                  ))}
+                </Grid>
               </Box>
             ) : (
               <TableBrowser {...this.props} />
