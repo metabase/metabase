@@ -93,8 +93,8 @@ class AutomaticDashboardApp extends React.Component {
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
-    const more = dashboard && dashboard.related && dashboard.related["more"];
-    const related = dashboard && _.omit(dashboard.related, "more");
+    const more = dashboard && dashboard.more;
+    const related = dashboard && dashboard.related;
     const hasSidebar = _.any(related || {}, list => list.length > 0);
 
     return (
@@ -146,17 +146,15 @@ class AutomaticDashboardApp extends React.Component {
           </div>
           {more && (
             <div className="flex justify-end px4 pb4">
-              {more.map(item => (
-                <Link
-                  to={item.url}
-                  className="ml2"
-                  onClick={() =>
-                    MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
-                  }
-                >
-                  <Button iconRight="chevronright">{item.title}</Button>
-                </Link>
-              ))}
+              <Link
+                to={more}
+                className="ml2"
+                onClick={() =>
+                  MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
+                }
+              >
+                <Button iconRight="chevronright">{t`Show more about this`}</Button>
+              </Link>
             </div>
           )}
         </div>
