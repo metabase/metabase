@@ -4,38 +4,122 @@
              [core :as t]
              [format :as time]]
             [clojure.math.numeric-tower :as math]
-            [metabase.util :as u])
+            [clojure.tools.logging :as log]
+            [metabase.util :as u]
+            [puppetlabs.i18n.core :refer [trs]])
   (:import clojure.lang.Keyword
            [java.sql Time Timestamp]
            [java.util Calendar Date TimeZone]
-           org.joda.time.DateTime
+           [org.joda.time DateTime DateTimeZone]
            org.joda.time.format.DateTimeFormatter))
+
+(def ^{:tag     TimeZone
+       :dynamic true
+       :doc     "Timezone to be used when formatting timestamps for display or for the data (pre aggregation)"}
+  *report-timezone*)
+
+(def ^{:dynamic true
+       :doc     "The timezone of the data being queried. Today this is the same as the database timezone."
+       :tag     TimeZone}
+  *data-timezone*)
+
+(defprotocol ITimeZoneCoercible
+  "Coerce object to `java.util.TimeZone`"
+  (coerce-to-timezone ^TimeZone [this]
+    "Coerce `this` to `java.util.TimeZone`"))
+
+(extend-protocol ^:private ITimeZoneCoercible
+  String       (coerce-to-timezone [this]
+                 (TimeZone/getTimeZone this))
+  TimeZone     (coerce-to-timezone [this]
+                 this)
+  DateTimeZone (coerce-to-timezone [this]
+                 (.toTimeZone this)))
+
+(def ^TimeZone utc
+  "UTC TimeZone"
+  (coerce-to-timezone "UTC"))
+
+(def ^:private jvm-timezone
+  (delay (coerce-to-timezone (System/getProperty "user.timezone"))))
+
+(defn- warn-on-timezone-conflict
+  "Attempts to check the combination of report-timezone, jvm-timezone and data-timezone to determine of we have a
+  possible conflict. If one is found, warn the user."
+  [driver db ^TimeZone report-timezone ^TimeZone jvm-timezone ^TimeZone data-timezone]
+  ;; No need to check this if we don't have a data-timezone
+  (when (and data-timezone driver)
+    (let [jvm-data-tz-conflict? (not (.hasSameRules jvm-timezone data-timezone))]
+      (if ((resolve 'metabase.driver/driver-supports?) driver :set-timezone)
+        ;; This database could have a report-timezone configured, if it doesn't and the JVM and data timezones don't
+        ;; match, we should suggest that the user configure a report timezone
+        (when (and (not report-timezone)
+                   jvm-data-tz-conflict?)
+          (log/warn (str (trs "Possible imezone conflict found on database {0}." (:name db))
+                         (trs "JVM timezone is {0} and detected database timezone is {1}."
+                              (.getID jvm-timezone) (.getID data-timezone))
+                         (trs "Configure a report timezone to ensure proper date and time conversions."))))
+        ;; This database doesn't support a report timezone, check the JVM and data timezones, if they don't match,
+        ;; warn the user
+        (when jvm-data-tz-conflict?
+          (log/warn (str (trs "Possible timezone conflict found on database {0}." (:name db))
+                         (trs "JVM timezone is {0} and detected database timezone is {1}."
+                              (.getID jvm-timezone) (.getID data-timezone)))))))))
+
+(defn call-with-effective-timezone
+  "Invokes `f` with `*report-timezone*` and `*data-timezone*` bound for the given `db`"
+  [db f]
+  (let [driver    ((resolve 'metabase.driver/->driver) db)
+        report-tz (when-let [report-tz-id (and driver ((resolve 'metabase.driver/report-timezone-if-supported) driver))]
+                    (coerce-to-timezone report-tz-id))
+        data-tz   (some-> db :timezone coerce-to-timezone)
+        jvm-tz    @jvm-timezone]
+    (warn-on-timezone-conflict driver db report-tz jvm-tz data-tz)
+    (binding [*report-timezone* (or report-tz jvm-tz)
+              *data-timezone*   data-tz]
+      (f))))
+
+(defmacro with-effective-timezone
+  "Runs `body` with `*report-timezone*` and `*data-timezone*` configured using the given `db`"
+  [db & body]
+  `(call-with-effective-timezone ~db (fn [] ~@body)))
 
 (defprotocol ITimestampCoercible
   "Coerce object to a `java.sql.Timestamp`."
-  (->Timestamp ^java.sql.Timestamp [this]
+  (coerce-to-timestamp ^java.sql.Timestamp [this] [this timezone-coercible]
     "Coerce this object to a `java.sql.Timestamp`. Strings are parsed as ISO-8601."))
+
+(extend-protocol ^:private ITimestampCoercible
+  nil       (coerce-to-timestamp [_]
+              nil)
+  Timestamp (coerce-to-timestamp [this]
+              this)
+  Date      (coerce-to-timestamp
+              [this]
+              (coerce/to-timestamp (coerce/from-date this)))
+  ;; Number is assumed to be a UNIX timezone in milliseconds (UTC)
+  Number    (coerce-to-timestamp [this]
+              (coerce/to-timestamp (coerce/from-long (long this))))
+  Calendar  (coerce-to-timestamp [this]
+              (coerce-to-timestamp (.getTime this)))
+  DateTime  (coerce-to-timestamp [this]
+              (coerce/to-timestamp this)))
 
 (declare str->date-time)
 
-(extend-protocol ITimestampCoercible
-  nil       (->Timestamp [_]
-              nil)
-  Timestamp (->Timestamp [this]
-              this)
-  Date       (->Timestamp [this]
-               (Timestamp. (.getTime this)))
-  ;; Number is assumed to be a UNIX timezone in milliseconds (UTC)
-  Number    (->Timestamp [this]
-              (Timestamp. this))
-  Calendar  (->Timestamp [this]
-              (->Timestamp (.getTime this)))
-  ;; Strings are expected to be in ISO-8601 format. `YYYY-MM-DD` strings *are* valid ISO-8601 dates.
-  String    (->Timestamp [this]
-              (->Timestamp (str->date-time this)))
-  DateTime  (->Timestamp [this]
-              (->Timestamp (.getMillis this))))
-
+(defn ^Timestamp ->Timestamp
+  "Converts `coercible-to-ts` to a `java.util.Timestamp`. Requires a `coercible-to-tz` if converting a string. Leans
+  on clj-time to ensure correct conversions between the various types"
+  ([coercible-to-ts]
+   {:pre [(or (not (string? coercible-to-ts))
+              (and (string? coercible-to-ts) (bound? #'*report-timezone*)))]}
+   (->Timestamp coercible-to-ts *report-timezone*))
+  ([coercible-to-ts timezone]
+   {:pre [(or (not (string? coercible-to-ts))
+              (and (string? coercible-to-ts) timezone))]}
+   (if (string? coercible-to-ts)
+     (coerce-to-timestamp (str->date-time coercible-to-ts (coerce-to-timezone timezone)))
+     (coerce-to-timestamp coercible-to-ts))))
 
 (defprotocol IDateTimeFormatterCoercible
   "Protocol for converting objects to `DateTimeFormatters`."
@@ -61,7 +145,6 @@
      (parse-date :date-time \"2016-02-01T00:00:00.000Z\") -> #inst \"2016-02-01\""
   ^java.sql.Timestamp [date-format, ^String s]
   (->Timestamp (time/parse (->DateTimeFormatter date-format) s)))
-
 
 (defprotocol ISO8601
   "Protocol for converting objects to ISO8601 formatted strings."
@@ -114,7 +197,8 @@
   (->Timestamp (System/currentTimeMillis)))
 
 (defn format-date
-  "Format DATE using a given DATE-FORMAT.
+  "Format DATE using a given DATE-FORMAT. NOTE: This will create a date string in the JVM's timezone, not the report
+  timezone.
 
    DATE is anything that can coerced to a `Timestamp` via `->Timestamp`, such as a `Date`, `Timestamp`,
    `Long` (ms since the epoch), or an ISO-8601 `String`. DATE defaults to the current moment in time.
@@ -141,7 +225,9 @@
   [^String s]
   (boolean (when (string? s)
              (u/ignore-exceptions
-               (->Timestamp s)))))
+               ;; Using UTC as the timezone here as it's `def`'d and the result of the parse is discarded, any
+               ;; timezone is fine here
+               (->Timestamp s utc)))))
 
 (defn ->Date
   "Coerece DATE to a `java.util.Date`."
@@ -149,7 +235,6 @@
    (java.util.Date.))
   (^java.util.Date [date]
    (java.util.Date. (.getTime (->Timestamp date)))))
-
 
 (defn ->Calendar
   "Coerce DATE to a `java.util.Calendar`."
@@ -162,7 +247,6 @@
   (^java.util.Calendar [date, ^String timezone-id]
    (doto (->Calendar date)
      (.setTimeZone (TimeZone/getTimeZone timezone-id)))))
-
 
 (defn relative-date
   "Return a new `Timestamp` relative to the current time using a relative date UNIT.
@@ -184,7 +268,6 @@
      (.set cal unit (+ (.get cal unit)
                        (* amount multiplier)))
      (->Timestamp cal))))
-
 
 (def ^:private ^:const date-extract-units
   #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year
@@ -215,14 +298,14 @@
                                   3)))
        :year            (.get cal Calendar/YEAR)))))
 
-
 (def ^:private ^:const date-trunc-units
   #{:minute :hour :day :week :month :quarter :year})
 
 (defn- trunc-with-format [format-string date timezone-id]
   (->Timestamp (format-date (time/with-zone (time/formatter format-string)
                               (t/time-zone-for-id timezone-id))
-                            date)))
+                            date)
+               timezone-id))
 
 (defn- trunc-with-floor [date amount-ms]
   (->Timestamp (* (math/floor (/ (.getTime (->Timestamp date))
@@ -258,7 +341,6 @@
      :month   (trunc-with-format "yyyy-MM-01'T'ZZ" date timezone-id)
      :quarter (trunc-with-format (format-string-for-quarter date timezone-id) date timezone-id)
      :year    (trunc-with-format "yyyy-01-01'T'ZZ" date timezone-id))))
-
 
 (defn date-trunc-or-extract
   "Apply date bucketing with UNIT to DATE. DATE defaults to now."
