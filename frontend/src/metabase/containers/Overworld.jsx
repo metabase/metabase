@@ -13,6 +13,8 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
+import Greeting from "metabase/lib/greeting";
+
 //class Overworld extends Zelda
 @withBackground("bg-slate-extra-light")
 class Overworld extends React.Component {
@@ -20,7 +22,7 @@ class Overworld extends React.Component {
     return (
       <Box px={4}>
         <Box my={3}>
-          <Subhead>Hi, Kyle</Subhead>
+          <Subhead>{Greeting.sayHello()}</Subhead>
         </Box>
         <CollectionItemsLoader collectionId="root">
           {({ dashboards }) => {

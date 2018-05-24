@@ -6,6 +6,7 @@ import { push } from "react-router-redux";
 
 import Greeting from "metabase/lib/greeting";
 import Modal from "metabase/components/Modal";
+import Card from "metabase/components/Card";
 
 import Activity from "../components/Activity";
 import RecentViews from "../components/RecentViews";
@@ -14,6 +15,10 @@ import NextStep from "../components/NextStep";
 
 import * as homepageActions from "../actions";
 import { getActivity, getRecentViews, getUser } from "../selectors";
+
+import { withBackground } from "metabase/hoc/Background";
+
+import { Box, Flex, Subhead } from "rebass";
 
 const mapStateToProps = (state, props) => ({
   activity: getActivity(state),
@@ -28,6 +33,7 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
+@withBackground("bg-slate-extra-light")
 export default class HomepageApp extends Component {
   static propTypes = {
     onChangeLocation: PropTypes.func.isRequired,
@@ -57,7 +63,7 @@ export default class HomepageApp extends Component {
     const { user } = this.props;
 
     return (
-      <div className="full">
+      <Box mx={4}>
         {this.state.onboarding ? (
           <Modal>
             <NewUserOnboardingModal
@@ -66,22 +72,21 @@ export default class HomepageApp extends Component {
             />
           </Modal>
         ) : null}
-
-        <div className="flex">
-          <div className="wrapper">
-            <div className="Layout-mainColumn pl2">
-              <div className="md-pt4 h3 md-h2">{t`Activity`}</div>
+        <Box py={3}>
+          <Subhead>{t`Activity`}</Subhead>
+        </Box>
+        <Flex>
+          <Box w={2 / 3}>
+            <Card px={1}>
               <Activity {...this.props} />
-            </div>
-          </div>
-          <div className="Layout-sidebar flex-no-shrink hide sm-show">
-            <div>
-              <NextStep />
-              <RecentViews {...this.props} />
-            </div>
-          </div>
-        </div>
-      </div>
+            </Card>
+          </Box>
+          <Box w={1 / 3}>
+            <NextStep />
+            <RecentViews {...this.props} />
+          </Box>
+        </Flex>
+      </Box>
     );
   }
 }
