@@ -82,7 +82,7 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
 }
 
 export function collection(collection) {
-  return `/questions/collections/${collection.slug}`;
+  return `/collection/${collection.id}`;
 }
 
 export function label(label) {
