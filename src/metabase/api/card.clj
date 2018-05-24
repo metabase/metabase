@@ -1,7 +1,6 @@
 (ns metabase.api.card
   "/api/card endpoints."
   (:require [cheshire.core :as json]
-            [clojure.data :as data]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
@@ -13,17 +12,14 @@
              [util :as u]]
             [metabase.api
              [common :as api]
-             [dataset :as dataset-api]
-             [label :as label-api]]
+             [dataset :as dataset-api]]
             [metabase.email.messages :as messages]
             [metabase.models
              [card :as card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
-             [card-label :refer [CardLabel]]
              [collection :as collection :refer [Collection]]
              [database :refer [Database]]
              [interface :as mi]
-             [label :refer [Label]]
              [permissions :as perms]
              [pulse :as pulse :refer [Pulse]]
              [query :as query]
@@ -44,17 +40,6 @@
   (:import java.util.UUID))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
-
-(defn- ^:deprecated hydrate-labels
-  "Efficiently hydrate the `Labels` for a large collection of `Cards`."
-  [cards]
-  (let [card-labels          (db/select [CardLabel :card_id :label_id])
-        label-id->label      (when (seq card-labels)
-                               (u/key-by :id (db/select Label :id [:in (map :label_id card-labels)])))
-        card-id->card-labels (group-by :card_id card-labels)]
-    (for [card cards]
-      (assoc card :labels (for [card-label (card-id->card-labels (:id card))] ; TODO - do these need to be sorted ?
-                            (label-id->label (:label_id card-label)))))))
 
 (defn- hydrate-favorites
   "Efficiently add `favorite` status for a large collection of `Cards`."
@@ -145,9 +130,6 @@
    :popular  (u/drop-first-arg cards:popular)
    :archived (u/drop-first-arg cards:archived)})
 
-(defn- ^:deprecated card-has-label? [label-slug card]
-  (contains? (set (map :slug (:labels card))) label-slug))
-
 (defn- collection-slug->id [collection-slug]
   (when (seq collection-slug)
     ;; special characters in the slugs are always URL-encoded when stored in the DB, e.g.  "Obsługa klienta" becomes
@@ -158,18 +140,15 @@
                               [:= :slug (codec/url-encode collection-slug)]]}))))
 
 ;; TODO - do we need to hydrate the cards' collections as well?
-(defn- cards-for-filter-option [filter-option model-id label collection-slug]
+(defn- cards-for-filter-option [filter-option model-id collection-slug]
   (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
                   (hydrate :creator :collection :in_public_dashboard)
-                  hydrate-labels
                   hydrate-favorites)]
-    ;; Since labels and collections are hydrated in Clojure-land we need to wait until this point to apply
-    ;; label/collection filtering. If applicable COLLECTION can optionally be an empty string which is used to
-    ;; represent *no collection*
+    ;; Since Collections are hydrated in Clojure-land we need to wait until this point to apply Collection filtering.
+    ;; If applicable, `collection` can optionally be an empty string which is used to represent the Root Collection
     (filter (cond
               collection-slug (let [collection-id (collection-slug->id collection-slug)]
                                 (comp (partial = collection-id) :collection_id))
-              (seq label)     (partial card-has-label? label)
               :else           identity)
             cards)))
 
@@ -181,24 +160,19 @@
   (apply s/enum (map name (keys filter-option->fn))))
 
 (api/defendpoint GET "/"
-  "Get all the `Cards`. Option filter param `f` can be used to change the set of Cards that are returned; default is
+  "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See
   corresponding implementation functions above for the specific behavior of each filter option. :card_index:
 
-  Optionally filter cards by LABEL or COLLECTION slug. (COLLECTION can be a blank string, to signify cards with *no
-  collection* should be returned.)
+  Optionally filter cards by `collection` slug. (`collection` can be a blank string, to signify cards in the Root
+  Collection should be returned.)
 
   NOTES:
 
-  *  Filtering by LABEL is considered *deprecated*, as `Labels` will be removed from an upcoming version of Metabase
-     in favor of `Collections`.
-  *  LABEL and COLLECTION params are mutually exclusive; if both are specified, LABEL will be ignored and Cards will
-     only be filtered by their `Collection`.
-  *  If no `Collection` exists with the slug COLLECTION, this endpoint will return a 404."
-  [f model_id label collection]
+  *  If no Collection exists with the slug `collection`, this endpoint will return a 404."
+  [f model_id collection]
   {f          (s/maybe CardFilterOption)
    model_id   (s/maybe su/IntGreaterThanZero)
-   label      (s/maybe su/NonBlankString)
    collection (s/maybe s/Str)}
   (let [f (keyword f)]
     (when (contains? #{:database :table} f)
@@ -207,7 +181,7 @@
       (case f
         :database (api/read-check Database model_id)
         :table    (api/read-check Database (db/select-one-field :db_id Table, :id model_id))))
-    (->> (cards-for-filter-option f model_id label collection)
+    (->> (cards-for-filter-option f model_id collection)
          ;; filterv because we want make sure all the filtering is done while current user perms set is still bound
          (filterv mi/can-read?))))
 
@@ -216,7 +190,7 @@
   "Get `Card` with ID."
   [id]
   (u/prog1 (-> (Card id)
-               (hydrate :creator :dashboard_count :labels :can_write :collection :in_public_dashboard)
+               (hydrate :creator :dashboard_count :can_write :collection :in_public_dashboard)
                api/read-check)
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
 
@@ -283,7 +257,7 @@
     (events/publish-event! :card-create card)
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has
     ;; with returned one -- See #4283
-    (hydrate card :creator :dashboard_count :labels :can_write :collection)))
+    (hydrate card :creator :dashboard_count :can_write :collection)))
 
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
@@ -466,7 +440,7 @@
       (publish-card-update! card archived)
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
       ;; returned one -- See #4142
-      (hydrate card :creator :dashboard_count :labels :can_write :collection))))
+      (hydrate card :creator :dashboard_count :can_write :collection))))
 
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
@@ -500,25 +474,6 @@
   (api/let-404 [id (db/select-one-id CardFavorite :card_id card-id, :owner_id api/*current-user-id*)]
     (db/delete! CardFavorite, :id id))
   api/generic-204-no-content)
-
-
-;;; ---------------------------------------------- Editing Card Labels -----------------------------------------------
-
-
-(api/defendpoint POST "/:card-id/labels"
-  "Update the set of `Labels` that apply to a `Card`.
-   (This endpoint is considered DEPRECATED as Labels will be removed in a future version of Metabase.)"
-  [card-id :as {{:keys [label_ids]} :body}]
-  {label_ids [su/IntGreaterThanZero]}
-  (label-api/warn-about-labels-being-deprecated)
-  (api/write-check Card card-id)
-  (let [[labels-to-remove labels-to-add] (data/diff (set (db/select-field :label_id CardLabel :card_id card-id))
-                                                    (set label_ids))]
-    (when (seq labels-to-remove)
-      (db/delete! CardLabel, :label_id [:in labels-to-remove], :card_id card-id))
-    (doseq [label-id labels-to-add]
-      (db/insert! CardLabel :label_id label-id, :card_id card-id)))
-  {:status :ok})
 
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------

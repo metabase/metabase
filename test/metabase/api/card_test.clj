@@ -12,10 +12,8 @@
             [metabase.models
              [card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
-             [card-label :refer [CardLabel]]
              [collection :refer [Collection]]
              [database :refer [Database]]
-             [label :refer [Label]]
              [permissions :as perms]
              [permissions-group :as perms-group]
              [pulse :as pulse :refer [Pulse]]
@@ -174,17 +172,6 @@
   (for [card ((user->client :rasta) :get 200 "card", :f :fav)]
     (select-keys card [:id :favorite])))
 
-;;; Filter by labels
-(tt/expect-with-temp [Card      [{card-1-id :id}]
-                      Card      [{card-2-id :id}]
-                      Label     [{label-1-id :id} {:name "Toucans"}]                   ; slug will be `toucans`
-                      Label     [{label-2-id :id} {:name "More Toucans"}]              ; slug will be `more_toucans`
-                      CardLabel [_                {:card_id card-1-id, :label_id label-1-id}]
-                      CardLabel [_                {:card_id card-2-id, :label_id label-2-id}]]
-  ;; When filtering by `more_toucans` only the second Card should get returned
-  [card-2-id]
-  (map :id ((user->client :rasta) :get 200 "card", :label "more_toucans")))            ; filtering is done by slug
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                CREATING A CARD                                                 |
@@ -201,7 +188,6 @@
             :visualization_settings {:global {:title nil}}
             :database_id            database-id ; these should be inferred automatically
             :table_id               table-id
-            :labels                 []
             :can_write              true
             :dashboard_count        0
             :collection             nil
@@ -319,8 +305,7 @@
             :database_id            database-id ; these should be inferred from the dataset_query
             :table_id               table-id
             :in_public_dashboard    false
-            :collection             nil
-            :labels                 []}))
+            :collection             nil}))
   ((user->client :rasta) :get 200 (str "card/" (u/get-id card))))
 
 ;; Check that a user without permissions isn't allowed to fetch the card
@@ -705,30 +690,6 @@
          (fave? card))
      (do (unfave! card)
          (fave? card))]))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              LABELS (DEPRECATED)                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-;; DEPRECATED because Labels are deprecated in favor of Collections.
-
-;;; POST /api/card/:id/labels
-;; Check that we can update card labels
-(tt/expect-with-temp [Card  [{card-id :id}]
-                      Label [{label-1-id :id} {:name "Toucan-Friendly"}]
-                      Label [{label-2-id :id} {:name "Toucan-Unfriendly"}]]
-  [[]                                                                                  ; (1) should start w/ no labels
-   [{:id label-1-id, :name "Toucan-Friendly",   :slug "toucan_friendly",   :icon nil}  ; (2) set a few labels
-    {:id label-2-id, :name "Toucan-Unfriendly", :slug "toucan_unfriendly", :icon nil}]
-   []]                                                                                 ; (3) can reset to no labels?
-  (let [get-labels    (fn []
-                        (:labels ((user->client :rasta) :get 200, (str "card/" card-id))))
-        update-labels (fn [label-ids]
-                        ((user->client :rasta) :post 200, (format "card/%d/labels" card-id) {:label_ids label-ids})
-                        (get-labels))]
-    [(get-labels)                            ; (1)
-     (update-labels [label-1-id label-2-id]) ; (2)
-     (update-labels [])]))                   ; (3)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

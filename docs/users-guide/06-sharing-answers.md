@@ -24,9 +24,6 @@ After your team has been using Metabase for a while, you’ll probably end up wi
 #### Collections
 Administrators of Metabase can create collections to put saved questions in. Depending on the permissions you've been given to collections, you'll be able to view the questions inside, edit them, and move questions from one collection to another. Questions that aren't saved in any collection will appear in the "Everything else" section of the main Questions page, and are visible to all Metabase users in your organization. If you're an administrator of your Metabase instance, here are [instructions for creating collections and managing permissions](../administration-guide/06-collections.md).
 
-#### Labels
-Older versions of Metabase included a way to add labels to your questions, but this feature will be going away in a future version of Metabase. Currently, if your team was already using labels, you'll still be able to edit and apply them to questions. Here are some [suggestions for switching from labels to collections](../administration-guide/06-collections.html#what-about-labels).
-
 #### Shortcuts
 At the top of lists of saved questions you’ll find a dropdown with shortcuts to your favorite questions (mark a question as a favorite by clicking on the star icon that appears when you hover over it), questions you’ve recently viewed, questions that you’ve saved personally, and popular questions that are used the most by your team.
 
