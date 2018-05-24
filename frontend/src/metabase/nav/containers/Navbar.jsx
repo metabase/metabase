@@ -64,8 +64,8 @@ const SearchWrapper = Flex.extend`
   border-radius: 6px;
   align-items: center;
   color: white;
-  transition: background border 300ms ease-in;
   border: 1px solid ${props => (props.active ? "#4894d8" : "transparent")};
+  transition: background 300ms ease-in;
   &:hover {
     background-color: ${ActiveSearchColor};
   }
