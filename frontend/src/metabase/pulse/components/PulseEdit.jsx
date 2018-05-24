@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t, jt } from "c-3po";
+import { t, jt, ngettext, msgid } from "c-3po";
 
 import PulseEditName from "./PulseEditName.jsx";
 import PulseEditCards from "./PulseEditCards.jsx";
@@ -20,7 +20,6 @@ import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
 
 import _ from "underscore";
 import cx from "classnames";
-import { inflect } from "inflection";
 
 export default class PulseEdit extends Component {
   constructor(props) {
@@ -88,7 +87,9 @@ export default class PulseEdit extends Component {
           <span key={index}>
             {jt`This pulse will no longer be emailed to ${(
               <strong>
-                {c.recipients.length} {inflect(t`address`, c.recipients.length)}
+                {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+                  c.recipients.length,
+                )}
               </strong>
             )} ${<strong>{c.schedule_type}</strong>}`}.
           </span>
