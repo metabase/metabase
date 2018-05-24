@@ -6,15 +6,16 @@
              [dimension :as dim]
              [field :as field]]
             [metabase.sync.interface :as i]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s])
   (:import clojure.lang.Keyword
            [java.sql Time Timestamp]))
 
 ;;; --------------------------------------------------- CONSTANTS ----------------------------------------------------
 
-(def ^:const absolute-max-results
+(def absolute-max-results
   "Maximum number of rows the QP should ever return.
 
    This is coming directly from the max rows allowed by Excel for now ...
@@ -65,14 +66,18 @@
 ;; These are just used by the QueryExpander to record information about how joins should occur.
 
 (s/defrecord JoinTableField [field-id   :- su/IntGreaterThanZero
-                             field-name :- su/NonBlankString])
+                             field-name :- su/NonBlankString]
+  nil
+  :load-ns true)
 
 (s/defrecord JoinTable [source-field :- JoinTableField
                         pk-field     :- JoinTableField
                         table-id     :- su/IntGreaterThanZero
                         table-name   :- su/NonBlankString
                         schema       :- (s/maybe su/NonBlankString)
-                        join-alias   :- su/NonBlankString])
+                        join-alias   :- su/NonBlankString]
+  nil
+  :load-ns true)
 
 ;;; --------------------------------------------------- PROTOCOLS ----------------------------------------------------
 
@@ -95,7 +100,9 @@
                           values                  :- (s/maybe (s/cond-pre [s/Any] {} []))
                           human-readable-values   :- (s/maybe (s/cond-pre [s/Any] {} []))
                           created-at              :- java.util.Date
-                          updated-at              :- java.util.Date])
+                          updated-at              :- java.util.Date]
+  nil
+  :load-ns true)
 
 (s/defrecord Dimensions [dimension-id            :- su/IntGreaterThanZero
                          field-id                :- su/IntGreaterThanZero
@@ -103,7 +110,9 @@
                          human-readable-field-id :- (s/maybe su/IntGreaterThanZero)
                          dimension-type          :- (apply s/enum dim/dimension-types)
                          created-at              :- java.util.Date
-                         updated-at              :- java.util.Date])
+                         updated-at              :- java.util.Date]
+  nil
+  :load-ns true)
 
 ;; Field is the "expanded" form of a Field ID (field reference) in MBQL
 (s/defrecord Field [field-id           :- su/IntGreaterThanZero
@@ -127,6 +136,8 @@
                     dimensions         :- (s/maybe (s/cond-pre Dimensions {} []))
                     values             :- (s/maybe (s/cond-pre FieldValues {} []))
                     fingerprint        :- (s/maybe i/Fingerprint)]
+  nil
+  :load-ns true
   clojure.lang.Named
   (getName [_] field-name) ; (name <field>) returns the *unqualified* name of the field, #obvi
 
@@ -139,12 +150,12 @@
 
 ;;; DateTimeField
 
-(def ^:const datetime-field-units
+(def datetime-field-units
   "Valid units for a `DateTimeField`."
   #{:default :minute :minute-of-hour :hour :hour-of-day :day :day-of-week :day-of-month :day-of-year
     :week :week-of-year :month :month-of-year :quarter :quarter-of-year :year})
 
-(def ^:const relative-datetime-value-units
+(def relative-datetime-value-units
   "Valid units for a `RelativeDateTimeValue`."
   #{:minute :hour :day :week :month :quarter :year})
 
@@ -171,6 +182,8 @@
 ;; make the clauses specify required feature metadata and have that get checked automatically?)
 (s/defrecord FieldLiteral [field-name    :- su/NonBlankString
                            base-type     :- su/FieldType]
+  nil
+  :load-ns true
   clojure.lang.Named
   (getName [_] field-name)
   IField
@@ -179,17 +192,23 @@
 ;; DateTimeField is just a simple wrapper around Field
 (s/defrecord DateTimeField [field :- (s/cond-pre Field FieldLiteral)
                             unit  :- DatetimeFieldUnit]
+  nil
+  :load-ns true
   clojure.lang.Named
   (getName [_] (name field)))
 
 ;; TimeField is just a field wrapper that indicates string should be interpretted as a time
 (s/defrecord TimeField [field :- (s/cond-pre Field FieldLiteral)]
+  nil
+  :load-ns true
   clojure.lang.Named
   (getName [_] (name field)))
 
 (s/defrecord TimeValue [value       :- Time
                         field       :- TimeField
-                        timezone-id :- (s/maybe String)])
+                        timezone-id :- (s/maybe String)]
+  nil
+  :load-ns true)
 
 (def binning-strategies
   "Valid binning strategies for a `BinnedField`"
@@ -201,10 +220,14 @@
                           min-value :- s/Num
                           max-value :- s/Num
                           bin-width :- s/Num]
+  nil
+  :load-ns true
   clojure.lang.Named
   (getName [_] (name field)))
 
 (s/defrecord ExpressionRef [expression-name :- su/NonBlankString]
+  nil
+  :load-ns true
   clojure.lang.Named
   (getName [_] expression-name)
   IField
@@ -232,13 +255,19 @@
                                remapped-to         :- (s/maybe s/Str)
                                field-display-name  :- (s/maybe s/Str)
                                binning-strategy    :- (s/maybe (apply s/enum binning-strategies))
-                               binning-param       :- (s/maybe s/Num)])
+                               binning-param       :- (s/maybe s/Num)]
+  nil
+  :load-ns true)
 
-(s/defrecord AgFieldRef [index :- s/Int])
+(s/defrecord AgFieldRef [index :- s/Int]
+  nil
+  :load-ns true)
 ;; TODO - add a method to get matching expression from the query?
 
 (s/defrecord RelativeDatetime [amount :- s/Int
-                               unit   :- DatetimeValueUnit])
+                               unit   :- DatetimeValueUnit]
+  nil
+  :load-ns true)
 
 (declare Aggregation AnyField AnyValueLiteral)
 
@@ -248,7 +277,9 @@
                          args       :- [(s/cond-pre (s/recursive #'AnyValueLiteral)
                                                     (s/recursive #'AnyField)
                                                     (s/recursive #'Aggregation))]
-                         custom-name :- (s/maybe su/NonBlankString)])
+                         custom-name :- (s/maybe su/NonBlankString)]
+  nil
+  :load-ns true)
 
 
 (def AnyField
@@ -269,7 +300,7 @@
 
 (def LiteralDatetimeString
   "Schema for an MBQL datetime string literal, in ISO-8601 format."
-  (s/constrained su/NonBlankString u/date-string? "Valid ISO-8601 datetime string literal"))
+  (s/constrained su/NonBlankString du/date-string? "Valid ISO-8601 datetime string literal"))
 
 (def LiteralDatetime
   "Schema for an MBQL literal datetime value: and ISO-8601 string or `java.sql.Date`."
@@ -296,16 +327,22 @@
 ;; Information about the associated Field is included for convenience
 ;; TODO - Value doesn't need the whole field, just the relevant type info / units
 (s/defrecord Value [value   :- AnyValueLiteral
-                    field   :- (s/recursive #'AnyField)])
+                    field   :- (s/recursive #'AnyField)]
+  nil
+  :load-ns true)
 
 (s/defrecord RelativeDateTimeValue [amount :- s/Int
                                     unit   :- DatetimeValueUnit
                                     field  :- (s/cond-pre DateTimeField
-                                                          FieldPlaceholder)])
+                                                          FieldPlaceholder)]
+  nil
+  :load-ns true)
 
 ;; e.g. an absolute point in time (literal)
 (s/defrecord DateTimeValue [value :- (s/maybe Timestamp)
-                            field :- DateTimeField])
+                            field :- DateTimeField]
+  nil
+  :load-ns true)
 
 (def OrderableValue
   "Schema for an instance of `Value` whose `:value` property is itself orderable (a datetime or number, i.e. a
@@ -333,7 +370,7 @@
 (extend-protocol IDateTimeValue
   DateTimeValue
   (unit                [this]   (:unit (:field this)))
-  (add-date-time-units [this n] (assoc this :value (u/relative-date (unit this) n (:value this))))
+  (add-date-time-units [this n] (assoc this :value (du/relative-date (unit this) n (:value this))))
 
   RelativeDateTimeValue
   (unit                [this]   (:unit this))
@@ -345,7 +382,9 @@
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
 (s/defrecord ValuePlaceholder [field-placeholder :- AnyField
-                               value             :- AnyValueLiteral])
+                               value             :- AnyValueLiteral]
+  nil
+  :load-ns true)
 
 (def OrderableValuePlaceholder
   "`ValuePlaceholder` schema with the additional constraint that the value be orderable (a number or datetime)."
@@ -385,14 +424,18 @@
 
 (s/defrecord AggregationWithoutField [aggregation-type :- (s/named (s/enum :count :cumulative-count)
                                                                    "Valid aggregation type")
-                                      custom-name      :- (s/maybe su/NonBlankString)])
+                                      custom-name      :- (s/maybe su/NonBlankString)]
+  nil
+  :load-ns true)
 
 (s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :max
                                                                         :min :stddev :sum)
                                                                 "Valid aggregation type")
                                    field            :- (s/cond-pre AnyField
                                                                    Expression)
-                                   custom-name      :- (s/maybe su/NonBlankString)])
+                                   custom-name      :- (s/maybe su/NonBlankString)]
+  nil
+  :load-ns true)
 
 (defn- valid-aggregation-for-driver? [{:keys [aggregation-type]}]
   (when (= aggregation-type :stddev)
@@ -411,22 +454,30 @@
 
 (s/defrecord EqualityFilter [filter-type :- (s/enum := :!=)
                              field       :- AnyField
-                             value       :- AnyFieldOrValue])
+                             value       :- AnyFieldOrValue]
+  nil
+  :load-ns true)
 
 (s/defrecord ComparisonFilter [filter-type :- (s/enum :< :<= :> :>=)
                                field       :- AnyField
-                               value       :- OrderableValueOrPlaceholder])
+                               value       :- OrderableValueOrPlaceholder]
+  nil
+  :load-ns true)
 
 (s/defrecord BetweenFilter [filter-type  :- (s/eq :between)
                             min-val      :- OrderableValueOrPlaceholder
                             field        :- AnyField
-                            max-val      :- OrderableValueOrPlaceholder])
+                            max-val      :- OrderableValueOrPlaceholder]
+  nil
+  :load-ns true)
 
 (s/defrecord StringFilter [filter-type     :- (s/enum :starts-with :contains :ends-with)
                            field           :- AnyField
                            ;; TODO - not 100% sure why this is also allowed to accept a plain string
                            value           :- (s/cond-pre s/Str StringValueOrPlaceholder)
-                           case-sensitive? :- s/Bool])
+                           case-sensitive? :- s/Bool]
+  nil
+  :load-ns true)
 
 (def SimpleFilterClause
   "Schema for a non-compound, non-`not` MBQL `filter` clause."
@@ -434,12 +485,16 @@
            "Simple filter clause"))
 
 (s/defrecord NotFilter [compound-type :- (s/eq :not)
-                        subclause     :- SimpleFilterClause])
+                        subclause     :- SimpleFilterClause]
+  nil
+  :load-ns true)
 
 (declare Filter)
 
 (s/defrecord CompoundFilter [compound-type :- (s/enum :and :or)
-                             subclauses    :- [(s/recursive #'Filter)]])
+                             subclauses    :- [(s/recursive #'Filter)]]
+  nil
+  :load-ns true)
 
 (def Filter
   "Schema for top-level `filter` clause in an MBQL query."

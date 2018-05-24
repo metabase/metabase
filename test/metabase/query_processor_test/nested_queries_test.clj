@@ -525,7 +525,7 @@
   (tt/with-temp Card [card {:dataset_query {:database db-id
                                             :type     :native
                                             :native   {:query "SELECT * FROM VENUES"}}}]
-    ((user->client :rasta) :post "card"
+    ((user->client :rasta) :post expected-status-code "card"
      {:name                   (tu/random-name)
       :display                "scalar"
       :visualization_settings {}

@@ -8,6 +8,7 @@
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
              [ssh :as ssh]]))
 
@@ -52,7 +53,7 @@
   before date operations can be performed. This function will add that cast if it is a timestamp, otherwise this is a
   noop."
   [expr]
-  (if (u/is-temporal? expr)
+  (if (du/is-temporal? expr)
     (hx/cast :timestamp expr)
     expr))
 
@@ -107,6 +108,7 @@
 
 
 (defrecord VerticaDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Vertica"))
 

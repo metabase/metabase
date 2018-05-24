@@ -4,8 +4,7 @@
             [metabase.api.public-test :as public-test]
             [metabase.models
              [card :refer [Card]]
-             [field :refer [Field]]
-             [params :as params]]
+             [field :refer [Field]]]
             [metabase.test.data :as data]
             [toucan
              [db :as db]
@@ -24,7 +23,7 @@
                   :display_name     "Name"
                   :base_type        :type/Text
                   :special_type     :type/Name
-                  :has_field_values "list"}}
+                  :has_field_values :list}}
   (-> (db/select-one [Field :name :table_id :special_type], :id (data/id :venues :id))
       (hydrate :name_field)))
 
@@ -70,7 +69,7 @@
                                              :display_name     "Name"
                                              :base_type        :type/Text
                                              :special_type     :type/Name
-                                             :has_field_values "list"}
+                                             :has_field_values :list}
                           :dimensions       []}}
   (tt/with-temp Card [card {:dataset_query
                             {:database (data/id)
@@ -96,7 +95,7 @@
                                              :display_name     "Name"
                                              :base_type        :type/Text
                                              :special_type     :type/Name
-                                             :has_field_values "list"}
+                                             :has_field_values :list}
                           :dimensions       []}}
   (public-test/with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
     (-> (hydrate dashboard :param_fields)

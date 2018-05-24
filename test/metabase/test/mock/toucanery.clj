@@ -66,7 +66,7 @@
      {:keypath "movies.description", :value "A cinematic adventure."}]))
 
 
-(defrecord ToucaneryDriver []
+(defrecord ^:private ToucaneryDriver []
   clojure.lang.Named
   (getName [_] "ToucaneryDriver"))
 

@@ -45,7 +45,7 @@
                  (#'r/similarity (Card card-id-1) (Card card-id-1))])))
 
 
-(defmacro ^:private with-world
+(defmacro ^:private expect-with-world
   [& body]
   `(tt/expect-with-temp [Collection [{~'collection-id :id}]
                          Metric     [{~'metric-id-a :id} {:table_id (data/id :venues)
@@ -75,7 +75,7 @@
                                                       :query {:source_table (data/id :venues)
                                                               :aggregation [:sum [:field-id (data/id :venues :longitude)]]
                                                               :breakout [[:field-id (data/id :venues :category_id)]]}}}]
-                         Card       [{card-id-c :id :as ~'card-c}
+                         Card       [{~'card-id-c :id :as ~'card-c}
                                      {:table_id (data/id :venues)
                                       :dataset_query {:type :query
                                                       :database (data/id)
@@ -93,7 +93,7 @@
                (sort (map :id v))
                (:id v))])))
 
-(with-world
+(expect-with-world
   {:table             (data/id :venues)
    :metrics           (sort [metric-id-a metric-id-b])
    :segments          (sort [segment-id-a segment-id-b])
@@ -105,14 +105,14 @@
   (->> ((users/user->client :crowberto) :get 200 (format "card/%s/related" card-id-a))
        result-mask))
 
-(with-world
+(expect-with-world
   {:table    (data/id :venues)
    :metrics  [metric-id-b]
    :segments (sort [segment-id-a segment-id-b])}
   (->> ((users/user->client :crowberto) :get 200 (format "metric/%s/related" metric-id-a))
        result-mask))
 
-(with-world
+(expect-with-world
   {:table       (data/id :venues)
    :metrics     (sort [metric-id-a metric-id-b])
    :segments    [segment-id-b]
@@ -120,7 +120,7 @@
   (->> ((users/user->client :crowberto) :get 200 (format "segment/%s/related" segment-id-a))
        result-mask))
 
-(with-world
+(expect-with-world
   {:metrics     (sort [metric-id-a metric-id-b])
    :segments    (sort [segment-id-a segment-id-b])
    :linking-to  [(data/id :categories)]
@@ -136,19 +136,19 @@
 ;; and for C B. Note that C is less similar to B than A is, as C has an additional
 ;; breakout dimension.
 
-(with-world
+(expect-with-world
   [card-id-b]
   (->> ((users/user->client :crowberto) :get 200 (format "card/%s/related" card-id-a))
        result-mask
        :similar-questions))
 
-(with-world
+(expect-with-world
   [card-id-a card-id-c] ; Ordering matters as C is less similar to B than A.
   (->> ((users/user->client :crowberto) :get 200 (format "card/%s/related" card-id-b))
        result-mask
        :similar-questions))
 
-(with-world
+(expect-with-world
   [card-id-b]
   (->> ((users/user->client :crowberto) :get 200 (format "card/%s/related" card-id-c))
        result-mask

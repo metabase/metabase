@@ -1,5 +1,5 @@
-title: A look at your [[this]] field per state
-transient_title: Here's a closer look at your [[this]] field per state
+title: A look at your [[this]] per state
+transient_title: Here's a closer look at your [[this]] per state
 description: How [[this]] is distributed, and how different numbers are represented per state.
 applies_to: GenericTable.State
 metrics:

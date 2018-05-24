@@ -82,15 +82,30 @@ if [ ! -z "$RDS_HOSTNAME" ]; then
     export MB_DB_PORT=$RDS_PORT
 fi
 
-# Determine whether we're on Heroku on a free, hobby, or 1x dyno.
+# Determine whether we're on Heroku on a free, hobby, 1x dyno or 2x dyno
 #
-# We set $HEROKU in the Procfile; we know we're on a baby dyno if the process limit is 256 per user.
+# We set $HEROKU in the Procfile, so we know we're on Heroku when started from the
+# Procfile.
 #
-# On a baby dyno we need to override the $JAVA_OPTS and give it a slightly lower memory limit because Heroku tends to think
-# we can use more memory than we actually can. It defaults to giving us 300m but that still ends up going over the 512MB
-# limit for the dyno. Set a few other additional options to minimize memory usage as well.
-if [ -n "$HEROKU" ] && [ `ulimit -u` = 256 ]; then
-    JAVA_OPTS="$JAVA_OPTS -Xmx248m"                        # This seems to be the right amount that prevents the dyno from going over the quota
+# We need to override the $JAVA_OPTS and give it a slightly lower memory limit
+# because Heroku tends to think we can use more memory than we actually can.
+
+if [ -n "$HEROKU" ]; then
+    echo "  -> Heroku detected"
+    if [ `ulimit -u` = 256 ]; then
+        # free, hobby or 1x dyno, it defaults to giving us 300m but that still ends
+        # up going over the 512MB limit for the dyno.
+        echo "    => 1x dyno"
+        JAVA_OPTS="$JAVA_OPTS -Xmx248m"                    # This seems to be the right amount that prevents the dyno from going over the quota
+    fi
+    if [ `ulimit -u` = 512 ]; then
+        # 2x dyno, it defaults to giving us 800m but that still ends
+        # up going over the 1024MB limit for the dyno.
+        echo "    => 2x dyno"
+        JAVA_OPTS="$JAVA_OPTS -Xmx496m"                    # This seems to be the right amount that prevents the dyno from going over the quota
+    fi
+
+    # Set a few other additional options to minimize memory usage as well.
     JAVA_OPTS="$JAVA_OPTS -XX:-UseGCOverheadLimit"         # Disable limit to amount of time spent in GC. Better slow than not working at all
     JAVA_OPTS="$JAVA_OPTS -XX:+UseConcMarkSweepGC"         # ConcMarkSweepGC seems to cause less OOM issues in my testing on low-mem Heroku envs
     JAVA_OPTS="$JAVA_OPTS -XX:+CMSClassUnloadingEnabled"   # Not 100% sure this does anything in Java 8 but if it does, we want to enable it
@@ -99,11 +114,10 @@ if [ -n "$HEROKU" ] && [ `ulimit -u` = 256 ]; then
 fi
 
 # Other Java options
-JAVA_OPTS="$JAVA_OPTS -XX:+IgnoreUnrecognizedVMOptions"           # Don't barf if we see an option we don't understand (e.g. Java 9 option on Java 7/8)
-JAVA_OPTS="$JAVA_OPTS -Djava.awt.headless=true"                   # don't try to start AWT. Not sure this does anything but better safe than wasting memory
-JAVA_OPTS="$JAVA_OPTS -Dfile.encoding=UTF-8"                      # Use UTF-8
-JAVA_OPTS="$JAVA_OPTS --add-opens=java.base/java.net=ALL-UNNAMED" # Allow dynamically adding JARs to classpath (Java 9)
-JAVA_OPTS="$JAVA_OPTS --add-modules=java.xml.bind"                # Enable access to java.xml.bind module (Java 9)
+JAVA_OPTS="$JAVA_OPTS -XX:+IgnoreUnrecognizedVMOptions" # Don't barf if we see an option we don't understand (e.g. Java 9 option on Java 7/8)
+JAVA_OPTS="$JAVA_OPTS -Djava.awt.headless=true"         # don't try to start AWT. Not sure this does anything but better safe than wasting memory
+JAVA_OPTS="$JAVA_OPTS -Dfile.encoding=UTF-8"            # Use UTF-8
+JAVA_OPTS="$JAVA_OPTS --add-modules=java.xml.bind"      # Enable access to java.xml.bind module (Java 9)
 
 echo "Using these JAVA_OPTS: ${JAVA_OPTS}"
 

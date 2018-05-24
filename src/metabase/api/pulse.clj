@@ -3,7 +3,6 @@
   (:require [compojure.core :refer [DELETE GET POST PUT]]
             [hiccup.core :refer [html]]
             [metabase
-             [driver :as driver]
              [email :as email]
              [events :as events]
              [pulse :as p]
@@ -17,12 +16,12 @@
              [pulse :as pulse :refer [Pulse]]
              [pulse-channel :refer [channel-types]]]
             [metabase.pulse.render :as render]
-            [metabase.util.schema :as su]
-            [metabase.util.urls :as urls]
+            [metabase.util
+             [schema :as su]
+             [urls :as urls]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import java.io.ByteArrayInputStream
-           java.util.TimeZone))
+  (:import java.io.ByteArrayInputStream))
 
 (api/defendpoint GET "/"
   "Fetch all `Pulses`"

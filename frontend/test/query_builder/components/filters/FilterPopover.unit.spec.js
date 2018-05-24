@@ -18,7 +18,7 @@ import {
   ORDERS_PRODUCT_FK_FIELD_ID,
   PRODUCT_TILE_FIELD_ID,
   metadata,
-  StaticMetadataProvider,
+  StaticEntitiesProvider,
 } from "__support__/sample_dataset_fixture";
 
 const RELATIVE_DAY_FILTER = [
@@ -63,9 +63,9 @@ describe("FilterPopover", () => {
     describe("filter operator selection", () => {
       it("should have an operator selector", () => {
         const wrapper = mount(
-          <StaticMetadataProvider>
+          <StaticEntitiesProvider>
             <FilterPopover query={QUERY} filter={NUMERIC_FILTER} />
-          </StaticMetadataProvider>,
+          </StaticEntitiesProvider>,
         );
         expect(wrapper.find(OperatorSelector).length).toEqual(1);
       });
@@ -73,9 +73,9 @@ describe("FilterPopover", () => {
     describe("filter options", () => {
       it("should not show a control to the user if the filter has no options", () => {
         const wrapper = mount(
-          <StaticMetadataProvider>
+          <StaticEntitiesProvider>
             <FilterPopover query={QUERY} filter={QUERY.filters()[1]} />
-          </StaticMetadataProvider>,
+          </StaticEntitiesProvider>,
         );
         expect(wrapper.find(CheckBox).length).toBe(0);
       });
@@ -87,9 +87,9 @@ describe("FilterPopover", () => {
       });
       it('should show "case-sensitive" option to the user for "contains" filters', () => {
         const wrapper = mount(
-          <StaticMetadataProvider>
+          <StaticEntitiesProvider>
             <FilterPopover query={QUERY} filter={STRING_CONTAINS_FILTER} />
-          </StaticMetadataProvider>,
+          </StaticEntitiesProvider>,
         );
         expect(wrapper.find(CheckBox).length).toBe(1);
       });

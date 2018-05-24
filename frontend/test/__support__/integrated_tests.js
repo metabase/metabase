@@ -123,16 +123,12 @@ export function restorePreviousLogin() {
  * Calls the provided function while simulating that the browser is offline
  */
 export async function whenOffline(callWhenOffline) {
-  simulateOfflineMode = true;
-  return callWhenOffline()
-    .then(result => {
-      simulateOfflineMode = false;
-      return result;
-    })
-    .catch(e => {
-      simulateOfflineMode = false;
-      throw e;
-    });
+  try {
+    simulateOfflineMode = true;
+    return await callWhenOffline();
+  } finally {
+    simulateOfflineMode = false;
+  }
 }
 
 export function switchToPlainDatabase() {

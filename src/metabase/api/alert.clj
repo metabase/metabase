@@ -5,8 +5,7 @@
             [medley.core :as m]
             [metabase
              [email :as email]
-             [events :as events]
-             [util :as u]]
+             [events :as events]]
             [metabase.api
              [common :as api]
              [pulse :as pulse-api]]

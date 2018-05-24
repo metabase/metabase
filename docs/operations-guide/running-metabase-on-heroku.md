@@ -11,7 +11,9 @@ If you've got a Heroku account then all there is to do is follow this one-click 
 
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](http://downloads.metabase.com/launch-heroku.html)
 
-This will launch a Heroku deployment using a github repository that Metabase maintains.
+This will launch a Heroku deployment using a GitHub repository that Metabase maintains.
+
+It should only take a few minutes for Metabase to start. You can check on the progress by viewing the logs at [https://dashboard.heroku.com/apps/YOUR_APPLICATION_NAME/logs](https://dashboard.heroku.com/apps/YOUR_APPLICATION_NAME/logs) or using the Heroku command line tool with the `heroku logs -t -a YOUR_APPLICATION_NAME` command.
 
 
 ### Upgrading beyond the `Free` tier
@@ -27,6 +29,7 @@ Heroku is very kind and offers a free tier to be used for very small/non-critica
 
  * Heroku’s 30 second timeouts on all web requests can cause a few issues if you happen to have longer running database queries.  Most people don’t run into this but be aware that it’s possible.
  * When using the `free` tier, if you don’t access the application for a while Heroku will sleep your Metabase environment.  This prevents things like Pulses and Metabase background tasks from running when scheduled and at times makes the app appear to be slow when really it's just Heroku reloading your app.  You can resolve this by upgrading to the `hobby` tier or higher.
+ * Sometimes Metabase may run out of memory and you will see messages like `Error R14 (Memory quota exceeded)` in the Heroku logs. If this happens regularly we recommend upgrading to the `standard-2x` tier dyno.
 
 Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
 
