@@ -26,7 +26,7 @@ import {
   getCard,
   getOriginalCard,
   getLastRunCard,
-  getQueryResult,
+  getFirstQueryResult,
   getQueryResults,
   getParameterValues,
   getIsDirty,
@@ -97,7 +97,7 @@ const mapStateToProps = (state, props) => {
     tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
-    result: getQueryResult(state),
+    result: getFirstQueryResult(state),
     results: getQueryResults(state),
     rawSeries: getRawSeries(state),
 

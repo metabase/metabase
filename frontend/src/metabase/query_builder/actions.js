@@ -41,6 +41,7 @@ import {
   getIsShowingDataReference,
   getTransformedSeries,
   getResultsMetadata,
+  getFirstQueryResult,
 } from "./selectors";
 
 import {
@@ -872,7 +873,8 @@ export const SET_QUERY_MODE = "metabase/qb/SET_QUERY_MODE";
 export const setQueryMode = createThunkAction(SET_QUERY_MODE, type => {
   return (dispatch, getState) => {
     // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-    const { qb: { card, queryResult, uiControls } } = getState();
+    const { qb: { card, uiControls } } = getState();
+    const queryResult = getFirstQueryResult(getState());
     const tableMetadata = getTableMetadata(getState());
 
     // if the type didn't actually change then nothing has been modified
@@ -1318,7 +1320,8 @@ export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
 export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
   return async (dispatch, getState) => {
     // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-    const { qb: { card, queryResult } } = getState();
+    const { qb: { card } } = getState();
+    const queryResult = getFirstQueryResult(getState());
 
     if (!queryResult || !fk) return false;
 
@@ -1352,7 +1355,8 @@ export const loadObjectDetailFKReferences = createThunkAction(
   () => {
     return async (dispatch, getState) => {
       // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-      const { qb: { card, queryResult, tableForeignKeys } } = getState();
+      const { qb: { card, tableForeignKeys } } = getState();
+      const queryResult = getFirstQueryResult(getState());
 
       function getObjectDetailIdValue(data) {
         for (let i = 0; i < data.cols.length; i++) {

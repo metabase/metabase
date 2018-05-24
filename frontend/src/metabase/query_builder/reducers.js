@@ -250,20 +250,6 @@ export const lastRunCard = handleActions(
   null,
 );
 
-// NOTE Atte Keinänen 6/1/17: DEPRECATED, you should use queryResults instead
-export const queryResult = handleActions(
-  {
-    [RESET_QB]: { next: (state, { payload }) => null },
-    [QUERY_COMPLETED]: {
-      next: (state, { payload }) => payload.queryResults[0],
-    },
-    [QUERY_ERRORED]: {
-      next: (state, { payload }) => (payload ? payload : state),
-    },
-  },
-  null,
-);
-
 // The results of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResults = handleActions(
   {
