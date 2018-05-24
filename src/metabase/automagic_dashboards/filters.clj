@@ -4,6 +4,7 @@
             [metabase.models
              [field :refer [Field] :as field]
              [table :refer [Table]]]
+            [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -323,3 +324,26 @@
        :field_id (:id field)
        :type     (filter-type field)
        :value    value})))
+
+(defn- flatten-filter-clause
+  [filter-clause]
+  (when (not-empty filter-clause)
+    (if (-> filter-clause first qp.util/normalize-token (= :and))
+      (mapcat flatten-filter-clause (rest filter-clause))
+      [filter-clause])))
+
+(defn inject-refinement
+  "Inject a filter refinement into an MBQL filter clause.
+   We assume that any refinement sub-clauses referencing fields that are also referenced in the
+   main clause are subsets of the latter. Therefore we can rewrite the combined clause to ommit
+   the more broad version from the main clause.
+   Assumes  both filter clauses can be flattened by recursively merging `:and` claueses
+   (ie. no `:and`s inside `:or` or `:not`)."
+  [filter-clause refinement]
+  (let [in-refinement? (into #{}
+                         (map collect-field-references)
+                         (flatten-filter-clause refinement))]
+    (->> filter-clause
+         flatten-filter-clause
+         (remove (comp in-refinement? collect-field-references))
+         (reduce merge-filter-clauses refinement))))
