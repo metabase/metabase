@@ -45,19 +45,23 @@ const CollectionCard = Card.extend`
 `;
 
 const CollectionItem = ({ collection }) => (
-  <Link to={`collection/${collection.id}`} hover={{ color: normal.blue }}>
-    <CollectionCard hoverable>
-      <Flex
-        align="center"
-        my={1}
-        px={1}
-        py={1}
-        key={`collection-${collection.id}`}
-      >
-        <Icon name="all" mx={1} color="#93B3C9" />
+  <Link
+    to={`collection/${collection.id}`}
+    hover={{ color: normal.blue }}
+    color={normal.grey2}
+  >
+    <Flex
+      align="center"
+      my={1}
+      px={1}
+      py={1}
+      key={`collection-${collection.id}`}
+    >
+      <Icon name="all" mx={1} />
+      <h4>
         <Truncate>{collection.name}</Truncate>
-      </Flex>
-    </CollectionCard>
+      </h4>
+    </Flex>
   </Link>
 );
 
@@ -155,7 +159,7 @@ class DefaultLanding extends React.Component {
     return (
       <Flex>
         {showCollectionList && (
-          <Box w={1 / 3} mr={2}>
+          <Box w={1 / 3} mr={3}>
             <CollectionList />
           </Box>
         )}
