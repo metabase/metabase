@@ -8,6 +8,8 @@ hose {
     BUILDTOOL = 'make'
     DEVTIMEOUT = 30
     RELEASETIMEOUT = 30
+    BUILDTOOLVERSION = '3.5.0'
+    NEW_VERSIONING = 'true'
 
     ATTIMEOUT = 90
     INSTALLTIMEOUT = 90

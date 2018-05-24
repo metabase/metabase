@@ -3,6 +3,7 @@
 ## 0.29.0 (upcoming)
 
 * [DGPB-1171] Add Armadillo admin logic for User auto-creation
+* [DGPB-1130] Versioning improvement
 * [DGPB-1029] Crossdata driver upgrade: 2.8.0 → 2.11.1
 * [DGPB-1028] Automatic login for existing Armadillo group id
 * [DGPB-999] Discovery: connect with Postgres TLS
