@@ -213,8 +213,9 @@ class DefaultLanding extends React.Component {
                               <Link
                                 to={url}
                                 className="hover-parent hover--visibility"
+                                hover={{ color: normal.blue }}
                               >
-                                <Card hoverable p={2}>
+                                <Card hoverable p={3}>
                                   <Icon
                                     name={iconName}
                                     color={iconColor}
