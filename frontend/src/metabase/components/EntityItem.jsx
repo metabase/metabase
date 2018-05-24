@@ -12,6 +12,9 @@ const EntityItemWrapper = Flex.extend`
   &:hover {
     color: ${normal.blue};
   }
+  &:last-child {
+    border-bottom: none;
+  }
 `;
 
 const IconWrapper = Flex.extend`

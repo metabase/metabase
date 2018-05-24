@@ -33,7 +33,7 @@ export default class SearchApp extends React.Component {
                   .pairs()
                   .value()
                   .map(([section, items]) => (
-                    <Box mt={2}>
+                    <Box mt={2} mb={3}>
                       <div className="text-uppercase text-grey-4 text-small text-bold my1">
                         {section}
                       </div>
