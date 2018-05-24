@@ -36,6 +36,10 @@
   "The header with the group to direct user creation and authentication."
   :default "")
 
+(defsetting admin-group-header
+  "The header with the collection of groups designed as administrators."
+  :default "")
+
 (defsetting group-header-delimiter
   "Character used as delimiter for group header parameter."
   :default ",")

@@ -75,28 +75,46 @@
 
 
 (defn- get-existing-groups
-  "Return only existing groups of the list"
+  "Return only existing groups from the list"
   [group_list]
+
   (vec (clojure.set/intersection (set group_list) (db/select-field :name PermissionsGroup))))
 
-;; TODO alfonsotratio:
+(defn- get-admin-groups
+  "Return only admin groups from the list"
+  [group_list]
+
+  (vec (clojure.set/intersection (set group_list)
+                                 (set (clojure.string/split
+                                       (public-settings/admin-group-header)
+                                       (clojure.core/re-pattern (public-settings/group-header-delimiter)))))))
+
+
+;; TODO alfonsotratio, javierstratio:
 (defn- group-login
-  "Find a matching `Group` if one exists. Create user, assign goup and return a new Session for them, or `nil` if they couldn't be authenticated."
+  "Find a matching `Group` if one exists. Create user, assign group and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username password headers]
   (if (get headers (public-settings/group-header))
     (let [group_login (get-existing-groups
                        (clojure.string/split
                         (get headers (public-settings/group-header)) (clojure.core/re-pattern (public-settings/group-header-delimiter))))
           user_login (get headers (public-settings/user-header))]
+
       (if (and (not-empty group_login) user_login)
-        (let [user (user/create-new-header-auth-user! user_login "" (str user_login "@example.com"))]
-          (doseq [x group_login]
-            (try (db/insert! PermissionsGroupMembership
-                             :group_id (get (db/select-one [PermissionsGroup :id], :name x) :id)
-                             :user_id  (get user :id))
-              (catch Exception e (log/info "User-group tuple already exists. User: " user_login " Group: " x))))
-          (log/info "Successfully user created with group-hearder. User: " user_login " For this group: " group_login)
-          (email-login username password headers)))))
+        (let [admin_group_login (get-admin-groups group_login)
+              admin_group_found (if (seq admin_group_login) true false)]
+          (let [user (user/create-new-header-auth-user! user_login "" (str user_login "@example.com") admin_group_found)]
+            (doseq [x group_login]
+              (try (db/insert! PermissionsGroupMembership
+                               :group_id (get (db/select-one [PermissionsGroup :id], :name x) :id)
+                               :user_id  (get user :id))
+                (catch Exception e (log/info "User-group tuple already exists. User: " user_login " Group: " x))))
+            (log/info "Successfully user created with group-hearder. User: " user_login " For this group: " group_login)
+            (email-login username password headers)))
+
+        (log/error "This group doesn't exist in Discovery"))
+      )
+    (log/error "Couldn't find a valid group in the given header"))
   )
 
 ;; TODO romartin:

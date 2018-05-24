@@ -172,7 +172,7 @@
 (defn create-new-header-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will recieve an email right away."
-  [first-name last-name email-address]
+  [first-name last-name email-address is_superuser]
   {:pre [(string? first-name) (string? last-name) (u/is-email? email-address)]}
   (if-let [existing-user (db/select-one [User :id :is_active :google_auth], :email email-address)]
     ;; this user already exists but is inactive, so simply reactivate the account
@@ -181,7 +181,8 @@
     (db/insert! User :email      email-address
                 :first_name first-name
                 :last_name  last-name
-                :password   (str (UUID/randomUUID)))))
+                :password   (str (UUID/randomUUID))
+                :is_superuser is_superuser)))
 
 (defn set-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
