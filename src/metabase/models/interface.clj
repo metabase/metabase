@@ -4,10 +4,13 @@
             [metabase.util :as u]
             [metabase.util
              [cron :as cron-util]
+             [date :as du]
              [encryption :as encryption]]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
-            [toucan.models :as models])
+            [toucan
+             [models :as models]
+             [util :as toucan-util]])
   (:import java.sql.Blob))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -78,14 +81,21 @@
   :in  validate-cron-string
   :out identity)
 
+;; Toucan ships with a Keyword type, but on columns that are marked 'TEXT' it doesn't work properly since the values
+;; might need to get de-CLOB-bered first. So replace the default Toucan `:keyword` implementation with one that
+;; handles those cases.
+(models/add-type! :keyword
+  :in  toucan-util/keyword->qualified-name
+  :out (comp keyword u/jdbc-clob->str))
+
 
 ;;; properties
 
 (defn- add-created-at-timestamp [obj & _]
-  (assoc obj :created_at (u/new-sql-timestamp)))
+  (assoc obj :created_at (du/new-sql-timestamp)))
 
 (defn- add-updated-at-timestamp [obj & _]
-  (assoc obj :updated_at (u/new-sql-timestamp)))
+  (assoc obj :updated_at (du/new-sql-timestamp)))
 
 (models/add-property! :timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)

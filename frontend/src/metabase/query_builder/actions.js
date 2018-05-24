@@ -204,11 +204,12 @@ export const initializeQB = (location, params) => {
       databasesList = getDatabasesList(getState());
     } catch (error) {
       console.error("error fetching dbs", error);
-
-      // if we can't actually get the databases list then bail now
-      dispatch(setErrorPage(error));
-
-      return { uiControls };
+      // NOTE: don't actually error if dbs can't be fetched for some reason,
+      // we may still be able to run the query
+      // NOTE: for some reason previously fetchDatabases would fall back to []
+      // if there was an API error so this would never be hit
+      // dispatch(setErrorPage(error));
+      // return { uiControls };
     }
 
     // load up or initialize the card we'll be working on
@@ -774,7 +775,7 @@ export const apiCreateQuestion = question => {
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(clearRequestState({ statePath: ["metadata", "databases"] }));
+    dispatch(clearRequestState({ statePath: ["entities", "databases"] }));
 
     dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(
@@ -811,7 +812,7 @@ export const apiUpdateQuestion = question => {
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(clearRequestState({ statePath: ["metadata", "databases"] }));
+    dispatch(clearRequestState({ statePath: ["entities", "databases"] }));
 
     dispatch(updateUrl(updatedQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(

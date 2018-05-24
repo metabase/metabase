@@ -1,6 +1,6 @@
 # Running the Metabase Jar File
 
-To run the Metabase jar file you need to have Java installed on your system.  Currently Metabase requires Java 7 or higher and will work on either the OpenJDK or Oracle JDK.  Note that the Metabase team prefers to stick with open source solutions where possible, so we use the OpenJDK for our Metabase instances.
+To run the Metabase jar file you need to have Java installed on your system. Currently Metabase requires Java 8 or higher and will work on either the OpenJDK or Oracle JDK.
 
 ### Download Metabase
 
@@ -21,7 +21,7 @@ You should see output such as:
 
 If you did not see the output above and instead saw either an error or your Java version is less than 1.7, then you need to install the Java Runtime.
 
-[OpenJDK Downloads](http://openjdk.java.net/install/)  
+[OpenJDK Downloads](http://openjdk.java.net/install/)
 [Oracle's Java Downloads](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
 
 

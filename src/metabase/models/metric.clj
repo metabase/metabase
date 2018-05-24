@@ -69,7 +69,7 @@
 
 (defn metric-dependencies
   "Calculate any dependent objects for a given `Metric`."
-  [this id {:keys [definition]}]
+  [_ _ {:keys [definition]}]
   (when definition
     {:Segment (q/extract-segment-ids definition)}))
 

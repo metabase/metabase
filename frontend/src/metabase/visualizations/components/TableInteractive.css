@@ -50,9 +50,15 @@
   border-bottom: 1px solid var(--table-border-color);
 }
 
-.TableInteractive .TableInteractive-cellWrapper:hover {
+.TableInteractive .TableInteractive-cellWrapper--active,
+.TableInteractive:not(.TableInteractive--noHover)
+  .TableInteractive-cellWrapper:hover {
   border-color: var(--brand-color);
   color: var(--brand-color);
+}
+
+.TableInteractive .TableInteractive-cellWrapper--active {
+  z-index: 1;
 }
 
 .TableInteractive .TableInteractive-header,
@@ -86,5 +92,5 @@
 
 .TableInteractive .TableInteractive-cellWrapper.tether-enabled {
   background-color: var(--brand-color);
-  color: white;
+  color: white !important;
 }

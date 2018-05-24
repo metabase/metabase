@@ -1,10 +1,12 @@
 (ns metabase.query-processor.annotate
   "Code that analyzes the results of running a query and adds relevant type information about results (including
   foreign key information). This also does things like taking lisp-case keys used in the QP and converting them back
-  to snake_case ones used in the frontend."
-  ;; TODO - The code in this namespace could definitely use a little cleanup to make it a little easier to wrap one's
-  ;;        head around :)
-  ;; TODO - This namespace should be called something like `metabase.query-processor.middleware.annotate`
+  to snake_case ones used in the frontend.
+
+  TODO - The code in this namespace could definitely use a little cleanup to make it a little easier to wrap one's
+         head around :)
+
+  TODO - This namespace should be called something like `metabase.query-processor.middleware.annotate`"
   (:require [clojure
              [set :as set]
              [string :as str]]
@@ -18,8 +20,7 @@
              [humanization :as humanization]]
             [metabase.query-processor
              [interface :as i]
-             [sort :as sort]
-             [util :as qputil]]
+             [sort :as sort]]
             [toucan.db :as db])
   (:import [metabase.query_processor.interface Expression ExpressionRef]))
 
@@ -317,7 +318,7 @@
      (fk-field->dest-fn fields fk-ids id->dest-id (u/key-by :id (db/select [Field :id :name :display_name :table_id :description :base_type :special_type :visibility_type]
                                                                   :id [:in (vals id->dest-id)])))))
   ;; Return a function that will return the corresponding destination Field for a given Field
-  ([fields fk-ids id->dest-id dest-id->field]
+  ([_ _ id->dest-id dest-id->field]
    (fn [{:keys [id]}]
      (some-> id id->dest-id dest-id->field))))
 

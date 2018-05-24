@@ -1,5 +1,5 @@
-title: A look at your [[this]] table
-transient_title: "It looks like your [[this]] table has transactions, so here's a look at them"
+title: A look at your [[this]]
+transient_title: "It looks like your [[this]] has transactions, so here's a look at them"
 description: Some metrics we found about your transactions.
 metrics:
 - AvgDiscount:

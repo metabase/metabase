@@ -5,7 +5,8 @@
             [clojure.tools.reader.edn :as edn]
             [medley.core :as m]
             [metabase.query-processor.util :as qputil]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.date :as du])
   (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]
            [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field RelativeDateTimeValue Value]))
 
@@ -33,13 +34,13 @@
   Field                 (->rvalue [this] (:field-name this))
   DateTimeField         (->rvalue [this] (->rvalue (:field this)))
   Value                 (->rvalue [this] (:value this))
-  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (u/format-date "yyyy-MM-dd" (u/date-trunc unit value)))
+  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (du/format-date "yyyy-MM-dd" (du/date-trunc unit value)))
   RelativeDateTimeValue (->rvalue [{:keys [unit amount]}]
                           (cond
                             (and (= unit :day) (= amount 0))  "today"
                             (and (= unit :day) (= amount -1)) "yesterday"
                             (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
-                            :else                             (u/format-date "yyyy-MM-dd" (u/date-trunc unit (u/relative-date unit amount))))))
+                            :else                             (du/format-date "yyyy-MM-dd" (du/date-trunc unit (du/relative-date unit amount))))))
 
 
 (defn- char-escape-map
@@ -206,14 +207,14 @@
 
 (def ^:private ga-dimension->date-format-fn
   {"ga:minute"         parse-number
-   "ga:dateHour"       (partial u/parse-date "yyyyMMddHH")
+   "ga:dateHour"       (partial du/parse-date "yyyyMMddHH")
    "ga:hour"           parse-number
-   "ga:date"           (partial u/parse-date "yyyyMMdd")
+   "ga:date"           (partial du/parse-date "yyyyMMdd")
    "ga:dayOfWeek"      (comp inc parse-number)
    "ga:day"            parse-number
-   "ga:isoYearIsoWeek" (partial u/parse-date "YYYYww")
+   "ga:isoYearIsoWeek" (partial du/parse-date "YYYYww")
    "ga:week"           parse-number
-   "ga:yearMonth"      (partial u/parse-date "yyyyMM")
+   "ga:yearMonth"      (partial du/parse-date "yyyyMM")
    "ga:month"          parse-number
    "ga:year"           parse-number})
 

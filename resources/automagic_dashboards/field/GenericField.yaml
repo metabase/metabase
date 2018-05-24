@@ -1,5 +1,5 @@
-title: A look at your [[this]] field
-transient_title: Here's an overview of your [[this]] field
+title: A look at your [[this]]
+transient_title: Here's an overview of your [[this]]
 description: How [[this]] is distributed and more.
 applies_to: GenericTable.*
 metrics:

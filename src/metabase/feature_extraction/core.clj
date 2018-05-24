@@ -1,8 +1,8 @@
 (ns metabase.feature-extraction.core
   "Feature extraction for various models."
   (:require [clojure
-             [walk :refer [postwalk]]
-             [string :as s]]
+             [string :as s]
+             [walk :refer [postwalk]]]
             [medley.core :as m]
             [metabase.db.metadata-queries :as metadata]
             [metabase.feature-extraction
@@ -16,12 +16,10 @@
              [card :refer [Card]]
              [field :refer [Field]]
              [metric :refer [Metric]]
-             [query :refer [Query] :as query]
+             [query :as query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.query-processor :as qp]
             [metabase.util :as u]
-            [redux.core :as redux]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
