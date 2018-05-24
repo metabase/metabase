@@ -98,7 +98,9 @@
                           join-enumeration)
         dimensions   (->> (qp.util/get-in-normalized question [:dataset_query :query :breakout])
                           (mapcat filters/collect-field-references)
-                          (map (comp :display_name (partial ->field root) filters/field-reference->id))
+                          (map (comp :display_name
+                                     (partial ->field root)
+                                     filters/field-reference->id))
                           join-enumeration)]
     (format "%s by %s" aggregations dimensions)))
 
@@ -187,9 +189,9 @@
    :query-filter (qp.util/get-in-normalized card [:dataset_query :query :filter])
    :full-name    (str (:name card) (tru " question"))
    :url          (format "%squestion/%s" public-endpoint (u/get-id card))
-   :rules-prefix (if (table-like? card)
-                   "table"
-                   "question")})
+   :rules-prefix [(if (table-like? card)
+                    "table"
+                    "question")]})
 
 (defmethod ->root (type Query)
   [query]
@@ -202,9 +204,9 @@
                      (table-like? query)   (-> source ->root :full-name)
                      :else                 (question-description {:source source} query))
      :url          (format "%sadhoc/%s" public-endpoint (encode-base64-json query))
-     :rules-prefix (if (table-like? query)
-                     "table"
-                     "question")}))
+     :rules-prefix [(if (table-like? query)
+                      "table"
+                      "question")]}))
 
 (defmulti
   ^{:doc "Get a reference for a given model to be injected into a template
@@ -343,22 +345,20 @@
   (filter #(-> % :entity_type (isa? tablespec)) tables))
 
 (defn- fill-templates
-  [template-type context bindings form]
-  (walk/postwalk
-   (fn [form]
-     (if (string? form)
-       (str/replace form #"\[\[(\w+)\]\]"
-                    (fn [[_ identifier]]
-                      (->reference template-type (or (-> identifier
-                                                         ((merge {"this" (-> context :root :entity)}
-                                                                 bindings)))
-                                                     (-> identifier
-                                                         rules/->entity
-                                                         (filter-tables (:tables context))
-                                                         first)
-                                                     identifier))))
-       form))
-   form))
+  [template-type {:keys [root tables]} bindings form]
+  (let [bindings (some-fn (merge {"this" (-> root
+                                             :entity
+                                             (assoc :full-name (:full-name root)))}
+                                 bindings)
+                          (comp first #(filter-tables % tables) rules/->entity)
+                          identity)]
+    (walk/postwalk
+     (fn [form]
+       (if (string? form)
+         (str/replace form #"\[\[(\w+)\]\]" (fn [[_ identifier]]
+                                              (->reference template-type (bindings identifier))))
+         form))
+     form)))
 
 (defn- field-candidates
   [context {:keys [field_type links_to named max_cardinality] :as constraints}]
@@ -499,7 +499,7 @@
 
 (defn- instantiate-metadata
   [x context bindings]
-  (-> (fill-templates :string context bindings x)
+  (-> (fill-templates :string context  bindings x)
       (u/update-when :visualization #(instantate-visualization % bindings
                                                                (:metrics context)))))
 
@@ -592,6 +592,7 @@
                                                  not-empty)]
                            [identifier (assoc definition :matches matches)])))
                  (concat [["this" {:matches [field]
+                                   :name    (:display_name field)
                                    :score   rules/max-score}]])
                  (into {})))))
 
@@ -652,18 +653,17 @@
 
 (s/defn ^:private make-dashboard
   ([root, rule :- rules/Rule]
-   (make-dashboard root rule {:tables [(:source root)]}))
+   (make-dashboard root rule {:tables [(:source root)]
+                              :root   root}))
   ([root, rule :- rules/Rule, context]
-   (let [this {"this" (-> root
-                          :entity
-                          (assoc :full-name (:full-name root)))}]
+   (let [fill-templates (partial fill-templates :string context {})]
      (-> rule
          (select-keys [:title :description :transient_title :groups])
-         (update :title (partial fill-templates :string context this))
-         (update :description (partial fill-templates :string context this))
-         (update :transient_title (partial fill-templates :string context this))
-         (u/update-when :short_title (partial fill-templates :string context this))
-         (update :groups (partial fill-templates :string context {}))
+         (update :title fill-templates)
+         (update :description fill-templates)
+         (update :transient_title fill-templates)
+         (u/update-when :short_title fill-templates)
+         (update :groups  fill-templates)
          (assoc :refinements (:cell-query root))))))
 
 (s/defn ^:private apply-rule
@@ -725,8 +725,8 @@
        (take max-related)))
 
 (s/defn ^:private related
-  [root, rule :- rules/Rule]
-  (let [indepth (indepth root rule)]
+  [root, rule :- (s/maybe rules/Rule)]
+  (let [indepth (some->> rule (indepth rule))]
     {:indepth indepth
      :tables  (take (- max-related (count indepth)) (others root))}))
 
@@ -826,7 +826,7 @@
                                                          (u/get-id card)
                                                          (encode-base64-json cell-query))
                                    :entity       (:source root)
-                                   :rules-prefix "table"}))
+                                   :rules-prefix ["table"]}))
               opts))
       (let [opts (assoc opts :show :all)]
         (->> (decompose-question root card opts)
@@ -844,7 +844,7 @@
                                                          (encode-base64-json (:dataset_query query))
                                                          (encode-base64-json cell-query))
                                    :entity       (:source root)
-                                   :rules-prefix "table"}))
+                                   :rules-prefix ["table"]}))
               (update opts :cell-query merge-filter-clauses
                       (qp.util/get-in-normalized query [:dataset_query :query :filter]))))
       (let [opts (assoc opts :show :all)]
