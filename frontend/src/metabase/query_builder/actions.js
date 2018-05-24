@@ -8,6 +8,8 @@ import { createAction } from "redux-actions";
 import _ from "underscore";
 import { assocIn } from "icepick";
 
+import * as Urls from "metabase/lib/urls";
+
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
@@ -1432,7 +1434,7 @@ export const archiveQuestion = createThunkAction(
       ),
     );
 
-    dispatch(push("/questions"));
+    dispatch(push(Urls.collection(card.collection_id)));
     return response;
   },
 );
