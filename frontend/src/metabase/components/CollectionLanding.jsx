@@ -227,7 +227,7 @@ class DefaultLanding extends React.Component {
                                         this._unPinItem(item);
                                       }}
                                     >
-                                      <Icon name="staroutline" />
+                                      <Icon name="pin" />
                                     </Box>
                                   </Flex>
                                 </Card>

@@ -92,7 +92,11 @@ class Overworld extends React.Component {
                     {databases.map(database => (
                       <GridItem>
                         <Link to={`browse/${database.id}`}>
-                          <Card p={3} hover={{ color: normal.blue }} hoverable>
+                          <Box
+                            p={3}
+                            hover={{ color: normal.blue }}
+                            bg="#f5f5f5"
+                          >
                             <Icon
                               name="database"
                               color={normal.green}
@@ -100,7 +104,7 @@ class Overworld extends React.Component {
                               size={28}
                             />
                             <h3>{database.name}</h3>
-                          </Card>
+                          </Box>
                         </Link>
                       </GridItem>
                     ))}

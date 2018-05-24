@@ -38,7 +38,7 @@ const EntityItem = ({ name, iconName, iconColor, item, onPin }) => {
             onPin(item);
           }}
         >
-          <Icon name="star" />
+          <Icon name="pin" />
         </Box>
       )}
     </EntityItemWrapper>
