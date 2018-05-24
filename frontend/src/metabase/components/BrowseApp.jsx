@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex, Subhead, Text } from "rebass";
+import { Box, Flex, Subhead } from "rebass";
 import { t } from "c-3po";
 
 import EntityItem from "metabase/components/EntityItem";

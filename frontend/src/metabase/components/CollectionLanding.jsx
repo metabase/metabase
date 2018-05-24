@@ -37,13 +37,6 @@ const mapDispatchToProps = {
   updateDashboard: Dashboard.actions.update,
 };
 
-const CollectionCard = Card.extend`
-  border-color: #dce1e4;
-  &:hover > Icon {
-    background-color: ${normal.blue};
-  }
-`;
-
 const CollectionItem = ({ collection }) => (
   <Link
     to={`collection/${collection.id}`}
