@@ -64,7 +64,8 @@ const SearchWrapper = Flex.extend`
   border-radius: 6px;
   align-items: center;
   color: white;
-  transition: background 300ms ease-in;
+  transition: background border 300ms ease-in;
+  border: 1px solid ${props => (props.active ? "#4894d8" : "transparent")};
   &:hover {
     background-color: ${ActiveSearchColor};
   }
@@ -75,6 +76,7 @@ const SearchInput = styled.input`
   border: none;
   color: white;
   font-size: 1em;
+  font-weight: 700;
   &:focus {
     outline: none;
   }
@@ -112,7 +114,6 @@ class SearchBar extends React.Component {
         handleDismissal={() => this.setState({ active: false })}
       >
         <SearchWrapper
-          w={2 / 3}
           onClick={() => this.setState({ active: true })}
           active={this.state.active}
         >
@@ -244,16 +245,24 @@ export default class Navbar extends Component {
           <Link
             to="/"
             data-metabase-event={"Navbar;Logo"}
-            className="LogoNavItem NavItem cursor-pointer flex align-center transition-background justify-center"
+            className="LogoNavItem NavItem cursor-pointer relative z2 flex align-center transition-background justify-center"
           >
             <LogoIcon dark />
           </Link>
         </Box>
-        <SearchBar
-          location={this.props.location}
-          onChangeLocation={this.props.onChangeLocation}
-        />
-        <Flex ml="auto" align="center">
+        <Flex
+          className="absolute top left right bottom z1"
+          px={4}
+          align="center"
+        >
+          <Box w={2 / 3}>
+            <SearchBar
+              location={this.props.location}
+              onChangeLocation={this.props.onChangeLocation}
+            />
+          </Box>
+        </Flex>
+        <Flex ml="auto" align="center" className="relative z2">
           <PopoverWithTrigger
             ref={e => (this._newPopover = e)}
             triggerElement={
