@@ -14,7 +14,8 @@
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]])
+             [honeysql-extensions :as hx]]
+            [schema.core :as s])
   (:import [java.sql Time Timestamp]))
 
 (defrecord SQLiteDriver []
@@ -139,20 +140,17 @@
     :seconds      (->datetime expr (hx/literal "unixepoch"))
     :milliseconds (recur (hx// expr 1000) :seconds)))
 
-
 ;; SQLite doesn't like things like Timestamps getting passed in as prepared statement args, so we need to convert them
 ;; to date literal strings instead to get things to work
 ;;
 ;; TODO - not sure why this doesn't need to be done in `->honeysql` as well? I think it's because the MBQL date values
 ;; are funneled through the `date` family of functions above
-(defn- prepare-sql-param [obj]
-  (if (instance? java.util.Date obj)
-    ;; for anything that's a Date (usually a java.sql.Timestamp) convert it to a yyyy-MM-dd formatted date literal
-    ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`
-    ;; sometimes so we need to use just the date rather than a full ISO-8601 string
-    (du/format-date "yyyy-MM-dd" obj)
-    ;; every other prepared statement arg can be returned as-is
-    obj))
+(s/defmethod sql/->prepared-substitution [SQLiteDriver java.util.Date] :- sql/PreparedStatementSubstitution
+  [_ date]
+  ;; for anything that's a Date (usually a java.sql.Timestamp) convert it to a yyyy-MM-dd formatted date literal
+  ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`
+  ;; sometimes so we need to use just the date rather than a full ISO-8601 string
+  (sql/make-stmt-subs "?" [(du/format-date "yyyy-MM-dd" date)]))
 
 ;; SQLite doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sqlqp/->honeysql [SQLiteDriver Boolean]
@@ -206,7 +204,6 @@
     :connection-details->spec  (u/drop-first-arg connection-details->spec)
     :current-datetime-fn       (constantly (hsql/call :datetime (hx/literal :now)))
     :date                      (u/drop-first-arg date)
-    :prepare-sql-param         (u/drop-first-arg prepare-sql-param)
     :string-length-fn          (u/drop-first-arg string-length-fn)
     :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
