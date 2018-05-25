@@ -18,6 +18,7 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm.jsx";
 
 import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
+import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -66,7 +67,7 @@ export default class PulseEdit extends Component {
       this.props.pulse.cards.length,
     );
 
-    this.props.onChangeLocation(`/collection/${pulse.collection_id}`);
+    this.props.onChangeLocation(Urls.collection(pulse.collection_id));
   }
 
   async delete() {

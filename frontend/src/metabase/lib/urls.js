@@ -81,8 +81,8 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
   return question(null, query);
 }
 
-export function collection(collection) {
-  return `/collection/${collection.id}`;
+export function collection(collectionId) {
+  return `/collection/${collectionId || "root"}`;
 }
 
 export function label(label) {
