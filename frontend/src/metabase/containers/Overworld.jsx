@@ -95,10 +95,7 @@ class Overworld extends React.Component {
                           to={`browse/${database.id}`}
                           hover={{ color: normal.blue }}
                         >
-                          <Box
-                            p={3}
-                            bg="#F2F5F7"
-                          >
+                          <Box p={3} bg="#F2F5F7">
                             <Icon
                               name="database"
                               color={normal.green}
