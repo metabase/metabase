@@ -125,12 +125,12 @@ export const field_special_types = [
     name: t`Creation timestamp`,
     section: t`Common`,
   },
-   {
+  {
     id: TYPE.CreationTime,
     name: t`Creation time`,
     section: t`Common`,
-   },
-   {
+  },
+  {
     id: TYPE.CreationDate,
     name: t`Creation date`,
     section: t`Common`,
