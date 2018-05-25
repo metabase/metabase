@@ -61,12 +61,14 @@ class BrowserSelect extends Component {
 
   isSelected(otherValue) {
     const { value, multiple } = this.props;
-    if (_.isEmpty(value) && _.isEmpty(otherValue)) {
-      return true;
-    } else if (multiple) {
+    if (multiple) {
       return _.any(value, v => v === otherValue);
     } else {
-      return value === otherValue;
+      return (
+        value === otherValue ||
+        ((value == null || value === "") &&
+          (otherValue == null || otherValue === ""))
+      );
     }
   }
 

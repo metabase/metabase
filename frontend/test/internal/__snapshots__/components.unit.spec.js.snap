@@ -464,13 +464,11 @@ exports[`Select should render "Default" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="AdminSelect border-med flex align-center  text-grey-3"
+    className="AdminSelect border-med flex align-center "
   >
     <span
       className="AdminSelect-content mr1"
-    >
-      Yellow
-    </span>
+    />
     <svg
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right"
       fill="currentcolor"
@@ -499,13 +497,11 @@ exports[`Select should render "With search" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="AdminSelect border-med flex align-center  text-grey-3"
+    className="AdminSelect border-med flex align-center "
   >
     <span
       className="AdminSelect-content mr1"
-    >
-      Yellow
-    </span>
+    />
     <svg
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right"
       fill="currentcolor"
