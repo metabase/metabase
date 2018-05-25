@@ -15,6 +15,7 @@
              [math :as math]]
             [medley.core :as m]
             [metabase.automagic-dashboards
+             [filters :as filters]
              [populate :as populate]
              [filters :as filters]
              [rules :as rules]]
@@ -631,8 +632,8 @@
     (as-> {:source       (assoc source :fields (table->fields source))
            :root         root
            :tables       (map #(assoc % :fields (table->fields %)) tables)
-           :query-filter (merge-filter-clauses (:query-filter root)
-                                               (:cell-query root))} context
+           :query-filter (filters/inject-refinement (:query-filter root)
+                                                    (:cell-query root))} context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
       (assoc context :metrics (resolve-overloading context (:metrics rule)))
       (assoc context :filters (resolve-overloading context (:filters rule)))
@@ -846,7 +847,9 @@
                                    :entity       (:source root)
                                    :rules-prefix ["table"]}))
               (update opts :cell-query merge-filter-clauses
-                      (qp.util/get-in-normalized query [:dataset_query :query :filter]))))
+                      (-> query
+                          (qp.util/get-in-normalized [:dataset_query :query :filter])
+                          (partial filters/inject-refinement)))))
       (let [opts (assoc opts :show :all)]
         (->> (decompose-question root query opts)
              (apply populate/merge-dashboards (automagic-dashboard root))

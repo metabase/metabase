@@ -39,9 +39,6 @@ import alert from "metabase/alert/alert";
 /* pulses */
 import * as pulse from "metabase/pulse/reducers";
 
-/* xrays */
-import xray from "metabase/xray/xray";
-
 export default {
   ...commonReducers,
 
@@ -58,7 +55,6 @@ export default {
   labels,
   reference,
   revisions,
-  xray,
   setup: combineReducers(setup),
   user: combineReducers(user),
   admin,
