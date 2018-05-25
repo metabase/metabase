@@ -64,19 +64,14 @@
                                     filters/field-reference->id
                                     (->field root))]
     (if field
-      (format (tru "%s of %s")
-              (-> aggregation-clause first name str/capitalize)
-              (:display_name field))
+      (tru "{0} of {0}" (-> aggregation-clause first name str/capitalize) (:display_name field))
       (-> aggregation-clause first name str/capitalize))))
 
 (defn- join-enumeration
   [[x & xs]]
-  (loop [acc      x
-         [x & xs] xs]
-    (cond
-      (nil? x)    acc
-      (empty? xs) (format (tru "%s and %s") acc x)
-      :else       (recur (format "%s, %s" acc x) xs))))
+  (if xs
+    (tru "{0} and {0}" (str/join ", " (butlast xs)) (last xs))
+    x))
 
 (defn- question-description
   [root question]
@@ -87,12 +82,10 @@
                                    (-> arg Metric :name)
 
                                    arg
-                                   (format (tru "%s of %s")
-                                           (name op)
-                                           (->> arg
-                                                filters/field-reference->id
-                                                (->field root)
-                                                :display_name))
+                                   (tru "{0} of {0}" (name op) (->> arg
+                                                                    filters/field-reference->id
+                                                                    (->field root)
+                                                                    :display_name))
 
                                    :else
                                    (name op))))
@@ -103,7 +96,7 @@
                                      (partial ->field root)
                                      filters/field-reference->id))
                           join-enumeration)]
-    (format "%s by %s" aggregations dimensions)))
+    (tru "{0} by {0}" aggregations dimensions)))
 
 (def ^:private ^{:arglists '([x])} encode-base64-json
   (comp codec/base64-encode codecs/str->bytes json/encode))
@@ -167,8 +160,7 @@
   (comp #{:native} qp.util/normalize-token #(qp.util/get-in-normalized % [:dataset_query :type])))
 
 (def ^:private ^{:arglists '([card-or-question])} source-question
-  (comp Card #(Integer/parseInt %) second #(str/split % #"__")
-        #(qp.util/get-in-normalized % [:dataset_query :query :source_table])))
+  (comp Card qp.util/query->source-card-id :dataset_query))
 
 (def ^:private ^{:arglists '([card])} table-like?
   (comp empty? #(qp.util/get-in-normalized % [:dataset_query :query :aggregation])))
@@ -769,7 +761,7 @@
                                                :url         (format "%s#show=all"
                                                                     (:url root))}]
                                              []))))))
-    (throw (ex-info (format (trs "Can't create dashboard for %s") full-name)
+    (throw (ex-info (trs "Can't create dashboard for {0}" full-name)
              {:root            root
               :available-rules (map :rule (or (some-> rule rules/get-rule vector)
                                               (rules/get-rules rules-prefix)))}))))
@@ -792,29 +784,36 @@
   [metric opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
+(defn- collect-metrics
+  [root question]
+  (map (fn [aggregation-clause]
+         (if (-> aggregation-clause
+                 first
+                 qp.util/normalize-token
+                 (= :metric))
+           (-> aggregation-clause second Metric)
+           (let [metric (metric/map->MetricInstance
+                         {:definition {:aggregation  [aggregation-clause]
+                                       :source_table (:table_id question)}
+                          :table_id   (:table_id question)})]
+             (assoc metric :name (metric->description root metric)))))
+       (qp.util/get-in-normalized question [:dataset_query :query :aggregation])))
+
+(defn- collect-breakout-fields
+  [root question]
+  (map (comp (partial ->field root)
+             filters/field-reference->id
+             first
+             filters/collect-field-references)
+       (qp.util/get-in-normalized question [:dataset_query :query :breakout])))
+
 (defn- decompose-question
   [root question opts]
-  (->> (concat (->> (qp.util/get-in-normalized question [:dataset_query :query :aggregation])
-                    (map (fn [aggregation-clause]
-                           (if (-> aggregation-clause
-                                   first
-                                   qp.util/normalize-token
-                                   (= :metric))
-                             (-> aggregation-clause second Metric)
-                             (let [metric (metric/map->MetricInstance
-                                           {:definition {:aggregation  [aggregation-clause]
-                                                         :source_table (:table_id question)}
-                                            :table_id   (:table_id question)})]
-                               (-> metric
-                                   (assoc :name (metric->description root metric))))))))
-               (->> (qp.util/get-in-normalized question [:dataset_query :query :breakout])
-                    (map (comp (partial ->field root)
-                               filters/field-reference->id
-                               first
-                               filters/collect-field-references))))
-       (map #(automagic-analysis % (assoc opts
-                                     :source   (:source root)
-                                     :database (:database root))))))
+  (map #(automagic-analysis % (assoc opts
+                                :source   (:source root)
+                                :database (:database root)))
+       (concat (collect-metrics root question)
+               (collect-breakout-fields root question))))
 
 (defmethod automagic-analysis (type Card)
   [card {:keys [cell-query] :as opts}]

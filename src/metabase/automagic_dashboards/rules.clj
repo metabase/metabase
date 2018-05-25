@@ -18,7 +18,7 @@
   100)
 
 (def ^:private Score (s/constrained s/Int #(<= 0 % max-score)
-                                    (format (trs "0 <= score <= %s") max-score)))
+                                    (trs "0 <= score <= {0}" max-score)))
 
 (def ^:private MBQL [s/Any])
 
@@ -79,8 +79,7 @@
 (def ^:private Visualization [(s/one s/Str "visualization") su/Map])
 
 (def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
-                                     (format (trs "1 <= width <= %s")
-                                             populate/grid-width)))
+                                     (trs "1 <= width <= {0}" populate/grid-width)))
 (def ^:private Height (s/constrained s/Int pos?))
 
 (def ^:private CardDimension {Identifier {(s/optional-key :aggregation) s/Str}})

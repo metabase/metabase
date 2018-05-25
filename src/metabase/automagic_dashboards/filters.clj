@@ -337,10 +337,14 @@
 
 (defn inject-refinement
   "Inject a filter refinement into an MBQL filter clause.
-   We assume that any refinement sub-clauses referencing fields that are also referenced in the
+   There are two reasons why we want to do this: 1) to reduce visual noise when we display applied
+   filters; and 2) some DBs don't do this optimization or even protest (eg. GA) if there are
+   duplicate clauses.
+
+   Assumes that any refinement sub-clauses referencing fields that are also referenced in the
    main clause are subsets of the latter. Therefore we can rewrite the combined clause to ommit
    the more broad version from the main clause.
-   Assumes  both filter clauses can be flattened by recursively merging `:and` claueses
+   Assumes both filter clauses can be flattened by recursively merging `:and` claueses
    (ie. no `:and`s inside `:or` or `:not`)."
   [filter-clause refinement]
   (let [in-refinement? (into #{}
