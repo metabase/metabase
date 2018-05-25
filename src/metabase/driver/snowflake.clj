@@ -140,7 +140,6 @@
                                                     :placeholder  "my_warehouse"}
                                                    {:name         "dbname"
                                                     :display-name "Database name"
-                                                    :required     true
                                                     :placeholder  "cockerel"}
                                                    {:name         "regionid"
                                                     :display-name "Region Id"
