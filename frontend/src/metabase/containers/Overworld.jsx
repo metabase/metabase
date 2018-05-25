@@ -97,7 +97,7 @@ class Overworld extends React.Component {
                         >
                           <Box
                             p={3}
-                            bg="#F5F7FA"
+                            bg="#F2F5F7"
                           >
                             <Icon
                               name="database"
