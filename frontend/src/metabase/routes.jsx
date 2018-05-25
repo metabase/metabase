@@ -91,16 +91,6 @@ import TableQuestionsContainer from "metabase/reference/databases/TableQuestions
 import FieldListContainer from "metabase/reference/databases/FieldListContainer.jsx";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer.jsx";
 
-/* XRay */
-import FieldXRay from "metabase/xray/containers/FieldXray.jsx";
-import TableXRay from "metabase/xray/containers/TableXRay.jsx";
-import SegmentXRay from "metabase/xray/containers/SegmentXRay.jsx";
-import CardXRay from "metabase/xray/containers/CardXRay.jsx";
-import {
-  SharedTypeComparisonXRay,
-  TwoTypesComparisonXRay,
-} from "metabase/xray/containers/TableLikeComparison";
-
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
@@ -330,22 +320,6 @@ export const getRoutes = store => (
         <Route
           path="databases/:databaseId/tables/:tableId/questions"
           component={TableQuestionsContainer}
-        />
-      </Route>
-
-      {/* XRAY */}
-      <Route path="/xray" title={t`XRay`}>
-        <Route path="segment/:segmentId/:cost" component={SegmentXRay} />
-        <Route path="table/:tableId/:cost" component={TableXRay} />
-        <Route path="field/:fieldId/:cost" component={FieldXRay} />
-        <Route path="card/:cardId/:cost" component={CardXRay} />
-        <Route
-          path="compare/:modelTypePlural/:modelId1/:modelId2/:cost"
-          component={SharedTypeComparisonXRay}
-        />
-        <Route
-          path="compare/:modelType1/:modelId1/:modelType2/:modelId2/:cost"
-          component={TwoTypesComparisonXRay}
         />
       </Route>
 
