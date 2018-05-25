@@ -80,22 +80,20 @@
 (let [user-name (random-name)
       email     (str user-name "@metabase.com")]
   (expect
-    {:email        email
-     :first_name   user-name
-     :last_name    user-name
-     :common_name  (str user-name " " user-name)
-     :is_superuser false
-     :is_qbnewb    true
-     :is_active    true}
+    (merge user-defaults
+           {:email        email
+            :first_name   user-name
+            :last_name    user-name
+            :common_name  (str user-name " " user-name)})
     (et/with-fake-inbox
-      ((user->client :crowberto) :post 200 "user" {:first_name user-name
-                                                   :last_name  user-name
-                                                   :email      email})
-      (u/prog1 (db/select-one [User :email :first_name :last_name :is_superuser :is_qbnewb :is_active]
-                              :email email)
-               ;; clean up after ourselves
-               (db/delete! User :email email)))))
-
+      (try
+        (tu/boolean-ids-and-timestamps
+         ((user->client :crowberto) :post 200 "user" {:first_name user-name
+                                                      :last_name  user-name
+                                                      :email      email}))
+        (finally
+          ;; clean up after ourselves
+          (db/delete! User :email email))))))
 
 ;; Test that reactivating a disabled account works
 (expect

@@ -60,7 +60,8 @@
   (api/check-superuser)
   (api/checkp (not (db/exists? User :email email))
     "email" "Email address already in use.")
-  (user/invite-user! first_name last_name email password @api/*current-user*))
+  (let [new-user-id (u/get-id (user/invite-user! first_name last_name email password @api/*current-user*))]
+    (fetch-user :id new-user-id)))
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
