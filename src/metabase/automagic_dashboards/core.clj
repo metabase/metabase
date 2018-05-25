@@ -842,7 +842,7 @@
                                                          (encode-base64-json cell-query))
                                    :entity       (:source root)
                                    :rules-prefix ["table"]}))
-              (update opts :cell-query merge-filter-clauses
+              (update opts :cell-query
                       (partial filters/inject-refinement
                                (qp.util/get-in-normalized query [:dataset_query :query :filter])))))
       (let [opts (assoc opts :show :all)]
