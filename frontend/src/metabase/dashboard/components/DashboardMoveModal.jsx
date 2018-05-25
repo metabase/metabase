@@ -2,15 +2,24 @@ import React from "react";
 import { Box, Flex, Subhead } from "rebass";
 import cx from "classnames";
 import { withRouter } from "react-router";
+import { connect } from "react-redux";
+import { t } from "c-3po";
 
 import { DashboardApi } from "metabase/services";
+import { addUndo, createUndo } from "metabase/redux/undo";
 
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
+const mapDispatchToProps = {
+  addUndo,
+  createUndo,
+};
+
 @withRouter
+@connect(() => ({}), mapDispatchToProps)
 class DashboardMoveModal extends React.Component {
   state = {
     // will eventually be the collection object representing the selected collection
@@ -23,11 +32,24 @@ class DashboardMoveModal extends React.Component {
   };
 
   async _moveDashboard() {
+    const { addUndo, createUndo } = this.props;
+
     try {
       await DashboardApi.update({
         id: this.props.params.dashboardId,
         collection_id: this.state.selectedCollection.id,
       });
+      addUndo(
+        createUndo({
+          type: "dashboard-move-confirm",
+          message: () => (
+            <Flex align="center">
+              <Icon name="all" mr={1} color="white" />
+              {t`Dashboard moved to ${this.state.selectedCollection.name}`}
+            </Flex>
+          ),
+        }),
+      );
       this.props.onClose();
     } catch (error) {
       this.setState({ error, moving: false });
