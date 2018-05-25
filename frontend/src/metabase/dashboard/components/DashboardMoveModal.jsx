@@ -1,17 +1,14 @@
 import React from "react";
-import { Box, Flex, Subhead } from "rebass";
-import cx from "classnames";
+import { Flex } from "rebass";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t, jt } from "c-3po";
+
+import Icon from "metabase/components/Icon";
+import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
 import { DashboardApi } from "metabase/services";
 import { addUndo, createUndo } from "metabase/redux/undo";
-
-import Button from "metabase/components/Button";
-import Icon from "metabase/components/Icon";
-
-import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
 const mapDispatchToProps = {
   addUndo,
@@ -21,23 +18,13 @@ const mapDispatchToProps = {
 @withRouter
 @connect(() => ({}), mapDispatchToProps)
 class DashboardMoveModal extends React.Component {
-  state = {
-    // will eventually be the collection object representing the selected collection
-    // we store the whole object instead of just the ID so that we can use its
-    // name in the action button, and other properties
-    selectedCollection: {},
-    // whether the move action has started
-    moving: false,
-    error: null,
-  };
-
-  async _moveDashboard() {
-    const { addUndo, createUndo } = this.props;
+  async _moveDashboard(selectedCollection) {
+    const { addUndo, createUndo, params } = this.props;
 
     try {
       await DashboardApi.update({
-        id: this.props.params.dashboardId,
-        collection_id: this.state.selectedCollection.id,
+        id: params.dashboardId,
+        collection_id: selectedCollection.id,
       });
       addUndo(
         createUndo({
@@ -45,7 +32,7 @@ class DashboardMoveModal extends React.Component {
           message: () => (
             <Flex align="center">
               <Icon name="all" mr={1} color="white" />
-              {t`Dashboard moved to ${this.state.selectedCollection.name}`}
+              {jt`Dashboard moved to ${selectedCollection.name}`}
             </Flex>
           ),
         }),
@@ -56,58 +43,12 @@ class DashboardMoveModal extends React.Component {
     }
   }
   render() {
-    const { selectedCollection } = this.state;
     return (
-      <Box p={3}>
-        <Flex align="center">
-          <Subhead>Move dashboard to...</Subhead>
-          <Icon
-            name="close"
-            className="ml-auto"
-            onClick={() => this.props.onClose()}
-          />
-        </Flex>
-        <CollectionListLoader>
-          {({ collections, loading, error }) => {
-            return (
-              <Box>
-                {collections
-                  .concat({ name: "None", id: null })
-                  .map(collection => (
-                    <Box
-                      my={1}
-                      p={1}
-                      onClick={() =>
-                        this.setState({ selectedCollection: collection })
-                      }
-                      className={cx(
-                        "bg-brand-hover text-white-hover cursor-pointer rounded",
-                        {
-                          "bg-brand text-white":
-                            selectedCollection.id === collection.id,
-                        },
-                      )}
-                    >
-                      <Flex align="center">
-                        <Icon name="all" color={"#DCE1E4"} size={32} />
-                        <h4 className="ml1">{collection.name}</h4>
-                      </Flex>
-                    </Box>
-                  ))}
-              </Box>
-            );
-          }}
-        </CollectionListLoader>
-        <Flex>
-          <Button
-            primary
-            className="ml-auto"
-            onClick={() => this._moveDashboard()}
-          >
-            Move
-          </Button>
-        </Flex>
-      </Box>
+      <CollectionMoveModal
+        title={t`Move dashboard to...`}
+        moveFn={this._moveDashboard.bind(this)}
+        onClose={this.props.onClose.bind(this)}
+      />
     );
   }
 }
