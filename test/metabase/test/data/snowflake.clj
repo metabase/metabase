@@ -55,7 +55,7 @@
          {:field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :create-db-sql             create-db-sql
           :execute-sql!              generic/sequentially-execute-sql!
-          :pk-sql-type               (constantly "INTEGER")
+          :pk-sql-type               (constantly "INTEGER AUTOINCREMENT")
           :qualified-name-components qualified-name-components})
 
   i/IDriverTestExtensions

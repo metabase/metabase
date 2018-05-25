@@ -49,9 +49,9 @@
 (def ^:private column->base-type
     "Map of the default Snowflake column types -> Field base types. Add more
   mappings here as you come across them."
-  {:NUMBER                     :type/Decimal
+  {:NUMBER                     :type/Number
    :DECIMAL                    :type/Decimal
-   :NUMERIC                    :type/Decimal
+   :NUMERIC                    :type/Number
    :INT                        :type/Integer
    :INTEGER                    :type/Integer
    :BIGINT                     :type/BigInteger
@@ -82,7 +82,7 @@
    :VARIANT                    :type/*
    ;; Maybe also type *
    :OBJECT                     :type/Dictionary
-   :ARRAY                      :type/Array})
+   :ARRAY                      :type/*})
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
