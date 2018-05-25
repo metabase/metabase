@@ -125,6 +125,16 @@ export const field_special_types = [
     name: t`Creation timestamp`,
     section: t`Common`,
   },
+   {
+    id: TYPE.CreationTime,
+    name: t`Creation time`,
+    section: t`Common`,
+   },
+   {
+    id: TYPE.CreationDate,
+    name: t`Creation date`,
+    section: t`Common`,
+  },
   {
     id: TYPE.Product,
     name: t`Product`,
@@ -148,6 +158,16 @@ export const field_special_types = [
   {
     id: TYPE.JoinTimestamp,
     name: t`Join timestamp`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.JoinTime,
+    name: t`Join time`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.JoinDate,
+    name: t`Join date`,
     section: t`Common`,
   },
   {
