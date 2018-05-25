@@ -9,7 +9,7 @@ import SidebarItem from "metabase/components/SidebarItem.jsx";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-const TableSidebar = ({ database, table, style, className, showXray }) => (
+const TableSidebar = ({ database, table, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <div className={S.breadcrumbs}>
       <Breadcrumbs
@@ -59,7 +59,6 @@ TableSidebar.propTypes = {
   table: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object,
-  showXray: PropTypes.bool,
 };
 
 export default pure(TableSidebar);
