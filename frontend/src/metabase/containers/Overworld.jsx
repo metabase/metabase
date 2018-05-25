@@ -91,11 +91,13 @@ class Overworld extends React.Component {
                   <Grid w={1 / 3}>
                     {databases.map(database => (
                       <GridItem>
-                        <Link to={`browse/${database.id}`}>
+                        <Link
+                          to={`browse/${database.id}`}
+                          hover={{ color: normal.blue }}
+                        >
                           <Box
                             p={3}
-                            hover={{ color: normal.blue }}
-                            bg="#f5f5f5"
+                            bg="#F5F7FA"
                           >
                             <Icon
                               name="database"
