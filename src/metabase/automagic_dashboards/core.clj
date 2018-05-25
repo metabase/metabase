@@ -338,20 +338,15 @@
   (filter #(-> % :entity_type (isa? tablespec)) tables))
 
 (defn- fill-templates
-  [template-type {:keys [root tables]} bindings form]
+  [template-type {:keys [root tables]} bindings s]
   (let [bindings (some-fn (merge {"this" (-> root
                                              :entity
                                              (assoc :full-name (:full-name root)))}
                                  bindings)
                           (comp first #(filter-tables % tables) rules/->entity)
                           identity)]
-    (walk/postwalk
-     (fn [form]
-       (if (string? form)
-         (str/replace form #"\[\[(\w+)\]\]" (fn [[_ identifier]]
-                                              (->reference template-type (bindings identifier))))
-         form))
-     form)))
+    (str/replace s #"\[\[(\w+)\]\]" (fn [[_ identifier]]
+                                     (->reference template-type (bindings identifier))))))
 
 (defn- field-candidates
   [context {:keys [field_type links_to named max_cardinality] :as constraints}]
@@ -492,9 +487,13 @@
 
 (defn- instantiate-metadata
   [x context bindings]
-  (-> (fill-templates :string context  bindings x)
-      (u/update-when :visualization #(instantate-visualization % bindings
-                                                               (:metrics context)))))
+  (-> (walk/postwalk
+       (fn [form]
+         (if (string? form)
+           (fill-templates :string context bindings form)
+           form))
+       x)
+      (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
 
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
@@ -649,15 +648,13 @@
    (make-dashboard root rule {:tables [(:source root)]
                               :root   root}))
   ([root, rule :- rules/Rule, context]
-   (let [fill-templates (partial fill-templates :string context {})]
-     (-> rule
-         (select-keys [:title :description :transient_title :groups])
-         (update :title fill-templates)
-         (update :description fill-templates)
-         (update :transient_title fill-templates)
-         (u/update-when :short_title fill-templates)
-         (update :groups  fill-templates)
-         (assoc :refinements (:cell-query root))))))
+   (-> (walk/postwalk
+           (fn [form]
+             (if (string? form)
+               (fill-templates :string context {} form)
+               form))
+           (select-keys rule [:title :description :transient_title :groups]))
+       (assoc :refinements (:cell-query root)))))
 
 (s/defn ^:private apply-rule
   [root, rule :- rules/Rule]
@@ -846,9 +843,8 @@
                                    :entity       (:source root)
                                    :rules-prefix ["table"]}))
               (update opts :cell-query merge-filter-clauses
-                      (-> query
-                          (qp.util/get-in-normalized [:dataset_query :query :filter])
-                          (partial filters/inject-refinement)))))
+                      (partial filters/inject-refinement
+                               (qp.util/get-in-normalized query [:dataset_query :query :filter])))))
       (let [opts (assoc opts :show :all)]
         (->> (decompose-question root query opts)
              (apply populate/merge-dashboards (automagic-dashboard root))
