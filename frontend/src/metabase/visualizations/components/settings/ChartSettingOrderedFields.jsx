@@ -69,9 +69,14 @@ export default class ChartSettingOrderedFields extends Component {
     this.props.onChange(fields);
   };
 
+  isAnySelected = () => {
+    const { value } = this.props;
+    return _.any(value, field => field.enabled);
+  };
+
   render() {
     const { value, columnNames } = this.props;
-    const anyEnabled = _.any(value, field => field.enabled);
+    const anyEnabled = this.isAnySelected();
     return (
       <div className="list">
         <div className="toggle-all">
