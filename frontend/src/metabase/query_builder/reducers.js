@@ -254,9 +254,11 @@ export const lastRunCard = handleActions(
 export const queryResults = handleActions(
   {
     [RESET_QB]: { next: (state, { payload }) => null },
-    [QUERY_COMPLETED]: { next: (state, { payload }) => payload.queryResults },
+    [QUERY_COMPLETED]: {
+      next: (state, { payload }) => payload.queryResults,
+    },
     [QUERY_ERRORED]: {
-      next: (state, { payload }) => (payload ? payload : state),
+      next: (state, { payload }) => (payload ? [payload] : state),
     },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
   },
