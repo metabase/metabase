@@ -241,7 +241,7 @@ export default class Navbar extends Component {
   renderMainNav() {
     return (
       <Flex className="relative bg-brand text-white z4" align="center">
-        <Box ml={1}>
+        <Box>
           <Link
             to="/"
             data-metabase-event={"Navbar;Logo"}
