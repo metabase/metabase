@@ -13,6 +13,8 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
 
+import { withBackground } from "metabase/hoc/Background";
+
 import HomepageApp from "metabase/home/containers/HomepageApp";
 
 // auth containers
@@ -53,18 +55,6 @@ import {
   NewQuestionMetricSearch,
 } from "metabase/new_query/router_wrappers";
 
-// admin containers
-import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
-import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp.jsx";
-import MetadataEditorApp from "metabase/admin/datamodel/containers/MetadataEditorApp.jsx";
-import MetricApp from "metabase/admin/datamodel/containers/MetricApp.jsx";
-import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp.jsx";
-import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp.jsx";
-import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx";
-import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
-import FieldApp from "metabase/admin/datamodel/containers/FieldApp.jsx";
-import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp.jsx";
-
 import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
 
@@ -91,11 +81,7 @@ import TableQuestionsContainer from "metabase/reference/databases/TableQuestions
 import FieldListContainer from "metabase/reference/databases/FieldListContainer.jsx";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer.jsx";
 
-import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
-
-import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
-import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp.jsx";
-import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx";
+import getAdminRoutes from "metabase/admin/routes";
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
 import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
@@ -155,8 +141,8 @@ const UserIsNotAuthenticated = UserAuthWrapper({
 const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
-const IsAdmin = MetabaseIsSetup(
-  UserIsAuthenticated(UserIsAdmin(({ children }) => children)),
+const IsAdmin = withBackground("bg-white")(
+  MetabaseIsSetup(UserIsAuthenticated(UserIsAdmin(({ children }) => children))),
 );
 const IsNotAuthenticated = MetabaseIsSetup(
   UserIsNotAuthenticated(({ children }) => children),
@@ -337,61 +323,7 @@ export const getRoutes = store => (
       <Route path="/user/edit_current" component={UserSettingsApp} />
 
       {/* ADMIN */}
-      <Route path="/admin" title={t`Admin`} component={IsAdmin}>
-        <IndexRedirect to="/admin/settings" />
-
-        <Route path="databases" title={t`Databases`}>
-          <IndexRoute component={DatabaseListApp} />
-          <Route path="create" component={DatabaseEditApp} />
-          <Route path=":databaseId" component={DatabaseEditApp} />
-        </Route>
-
-        <Route path="datamodel" title={t`Data Model`}>
-          <IndexRedirect to="database" />
-          <Route path="database" component={MetadataEditorApp} />
-          <Route path="database/:databaseId" component={MetadataEditorApp} />
-          <Route
-            path="database/:databaseId/:mode"
-            component={MetadataEditorApp}
-          />
-          <Route
-            path="database/:databaseId/:mode/:tableId"
-            component={MetadataEditorApp}
-          />
-          <Route
-            path="database/:databaseId/:mode/:tableId/settings"
-            component={TableSettingsApp}
-          />
-          <Route
-            path="database/:databaseId/:mode/:tableId/:fieldId"
-            component={FieldApp}
-          />
-          <Route path="metric/create" component={MetricApp} />
-          <Route path="metric/:id" component={MetricApp} />
-          <Route path="segment/create" component={SegmentApp} />
-          <Route path="segment/:id" component={SegmentApp} />
-          <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
-        </Route>
-
-        {/* PEOPLE */}
-        <Route path="people" title={t`People`} component={AdminPeopleApp}>
-          <IndexRoute component={PeopleListingApp} />
-          <Route path="groups" title={t`Groups`}>
-            <IndexRoute component={GroupsListingApp} />
-            <Route path=":groupId" component={GroupDetailApp} />
-          </Route>
-        </Route>
-
-        {/* SETTINGS */}
-        <Route path="settings" title={t`Settings`}>
-          <IndexRedirect to="/admin/settings/setup" />
-          {/* <IndexRoute component={SettingsEditorApp} /> */}
-          <Route path=":section/:authType" component={SettingsEditorApp} />
-          <Route path=":section" component={SettingsEditorApp} />
-        </Route>
-
-        {getAdminPermissionsRoutes(store)}
-      </Route>
+      {getAdminRoutes(store, IsAdmin)}
     </Route>
 
     {/* INTERNAL */}
