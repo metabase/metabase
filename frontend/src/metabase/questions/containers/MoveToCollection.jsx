@@ -61,7 +61,6 @@ export default class MoveToCollection extends Component {
             </Button>
           </div>
         }
-        fullPageModal={true}
         onClose={onClose}
       >
         <CollectionListLoader writable>
