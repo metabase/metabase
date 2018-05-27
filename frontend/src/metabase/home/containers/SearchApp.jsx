@@ -6,13 +6,11 @@ import Link from "metabase/components/Link";
 
 import { Box, Flex, Subhead, Text } from "rebass";
 
-import { withBackground } from "metabase/hoc/Background";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 
-@withBackground("bg-slate-extra-light")
 export default class SearchApp extends React.Component {
   render() {
     return (

@@ -6,7 +6,6 @@ import EntityItem from "metabase/components/EntityItem";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 
-import { withBackground } from "metabase/hoc/Background";
 import { normal } from "metabase/lib/colors";
 import Question from "metabase-lib/lib/Question";
 
@@ -145,7 +144,6 @@ export class TableBrowser extends React.Component {
   }
 }
 
-@withBackground("bg-slate-extra-light")
 export class BrowseApp extends React.Component {
   render() {
     return <Box mx={4}>{this.props.children}</Box>;

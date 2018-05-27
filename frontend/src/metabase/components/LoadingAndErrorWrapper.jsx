@@ -29,7 +29,7 @@ export default class LoadingAndErrorWrapper extends Component {
   static defaultProps = {
     error: false,
     loading: false,
-    noBackground: false,
+    noBackground: true,
     noWrapper: false,
     showSpinner: true,
     loadingMessages: [t`Loading...`],

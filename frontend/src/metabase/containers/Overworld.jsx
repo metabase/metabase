@@ -8,7 +8,6 @@ import { DatabaseListLoader } from "metabase/components/BrowseApp";
 
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
-import { withBackground } from "metabase/hoc/Background";
 
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
@@ -25,7 +24,6 @@ const mapStateToProps = state => ({
 
 //class Overworld extends Zelda
 @connect(mapStateToProps)
-@withBackground("bg-slate-extra-light")
 class Overworld extends React.Component {
   render() {
     return (

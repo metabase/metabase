@@ -2,6 +2,7 @@
   --default-font-family: "Lato";
   --default-font-size: 0.875em;
   --default-font-color: #2e353b;
+  --default-bg-color: #f9fbfc;
 }
 
 html {
@@ -19,6 +20,7 @@ body {
   height: 100%; /* ensure the entire page will fill the window */
   display: flex;
   flex-direction: column;
+  background-color: var(--default-bg-color);
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

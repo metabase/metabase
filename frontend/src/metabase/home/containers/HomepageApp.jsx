@@ -16,8 +16,6 @@ import NextStep from "../components/NextStep";
 import * as homepageActions from "../actions";
 import { getActivity, getRecentViews, getUser } from "../selectors";
 
-import { withBackground } from "metabase/hoc/Background";
-
 import { Box, Flex, Subhead } from "rebass";
 
 const mapStateToProps = (state, props) => ({
@@ -33,7 +31,6 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
-@withBackground("bg-slate-extra-light")
 export default class HomepageApp extends Component {
   static propTypes = {
     onChangeLocation: PropTypes.func.isRequired,
