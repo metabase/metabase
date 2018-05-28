@@ -9,7 +9,14 @@ import type { DatabaseCandidates } from "metabase/meta/types/Auto";
 
 type Props = {
   databaseId: number,
+  children: (props: RenderProps) => ?React$Element<any>,
 };
+
+type RenderProps = {
+  candidates: ?DatabaseCandidates,
+  sampleCandidates: ?DatabaseCandidates,
+  isSample: ?boolean
+}
 
 type State = {
   databaseId: ?number,
@@ -104,7 +111,7 @@ class CandidateListLoader extends React.Component {
     }
   };
   render() {
-    let { candidates, sampleCandidates, isSample } = this.state;
+    const { candidates, sampleCandidates, isSample } = this.state;
     return this.props.children({
       candidates,
       sampleCandidates,
