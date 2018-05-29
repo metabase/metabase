@@ -13,6 +13,8 @@ import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
 
+import Databases from "metabase/entities/databases";
+
 import _ from "underscore";
 import { shallowEqual } from "recompose";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
@@ -119,10 +121,12 @@ export const getDatabases = createSelector(
   ({ databases }) => databases,
 );
 
-export const getDatabasesList = createSelector(
-  [getDatabases, state => state.entities.databases_list],
-  (databases, ids) => (ids || []).map(id => databases[id]),
-);
+// NOTE: this should be paired with the `fetchDatabaes` action in
+// metabase/redux/metadata which uses the same entityQuery
+export const getDatabasesList = state =>
+  Databases.selectors.getList(state, {
+    entityQuery: { include_tables: true, include_cards: true },
+  }) || [];
 
 export const getTables = createSelector([getMetadata], ({ tables }) => tables);
 

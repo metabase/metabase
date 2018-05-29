@@ -21,10 +21,12 @@ import Question from "metabase-lib/lib/Question";
 import { getCard, getQuestion } from "metabase/query_builder/selectors";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import Radio from "metabase/components/Radio";
-import { LOAD_COLLECTIONS } from "metabase/questions/collections";
+
 import * as Urls from "metabase/lib/urls";
 import VisualizationSettings from "metabase/query_builder/components/VisualizationSettings";
 import Popover from "metabase/components/Popover";
+
+import Collections from "metabase/entities/collections";
 
 const timeBreakoutQuestion = Question.create({
   databaseId: 1,
@@ -76,7 +78,7 @@ describe("Query Builder visualization logic", () => {
         .find("a"),
     );
 
-    await store.waitForActions([LOAD_COLLECTIONS]);
+    await store.waitForActions([Collections.actions.fetchList]);
 
     setInputValue(
       app.find(SaveQuestionModal).find("input[name='name']"),

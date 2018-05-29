@@ -14,14 +14,12 @@
             [metabase.integrations.slack :as slack]
             [metabase.models
              [card :refer [Card]]
-             [card-label :refer [CardLabel]]
              [collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [database :refer [Database]]
              [field :refer [Field]]
              [humanization :as humanization]
-             [label :refer [Label]]
              [metric :refer [Metric]]
              [permissions-group :refer [PermissionsGroup]]
              [pulse :refer [Pulse]]
@@ -51,7 +49,7 @@
 (def ^:private ^:const ^String metabase-usage-url "https://xuq0fbkk0j.execute-api.us-east-1.amazonaws.com/prod")
 
 
-(defn- bin-micro-number
+#_(defn- bin-micro-number
   "Return really small bin number. Assumes positive inputs."
   [x]
   (case x
@@ -116,7 +114,7 @@
   ([binning-fn many-maps k]
    (histogram binning-fn (vals (value-frequencies many-maps k)))))
 
-(def ^:private micro-histogram
+#_(def ^:private micro-histogram
   "Return a histogram for micro numbers."
   (partial histogram bin-micro-number))
 
@@ -296,15 +294,6 @@
      :num_cards_per_alerts (medium-histogram (vals (db-frequencies PulseCard :pulse_id   alert-conditions)))}))
 
 
-(defn- label-metrics
-  "Get metrics based on Labels."
-  []
-  (let [card-labels (db/select [CardLabel :card_id :label_id])]
-    {:labels              (db/count Label)
-     :num_labels_per_card (micro-histogram card-labels :card_id)
-     :num_cards_per_label (medium-histogram card-labels :label_id)}))
-
-
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
@@ -424,7 +413,6 @@
                   :execution  (execution-metrics)
                   :field      (field-metrics)
                   :group      (group-metrics)
-                  :label      (label-metrics)
                   :metric     (metric-metrics)
                   :pulse      (pulse-metrics)
                   :alert      (alert-metrics)

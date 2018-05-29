@@ -12,7 +12,7 @@ const CollectionBadge = ({ className, collection }) => {
   const lightened = color.lighten(0.4);
   return (
     <Link
-      to={Urls.collection(collection)}
+      to={Urls.collection(collection.id)}
       className={cx(className, "flex align-center px1 rounded mx1")}
       style={{
         fontSize: 14,

@@ -62,7 +62,7 @@ export default class PulseEditCards extends Component {
   };
 
   addCard(index, cardId) {
-    this.setCard(index, { id: cardId });
+    this.setCard(index, { id: cardId, include_csv: false, include_xls: false });
     this.trackPulseEvent("AddCard", index);
   }
 

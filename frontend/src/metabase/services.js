@@ -36,12 +36,14 @@ export const CardApi = {
   // isfavorite:                  GET("/api/card/:cardId/favorite"),
   favorite: POST("/api/card/:cardId/favorite"),
   unfavorite: DELETE("/api/card/:cardId/favorite"),
-  updateLabels: POST("/api/card/:cardId/labels"),
 
   listPublic: GET("/api/card/public"),
   listEmbeddable: GET("/api/card/embeddable"),
   createPublicLink: POST("/api/card/:id/public_link"),
   deletePublicLink: DELETE("/api/card/:id/public_link"),
+  // related
+  related: GET("/api/card/:cardId/related"),
+  adHocRelated: POST("/api/card/related"),
 };
 
 export const DashboardApi = {
@@ -69,6 +71,8 @@ export const CollectionsApi = {
   list: GET("/api/collection"),
   create: POST("/api/collection"),
   get: GET("/api/collection/:id"),
+  // Temporary route for getting things not in a collection
+  getRoot: GET("/api/collection/root"),
   update: PUT("/api/collection/:id"),
   delete: DELETE("/api/collection/:id"),
   graph: GET("/api/collection/graph"),
@@ -133,7 +137,7 @@ export const MetabaseApi = {
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
   db_metadata: GET("/api/database/:dbId/metadata"),
-  // db_tables:                   GET("/api/database/:dbId/tables"),
+  //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(
@@ -239,13 +243,6 @@ export const RevisionApi = {
 
 export const RevisionsApi = {
   get: GET("/api/:entity/:id/revisions"),
-};
-
-export const LabelApi = {
-  list: GET("/api/label"),
-  create: POST("/api/label"),
-  update: PUT("/api/label/:id"),
-  delete: DELETE("/api/label/:id"),
 };
 
 export const SessionApi = {

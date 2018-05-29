@@ -2,14 +2,29 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "c-3po";
+import { Box, Flex } from "rebass";
+import styled from "styled-components";
+import { space, width } from "styled-system";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { Link } from "react-router";
 
+import { createDashboard } from "metabase/dashboards/dashboards";
+
+import { normal, saturated } from "metabase/lib/colors";
+
+import Button from "metabase/components/Button.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
-import * as Urls from "metabase/lib/urls";
+import Tooltip from "metabase/components/Tooltip";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
+
+import Modal from "metabase/components/Modal";
+
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+import CollectionEdit from "metabase/questions/containers/CollectionCreate";
 
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
@@ -23,22 +38,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
   onChangeLocation: push,
-};
-
-const BUTTON_PADDING_STYLES = {
-  navButton: {
-    paddingLeft: "1.0rem",
-    paddingRight: "1.0rem",
-    paddingTop: "0.75rem",
-    paddingBottom: "0.75rem",
-  },
-
-  newQuestion: {
-    paddingLeft: "1.0rem",
-    paddingRight: "1.0rem",
-    paddingTop: "0.75rem",
-    paddingBottom: "0.75rem",
-  },
+  createDashboard,
 };
 
 const AdminNavItem = ({ name, path, currentPath }) => (
@@ -55,23 +55,100 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
-const MainNavLink = ({ to, name, eventName, icon }) => (
-  <Link
-    to={to}
-    data-metabase-event={`NavBar;${eventName}`}
-    style={BUTTON_PADDING_STYLES.navButton}
-    className={
-      "NavItem cursor-pointer flex-full text-white text-bold no-decoration flex align-center px2 transition-background"
+const DefaultSearchColor = "#60A6E4";
+const ActiveSearchColor = "#7bb7ec";
+
+const SearchWrapper = Flex.extend`
+  ${width} background-color: ${props =>
+      props.active ? ActiveSearchColor : DefaultSearchColor};
+  border-radius: 6px;
+  align-items: center;
+  color: white;
+  border: 1px solid ${props => (props.active ? "#4894d8" : "transparent")};
+  transition: background 300ms ease-in;
+  &:hover {
+    background-color: ${ActiveSearchColor};
+  }
+`;
+
+const SearchInput = styled.input`
+  ${space} ${width} background-color: transparent;
+  border: none;
+  color: white;
+  font-size: 1em;
+  font-weight: 700;
+  &:focus {
+    outline: none;
+  }
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.85);
+  }
+`;
+
+class SearchBar extends React.Component {
+  state = {
+    active: false,
+    searchText: "",
+  };
+
+  componentWillMount() {
+    this._updateSearchTextFromUrl(this.props);
+  }
+  componentWillReceiveProps(nextProps) {
+    if (this.props.location.pathname !== nextProps.location.pathname) {
+      this._updateSearchTextFromUrl(nextProps);
     }
-    activeClassName="NavItem--selected"
-  >
-    <Icon name={icon} className="md-hide" />
-    <span className="hide md-show">{name}</span>
-  </Link>
-);
+  }
+  _updateSearchTextFromUrl(props) {
+    const components = props.location.pathname.split("/");
+    if (components[components.length - 1] === "search") {
+      this.setState({ searchText: props.location.query.q });
+    } else {
+      this.setState({ searchText: "" });
+    }
+  }
+
+  render() {
+    return (
+      <OnClickOutsideWrapper
+        handleDismissal={() => this.setState({ active: false })}
+      >
+        <SearchWrapper
+          onClick={() => this.setState({ active: true })}
+          active={this.state.active}
+        >
+          <Icon name="search" ml={2} />
+          <SearchInput
+            w={1}
+            p={2}
+            value={this.state.searchText}
+            placeholder="Search for anything..."
+            onClick={() => this.setState({ active: true })}
+            onChange={e => this.setState({ searchText: e.target.value })}
+            onKeyPress={e => {
+              if (e.key === "Enter") {
+                this.props.onChangeLocation({
+                  pathname: "search",
+                  query: { q: this.state.searchText },
+                });
+              }
+            }}
+          />
+        </SearchWrapper>
+      </OnClickOutsideWrapper>
+    );
+  }
+}
+
+const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
+const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
+  state = {
+    modal: null,
+  };
+
   static propTypes = {
     context: PropTypes.string.isRequired,
     path: PropTypes.string.isRequired,
@@ -80,6 +157,22 @@ export default class Navbar extends Component {
 
   isActive(path) {
     return this.props.path.startsWith(path);
+  }
+
+  setModal(modal) {
+    this.setState({ modal });
+    if (this._newPopover) {
+      this._newPopover.close();
+    }
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.location !== this.props.location) {
+      this.setState({ modal: null });
+      if (this._newPopover) {
+        this._newPopover.close();
+      }
+    }
   }
 
   renderAdminNav() {
@@ -121,6 +214,7 @@ export default class Navbar extends Component {
 
           <ProfileLink {...this.props} />
         </div>
+        {this.renderModal()}
       </nav>
     );
   }
@@ -139,74 +233,130 @@ export default class Navbar extends Component {
             </Link>
           </li>
         </ul>
+        {this.renderModal()}
       </nav>
     );
   }
 
   renderMainNav() {
     return (
-      <nav className="Nav relative bg-brand">
-        <ul className="md-pl4 flex align-center md-pr1">
-          <li>
-            <Link
-              to="/"
-              data-metabase-event={"Navbar;Logo"}
-              className="LogoNavItem NavItem cursor-pointer text-white flex align-center transition-background justify-center"
-              activeClassName="NavItem--selected"
-            >
-              <LogoIcon dark={true} />
+      <Flex className="relative bg-brand text-white z4" align="center">
+        <Box>
+          <Link
+            to="/"
+            data-metabase-event={"Navbar;Logo"}
+            className="LogoNavItem NavItem cursor-pointer relative z2 flex align-center transition-background justify-center"
+          >
+            <LogoIcon dark />
+          </Link>
+        </Box>
+        <Flex
+          className="absolute top left right bottom z1"
+          px={4}
+          align="center"
+        >
+          <Box w={2 / 3}>
+            <SearchBar
+              location={this.props.location}
+              onChangeLocation={this.props.onChangeLocation}
+            />
+          </Box>
+        </Flex>
+        <Flex ml="auto" align="center" className="relative z2">
+          <PopoverWithTrigger
+            ref={e => (this._newPopover = e)}
+            triggerElement={
+              <Button medium mr={3} color="#509ee3">
+                New
+              </Button>
+            }
+          >
+            <Box py={2} px={3} style={{ minWidth: 300 }}>
+              <Box my={2}>
+                <Link to="question/new">
+                  <Flex align="center" style={{ color: normal.red }}>
+                    <Icon name="beaker" mr={1} />
+                    <h3>Question</h3>
+                  </Flex>
+                </Link>
+              </Box>
+              <Box my={2}>
+                <Flex
+                  align="center"
+                  style={{ color: normal.blue }}
+                  className="cursor-pointer"
+                  onClick={() => this.setModal(MODAL_NEW_DASHBOARD)}
+                >
+                  <Icon name="dashboard" mr={1} />
+                  <h3>Dashboard</h3>
+                </Flex>
+              </Box>
+              <Box my={2}>
+                <Link to="pulse/new">
+                  <Flex align="center" style={{ color: saturated.yellow }}>
+                    <Icon name="pulse" mr={1} />
+                    <h3>Pulse</h3>
+                  </Flex>
+                </Link>
+              </Box>
+              <Box my={2}>
+                <Flex
+                  align="center"
+                  style={{ color: "#93B3C9" }}
+                  className="cursor-pointer"
+                  onClick={() => this.setModal(MODAL_NEW_COLLECTION)}
+                >
+                  <Icon name="all" mr={1} />
+                  <h3>Collection</h3>
+                </Flex>
+              </Box>
+            </Box>
+          </PopoverWithTrigger>
+          <Box>
+            <Link to="collection/root">
+              <Box p={1} bg="#69ABE6" className="text-bold rounded">
+                Saved items
+              </Box>
             </Link>
-          </li>
-          <li className="md-pl3 hide xs-show">
-            <MainNavLink
-              to="/dashboards"
-              name={t`Dashboards`}
-              eventName="Dashboards"
-              icon="dashboard"
-            />
-          </li>
-          <li className="md-pl1 hide xs-show">
-            <MainNavLink
-              to="/questions"
-              name={t`Questions`}
-              eventName="Questions"
-              icon="all"
-            />
-          </li>
-          <li className="md-pl1 hide xs-show">
-            <MainNavLink
-              to="/pulse"
-              name={t`Pulses`}
-              eventName="Pulses"
-              icon="pulse"
-            />
-          </li>
-          <li className="md-pl1 hide xs-show">
-            <MainNavLink
-              to="/reference/guide"
-              name={t`Data Reference`}
-              eventName="DataReference"
-              icon="reference"
-            />
-          </li>
-          <li className="md-pl3 hide sm-show">
-            <Link
-              to={Urls.newQuestion()}
-              data-metabase-event={"Navbar;New Question"}
-              style={BUTTON_PADDING_STYLES.newQuestion}
-              className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all"
-            >
-              {t`New Question`}
-            </Link>
-          </li>
-          <li className="flex-align-right transition-background hide sm-show">
-            <div className="inline-block text-white">
-              <ProfileLink {...this.props} />
-            </div>
-          </li>
-        </ul>
-      </nav>
+          </Box>
+          <Box mx={2}>
+            <Tooltip tooltip={t`Reference`}>
+              <Link to="reference">
+                <Icon name="reference" />
+              </Link>
+            </Tooltip>
+          </Box>
+          <Box mx={2}>
+            <Tooltip tooltip={t`Activity`}>
+              <Link to="activity">
+                <Icon name="alert" />
+              </Link>
+            </Tooltip>
+          </Box>
+          <ProfileLink {...this.props} />
+        </Flex>
+        {this.renderModal()}
+      </Flex>
     );
+  }
+
+  renderModal() {
+    const { modal } = this.state;
+    if (modal) {
+      return (
+        <Modal onClose={() => this.setState({ modal: null })}>
+          {modal === MODAL_NEW_COLLECTION ? (
+            <CollectionEdit />
+          ) : modal === MODAL_NEW_DASHBOARD ? (
+            <CreateDashboardModal
+              createDashboard={this.props.createDashboard}
+            />
+          ) : null}
+        </Modal>
+      );
+    } else {
+      return null;
+    }
   }
 
   render() {

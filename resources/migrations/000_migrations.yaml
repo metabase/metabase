@@ -4060,7 +4060,7 @@ databaseChangeLog:
   - changeSet:
       id: 76
       author: senior
-      comment: 'Added 0.29.0'
+      comment: 'Added 0.30.0'
       changes:
         - addColumn:
             tableName: metabase_table
@@ -4069,7 +4069,68 @@ databaseChangeLog:
               type: text
               remarks: 'Computed hash of all of the fields associated to this table'
   - changeSet:
-      id: 77
+      id: 79
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              name: collection_id
+              type: int
+              remarks: 'Optional ID of Collection this Dashboard belongs to.'
+              constraints:
+                references: collection(id)
+                foreignKeyName: fk_dashboard_collection_id
+              # TODO - if someone deletes a collection, what should happen to the Dashboards that are in it? Should they
+              # get deleted as well? Or should collection_id be cleared, effectively putting them in the so-called
+              # "root" collection?
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_dashboard_collection_id
+            columns:
+              - column:
+                  name: collection_id
+        - addColumn:
+            tableName: pulse
+            columns:
+              name: collection_id
+              type: int
+              remarks: 'Options ID of Collection this Pulse belongs to.'
+              constraints:
+                references: collection(id)
+                foreignKeyName: fk_pulse_collection_id
+        - createIndex:
+            tableName: pulse
+            indexName: idx_pulse_collection_id
+            columns:
+              - column:
+                  name: collection_id
+  - changeSet:
+      id: 81
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              name: collection_position
+              type: smallint
+              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+        - addColumn:
+            tableName: report_card
+            columns:
+              name: collection_position
+              type: smallint
+              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+        - addColumn:
+            tableName: pulse
+            columns:
+              name: collection_position
+              type: smallint
+              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+  - changeSet:
+      id: 82
       author: senior
       comment: 'Added 0.30.0'
       changes:

@@ -2,6 +2,11 @@
 
 import { schema } from "normalizr";
 
+export const QuestionSchema = new schema.Entity("questions");
+export const DashboardSchema = new schema.Entity("dashboards");
+export const PulseSchema = new schema.Entity("pulses");
+export const CollectionSchema = new schema.Entity("collections");
+
 export const DatabaseSchema = new schema.Entity("databases");
 export const TableSchema = new schema.Entity("tables");
 export const FieldSchema = new schema.Entity("fields");
@@ -34,4 +39,10 @@ SegmentSchema.define({
 
 MetricSchema.define({
   table: TableSchema,
+});
+
+CollectionSchema.define({
+  cards: [QuestionSchema],
+  dashboards: [DashboardSchema],
+  pulses: [PulseSchema],
 });
