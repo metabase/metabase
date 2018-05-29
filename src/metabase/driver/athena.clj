@@ -119,7 +119,7 @@
 (defn- get-tables [driver database databases]
   (->> databases
        (map (fn [{:keys [name] :as table}]
-              (let [tables (run-query database (str "SHOW TABLES IN " name) {})]
+              (let [tables (run-query database (str "SHOW TABLES IN `" name "`") {})]
                 (map (fn [{:keys [tab_name]}] (assoc table :schema name :name tab_name))
                      tables))))
        (flatten)
@@ -132,7 +132,7 @@
     {:tables tables}))
 
 (defn- describe-table-fields [db {:keys [name schema]}]
-  (->> (run-query db (str "DESCRIBE " schema "." name ";")
+  (->> (run-query db (str "DESCRIBE `" schema "`.`" name "`;")
                      {:read-fn describe-all-database->clj})
        (map schema-parser/parse-schema)
        (set)))
@@ -154,54 +154,6 @@
     {:columns columns
      :rows rows}))
 
-(defn- unqualify-query
-  "Another workaround for incompatible SQL implementation : Remove qualify select"
-  [{:keys [from select group-by order-by] :as honey-query}]
-  ; FIXME won't works on multiple table
-  (let [from-str (str (first from))
-        from-length (inc (count from-str))]
-    (cond-> honey-query
-            (not-empty (:select honey-query))
-            (update :select (fn [selects]
-                              (mapv (fn [s]
-                                      (if (sequential? s)
-                                        (let [[f v] s]
-                                          (if (string/starts-with? (str f) from-str)
-                                            [(keyword (subs (str f) from-length)) v]
-                                            [f v]))
-                                        s))
-                                    selects)))
-
-            (not-empty (:where honey-query))
-            (update :where (fn [where-clauses]
-                             (reduce
-                              (fn [acc e]
-                                (if (sequential? e)
-                                  (let [[op field & other] e
-                                        new-field (if (string/starts-with? (str field) from-str)
-                                                    (keyword (subs (str field) from-length))
-                                                    field)]
-                                    (conj acc (concat [op field] other)))
-                                  (conj acc e)))
-                              []
-                              where-clauses)))
-
-            (not-empty (:group-by honey-query))
-            (update :group-by (fn [fields]
-                                (mapv (fn [f]
-                                        (if (string/starts-with? (str f) from-str)
-                                          (keyword (subs (str f) from-length))
-                                          f))
-                                      fields)))
-
-            (not-empty (:order-by honey-query))
-            (update :order-by (fn [fields]
-                                (mapv (fn [[f v]]
-                                        (if (string/starts-with? (str f) from-str)
-                                          [(keyword (subs (str f) from-length)) v]
-                                          [f v]))
-                                      fields))))))
-
 (defn- unquote-table-name
   "Workaround for unquoting table name as the JDBC api does not support this feature"
   [sql-string table-name]
@@ -212,8 +164,7 @@
   [driver {inner-query :query, database :database, :as outer-query}]
   (binding [metabase.driver.generic-sql.query-processor/*query* outer-query]
     (let [honeysql-form (sql-qp/build-honeysql-form driver outer-query)
-          unqualify-honey-form (unqualify-query honeysql-form)
-          [sql & args]  (sql/honeysql-form->sql+args driver unqualify-honey-form)
+          [sql & args]  (sql/honeysql-form->sql+args driver honeysql-form)
           athena-sql (unquote-table-name sql (get-in inner-query [:source-table :name]))]
       {:query  athena-sql
        :params args})))
