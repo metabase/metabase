@@ -36,7 +36,7 @@ class Overworld extends React.Component {
         <Box mt={3} mb={1}>
           <h4>{t`Pinned dashboards`}</h4>
         </Box>
-        <CollectionItemsLoader collectionId="root">
+        <CollectionItemsLoader collectionId="root" reload>
           {({ dashboards }) => {
             let pinnedDashboards = dashboards.filter(
               d => d.collection_position,

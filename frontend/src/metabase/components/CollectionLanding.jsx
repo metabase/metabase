@@ -161,7 +161,7 @@ class DefaultLanding extends React.Component {
         )}
         <Box w={2 / 3}>
           <Box>
-            <CollectionItemsLoader collectionId={collectionId || "root"}>
+            <CollectionItemsLoader reload collectionId={collectionId || "root"}>
               {({ allItems, pulses, cards, dashboards, empty }) => {
                 let items = allItems;
 

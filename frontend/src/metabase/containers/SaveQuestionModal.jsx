@@ -238,7 +238,7 @@ export default class SaveQuestionModal extends Component {
                     onChange={e => this.onChange("description", e.target.value)}
                   />
                 </FormField>
-                <CollectionListLoader writable>
+                <CollectionListLoader writable reload>
                   {({ collections }) =>
                     collections.length > 0 && (
                       <FormField

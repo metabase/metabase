@@ -7,8 +7,9 @@ type Props = {
   children: () => void,
 };
 
-const CollectionItemsLoader = ({ collectionId, children }: Props) => (
+const CollectionItemsLoader = ({ collectionId, children, ...props }: Props) => (
   <EntityObjectLoader
+    {...props}
     entityType="collections"
     entityId={collectionId}
     children={({ object }) =>
@@ -28,7 +29,6 @@ const CollectionItemsLoader = ({ collectionId, children }: Props) => (
           object.pulses.length,
       })
     }
-    wrapped
   />
 );
 
