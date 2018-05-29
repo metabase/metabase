@@ -129,9 +129,6 @@ class SearchBar extends React.Component {
   }
 }
 
-const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
-const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
-
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
   state = {
