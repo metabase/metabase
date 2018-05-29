@@ -136,6 +136,8 @@ export default class PeopleListingApp extends Component {
           user: user,
         },
       });
+    } else {
+      this.props.showModal(null);
     }
   };
 
