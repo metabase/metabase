@@ -8,6 +8,7 @@ import S from "./UndoListing.css";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
 import { getUndos } from "metabase/selectors/undo";
 import { t } from "c-3po";
+
 import Icon from "metabase/components/Icon";
 import BodyComponent from "metabase/components/BodyComponent";
 
