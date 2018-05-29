@@ -7,7 +7,6 @@ import ExplorePane from "metabase/components/ExplorePane";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import ProgressBar from "metabase/components/ProgressBar";
 import Quotes from "metabase/components/Quotes";
-import { withBackground } from "metabase/hoc/Background";
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import { MetabaseApi, AutoApi } from "metabase/services";
@@ -45,7 +44,6 @@ type State = {
   sampleCandidates: ?DatabaseCandidates,
 };
 
-@withBackground("bg-slate-extra-light")
 @fitViewport
 export default class PostSetupApp extends Component {
   props: Props;

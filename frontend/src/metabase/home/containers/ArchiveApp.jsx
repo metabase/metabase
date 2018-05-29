@@ -8,7 +8,6 @@ import HeaderWithBack from "metabase/components/HeaderWithBack";
 import Card from "metabase/components/Card";
 import ArchivedItem from "../../components/ArchivedItem";
 
-import { withBackground } from "metabase/hoc/Background";
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 import listSearch from "metabase/hoc/ListSearch";
 
@@ -26,7 +25,6 @@ const mapStateToProps = (state, props) => ({
 })
 @listSearch()
 @connect(mapStateToProps, null)
-@withBackground("bg-slate-extra-light")
 export default class ArchiveApp extends Component {
   render() {
     const { isAdmin, list, reload } = this.props;

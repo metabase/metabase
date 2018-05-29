@@ -5,7 +5,6 @@ import React from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 
-import { withBackground } from "metabase/hoc/Background";
 import title from "metabase/hoc/Title";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
@@ -254,4 +253,4 @@ const SuggestionsSidebar = ({ related }) => (
   </div>
 );
 
-export default withBackground("bg-slate-extra-light")(AutomaticDashboardApp);
+export default AutomaticDashboardApp;
