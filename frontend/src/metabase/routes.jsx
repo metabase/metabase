@@ -55,6 +55,7 @@ import {
   NewQuestionMetricSearch,
 } from "metabase/new_query/router_wrappers";
 
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
 
@@ -210,6 +211,11 @@ export const getRoutes = store => (
         >
           <ModalRoute path="history" modal={DashboardHistoryModal} />
           <ModalRoute path="move" modal={DashboardMoveModal} />
+        </Route>
+
+        <Route path="new/(/:collectionId)" component={CollectionLanding}>
+          <ModalRoute path="collection" modal={CollectionCreate} />
+          <ModalRoute path="dashboard" modal={CreateDashboardModal} />
         </Route>
 
         <Route path="/question">

@@ -9,22 +9,12 @@ import { space, width } from "styled-system";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import { createDashboard } from "metabase/dashboards/dashboards";
-
-import { normal, saturated } from "metabase/lib/colors";
-
 import Button from "metabase/components/Button.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import Tooltip from "metabase/components/Tooltip";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
-
-import Modal from "metabase/components/Modal";
-
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
-import CollectionEdit from "metabase/questions/containers/CollectionCreate";
 
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
@@ -38,7 +28,6 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
   onChangeLocation: push,
-  createDashboard,
 };
 
 const AdminNavItem = ({ name, path, currentPath }) => (

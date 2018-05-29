@@ -2,6 +2,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "rebass";
 import { t } from "c-3po";
+import { connect } from "react-redux";
+
 import FormField from "metabase/components/form/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 
@@ -10,6 +12,13 @@ import Select, { Option } from "metabase/components/Select.jsx";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
+import { createDashboard } from "metabase/dashboards/dashboards";
+
+const mapDispatchToProps = {
+  createDashboard,
+};
+
+@connect(() => ({}), mapDispatchToProps)
 export default class CreateDashboardModal extends Component {
   constructor(props, context) {
     super(props, context);
