@@ -1,8 +1,8 @@
 @web @rest
-Feature: Configuración conexion Prosgress TLS en Discovery
+Feature: Configuración conexion Crossdata en Discovery _
 
-  Scenario: [configbbdd] Configuracion de BBDD Postgress TLS en Discovery
-  #Configuracion de BBDD Postgress en Discovery
+    Scenario: [configbbdd] Configuracion de BBDD Crossdata en Discovery
+    #Configuracion de BBDD Crossdata en Discovery
 
     Given My app is running in '${MARATHON_LB_DNS}:443'
     When I securely browse to '/services/metabase'
@@ -24,23 +24,20 @@ Feature: Configuración conexion Prosgress TLS en Discovery
     Then I click on the element on index '0'
     And I wait '10' seconds
 
-
     Given '1' element exists with 'xpath://*[@id="root"]/div/div/section[2]/div/div/div/div/div/div/label[2]/select'
     Then I click on the element on index '0'
-    Given '1' element exists with 'xpath://*[@id="root"]/div/div/section[2]/div/div/div/div/div/div/label[2]/select/option[11]'
+    Given '1' element exists with 'xpath://*[@id="root"]/div/div/section[2]/div/div/div/div/div/div/label[2]/select'
     Then I click on the element on index '0'
     Given '1' element exists with 'xpath://*[@id="root"]/div/div/section[2]/div/div/div/div/div/form/div[1]/div[1]/input'
-    Then I type '${NAME:-postgress}' on the element on index '0'
+    Then I type '${NAME:-crossdata-1}' on the element on index '0'
     Given '1' element exists with 'xpath://*[@id="root"]/div/div/section[2]/div/div/div/div/div/form/div[1]/div[2]/input'
-    Then I type '${NAMEHOST:-postgress}' on the element on index '0'
+    Then I type '${NAMEHOST:-crossdata-1.marathon.mesos}' on the element on index '0'
     Given '1' element exists with 'xpath://*[@id="root"]/div/div/section[2]/div/div/div/div/div/form/div[1]/div[3]/input'
-    Then I type '${PORT:-1025}' on the element on index '0'
-    Given '1' element exists with 'xpath://*[@id="root"]/div/div/section[2]/div/div/div/div/div/form/div[1]/div[4]/input'
-    Then I type '${NAMEBBDD:-postgres}' on the element on index '0'
+    Then I type '${PORT:-10080}' on the element on index '0'
+    Given '1' element exists with 'xpath://*[@id="root"]/div/div/section[2]/div/div/div/div/div/form/div[1]/div[4]/div/div[1]'
+    Then I click on the element on index '0'
     Given '1' element exists with 'xpath://*[@id="root"]/div/div/section[2]/div/div/div/div/div/form/div[1]/div[5]/input'
-    Then I type '${USERBBDD:-postgres}' on the element on index '0'
-    Given '1' element exists with 'xpath://*[@id="root"]/div/div/section[2]/div/div/div/div/div/form/div[1]/div[7]/input'
-    Then I type '${JDBCC:-ssl=true&sslmode=verify-full&sslcert=/root/kms/crossdata-1.pem&sslkey=/root/kms/crossdata-1.pk8&sslrootcert=/root/kms/root.pem}' on the element on index '0'
+    Then I type '${USERBBDD:-crossdata-1}' on the element on index '0'
     Given '1' element exists with 'xpath://*[@id="root"]/div/div/section[2]/div/div/div/div/div/form/div[2]/button'
     Then I click on the element on index '0'
 
@@ -50,3 +47,5 @@ Feature: Configuración conexion Prosgress TLS en Discovery
     Then I click on the element on index '0'
 
     And I wait '30' seconds
+
+

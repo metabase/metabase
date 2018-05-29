@@ -1,5 +1,5 @@
 @web @rest
-Feature: Login con usuario en Discovery
+Feature: Login con usuario en Discovery _
 
   Scenario: [settings] Login con un usuario de Discovery
   #Log into application with user demo@stratio.com

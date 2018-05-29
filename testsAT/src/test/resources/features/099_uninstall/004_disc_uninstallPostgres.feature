@@ -1,5 +1,5 @@
 @rest
-Feature: Uninstall Postgres instances
+Feature: Uninstall Postgres instances _
 
   Scenario: [Uninstallation Postgres][01] Uninstall Postgresdisc
     Given I wait '10' seconds

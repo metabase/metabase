@@ -1,5 +1,5 @@
 @rest
-Feature: Uninstall Discovery
+Feature: Uninstall Discovery _
 
   Background: Initial setup
     Given I open a ssh connection to '${BOOTSTRAP_IP}' with user '${REMOTE_USER:-operador}' using pem file 'src/test/resources/credentials/${PEM_FILE:-key.pem}'
