@@ -246,6 +246,17 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
         actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes];
 
+        if (_.any(actionTypes, type => !type)) {
+          return Promise.reject(
+            new Error(
+              `You tried to wait for a null or undefined action type (${actionTypes})`,
+            ),
+          );
+        }
+
+        // supports redux-action style action creator that when cast to a string returns the action name
+        actionTypes = actionTypes.map(actionType => String(actionType));
+
         // Returns all actions that are triggered after the last action which belongs to `actionTypes
         const getRemainingActions = () => {
           const lastActionIndex = _.findLastIndex(

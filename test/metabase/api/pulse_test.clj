@@ -8,11 +8,15 @@
              [util :as u]]
             [metabase.models
              [card :refer [Card]]
+             [collection :refer [Collection]]
              [database :refer [Database]]
              [permissions :as perms]
              [permissions-group :as perms-group]
              [pulse :as pulse :refer [Pulse]]
+             [pulse-channel :refer [PulseChannel]]
+             [pulse-channel-recipient :refer [PulseChannelRecipient]]
              [pulse-card :refer [PulseCard]]
+             [pulse-test :as pulse-test]
              [table :refer [Table]]]
             [metabase.test
              [data :as data]
@@ -40,15 +44,17 @@
 
 (defn- pulse-details [pulse]
   (tu/match-$ pulse
-    {:id            $
-     :name          $
-     :created_at    $
-     :updated_at    $
-     :creator_id    $
-     :creator       (user-details (db/select-one 'User :id (:creator_id pulse)))
-     :cards         (map pulse-card-details (:cards pulse))
-     :channels      (map pulse-channel-details (:channels pulse))
-     :skip_if_empty $}))
+    {:id                  $
+     :name                $
+     :created_at          $
+     :updated_at          $
+     :creator_id          $
+     :creator             (user-details (db/select-one 'User :id (:creator_id pulse)))
+     :cards               (map pulse-card-details (:cards pulse))
+     :channels            (map pulse-channel-details (:channels pulse))
+     :collection_id       $
+     :collection_position $
+     :skip_if_empty       $}))
 
 (defn- pulse-response [{:keys [created_at updated_at], :as pulse}]
   (-> pulse
@@ -61,150 +67,222 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "pulse"))
-(expect (get middleware/response-unauthentic :body) (http/client :put 401 "pulse/13"))
+(expect (:body middleware/response-unauthentic) (http/client :get 401 "pulse"))
+(expect (:body middleware/response-unauthentic) (http/client :put 401 "pulse/13"))
 
 
-;; ## POST /api/pulse
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                POST /api/pulse                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(expect {:errors {:name "value must be a non-blank string."}}
+(expect
+  {:errors {:name "value must be a non-blank string."}}
   ((user->client :rasta) :post 400 "pulse" {}))
 
-(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
+(expect
+  {:errors {:cards (str "value must be an array. Each value must be a map with the keys `id`, `include_csv`, and "
+                        "`include_xls`. The array cannot be empty.")}}
   ((user->client :rasta) :post 400 "pulse" {:name "abc"}))
 
-(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
+(expect
+  {:errors {:cards (str "value must be an array. Each value must be a map with the keys `id`, `include_csv`, and "
+                        "`include_xls`. The array cannot be empty.")}}
   ((user->client :rasta) :post 400 "pulse" {:name  "abc"
                                             :cards "foobar"}))
 
-(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
+(expect
+  {:errors {:cards (str "value must be an array. Each value must be a map with the keys `id`, `include_csv`, and "
+                        "`include_xls`. The array cannot be empty.")}}
   ((user->client :rasta) :post 400 "pulse" {:name  "abc"
                                             :cards ["abc"]}))
 
-(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+(expect
+  {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name "abc"
-                                            :cards [{:id 100} {:id 200}]}))
+                                            :cards [{:id 100, :include_csv false, :include_xls false}
+                                                    {:id 200, :include_csv false, :include_xls false}]}))
 
-(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+(expect
+  {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name    "abc"
-                                            :cards   [{:id 100} {:id 200}]
+                                            :cards   [{:id 100, :include_csv false, :include_xls false}
+                                                      {:id 200, :include_csv false, :include_xls false}]
                                             :channels "foobar"}))
 
-(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+(expect
+  {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name     "abc"
-                                            :cards    [{:id 100} {:id 200}]
+                                            :cards    [{:id 100, :include_csv false, :include_xls false}
+                                                       {:id 200, :include_csv false, :include_xls false}]
                                             :channels ["abc"]}))
 
 (defn- remove-extra-channels-fields [channels]
   (for [channel channels]
     (dissoc channel :id :pulse_id :created_at :updated_at)))
 
-(tt/expect-with-temp [Card [card1]
-                      Card [card2]]
-  {:name          "A Pulse"
-   :creator_id    (user->id :rasta)
-   :creator       (user-details (fetch-user :rasta))
-   :created_at    true
-   :updated_at    true
-   :cards         (mapv pulse-card-details [card1 card2])
-   :channels      [(merge pulse-channel-defaults
-                          {:channel_type   "email"
-                           :schedule_type  "daily"
-                           :schedule_hour  12
-                           :recipients     []})]
-   :skip_if_empty false}
+(def ^:private pulse-defaults
+  {:collection_id       nil
+   :collection_position nil
+   :created_at          true
+   :skip_if_empty       false
+   :updated_at          true})
+
+(def ^:private daily-email-channel
+  {:enabled       true
+   :channel_type  "email"
+   :schedule_type "daily"
+   :schedule_hour 12
+   :schedule_day  nil
+   :recipients    []})
+
+(tt/expect-with-temp [Card [card-1]
+                      Card [card-2]]
+  (merge
+   pulse-defaults
+   {:name       "A Pulse"
+    :creator_id (user->id :rasta)
+    :creator    (user-details (fetch-user :rasta))
+    :cards      (mapv pulse-card-details [card-1 card-2])
+    :channels   [(merge pulse-channel-defaults
+                        {:channel_type  "email"
+                         :schedule_type "daily"
+                         :schedule_hour 12
+                         :recipients    []})]})
   (tu/with-model-cleanup [Pulse]
     (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
-                                                                  :cards         [{:id (:id card1)} {:id (:id card2)}]
-                                                                  :channels      [{:enabled       true
-                                                                                   :channel_type  "email"
-                                                                                   :schedule_type "daily"
-                                                                                   :schedule_hour 12
-                                                                                   :schedule_day  nil
-                                                                                   :recipients    []}]
+                                                                  :cards         [{:id          (u/get-id card-1)
+                                                                                   :include_csv false
+                                                                                   :include_xls false}
+                                                                                  {:id          (u/get-id card-2)
+                                                                                   :include_csv false
+                                                                                   :include_xls false}]
+                                                                  :channels      [daily-email-channel]
                                                                   :skip_if_empty false}))
         (update :channels remove-extra-channels-fields))))
 
 ;; Create a pulse with a csv and xls
-(tt/expect-with-temp [Card [card1]
-                      Card [card2]]
-  {:name          "A Pulse"
-   :creator_id    (user->id :rasta)
-   :creator       (user-details (fetch-user :rasta))
-   :created_at    true
-   :updated_at    true
-   :cards         [(assoc (pulse-card-details card1) :include_csv true :include_xls true)
-                   (pulse-card-details card2)]
-   :channels      [(merge pulse-channel-defaults
-                          {:channel_type  "email"
-                           :schedule_type "daily"
-                           :schedule_hour 12
-                           :recipients    []})]
-   :skip_if_empty false}
-  (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
-                                                                :cards         [{:id          (:id card1)
-                                                                                 :include_csv true
-                                                                                 :include_xls true}
-                                                                                {:id          (:id card2)
-                                                                                 :include_csv false
-                                                                                 :include_xls false}]
-                                                                :channels      [{:enabled       true
-                                                                                 :channel_type  "email"
-                                                                                 :schedule_type "daily"
-                                                                                 :schedule_hour 12
-                                                                                 :schedule_day  nil
-                                                                                 :recipients    []}]
-                                                                :skip_if_empty false}))
-      (update :channels remove-extra-channels-fields)))
+(tt/expect-with-temp [Card [card-1]
+                      Card [card-2]]
+  (merge
+   pulse-defaults
+   {:name       "A Pulse"
+    :creator_id (user->id :rasta)
+    :creator    (user-details (fetch-user :rasta))
+    :cards      [(assoc (pulse-card-details card-1) :include_csv true :include_xls true)
+                 (pulse-card-details card-2)]
+    :channels   [(merge pulse-channel-defaults
+                        {:channel_type  "email"
+                         :schedule_type "daily"
+                         :schedule_hour 12
+                         :recipients    []})]})
+  (tu/with-model-cleanup [Pulse]
+    (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
+                                                                  :cards         [{:id          (u/get-id card-1)
+                                                                                   :include_csv true
+                                                                                   :include_xls true}
+                                                                                  {:id          (u/get-id card-2)
+                                                                                   :include_csv false
+                                                                                   :include_xls false}]
+                                                                  :channels      [daily-email-channel]
+                                                                  :skip_if_empty false}))
+        (update :channels remove-extra-channels-fields))))
+
+;; Make sure we can create a Pulse with a Collection position
+(expect
+  #metabase.models.pulse.PulseInstance{:collection_id true, :collection_position 1}
+  (tu/with-model-cleanup [Pulse]
+    (let [pulse-name (tu/random-name)]
+      (tt/with-temp* [Card       [card]
+                      Collection [collection]]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        ((user->client :rasta) :post 200 "pulse" {:name                pulse-name
+                                                  :cards               [{:id          (u/get-id card)
+                                                                         :include_csv false
+                                                                         :include_xls false}]
+                                                  :channels            [daily-email-channel]
+                                                  :skip_if_empty       false
+                                                  :collection_id       (u/get-id collection)
+                                                  :collection_position 1})
+        (some-> (db/select-one [Pulse :collection_id :collection_position] :name pulse-name)
+                (update :collection_id (partial = (u/get-id collection))))))))
+
+;; ...but not if we don't have permissions for the Collection
+(expect
+  nil
+  (tu/with-model-cleanup [Pulse]
+    (let [pulse-name (tu/random-name)]
+      (tt/with-temp* [Card       [card]
+                      Collection [collection]]
+        ((user->client :rasta) :post 403 "pulse" {:name                pulse-name
+                                                  :cards               [{:id          (u/get-id card)
+                                                                         :include_csv false
+                                                                         :include_xls false}]
+                                                  :channels            [daily-email-channel]
+                                                  :skip_if_empty       false
+                                                  :collection_id       (u/get-id collection)
+                                                  :collection_position 1})
+        (some-> (db/select-one [Pulse :collection_id :collection_position] :name pulse-name)
+                (update :collection_id (partial = (u/get-id collection))))))))
 
 
-;; ## PUT /api/pulse
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               PUT /api/pulse/:id                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(expect {:errors {:name "value must be a non-blank string."}}
-  ((user->client :rasta) :put 400 "pulse/1" {}))
+(expect
+  {:errors {:name "value may be nil, or if non-nil, value must be a non-blank string."}}
+  ((user->client :rasta) :put 400 "pulse/1" {:name 123}))
 
-(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "pulse/1" {:name "abc"}))
+(expect
+  {:errors {:cards (str "value may be nil, or if non-nil, value must be an array. Each value must be a map with the "
+                        "keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}}
+  ((user->client :rasta) :put 400 "pulse/1" {:cards 123}))
 
-(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "pulse/1" {:name  "abc"
-                                             :cards "foobar"}))
+(expect
+  {:errors {:cards (str "value may be nil, or if non-nil, value must be an array. Each value must be a map with the "
+                        "keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}}
+  ((user->client :rasta) :put 400 "pulse/1" {:cards "foobar"}))
 
-(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "pulse/1" {:name  "abc"
-                                             :cards ["abc"]}))
+(expect
+  {:errors {:cards (str "value may be nil, or if non-nil, value must be an array. Each value must be a map with the "
+                        "keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}}
+  ((user->client :rasta) :put 400 "pulse/1" {:cards ["abc"]}))
 
-(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "pulse/1" {:name "abc"
-                                             :cards [{:id 100} {:id 200}]}))
+(expect
+  {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. "
+                           "The array cannot be empty.")}}
+  ((user->client :rasta) :put 400 "pulse/1" {:channels 123}))
 
-(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "pulse/1" {:name    "abc"
-                                             :cards   [{:id 100} {:id 200}]
-                                             :channels "foobar"}))
+(expect
+  {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. "
+                           "The array cannot be empty.")}}
+  ((user->client :rasta) :put 400 "pulse/1" {:channels "foobar"}))
 
-(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
-  ((user->client :rasta) :put 400 "pulse/1" {:name     "abc"
-                                             :cards    [{:id 100} {:id 200}]
-                                             :channels ["abc"]}))
+(expect
+  {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. "
+                           "The array cannot be empty.")}}
+  ((user->client :rasta) :put 400 "pulse/1" {:channels ["abc"]}))
 
-(tt/expect-with-temp [Pulse [pulse]
-                      Card  [card]]
-  {:name          "Updated Pulse"
-   :creator_id    (user->id :rasta)
-   :creator       (user-details (fetch-user :rasta))
-   :created_at    true
-   :updated_at    true
-   :cards         [(pulse-card-details card)]
-   :channels      [(merge pulse-channel-defaults
-                          {:channel_type  "slack"
-                           :schedule_type "hourly"
-                           :details       {:channels "#general"}
-                           :recipients    []})]
-   :skip_if_empty false}
-  (-> (pulse-response ((user->client :rasta) :put 200 (format "pulse/%d" (:id pulse))
+(tt/expect-with-temp [Pulse                 [pulse]
+                      PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
+                      PulseChannelRecipient [_     {:pulse_channel_id (u/get-id pc), :user_id (user->id :rasta)}]
+                      Card                  [card]]
+  (merge
+   pulse-defaults
+   {:name       "Updated Pulse"
+    :creator_id (user->id :rasta)
+    :creator    (user-details (fetch-user :rasta))
+    :cards      [(pulse-card-details card)]
+    :channels   [(merge pulse-channel-defaults
+                        {:channel_type  "slack"
+                         :schedule_type "hourly"
+                         :details       {:channels "#general"}
+                         :recipients    []})]})
+  (-> (pulse-response ((user->client :rasta) :put 200 (format "pulse/%d" (u/get-id pulse))
                        {:name          "Updated Pulse"
-                        :cards         [{:id (:id card)}]
+                        :cards         [{:id          (u/get-id card)
+                                         :include_csv false
+                                         :include_xls false}]
                         :channels      [{:enabled       true
                                          :channel_type  "slack"
                                          :schedule_type "hourly"
@@ -215,78 +293,185 @@
                         :skip_if_empty false}))
       (update :channels remove-extra-channels-fields)))
 
+;; Can we update *just* the Collection ID of a Pulse?
+(expect
+  (tt/with-temp* [Pulse      [pulse]
+                  Collection [collection]]
+    ((user->client :crowberto) :put 200 (str "pulse/" (u/get-id pulse))
+     {:collection_id (u/get-id collection)})
+    (= (db/select-one-field :collection_id Pulse :id (u/get-id pulse))
+       (u/get-id collection))))
 
-;; ## DELETE /api/pulse/:id
+;; Can we change the Collection a Pulse is in (assuming we have the permissions to do so)?
+(expect
+  (pulse-test/with-pulse-in-collection [db collection pulse]
+    (tt/with-temp Collection [new-collection]
+      ;; grant Permissions for both new and old collections
+      (doseq [coll [collection new-collection]]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
+      ;; now make an API call to move collections
+      ((user->client :rasta) :put 200 (str "pulse/" (u/get-id pulse)) {:collection_id (u/get-id new-collection)})
+      ;; Check to make sure the ID has changed in the DB
+      (= (db/select-one-field :collection_id Pulse :id (u/get-id pulse))
+         (u/get-id new-collection)))))
+
+;; ...but if we don't have the Permissions for the old collection, we should get an Exception
+(expect
+  "You don't have permissions to do that."
+  (pulse-test/with-pulse-in-collection [db collection pulse]
+    (tt/with-temp Collection [new-collection]
+      ;; grant Permissions for only the *new* collection
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
+      ;; now make an API call to move collections. Should fail
+      ((user->client :rasta) :put 403 (str "pulse/" (u/get-id pulse)) {:collection_id (u/get-id new-collection)}))))
+
+;; ...and if we don't have the Permissions for the new collection, we should get an Exception
+(expect
+  "You don't have permissions to do that."
+  (pulse-test/with-pulse-in-collection [db collection pulse]
+    (tt/with-temp Collection [new-collection]
+      ;; grant Permissions for only the *old* collection
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      ;; now make an API call to move collections. Should fail
+      ((user->client :rasta) :put 403 (str "pulse/" (u/get-id pulse)) {:collection_id (u/get-id new-collection)}))))
+
+;; Can we change the Collection position of a Pulse?
+(expect
+  1
+  (pulse-test/with-pulse-in-collection [_ collection pulse]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "pulse/" (u/get-id pulse))
+     {:collection_position 1})
+    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
+
+;; ...and unset (unpin) it as well?
 (expect
   nil
-  (tt/with-temp Pulse [pulse]
-    ((user->client :rasta) :delete 204 (format "pulse/%d" (:id pulse)))
-    (pulse/retrieve-pulse (:id pulse))))
+  (pulse-test/with-pulse-in-collection [_ collection pulse]
+    (db/update! Pulse (u/get-id pulse) :collection_position 1)
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "pulse/" (u/get-id pulse))
+     {:collection_position nil})
+    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
+
+;; ...we shouldn't be able to if we don't have permissions for the Collection
+(expect
+  nil
+  (pulse-test/with-pulse-in-collection [_ collection pulse]
+    ((user->client :rasta) :put 403 (str "pulse/" (u/get-id pulse))
+     {:collection_position 1})
+    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
+
+(expect
+  1
+  (pulse-test/with-pulse-in-collection [_ collection pulse]
+    (db/update! Pulse (u/get-id pulse) :collection_position 1)
+    ((user->client :rasta) :put 403 (str "pulse/" (u/get-id pulse))
+     {:collection_position nil})
+    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             DELETE /api/pulse/:id                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; check that a regular user can delete a Pulse if they are the original creator & a recipient
+(expect
+  nil
+  (tt/with-temp* [Pulse                 [pulse]
+                  PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
+                  PulseChannelRecipient [_     {:pulse_channel_id (u/get-id pc), :user_id (user->id :rasta)}]]
+    ((user->client :rasta) :delete 204 (format "pulse/%d" (u/get-id pulse)))
+    (pulse/retrieve-pulse (u/get-id pulse))))
 
 ;; Check that a rando isn't allowed to delete a pulse
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp* [Database  [{database-id :id}]
-                  Table     [{table-id :id}    {:db_id database-id}]
-                  Card      [card              {:dataset_query {:database database-id
-                                                               :type     "query"
-                                                               :query    {:source-table table-id
-                                                                          :aggregation  {:aggregation-type "count"}}}}]
-                  Pulse     [pulse             {:name "Daily Sad Toucans"}]
-                  PulseCard [pulse-card        {:pulse_id (u/get-id pulse), :card_id (u/get-id card)}]]
+  (tt/with-temp* [Database  [db]
+                  Table     [table      {:db_id (u/get-id db)}]
+                  Card      [card       {:dataset_query {:database (u/get-id db)
+                                                         :type     "query"
+                                                         :query    {:source-table (u/get-id table)
+                                                                    :aggregation  {:aggregation-type "count"}}}}]
+                  Pulse     [pulse      {:name "Daily Sad Toucans"}]
+                  PulseCard [pulse-card {:pulse_id (u/get-id pulse), :card_id (u/get-id card)}]]
     ;; revoke permissions for default group to this database
-    (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
+    (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path (u/get-id db)))
     ;; now a user without permissions to the Card in question should *not* be allowed to delete the pulse
     ((user->client :rasta) :delete 403 (format "pulse/%d" (u/get-id pulse)))))
 
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 GET /api/pulse                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; ## GET /api/pulse -- should come back in alphabetical order
-(tt/expect-with-temp [Pulse [pulse1 {:name "ABCDEF"}]
-                      Pulse [pulse2 {:name "GHIJKL"}]]
-  [(assoc (pulse-details pulse1) :read_only false)
-   (assoc (pulse-details pulse2) :read_only false)]
+;; should come back in alphabetical order
+(tt/expect-with-temp [Pulse [pulse-1 {:name "ABCDEF"}]
+                      Pulse [pulse-2 {:name "GHIJKL"}]]
+  [(assoc (pulse-details pulse-1) :read_only true)
+   (assoc (pulse-details pulse-2) :read_only true)]
   (do
     ;; delete anything else in DB just to be sure; this step may not be neccesary any more
-    (db/delete! Pulse :id [:not-in #{(:id pulse1)
-                                     (:id pulse2)}])
+    (db/delete! Pulse :id [:not-in #{(u/get-id pulse-1)
+                                     (u/get-id pulse-2)}])
     ((user->client :rasta) :get 200 "pulse")))
 
-;; ## GET /api/pulse -- should not return alerts
-(tt/expect-with-temp [Pulse [pulse1 {:name "ABCDEF"}]
-                      Pulse [pulse2 {:name "GHIJKL"}]
-                      Pulse [pulse3 {:name            "AAAAAA"
-                                     :alert_condition "rows"}]]
-  [(assoc (pulse-details pulse1) :read_only false)
-   (assoc (pulse-details pulse2) :read_only false)]
+;; `read_only` property should get updated correctly based on whether current user can write
+(tt/expect-with-temp [Pulse [pulse-1 {:name "ABCDEF"}]
+                      Pulse [pulse-2 {:name "GHIJKL"}]]
+  [(assoc (pulse-details pulse-1) :read_only false)
+   (assoc (pulse-details pulse-2) :read_only false)]
+  (do
+    ;; delete anything else in DB just to be sure; this step may not be neccesary any more
+    (db/delete! Pulse :id [:not-in #{(u/get-id pulse-1)
+                                     (u/get-id pulse-2)}])
+    ((user->client :crowberto) :get 200 "pulse")))
+
+;; should not return alerts
+(tt/expect-with-temp [Pulse [pulse-1 {:name "ABCDEF"}]
+                      Pulse [pulse-2 {:name "GHIJKL"}]
+                      Pulse [pulse-3 {:name            "AAAAAA"
+                                      :alert_condition "rows"}]]
+  [(assoc (pulse-details pulse-1) :read_only true)
+   (assoc (pulse-details pulse-2) :read_only true)]
   ((user->client :rasta) :get 200 "pulse"))
 
-;; ## GET /api/pulse/:id
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               GET /api/pulse/:id                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (tt/expect-with-temp [Pulse [pulse]]
   (pulse-details pulse)
-  ((user->client :rasta) :get 200 (str "pulse/" (:id pulse))))
+  ((user->client :rasta) :get 200 (str "pulse/" (u/get-id pulse))))
 
-;; ## GET /api/pulse/:id on an alert should 404
+;; Should 404 for an Alert
 (tt/expect-with-temp [Pulse [{pulse-id :id} {:alert_condition "rows"}]]
   "Not found."
   ((user->client :rasta) :get 404 (str "pulse/" pulse-id)))
 
-;; ## POST /api/pulse/test
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              POST /api/pulse/test                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (expect
   [{:ok true}
    (et/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
-                        :body {"Daily Sad Toucans" true}})]
+                        :body    {"Daily Sad Toucans" true}})]
   (tu/with-model-cleanup [Pulse]
     (et/with-fake-inbox
       (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
-        (tt/with-temp* [Database  [{database-id :id}]
-                        Table     [{table-id :id}    {:db_id database-id}]
-                        Card      [{card-id :id}     {:dataset_query {:database database-id
-                                                                      :type     "query"
-                                                                      :query    {:source-table table-id,
-                                                                                 :aggregation  {:aggregation-type "count"}}}}]]
+        (tt/with-temp* [Database  [db]
+                        Table     [table {:db_id (u/get-id db)}]
+                        Card      [card  {:dataset_query {:database (u/get-id db)
+                                                          :type     "query"
+                                                          :query    {:source-table (u/get-id table),
+                                                                     :aggregation  {:aggregation-type "count"}}}}]]
           [((user->client :rasta) :post 200 "pulse/test" {:name          "Daily Sad Toucans"
-                                                          :cards         [{:id card-id}]
+                                                          :cards         [{:id          (u/get-id card)
+                                                                           :include_csv false
+                                                                           :include_xls false}]
                                                           :channels      [{:enabled       true
                                                                            :channel_type  "email"
                                                                            :schedule_type "daily"

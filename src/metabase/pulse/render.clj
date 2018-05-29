@@ -34,7 +34,7 @@
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
-;;; ----------------------------------------------------- STYLES -----------------------------------------------------
+;;; ----------------------------------------------------- Styles -----------------------------------------------------
 
 (def ^:private ^:const card-width 400)
 (def ^:private ^:const rows-limit 20)
@@ -120,7 +120,7 @@
   {:attachments (s/maybe {s/Str URL})
    :content [s/Any]})
 
-;;; --------------------------------------------------- HELPER FNS ---------------------------------------------------
+;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defn style
   "Compile one or more CSS style maps into a string.
@@ -193,7 +193,7 @@
   (count (filter show-in-table? cols)))
 
 
-;;; --------------------------------------------------- FORMATTING ---------------------------------------------------
+;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
 (defrecord ^:private NumericWrapper [num-str]
   hutil/ToString
@@ -224,7 +224,8 @@
                           " - "
                           (t/year timestamp-obj)))
 
-    (:year :hour-of-day :day-of-week :week-of-year :month-of-year); TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+    ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+    (:year :hour-of-day :day-of-week :week-of-year :month-of-year)
     (str timestamp)
 
     (reformat-timestamp timezone timestamp "MMM d, YYYY")))
@@ -286,7 +287,7 @@
   (str "data:image/png;base64," (String. (Base64Coder/encode img-bytes))))
 
 
-;;; --------------------------------------------------- RENDERING ----------------------------------------------------
+;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"

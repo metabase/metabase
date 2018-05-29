@@ -298,9 +298,6 @@
 (add-encoder org.postgresql.util.PGobject       encode-jdbc-clob) ; Postgres
 
 ;; Encode BSON undefined like `nil`
-;;
-;; TODO - not sure this is actually needed anymore now that we are loading monger.json --
-;; see http://clojuremongodb.info/articles/integration.html
 (add-encoder org.bson.BsonUndefined encode-nil)
 
 ;; Binary arrays ("[B") -- hex-encode their first four bytes, e.g. "0xC42360D7"

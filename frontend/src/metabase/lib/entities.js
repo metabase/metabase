@@ -11,7 +11,7 @@ import { setRequestState } from "metabase/redux/requests";
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
 import { createSelector } from "reselect";
-import { normalize, schema } from "normalizr";
+import { normalize, denormalize, schema } from "normalizr";
 import { getIn } from "icepick";
 
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
@@ -20,25 +20,40 @@ import { getIn } from "icepick";
 // api: object containing `list`, `create`, `get`, `update`, `delete` methods (OR see `path` below)
 // path: API endpoint to create default `api` object
 // schema: normalizr schema, defaults to `new schema.Entity(entity.name)`
-// getName: property to show as the name, defaults to `name`
 //
 
 import type { APIMethod } from "metabase/lib/api";
 
 type EntityName = string;
 
+type ActionCreator = Function;
+type ObjectActionCreator = Function;
+type ObjectSelector = Function;
+
 type EntityDefinition = {
   name: EntityName,
-  path: string,
-  api?: { [method: string]: APIMethod },
   schema?: schema.Entity,
-  actions?: { [name: string]: any },
+  path?: string,
+  api?: { [method: string]: APIMethod },
+  actions?: {
+    [name: string]: ActionCreator,
+  },
+  objectActions?: {
+    [name: string]: ObjectActionCreator,
+  },
+  objectSelectors?: {
+    [name: string]: ObjectSelector,
+  },
   reducer?: Reducer,
-  objectActions?: { [name: string]: any },
+  wrapEntity?: (object: EntityObject) => any,
+  form?: any,
 };
+
+type EntityObject = any;
 
 export type Entity = {
   name: EntityName,
+  path?: string,
   api: {
     list: APIMethod,
     create: APIMethod,
@@ -47,17 +62,21 @@ export type Entity = {
     delete: APIMethod,
   },
   schema: schema.Entity,
-  actions: { [name: string]: any },
+  actions: { [name: string]: ActionCreator },
   reducers: { [name: string]: Reducer },
   selectors: {
-    getEntities: any,
-    getEntitiesIdsList: any,
-    getList: any,
-    getObject: any,
-    getLoading: any,
-    getError: any,
+    getList: Function,
+    getObject: Function,
+    getLoading: Function,
+    getError: Function,
   },
-  getName: (object: any) => string,
+  objectActions: {
+    [name: string]: ObjectActionCreator,
+  },
+  objectSelectors: {
+    [name: string]: ObjectSelector,
+  },
+  wrapEntity: (object: EntityObject) => any,
   form?: any,
 };
 
@@ -71,33 +90,37 @@ export function createEntity(def: EntityDefinition): Entity {
   if (!entity.schema) {
     entity.schema = new schema.Entity(entity.name);
   }
-  if (!entity.getName) {
-    entity.getName = object => object.name;
-  }
 
   // API
   if (!entity.api) {
+    entity.api = {};
+  }
+  if (entity.path) {
+    const path = entity.path; // Flow not recognizing path won't be undefined
     entity.api = {
-      list: GET(`${entity.path}`),
-      create: POST(`${entity.path}`),
-      get: GET(`${entity.path}/:id`),
-      update: PUT(`${entity.path}/:id`),
-      delete: DELETE(`${entity.path}/:id`),
+      list: GET(`${path}`),
+      create: POST(`${path}`),
+      get: GET(`${path}/:id`),
+      update: PUT(`${path}/:id`),
+      delete: DELETE(`${path}/:id`),
+      ...entity.api,
     };
   }
 
-  // ACITON TYPES
+  const getIdForQuery = entityQuery => JSON.stringify(entityQuery || null);
+
+  const getObjectStatePath = entityId => ["entities", entity.name, entityId];
+  const getListStatePath = entityQuery =>
+    ["entities", entity.name + "_list"].concat(getIdForQuery(entityQuery));
+
+  // ACTION TYPES
   const CREATE_ACTION = `metabase/entities/${entity.name}/CREATE`;
   const FETCH_ACTION = `metabase/entities/${entity.name}/FETCH`;
   const UPDATE_ACTION = `metabase/entities/${entity.name}/UPDATE`;
   const DELETE_ACTION = `metabase/entities/${entity.name}/DELETE`;
   const FETCH_LIST_ACTION = `metabase/entities/${entity.name}/FETCH_LIST`;
 
-  // ACTION CREATORS
-  entity.actions = {
-    ...(def.actions || {}),
-    ...(def.objectActions || {}),
-
+  entity.objectActions = {
     create: createThunkAction(
       CREATE_ACTION,
       entityObject => async (dispatch, getState) => {
@@ -120,13 +143,17 @@ export function createEntity(def: EntityDefinition): Entity {
 
     fetch: createThunkAction(
       FETCH_ACTION,
-      (entityObject, reload = false) => (dispatch, getState) =>
+      (entityObject, { reload = false, properties = null } = {}) => (
+        dispatch,
+        getState,
+      ) =>
         fetchData({
           dispatch,
           getState,
           reload,
-          requestStatePath: ["entities", entity.name, entityObject.id],
-          existingStatePath: ["entities", entity.name, entityObject.id],
+          properties,
+          requestStatePath: getObjectStatePath(entityObject.id),
+          existingStatePath: getObjectStatePath(entityObject.id),
           getData: async () =>
             normalize(
               await entity.api.get({ id: entityObject.id }),
@@ -137,8 +164,15 @@ export function createEntity(def: EntityDefinition): Entity {
 
     update: createThunkAction(
       UPDATE_ACTION,
-      entityObject => async (dispatch, getState) => {
-        const statePath = ["entities", entity.name, entityObject.id, "update"];
+      (entityObject, updatedObject = null) => async (dispatch, getState) => {
+        // If a second object is provided just take the id from the first and
+        // update it with all the properties in the second
+        // NOTE: this is so that the object.update(updatedObject) method on
+        // the default entity wrapper class works correctly
+        if (updatedObject) {
+          entityObject = { id: entityObject.id, ...updatedObject };
+        }
+        const statePath = [...getObjectStatePath(entityObject.id), "update"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
@@ -158,7 +192,7 @@ export function createEntity(def: EntityDefinition): Entity {
     delete: createThunkAction(
       DELETE_ACTION,
       entityObject => async (dispatch, getState) => {
-        const statePath = ["entities", entity.name, entityObject.id, "delete"];
+        const statePath = [...getObjectStatePath(entityObject.id), "delete"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           await entity.api.delete({ id: entityObject.id });
@@ -175,44 +209,78 @@ export function createEntity(def: EntityDefinition): Entity {
       },
     ),
 
+    // user defined object actions should override defaults
+    ...(def.objectActions || {}),
+  };
+
+  // ACTION CREATORS
+  entity.actions = {
     fetchList: createThunkAction(
       FETCH_LIST_ACTION,
-      (query = {}, reload = false) => (dispatch, getState) =>
+      (entityQuery = null, { reload = false } = {}) => (dispatch, getState) =>
         fetchData({
           dispatch,
           getState,
           reload,
-          requestStatePath: ["entities", entity.name + "_list"], // FIXME: different path depending on query?
-          existingStatePath: ["entities", entity.name + "_list"], // FIXME: different path depending on query?
-          getData: async () =>
-            normalize(await entity.api.list(query), [entity.schema]),
+          requestStatePath: getListStatePath(entityQuery),
+          existingStatePath: getListStatePath(entityQuery),
+          getData: async () => {
+            const { result, entities } = normalize(
+              await entity.api.list(entityQuery || {}),
+              [entity.schema],
+            );
+            return { result, entities, entityQuery };
+          },
         }),
     ),
+
+    // user defined actions should override defaults
+    ...entity.objectActions,
+    ...(def.actions || {}),
   };
 
   // SELECTORS
-  const getEntities = state => state.entities[entity.name];
-  const getEntitiesIdsList = state => state.entities[`${entity.name}_list`];
+
+  const getEntities = state => state.entities;
+
+  // OBJECT SELECTORS
+
   const getEntityId = (state, props) =>
     (props.params && props.params.entityId) || props.entityId;
-  const getList = createSelector(
-    [getEntities, getEntitiesIdsList],
-    (entities, entityIds) => entityIds && entityIds.map(id => entities[id]),
-  );
+
   const getObject = createSelector(
     [getEntities, getEntityId],
-    (entities, entityId) => entities[entityId],
+    (entities, entityId) => denormalize(entityId, entity.schema, entities),
   );
 
+  // LIST SELECTORS
+
+  const getEntityQueryId = (state, props) =>
+    getIdForQuery(props && props.entityQuery);
+
+  const getEntityLists = createSelector(
+    [getEntities],
+    entities => entities[`${entity.name}_list`],
+  );
+
+  const getEntityIds = createSelector(
+    [getEntityQueryId, getEntityLists],
+    (entityQueryId, lists) => lists[entityQueryId],
+  );
+
+  const getList = createSelector(
+    [getEntities, getEntityIds],
+    (entities, entityIds) => denormalize(entityIds, [entity.schema], entities),
+  );
+
+  // REQUEST STATE SELECTORS
+
   const getRequestState = (state, props = {}) => {
-    const path = ["requests", "states", "entities"];
-    if (props.entityId != null) {
-      path.push(entity.name, props.entityId);
-    } else {
-      path.push(entity.name + "_list");
-    }
-    path.push(props.requestType || "fetch");
-    return getIn(state, path);
+    const path =
+      props.entityId != null
+        ? getObjectStatePath(props.entityId)
+        : getListStatePath(props.entityQuery);
+    return getIn(state, ["requests", "states", ...path, "fetch"]);
   };
   const getLoading = createSelector(
     [getRequestState],
@@ -224,12 +292,23 @@ export function createEntity(def: EntityDefinition): Entity {
   );
 
   entity.selectors = {
-    getEntities,
-    getEntitiesIdsList,
     getList,
     getObject,
     getLoading,
     getError,
+  };
+
+  entity.objectSelectors = {
+    getName(object) {
+      return object.name;
+    },
+    getIcon(object) {
+      return "unknown";
+    },
+    getColor(object) {
+      return undefined;
+    },
+    ...(def.objectSelectors || {}),
   };
 
   // REDUCERS
@@ -242,20 +321,78 @@ export function createEntity(def: EntityDefinition): Entity {
     def.reducer,
   );
 
-  entity.reducers[entity.name + "_list"] = (state = null, action) => {
-    if (action.error) {
+  entity.reducers[entity.name + "_list"] = (
+    state = {},
+    { type, error, payload },
+  ) => {
+    if (error) {
       return state;
     }
-    if (action.type === FETCH_LIST_ACTION) {
-      return action.payload.result || state;
-    } else if (action.type === CREATE_ACTION) {
-      return state && state.concat([action.payload.result]);
-    } else if (action.type === DELETE_ACTION) {
-      return state && state.filter(id => id !== action.payload.result);
-    } else {
-      return state;
+    if (type === FETCH_LIST_ACTION) {
+      if (payload.result) {
+        return {
+          ...state,
+          [getIdForQuery(payload.entityQuery)]: payload.result,
+        };
+      }
+      // NOTE: only add/remove from the "default" list (no entityQuery)
+      // TODO: just remove this entirely?
+    } else if (type === CREATE_ACTION && state[""]) {
+      return { ...state, "": state[""].concat([payload.result]) };
+    } else if (type === DELETE_ACTION && state[""]) {
+      return {
+        ...state,
+        "": state[""].filter(id => id !== payload.result),
+      };
     }
+    return state;
   };
+
+  // OBJECT WRAPPER
+
+  if (!entity.wrapEntity) {
+    // This is the default entity wrapper class implementation
+    //
+    // We automatically bind all objectSelectors and objectActions functions
+    //
+    // If a dispatch function is passed to the constructor the actions will be
+    // dispatched using it, otherwise the actions will be returned
+    //
+    class EntityWrapper {
+      _dispatch: ?(action: any) => any;
+
+      constructor(object, dispatch = null) {
+        Object.assign(this, object);
+        this._dispatch = dispatch;
+      }
+    }
+    // object selectors
+    for (const [methodName, method] of Object.entries(entity.objectSelectors)) {
+      // $FlowFixMe
+      EntityWrapper.prototype[methodName] = function(...args) {
+        // $FlowFixMe
+        return method(this, ...args);
+      };
+    }
+    // object actions
+    for (const [methodName, method] of Object.entries(entity.objectActions)) {
+      // $FlowFixMe
+      EntityWrapper.prototype[methodName] = function(...args) {
+        if (this._dispatch) {
+          // if dispatch was provided to the constructor go ahead and dispatch
+          // $FlowFixMe
+          return this._dispatch(method(this, ...args));
+        } else {
+          // otherwise just return the action
+          // $FlowFixMe
+          return method(this, ...args);
+        }
+      };
+    }
+
+    entity.wrapEntity = (object, dispatch) =>
+      new EntityWrapper(object, dispatch);
+  }
 
   return entity;
 }

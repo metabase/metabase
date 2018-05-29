@@ -24,14 +24,6 @@
            org.bson.types.ObjectId
            org.joda.time.DateTime))
 
-;; See http://clojuremongodb.info/articles/integration.html
-;; Loading these namespaces will load appropriate Monger integrations with JODA Time and Cheshire respectively
-;;
-;; These are loaded here and not in the `:require` above because they tend to get automatically removed by
-;; `cljr-clean-ns` and also cause Eastwood to complain about unused namespaces
-(require 'monger.joda-time
-         'monger.json)
-
 (def ^:private ^:const $subtract :$subtract)
 
 

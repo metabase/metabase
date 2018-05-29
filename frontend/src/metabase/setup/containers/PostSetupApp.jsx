@@ -7,7 +7,7 @@ import ExplorePane from "metabase/components/ExplorePane";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import ProgressBar from "metabase/components/ProgressBar";
 import Quotes from "metabase/components/Quotes";
-import { withBackground } from "metabase/hoc/Background";
+import fitViewport from "metabase/hoc/FitViewPort";
 
 import { MetabaseApi, AutoApi } from "metabase/services";
 import _ from "underscore";
@@ -35,6 +35,7 @@ type Props = {
   params: {
     databaseId?: number,
   },
+  fitClassNames: string,
 };
 type State = {
   databaseId: ?number,
@@ -43,7 +44,7 @@ type State = {
   sampleCandidates: ?DatabaseCandidates,
 };
 
-@withBackground("bg-slate-extra-light")
+@fitViewport
 export default class PostSetupApp extends Component {
   props: Props;
   state: State = {
@@ -128,8 +129,8 @@ export default class PostSetupApp extends Component {
     let { candidates, sampleCandidates, isSample } = this.state;
 
     return (
-      <div className="full-height">
-        <div className="flex full-height">
+      <div className={this.props.fitClassNames}>
+        <div className="flex full full-height">
           <div
             style={{ maxWidth: 587 }}
             className="ml-auto mr-auto mt-auto mb-auto py2"

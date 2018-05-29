@@ -1,13 +1,14 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
+import fitViewport from "metabase/hoc/FitViewPort";
+
 import {
   fetchDatabases,
   fetchMetrics,
   fetchSegments,
 } from "metabase/redux/metadata";
 
-import { withBackground } from "metabase/hoc/Background";
 import { determineWhichOptionsToShow, resetQuery } from "../new_query";
 import { t } from "c-3po";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -71,6 +72,7 @@ const allOptionsVisibleState = {
   showSQLOption: true,
 };
 
+@fitViewport
 export class NewQueryOptions extends Component {
   props: Props;
 
@@ -174,6 +176,4 @@ export class NewQueryOptions extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(
-  withBackground("bg-slate-extra-light")(NewQueryOptions),
-);
+export default connect(mapStateToProps, mapDispatchToProps)(NewQueryOptions);

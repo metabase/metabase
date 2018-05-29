@@ -56,7 +56,6 @@ import Scalar from "metabase/visualizations/visualizations/Scalar";
 import ParameterFieldWidget from "metabase/parameters/components/widgets/ParameterFieldWidget";
 import TextWidget from "metabase/parameters/components/widgets/TextWidget.jsx";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
-import { LOAD_COLLECTIONS } from "metabase/questions/collections";
 import SharingPane from "metabase/public/components/widgets/SharingPane";
 import { EmbedTitle } from "metabase/public/components/widgets/EmbedModalContent";
 import PreviewPane from "metabase/public/components/widgets/PreviewPane";
@@ -66,6 +65,7 @@ import * as Urls from "metabase/lib/urls";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
 
+import Collections from "metabase/entities/collections";
 import { CardApi, DashboardApi, SettingsApi } from "metabase/services";
 
 const PEOPLE_TABLE_ID = 2;
@@ -221,7 +221,7 @@ describe("public/embedded", () => {
           .first()
           .find("a"),
       );
-      await store.waitForActions([LOAD_COLLECTIONS]);
+      await store.waitForActions([Collections.actions.fetchList]);
 
       setInputValue(
         app.find(SaveQuestionModal).find("input[name='name']"),

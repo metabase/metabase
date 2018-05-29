@@ -4,6 +4,8 @@ import Question from "metabase-lib/lib/Question";
 
 // provides functions for building urls to things we care about
 
+export const activity = "/activity";
+
 export const newQuestion = () => "/question/new";
 export function question(cardId, hash = "", query = "") {
   if (hash && typeof hash === "object") {
@@ -61,6 +63,10 @@ export function pulse(pulseId) {
   return `/pulse/#${pulseId}`;
 }
 
+export function pulseEdit(pulseId) {
+  return `/pulse/${pulseId}`;
+}
+
 export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
   let query = `?db=${databaseId}&table=${tableId}`;
 
@@ -75,8 +81,8 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
   return question(null, query);
 }
 
-export function collection(collection) {
-  return `/questions/collections/${collection.slug}`;
+export function collection(collectionId) {
+  return `/collection/${collectionId || "root"}`;
 }
 
 export function label(label) {
