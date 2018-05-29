@@ -437,7 +437,7 @@
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)
                                    :data          (into {} (.getJobDataMap trigger))}))))}))))))
 
-(defn- clear-connection-pool
+(defn clear-connection-pool
   "It's possible that a previous test ran and set the session's timezone to something, then returned the session to
   the pool. Sometimes that connection's session can remain intact and subsequent queries will continue in that
   timezone. That causes problems for tests that we can determine the database's timezone. This function will reset the
