@@ -200,6 +200,8 @@ export const getRoutes = store => (
 
         <Route path="collection/:collectionId" component={CollectionLanding}>
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
+          <ModalRoute path="new_collection" modal={CollectionCreate} />
+          <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
         </Route>
 
         <Route path="activity" component={HomepageApp} />
@@ -211,11 +213,6 @@ export const getRoutes = store => (
         >
           <ModalRoute path="history" modal={DashboardHistoryModal} />
           <ModalRoute path="move" modal={DashboardMoveModal} />
-        </Route>
-
-        <Route path="new/(/:collectionId)" component={CollectionLanding}>
-          <ModalRoute path="collection" modal={CollectionCreate} />
-          <ModalRoute path="dashboard" modal={CreateDashboardModal} />
         </Route>
 
         <Route path="/question">

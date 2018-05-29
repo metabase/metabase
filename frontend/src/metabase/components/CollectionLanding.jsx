@@ -314,17 +314,17 @@ class CollectionLanding extends React.Component {
                     {
                       title: t`New dashboard`,
                       icon: "dashboard",
-                      link: Urls.newDashboard(),
+                      link: Urls.newDashboard(collectionId),
                     },
                     {
                       title: t`New pulse`,
                       icon: "pulse",
-                      link: Urls.newPulse(),
+                      link: Urls.newPulse(collectionId),
                     },
                     {
                       title: t`New collection`,
                       icon: "all",
-                      link: Urls.newCollection(),
+                      link: Urls.newCollection(collectionId),
                     },
                   ]}
                   triggerIcon="add"
