@@ -148,7 +148,7 @@
                    :jvm-opts ["-Dlogfile.path=target/log"]
                    ;; Log appender class needs to be compiled for log4j to use it,
                    :aot [metabase.logger]}
-             :ci {:jvm-opts ["-Xmx3g"]}
+             :ci {:jvm-opts ["-Xmx2500m"]}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup  ; for test setup stuff
                                                   'metabase.test.util)] ; for the toucan.util.test default values for temp models
