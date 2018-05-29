@@ -262,101 +262,31 @@ export default class Navbar extends Component {
             />
           </Box>
         </Flex>
-        <Flex ml="auto" align="center" className="relative z2">
-          <PopoverWithTrigger
-            ref={e => (this._newPopover = e)}
-            triggerElement={
-              <Button medium mr={3} color="#509ee3">
-                New
-              </Button>
-            }
-          >
-            <Box py={2} px={3} style={{ minWidth: 300 }}>
-              <Box my={2}>
-                <Link to="question/new">
-                  <Flex align="center" style={{ color: normal.red }}>
-                    <Icon name="beaker" mr={1} />
-                    <h3>Question</h3>
-                  </Flex>
-                </Link>
-              </Box>
-              <Box my={2}>
-                <Flex
-                  align="center"
-                  style={{ color: normal.blue }}
-                  className="cursor-pointer"
-                  onClick={() => this.setModal(MODAL_NEW_DASHBOARD)}
-                >
-                  <Icon name="dashboard" mr={1} />
-                  <h3>Dashboard</h3>
-                </Flex>
-              </Box>
-              <Box my={2}>
-                <Link to="pulse/new">
-                  <Flex align="center" style={{ color: saturated.yellow }}>
-                    <Icon name="pulse" mr={1} />
-                    <h3>Pulse</h3>
-                  </Flex>
-                </Link>
-              </Box>
-              <Box my={2}>
-                <Flex
-                  align="center"
-                  style={{ color: "#93B3C9" }}
-                  className="cursor-pointer"
-                  onClick={() => this.setModal(MODAL_NEW_COLLECTION)}
-                >
-                  <Icon name="all" mr={1} />
-                  <h3>Collection</h3>
-                </Flex>
-              </Box>
+        <Flex align="center" ml="auto" className="z4">
+          <Link to="question/new" mx={1}>
+            <Button medium color="#509ee3">
+              New question
+            </Button>
+          </Link>
+          <Link to="collection/root" mx={1}>
+            <Box p={1} bg="#69ABE6" className="text-bold rounded">
+              Saved items
             </Box>
-          </PopoverWithTrigger>
-          <Box>
-            <Link to="collection/root">
-              <Box p={1} bg="#69ABE6" className="text-bold rounded">
-                Saved items
-              </Box>
+          </Link>
+          <Tooltip tooltip={t`Reference`}>
+            <Link to="reference" mx={1}>
+              <Icon name="reference" />
             </Link>
-          </Box>
-          <Box mx={2}>
-            <Tooltip tooltip={t`Reference`}>
-              <Link to="reference">
-                <Icon name="reference" />
-              </Link>
-            </Tooltip>
-          </Box>
-          <Box mx={2}>
-            <Tooltip tooltip={t`Activity`}>
-              <Link to="activity">
-                <Icon name="alert" />
-              </Link>
-            </Tooltip>
-          </Box>
+          </Tooltip>
+          <Tooltip tooltip={t`Activity`}>
+            <Link to="activity" mx={1}>
+              <Icon name="alert" />
+            </Link>
+          </Tooltip>
           <ProfileLink {...this.props} />
         </Flex>
-        {this.renderModal()}
       </Flex>
     );
-  }
-
-  renderModal() {
-    const { modal } = this.state;
-    if (modal) {
-      return (
-        <Modal onClose={() => this.setState({ modal: null })}>
-          {modal === MODAL_NEW_COLLECTION ? (
-            <CollectionEdit />
-          ) : modal === MODAL_NEW_DASHBOARD ? (
-            <CreateDashboardModal
-              createDashboard={this.props.createDashboard}
-            />
-          ) : null}
-        </Modal>
-      );
-    } else {
-      return null;
-    }
   }
 
   render() {
