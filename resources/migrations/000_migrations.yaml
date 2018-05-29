@@ -4129,3 +4129,16 @@ databaseChangeLog:
               name: collection_position
               type: smallint
               remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+  - changeSet:
+      id: 82
+      author: senior
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              name: updated_at
+              type: datetime
+              remarks: 'When was this User last updated?'
+        - sql:
+            sql: update core_user set updated_at=date_joined
