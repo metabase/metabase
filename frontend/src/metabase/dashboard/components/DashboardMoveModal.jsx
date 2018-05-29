@@ -3,13 +3,16 @@ import { Box, Flex, Subhead } from "rebass";
 import cx from "classnames";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { jt } from "c-3po";
+import * as Urls from "metabase/lib/urls";
+import { normal } from "metabase/lib/colors";
 
 import { DashboardApi } from "metabase/services";
 import { addUndo, createUndo } from "metabase/redux/undo";
 
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
+import Link from "metabase/components/Link";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
@@ -33,6 +36,7 @@ class DashboardMoveModal extends React.Component {
 
   async _moveDashboard() {
     const { addUndo, createUndo } = this.props;
+    const { selectedCollection } = this.state;
 
     try {
       await DashboardApi.update({
@@ -45,7 +49,15 @@ class DashboardMoveModal extends React.Component {
           message: () => (
             <Flex align="center">
               <Icon name="all" mr={1} color="white" />
-              {t`Dashboard moved to ${this.state.selectedCollection.name}`}
+              {jt`Dashboard moved to ${(
+                <Link
+                  ml={1}
+                  color={normal.blue}
+                  to={Urls.collection(selectedCollection.id)}
+                >
+                  {selectedCollection.name}
+                </Link>
+              )}`}
             </Flex>
           ),
         }),

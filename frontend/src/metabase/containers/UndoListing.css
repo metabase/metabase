@@ -9,7 +9,6 @@
   composes: bordered rounded shadowed from "style";
   composes: relative from "style";
   composes: flex align-center from "style";
-  width: 320px;
   background-color: #2e353b;
   color: white;
 }
