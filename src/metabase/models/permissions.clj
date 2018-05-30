@@ -57,6 +57,15 @@
              (some (u/rpartial re-matches object-path)
                    valid-object-path-patterns))))
 
+(def ObjectPath
+  "Schema for a valid permissions path to an object."
+  (s/pred valid-object-path? "Valid permissions object path."))
+
+(def UserPath
+  "Schema for a valid permissions path that a user might possess in their `*current-user-permissions-set*`. This is the
+  same as what's allowed for `ObjectPath` but also includes root permissions, which admins will have."
+  (s/pred #(or (= % "/") (valid-object-path? %))
+          "Valid user permissions path."))
 
 (defn- assert-not-admin-group
   "Check to make sure the `:group_id` for PERMISSIONS entry isn't the admin group."

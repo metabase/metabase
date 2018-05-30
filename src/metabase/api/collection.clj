@@ -6,17 +6,17 @@
              [common :as api]]
             [metabase.models
              [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
              [collection :as collection :refer [Collection]]
+             [dashboard :refer [Dashboard]]
              [interface :as mi]
              [pulse :as pulse :refer [Pulse]]]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]
-            [metabase.util :as u]))
+             [hydrate :refer [hydrate]]]))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for.
@@ -84,7 +84,9 @@
   [id model]
   {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
   (merge
-   (api/read-check Collection id, :archived false)
+   (as-> (api/read-check Collection id, :archived false) <>
+     (hydrate <> :effective_location :effective_children :effective_ancestors)
+     (assoc <> :can_write (mi/can-write? <>)))
    (collection-children model model->collection-children-fn id)))
 
 (api/defendpoint GET "/root"
@@ -93,36 +95,78 @@
   [model]
   {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
   (merge
-   {:name (tru "Root Collection")
-    :id   "root"}
+   {:name                (tru "Root Collection")
+    :id                  "root"
+    :effective_location  "/"
+    :effective_children  (collection/effective-children collection/root-collection)
+    :effective_ancestors []}
    (collection-children model model->root-collection-children-fn)))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
+(defn- write-check-collection-or-root-collection
+  "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
+  Root Collection perms."
+  [collection-id]
+  (if collection-id
+    (api/write-check Collection collection-id)
+    ;; if the Collection is going to go in the Root Collection, for the time being we'll just check that you're a
+    ;; superuser. Once we merge in Root Collection permissions we'll need to change this !
+    (api/check-superuser)))
+
 (api/defendpoint POST "/"
   "Create a new Collection."
-  [:as {{:keys [name color description]} :body}]
-  {name su/NonBlankString, color collection/hex-color-regex, description (s/maybe su/NonBlankString)}
-  (api/check-superuser)
+  [:as {{:keys [name color description parent_id]} :body}]
+  {name        su/NonBlankString
+   color       collection/hex-color-regex
+   description (s/maybe su/NonBlankString)
+   parent_id   (s/maybe su/IntGreaterThanZero)}
+  ;; To create a new collection, you need write perms for the location you are going to be putting it in...
+  (write-check-collection-or-root-collection parent_id)
+  ;; Now create the new Collection :)
   (db/insert! Collection
-    :name  name
-    :color color))
+    (merge
+     {:name        name
+      :color       color
+      :description description}
+     (when parent_id
+       {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))
+
+(defn- move-collection-if-needed! [collection-before-update collection-updates]
+  ;; is a [new] parent_id update specified in the PUT request?
+  (when (contains? collection-updates :parent_id)
+    (let [orig-location (:location collection-before-update)
+          new-parent-id (:parent_id collection-updates)
+          new-location  (collection/children-location (if new-parent-id
+                                                        (db/select-one [Collection :location :id] :id new-parent-id)
+                                                        collection/root-collection))]
+      ;; check and make sure we're actually supposed to be moving something
+      (when (not= orig-location new-location)
+        ;; ok, make sure we have perms to move something out of the original parent Collection
+        (write-check-collection-or-root-collection (collection/location-path->parent-id orig-location))
+        ;; now make sure we have perms to move something into the new parent Collection
+        (write-check-collection-or-root-collection new-parent-id)
+        ;; ok, we're good to move!
+        (collection/move-collection! collection-before-update new-location)))))
 
 (api/defendpoint PUT "/:id"
-  "Modify an existing Collection, including archiving or unarchiving it."
-  [id, :as {{:keys [name color description archived], :as body} :body}]
+  "Modify an existing Collection, including archiving or unarchiving it, or moving it."
+  [id, :as {{:keys [name color description archived parent_id], :as collection-updates} :body}]
   {name        (s/maybe su/NonBlankString)
    color       (s/maybe collection/hex-color-regex)
    description (s/maybe su/NonBlankString)
-   archived    (s/maybe s/Bool)}
-  ;; you have to be a superuser to modify a Collection itself, but `/collection/:id/` perms are sufficient for
-  ;; adding/removing Cards
-  (api/check-superuser)
-  (api/api-let [404 "Not Found"] [collection-before-update (Collection id)]
+   archived    (s/maybe s/Bool)
+   parent_id   (s/maybe su/IntGreaterThanZero)}
+  ;; do we have perms to edit this Collection?
+  (let [collection-before-update (api/write-check Collection id)]
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`
-    (db/update! Collection id
-      (u/select-keys-when body :present [:name :color :description :archived :location]))
+    (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived])]
+      (when (seq updates)
+        (db/update! Collection id updates)))
+    ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
+    (move-collection-if-needed! collection-before-update collection-updates)
+    ;; Check and see if if the Collection is switiching to archived
     (when (and (not (:archived collection-before-update))
                archived)
       (when-let [alerts (seq (apply pulse/retrieve-alerts-for-cards (db/select-ids Card, :collection_id id)))]
@@ -130,7 +174,6 @@
         ;; layer which will not cause the archive notification code to fire. This will delete the relevant alerts and
         ;; notify the users just as if they had be archived individually via the card API
         (card-api/delete-alert-and-notify-archived! alerts))))
-
   ;; return the updated object
   (Collection id))
 
