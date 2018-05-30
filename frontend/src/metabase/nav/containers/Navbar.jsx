@@ -55,20 +55,11 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
-const DefaultSearchColor = "#60A6E4";
-const ActiveSearchColor = "#7bb7ec";
-
 const SearchWrapper = Flex.extend`
-  ${width} background-color: ${props =>
-      props.active ? ActiveSearchColor : DefaultSearchColor};
-  border-radius: 6px;
+  ${width} border-radius: 6px;
   align-items: center;
-  color: white;
-  border: 1px solid ${props => (props.active ? "#4894d8" : "transparent")};
+  border: 1px solid transparent;
   transition: background 300ms ease-in;
-  &:hover {
-    background-color: ${ActiveSearchColor};
-  }
 `;
 
 const SearchInput = styled.input`
@@ -114,6 +105,9 @@ class SearchBar extends React.Component {
         handleDismissal={() => this.setState({ active: false })}
       >
         <SearchWrapper
+          className={cx("search-bar", {
+            "search-bar--active": this.state.active,
+          })}
           onClick={() => this.setState({ active: true })}
           active={this.state.active}
         >
@@ -314,7 +308,7 @@ export default class Navbar extends Component {
           </PopoverWithTrigger>
           <Box>
             <Link to="collection/root">
-              <Box p={1} bg="#69ABE6" className="text-bold rounded">
+              <Box p={1} className="nav-light text-bold rounded">
                 Saved items
               </Box>
             </Link>
