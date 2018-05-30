@@ -147,7 +147,11 @@ export default class PulseEdit extends Component {
         </div>
         <div className="PulseEdit-content pt2 pb4">
           <PulseEditName {...this.props} setPulse={this.setPulse} />
-          <PulseEditCollection {...this.props} setPulse={this.setPulse} />
+          <PulseEditCollection
+            {...this.props}
+            setPulse={this.setPulse}
+            initialCollectionId={location.query.collectionId}
+          />
           <PulseEditCards
             {...this.props}
             setPulse={this.setPulse}
