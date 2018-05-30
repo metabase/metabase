@@ -16,7 +16,7 @@
              [datasets :refer [expect-with-engine]]
              [interface :refer [def-database-definition]]]
             [metabase.test.util :as tu]
-            [metabase.util :as u]
+            [metabase.util.date :as du]
             [honeysql.core :as hsql]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -99,8 +99,8 @@
     (tu/db-timezone-id)))
 
 
-(def before-daylight-savings (u/str->date-time "2018-03-10 10:00:00"))
-(def after-daylight-savings (u/str->date-time "2018-03-12 10:00:00"))
+(def before-daylight-savings (du/str->date-time "2018-03-10 10:00:00" du/utc))
+(def after-daylight-savings (du/str->date-time "2018-03-12 10:00:00" du/utc))
 
 (expect (#'mysql/timezone-id->offset-str "US/Pacific" before-daylight-savings) "-08:00")
 (expect (#'mysql/timezone-id->offset-str "US/Pacific" after-daylight-savings)  "-07:00")
@@ -114,18 +114,18 @@
 ;; make sure DateTime types generate appropriate SQL...
 ;; ...with no report-timezone set
 (expect
-  ["?" (u/->Timestamp "2018-01-03")]
+  ["?" (du/->Timestamp #inst "2018-01-03")]
   (tu/with-temporary-setting-values [report-timezone nil]
-    (hsql/format (sqlqp/->honeysql (MySQLDriver.) (u/->Timestamp "2018-01-03")))))
+    (hsql/format (sqlqp/->honeysql (MySQLDriver.) (du/->Timestamp #inst "2018-01-03")))))
 
 ;; ...with a report-timezone set
 (expect
   ["convert_tz('2018-01-03T00:00:00.000', '+00:00', '-08:00')"]
   (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
-    (hsql/format (sqlqp/->honeysql (MySQLDriver.) (u/->Timestamp "2018-01-03")))))
+    (hsql/format (sqlqp/->honeysql (MySQLDriver.) (du/->Timestamp #inst "2018-01-03")))))
 
 ;; ...with a report-timezone set to the same as the system timezone (shouldn't need to do TZ conversion)
 (expect
-  ["?" (u/->Timestamp "2018-01-03")]
+  ["?" (du/->Timestamp #inst "2018-01-03")]
   (tu/with-temporary-setting-values [report-timezone "UTC"]
-    (hsql/format (sqlqp/->honeysql (MySQLDriver.) (u/->Timestamp "2018-01-03")))))
+    (hsql/format (sqlqp/->honeysql (MySQLDriver.) (du/->Timestamp #inst "2018-01-03")))))

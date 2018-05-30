@@ -6,10 +6,11 @@ import auth from "metabase/auth/auth";
 
 /* ducks */
 import app from "metabase/redux/app";
-import metadata from "metabase/redux/metadata";
 import requests from "metabase/redux/requests";
 import settings from "metabase/redux/settings";
 import undo from "metabase/redux/undo";
+// eslint-disable-next-line import/no-named-as-default
+import entities from "metabase/redux/entities";
 
 /* user */
 import { currentUser } from "metabase/redux/user";
@@ -19,8 +20,8 @@ export default {
   app,
   auth,
   currentUser,
-  metadata,
   requests,
   settings,
   undo,
+  entities,
 };

@@ -10,6 +10,7 @@
             [metabase.query-processor.interface :as qpi]
             [metabase.test.data.users :as users]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -128,8 +129,8 @@
 
 ;; relative date -- last month
 (expect
-  (ga-query {:start-date (u/format-date "yyyy-MM-01" (u/relative-date :month -1))
-             :end-date   (u/format-date "yyyy-MM-01")})
+  (ga-query {:start-date (du/format-date "yyyy-MM-01" (du/relative-date :month -1))
+             :end-date   (du/format-date "yyyy-MM-01")})
   (mbql->native {:query {:filter {:filter-type :=
                                   :field       (ga-date-field :month)
                                   :value       (qpi/map->RelativeDateTimeValue {:amount -1
@@ -138,8 +139,8 @@
 
 ;; relative date -- this month
 (expect
-  (ga-query {:start-date (u/format-date "yyyy-MM-01")
-             :end-date   (u/format-date "yyyy-MM-01" (u/relative-date :month 1))})
+  (ga-query {:start-date (du/format-date "yyyy-MM-01")
+             :end-date   (du/format-date "yyyy-MM-01" (du/relative-date :month 1))})
   (mbql->native {:query {:filter {:filter-type :=
                                   :field       (ga-date-field :month)
                                   :value       (qpi/map->RelativeDateTimeValue {:amount 0
@@ -148,8 +149,8 @@
 
 ;; relative date -- next month
 (expect
-  (ga-query {:start-date (u/format-date "yyyy-MM-01" (u/relative-date :month 1))
-             :end-date   (u/format-date "yyyy-MM-01" (u/relative-date :month 2))})
+  (ga-query {:start-date (du/format-date "yyyy-MM-01" (du/relative-date :month 1))
+             :end-date   (du/format-date "yyyy-MM-01" (du/relative-date :month 2))})
   (mbql->native {:query {:filter {:filter-type :=
                                   :field       (ga-date-field :month)
                                   :value       (qpi/map->RelativeDateTimeValue {:amount 1
@@ -158,8 +159,8 @@
 
 ;; relative date -- 2 months from now
 (expect
-  (ga-query {:start-date (u/format-date "yyyy-MM-01" (u/relative-date :month 2))
-             :end-date   (u/format-date "yyyy-MM-01" (u/relative-date :month 3))})
+  (ga-query {:start-date (du/format-date "yyyy-MM-01" (du/relative-date :month 2))
+             :end-date   (du/format-date "yyyy-MM-01" (du/relative-date :month 3))})
   (mbql->native {:query {:filter {:filter-type :=
                                   :field       (ga-date-field :month)
                                   :value       (qpi/map->RelativeDateTimeValue {:amount 2
@@ -168,8 +169,8 @@
 
 ;; relative date -- last year
 (expect
-  (ga-query {:start-date (u/format-date "yyyy-01-01" (u/relative-date :year -1))
-             :end-date   (u/format-date "yyyy-01-01")})
+  (ga-query {:start-date (du/format-date "yyyy-01-01" (du/relative-date :year -1))
+             :end-date   (du/format-date "yyyy-01-01")})
   (mbql->native {:query {:filter {:filter-type :=
                                   :field       (ga-date-field :year)
                                   :value       (qpi/map->RelativeDateTimeValue {:amount -1

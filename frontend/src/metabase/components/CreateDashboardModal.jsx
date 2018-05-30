@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
-import FormField from "metabase/components/FormField.jsx";
+import FormField from "metabase/components/form/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Button from "metabase/components/Button.jsx";
 
@@ -87,9 +87,9 @@ export default class CreateDashboardModal extends Component {
         <form className="Modal-form" onSubmit={this.createNewDash}>
           <div className="Form-inputs">
             <FormField
+              name="name"
               displayName={t`Name`}
-              fieldName="name"
-              errors={this.state.errors}
+              formError={this.state.errors}
             >
               <input
                 className="Form-input full"
@@ -102,9 +102,9 @@ export default class CreateDashboardModal extends Component {
             </FormField>
 
             <FormField
+              name="description"
               displayName={t`Description`}
-              fieldName="description"
-              errors={this.state.errors}
+              formError={this.state.errors}
             >
               <input
                 className="Form-input full"

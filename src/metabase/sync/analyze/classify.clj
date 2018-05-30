@@ -62,7 +62,8 @@
                     Field
                     Table)
           (u/get-id original-model)
-        values-to-set))))
+        values-to-set)
+      true)))
 
 (def ^:private classifiers
   "Various classifier functions available. These should all take two args, a `FieldInstance` and a possibly `nil`
@@ -117,8 +118,13 @@
   like inferring (and setting) the special types and preview display status for Fields belonging to TABLE."
   [table :- i/TableInstance]
   (when-let [fields (fields-to-classify table)]
-    (doseq [field fields]
-      (classify! field))))
+    {:fields-classified (count fields)
+     :fields-failed     (sync-util/sum-numbers (fn [field]
+                                                 (let [result (classify! field)]
+                                                   (if (instance? Exception result)
+                                                     1
+                                                     0)))
+                                               fields)}))
 
 (s/defn ^:always-validate classify-table!
   "Run various classifiers on the TABLE. These do things like inferring (and
@@ -131,15 +137,24 @@
   [database :- i/DatabaseInstance
    tables :- [i/TableInstance]
    log-progress-fn]
-  (doseq [table tables]
-    (classify-table! table)
-    (log-progress-fn "clasify-tables" table)))
+  {:total-tables      (count tables)
+   :tables-classified (sync-util/sum-numbers (fn [table]
+                                               (let [result (classify-table! table)]
+                                                 (log-progress-fn "classify-tables" table)
+                                                 (if result
+                                                   1
+                                                   0)))
+                                             tables)})
 
 (s/defn classify-fields-for-db!
   "Classify all fields found in a given database"
   [database :- i/DatabaseInstance
    tables :- [i/TableInstance]
    log-progress-fn]
-  (doseq [table tables]
-    (classify-fields! table)
-    (log-progress-fn "classify-fields" table)))
+  (apply merge-with +
+         {:fields-classified 0, :fields-failed 0}
+         (map (fn [table]
+                (let [result (classify-fields! table)]
+                  (log-progress-fn "classify-fields" table)
+                  result))
+              tables)))

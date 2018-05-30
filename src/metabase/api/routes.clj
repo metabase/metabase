@@ -5,7 +5,6 @@
             [metabase.api
              [activity :as activity]
              [alert    :as alert]
-             [async :as async]
              [automagic-dashboards :as magic]
              [card :as card]
              [collection :as collection]
@@ -34,9 +33,9 @@
              [table :as table]
              [tiles :as tiles]
              [user :as user]
-             [util :as util]
-             [x-ray :as x-ray]]
-            [metabase.middleware :as middleware]))
+             [util :as util]]
+            [metabase.middleware :as middleware]
+            [puppetlabs.i18n.core :refer [tru]]))
 
 (def ^:private +generic-exceptions
   "Wrap ROUTES so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public
@@ -59,7 +58,6 @@
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   (context "/activity"             [] (+auth activity/routes))
   (context "/alert"                [] (+auth alert/routes))
-  (context "/async"                [] (+auth async/routes))
   (context "/automagic-dashboards" [] (+auth magic/routes))
   (context "/card"                 [] (+auth card/routes))
   (context "/collection"           [] (+auth collection/routes))
@@ -69,7 +67,6 @@
   (context "/email"                [] (+auth email/routes))
   (context "/embed"                [] (+message-only-exceptions embed/routes))
   (context "/field"                [] (+auth field/routes))
-  (context "/x-ray"                [] (+auth x-ray/routes))
   (context "/getting_started"      [] (+auth getting-started/routes))
   (context "/geojson"              [] (+auth geojson/routes))
   (context "/label"                [] (+auth label/routes))
@@ -90,6 +87,4 @@
   (context "/tiles"                [] (+auth tiles/routes))
   (context "/user"                 [] (+auth user/routes))
   (context "/util"                 [] util/routes)
-  (route/not-found (fn [{:keys [request-method uri]}]
-                     {:status 404
-                      :body   (str (.toUpperCase (name request-method)) " " uri " does not exist.")})))
+  (route/not-found (constantly {:status 404, :body (tru "API endpoint does not exist.")})))

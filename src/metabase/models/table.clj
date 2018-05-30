@@ -45,16 +45,20 @@
 (u/strict-extend (class Table)
   models/IModel
   (merge models/IModelDefaults
-         {:hydration-keys     (constantly [:table])
-          :types              (constantly {:entity_type :keyword, :visibility_type :keyword, :description :clob})
-          :properties         (constantly {:timestamped? true})
-          :pre-insert         pre-insert
-          :pre-delete pre-delete})
+         {:hydration-keys (constantly [:table])
+          :types          (constantly {:entity_type      :keyword,
+                                       :visibility_type  :keyword,
+                                       :description      :clob,
+                                       :has_field_values :clob,
+                                       :fields_hash      :clob})
+          :properties     (constantly {:timestamped? true})
+          :pre-insert     pre-insert
+          :pre-delete     pre-delete})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
-         {:can-read?          (partial i/current-user-has-full-permissions? :read)
-          :can-write?         i/superuser?
-          :perms-objects-set  perms-objects-set}))
+         {:can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        i/superuser?
+          :perms-objects-set perms-objects-set}))
 
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------

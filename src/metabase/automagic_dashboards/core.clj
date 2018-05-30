@@ -15,6 +15,7 @@
              [math :as math]]
             [medley.core :as m]
             [metabase.automagic-dashboards
+             [filters :as filters]
              [populate :as populate]
              [rules :as rules]]
             [metabase.models
@@ -30,8 +31,9 @@
             [metabase.related :as related]
             [metabase.sync.analyze.classify :as classify]
             [metabase.util :as u]
-            [puppetlabs.i18n.core :as i18n :refer [tru]]
+            [puppetlabs.i18n.core :as i18n :refer [tru trs]]
             [ring.util.codec :as codec]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
@@ -50,7 +52,7 @@
    :source       table
    :database     (:db_id table)
    :url          (format "%stable/%s" public-endpoint (u/get-id table))
-   :rules-prefix "table"})
+   :rules-prefix ["table"]})
 
 (defmethod ->root (type Segment)
   [segment]
@@ -61,7 +63,7 @@
      :database     (:db_id table)
      :query-filter (-> segment :definition :filter)
      :url          (format "%ssegment/%s" public-endpoint (u/get-id segment))
-     :rules-prefix "table"}))
+     :rules-prefix ["table"]}))
 
 (defmethod ->root (type Metric)
   [metric]
@@ -71,7 +73,7 @@
      :source       table
      :database     (:db_id table)
      :url          (format "%smetric/%s" public-endpoint (u/get-id metric))
-     :rules-prefix "metric"}))
+     :rules-prefix ["metric"]}))
 
 (defmethod ->root (type Field)
   [field]
@@ -81,7 +83,7 @@
      :source       table
      :database     (:db_id table)
      :url          (format "%sfield/%s" public-endpoint (u/get-id field))
-     :rules-prefix "field"}))
+     :rules-prefix ["field"]}))
 
 (defmulti
   ^{:doc "Get a reference for a given model to be injected into a template
@@ -108,7 +110,7 @@
     :day))
 
 (defmethod ->reference [:mbql (type Field)]
-  [_ {:keys [fk_target_field_id id link aggregation base_type fingerprint name base_type] :as field}]
+  [_ {:keys [fk_target_field_id id link aggregation fingerprint name base_type] :as field}]
   (let [reference (cond
                     link               [:fk-> link id]
                     fk_target_field_id [:fk-> id fk_target_field_id]
@@ -420,14 +422,15 @@
                       (assoc :score         score
                              :dataset_query query))))))))
 
-(def ^:private ^{:arglists '([rule])} rule-specificity
-  (comp (partial transduce (map (comp count ancestors)) +) :applies_to))
+(s/defn ^:private rule-specificity
+  [rule :- rules/Rule]
+  (transduce (map (comp count ancestors)) + (:applies_to rule)))
 
-(defn- matching-rules
+(s/defn ^:private matching-rules
   "Return matching rules orderd by specificity.
    Most specific is defined as entity type specification the longest ancestor
    chain."
-  [rules {:keys [source entity]}]
+  [rules :- [rules/Rule], {:keys [source entity]}]
   (let [table-type (or (:entity_type source) :entity/GenericTable)]
     (->> rules
          (filter (fn [{:keys [applies_to]}]
@@ -479,8 +482,8 @@
   [context _]
   context)
 
-(defn- make-context
-  [root rule]
+(s/defn ^:private make-context
+  [root, rule :- rules/Rule]
   {:pre [(:source root)]}
   (let [source        (:source root)
         tables        (concat [source] (when (instance? (type Table) source)
@@ -504,8 +507,8 @@
     (as-> {:source       (assoc source :fields (table->fields source))
            :root         root
            :tables       (map #(assoc % :fields (table->fields %)) tables)
-           :query-filter (merge-filter-clauses (:query-filter root)
-                                               (:cell-query root))} context
+           :query-filter (filters/inject-refinement (:query-filter root)
+                                                    (:cell-query root))} context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
       (assoc context :metrics (resolve-overloading context (:metrics rule)))
       (assoc context :filters (resolve-overloading context (:filters rule)))
@@ -524,10 +527,10 @@
            vals
            (apply concat)))
 
-(defn- make-dashboard
-  ([root rule]
+(s/defn ^:private make-dashboard
+  ([root, rule :- rules/Rule]
    (make-dashboard root rule {:tables [(:source root)]}))
-  ([root rule context]
+  ([root, rule :- rules/Rule, context]
    (let [this {"this" (-> root
                           :entity
                           (assoc :full-name (:full-name root)))}]
@@ -540,8 +543,8 @@
          (update :groups (partial fill-templates :string context {}))
          (assoc :refinements (:cell-query root))))))
 
-(defn- apply-rule
-  [root rule]
+(s/defn ^:private apply-rule
+  [root, rule :- rules/Rule]
   (let [context   (make-context root rule)
         dashboard (make-dashboard root rule context)
         filters   (->> rule
@@ -568,7 +571,7 @@
   [entity]
   (let [root      (->root entity)
         rule      (->> root
-                       (matching-rules (rules/get-rules [(:rules-prefix root)]))
+                       (matching-rules (rules/get-rules (:rules-prefix root)))
                        first)
         dashboard (make-dashboard root rule)]
     {:url         (:url root)
@@ -587,9 +590,9 @@
           (take n)
           (map ->related-entity)))))
 
-(defn- indepth
-  [root rule]
-  (->> (rules/get-rules [(:rules-prefix root) (:rule rule)])
+(s/defn ^:private indepth
+  [root, rule :- rules/Rule]
+  (->> (rules/get-rules (concat (:rules-prefix root) [(:rule rule)]))
        (keep (fn [indepth]
                (when-let [[dashboard _] (apply-rule root indepth)]
                  {:title       ((some-fn :short-title :title) dashboard)
@@ -598,8 +601,8 @@
                                        (:rule indepth))})))
        (take max-related)))
 
-(defn- related
-  [root rule]
+(s/defn ^:private related
+  [root, rule :- rules/Rule]
   (let [indepth (indepth root rule)]
     {:indepth indepth
      :tables  (take (- max-related (count indepth)) (others root))}))
@@ -607,40 +610,45 @@
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
   [{:keys [rule show rules-prefix query-filter cell-query full-name] :as root}]
-  (when-let [[dashboard rule] (if rule
-                                (apply-rule root (rules/get-rule rule))
-                                (->> root
-                                     (matching-rules (rules/get-rules [rules-prefix]))
-                                     (keep (partial apply-rule root))
-                                     ;; `matching-rules` returns an `ArraySeq` (via `sort-by`) so
-                                     ;; `first` realises one element at a time (no chunking).
-                                     first))]
-    (log/info (format "Applying heuristic %s to %s." (:rule rule) full-name))
-    (log/info (format "Dimensions bindings:\n%s"
-                      (->> dashboard
-                           :context
-                           :dimensions
-                           (m/map-vals #(update % :matches (partial map :name)))
-                           u/pprint-to-str)))
-    (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
-                      (-> dashboard :context :metrics u/pprint-to-str)
-                      (-> dashboard :context :filters u/pprint-to-str)))
-    (-> (cond-> dashboard
-          (or query-filter cell-query)
-          (assoc :title (str (tru "A closer look at ") full-name)))
-        (populate/create-dashboard (or show max-cards))
-        (assoc :related (-> (related root rule)
-                            (assoc :more (if (and (-> dashboard
-                                                      :cards
-                                                      count
-                                                      (> max-cards))
-                                                  (not= show :all))
-                                           [{:title       (tru "Show more about this")
-                                             :description nil
-                                             :table       (:source root)
-                                             :url         (format "%s#show=all"
-                                                                  (:url root))}]
-                                           [])))))))
+  (if-let [[dashboard rule] (if rule
+                              (apply-rule root (rules/get-rule rule))
+                              (->> root
+                                   (matching-rules (rules/get-rules rules-prefix))
+                                   (keep (partial apply-rule root))
+                                   ;; `matching-rules` returns an `ArraySeq` (via `sort-by`) so
+                                   ;; `first` realises one element at a time (no chunking).
+                                   first))]
+    (do
+      (log/infof (trs "Applying heuristic %s to %s.") (:rule rule) full-name)
+      (log/infof (trs "Dimensions bindings:\n%s")
+                 (->> dashboard
+                      :context
+                      :dimensions
+                      (m/map-vals #(update % :matches (partial map :name)))
+                      u/pprint-to-str))
+      (log/infof (trs "Using definitions:\nMetrics:\n%s\nFilters:\n%s")
+                 (-> dashboard :context :metrics u/pprint-to-str)
+                 (-> dashboard :context :filters u/pprint-to-str))
+      (-> (cond-> dashboard
+            (or query-filter cell-query)
+            (assoc :title (str (tru "A closer look at ") full-name)))
+          (populate/create-dashboard (or show max-cards))
+          (assoc :related (-> (related root rule)
+                              (assoc :more (if (and (-> dashboard
+                                                        :cards
+                                                        count
+                                                        (> max-cards))
+                                                    (not= show :all))
+                                             [{:title       (tru "Show more about this")
+                                               :description nil
+                                               :table       (:source root)
+                                               :url         (format "%s#show=all"
+                                                                    (:url root))}]
+                                             []))))))
+    (throw (ex-info (format (trs "Can't create dashboard for %s") full-name)
+             {:root            root
+              :available-rules (map :rule (or (some-> rule rules/get-rule vector)
+                                              (rules/get-rules rules-prefix)))}))))
 
 (def ^:private ^{:arglists '([card])} table-like?
   (comp empty? #(qp.util/get-in-normalized % [:dataset_query :query :aggregation])))
@@ -698,7 +706,7 @@
                                        (u/get-id card)
                                        (encode-base64-json cell-query))
                                (format "%squestion/%s" public-endpoint (u/get-id card)))
-               :rules-prefix "table"}
+               :rules-prefix ["table"]}
               opts)))
     nil))
 
@@ -731,9 +739,11 @@
                                        (encode-base64-json cell-query))
                                (format "%sadhoc/%s" public-endpoint
                                        (encode-base64-json query)))
-               :rules-prefix "table"}
-              (update opts :cell-query merge-filter-clauses
-                      (qp.util/get-in-normalized query [:dataset_query :query :filter])))))
+               :rules-prefix ["table"]}
+              (update opts :cell-query
+                      #(-> query
+                           (qp.util/get-in-normalized [:dataset_query :query :filter])
+                           (filters/inject-refinement %))))))
     nil))
 
 (defmethod automagic-analysis (type Field)

@@ -7,15 +7,14 @@
             [medley.core :as m]
             [metabase
              [events :as events]
-             [middleware :as middleware]
              [public-settings :as public-settings]
              [query-processor :as qp]
+             [related :as related]
              [util :as u]]
             [metabase.api
              [common :as api]
              [dataset :as dataset-api]
              [label :as label-api]]
-            [metabase.api.common.internal :refer [route-fn-name]]
             [metabase.email.messages :as messages]
             [metabase.models
              [card :as card :refer [Card]]
@@ -36,7 +35,6 @@
             [metabase.query-processor.middleware
              [cache :as cache]
              [results-metadata :as results-metadata]]
-            [metabase.related :as related]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]

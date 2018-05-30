@@ -9,7 +9,7 @@
              [catch-exceptions :as catch-exceptions]
              [format-rows :as format-rows]]))
 
-(defrecord TestDriver []
+(defrecord ^:private TestDriver []
   clojure.lang.Named
   (getName [_] "TestDriver"))
 

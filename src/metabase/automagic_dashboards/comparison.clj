@@ -147,6 +147,3 @@
                            (metabase.models.segment/Segment 7))
      (metabase.models.dashboard/save-transient-dashboard!)
      :id))
-
-
-(map (comp :aggregation :query :dataset_query) (unroll-multiseries (metabase.models.card/Card 507)))
