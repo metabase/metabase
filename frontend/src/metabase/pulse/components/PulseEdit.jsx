@@ -1,8 +1,8 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
 import { t, jt, ngettext, msgid } from "c-3po";
+import { withRouter } from "react-router";
 
 import PulseEditName from "./PulseEditName.jsx";
 import PulseEditCollection from "./PulseEditCollection";
@@ -12,6 +12,7 @@ import PulseEditSkip from "./PulseEditSkip.jsx";
 import WhatsAPulse from "./WhatsAPulse.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
+import Link from "metabase/components/Link";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -23,6 +24,7 @@ import * as Urls from "metabase/lib/urls";
 import _ from "underscore";
 import cx from "classnames";
 
+@withRouter
 export default class PulseEdit extends Component {
   constructor(props) {
     super(props);
@@ -116,7 +118,7 @@ export default class PulseEdit extends Component {
   }
 
   render() {
-    const { pulse, formInput } = this.props;
+    const { pulse, formInput, location } = this.props;
     const isValid = pulseIsValid(pulse, formInput.channels);
     const attachmentsEnabled = emailIsEnabled(pulse);
     return (
@@ -200,7 +202,10 @@ export default class PulseEdit extends Component {
             failedText={t`Save failed`}
             successText={t`Saved`}
           />
-          <Link to="/pulse" className="Button ml2">{t`Cancel`}</Link>
+          <Link
+            to={Urls.collection(location.query.collectionId)}
+            className="Button ml2"
+          >{t`Cancel`}</Link>
         </div>
       </div>
     );
