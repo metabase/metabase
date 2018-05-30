@@ -291,7 +291,6 @@ export default class QueryHeader extends Component {
           <ModalWithTrigger
             ref="move"
             key="move"
-            full
             triggerElement={
               <Tooltip tooltip={t`Move question`}>
                 <Icon name="move" />
