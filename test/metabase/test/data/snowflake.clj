@@ -30,7 +30,8 @@
          (when (= context :db)
            {:db database-name})))
 
-(def schema-name "foo")
+
+(def schema-name "public")
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defn qualified-name-components
@@ -39,15 +40,10 @@
   ([_ db-name table-name field-name] [db-name schema-name table-name field-name]))
 
 
-;; Snowflake is very strict about quoting. If you create a resource with quotes
-;; you must always reference it with quotes. Plus its default schema (public)
-;; must be referenced without quotes. Therefore we create a new schema with
-;; quotes so the quoting can be consistent across identifiers.
 (defn- create-db-sql [driver {:keys [database-name]}]
   (let [db (generic/qualify+quote-name driver database-name)
         schema-name (generic/qualify+quote-name driver schema-name)]
-    (format "CREATE DATABASE %s; CREATE SCHEMA %s.%s; USE DATABASE %s;"
-            db db schema-name db)))
+    (format "CREATE DATABASE %s; USE DATABASE %s;" db db)))
 
 (u/strict-extend SnowflakeDriver
   generic/IGenericSQLTestExtensions
@@ -62,5 +58,5 @@
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (u/drop-first-arg database->connection-details)
           :format-name                  (u/drop-first-arg s/upper-case)
-          :default-schema               (constantly "foo")
+          :default-schema               (constantly "public")
           :engine                       (constantly :snowflake)}))

@@ -162,7 +162,7 @@
           :excluded-schemas          (constantly #{"INFORMATION_SCHEMA"})
           :date                      (u/drop-first-arg date)
           :current-datetime-fn       (constantly :%current_timestamp)
-          :set-timezone-sql          (constantly "alter session set time_zone = %s")
+          :set-timezone-sql          (constantly "ALTER SESSION SET TIMEZONE = %s;")
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
           :column->base-type         (u/drop-first-arg column->base-type)}))
 
