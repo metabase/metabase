@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Box } from "rebass";
 import { t } from "c-3po";
 import { connect } from "react-redux";
+import { withRouter } from "react-router";
 
 import FormField from "metabase/components/form/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -18,7 +19,8 @@ const mapDispatchToProps = {
   createDashboard,
 };
 
-@connect(() => ({}), mapDispatchToProps)
+@connect(null, mapDispatchToProps)
+@withRouter
 export default class CreateDashboardModal extends Component {
   constructor(props, context) {
     super(props, context);
@@ -140,7 +142,10 @@ export default class CreateDashboardModal extends Component {
                     errors={this.state.errors}
                   >
                     <Select
-                      value={this.state.collection_id}
+                      value={
+                        this.state.collection_id ||
+                        this.props.params.collectionId
+                      }
                       onChange={({ target }) =>
                         this.setState({ collection_id: target.value })
                       }
