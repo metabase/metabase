@@ -28,11 +28,14 @@ export default class CreateDashboardModal extends Component {
     this.setDescription = this.setDescription.bind(this);
     this.setName = this.setName.bind(this);
 
+    console.log(props.params);
     this.state = {
       name: null,
       description: null,
       errors: null,
-      collection_id: null,
+      // collectionId in the url starts off as a string, but the select will
+      // compare it to the integer ID on colleciton objects
+      collection_id: parseInt(props.params.collectionId),
     };
   }
 
@@ -142,10 +145,7 @@ export default class CreateDashboardModal extends Component {
                     errors={this.state.errors}
                   >
                     <Select
-                      value={
-                        this.state.collection_id ||
-                        this.props.params.collectionId
-                      }
+                      value={this.state.collection_id}
                       onChange={({ target }) =>
                         this.setState({ collection_id: target.value })
                       }
