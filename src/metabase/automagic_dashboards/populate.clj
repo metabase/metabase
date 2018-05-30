@@ -34,6 +34,13 @@
   "Colors used for coloring charts and collections."
   ["#509EE3" "#9CC177" "#A989C5" "#EF8C8C" "#f9d45c" "#F1B556" "#A6E7F3" "#7172AD"])
 
+(defn map-to-colors
+  "Map given objects to distinct colors."
+  [objs]
+  (->> objs
+       (map (comp colors #(mod % (count colors)) hash))
+       ensure-distinct-colors))
+
 (defn- ensure-distinct-colors
   [candidates]
   (->> candidates
@@ -72,12 +79,7 @@
                               magic.filters/collect-field-references
                               (map magic.filters/field-reference->id))
                          aggregation)]
-        {:graph.colors (->> color-keys
-                            (map (comp colors #(mod % (count colors)) hash))
-                            ensure-distinct-colors)}))))
-
-(defn series-labels
-  [])
+        {:graph.colors (map-to-colors color-keys)}))))
 
 (defn- visualization-settings
   [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]

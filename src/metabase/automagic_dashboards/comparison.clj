@@ -1,9 +1,11 @@
 (ns metabase.automagic-dashboards.comparison
   (:require [clojure.string :as str]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [core :refer [->root]]
              [populate :as populate]]
+            [metabase.models.metric :refer [Metric]]
             [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses]]
             [metabase.query-processor.util :as qp.util]
             [puppetlabs.i18n.core :as i18n :refer [tru]]))
@@ -30,27 +32,55 @@
 
 (defn- overlay-comparison?
   [card]
-  (and (-> card :display name (#{"bar" "line"}))
+  (and (-> card :display qp.util/normalize-token (#{:bar :line}))
        (-> card :series empty?)))
 
-(defn- place-row
-  [dashboard row left right]
-  (let [height       (:height left)
-        card-left    (clone-card left)
-        card-right   (clone-card right)]
-    (if (overlay-comparison? left)
-      (update dashboard :ordered_cards conj {:col                    0
-                                             :row                    row
-                                             :sizeX                  populate/grid-width
-                                             :sizeY                  height
-                                             :card                   card-left
-                                             :card_id                (:id card-left)
-                                             :series                 [card-right]
-                                             :visualization_settings {}
-                                             :id                     (gensym)})
-      (let [width (/ populate/grid-width 2)
-            series-left  (map clone-card (:series left))
-            series-right (map clone-card (:series right))]
+(defn- inject-filter
+  "Inject filter clause into card."
+  [{:keys [query-filter]} card]
+  (-> card
+      (update-in [:dataset_query :query :filter] merge-filter-clauses query-filter)
+      (update :series (partial map (partial inject-filter query-filter)))))
+
+(defn- multiseries?
+  [card]
+  (or (-> card :series not-empty)
+      (-> card (qp.util/get-in-normalized [:dataset_query :query :aggregation]) count (> 1))
+      (-> card (qp.util/get-in-normalized [:dataset_query :query :breakout]) count (> 1))))
+
+(defn- comparison-row
+  [dashboard row left right card]
+  (let [height                   (:height card)
+        card-left                (->> card (inject-filter left) clone-card)
+        card-right               (->> card (inject-filter right) clone-card)
+        [color-left color-right] (->> [left right]
+                                      (map #(qp.util/get-in-normalized % [:dataset_query :query :filter]) )
+                                      populate/map-to-colors)]
+    (if (overlay-comparison? card)
+      (let [card   (-> card-left
+                       (assoc-in [:visualization_settings :graph.colors] [color-left color-right])
+                       (update :name #(format "%s (%s)" % (:full-name left))))
+            series (-> card-right
+                       (update :name #(format "%s (%s)" % (:full-name right)))
+                       vector)]
+        (update dashboard :ordered_cards conj {:col                    0
+                                               :row                    row
+                                               :sizeX                  populate/grid-width
+                                               :sizeY                  height
+                                               :card                   card
+                                               :card_id                (:id card)
+                                               :series                 series
+                                               :visualization_settings {}
+                                               :id                     (gensym)}))
+      (let [width        (/ populate/grid-width 2)
+            series-left  (map clone-card (:series card-left))
+            series-right (map clone-card (:series card-right))
+            card-left    (cond-> card-left
+                           (not (multiseries? card-left))
+                           (assoc-in [:visualization_settings :graph.colors] [color-left]))
+            card-right   (cond-> card-right
+                           (not (multiseries? card-right))
+                           (assoc-in [:visualization_settings :graph.colors] [color-right]))]
         (-> dashboard
             (update :ordered_cards conj {:col                    0
                                          :row                    row
@@ -75,29 +105,33 @@
 
 (defn- add-col-title
   [dashboard title col]
-  (populate/add-text-card dashboard {:text   (format "# %s" title)
-                                     :width  (/ populate/grid-width 2)
-                                     :height title-height}
+  (populate/add-text-card dashboard {:text                   (format "# %s" title)
+                                     :width                  (/ populate/grid-width 2)
+                                     :height                 title-height
+                                     :visualization-settings {:dashcard.background false
+                                                              :text.align_vertical :bottom}}
                           [0 col]))
 
-(defn- multiseries?
+(defn- series-labels
   [card]
-  (and (-> card :display name (= "line"))
-       (-> card (qp.util/get-in-normalized [:dataset_query :query :aggregation]) count (> 1))))
+  (get-in card [:visualization_settings :graph.series_labels]
+          (for [[op & args] (qp.util/get-in-normalized card [:dataset_query :query :aggregation])]
+            (if (= (qp.util/normalize-token op) :metric)
+              (-> args first Metric :name)
+              (-> op name str/capitalize)))))
 
 (defn- unroll-multiseries
   [card]
-  (if (multiseries? card)
-    (for [aggregation (qp.util/get-in-normalized card [:dataset_query :query :aggregation])]
-      (qp.util/assoc-in-normalized card [:dataset_query :query :aggregation] [aggregation]))
+  (if (and (multiseries? card)
+           (-> card :display qp.util/normalize-token (= :line)))
+    (for [[aggregation label] (map vector
+                                   (qp.util/get-in-normalized card [:dataset_query :query :aggregation])
+                                   (series-labels card))]
+      (-> card
+          (qp.util/assoc-in-normalized [:dataset_query :query :aggregation] [aggregation])
+          (assoc :name label)
+          (m/dissoc-in [:visualization_settings :graph.series_labels])))
     [card]))
-
-(defn- inject-filter
-  "Inject filter clause into card."
-  [{:keys [query-filter]} card]
-  (-> card
-      (update-in [:dataset_query :query :filter] merge-filter-clauses query-filter)
-      (update :series (partial map (partial inject-filter query-filter)))))
 
 (defn comparison-dashboard
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
@@ -106,9 +140,7 @@
   (let [left  (->root left)
         right (->root right)]
     (transduce (comp (filter :display)
-                     (mapcat unroll-multiseries)
-                     (map (juxt (partial inject-filter left)
-                                (partial inject-filter right))))
+                     (mapcat unroll-multiseries))
                (fn
                  ([]
                   [(let [title (tru "Comparison of {0} and {1}"
@@ -122,28 +154,11 @@
                                                   (:full-name right))
                           :creator_id        api/*current-user-id*
                           :parameters        []}
-                         (add-col-title (-> left :full-name str/capitalize) 0)
-                         (add-col-title (-> right :full-name str/capitalize)
-                                        (/ populate/grid-width 2))))
+                         (add-col-title (:full-name left) 0)
+                         (add-col-title (:full-name right) (/ populate/grid-width 2))))
                    title-height])
                  ([[dashboard row]] dashboard)
-                 ([[dashboard row] [left right]]
-                  [(place-row dashboard row left right)
-                   (+ row (:height left))]))
+                 ([[dashboard row] card]
+                  [(comparison-row dashboard row left right card)
+                   (+ row (:height card))]))
                (dashboard->cards dashboard))))
-
-
-;; (dashboard->cards (-> (metabase.models.dashboard/Dashboard 76)
-;;                       (toucan.hydrate/hydrate [:ordered_cards
-;;                                                [:card :in_public_dashboard]
-;;                                                :series])))
-
-(binding [api/*current-user-id* 1]
-  (->(comparison-dashboard (-> (metabase.models.dashboard/Dashboard 76)
-                               (toucan.hydrate/hydrate [:ordered_cards
-                                                        [:card :in_public_dashboard]
-                                                        :series]))
-                           (metabase.models.segment/Segment 6)
-                           (metabase.models.segment/Segment 7))
-     (metabase.models.dashboard/save-transient-dashboard!)
-     :id))
