@@ -44,6 +44,7 @@ export default class PulseEdit extends Component {
     saveEditingPulse: PropTypes.func.isRequired,
     deletePulse: PropTypes.func.isRequired,
     onChangeLocation: PropTypes.func.isRequired,
+    location: PropTypes.object,
   };
 
   componentDidMount() {
