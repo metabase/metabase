@@ -87,6 +87,10 @@ export default class CreateDashboardModal extends Component {
         footer={[
           formError,
           <Button
+            mr={1}
+            onClick={() => this.props.onClose()}
+          >{t`Cancel`}</Button>,
+          <Button
             primary={formReady}
             disabled={!formReady}
             onClick={this.createNewDash}
