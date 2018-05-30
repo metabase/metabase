@@ -2,34 +2,23 @@
 import React from "react";
 import cx from "classnames";
 import { Box, Flex, Subhead } from "rebass";
-import { connect } from "react-redux";
 import CopyToClipboard from "react-copy-to-clipboard";
 
-import { addUndo, createUndo } from "metabase/redux/undo";
 import { normal, saturated, harmony } from "metabase/lib/colors";
+
+import withToast from "metabase/hoc/Toast";
 
 const SWATCH_SIZE = 150;
 
-const mapDispatchToProps = {
-  addUndo,
-  createUndo,
-};
-
-@connect(() => ({}), mapDispatchToProps)
+@withToast
 class ColorSwatch extends React.Component {
-  _onCopy(colorValue) {
-    const { addUndo, createUndo } = this.props;
-    addUndo(
-      createUndo({
-        type: "copy-color",
-        message: <div>Copied {colorValue} to clipboard</div>,
-      }),
-    );
-  }
   render() {
-    const { color, name } = this.props;
+    const { color, name, triggerToast } = this.props;
     return (
-      <CopyToClipboard text={color} onCopy={() => this._onCopy(color)}>
+      <CopyToClipboard
+        text={color}
+        onCopy={() => triggerToast(`${color} copied to clipboard`)}
+      >
         <Box
           w={SWATCH_SIZE}
           style={{
