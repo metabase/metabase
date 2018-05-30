@@ -13,6 +13,7 @@ import ReactSortable from "react-sortablejs";
 import PropTypes from 'prop-types';
 
 import cx from "classnames";
+import Button from "metabase/components/Button";
 
 
 type StateSerialized = {
@@ -125,6 +126,7 @@ export default class SummaryTableColumnsSetting extends Component<Props, State> 
   // };
 
 
+
   render() {
     const {columnNames} = this.props;
     const {groupsSources, columnsSource, valuesSources, unused} = this.state;
@@ -132,9 +134,9 @@ export default class SummaryTableColumnsSetting extends Component<Props, State> 
     // const anySelected = this.isAnySelected();
     return (
       <div>
-        {createSortableSection(t`Fields to use for the table rows`, groupsSources.map(name => createFatRow(name, columnNames[name])), items => this.updateState({groupsSources: items}))}
-        {createSortableSection(t`Field to use for the table columns`, columnsSource.map(name => createFatRow(name, columnNames[name])), items => this.updateState({columnsSource: items}))}
-        {createSortableSection(t`Fields to use for the table values`, valuesSources.map(name => createValueSourceRow(name, columnNames[name])), items => this.updateState({valuesSources: items}))}
+        {createSortableSection(t`Fields to use for the table rows`, groupsSources.map(name => createFatRow(name, columnNames[name], () => this.updateState({groupsSources:groupsSources.filter(p => p !== name), unused : [name,...unused]}))), items => this.updateState({groupsSources: items}))}
+        {createSortableSection(t`Field to use for the table columns`, columnsSource.map(name => createFatRow(name, columnNames[name], () => this.updateState({columnsSource:columnsSource.filter(p => p !== name), unused : [name,...unused]}))), items => this.updateState({columnsSource: items}))}
+        {createSortableSection(t`Fields to use for the table values`, valuesSources.map(name => createValueSourceRow(name, columnNames[name], () => this.updateState({valuesSources:valuesSources.filter(p => p !== name), unused : [name,...unused]}))), items => this.updateState({valuesSources: items}))}
         {createSortableSection(t`Unused fields`, unused.map(name => createUnusedSourceRow(name, columnNames[name])), items => this.updateState({unused: items}))}
       </div>
     );
@@ -163,8 +165,10 @@ const createSortableSection = (title: String, rows: Component[], updateStateFunc
 ;
 
 
-const createFatRow = (rowKey: String, displayName: String): Component => {
-  const content = <span className="ml1 h4">{displayName}</span>;
+const createFatRow = (rowKey: String, displayName: String, clickAction): Component => {
+  const content = <div style={{display: 'flex'}}><span className="ml1 h4">{displayName}</span>
+    {createCloseButton(clickAction)}
+  </div>;
   return createSortableRow(rowKey, content)
 };
 //   {/*<CheckBox*/}
@@ -180,10 +184,13 @@ const createFatRow = (rowKey: String, displayName: String): Component => {
 //   {/*/>*/}
 // );}
 
-const createValueSourceRow = (rowKey: String, displayName: String): Component => {
-  const content = <span className="ml1 h4">{displayName}</span>;
+const createValueSourceRow = (rowKey: String, displayName: String,clickAction): Component => {
+  const content = <div style={{display: 'flex'}}><span className="ml1 h4">{displayName}</span>{createCloseButton(clickAction)}
+  </div>;
   return createSortableRow(rowKey, content)
 };
+
+const createCloseButton = (clickAction) => <Button style={{'margin-left': 'auto'}} icon='close' onlyIcon='true' onClick={clickAction}/>;
 
 const createUnusedSourceRow = (rowKey: String, displayName: String): Component => {
   const content = <span className="ml1 h4">{displayName}</span>;
