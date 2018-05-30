@@ -30,14 +30,16 @@ export class GroupingManager {
     if(rowIndex < visibleRowIndices.start  || visibleRowIndices.stop < rowIndex)
       return false;
 
-    if(!(columnIndex in this.columnIndexToFirstInGroupIndexes))
+    if(!(this.isGrouped(columnIndex)))
       return true;
 
     if(rowIndex === visibleRowIndices.start)
       return true;
 
-    return rowIndex in this.columnIndexToFirstInGroupIndexes[columnIndex];//
+    return rowIndex in this.columnIndexToFirstInGroupIndexes[columnIndex];
   };
+
+  isGrouped = (columnIndex : Number) => columnIndex in this.columnIndexToFirstInGroupIndexes;
 
 
   mapStyle = (rowIndex: Number, columnIndex: Number, visibleRowIndices: Range, cellStyle: {}): {} => {

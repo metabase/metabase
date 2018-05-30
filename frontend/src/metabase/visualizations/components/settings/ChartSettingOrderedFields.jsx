@@ -68,7 +68,7 @@ export default class ChartSettingOrderedFields extends Component {
     const { columnNames } = this.props;
     const anySelected = this.isAnySelected();
     return (
-      <div className="list">
+      <div className="list" style={{minWidth : 100}}>
         <div className="toggle-all">
           <div
             className={cx("flex align-center p1", {

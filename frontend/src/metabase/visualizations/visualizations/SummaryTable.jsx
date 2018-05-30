@@ -12,10 +12,9 @@ import * as DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
 import { isMetric, isDimension } from "metabase/lib/schema_metadata";
 import {
-  columnsAreValid,
   getFriendlyName,
 } from "metabase/visualizations/lib/utils";
-import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
+import SummaryTableColumnsSetting, { settingsAreValid, getColumnsFromSettings} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting.jsx";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -37,7 +36,10 @@ type State = {
   data: ?DatasetData,
 };
 
-const GRAND_TOTAL = SummaryTable.identifier + "." + "grandTotal";
+
+const GRAND_TOTAL_SETTINGS = "summaryTable" + "." + "grandTotal";
+const COLUMNS_SETTINGS = "summaryTable"  + "." + "columns";
+
 
 export default class SummaryTable extends Component {
   props: Props;
@@ -58,46 +60,42 @@ export default class SummaryTable extends Component {
   }
 
   static settings = {
-    "table.pivot": {
-      title: t`Pivot the table`,
-      widget: "toggle",
-      getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
-      getDefault: ([{ card, data }]) =>
-        data &&
-        data.cols.length === 3 &&
-        Query.isStructured(card.dataset_query) &&
-        data.cols.filter(isMetric).length === 1 &&
-        data.cols.filter(isDimension).length === 2,
-    },
-    "table.dupa": {
-      title: t`Dupa the table`,
+    [GRAND_TOTAL_SETTINGS]: {
+      title: t`Grand total`,
       widget: "toggle",
       getHidden: ([{ card, data }]) => false,
       getDefault: ([{ card, data }]) => true,
+        // data &&
+        // data.cols.length === 3 &&
+        // Query.isStructured(card.dataset_query) &&
+        // data.cols.filter(isMetric).length === 1 &&
+        // data.cols.filter(isDimension).length === 2,
     },
-    "table.columns": {
-      title: t`Fields to include`,
-      widget: ChartSettingOrderedFields,
-      getHidden: (series, vizSettings) => vizSettings["table.pivot"],
+    [COLUMNS_SETTINGS]: {
+      widget: SummaryTableColumnsSetting,
+      getHidden: () => false,
       isValid: ([{ card, data }]) =>
-        card.visualization_settings["table.columns"] &&
-        columnsAreValid(
-          card.visualization_settings["table.columns"].map(x => x.name),
-          data,
-        ),
-      getDefault: ([{ data: { cols } }]) =>
-        cols.map(col => ({
-          name: col.name,
-          enabled: col.visibility_type !== "details-only",
-        })),
+        settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
+      getDefault: ([{ data: { cols } }]) => (
+        {
+
+        columnNameToProps:cols.reduce(
+          (o, col) => ({ ...o, [col.name]: {enabled: col.visibility_type !== "details-only"} }),
+          {},
+        )
+      }
+      ),
+        // cols.map(col => ({
+        //   name: col.name,
+        //   //todo: ?details-only
+        //   enabled: col.visibility_type !== "details-only",
+        // })),
       getProps: ([{ data: { cols } }]) => ({
         columnNames: cols.reduce(
           (o, col) => ({ ...o, [col.name]: getFriendlyName(col) }),
           {},
         ),
-      }),
-    },
-    "table.column_widths": {},
+      }),},
   };
 
   constructor(props: Props) {
@@ -129,15 +127,12 @@ export default class SummaryTable extends Component {
     data: DatasetData,
     settings: VisualizationSettings,
   }) {
-    if (settings["table.pivot"]) {
-      this.setState({
-        data: DataGrid.pivot(data),
-      });
-    } else {
+ {
       const { cols, rows, columns } = data;
-      const columnIndexes = settings["table.columns"]
-        .filter(f => f.enabled)
-        .map(f => _.findIndex(cols, c => c.name === f.name))
+      const columnIndexes = getColumnsFromSettings(settings[COLUMNS_SETTINGS])
+      //todo:
+        // .filter(f => f.enabled)
+        .map(f => _.findIndex(cols, c => c.name === f))
         .filter(i => i >= 0 && i < cols.length);
 
       this.setState({
@@ -150,21 +145,24 @@ export default class SummaryTable extends Component {
     }
   }
 
+
   render() {
     const { card, isDashboard, settings } = this.props;
     const { data } = this.state;
     const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
-    const isPivoted = settings["table.pivot"];
-    const isColumnsDisabled =
-      (settings["table.columns"] || []).filter(f => f.enabled).length < 1;
+    const isColumnsDisabled = false;
+    //todo:
+      // (settings[COLUMNS_SETTINGS] || []).filter(f => f.enabled).length < 1;
     const TableComponent = isDashboard ? TableSimpleSummary : TableInteractiveSummary;
 
     if (!data) {
       return null;
     }
 
+    const groupingIndexes = new Array((settings[COLUMNS_SETTINGS].groupsSources || []).length).keys();
+
     //todo: fix 30
-    const groupingManager = new GroupingManager(30, [0,1], data.rows);
+    const groupingManager = new GroupingManager(30, [...groupingIndexes], data.rows);
 
     const dataUpdated = { ...data, rows: groupingManager.rowsOrdered };
 
@@ -191,7 +189,6 @@ export default class SummaryTable extends Component {
         <TableComponent
           {...this.props}
           data={dataUpdated}
-          isPivoted={isPivoted}
           sort={sort}
           groupingManager={groupingManager}
         />
@@ -213,4 +210,5 @@ TestTable.identifier = SummaryTable.identifier;
 TestTable.iconName = SummaryTable.iconName;
 TestTable.minSize = SummaryTable.minSize;
 TestTable.settings = SummaryTable.settings;
+
 
