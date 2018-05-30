@@ -21,8 +21,19 @@ const mapDispatchToProps = {
   createUndo,
 };
 
+const DashbordMoveToast = ({ collection }) => (
+  <Flex align="center">
+    <Icon name="all" mr={1} color="white" />
+    {jt`Dashboard moved to ${(
+      <Link ml={1} color={normal.blue} to={Urls.collection(collection.id)}>
+        {collection.name}
+      </Link>
+    )}`}
+  </Flex>
+);
+
 @withRouter
-@connect(() => ({}), mapDispatchToProps)
+@connect(null, mapDispatchToProps)
 class DashboardMoveModal extends React.Component {
   state = {
     // will eventually be the collection object representing the selected collection
@@ -46,20 +57,7 @@ class DashboardMoveModal extends React.Component {
       addUndo(
         createUndo({
           type: "dashboard-move-confirm",
-          message: () => (
-            <Flex align="center">
-              <Icon name="all" mr={1} color="white" />
-              {jt`Dashboard moved to ${(
-                <Link
-                  ml={1}
-                  color={normal.blue}
-                  to={Urls.collection(selectedCollection.id)}
-                >
-                  {selectedCollection.name}
-                </Link>
-              )}`}
-            </Flex>
-          ),
+          message: <DashbordMoveToast collection={selectedCollection} />,
         }),
       );
       this.props.onClose();
