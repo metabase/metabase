@@ -10,7 +10,7 @@
              [revision :refer [Revision]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.test.data :refer :all]
+            [metabase.test.data :as data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -20,18 +20,19 @@
   "Some default properties for `Cards` for use in tests in this namespace."
   []
   {:display                "table"
-   :dataset_query          {:database (id)
+   :dataset_query          {:database (data/id)
                             :type     "query"
                             :query    {:aggregation ["rows"]
-                                       :source_table (id :categories)}}
+                                       :source_table (data/id :categories)}}
    :visualization_settings {}
    :creator_id             (user->id :crowberto)})
 
 (defn- card->revision-object [card]
   {:archived               false
    :collection_id          nil
+   :collection_position    nil
    :creator_id             (:creator_id card)
-   :database_id            (id)
+   :database_id            (data/id)
    :dataset_query          (:dataset_query card)
    :read_permissions       (vec (:read_permissions card))
    :description            nil
@@ -44,7 +45,7 @@
    :public_uuid            nil
    :cache_ttl              nil
    :query_type             "query"
-   :table_id               (id :categories)
+   :table_id               (data/id :categories)
    :visualization_settings {}
    :result_metadata        nil})
 

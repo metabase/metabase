@@ -1,9 +1,14 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { Box } from "rebass";
 import { t } from "c-3po";
 import FormField from "metabase/components/form/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
+
 import Button from "metabase/components/Button.jsx";
+import Select, { Option } from "metabase/components/Select.jsx";
+
+import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
 export default class CreateDashboardModal extends Component {
   constructor(props, context) {
@@ -16,11 +21,12 @@ export default class CreateDashboardModal extends Component {
       name: null,
       description: null,
       errors: null,
+      collection_id: null,
     };
   }
 
   static propTypes = {
-    createDashboardFn: PropTypes.func.isRequired,
+    createDashboard: PropTypes.func.isRequired,
     onClose: PropTypes.func,
   };
 
@@ -42,15 +48,11 @@ export default class CreateDashboardModal extends Component {
     let newDash = {
       name: name && name.length > 0 ? name : null,
       description: description && description.length > 0 ? description : null,
+      collection_id: this.state.collection_id,
     };
 
-    // create a new dashboard
-    let component = this;
-    this.props.createDashboardFn(newDash).then(null, function(error) {
-      component.setState({
-        errors: error,
-      });
-    });
+    this.props.createDashboard(newDash, { redirect: true });
+    this.props.onClose();
   }
 
   render() {
@@ -75,7 +77,6 @@ export default class CreateDashboardModal extends Component {
         title={t`Create dashboard`}
         footer={[
           formError,
-          <Button onClick={this.props.onClose}>{t`Cancel`}</Button>,
           <Button
             primary={formReady}
             disabled={!formReady}
@@ -114,6 +115,41 @@ export default class CreateDashboardModal extends Component {
                 onChange={this.setDescription}
               />
             </FormField>
+            <CollectionListLoader>
+              {({ collections, error, loading }) => {
+                if (loading) {
+                  return <Box>Loading...</Box>;
+                }
+                return (
+                  <FormField
+                    displayName={t`Which collection should this go in?`}
+                    fieldName="collection_id"
+                    errors={this.state.errors}
+                  >
+                    <Select
+                      value={this.state.collection_id}
+                      onChange={({ target }) =>
+                        this.setState({ collection_id: target.value })
+                      }
+                    >
+                      {[{ name: t`None`, id: null }]
+                        .concat(collections)
+                        .map((collection, index) => (
+                          <Option
+                            key={index}
+                            value={collection.id}
+                            icon={collection.id != null ? "collection" : null}
+                            iconColor={collection.color}
+                            iconSize={18}
+                          >
+                            {collection.name}
+                          </Option>
+                        ))}
+                    </Select>
+                  </FormField>
+                );
+              }}
+            </CollectionListLoader>
           </div>
         </form>
       </ModalContent>

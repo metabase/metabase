@@ -15,6 +15,7 @@
              [math :as math]]
             [medley.core :as m]
             [metabase.automagic-dashboards
+             [filters :as filters]
              [populate :as populate]
              [rules :as rules]]
             [metabase.models
@@ -109,7 +110,7 @@
     :day))
 
 (defmethod ->reference [:mbql (type Field)]
-  [_ {:keys [fk_target_field_id id link aggregation base_type fingerprint name base_type] :as field}]
+  [_ {:keys [fk_target_field_id id link aggregation fingerprint name base_type] :as field}]
   (let [reference (cond
                     link               [:fk-> link id]
                     fk_target_field_id [:fk-> id fk_target_field_id]
@@ -506,8 +507,8 @@
     (as-> {:source       (assoc source :fields (table->fields source))
            :root         root
            :tables       (map #(assoc % :fields (table->fields %)) tables)
-           :query-filter (merge-filter-clauses (:query-filter root)
-                                               (:cell-query root))} context
+           :query-filter (filters/inject-refinement (:query-filter root)
+                                                    (:cell-query root))} context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
       (assoc context :metrics (resolve-overloading context (:metrics rule)))
       (assoc context :filters (resolve-overloading context (:filters rule)))
@@ -584,8 +585,7 @@
      (->> (reduce (fn [acc selector]
                     (concat acc (-> selector recommendations rules/ensure-seq)))
                   []
-                  [:table :segments :metrics :linking-to :linked-from :tables
-                   :fields])
+                  [:table :segments :metrics :linking-to :linked-from :tables :fields])
           (take n)
           (map ->related-entity)))))
 
@@ -596,15 +596,31 @@
                (when-let [[dashboard _] (apply-rule root indepth)]
                  {:title       ((some-fn :short-title :title) dashboard)
                   :description (:description dashboard)
-                  :url         (format "%s/rule/%s/%s" (:url root) (:rule rule)
-                                       (:rule indepth))})))
+                  :url         (format "%s/rule/%s/%s" (:url root) (:rule rule) (:rule indepth))})))
        (take max-related)))
 
+(defn- drilldown-fields
+  [dashboard]
+  (->> dashboard
+       :context
+       :dimensions
+       vals
+       (mapcat :matches)
+       filters/interesting-fields
+       (map ->related-entity)))
+
 (s/defn ^:private related
-  [root, rule :- rules/Rule]
-  (let [indepth (indepth root rule)]
-    {:indepth indepth
-     :tables  (take (- max-related (count indepth)) (others root))}))
+  [dashboard, rule :- rules/Rule]
+  (let [root    (-> dashboard :context :root)
+        indepth (indepth root rule)]
+    (if (not-empty indepth)
+      {:indepth indepth
+       :related (others (- max-related (count indepth)) root)}
+      (let [drilldown-fields (drilldown-fields dashboard)
+            n-others         (max (math/floor (* (/ 2 3) max-related))
+                                  (- max-related (count drilldown-fields)))]
+        {:related          (others n-others root)
+         :drilldown-fields (take (- max-related n-others) drilldown-fields)}))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
@@ -632,18 +648,10 @@
             (or query-filter cell-query)
             (assoc :title (str (tru "A closer look at ") full-name)))
           (populate/create-dashboard (or show max-cards))
-          (assoc :related (-> (related root rule)
-                              (assoc :more (if (and (-> dashboard
-                                                        :cards
-                                                        count
-                                                        (> max-cards))
-                                                    (not= show :all))
-                                             [{:title       (tru "Show more about this")
-                                               :description nil
-                                               :table       (:source root)
-                                               :url         (format "%s#show=all"
-                                                                    (:url root))}]
-                                             []))))))
+          (assoc :related (related dashboard rule))
+          (assoc :more (when (and (-> dashboard :cards count (> max-cards))
+                                (not= show :all))
+                         (format "%s#show=all" (:url root))))))
     (throw (ex-info (format (trs "Can't create dashboard for %s") full-name)
              {:root            root
               :available-rules (map :rule (or (some-> rule rules/get-rule vector)
@@ -739,8 +747,10 @@
                                (format "%sadhoc/%s" public-endpoint
                                        (encode-base64-json query)))
                :rules-prefix ["table"]}
-              (update opts :cell-query merge-filter-clauses
-                      (qp.util/get-in-normalized query [:dataset_query :query :filter])))))
+              (update opts :cell-query
+                      #(-> query
+                           (qp.util/get-in-normalized [:dataset_query :query :filter])
+                           (filters/inject-refinement %))))))
     nil))
 
 (defmethod automagic-analysis (type Field)
@@ -756,7 +766,7 @@
                          :link-table? (every? #{:type/FK :type/PK} field-types)})))
 
 (def ^:private ^:const ^Long max-candidate-tables
-  "Maximal number of tables shown per schema."
+  "Maximal number of tables per schema shown in `candidate-tables`."
   10)
 
 (defn candidate-tables

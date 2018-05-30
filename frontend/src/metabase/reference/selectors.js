@@ -107,7 +107,7 @@ export const getFieldBySegment = createSelector(
 );
 
 const getQuestions = (state, props) =>
-  getIn(state, ["questions", "entities", "cards"]) || {};
+  getIn(state, ["entities", "questions"]) || {};
 
 export const getMetricQuestions = createSelector(
   [getMetricId, getQuestions],

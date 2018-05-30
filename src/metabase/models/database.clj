@@ -16,7 +16,7 @@
 ;;; --------------------------------------------------- Constants ---------------------------------------------------
 
 ;; TODO - should this be renamed `saved-cards-virtual-id`?
-(def ^:const ^Integer virtual-id
+(def ^Integer virtual-id
   "The ID used to signify that a database is 'virtual' rather than physical.
 
    A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using

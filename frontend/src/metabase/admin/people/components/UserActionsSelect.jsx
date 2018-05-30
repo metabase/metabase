@@ -9,7 +9,7 @@ import { t } from "c-3po";
 import {
   MODAL_EDIT_DETAILS,
   MODAL_INVITE_RESENT,
-  MODAL_REMOVE_USER,
+  MODAL_DEACTVIATE_USER,
   MODAL_RESET_PASSWORD,
 } from "../containers/PeopleListingApp.jsx";
 
@@ -51,9 +51,9 @@ export default class UserActionsSelect extends Component {
     this.refs.popover.toggle();
   }
 
-  onRemoveUser() {
+  onDeactivateUser() {
     this.props.showModal({
-      type: MODAL_REMOVE_USER,
+      type: MODAL_DEACTVIATE_USER,
       details: { user: this.props.user },
     });
     this.refs.popover.toggle();
@@ -93,8 +93,8 @@ export default class UserActionsSelect extends Component {
           {!isActiveUser && (
             <li
               className="p2 border-top bg-error-hover text-error text-white-hover cursor-pointer"
-              onClick={this.onRemoveUser.bind(this)}
-            >{t`Remove`}</li>
+              onClick={this.onDeactivateUser.bind(this)}
+            >{t`Deactivate`}</li>
           )}
         </ul>
       </PopoverWithTrigger>

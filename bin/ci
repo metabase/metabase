@@ -151,7 +151,7 @@ install-sparksql() {
          --conf spark.cores.max=1 \
          --class org.apache.spark.sql.hive.thriftserver.HiveThriftServer2 \
          --name "Thrift JDBC/ODBC Server" \
-         --executor-memory 1g \
+         --executor-memory 512m \
          spark-internal &>/dev/null &
 }
 

@@ -2,9 +2,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t, jt } from "c-3po";
+import { t, jt, ngettext, msgid } from "c-3po";
 
 import PulseEditName from "./PulseEditName.jsx";
+import PulseEditCollection from "./PulseEditCollection";
 import PulseEditCards from "./PulseEditCards.jsx";
 import PulseEditChannels from "./PulseEditChannels.jsx";
 import PulseEditSkip from "./PulseEditSkip.jsx";
@@ -17,10 +18,10 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm.jsx";
 
 import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
+import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 import cx from "classnames";
-import { inflect } from "inflection";
 
 export default class PulseEdit extends Component {
   constructor(props) {
@@ -66,7 +67,7 @@ export default class PulseEdit extends Component {
       this.props.pulse.cards.length,
     );
 
-    this.props.onChangeLocation("/pulse");
+    this.props.onChangeLocation(Urls.collection(pulse.collection_id));
   }
 
   async delete() {
@@ -88,7 +89,9 @@ export default class PulseEdit extends Component {
           <span key={index}>
             {jt`This pulse will no longer be emailed to ${(
               <strong>
-                {c.recipients.length} {inflect(t`address`, c.recipients.length)}
+                {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+                  c.recipients.length,
+                )}
               </strong>
             )} ${<strong>{c.schedule_type}</strong>}`}.
           </span>
@@ -142,6 +145,7 @@ export default class PulseEdit extends Component {
         </div>
         <div className="PulseEdit-content pt2 pb4">
           <PulseEditName {...this.props} setPulse={this.setPulse} />
+          <PulseEditCollection {...this.props} setPulse={this.setPulse} />
           <PulseEditCards
             {...this.props}
             setPulse={this.setPulse}

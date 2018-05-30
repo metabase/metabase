@@ -21,46 +21,58 @@
 (expect (get middleware/response-unauthentic :body) (http/client :get 401 "user"))
 (expect (get middleware/response-unauthentic :body) (http/client :get 401 "user/current"))
 
+(def ^:private user-defaults
+  {:ldap_auth    false
+   :is_active    true
+   :is_superuser false
+   :google_auth  false
+   :is_qbnewb    true
+   :id           true
+   :last_login   nil
+   :updated_at   true
+   :date_joined  true})
+
+(def ^:private test-users
+  (map #(merge user-defaults %)
+       [{:email        "trashbird@metabase.com"
+         :first_name   "Trash"
+         :is_active    false
+         :last_name    "Bird"
+         :common_name  "Trash Bird"}
+        {:common_name  "Crowberto Corv"
+         :last_name    "Corv"
+         :is_superuser true
+         :first_name   "Crowberto"
+         :email        "crowberto@metabase.com"}
+        {:common_name  "Lucky Pigeon"
+         :last_name    "Pigeon"
+         :first_name   "Lucky"
+         :email        "lucky@metabase.com"}
+        {:common_name  "Rasta Toucan"
+         :last_name    "Toucan"
+         :first_name   "Rasta"
+         :email        "rasta@metabase.com"}]))
 
 ;; ## GET /api/user
 ;; Check that anyone can get a list of all active Users
 (expect
-  #{(match-$ (fetch-user :crowberto)
-      {:common_name  "Crowberto Corv"
-       :last_name    "Corv"
-       :id           $
-       :is_superuser true
-       :last_login   $
-       :first_name   "Crowberto"
-       :email        "crowberto@metabase.com"
-       :google_auth  false
-       :ldap_auth    false})
-    (match-$ (fetch-user :lucky)
-      {:common_name  "Lucky Pigeon"
-       :last_name    "Pigeon"
-       :id           $
-       :is_superuser false
-       :last_login   $
-       :first_name   "Lucky"
-       :email        "lucky@metabase.com"
-       :google_auth  false
-       :ldap_auth    false})
-    (match-$ (fetch-user :rasta)
-      {:common_name  "Rasta Toucan"
-       :last_name    "Toucan"
-       :id           $
-       :is_superuser false
-       :last_login   $
-       :first_name   "Rasta"
-       :email        "rasta@metabase.com"
-       :google_auth  false
-       :ldap_auth    false})}
+  (set (filter :is_active test-users))
   (do
     ;; Delete all the other random Users we've created so far
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
       (db/delete! User :id [:not-in user-ids]))
     ;; Now do the request
-    (set ((user->client :rasta) :get 200 "user")))) ; as a set since we don't know what order the results will come back in
+    (set (tu/boolean-ids-and-timestamps ((user->client :rasta) :get 200 "user"))))) ; as a set since we don't know what order the results will come back in
+
+;; Check that anyone can get a list of all Users (active and inactive)
+(expect
+  (set test-users)
+  (do
+    ;; Delete all the other random Users we've created so far
+    (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
+      (db/delete! User :id [:not-in user-ids]))
+    ;; Now do the request
+    (set (tu/boolean-ids-and-timestamps ((user->client :rasta) :get 200 "user" :include_deactivated true)))))
 
 
 ;; ## POST /api/user
@@ -68,30 +80,30 @@
 (let [user-name (random-name)
       email     (str user-name "@metabase.com")]
   (expect
-    {:email        email
-     :first_name   user-name
-     :last_name    user-name
-     :common_name  (str user-name " " user-name)
-     :is_superuser false
-     :is_qbnewb    true}
+    (merge user-defaults
+           {:email        email
+            :first_name   user-name
+            :last_name    user-name
+            :common_name  (str user-name " " user-name)})
     (et/with-fake-inbox
-      ((user->client :crowberto) :post 200 "user" {:first_name user-name
-                                                   :last_name  user-name
-                                                   :email      email})
-      (u/prog1 (db/select-one [User :email :first_name :last_name :is_superuser :is_qbnewb]
-                              :email email)
-               ;; clean up after ourselves
-               (db/delete! User :email email)))))
-
+      (try
+        (tu/boolean-ids-and-timestamps
+         ((user->client :crowberto) :post 200 "user" {:first_name user-name
+                                                      :last_name  user-name
+                                                      :email      email}))
+        (finally
+          ;; clean up after ourselves
+          (db/delete! User :email email))))))
 
 ;; Test that reactivating a disabled account works
 (expect
   ;; create a random inactive user
-  (tt/with-temp User [user {:is_active false}]
+  (tt/with-temp User [ user {:is_active false}]
     ;; now try creating the same user again, should re-activiate the original
-    ((user->client :crowberto) :post 200 "user" {:first_name (:first_name user)
-                                                 :last_name  "whatever"
-                                                 :email      (:email user)})
+    ((user->client :crowberto) :put 200 (format "user/%s/reactivate" (u/get-id user))
+     {:first_name (:first_name user)
+      :last_name  "whatever"
+      :email      (:email user)})
     ;; the user should now be active
     (db/select-one-field :is_active User :id (:id user))))
 
@@ -101,6 +113,23 @@
   ((user->client :rasta) :post 403 "user" {:first_name "whatever"
                                            :last_name  "whatever"
                                            :email      "whatever@whatever.com"}))
+
+;; Attempting to reactivate a non-existant user should return a 404
+(expect
+  "Not found."
+  ((user->client :crowberto) :put 404 (format "user/%s/reactivate" Integer/MAX_VALUE)))
+
+;; Attempting to reactivate an already active user should fail
+(expect
+  {:message "Not able to reactivate an active user"}
+  ((user->client :crowberto) :put 400 (format "user/%s/reactivate" (u/get-id (fetch-user :rasta)))))
+
+;; Attempting to create a new user with the same email as an existing user should fail
+(expect
+  {:errors {:email "Email address already in use."}}
+  ((user->client :crowberto) :post 400 "user" {:first_name  "Something"
+                                               :last_name   "Random"
+                                               :email       (:email (fetch-user :rasta))}))
 
 ;; Test input validations
 (expect
@@ -126,53 +155,36 @@
 ;; ## GET /api/user/current
 ;; Check that fetching current user will return extra fields like `is_active` and will return OrgPerms
 (expect
-  (match-$ (fetch-user :rasta)
-    {:email        "rasta@metabase.com"
-     :first_name   "Rasta"
-     :last_name    "Toucan"
-     :common_name  "Rasta Toucan"
-     :date_joined  $
-     :last_login   $
-     :is_active    true
-     :is_superuser false
-     :is_qbnewb    true
-     :google_auth  false
-     :ldap_auth    false
-     :id           $})
-  ((user->client :rasta) :get 200 "user/current"))
+  (merge user-defaults
+         {:email        "rasta@metabase.com"
+          :first_name   "Rasta"
+          :last_name    "Toucan"
+          :common_name  "Rasta Toucan"})
+  (tu/boolean-ids-and-timestamps ((user->client :rasta) :get 200 "user/current")))
 
 
 ;; ## GET /api/user/:id
 ;; Should return a smaller set of fields, and should *not* return OrgPerms
 (expect
-  (match-$ (fetch-user :rasta)
-    {:email        "rasta@metabase.com"
-     :first_name   "Rasta"
-     :last_login   $
-     :is_superuser false
-     :is_qbnewb    true
-     :id           $
-     :last_name    "Toucan"
-     :date_joined  $
-     :common_name  "Rasta Toucan"})
-  ((user->client :rasta) :get 200 (str "user/" (user->id :rasta))))
+  (merge user-defaults
+         {:email        "rasta@metabase.com"
+          :first_name   "Rasta"
+          :last_name    "Toucan"
+          :common_name  "Rasta Toucan"})
+  (tu/boolean-ids-and-timestamps ((user->client :rasta) :get 200 (str "user/" (user->id :rasta)))))
 
 ;; Check that a non-superuser CANNOT fetch someone else's user details
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :get 403 (str "user/" (user->id :trashbird))))
 
 ;; A superuser should be allowed to fetch another users data
-(expect (match-$ (fetch-user :rasta)
-          {:email        "rasta@metabase.com"
-           :first_name   "Rasta"
-           :last_login   $
-           :is_superuser false
-           :is_qbnewb    true
-           :id           $
-           :last_name    "Toucan"
-           :date_joined  $
-           :common_name  "Rasta Toucan"})
-  ((user->client :crowberto) :get 200 (str "user/" (user->id :rasta))))
+(expect
+  (merge user-defaults
+         {:email        "rasta@metabase.com"
+          :first_name   "Rasta"
+          :last_name    "Toucan"
+          :common_name  "Rasta Toucan"})
+  (tu/boolean-ids-and-timestamps ((user->client :crowberto) :get 200 (str "user/" (user->id :rasta)))))
 
 ;; We should get a 404 when trying to access a disabled account
 (expect "Not found."
@@ -183,14 +195,26 @@
 ;; Test that we can edit a User
 (expect
   [{:first_name "Cam", :last_name "Era",  :is_superuser true, :email "cam.era@metabase.com"}
+   (merge user-defaults
+          {:last_login nil, :common_name "Cam Eron", :id true, :date_joined true :email "cam.eron@metabase.com",
+           :first_name "Cam", :is_superuser true, :last_name "Eron"})
    {:first_name "Cam", :last_name "Eron", :is_superuser true, :email "cam.eron@metabase.com"}]
   (tt/with-temp User [{user-id :id} {:first_name "Cam", :last_name "Era", :email "cam.era@metabase.com", :is_superuser true}]
     (let [user (fn [] (into {} (dissoc (db/select-one [User :first_name :last_name :is_superuser :email], :id user-id)
                                        :common_name)))]
       [(user)
-       (do ((user->client :crowberto) :put 200 (str "user/" user-id) {:last_name "Eron"
-                                                                      :email     "cam.eron@metabase.com"})
-           (user))])))
+       (tu/boolean-ids-and-timestamps
+        ((user->client :crowberto) :put 200 (str "user/" user-id) {:last_name "Eron"
+                                                                   :email     "cam.eron@metabase.com"}))
+       (user)])))
+
+;; ## PUT /api/user/:id
+;; Test that updating a user's email to an existing inactive user's email fails
+(expect
+  {:errors {:email "Email address already associated to another user."}}
+  (let [trashbird (fetch-user :trashbird)
+        rasta     (fetch-user :rasta)]
+    ((user->client :crowberto) :put 400 (str "user/" (u/get-id rasta)) (select-keys trashbird [:email]))))
 
 ;; Test that a normal user cannot change the :is_superuser flag for themselves
 (defn- fetch-rasta []
@@ -250,9 +274,9 @@
   [{:success true}
    false]
   (tt/with-temp User [{:keys [id]} {:first_name (random-name)
-                                 :last_name  (random-name)
-                                 :email      "def@metabase.com"
-                                 :password   "def123"}]
+                                    :last_name  (random-name)
+                                    :email      "def@metabase.com"
+                                    :password   "def123"}]
     (let [creds {:username "def@metabase.com"
                  :password "def123"}]
       [(metabase.http-client/client creds :put 200 (format "user/%d/qbnewb" id))
@@ -290,8 +314,5 @@
       (db/update! User (u/get-id user)
         :is_active false)
       (tu/with-temporary-setting-values [google-auth-client-id nil]
-        ((user->client :crowberto) :post 200 "user"
-         {:first_name "Cam"
-          :last_name  "Era"
-          :email      (:email user)})
+        ((user->client :crowberto) :put 200 (format "user/%s/reactivate" (u/get-id user)))
         (db/select-one [User :is_active :google_auth] :id (u/get-id user))))))

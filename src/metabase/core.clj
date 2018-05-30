@@ -47,12 +47,12 @@
 ;; difference between this and `streaming-json-response`?
 (defn- streamed-json-response
   "Write `RESPONSE-SEQ` to a PipedOutputStream as JSON, returning the connected PipedInputStream"
-  [response-seq options]
+  [response-seq opts]
   (rui/piped-input-stream
    (fn [^OutputStream output-stream]
      (with-open [output-writer   (OutputStreamWriter. ^OutputStream output-stream ^Charset StandardCharsets/UTF_8)
                  buffered-writer (BufferedWriter. output-writer)]
-       (json/generate-stream response-seq buffered-writer)))))
+       (json/generate-stream response-seq buffered-writer opts)))))
 
 (defn- wrap-streamed-json-response
   "Similar to ring.middleware/wrap-json-response in that it will serialize the response's body to JSON if it's a
@@ -134,8 +134,8 @@
 (defn init!
   "General application initialization function which should be run once at application startup."
   []
-  (log/info (trs (format "Starting Metabase version {0} ..." config/mb-version-string)))
-  (log/info (trs (format "System timezone is ''{0}'' ..." (System/getProperty "user.timezone"))))
+  (log/info (trs "Starting Metabase version {0} ..." config/mb-version-string))
+  (log/info (trs "System timezone is ''{0}'' ..." (System/getProperty "user.timezone")))
   (init-status/set-progress! 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit

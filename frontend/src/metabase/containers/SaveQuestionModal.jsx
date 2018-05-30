@@ -8,7 +8,7 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 import Radio from "metabase/components/Radio.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
 import Button from "metabase/components/Button";
-import CollectionList from "metabase/questions/containers/CollectionList";
+import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
 import Query from "metabase/lib/query";
 import { t } from "c-3po";
@@ -238,8 +238,8 @@ export default class SaveQuestionModal extends Component {
                     onChange={e => this.onChange("description", e.target.value)}
                   />
                 </FormField>
-                <CollectionList writable>
-                  {collections =>
+                <CollectionListLoader writable reload>
+                  {({ collections }) =>
                     collections.length > 0 && (
                       <FormField
                         name="collection_id"
@@ -272,7 +272,7 @@ export default class SaveQuestionModal extends Component {
                       </FormField>
                     )
                   }
-                </CollectionList>
+                </CollectionListLoader>
               </div>
             )}
           </CSSTransitionGroup>

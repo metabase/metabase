@@ -6,14 +6,17 @@
              [common :as api]]
             [metabase.models
              [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
              [collection :as collection :refer [Collection]]
              [interface :as mi]
-             [pulse :as pulse]]
+             [pulse :as pulse :refer [Pulse]]]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]))
+             [hydrate :refer [hydrate]]]
+            [metabase.util :as u]))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for.
@@ -30,12 +33,72 @@
     (filter mi/can-read? collections)
     (hydrate collections :can_write)))
 
+
+;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
+
+(defn- collection-children
+  "Fetch a map of the 'child' objects belonging to a Collection of type `model`, or of all available types if `model` is
+  nil. `model->children-fn` should be a map of the different types of children that can be included to a function used
+  to fetch them. Optional `children-fn-params` will be passed to each children-fetching fn.
+
+      (collection-children :cards model->collection-children-fn 1)
+      ;; -> {:cards [...cards for Collection 1...]}
+
+      (collection-children nil model->collection-children-fn  1)
+      ;; -> {:cards [...], :dashboards [...], :pulses [...]}"
+  [model model->children-fn & children-fn-params]
+  (into {} (for [[a-model children-fn] model->children-fn
+                 ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
+                 :when (or (nil? model)
+                           (= (name model) (name a-model)))]
+             ;; return the results like {:card <results-of-card-children-fn>}
+             {a-model (apply children-fn children-fn-params)})))
+
+(def ^:private model->collection-children-fn
+  "Functions for fetching the 'children' of a Collection."
+  {:cards      #(db/select [Card :name :id :collection_position],      :collection_id %, :archived false)
+   :dashboards #(db/select [Dashboard :name :id :collection_position], :collection_id %, :archived false)
+   :pulses     #(db/select [Pulse :name :id :collection_position],     :collection_id %)})
+
+(def ^:private model->root-collection-children-fn
+  "Functions for fetching the 'children' of the root Collection."
+  (let [basic-item-info (fn [items]
+                             (for [item items]
+                               (select-keys item [:name :id :collection_position])))]
+    {:cards      #(->> (db/select [Card :name :id :public_uuid :read_permissions :dataset_query :collection_position]
+                         :collection_id nil, :archived false)
+                       (filter mi/can-read?)
+                       basic-item-info)
+     :dashboards #(->> (db/select [Dashboard :name :id :public_uuid :collection_position]
+                         :collection_id nil, :archived false)
+                       (filter mi/can-read?)
+                       basic-item-info)
+     :pulses     #(->> (db/select [Pulse :name :id :collection_position]
+                         :collection_id nil)
+                       (filter mi/can-read?)
+                       basic-item-info)}))
+
 (api/defendpoint GET "/:id"
-  "Fetch a specific (non-archived) Collection, including cards that belong to it."
-  [id]
-  ;; TODO - hydrate the `:cards` that belong to this Collection
-  (assoc (api/read-check Collection id, :archived false)
-    :cards (db/select Card, :collection_id id, :archived false)))
+  "Fetch a specific (non-archived) Collection, including objects of a specific `model` that belong to it. If `model` is
+  unspecified, it will return objects of all types."
+  [id model]
+  {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
+  (merge
+   (api/read-check Collection id, :archived false)
+   (collection-children model model->collection-children-fn id)))
+
+(api/defendpoint GET "/root"
+  "Fetch objects in the 'root' Collection. (The 'root' Collection doesn't actually exist at this point, so this just
+  returns objects that aren't in *any* Collection."
+  [model]
+  {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
+  (merge
+   {:name (tru "Root Collection")
+    :id   "root"}
+   (collection-children model model->root-collection-children-fn)))
+
+
+;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
 (api/defendpoint POST "/"
   "Create a new Collection."
@@ -48,25 +111,21 @@
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it."
-  [id, :as {{:keys [name color description archived]} :body}]
-  {name        su/NonBlankString
-   color       collection/hex-color-regex
+  [id, :as {{:keys [name color description archived], :as body} :body}]
+  {name        (s/maybe su/NonBlankString)
+   color       (s/maybe collection/hex-color-regex)
    description (s/maybe su/NonBlankString)
    archived    (s/maybe s/Bool)}
   ;; you have to be a superuser to modify a Collection itself, but `/collection/:id/` perms are sufficient for
   ;; adding/removing Cards
   (api/check-superuser)
   (api/api-let [404 "Not Found"] [collection-before-update (Collection id)]
+    ;; ok, go ahead and update it! Only update keys that were specified in the `body`
     (db/update! Collection id
-      :name        name
-      :color       color
-      :description description
-      :archived    (if (nil? archived)
-                     false
-                     archived))
+      (u/select-keys-when body :present [:name :color :description :archived :location]))
     (when (and (not (:archived collection-before-update))
                archived)
-      (when-let [alerts (seq (apply pulse/retrieve-alerts-for-card (db/select-ids Card, :collection_id id)))]
+      (when-let [alerts (seq (apply pulse/retrieve-alerts-for-cards (db/select-ids Card, :collection_id id)))]
         ;; When a collection is archived, all of it's cards are also marked as archived, but this is down in the model
         ;; layer which will not cause the archive notification code to fire. This will delete the relevant alerts and
         ;; notify the users just as if they had be archived individually via the card API

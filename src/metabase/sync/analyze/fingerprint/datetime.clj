@@ -5,7 +5,6 @@
              [core :as t]]
             [medley.core :as m]
             [metabase.sync.interface :as i]
-            [metabase.util :as u]
             [metabase.util.date :as du]
             [redux.core :as redux]
             [schema.core :as s]))

@@ -251,6 +251,7 @@
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
+;; e.g. `catch-api-exceptions` and `auto-parse`
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
@@ -440,6 +441,7 @@
       (throw ex)
       (assoc (response/response output-channel)
         :content-type "applicaton/json"))))
+
 
 ;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
 

@@ -67,7 +67,7 @@ const EntityMenuItem = ({ action, title, icon, link }) => {
   }
 
   const content = [
-    <Icon name={icon} />,
+    <Icon name={icon} mr={1} />,
     <span className="text-bold">{title}</span>,
   ];
 

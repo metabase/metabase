@@ -97,11 +97,19 @@
                        ['ViewLog                    :user_id]]]
       (db/delete! model k id))))
 
+(def ^:private default-user-fields
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
+
+(def all-user-fields
+  "Seq of all the columns stored for a user"
+  (vec (concat default-user-fields [:google_auth :ldap_auth :is_active :updated_at])))
+
 (u/strict-extend (class User)
   models/IModel
   (merge models/IModelDefaults
-         {:default-fields (constantly [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
+         {:default-fields (constantly default-user-fields)
           :hydration-keys (constantly [:author :creator :user])
+          :properties     (constantly {:updated-at-timestamped? true})
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update

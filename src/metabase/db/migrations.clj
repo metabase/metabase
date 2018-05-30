@@ -10,9 +10,8 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
-             [db :as mdb]
              [config :as config]
-             [driver :as driver]
+             [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.events.activity-feed :refer [activity-feed-topics]]

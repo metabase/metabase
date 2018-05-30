@@ -56,7 +56,9 @@ const EntityListApp = ({ params: { entityType } }) => (
                   <Link
                     to={`/_internal/entities/${entityType}/${list[index].id}`}
                   >
-                    {entityDefs[entityType].getName(list[index])}
+                    {entityDefs[entityType].objectSelectors.getName(
+                      list[index],
+                    )}
                   </Link>
                 </div>
               )}

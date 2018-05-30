@@ -18,20 +18,18 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
-(defn- create-dash! [dash-name]
-  ((user->client :rasta) :post 200 "dashboard" {:name dash-name}))
-
 ;; Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in
 (expect
   [0 1 2]
-  (tt/with-temp Card [{card-id :id}]
-    (let [get-dashboard-count (fn [] (dashboard-count (Card card-id)))]
+  (tt/with-temp* [Card      [{card-id :id}]
+                  Dashboard [dash-1]
+                  Dashboard [dash-2]]
+    (let [add-card-to-dash!   (fn [dash] (db/insert! DashboardCard :card_id card-id, :dashboard_id (u/get-id dash)))
+          get-dashboard-count (fn [] (dashboard-count (Card card-id)))]
 
       [(get-dashboard-count)
-       (do (db/insert! DashboardCard :card_id card-id, :dashboard_id (:id (create-dash! (tu/random-name))), :parameter_mappings [])
-           (get-dashboard-count))
-       (do (db/insert! DashboardCard :card_id card-id, :dashboard_id (:id (create-dash! (tu/random-name))), :parameter_mappings [])
-           (get-dashboard-count))])))
+       (do (add-card-to-dash! dash-1) (get-dashboard-count))
+       (do (add-card-to-dash! dash-2) (get-dashboard-count))])))
 
 
 ;; card-dependencies

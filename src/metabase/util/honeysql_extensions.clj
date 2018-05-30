@@ -95,6 +95,7 @@
 
 ;; Single-quoted string literal
 (defrecord Literal [literal]
+  :load-ns true
   ToSql
   (to-sql [_]
     (str \' (name literal) \')))

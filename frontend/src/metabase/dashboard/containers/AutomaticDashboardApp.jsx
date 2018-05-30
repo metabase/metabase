@@ -5,7 +5,6 @@ import React from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 
-import { withBackground } from "metabase/hoc/Background";
 import title from "metabase/hoc/Title";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
@@ -93,8 +92,8 @@ class AutomaticDashboardApp extends React.Component {
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
-    const more = dashboard && dashboard.related && dashboard.related["more"];
-    const related = dashboard && _.omit(dashboard.related, "more");
+    const more = dashboard && dashboard.more;
+    const related = dashboard && dashboard.related;
     const hasSidebar = _.any(related || {}, list => list.length > 0);
 
     return (
@@ -146,17 +145,15 @@ class AutomaticDashboardApp extends React.Component {
           </div>
           {more && (
             <div className="flex justify-end px4 pb4">
-              {more.map(item => (
-                <Link
-                  to={item.url}
-                  className="ml2"
-                  onClick={() =>
-                    MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
-                  }
-                >
-                  <Button iconRight="chevronright">{item.title}</Button>
-                </Link>
-              ))}
+              <Link
+                to={more}
+                className="ml2"
+                onClick={() =>
+                  MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
+                }
+              >
+                <Button iconRight="chevronright">{t`Show more about this`}</Button>
+              </Link>
             </div>
           )}
         </div>
@@ -254,4 +251,4 @@ const SuggestionsSidebar = ({ related }) => (
   </div>
 );
 
-export default withBackground("bg-slate-extra-light")(AutomaticDashboardApp);
+export default AutomaticDashboardApp;
