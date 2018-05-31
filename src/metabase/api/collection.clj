@@ -83,11 +83,10 @@
   unspecified, it will return objects of all types."
   [id model]
   {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
-  (merge
-   (as-> (api/read-check Collection id, :archived false) <>
-     (hydrate <> :effective_location :effective_children :effective_ancestors)
-     (assoc <> :can_write (mi/can-write? <>)))
-   (collection-children model model->collection-children-fn id)))
+  (-> (api/read-check Collection id, :archived false)
+      (hydrate :effective_location :effective_children :effective_ancestors :can_write)
+      (merge (collection-children model model->collection-children-fn id))))
+
 
 (api/defendpoint GET "/root"
   "Fetch objects in the 'root' Collection. (The 'root' Collection doesn't actually exist at this point, so this just
@@ -97,6 +96,7 @@
   (merge
    {:name                (tru "Root Collection")
     :id                  "root"
+    :can_write           api/*is-superuser?* ; temporary until Root Collection perms are merged !
     :effective_location  "/"
     :effective_children  (collection/effective-children collection/root-collection)
     :effective_ancestors []}
