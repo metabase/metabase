@@ -161,7 +161,7 @@ class DefaultLanding extends React.Component {
         <Box w={2 / 3}>
           <Box>
             <CollectionItemsLoader reload collectionId={collectionId || "root"}>
-              {({ allItems, pulses, cards, dashboards, empty }) => {
+              {({ collection, allItems, pulses, cards, dashboards, empty }) => {
                 let items = allItems;
 
                 if (!items.length) {
@@ -224,16 +224,18 @@ class DefaultLanding extends React.Component {
                                   />
                                   <Flex align="center">
                                     <h3>{item.name}</h3>
-                                    <Box
-                                      ml="auto"
-                                      className="hover-child"
-                                      onClick={ev => {
-                                        ev.preventDefault();
-                                        this._unPinItem(item);
-                                      }}
-                                    >
-                                      <Icon name="pin" />
-                                    </Box>
+                                    {collection.can_write && (
+                                      <Box
+                                        ml="auto"
+                                        className="hover-child"
+                                        onClick={ev => {
+                                          ev.preventDefault();
+                                          this._unPinItem(item);
+                                        }}
+                                      >
+                                        <Icon name="pin" />
+                                      </Box>
+                                    )}
                                   </Flex>
                                 </Card>
                               </Link>
@@ -262,7 +264,11 @@ class DefaultLanding extends React.Component {
                                 name={item.name}
                                 iconName={iconName}
                                 iconColor={iconColor}
-                                onPin={this._pinItem.bind(this)}
+                                onPin={
+                                  collection.can_write
+                                    ? this._pinItem.bind(this)
+                                    : null
+                                }
                               />
                             </Link>
                           </Box>
@@ -308,60 +314,64 @@ class CollectionLanding extends React.Component {
             </Subhead>
 
             <Flex ml="auto">
-              <Box mx={1}>
-                <EntityMenu
-                  items={[
-                    {
-                      title: t`New dashboard`,
-                      icon: "dashboard",
-                      link: Urls.newDashboard(collectionId),
-                    },
-                    {
-                      title: t`New pulse`,
-                      icon: "pulse",
-                      link: Urls.newPulse(collectionId),
-                    },
-                    {
-                      title: t`New collection`,
-                      icon: "all",
-                      link: Urls.newCollection(collectionId),
-                    },
-                  ]}
-                  triggerIcon="add"
-                />
-              </Box>
-              <Box mx={1}>
-                <EntityMenu
-                  items={[
-                    ...(collectionId
-                      ? [
-                          {
-                            title: t`Edit this collection`,
-                            icon: "editdocument",
-                            link: `/collections/${currentCollection.id}`,
-                          },
-                        ]
-                      : []),
-                    {
-                      title: t`Edit permissions`,
-                      icon: "lock",
-                      link: `/collections/permissions?collectionId=${
-                        currentCollection.id
-                      }`,
-                    },
-                    ...(collectionId
-                      ? [
-                          {
-                            title: t`Archive this collection`,
-                            icon: "viewArchive",
-                            link: `/collection/${collectionId}/archive`,
-                          },
-                        ]
-                      : []),
-                  ]}
-                  triggerIcon="pencil"
-                />
-              </Box>
+              {currentCollection.can_write && (
+                <Box mx={1}>
+                  <EntityMenu
+                    items={[
+                      {
+                        title: t`New dashboard`,
+                        icon: "dashboard",
+                        link: Urls.newDashboard(collectionId),
+                      },
+                      {
+                        title: t`New pulse`,
+                        icon: "pulse",
+                        link: Urls.newPulse(collectionId),
+                      },
+                      {
+                        title: t`New collection`,
+                        icon: "all",
+                        link: Urls.newCollection(collectionId),
+                      },
+                    ]}
+                    triggerIcon="add"
+                  />
+                </Box>
+              )}
+              {currentCollection.can_write && (
+                <Box mx={1}>
+                  <EntityMenu
+                    items={[
+                      ...(collectionId
+                        ? [
+                            {
+                              title: t`Edit this collection`,
+                              icon: "editdocument",
+                              link: `/collections/${currentCollection.id}`,
+                            },
+                          ]
+                        : []),
+                      {
+                        title: t`Edit permissions`,
+                        icon: "lock",
+                        link: `/collections/permissions?collectionId=${
+                          currentCollection.id
+                        }`,
+                      },
+                      ...(collectionId
+                        ? [
+                            {
+                              title: t`Archive this collection`,
+                              icon: "viewArchive",
+                              link: `/collection/${collectionId}/archive`,
+                            },
+                          ]
+                        : []),
+                    ]}
+                    triggerIcon="pencil"
+                  />
+                </Box>
+              )}
               <EntityMenu
                 items={[
                   {

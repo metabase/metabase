@@ -294,6 +294,7 @@ export const UserApi = {
   update_password: PUT("/api/user/:id/password"),
   update_qbnewb: PUT("/api/user/:id/qbnewb"),
   delete: DELETE("/api/user/:userId"),
+  reactivate: PUT("/api/user/:userId/reactivate"),
   send_invite: POST("/api/user/:id/send_invite"),
 };
 

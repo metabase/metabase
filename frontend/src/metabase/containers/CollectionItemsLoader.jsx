@@ -15,6 +15,7 @@ const CollectionItemsLoader = ({ collectionId, children, ...props }: Props) => (
     children={({ object }) =>
       object &&
       children({
+        collection: object,
         dashboards: object.dashboards,
         cards: object.cards,
         pulses: object.pulses,

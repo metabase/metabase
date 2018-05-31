@@ -14,7 +14,7 @@ let nextUndoId = 0;
 // A convenience shorthand for creating single undos
 export function createUndo({ type, message, action }) {
   return {
-    type: type,
+    type,
     count: 1,
     message,
     actions: action ? [action] : null,
