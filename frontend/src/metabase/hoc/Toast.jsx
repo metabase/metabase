@@ -8,10 +8,10 @@ const mapDispatchToProps = {
   addUndo,
 };
 
-const withToast = ComposedComponent => {
+const withToaster = ComposedComponent => {
   @connect(null, mapDispatchToProps)
   class ToastedComponent extends React.Component {
-    _triggerToast(toastContent) {
+    _triggerToast = toastContent => {
       const { addUndo, createUndo } = this.props;
 
       addUndo(
@@ -20,11 +20,11 @@ const withToast = ComposedComponent => {
           message: toastContent,
         }),
       );
-    }
+    };
     render() {
       return (
         <ComposedComponent
-          triggerToast={this._triggerToast.bind(this)}
+          triggerToast={this._triggerToast}
           // TODO - omit createUndo, addUndo
           {...this.props}
         />
@@ -34,4 +34,4 @@ const withToast = ComposedComponent => {
   return ToastedComponent;
 };
 
-export default withToast;
+export default withToaster;
