@@ -45,7 +45,7 @@ hose {
 	    | -DDISC_POSTGRES_VERSION=1.1.3
 	    | -DPOSTGRES_DISCOVERY_SERVICE=postgresdisc
 	    | -DPOSTGRES_DISCOVERY_FWK_MESOS_ROLE=postgresdisc
-        | -DSTRATIO_DISCOVERY_VERSION=0.28.9
+        | -DDISC_VERSION=0.29.0-SNAPSHOT
         | -DDISCOVERY_NAME_DB=discovery
 	    | -DMARATHON_LB_DNS=nightlypublic.labs.stratio.com
 	    | -Dquietasdefault=false
@@ -60,4 +60,3 @@ hose {
         }
     }
 }
-
