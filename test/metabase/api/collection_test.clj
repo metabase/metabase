@@ -102,7 +102,7 @@
 
 (defn- remove-ids-from-collection-detail [results & {:keys [keep-collection-id?]
                                                      :or {keep-collection-id? false}}]
-  (into {} (for [[k items] (select-keys results (cond->> [:name :cards :dashboards :pulses]
+  (into {} (for [[k items] (select-keys results (cond->> [:name :cards :dashboards :pulses :can_write]
                                                   keep-collection-id? (cons :id)))]
              [k (if-not (sequential? items)
                   items
@@ -125,7 +125,8 @@
   {:name       "Debt Collection"
    :cards      [{:name "Birthday Card",          :collection_position nil}]
    :dashboards [{:name "Dine & Dashboard",       :collection_position nil}]
-   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]}
+   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]
+   :can_write  false}
   (tt/with-temp Collection [collection {:name "Debt Collection"}]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
@@ -135,7 +136,8 @@
 ;; ...and that you can also filter so that you only see the children you want to see
 (expect
   {:name       "Art Collection"
-   :dashboards [{:name "Dine & Dashboard", :collection_position nil}]}
+   :dashboards [{:name "Dine & Dashboard", :collection_position nil}]
+   :can_write  false}
   (tt/with-temp Collection [collection {:name "Art Collection"}]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
@@ -245,7 +247,8 @@
    :id         "root"
    :cards      [{:name "Birthday Card",          :collection_position nil}]
    :dashboards [{:name "Dine & Dashboard",       :collection_position nil}]
-   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]}
+   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]
+   :can_write  true}
   (with-some-children-of-collection nil
     (-> ((user->client :crowberto) :get 200 "collection/root")
         (remove-ids-from-collection-detail :keep-collection-id? true))))
@@ -256,7 +259,8 @@
    :id         "root"
    :cards      []
    :dashboards [{:name "Dine & Dashboard",       :collection_position nil}]
-   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]}
+   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]
+   :can_write  false}
   ;; create a fake DB and don't give all users perms to it
   (tt/with-temp* [Database [db]
                   Table    [table {:db_id (u/get-id db)}]]
@@ -272,9 +276,10 @@
 
 ;; Make sure this endpoint can also filter things
 (expect
-  {:name  "Root Collection"
-   :id    "root"
-   :cards [{:name "Birthday Card", :collection_position nil}]}
+  {:name      "Root Collection"
+   :id        "root"
+   :cards     [{:name "Birthday Card", :collection_position nil}]
+   :can_write true}
   (with-some-children-of-collection nil
     (-> ((user->client :crowberto) :get 200 "collection/root?model=cards")
         (remove-ids-from-collection-detail :keep-collection-id? true))))
