@@ -24,6 +24,7 @@
              [public :as public]
              [pulse :as pulse]
              [revision :as revision]
+             [search :as search]
              [segment :as segment]
              [session :as session]
              [setting :as setting]
@@ -76,6 +77,7 @@
   (context "/public"               [] (+generic-exceptions public/routes))
   (context "/pulse"                [] (+auth pulse/routes))
   (context "/revision"             [] (+auth revision/routes))
+  (context "/search"               [] (+auth search/routes))
   (context "/segment"              [] (+auth segment/routes))
   (context "/session"              [] session/routes)
   (context "/setting"              [] (+auth setting/routes))
