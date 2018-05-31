@@ -1,4 +1,3 @@
-/* @flow */
 import React from "react";
 import cx from "classnames";
 import { Box, Flex, Subhead } from "rebass";
