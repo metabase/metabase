@@ -260,7 +260,7 @@ export default class Navbar extends Component {
           <PopoverWithTrigger
             ref={e => (this._newPopover = e)}
             triggerElement={
-              <Button medium mr={3} color="#509ee3">
+              <Button medium mr={3} className="text-brand">
                 New
               </Button>
             }
