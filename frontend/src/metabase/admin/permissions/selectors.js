@@ -265,13 +265,6 @@ const OPTION_NATIVE_WRITE = {
   icon: "sql",
 };
 
-const OPTION_NATIVE_READ = {
-  ...OPTION_YELLOW,
-  value: "read",
-  title: t`View raw queries`,
-  tooltip: t`Can view raw queries`,
-};
-
 const OPTION_COLLECTION_WRITE = {
   ...OPTION_GREEN,
   value: "write",
@@ -591,7 +584,7 @@ export const getDatabasesPermissionsGrid = createSelector(
             ) {
               return [OPTION_NONE];
             } else {
-              return [OPTION_NATIVE_WRITE, OPTION_NATIVE_READ, OPTION_NONE];
+              return [OPTION_NATIVE_WRITE, OPTION_NONE];
             }
           },
           getter(groupId, entityId) {
