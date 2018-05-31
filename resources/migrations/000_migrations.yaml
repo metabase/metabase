@@ -4107,6 +4107,25 @@ databaseChangeLog:
               - column:
                   name: collection_id
   - changeSet:
+      id: 80
+      author: camsaul
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              name: location
+              type: varchar(254)
+              remarks: 'Directory-structure path of ancestor Collections. e.g. "/1/2/" means our Parent is Collection 2, and their parent is Collection 1.'
+              constraints:
+                nullable: false
+              defaultValue: "/"
+        - createIndex:
+            tableName: collection
+            indexName: idx_collection_location
+            columns:
+              - column:
+                  name: location
+  - changeSet:
       id: 81
       author: camsaul
       comment: 'Added 0.30.0'
