@@ -36,8 +36,8 @@ export default class ModalContent extends Component {
           "ModalContent NewForm flex-full flex flex-column relative",
           className,
           { "full-height": fullPageModal && !formModal },
-          // add padding if this is a standard "form modal"
-          { pb4: formModal },
+          // add bottom padding if this is a standard "form modal" with no footer
+          { pb4: formModal && !footer },
         )}
       >
         {onClose && (
