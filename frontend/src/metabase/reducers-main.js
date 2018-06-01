@@ -24,9 +24,6 @@ import * as home from "metabase/home/reducers";
 import new_query from "metabase/new_query/new_query";
 import * as qb from "metabase/query_builder/reducers";
 
-/* data reference */
-import reference from "metabase/reference/reference";
-
 /* revisions */
 import revisions from "metabase/redux/revisions";
 
@@ -47,7 +44,6 @@ export default {
   new_query,
   pulse: combineReducers(pulse),
   qb: combineReducers(qb),
-  reference,
   revisions,
   setup: combineReducers(setup),
   user: combineReducers(user),

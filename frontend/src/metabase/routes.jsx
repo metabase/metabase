@@ -58,29 +58,6 @@ import {
 import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
 
-// Reference Guide
-import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer.jsx";
-// Reference Metrics
-import MetricListContainer from "metabase/reference/metrics/MetricListContainer.jsx";
-import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer.jsx";
-import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer.jsx";
-import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer.jsx";
-// Reference Segments
-import SegmentListContainer from "metabase/reference/segments/SegmentListContainer.jsx";
-import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer.jsx";
-import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer.jsx";
-import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer.jsx";
-import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer.jsx";
-import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer.jsx";
-// Reference Databases
-import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer.jsx";
-import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer.jsx";
-import TableListContainer from "metabase/reference/databases/TableListContainer.jsx";
-import TableDetailContainer from "metabase/reference/databases/TableDetailContainer.jsx";
-import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer.jsx";
-import FieldListContainer from "metabase/reference/databases/FieldListContainer.jsx";
-import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer.jsx";
-
 import getAdminRoutes from "metabase/admin/routes";
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
@@ -244,69 +221,6 @@ export const getRoutes = store => (
         <Route path="create" component={CollectionCreate} />
         <Route path="permissions" component={CollectionPermissions} />
         <Route path=":collectionId" component={CollectionEdit} />
-      </Route>
-
-      {/* REFERENCE */}
-      <Route path="/reference" title={`Data Reference`}>
-        <IndexRedirect to="/reference/guide" />
-        <Route
-          path="guide"
-          title={`Getting Started`}
-          component={GettingStartedGuideContainer}
-        />
-        <Route path="metrics" component={MetricListContainer} />
-        <Route path="metrics/:metricId" component={MetricDetailContainer} />
-        <Route
-          path="metrics/:metricId/questions"
-          component={MetricQuestionsContainer}
-        />
-        <Route
-          path="metrics/:metricId/revisions"
-          component={MetricRevisionsContainer}
-        />
-        <Route path="segments" component={SegmentListContainer} />
-        <Route path="segments/:segmentId" component={SegmentDetailContainer} />
-        <Route
-          path="segments/:segmentId/fields"
-          component={SegmentFieldListContainer}
-        />
-        <Route
-          path="segments/:segmentId/fields/:fieldId"
-          component={SegmentFieldDetailContainer}
-        />
-        <Route
-          path="segments/:segmentId/questions"
-          component={SegmentQuestionsContainer}
-        />
-        <Route
-          path="segments/:segmentId/revisions"
-          component={SegmentRevisionsContainer}
-        />
-        <Route path="databases" component={DatabaseListContainer} />
-        <Route
-          path="databases/:databaseId"
-          component={DatabaseDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables"
-          component={TableListContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId"
-          component={TableDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/fields"
-          component={FieldListContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/fields/:fieldId"
-          component={FieldDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/questions"
-          component={TableQuestionsContainer}
-        />
       </Route>
 
       {/* PULSE */}
