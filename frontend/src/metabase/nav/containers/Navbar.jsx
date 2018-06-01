@@ -314,13 +314,6 @@ export default class Navbar extends Component {
             </Link>
           </Box>
           <Box mx={2}>
-            <Tooltip tooltip={t`Reference`}>
-              <Link to="reference">
-                <Icon name="reference" />
-              </Link>
-            </Tooltip>
-          </Box>
-          <Box mx={2}>
             <Tooltip tooltip={t`Activity`}>
               <Link to="activity">
                 <Icon name="alert" />
