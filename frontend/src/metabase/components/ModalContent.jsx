@@ -84,7 +84,7 @@ export const ModalBody = ({ children, fullPageModal, formModal }) => (
     })}
   >
     <div
-      className="ml-auto mr-auto flex flex-column"
+      className="flex-full ml-auto mr-auto flex flex-column"
       style={{ maxWidth: formModal && fullPageModal ? FORM_WIDTH : undefined }}
     >
       {children}
