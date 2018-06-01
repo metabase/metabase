@@ -101,18 +101,14 @@ export const ModalBody = ({ children, fullPageModal, formModal }) => (
 export const ModalFooter = ({ children, fullPageModal, formModal }) => (
   <div
     className={cx(
-      "ModalFooter flex-no-shrink px4",
-      fullPageModal ? "py4" : "py2",
-      {
-        "border-top": !fullPageModal || (fullPageModal && !formModal),
-      },
+      "ModalFooter flex flex-no-shrink px4",
+      fullPageModal ? "py4" : "py3",
     )}
   >
     <div
-      className="flex-full ml-auto mr-auto flex align-center"
+      className="ml-auto flex align-center"
       style={{ maxWidth: formModal && fullPageModal ? FORM_WIDTH : undefined }}
     >
-      <div className="flex-full" />
       {Array.isArray(children)
         ? children.map((child, index) => (
             <span key={index} className="ml2">
