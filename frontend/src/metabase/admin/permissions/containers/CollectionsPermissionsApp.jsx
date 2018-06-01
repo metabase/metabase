@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 
 import PermissionsEditor from "../components/PermissionsEditor.jsx";
 import PermissionsApp from "./PermissionsApp.jsx";
+import fitViewport from "metabase/hoc/FitViewPort";
 
 import { CollectionsApi } from "metabase/services";
 
@@ -37,6 +38,7 @@ const mapDispatchToProps = {
 const Editor = connect(mapStateToProps, mapDispatchToProps)(PermissionsEditor);
 
 @connect(null, { loadCollections })
+@fitViewport
 export default class CollectionsPermissionsApp extends Component {
   componentWillMount() {
     this.props.loadCollections();
@@ -47,8 +49,9 @@ export default class CollectionsPermissionsApp extends Component {
         {...this.props}
         load={CollectionsApi.graph}
         save={CollectionsApi.updateGraph}
+        fitClassNames={this.props.fitClassNames}
       >
-        <Editor {...this.props} modal confirmCancel={false} />
+        <Editor {...this.props} admin={false} confirmCancel={false} />
       </PermissionsApp>
     );
   }

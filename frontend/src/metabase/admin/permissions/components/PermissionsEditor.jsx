@@ -2,7 +2,6 @@ import React from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import Confirm from "metabase/components/Confirm.jsx";
-import Modal from "metabase/components/Modal.jsx";
 import PermissionsGrid from "../components/PermissionsGrid.jsx";
 import PermissionsConfirm from "../components/PermissionsConfirm.jsx";
 import EditBar from "metabase/components/EditBar.jsx";
@@ -15,7 +14,6 @@ import _ from "underscore";
 
 const PermissionsEditor = ({
   title = t`Permissions`,
-  modal,
   admin,
   grid,
   onUpdatePermission,
@@ -35,7 +33,7 @@ const PermissionsEditor = ({
       triggerClasses={cx({ disabled: !isDirty })}
       key="save"
     >
-      <Button primary small={!modal}>{t`Save Changes`}</Button>
+      <Button primary small>{t`Save Changes`}</Button>
     </Confirm>
   );
 
@@ -46,10 +44,10 @@ const PermissionsEditor = ({
       content={t`No changes to permissions will be made.`}
       key="discard"
     >
-      <Button small={!modal}>{t`Cancel`}</Button>
+      <Button small>{t`Cancel`}</Button>
     </Confirm>
   ) : (
-    <Button small={!modal} onClick={onCancel} key="cancel">{t`Cancel`}</Button>
+    <Button small onClick={onCancel} key="cancel">{t`Cancel`}</Button>
   );
 
   return (
@@ -57,47 +55,30 @@ const PermissionsEditor = ({
       loading={!grid}
       className="flex-full flex flex-column"
     >
-      {() =>
-        // eslint-disable-line react/display-name
-        modal ? (
-          <Modal
-            inline
-            title={title}
-            footer={[cancelButton, saveButton]}
-            onClose={onCancel}
-          >
-            <PermissionsGrid
-              className="flex-full"
-              grid={grid}
-              onUpdatePermission={onUpdatePermission}
-              {...getEntityAndGroupIdFromLocation(location)}
+      {() => (
+        <div className="flex-full flex flex-column">
+          {isDirty && (
+            <EditBar
+              admin={admin}
+              title={t`You've made changes to permissions.`}
+              buttons={[cancelButton, saveButton]}
             />
-          </Modal>
-        ) : (
-          <div className="flex-full flex flex-column">
-            {isDirty && (
-              <EditBar
-                admin={admin}
-                title={t`You've made changes to permissions.`}
-                buttons={[cancelButton, saveButton]}
-              />
+          )}
+          <div className="wrapper pt2">
+            {grid && grid.crumbs ? (
+              <Breadcrumbs className="py1" crumbs={grid.crumbs} />
+            ) : (
+              <h2>{title}</h2>
             )}
-            <div className="wrapper pt2">
-              {grid && grid.crumbs ? (
-                <Breadcrumbs className="py1" crumbs={grid.crumbs} />
-              ) : (
-                <h2>{title}</h2>
-              )}
-            </div>
-            <PermissionsGrid
-              className="flex-full"
-              grid={grid}
-              onUpdatePermission={onUpdatePermission}
-              {...getEntityAndGroupIdFromLocation(location)}
-            />
           </div>
-        )
-      }
+          <PermissionsGrid
+            className="flex-full"
+            grid={grid}
+            onUpdatePermission={onUpdatePermission}
+            {...getEntityAndGroupIdFromLocation(location)}
+          />
+        </div>
+      )}
     </LoadingAndErrorWrapper>
   );
 };
