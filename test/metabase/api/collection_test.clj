@@ -100,7 +100,7 @@
 
 (defn- remove-ids-from-collection-detail [results & {:keys [keep-collection-id?]
                                                      :or {keep-collection-id? false}}]
-  (into {} (for [[k items] (select-keys results (cond->> [:name :cards :dashboards :pulses]
+  (into {} (for [[k items] (select-keys results (cond->> [:name :cards :dashboards :pulses :can_write]
                                                   keep-collection-id? (cons :id)))]
              [k (if-not (sequential? items)
                   items
@@ -123,7 +123,8 @@
   {:name       "Debt Collection"
    :cards      [{:name "Birthday Card",          :collection_position nil}]
    :dashboards [{:name "Dine & Dashboard",       :collection_position nil}]
-   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]}
+   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]
+   :can_write  false}
   (tt/with-temp Collection [collection {:name "Debt Collection"}]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
@@ -133,7 +134,8 @@
 ;; ...and that you can also filter so that you only see the children you want to see
 (expect
   {:name       "Art Collection"
-   :dashboards [{:name "Dine & Dashboard", :collection_position nil}]}
+   :dashboards [{:name "Dine & Dashboard", :collection_position nil}]
+   :can_write  false}
   (tt/with-temp Collection [collection {:name "Art Collection"}]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
@@ -243,7 +245,8 @@
    :id         "root"
    :cards      [{:name "Birthday Card",          :collection_position nil}]
    :dashboards [{:name "Dine & Dashboard",       :collection_position nil}]
-   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]}
+   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]
+   :can_write  true}
   (with-some-children-of-collection nil
     (-> ((user->client :crowberto) :get 200 "collection/root")
         (remove-ids-from-collection-detail :keep-collection-id? true))))
@@ -254,7 +257,8 @@
    :id         "root"
    :cards      []
    :dashboards []
-   :pulses     []}
+   :pulses     []
+   :can_write  false}
   ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no collection_id
   (with-some-children-of-collection nil
     (-> ((user->client :rasta) :get 200 "collection/root")
@@ -266,7 +270,8 @@
    :id         "root"
    :cards      [{:name "Birthday Card"          :collection_position nil}]
    :dashboards [{:name "Dine & Dashboard"       :collection_position nil}]
-   :pulses     [{:name "Electro-Magnetic Pulse" :collection_position nil}]}
+   :pulses     [{:name "Electro-Magnetic Pulse" :collection_position nil}]
+   :can_write  false}
   (with-some-children-of-collection nil
     (tt/with-temp* [PermissionsGroup           [group]
                     PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]

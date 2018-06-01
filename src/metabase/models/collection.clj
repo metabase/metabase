@@ -159,7 +159,11 @@
 ;; 10 and 30, but not 20, we will show them an "effective" location path of `/10/30/`. This is used for things like
 ;; breadcrumbing in the frontend.
 
-(s/defn permissions-set->visible-collection-ids :- (s/cond-pre (s/eq :all) #{su/IntGreaterThanZero})
+(def VisibleCollections
+  "Includes the possible values for visible collections, either `:all` or a set of ids"
+  (s/cond-pre (s/eq :all) #{su/IntGreaterThanZero}))
+
+(s/defn permissions-set->visible-collection-ids :- VisibleCollections
   "Given a `permissions-set` (presumably those of the current user), return a set of IDs of Collections that the
   permissions set allows you to view. For those with *root* permissions (e.g., an admin), this function will return
   `:all`, signifying that you are allowed to view all Collections.

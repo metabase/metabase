@@ -6,6 +6,7 @@ import { connect } from "react-redux";
 import { Link } from "react-router";
 
 import title from "metabase/hoc/Title";
+import withToast from "metabase/hoc/Toast";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
@@ -17,8 +18,6 @@ import _ from "underscore";
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import Parameters from "metabase/parameters/components/Parameters";
-
-import { addUndo, createUndo } from "metabase/redux/undo";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -40,8 +39,9 @@ const mapStateToProps = (state, props) => ({
   dashboardId: getDashboardId(state, props),
 });
 
-@connect(mapStateToProps, { addUndo, createUndo })
+@connect(mapStateToProps)
 @DashboardData
+@withToast
 @title(({ dashboard }) => dashboard && dashboard.name)
 class AutomaticDashboardApp extends React.Component {
   state = {
@@ -56,27 +56,22 @@ class AutomaticDashboardApp extends React.Component {
   }
 
   save = async () => {
-    const { dashboard, addUndo, createUndo } = this.props;
+    const { dashboard, triggerToast } = this.props;
     // remove the transient id before trying to save
     const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
-    addUndo(
-      createUndo({
-        type: "metabase/automatic-dashboards/link-to-created-object",
-        message: () => (
-          <div className="flex align-center">
-            <Icon name="dashboard" size={22} className="mr2" color="#93A1AB" />
-            {t`Your dashboard was saved`}
-            <Link
-              className="link text-bold ml1"
-              to={Urls.dashboard(newDashboard.id)}
-            >
-              {t`See it`}
-            </Link>
-          </div>
-        ),
-        action: null,
-      }),
+    triggerToast(
+      <div className="flex align-center">
+        <Icon name="dashboard" size={22} className="mr2" color="#93A1AB" />
+        {t`Your dashboard was saved`}
+        <Link
+          className="link text-bold ml1"
+          to={Urls.dashboard(newDashboard.id)}
+        >
+          {t`See it`}
+        </Link>
+      </div>,
     );
+
     this.setState({ savedDashboardId: newDashboard.id });
     MetabaseAnalytics.trackEvent("AutoDashboard", "Save");
   };

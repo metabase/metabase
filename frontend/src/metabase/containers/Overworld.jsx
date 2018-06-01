@@ -67,7 +67,7 @@ class Overworld extends React.Component {
                   <Link
                     to="/collection/root"
                     color={normal.grey2}
-                    hover={{ color: normal.blue }}
+                    className="text-brand-hover"
                   >
                     <Flex p={4} align="center">
                       <h3>See more items</h3>

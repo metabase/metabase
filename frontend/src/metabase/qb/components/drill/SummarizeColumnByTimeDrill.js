@@ -36,15 +36,15 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     ? getFieldRefFromColumn(column)
     : ["field-id", dateField.id];
 
-  return ["sum", "count"]
+  return ["sum"]
     .map(getAggregator)
     .filter(aggregator => isCompatibleAggregatorForField(aggregator, column))
     .map(aggregator => ({
       name: "summarize-by-time",
-      section: "sum",
+      section: "distribution",
       title: (
         <span>
-          {capitalize(aggregator.short)} {t`by time`}
+          {capitalize(aggregator.short)} {t`over time`}
         </span>
       ),
       question: () =>

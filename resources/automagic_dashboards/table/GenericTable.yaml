@@ -35,13 +35,31 @@ dimensions:
       field_type: GenericTable.Category
       max_cardinality: 1
       score: 100
+  - Date:
+      field_type: GenericTable.Date
+      score: 50
+  - Time:
+      field_type: GenericTable.Time
+      score: 50
   - Timestamp:
       field_type: DateTime
       score: 60
   - JoinDate:
-      field_type: GenericTable.JoinTimestamp
+      field_type: GenericTable.JoinDate
       score: 50
   - CreateDate:
+      field_type: CreationDate
+      score: 80
+  - JoinTime:
+      field_type: GenericTable.JoinTime
+      score: 50
+  - CreateTime:
+      field_type: CreationTime
+      score: 80
+  - JoinTimestamp:
+      field_type: GenericTable.JoinTimestamp
+      score: 50
+  - CreateTimestamp:
       field_type: CreationTimestamp
       score: 80
   - FK: FK
@@ -52,14 +70,23 @@ dimensions:
   - ZIP: ZipCode
 filters:
   - Last30Days:
-      filter: ["time-interval", [dimension, CreateDate], -30, day]
+      filter: ["time-interval", [dimension, CreateTimestamp], -30, day]
       score: 100
   - Last30Days:
-      filter: ["time-interval", [dimension, JoinDate], -30, day]
+      filter: ["time-interval", [dimension, CreateDate], -30, day]
+      score: 99
+  - Last30Days:
+      filter: ["time-interval", [dimension, JoinTimestamp], -30, day]
       score: 90
+  - Last30Days:
+      filter: ["time-interval", [dimension, JoinDate], -30, day]
+      score: 89
   - Last30Days:
       filter: ["time-interval", [dimension, Timestamp], -30, day]
       score: 80
+  - Last30Days:
+      filter: ["time-interval", [dimension, Date], -30, day]
+      score: 79
 groups:
 - Overview:
     title: Summary
@@ -73,8 +100,11 @@ groups:
     title: How [[this]] are distributed
 dashboard_filters:
 - Timestamp
+- Date
 - JoinDate
+- JoinTimestamp
 - CreateDate
+- CreateTimestamp
 - GenericCategoryMedium
 - Source
 - Country
@@ -167,7 +197,21 @@ cards:
   - CountByJoinDate:
       title: "[[this]] that have joined over time"
       visualization: line
+      dimensions: JoinTimestamp
+      metrics: Count
+      score: 90
+      group: ByTime
+  - CountByJoinDate:
+      title: "[[this]] that have joined over time"
+      visualization: line
       dimensions: JoinDate
+      metrics: Count
+      score: 90
+      group: ByTime
+  - CountByCreateDate:
+      title: New [[this]] over time
+      visualization: line
+      dimensions: CreateTimestamp
       metrics: Count
       score: 90
       group: ByTime
@@ -185,6 +229,13 @@ cards:
       metrics: Count
       score: 20
       group: ByTime
+  - CountByTimestamp:
+      title: "[[this]] by [[Timestamp]]"
+      visualization: line
+      dimensions: Date
+      metrics: Count
+      score: 20
+      group: ByTime
   - NumberOverTime:
       title: "[[GenericNumber]] over time"
       visualization: line
@@ -194,6 +245,24 @@ cards:
         - Avg
       score: 70
       group: ByTime
+  - NumberOverTime:
+      title: "[[GenericNumber]] over time"
+      visualization: line
+      dimensions: Date
+      metrics:
+        - Sum
+        - Avg
+      score: 70
+      group: ByTime
+  - NumberOverJoinDate:
+      title: "[[GenericNumber]] by join date"
+      visualization: line
+      dimensions: JoinTimestamp
+      metrics:
+        - Sum
+        - Avg
+      score: 80
+      group: ByTime
   - NumberOverJoinDate:
       title: "[[GenericNumber]] by join date"
       visualization: line
@@ -202,6 +271,15 @@ cards:
         - Sum
         - Avg
       score: 80
+      group: ByTime
+  - NumberOverCreateDate:
+      title: "[[GenericNumber]] over time"
+      visualization: line
+      dimensions: CreateTimestamp
+      metrics:
+        - Sum
+        - Avg
+      score: 90
       group: ByTime
   - NumberOverCreateDate:
       title: "[[GenericNumber]] over time"
@@ -222,11 +300,31 @@ cards:
       score: 60
       group: ByTime
       x_label: "[[Timestamp]]"
+  - DayOfWeekTimestamp:
+      title: "[[Timestamp]] by day of the week"
+      visualization: bar
+      dimensions:
+        - Date:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: ByTime
+      x_label: "[[Timestamp]]"
   - HourOfDayTimestamp:
       title: "[[Timestamp]] by hour of the day"
       visualization: bar
       dimensions:
       - Timestamp:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: ByTime
+      x_label: "[[Timestamp]]"
+  - HourOfDayTimestamp:
+      title: "[[Timestamp]] by hour of the day"
+      visualization: bar
+      dimensions:
+      - Time:
           aggregation: hour-of-day
       metrics: Count
       score: 50
@@ -242,6 +340,16 @@ cards:
       score: 40
       group: ByTime
       x_label: "[[Timestamp]]"
+  - MonthOfYearTimestamp:
+      title: "[[Timestamp]] by month of the year"
+      visualization: bar
+      dimensions:
+        - Date:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[Timestamp]]"
   - QuarterOfYearTimestamp:
       title: "[[Timestamp]] by quarter of the year"
       visualization: bar
@@ -252,6 +360,26 @@ cards:
       score: 40
       group: ByTime
       x_label: "[[Timestamp]]"
+  - QuarterOfYearTimestamp:
+      title: "[[Timestamp]] by quarter of the year"
+      visualization: bar
+      dimensions:
+        - Date:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[Timestamp]]"
+  - DayOfWeekCreateDate:
+      title: Weekdays when new [[this]] were added
+      visualization: bar
+      dimensions:
+        - CreateTimestamp:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: ByTime
+      x_label: Created At by day of the week
   - DayOfWeekCreateDate:
       title: Weekdays when new [[this]] were added
       visualization: bar
@@ -266,12 +394,32 @@ cards:
       title: Hours when new [[this]] were added
       visualization: bar
       dimensions:
-      - CreateDate:
+      - CreateTimestamp:
           aggregation: hour-of-day
       metrics: Count
       score: 50
       group: ByTime
       x_label: Created At by hour of the day
+  - HourOfDayCreateDate:
+      title: Hours when new [[this]] were added
+      visualization: bar
+      dimensions:
+      - CreateTime:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: ByTime
+      x_label: Created At by hour of the day
+  - DayOfMonthCreateDate:
+      title: Days when new [[this]] were added
+      visualization: bar
+      dimensions:
+        - CreateTimestamp:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Created At by day of the month
   - DayOfMonthCreateDate:
       title: Days when new [[this]] were added
       visualization: bar
@@ -286,12 +434,32 @@ cards:
       title: Months when new [[this]] were added
       visualization: bar
       dimensions:
+        - CreateTimestamp:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Created At by month of the year
+  - MonthOfYearCreateDate:
+      title: Months when new [[this]] were added
+      visualization: bar
+      dimensions:
         - CreateDate:
             aggregation: month-of-year
       metrics: Count
       score: 40
       group: ByTime
       x_label: Created At by month of the year
+  - QuerterOfYearCreateDate:
+      title: Quarters when new [[this]] were added
+      visualization: bar
+      dimensions:
+        - CreateTimestamp:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Created At by quarter of the year
   - QuerterOfYearCreateDate:
       title: Quarters when new [[this]] were added
       visualization: bar
@@ -306,6 +474,16 @@ cards:
       title: Weekdays when [[this]] joined
       visualization: bar
       dimensions:
+        - JoinTimestamp:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: ByTime
+      x_label: Join date by day of the week
+  - DayOfWeekJoinDate:
+      title: Weekdays when [[this]] joined
+      visualization: bar
+      dimensions:
         - JoinDate:
             aggregation: day-of-week
       metrics: Count
@@ -316,12 +494,32 @@ cards:
       title: Hours when [[this]] joined
       visualization: bar
       dimensions:
-      - JoinDate:
+      - JoinTimestamp:
           aggregation: hour-of-day
       metrics: Count
       score: 50
       group: ByTime
       x_label: Join date by hour of the day
+  - HourOfDayJoinDate:
+      title: Hours when [[this]] joined
+      visualization: bar
+      dimensions:
+      - JoinTime:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: ByTime
+      x_label: Join date by hour of the day
+  - DayOfMonthJoinDate:
+      title: Days of the month when [[this]] joined
+      visualization: bar
+      dimensions:
+        - JoinTimestamp:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Join date by day of the month
   - DayOfMonthJoinDate:
       title: Days of the month when [[this]] joined
       visualization: bar
@@ -336,12 +534,32 @@ cards:
       title: Months when [[this]] joined
       visualization: bar
       dimensions:
+        - JoinTimestamp:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Join date by month of the year
+  - MonthOfYearJoinDate:
+      title: Months when [[this]] joined
+      visualization: bar
+      dimensions:
         - JoinDate:
             aggregation: month-of-year
       metrics: Count
       score: 40
       group: ByTime
       x_label: Join date by month of the year
+  - QuerterOfYearJoinDate:
+      title: Quarters when [[this]] joined
+      visualization: bar
+      dimensions:
+        - JoinTimestamp:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Join date by quarter of the year
   - QuerterOfYearJoinDate:
       title: Quarters when [[this]] joined
       visualization: bar

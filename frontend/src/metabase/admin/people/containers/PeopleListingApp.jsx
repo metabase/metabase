@@ -336,7 +336,7 @@ export default class PeopleListingApp extends Component {
         onClose={this.onCloseModal}
       >
         <div className="px4 pb4">
-          {t`They'll be able to log in again, and they'll be placed back into the groupts they were in before their account was deactivated.`}
+          {t`They'll be able to log in again, and they'll be placed back into the groups they were in before their account was deactivated.`}
         </div>
       </Modal>
     );

@@ -65,16 +65,18 @@
   unspecified, it will return objects of all types."
   [id model]
   {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
-  (merge
-   (as-> (api/read-check Collection id, :archived false) <>
-     (hydrate <> :effective_location :effective_children :effective_ancestors)
-     (assoc <> :can_write (mi/can-write? <>)))
-   (collection-children model id)))
+  (-> (api/read-check Collection id, :archived false)
+      (hydrate :effective_location :effective_children :effective_ancestors :can_write)
+      (merge (collection-children model id))))
 
 
 (defn- current-user-has-root-collection-read-perms? []
   (perms/set-has-full-permissions? @api/*current-user-permissions-set*
     (perms/collection-read-path collection/root-collection)))
+
+(defn- current-user-has-root-collection-write-perms? []
+  (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+    (perms/collection-readwrite-path collection/root-collection)))
 
 (api/defendpoint GET "/root"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
@@ -92,6 +94,7 @@
   (merge
    {:name                (tru "Root Collection")
     :id                  "root"
+    :can_write           (current-user-has-root-collection-write-perms?)
     :effective_location  nil
     :effective_ancestors []
     ;; anybody gets to see other Collections that have an Effective Location of being in the Root Collection.
