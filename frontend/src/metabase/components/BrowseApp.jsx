@@ -1,18 +1,21 @@
 import React from "react";
-import { Box, Flex, Subhead } from "rebass";
+import { Box, Flex, Subhead, Truncate, Text } from "rebass";
 import { t } from "c-3po";
 
 import EntityItem from "metabase/components/EntityItem";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 
-import { normal } from "metabase/lib/colors";
 import Question from "metabase-lib/lib/Question";
 
+import { normal } from "metabase/lib/colors";
+
+import Button from "metabase/components/Button";
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
+import Tooltip from "metabase/components/Tooltip";
 
 export const DatabaseListLoader = props => (
   <EntityListLoader entityType="databases" {...props} />
@@ -30,6 +33,19 @@ const TableListLoader = ({ dbId, schemaName, ...props }) => (
   />
 );
 
+const FieldListLoader = ({ tableId, ...props }) => (
+  <EntityListLoader entityType="fields" entityQuery={{ tableId }} {...props} />
+);
+
+const TableInfoLoader = ({ tableId, ...props }) => (
+  <EntityObjectLoader
+    entityType="tables"
+    entityId={tableId}
+    properties={["name", "description"]}
+    {...props}
+  />
+);
+
 const DatabaseName = ({ dbId }) => (
   <EntityObjectLoader
     entityType="databases"
@@ -38,6 +54,19 @@ const DatabaseName = ({ dbId }) => (
     loadingAndErrorWrapper={false}
   >
     {({ object }) => (object ? <span>{object.name}</span> : null)}
+  </EntityObjectLoader>
+);
+
+const TableName = ({ tableId }) => (
+  <EntityObjectLoader
+    entityType="tables"
+    entityId={tableId}
+    properties={["name"]}
+    loadingAndErrorWrapper={false}
+  >
+    {({ object }) =>
+      object ? <span>{object.display_name || object.name}</span> : null
+    }
   </EntityObjectLoader>
 );
 
@@ -128,6 +157,19 @@ export class TableBrowser extends React.Component {
                               name={table.display_name || table.name}
                               iconName="table"
                               iconColor={normal.purple}
+                              withReference={
+                                <Box className="hover-child" ml="auto">
+                                  <Link
+                                    to={`/browse/${dbId}/table/${
+                                      table.id
+                                    }/info`}
+                                  >
+                                    <Tooltip tooltip={t`Learn more about this`}>
+                                      <Icon name="info" />
+                                    </Tooltip>
+                                  </Link>
+                                </Box>
+                              }
                             />
                           </Card>
                         </Link>
@@ -178,19 +220,128 @@ export class DatabaseBrowser extends React.Component {
   }
 }
 
+export class InfoApp extends React.Component {
+  render() {
+    const { params } = this.props;
+    const { dbId, tableId } = params;
+
+    return (
+      <Box>
+        <BrowserCrumbs
+          crumbs={[
+            { title: t`Your data`, to: "browse" },
+            {
+              title: <DatabaseName dbId={dbId} />,
+              to: `browse/${dbId}`,
+            },
+            {
+              title: <TableName tableId={tableId} />,
+            },
+            {
+              title: t`Info`,
+            },
+          ]}
+        />
+
+        <Flex>
+          <Box w={2 / 3}>
+            <FieldListLoader tableId={tableId}>
+              {({ list }) => {
+                return (
+                  <table>
+                    <thead>
+                      <tr>
+                        <td>Name</td>
+                        <td>Visibility</td>
+                        <td>Type</td>
+                        <td />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {list.map(field => {
+                        return (
+                          <tr>
+                            <td>
+                              <Link>
+                                <Subhead>{field.display_name}</Subhead>
+                              </Link>
+                              <Text style={{ maxWidth: 420 }}>
+                                {field.description}
+                              </Text>
+                            </td>
+                            <td>{field.visibility_type}</td>
+                            <td />
+                            <td>
+                              <Icon name="gear2" />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                );
+              }}
+            </FieldListLoader>
+          </Box>
+          <Box w={1 / 3} ml={2}>
+            <TableInfoLoader tableId={tableId}>
+              {({ object }) => {
+                console.log("description", object);
+                return (
+                  <Box>
+                    <Button primary>Xray this table</Button>
+
+                    <h3>About this table</h3>
+                    <Text>{object.description}</Text>
+
+                    <h3>About this table</h3>
+                  </Box>
+                );
+              }}
+            </TableInfoLoader>
+          </Box>
+        </Flex>
+      </Box>
+    );
+  }
+}
+
+function colorForCrumb(isLast) {
+  return isLast ? normal.grey2 : normal.text;
+}
+
+function isLastCrumb(index, crumbs) {
+  return index < crumbs.length - 1;
+}
+
 const BrowserCrumbs = ({ crumbs }) => (
   <Flex align="center">
-    {crumbs.filter(c => c).map((crumb, index, crumbs) => [
-      crumb.to ? (
-        <Link key={"title" + index} to={crumb.to}>
-          <BrowseHeader>{crumb.title}</BrowseHeader>
-        </Link>
-      ) : (
-        <BrowseHeader>{crumb.title}</BrowseHeader>
-      ),
-      index < crumbs.length - 1 ? (
-        <Icon key={"divider" + index} name="chevronright" mx={2} />
-      ) : null,
-    ])}
+    {crumbs.filter(c => c).map((crumb, index, crumbs) => {
+      const last = isLastCrumb(index, crumbs);
+      return [
+        crumb.to ? (
+          <Link
+            key={"title" + index}
+            to={crumb.to}
+            color={colorForCrumb(last)}
+            className="text-brand-hover"
+          >
+            <BrowseHeader>{crumb.title}</BrowseHeader>
+          </Link>
+        ) : (
+          <Box color={colorForCrumb(last)}>
+            <BrowseHeader>{crumb.title}</BrowseHeader>
+          </Box>
+        ),
+        index < crumbs.length - 1 ? (
+          <Icon
+            key={"divider" + index}
+            name="chevronright"
+            mx={2}
+            color={normal.grey2}
+          />
+        ) : null,
+      ];
+    })}
   </Flex>
 );

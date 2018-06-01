@@ -40,6 +40,18 @@ export default createEntity({
   path: "/api/field",
   schema: FieldSchema,
 
+  api: {
+    list: async params => {
+      const tableId = params.tableId;
+      if (tableId) {
+        const table = await MetabaseApi.table_query_metadata({ tableId });
+        return table.fields;
+      } else {
+        console.log("not working so good");
+      }
+    },
+  },
+
   // ACTION CREATORS
 
   objectActions: {

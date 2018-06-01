@@ -1,6 +1,6 @@
 import React from "react";
-
 import { Flex, Box, Truncate } from "rebass";
+
 import Icon from "metabase/components/Icon";
 
 import { normal } from "metabase/lib/colors";
@@ -22,7 +22,14 @@ const IconWrapper = Flex.extend`
   border-radius: 6px;
 `;
 
-const EntityItem = ({ name, iconName, iconColor, item, onPin }) => {
+const EntityItem = ({
+  name,
+  iconName,
+  iconColor,
+  item,
+  onPin,
+  withReference,
+}) => {
   return (
     <EntityItemWrapper py={2} px={2} className="hover-parent hover--visibility">
       <IconWrapper p={1} mr={1} align="center" justify="center">
@@ -44,6 +51,7 @@ const EntityItem = ({ name, iconName, iconColor, item, onPin }) => {
           <Icon name="pin" />
         </Box>
       )}
+      {withReference && withReference}
     </EntityItemWrapper>
   );
 };
