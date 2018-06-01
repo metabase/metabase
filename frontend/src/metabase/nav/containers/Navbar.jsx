@@ -234,7 +234,7 @@ export default class Navbar extends Component {
 
   renderMainNav() {
     return (
-      <Flex className="relative bg-brand text-white z4" align="center">
+      <Flex className="Nav relative bg-brand text-white z4" align="center">
         <Box>
           <Link
             to="/"
