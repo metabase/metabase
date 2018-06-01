@@ -23,7 +23,7 @@ export default class CreatedDatabaseModal extends Component {
           </p>
         </div>
 
-        <div className="flex layout-centered mb4">
+        <div className="flex layout-centered">
           <a className="link" onClick={onDone}>{t`I'm good thanks`}</a>
           <Link
             to={`/explore/${databaseId}`}
