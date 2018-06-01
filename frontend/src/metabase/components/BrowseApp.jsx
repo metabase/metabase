@@ -70,6 +70,23 @@ const TableName = ({ tableId }) => (
   </EntityObjectLoader>
 );
 
+const FieldLoader = ({ fieldId, ...props }) => (
+  <EntityObjectLoader entityType="fields" entityId={fieldId} {...props} />
+);
+
+const FieldName = ({ fieldId }) => (
+  <EntityObjectLoader
+    entityType="fields"
+    entityId={fieldId}
+    properties={["name"]}
+    loadingAndErrorWrapper={false}
+  >
+    {({ object }) =>
+      object ? <span>{object.display_name || object.name}</span> : null
+    }
+  </EntityObjectLoader>
+);
+
 const BrowseHeader = ({ children }) => (
   <Box my={3}>
     <Subhead>{children}</Subhead>
@@ -220,7 +237,60 @@ export class DatabaseBrowser extends React.Component {
   }
 }
 
-export class InfoApp extends React.Component {
+export class FieldInfoApp extends React.Component {
+  render() {
+    const { params } = this.props;
+    const { dbId, tableId, fieldId } = params;
+    return (
+      <Box>
+        <BrowserCrumbs
+          crumbs={[
+            { title: t`Your data`, to: "browse" },
+            {
+              title: <DatabaseName dbId={dbId} />,
+              to: `browse/${dbId}`,
+            },
+            {
+              title: <TableName tableId={tableId} />,
+            },
+            {
+              title: <FieldName fieldId={fieldId} />,
+            },
+          ]}
+        />
+        <Box>
+          <FieldLoader fieldId={fieldId}>
+            {({ object }) => {
+              console.log("object", object);
+              return (
+                <Box>
+                  <Box mb={2}>
+                    <h4>{t`Description`}</h4>
+                    <Text>{object.description}</Text>
+                  </Box>
+                  <Box mb={2}>
+                    <h4>{t`Actual name in database`}</h4>
+                    <Text>{object.name}</Text>
+                  </Box>
+                  <Box mb={2}>
+                    <h4>{t`Data type`}</h4>
+                    <Text>{object.base_type}</Text>
+                  </Box>
+                  <Box mb={2}>
+                    <h4>{t`Field type`}</h4>
+                    <Text>{object.special_type}</Text>
+                  </Box>
+                </Box>
+              );
+            }}
+          </FieldLoader>
+        </Box>
+      </Box>
+    );
+  }
+}
+
+export class TableInfoApp extends React.Component {
   render() {
     const { params } = this.props;
     const { dbId, tableId } = params;
@@ -262,7 +332,11 @@ export class InfoApp extends React.Component {
                         return (
                           <tr>
                             <td>
-                              <Link>
+                              <Link
+                                to={`browse/${dbId}/table/${tableId}/field/${
+                                  field.id
+                                }/info`}
+                              >
                                 <Subhead>{field.display_name}</Subhead>
                               </Link>
                               <Text style={{ maxWidth: 420 }}>

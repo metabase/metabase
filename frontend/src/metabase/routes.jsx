@@ -33,7 +33,8 @@ import {
   DatabaseBrowser,
   SchemaBrowser,
   TableBrowser,
-  InfoApp,
+  TableInfoApp,
+  FieldInfoApp,
 } from "metabase/components/BrowseApp";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
@@ -209,13 +210,13 @@ export const getRoutes = store => (
 
         <Route path="browse" component={BrowseApp}>
           <IndexRoute component={DatabaseBrowser} />
-          <Route path=":dbId" component={SchemaBrowser}>
-            <Route path="info" component={InfoApp} />
-          </Route>
-          <Route path=":dbId/schema/:schemaName" component={TableBrowser}>
-            <Route path="info" component={InfoApp} />
-          </Route>
-          <Route path=":dbId/table/:tableId/info" component={InfoApp} />
+          <Route path=":dbId" component={SchemaBrowser} />
+          <Route path=":dbId/schema/:schemaName" component={TableBrowser} />
+          <Route path=":dbId/table/:tableId/info" component={TableInfoApp} />
+          <Route
+            path=":dbId/table/:tableId/field/:fieldId/info"
+            component={FieldInfoApp}
+          />
         </Route>
 
         {/* INDIVIDUAL DASHBOARDS */}
