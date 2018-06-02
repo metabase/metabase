@@ -194,7 +194,6 @@ export default class Navbar extends Component {
 
           <ProfileLink {...this.props} />
         </div>
-        {this.renderModal()}
       </nav>
     );
   }
@@ -213,7 +212,6 @@ export default class Navbar extends Component {
             </Link>
           </li>
         </ul>
-        {this.renderModal()}
       </nav>
     );
   }
