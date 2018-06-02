@@ -7,6 +7,16 @@ import Question from "metabase-lib/lib/Question";
 export const activity = "/activity";
 
 export const newQuestion = () => "/question/new";
+
+export const newDashboard = collectionId =>
+  `collection/${collectionId}/new_dashboard`;
+
+export const newPulse = collectionId =>
+  `/pulse/create?collectionId=${collectionId}`;
+
+export const newCollection = collectionId =>
+  `collection/${collectionId}/new_collection`;
+
 export function question(cardId, hash = "", query = "") {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
