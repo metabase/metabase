@@ -104,7 +104,7 @@ export default class CreateDashboardModal extends Component {
         onClose={this.props.onClose}
       >
         <form className="Modal-form" onSubmit={this.createNewDash}>
-          <div className="Form-inputs">
+          <div>
             <FormField
               name="name"
               displayName={t`Name`}

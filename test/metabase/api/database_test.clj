@@ -579,13 +579,14 @@
 
 ;; Can we RESCAN all the FieldValues for a DB?
 (expect
-  (let [update-field-values-called? (atom false)]
+  :sync-called
+  (let [update-field-values-called? (promise)]
     (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
       (with-redefs [field-values/update-field-values! (fn [synced-db]
                                                         (when (= (u/get-id synced-db) (u/get-id db))
-                                                          (reset! update-field-values-called? true)))]
+                                                          (deliver update-field-values-called? :sync-called)))]
         ((user->client :crowberto) :post 200 (format "database/%d/rescan_values" (u/get-id db)))
-        @update-field-values-called?))))
+        (deref update-field-values-called? long-timeout :sync-never-called)))))
 
 ;; (Non-admins should not be allowed to trigger re-scan)
 (expect
