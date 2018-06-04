@@ -1,13 +1,13 @@
 (ns metabase.events
-  "Provides a very simply event bus using `core.async` to allow publishing and subscribing to intersting
-   topics happening throughout the Metabase system in a decoupled way.
+  "Provides a very simply event bus using `core.async` to allow publishing and subscribing to interesting topics
+  happening throughout the Metabase system in a decoupled way.
 
-   ## Regarding Events Initialization:
+  ## Regarding Events Initialization:
 
-   The most appropriate way to initialize event listeners in any `metabase.events.*` namespace is to implement the
-   `events-init` function which accepts zero arguments.  This function is dynamically resolved and called exactly
-   once when the application goes through normal startup procedures.  Inside this function you can do any work
-   needed and add your events subscribers to the bus as usual via `start-event-listener!`."
+  The most appropriate way to initialize event listeners in any `metabase.events.*` namespace is to implement the
+  `events-init` function which accepts zero arguments. This function is dynamically resolved and called exactly once
+  when the application goes through normal startup procedures. Inside this function you can do any work needed and add
+  your events subscribers to the bus as usual via `start-event-listener!`."
   (:require [clojure.core.async :as async]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
@@ -15,14 +15,15 @@
                       [util :as u])))
 
 
-;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
+;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
 
 
 (defonce ^:private events-initialized?
   (atom nil))
 
 (defn- find-and-load-event-handlers!
-  "Search Classpath for namespaces that start with `metabase.events.`, and call their `events-init` function if it exists."
+  "Search Classpath for namespaces that start with `metabase.events.`, and call their `events-init` function if it
+  exists."
   []
   (when-not config/is-test?
     (doseq [ns-symb @u/metabase-namespace-symbols
@@ -41,7 +42,7 @@
     (reset! events-initialized? true)))
 
 
-;;; ## ---------------------------------------- PUBLICATION ----------------------------------------
+;;; -------------------------------------------------- PUBLICATION ---------------------------------------------------
 
 
 (def ^:private events-channel
@@ -49,25 +50,22 @@
   (async/chan))
 
 (def ^:private events-publication
-  "Publication for general events channel.
-   Expects a map as input and the map must have a `:topic` key."
+  "Publication for general events channel. Expects a map as input and the map must have a `:topic` key."
   (async/pub events-channel :topic))
 
 (defn publish-event!
-  "Publish an item into the events stream.
-  Returns the published item to allow for chaining."
+  "Publish an item into the events stream. Returns the published item to allow for chaining."
   [topic event-item]
   {:pre [(keyword topic)]}
-  (async/go (async/>! events-channel {:topic (keyword topic) :item event-item}))
+  (async/go (async/>! events-channel {:topic (keyword topic), :item event-item}))
   event-item)
 
 
-;;; ## ---------------------------------------- SUBSCRIPTION ----------------------------------------
+;;; -------------------------------------------------- SUBSCRIPTION --------------------------------------------------
 
 (defn- subscribe-to-topic!
-  "Subscribe to a given topic of the general events stream.
-   Expects a topic to subscribe to and a `core.async` channel.
-   Returns the channel to allow for chaining."
+  "Subscribe to a given topic of the general events stream. Expects a topic to subscribe to and a `core.async` channel.
+  Returns the channel to allow for chaining."
   [topic channel]
   {:pre [(keyword topic)]}
   (async/sub events-publication (keyword topic) channel)
@@ -96,8 +94,7 @@
     (recur)))
 
 
-;;; ## ---------------------------------------- HELPER FUNCTIONS ----------------------------------------
-
+;;; ------------------------------------------------ HELPER FUNCTIONS ------------------------------------------------
 
 (defn topic->model
   "Determine a valid `model` identifier for the given TOPIC."

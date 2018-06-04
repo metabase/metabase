@@ -15,6 +15,7 @@
              [ssh :as ssh]]))
 
 (defrecord OracleDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Oracle"))
 

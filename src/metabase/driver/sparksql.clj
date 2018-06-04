@@ -3,6 +3,7 @@
              [set :as set]
              [string :as s]]
             [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
@@ -15,12 +16,14 @@
              [hive-like :as hive-like]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util.honeysql-extensions :as hx]
+            [puppetlabs.i18n.core :refer [trs]])
   (:import clojure.lang.Reflector
            java.sql.DriverManager
            metabase.query_processor.interface.Field))
 
 (defrecord SparkSQLDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Spark SQL"))
 
@@ -94,23 +97,6 @@
   [{:keys [host port db jdbc-flags]
     :or   {host "localhost", port 10000, db "", jdbc-flags ""}
     :as   opts}]
-  ;; manually register our FixedHiveDriver with java.sql.DriverManager and make sure it's the only driver returned for
-  ;; jdbc:hive2, since we do not want to use the driver registered by the super class of our FixedHiveDriver.
-  ;;
-  ;; Class/forName and invokeConstructor is required to make this compile, but it may be possible to solve this with
-  ;; the right project.clj magic
-  (DriverManager/registerDriver
-   (Reflector/invokeConstructor
-    (Class/forName "metabase.driver.FixedHiveDriver")
-    (into-array [])))
-  (loop []
-    (when-let [driver (try
-                        (DriverManager/getDriver "jdbc:hive2://localhost:10000")
-                        (catch java.sql.SQLException _
-                          nil))]
-      (when-not (instance? (Class/forName "metabase.driver.FixedHiveDriver") driver)
-        (DriverManager/deregisterDriver driver)
-        (recur))))
   (merge {:classname   "metabase.driver.FixedHiveDriver"
           :subprotocol "hive2"
           :subname     (str "//" host ":" port "/" db jdbc-flags)}
@@ -131,28 +117,28 @@
     (s/replace s #"-" "_")))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
-(defn- describe-database [driver {:keys [details] :as database}]
+(defn- describe-database [_ {:keys [details] :as database}]
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
              (set (for [result (jdbc/query {:connection conn}
-                                 ["show tables"])]
-                    {:name (:tablename result)
+                                           ["show tables"])]
+                    {:name   (:tablename result)
                      :schema (when (> (count (:database result)) 0)
                                (:database result))})))})
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
-(defn- describe-table [driver {:keys [details] :as database} table]
+(defn- describe-table [_ {:keys [details] :as database} table]
   (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-    {:name (:name table)
+    {:name   (:name table)
      :schema (:schema table)
      :fields (set (for [result (jdbc/query {:connection conn}
-                                 [(if (:schema table)
-                                    (format "describe `%s`.`%s`"
-                                            (dash-to-underscore (:schema table))
-                                            (dash-to-underscore (:name table)))
-                                    (str "describe " (dash-to-underscore (:name table))))])]
-                    {:name (:col_name result)
+                                           [(if (:schema table)
+                                              (format "describe `%s`.`%s`"
+                                                      (dash-to-underscore (:schema table))
+                                                      (dash-to-underscore (:name table)))
+                                              (str "describe " (dash-to-underscore (:name table))))])]
+                    {:name          (:col_name result)
                      :database-type (:data_type result)
-                     :base-type (hive-like/column->base-type (keyword (:data_type result)))}))}))
+                     :base-type     (hive-like/column->base-type (keyword (:data_type result)))}))}))
 
 ;; we need this because transactions are not supported in Hive 1.2.1
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
@@ -223,4 +209,39 @@
           :string-length-fn          (u/drop-first-arg hive-like/string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg hive-like/unix-timestamp->timestamp)}))
 
-(driver/register-driver! :sparksql (SparkSQLDriver.))
+(defn- register-hive-jdbc-driver! [& {:keys [remaining-tries], :or {remaining-tries 5}}]
+  ;; manually register our FixedHiveDriver with java.sql.DriverManager
+  (DriverManager/registerDriver
+   (Reflector/invokeConstructor
+    (Class/forName "metabase.driver.FixedHiveDriver")
+    (into-array [])))
+  ;; now make sure it's the only driver returned
+  ;; for jdbc:hive2, since we do not want to use the driver registered by the super class of our FixedHiveDriver.
+  (when-let [driver (u/ignore-exceptions
+                      (DriverManager/getDriver "jdbc:hive2://localhost:10000"))]
+    (let [registered? (instance? (Class/forName "metabase.driver.FixedHiveDriver") driver)]
+      (cond
+        registered?
+        true
+
+        ;; if it's not the registered driver, deregister the current driver (if applicable) and try a couple more times
+        ;; before giving up :(
+        (and (not registered?)
+             (> remaining-tries 0))
+        (do
+          (when driver
+            (DriverManager/deregisterDriver driver))
+          (recur {:remaining-tries (dec remaining-tries)}))
+
+        :else
+        (log/error
+         (trs "Error: metabase.driver.FixedHiveDriver is registered, but JDBC does not seem to be using it."))))))
+
+(defn -init-driver
+  "Register the SparkSQL driver if the SparkSQL dependencies are available."
+  []
+  (when (u/ignore-exceptions (Class/forName "metabase.driver.FixedHiveDriver"))
+    (log/info (trs "Found metabase.driver.FixedHiveDriver."))
+    (when (u/ignore-exceptions (register-hive-jdbc-driver!))
+      (log/info (trs "Successfully registered metabase.driver.FixedHiveDriver with JDBC."))
+      (driver/register-driver! :sparksql (SparkSQLDriver.)))))

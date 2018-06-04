@@ -1,5 +1,10 @@
 (ns metabase.automagic-dashboards.filters
-  (:require [metabase.models.field :refer [Field] :as field]
+  (:require [clojure.string :as str]
+            [clj-time.format :as t.format]
+            [metabase.models
+             [field :refer [Field] :as field]
+             [table :refer [Table]]]
+            [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -51,6 +56,28 @@
        (or (isa? (:base_type field) :type/DateTime)
            (field/unix-timestamp? field))))
 
+(defn- interestingness
+  [{:keys [base_type special_type fingerprint] :as field}]
+  (cond-> 0
+    (some-> fingerprint :global :distinct-count (< 10)) inc
+    (some-> fingerprint :global :distinct-count (> 20)) dec
+    ((descendants :type/Category) special_type)         inc
+    (field/unix-timestamp? field)                       inc
+    (isa? base_type :type/DateTime)                     inc
+    ((descendants :type/DateTime) special_type)         inc
+    (isa? special_type :type/CreationTimestamp)         inc
+    (#{:type/State :type/Country} special_type)         inc))
+
+
+(defn interesting-fields
+  "Pick out interesting fields and sort them by interestingness."
+  [fields]
+  (->> fields
+       (filter (fn [{:keys [special_type] :as field}]
+                 (or (datetime? field)
+                     (isa? special_type :type/Category))))
+       (sort-by interestingness >)))
+
 (defn- candidates-for-filtering
   [fieldset cards]
   (->> cards
@@ -58,9 +85,7 @@
        (map field-reference->id)
        distinct
        (map fieldset)
-       (filter (fn [{:keys [special_type] :as field}]
-                 (or (datetime? field)
-                     (isa? special_type :type/Category))))))
+       interesting-fields))
 
 (defn- build-fk-map
   [fks field]
@@ -102,18 +127,6 @@
     (isa? special_type :type/Country)  "location/country"
     (isa? special_type :type/Category) "category"))
 
-(defn- score
-  [{:keys [base_type special_type fingerprint] :as field}]
-  (cond-> 0
-    (some-> fingerprint :global :distinct-count (< 10)) inc
-    (some-> fingerprint :global :distinct-count (> 20)) dec
-    ((descendants :type/Category) special_type)         inc
-    (field/unix-timestamp? field)                       inc
-    (isa? base_type :type/DateTime)                     inc
-    ((descendants :type/DateTime) special_type)         inc
-    (isa? special_type :type/CreationTimestamp)         inc
-    (#{:type/State :type/Country} special_type)         inc))
-
 (def ^:private ^{:arglists '([dimensions])} remove-unqualified
   (partial remove (fn [{:keys [fingerprint]}]
                     (some-> fingerprint :global :distinct-count (< 2)))))
@@ -125,7 +138,13 @@
   ([dashboard max-filters]
    (->> dashboard
         :orderd_cards
-        (candidates-for-filtering (:fieldset dashboard))
+        (candidates-for-filtering (->> dashboard
+                                       :context
+                                       :tables
+                                       (mapcat :fields)
+                                       (map (fn [field]
+                                              [((some-fn :id :name) field) field]))
+                                       (into {})))
         (add-filters dashboard max-filters)))
   ([dashboard dimensions max-filters]
    (let [fks (->> (db/select Field
@@ -134,7 +153,7 @@
                   field/with-targets)]
      (->> dimensions
           remove-unqualified
-          (sort-by score >)
+          (sort-by interestingness >)
           (take max-filters)
           (map #(assoc % :fk-map (build-fk-map fks %)))
           (reduce
@@ -163,3 +182,27 @@
                  (for [id ids]
                    [id (Field id)])))
        (into {})))
+
+
+(defn- flatten-filter-clause
+  [filter-clause]
+  (when (not-empty filter-clause)
+    (if (-> filter-clause first qp.util/normalize-token (= :and))
+      (mapcat flatten-filter-clause (rest filter-clause))
+      [filter-clause])))
+
+(defn inject-refinement
+  "Inject a filter refinement into an MBQL filter clause.
+   We assume that any refinement sub-clauses referencing fields that are also referenced in the
+   main clause are subsets of the latter. Therefore we can rewrite the combined clause to ommit
+   the more broad version from the main clause.
+   Assumes  both filter clauses can be flattened by recursively merging `:and` claueses
+   (ie. no `:and`s inside `:or` or `:not`)."
+  [filter-clause refinement]
+  (let [in-refinement? (into #{}
+                         (map collect-field-references)
+                         (flatten-filter-clause refinement))]
+    (->> filter-clause
+         flatten-filter-clause
+         (remove (comp in-refinement? collect-field-references))
+         (reduce merge-filter-clauses refinement))))

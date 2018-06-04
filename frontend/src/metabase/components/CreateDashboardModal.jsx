@@ -1,10 +1,26 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { Box } from "rebass";
 import { t } from "c-3po";
-import FormField from "metabase/components/FormField.jsx";
-import ModalContent from "metabase/components/ModalContent.jsx";
-import Button from "metabase/components/Button.jsx";
+import { connect } from "react-redux";
+import { withRouter } from "react-router";
 
+import FormField from "metabase/components/form/FormField.jsx";
+import ModalContent from "metabase/components/ModalContent.jsx";
+
+import Button from "metabase/components/Button.jsx";
+import Select, { Option } from "metabase/components/Select.jsx";
+
+import CollectionListLoader from "metabase/containers/CollectionListLoader";
+
+import { createDashboard } from "metabase/dashboards/dashboards";
+
+const mapDispatchToProps = {
+  createDashboard,
+};
+
+@connect(null, mapDispatchToProps)
+@withRouter
 export default class CreateDashboardModal extends Component {
   constructor(props, context) {
     super(props, context);
@@ -12,15 +28,19 @@ export default class CreateDashboardModal extends Component {
     this.setDescription = this.setDescription.bind(this);
     this.setName = this.setName.bind(this);
 
+    console.log(props.params);
     this.state = {
       name: null,
       description: null,
       errors: null,
+      // collectionId in the url starts off as a string, but the select will
+      // compare it to the integer ID on colleciton objects
+      collection_id: parseInt(props.params.collectionId),
     };
   }
 
   static propTypes = {
-    createDashboardFn: PropTypes.func.isRequired,
+    createDashboard: PropTypes.func.isRequired,
     onClose: PropTypes.func,
   };
 
@@ -42,15 +62,11 @@ export default class CreateDashboardModal extends Component {
     let newDash = {
       name: name && name.length > 0 ? name : null,
       description: description && description.length > 0 ? description : null,
+      collection_id: this.state.collection_id,
     };
 
-    // create a new dashboard
-    let component = this;
-    this.props.createDashboardFn(newDash).then(null, function(error) {
-      component.setState({
-        errors: error,
-      });
-    });
+    this.props.createDashboard(newDash, { redirect: true });
+    this.props.onClose();
   }
 
   render() {
@@ -75,7 +91,10 @@ export default class CreateDashboardModal extends Component {
         title={t`Create dashboard`}
         footer={[
           formError,
-          <Button onClick={this.props.onClose}>{t`Cancel`}</Button>,
+          <Button
+            mr={1}
+            onClick={() => this.props.onClose()}
+          >{t`Cancel`}</Button>,
           <Button
             primary={formReady}
             disabled={!formReady}
@@ -85,11 +104,11 @@ export default class CreateDashboardModal extends Component {
         onClose={this.props.onClose}
       >
         <form className="Modal-form" onSubmit={this.createNewDash}>
-          <div className="Form-inputs">
+          <div>
             <FormField
+              name="name"
               displayName={t`Name`}
-              fieldName="name"
-              errors={this.state.errors}
+              formError={this.state.errors}
             >
               <input
                 className="Form-input full"
@@ -102,9 +121,9 @@ export default class CreateDashboardModal extends Component {
             </FormField>
 
             <FormField
+              name="description"
               displayName={t`Description`}
-              fieldName="description"
-              errors={this.state.errors}
+              formError={this.state.errors}
             >
               <input
                 className="Form-input full"
@@ -114,6 +133,41 @@ export default class CreateDashboardModal extends Component {
                 onChange={this.setDescription}
               />
             </FormField>
+            <CollectionListLoader>
+              {({ collections, error, loading }) => {
+                if (loading) {
+                  return <Box>Loading...</Box>;
+                }
+                return (
+                  <FormField
+                    displayName={t`Which collection should this go in?`}
+                    fieldName="collection_id"
+                    errors={this.state.errors}
+                  >
+                    <Select
+                      value={this.state.collection_id}
+                      onChange={({ target }) =>
+                        this.setState({ collection_id: target.value })
+                      }
+                    >
+                      {[{ name: t`None`, id: null }]
+                        .concat(collections)
+                        .map((collection, index) => (
+                          <Option
+                            key={index}
+                            value={collection.id}
+                            icon={collection.id != null ? "collection" : null}
+                            iconColor={collection.color}
+                            iconSize={18}
+                          >
+                            {collection.name}
+                          </Option>
+                        ))}
+                    </Select>
+                  </FormField>
+                );
+              }}
+            </CollectionListLoader>
           </div>
         </form>
       </ModalContent>

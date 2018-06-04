@@ -5,8 +5,8 @@ import React from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 
-import { withBackground } from "metabase/hoc/Background";
 import title from "metabase/hoc/Title";
+import withToast from "metabase/hoc/Toast";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
@@ -19,8 +19,6 @@ import _ from "underscore";
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import Parameters from "metabase/parameters/components/Parameters";
-
-import { addUndo, createUndo } from "metabase/redux/undo";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -43,8 +41,9 @@ const mapStateToProps = (state, props) => ({
   dashboardId: getDashboardId(state, props),
 });
 
-@connect(mapStateToProps, { addUndo, createUndo })
+@connect(mapStateToProps)
 @DashboardData
+@withToast
 @title(({ dashboard }) => dashboard && dashboard.name)
 class AutomaticDashboardApp extends React.Component {
   state = {
@@ -59,27 +58,22 @@ class AutomaticDashboardApp extends React.Component {
   }
 
   save = async () => {
-    const { dashboard, addUndo, createUndo } = this.props;
+    const { dashboard, triggerToast } = this.props;
     // remove the transient id before trying to save
     const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
-    addUndo(
-      createUndo({
-        type: "metabase/automatic-dashboards/link-to-created-object",
-        message: () => (
-          <div className="flex align-center">
-            <Icon name="dashboard" size={22} className="mr2" color="#93A1AB" />
-            {t`Your dashboard was saved`}
-            <Link
-              className="link text-bold ml1"
-              to={Urls.dashboard(newDashboard.id)}
-            >
-              {t`See it`}
-            </Link>
-          </div>
-        ),
-        action: null,
-      }),
+    triggerToast(
+      <div className="flex align-center">
+        <Icon name="dashboard" size={22} className="mr2" color="#93A1AB" />
+        {t`Your dashboard was saved`}
+        <Link
+          className="link text-bold ml1"
+          to={Urls.dashboard(newDashboard.id)}
+        >
+          {t`See it`}
+        </Link>
+      </div>,
     );
+
     this.setState({ savedDashboardId: newDashboard.id });
     MetabaseAnalytics.trackEvent("AutoDashboard", "Save");
   };
@@ -95,8 +89,8 @@ class AutomaticDashboardApp extends React.Component {
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
-    const more = dashboard && dashboard.related && dashboard.related["more"];
-    const related = dashboard && _.omit(dashboard.related, "more");
+    const more = dashboard && dashboard.more;
+    const related = dashboard && dashboard.related;
     const hasSidebar = _.any(related || {}, list => list.length > 0);
 
     return (
@@ -150,17 +144,15 @@ class AutomaticDashboardApp extends React.Component {
           </div>
           {more && (
             <div className="flex justify-end px4 pb4">
-              {more.map(item => (
-                <Link
-                  to={item.url}
-                  className="ml2"
-                  onClick={() =>
-                    MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
-                  }
-                >
-                  <Button iconRight="chevronright">{item.title}</Button>
-                </Link>
-              ))}
+              <Link
+                to={more}
+                className="ml2"
+                onClick={() =>
+                  MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
+                }
+              >
+                <Button iconRight="chevronright">{t`Show more about this`}</Button>
+              </Link>
             </div>
           )}
         </div>
@@ -259,4 +251,4 @@ const SuggestionsSidebar = ({ related }) => (
   </div>
 );
 
-export default withBackground("bg-slate-extra-light")(AutomaticDashboardApp);
+export default AutomaticDashboardApp;

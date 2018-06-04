@@ -9,6 +9,7 @@
             [metabase.models
              [permissions-group :as group]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
+            [metabase.util.date :as du]
             [toucan
              [db :as db]
              [models :as models]])
@@ -26,7 +27,7 @@
   (assert (not (:password_salt user))
     "Don't try to pass an encrypted password to (insert! User). Password encryption is handled by pre-insert.")
   (let [salt     (str (UUID/randomUUID))
-        defaults {:date_joined  (u/new-sql-timestamp)
+        defaults {:date_joined  (du/new-sql-timestamp)
                   :last_login   nil
                   :is_active    true
                   :is_superuser false}]
@@ -96,11 +97,19 @@
                        ['ViewLog                    :user_id]]]
       (db/delete! model k id))))
 
+(def ^:private default-user-fields
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
+
+(def all-user-fields
+  "Seq of all the columns stored for a user"
+  (vec (concat default-user-fields [:google_auth :ldap_auth :is_active :updated_at])))
+
 (u/strict-extend (class User)
   models/IModel
   (merge models/IModelDefaults
-         {:default-fields (constantly [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
+         {:default-fields (constantly default-user-fields)
           :hydration-keys (constantly [:author :creator :user])
+          :properties     (constantly {:updated-at-timestamped? true})
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update

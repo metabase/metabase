@@ -123,16 +123,12 @@ export function restorePreviousLogin() {
  * Calls the provided function while simulating that the browser is offline
  */
 export async function whenOffline(callWhenOffline) {
-  simulateOfflineMode = true;
-  return callWhenOffline()
-    .then(result => {
-      simulateOfflineMode = false;
-      return result;
-    })
-    .catch(e => {
-      simulateOfflineMode = false;
-      throw e;
-    });
+  try {
+    simulateOfflineMode = true;
+    return await callWhenOffline();
+  } finally {
+    simulateOfflineMode = false;
+  }
 }
 
 export function switchToPlainDatabase() {
@@ -249,6 +245,17 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
         }
 
         actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes];
+
+        if (_.any(actionTypes, type => !type)) {
+          return Promise.reject(
+            new Error(
+              `You tried to wait for a null or undefined action type (${actionTypes})`,
+            ),
+          );
+        }
+
+        // supports redux-action style action creator that when cast to a string returns the action name
+        actionTypes = actionTypes.map(actionType => String(actionType));
 
         // Returns all actions that are triggered after the last action which belongs to `actionTypes
         const getRemainingActions = () => {

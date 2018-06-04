@@ -16,6 +16,7 @@ import {
   isState,
   isCountry,
   isCoordinate,
+  isNumber,
 } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
@@ -104,13 +105,13 @@ export const filter = (card, operator, column, value) => {
   return newCard;
 };
 
-const drillFilter = (card, value, column) => {
+export const drillFilter = (card, value, column) => {
   let filter;
   if (isDate(column)) {
     filter = [
       "=",
       ["datetime-field", getFieldRefFromColumn(column), "as", column.unit],
-      parseTimestamp(value, column.unit).toISOString(),
+      parseTimestamp(value, column.unit).format(),
     ];
   } else {
     const range = rangeForValue(value, column);
@@ -229,6 +230,23 @@ export const breakout = (card, breakout, tableMetadata) => {
     breakout,
   );
   guessVisualization(newCard, tableMetadata);
+  return newCard;
+};
+
+export const distribution = (card, column) => {
+  const breakout = isDate(column)
+    ? ["datetime-field", getFieldRefFromColumn(column), "month"]
+    : isNumber(column)
+      ? ["binning-strategy", getFieldRefFromColumn(column), "default"]
+      : getFieldRefFromColumn(column);
+
+  const newCard = startNewCard("query");
+  newCard.dataset_query = Utils.copy(card.dataset_query);
+  newCard.dataset_query.query.aggregation = [["count"]];
+  newCard.dataset_query.query.breakout = [breakout];
+  delete newCard.dataset_query.query.order_by;
+  delete newCard.dataset_query.query.fields;
+  newCard.display = "bar";
   return newCard;
 };
 

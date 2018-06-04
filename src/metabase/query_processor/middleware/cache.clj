@@ -18,7 +18,8 @@
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [metabase.query-processor.util :as qputil]))
+            [metabase.query-processor.util :as qputil]
+            [metabase.util.date :as du]))
 
 (def ^:dynamic ^Boolean *ignore-cached-results*
   "Should we force the query to run, ignoring cached results even if they're available?
@@ -70,7 +71,7 @@
 (defn- cached-results [query-hash max-age-seconds]
   (when-not *ignore-cached-results*
     (when-let [results (i/cached-results @backend-instance query-hash max-age-seconds)]
-      (assert (u/is-temporal? (:updated_at results))
+      (assert (du/is-temporal? (:updated_at results))
         "cached-results should include an `:updated_at` field containing the date when the query was last ran.")
       (log/info "Returning cached results for query" (u/emoji "💾"))
       (assoc results :cached true))))

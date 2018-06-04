@@ -209,6 +209,7 @@
 (def ^:private h2-db-time-query  (format "select formatdatetime(current_timestamp(),'%s') AS VARCHAR" date-format-str))
 
 (defrecord H2Driver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "H2"))
 

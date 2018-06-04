@@ -7,7 +7,7 @@ import ExplorePane from "metabase/components/ExplorePane";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import ProgressBar from "metabase/components/ProgressBar";
 import Quotes from "metabase/components/Quotes";
-import { withBackground } from "metabase/hoc/Background";
+import fitViewport from "metabase/hoc/FitViewPort";
 
 import { MetabaseApi, AutoApi } from "metabase/services";
 import _ from "underscore";
@@ -15,7 +15,9 @@ import cx from "classnames";
 import { t } from "c-3po";
 
 const CANDIDATES_POLL_INTERVAL = 2000;
-const CANDIDATES_TIMEOUT = 10000;
+// ensure this is 1 second offset from CANDIDATES_POLL_INTERVAL due to
+// concurrency issue in candidates endpoint
+const CANDIDATES_TIMEOUT = 11000;
 
 const QUOTES = [
   t`Metabot is admiring your integers…`,
@@ -33,6 +35,7 @@ type Props = {
   params: {
     databaseId?: number,
   },
+  fitClassNames: string,
 };
 type State = {
   databaseId: ?number,
@@ -41,7 +44,7 @@ type State = {
   sampleCandidates: ?DatabaseCandidates,
 };
 
-@withBackground("bg-slate-extra-light")
+@fitViewport
 export default class PostSetupApp extends Component {
   props: Props;
   state: State = {
@@ -126,8 +129,8 @@ export default class PostSetupApp extends Component {
     let { candidates, sampleCandidates, isSample } = this.state;
 
     return (
-      <div className="full-height">
-        <div className="flex full-height">
+      <div className={this.props.fitClassNames}>
+        <div className="flex full full-height">
           <div
             style={{ maxWidth: 587 }}
             className="ml-auto mr-auto mt-auto mb-auto py2"

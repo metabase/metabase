@@ -7,21 +7,17 @@
              [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set*
-                                         *is-superuser?*]]
+            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
             [metabase.api.common.internal :refer [*automatically-catch-api-exceptions*]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models
              [session :refer [Session]]
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
-            monger.json
+            [metabase.util.date :as du]
             [puppetlabs.i18n.core :refer [tru]]
-            [toucan
-             [db :as db]
-             [models :as models]])
-  (:import com.fasterxml.jackson.core.JsonGenerator
-           java.io.OutputStream))
+            [toucan.db :as db])
+  (:import com.fasterxml.jackson.core.JsonGenerator))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
 
@@ -119,7 +115,8 @@
       response-unauthentic)))
 
 (def ^:private current-user-fields
-  (vec (concat [User :is_active :google_auth :ldap_auth] (models/default-fields User))))
+  (vec (cons User user/all-user-fields)))
+
 
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and
@@ -173,7 +170,7 @@
   []
   {"Cache-Control" "max-age=0, no-cache, must-revalidate, proxy-revalidate"
    "Expires"        "Tue, 03 Jul 2001 06:00:00 GMT"
-   "Last-Modified"  (u/format-date :rfc822)})
+   "Last-Modified"  (du/format-date :rfc822)})
 
 (def ^:private ^:const strict-transport-security-header
   "Tell browsers to only access this resource over HTTPS for the next year (prevent MTM attacks). (This only applies if
@@ -336,9 +333,9 @@
                    (str "\n" (u/pprint-to-str body)))))))
 
 (defn log-api-call
-  "Takes a handler and a `jetty-stats-fn`. Logs `:request` and/or `:response` by passing corresponding
-  OPTIONS. `jetty-stats-fn` returns threadpool metadata that is included in the api request log"
-  [handler jetty-stats-fn & options]
+  "Takes a handler and a `jetty-stats-fn`. Logs info about request such as status code, number of DB calls, and time
+  taken to complete. `jetty-stats-fn` returns threadpool metadata that is included in the api request log"
+  [handler jetty-stats-fn]
   (fn [{:keys [uri], :as request}]
     (if (or (not (api-call? request))
             (= uri "/api/health")     ; don't log calls to /health or /util/logs because they clutter up
@@ -347,7 +344,7 @@
       (let [start-time (System/nanoTime)]
         (db/with-call-counting [call-count]
           (u/prog1 (handler request)
-            (log-response jetty-stats-fn request <> (u/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
+            (log-response jetty-stats-fn request <> (du/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
 
 
 ;;; ----------------------------------------------- EXCEPTION HANDLING -----------------------------------------------

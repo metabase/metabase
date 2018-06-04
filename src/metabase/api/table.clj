@@ -136,7 +136,7 @@
 
 (defn- create-dim-index-seq [dim-type]
   (->> dimension-options
-       (m/filter-kv (fn [k v] (= (:type v) dim-type)))
+       (m/filter-vals (fn [v] (= (:type v) dim-type)))
        keys
        sort
        (map str)))

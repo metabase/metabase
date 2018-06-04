@@ -19,43 +19,49 @@
   (api/check-403 (or (= user-id api/*current-user-id*)
                      (:is_superuser @api/*current-user*))))
 
-(api/defendpoint GET "/"
-  "Fetch a list of all active `Users` for the admin People page."
-  []
-  (db/select [User :id :first_name :last_name :email :is_superuser :google_auth :ldap_auth :last_login]
-    :is_active true))
+(def ^:private all-user-fields
+  (vec (cons User user/all-user-fields)))
 
-(defn- reactivate-user! [existing-user first-name last-name]
-  (when-not (:is_active existing-user)
-    (db/update! User (u/get-id existing-user)
-      :first_name    first-name
-      :last_name     last-name
-      :is_active     true
-      :is_superuser  false
-      ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
-      ;; (see Issue #3323)
-      :google_auth   (boolean (and (:google_auth existing-user)
-                                   ;; if google-auth-client-id is set it means Google Auth is enabled
-                                   (session-api/google-auth-client-id)))
-      :ldap_auth     (boolean (and (:ldap_auth existing-user)
-                                   (ldap/ldap-configured?)))))
+(api/defendpoint GET "/"
+  "Fetch a list of `Users` for the admin People page. By default returns only active users. If `include_deactivated`
+  is true, return all users (active and inactive)."
+  [include_deactivated]
+  {include_deactivated (s/maybe su/BooleanString)}
+  (db/select all-user-fields
+    (merge {:order-by [[:%lower.last_name :asc]
+                       [:%lower.first_name :asc]]}
+           (when-not include_deactivated
+             {:where [:= :is_active true]}))))
+
+(defn- fetch-user [& query-criteria]
+  (apply db/select-one all-user-fields query-criteria))
+
+(defn- reactivate-user! [existing-user]
+  (db/update! User (u/get-id existing-user)
+    :is_active     true
+    :is_superuser  false
+    ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
+    ;; (see Issue #3323)
+    :google_auth   (boolean (and (:google_auth existing-user)
+                                 ;; if google-auth-client-id is set it means Google Auth is enabled
+                                 (session-api/google-auth-client-id)))
+    :ldap_auth     (boolean (and (:ldap_auth existing-user)
+                                 (ldap/ldap-configured?))))
   ;; now return the existing user whether they were originally active or not
-  (User (u/get-id existing-user)))
+  (fetch-user :id (u/get-id existing-user)))
 
 
 (api/defendpoint POST "/"
-  "Create a new `User`, or reactivate an existing one."
+  "Create a new `User`, return a 400 if the email address is already taken"
   [:as {{:keys [first_name last_name email password]} :body}]
   {first_name su/NonBlankString
    last_name  su/NonBlankString
    email      su/Email}
   (api/check-superuser)
-  (if-let [existing-user (db/select-one [User :id :is_active :google_auth], :email email)]
-    ;; this user already exists but is inactive, so simply reactivate the account
-    (reactivate-user! existing-user first_name last_name)
-    ;; new user account, so create it
-    (user/invite-user! first_name last_name email password @api/*current-user*)))
-
+  (api/checkp (not (db/exists? User :email email))
+    "email" "Email address already in use.")
+  (let [new-user-id (u/get-id (user/invite-user! first_name last_name email password @api/*current-user*))]
+    (fetch-user :id new-user-id)))
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
@@ -67,11 +73,11 @@
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."
   [id]
   (check-self-or-superuser id)
-  (api/check-404 (User :id id, :is_active true)))
+  (api/check-404 (fetch-user :id id, :is_active true)))
 
 
 (api/defendpoint PUT "/:id"
-  "Update a `User`."
+  "Update an existing, active `User`."
   [id :as {{:keys [email first_name last_name is_superuser]} :body}]
   {email      su/Email
    first_name (s/maybe su/NonBlankString)
@@ -80,14 +86,26 @@
   ;; only allow updates if the specified account is active
   (api/check-404 (db/exists? User, :id id, :is_active true))
   ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-  (api/check-400 (not (db/exists? User, :email email, :id [:not= id])))
+  (api/checkp (not (db/exists? User, :email email, :id [:not= id]))
+    "email" "Email address already associated to another user.")
   (api/check-500 (db/update-non-nil-keys! User id
                    :email        email
                    :first_name   first_name
                    :last_name    last_name
                    :is_superuser (when (:is_superuser @api/*current-user*)
                                    is_superuser)))
-  (User id))
+  (fetch-user :id id))
+
+(api/defendpoint PUT "/:id/reactivate"
+  "Reactivate user at `:id`"
+  [id]
+  (api/check-superuser)
+  (let [user (db/select-one [User :id :is_active :google_auth :ldap_auth] :id id)]
+    (api/check-404 user)
+    ;; Can only reactivate inactive users
+    (api/check (not (:is_active user))
+      [400 {:message "Not able to reactivate an active user"}])
+    (reactivate-user! user)))
 
 
 (api/defendpoint PUT "/:id/password"
@@ -104,7 +122,7 @@
         "Invalid password")))
   (user/set-password! id password)
   ;; return the updated User
-  (User id))
+  (fetch-user :id id))
 
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint

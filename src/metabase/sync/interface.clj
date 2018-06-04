@@ -5,11 +5,9 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            metabase.types
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
-
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."

@@ -120,7 +120,7 @@
 
 (defmulti ^:private should-send-notification?
   "Returns true if given the pulse type and resultset a new notification (pulse or alert) should be sent"
-  (fn [pulse results] (alert-or-pulse pulse)))
+  (fn [pulse _results] (alert-or-pulse pulse)))
 
 (defmethod should-send-notification? :alert
   [{:keys [alert_condition] :as alert} results]

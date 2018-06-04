@@ -67,7 +67,8 @@
                              :points_of_interest      nil
                              :show_in_getting_started false
                              :raw_table_id            $
-                             :created_at              $})
+                             :created_at              $
+                             :fields_hash             $})
      :special_type        "type/Name"
      :name                "NAME"
      :display_name        "Name"

@@ -49,11 +49,11 @@ export default class SegmentApp extends Component {
     let { tableMetadata } = this.props;
     if (segment.id != null) {
       await this.props.updateSegment(segment);
-      this.props.clearRequestState({ statePath: ["metadata", "segments"] });
+      this.props.clearRequestState({ statePath: ["entities", "segments"] });
       MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
     } else {
       await this.props.createSegment(segment);
-      this.props.clearRequestState({ statePath: ["metadata", "segments"] });
+      this.props.clearRequestState({ statePath: ["entities", "segments"] });
       MetabaseAnalytics.trackEvent("Data Model", "Segment Created");
     }
 

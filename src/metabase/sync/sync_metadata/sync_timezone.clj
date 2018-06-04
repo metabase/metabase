@@ -20,6 +20,7 @@
                         (driver/current-db-time database)
                         extract-time-zone)]
       (when-not (= tz-id (:timezone database))
-        (db/update! Database (:id database) {:timezone tz-id})))
+        (db/update! Database (:id database) {:timezone tz-id}))
+      {:timezone-id tz-id})
     (catch Exception e
       (log/warn e "Error syncing database timezone"))))

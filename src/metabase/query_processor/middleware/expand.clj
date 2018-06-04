@@ -9,7 +9,9 @@
              [interface :as i]
              [util :as qputil]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s])
   (:import [metabase.query_processor.interface AgFieldRef BetweenFilter ComparisonFilter CompoundFilter DateTimeValue
             DateTimeField Expression ExpressionRef FieldLiteral FieldPlaceholder RelativeDatetime
@@ -110,9 +112,9 @@
     (instance? RelativeDateTimeValue v) v
     (instance? DateTimeValue v)         v
     (instance? RelativeDatetime v)      (i/map->RelativeDateTimeValue (assoc v :unit (datetime-unit f v), :field (datetime-field f (datetime-unit f v))))
-    (instance? DateTimeField f)         (i/map->DateTimeValue {:value (u/->Timestamp v), :field f})
+    (instance? DateTimeField f)         (i/map->DateTimeValue {:value (du/->Timestamp v), :field f})
     (instance? FieldLiteral f)          (if (isa? (:base-type f) :type/DateTime)
-                                          (i/map->DateTimeValue {:value (u/->Timestamp v)
+                                          (i/map->DateTimeValue {:value (du/->Timestamp v)
                                                                  :field (i/map->DateTimeField {:field f :unit :default})})
                                           (i/map->Value {:value v, :field f}))
     :else                               (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
@@ -232,7 +234,7 @@
      (assoc field :binning-strategy strategy, :binning-param strategy-param))))
 
 (defn- fields-list-clause
-  ([k query] query)
+  ([_ query] query)
   ([k query & fields] (assoc query k (mapv field fields))))
 
 (def ^:ql ^{:arglists '([query & fields])} breakout "Specify which fields to breakout by." (partial fields-list-clause :breakout))
