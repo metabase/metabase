@@ -6,6 +6,8 @@ import { t } from "c-3po";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import CheckBox from "metabase/components/CheckBox.jsx";
+import { Box } from "rebass"
+import cx from "classnames"
 
 const ArchivedItem = ({
   name,
@@ -19,10 +21,16 @@ const ArchivedItem = ({
   onToggleSelected,
 }) => (
   <div className="flex align-center p2 hover-parent hover--visibility border-bottom bg-grey-0-hover">
-    <Icon name={icon} className="mr2" style={{ color: color }} size={20} />
-    {onToggleSelected && (
-      <CheckBox checked={selected} onChange={onToggleSelected} />
-    )}
+    <Box className="hover-parent hover--visibility">
+      <Box className="hover-child--hiden">
+        <Icon name={icon} className="mr2" style={{ color: color }} size={20} />
+      </Box>
+      {onToggleSelected && (
+        <Box className={cx({ "hover-child": !selected })}>
+          <CheckBox checked={selected} onChange={onToggleSelected} />
+        </Box>
+      )}
+    </Box>
     {name}
     {isAdmin && (
       <Tooltip tooltip={t`Unarchive this ${type}`}>

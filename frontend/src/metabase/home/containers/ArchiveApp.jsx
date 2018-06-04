@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "c-3po";
 
-import { Box, Flex } from "rebass";
+import { Box, Fixed, Flex } from "rebass";
 
 import HeaderWithBack from "metabase/components/HeaderWithBack";
 import Card from "metabase/components/Card";
@@ -12,7 +12,6 @@ import Icon from "metabase/components/Icon";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
-import listSearch from "metabase/hoc/ListSearch";
 import listSelect from "metabase/hoc/ListSelect";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -27,7 +26,6 @@ const mapStateToProps = (state, props) => ({
   reload: true,
   wrapped: true,
 })
-@listSearch()
 @listSelect()
 @connect(mapStateToProps, null)
 export default class ArchiveApp extends Component {
@@ -36,8 +34,6 @@ export default class ArchiveApp extends Component {
       isAdmin,
       list,
       reload,
-      searchText,
-      onSetSearchText,
 
       selected,
       selection,
@@ -48,33 +44,40 @@ export default class ArchiveApp extends Component {
         <Flex align="center" mb={2} py={3}>
           <HeaderWithBack name={t`Archive`} />
         </Flex>
-        <SearchHeader searchText={searchText} setSearchText={onSetSearchText} />
-        {list.length > 0 && (
-          <div className="flex align-center p2">
-            <SelectionControls {...this.props} />
-            <BulkActionControls {...this.props} />
-          </div>
+        {selected.length > 0 && (
+          <Fixed bottom left right>
+            <Card dark>
+              <Flex align='center' py={2} px={2}>
+                <SelectionControls {...this.props} />
+                <BulkActionControls {...this.props} />
+              </Flex>
+            </Card>
+          </Fixed>
         )}
-        {list.map(item => (
-          <ArchivedItem
-            key={item.type + item.id}
-            type={item.type}
-            name={item.getName()}
-            icon={item.getIcon()}
-            color={item.getColor()}
-            isAdmin={isAdmin}
-            onUnarchive={
-              item.setArchived
-                ? async () => {
-                    await item.setArchived(false);
-                    reload();
-                  }
-                : null
-            }
-            selected={selection.has(item)}
-            onToggleSelected={() => onToggleSelected(item)}
-          />
-        ))}
+        <Box w={2/3}>
+          <Card>
+            {list.map(item => (
+              <ArchivedItem
+                key={item.type + item.id}
+                type={item.type}
+                name={item.getName()}
+                icon={item.getIcon()}
+                color={item.getColor()}
+                isAdmin={isAdmin}
+                onUnarchive={
+                  item.setArchived
+                    ? async () => {
+                        await item.setArchived(false);
+                        reload();
+                      }
+                    : null
+                }
+                selected={selection.has(item)}
+                onToggleSelected={() => onToggleSelected(item)}
+              />
+            ))}
+          </Card>
+        </Box>
       </Box>
     );
   }
