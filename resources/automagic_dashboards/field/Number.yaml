@@ -1,10 +1,13 @@
-title: A look at your [[this]] per country
-transient_title: Here's a closer look at your [[this]] per country
-description: Which countries are represented the most and least.
-applies_to: GenericTable.Country
+title: A look at your [[this]]
+transient_title: Here's an overview of your [[this]]
+description: How [[this]] is distributed and more.
+applies_to: GenericTable.Number
 metrics:
-- Sum: [sum, [dimension, GenericNumber]]
-- Avg: [avg, [dimension, GenericNumber]]
+- Sum: [sum, [dimension, this]]
+- Avg: [avg, [dimension, this]]
+- Min: [min, [dimension, this]]
+- Max: [max, [dimension, this]]
+- SD: [stddev, [dimension, this]]
 - Count: [count]
 - Distinct: [distinct, [dimension, this]]
 dimensions:
@@ -12,6 +15,9 @@ dimensions:
   - GenericCategoryMedium:
       field_type: GenericTable.Category
       max_cardinality: 12
+      score: 90
+  - Timestamp:
+      field_type: DateTime
       score: 90
 # bind just so they don't get used
   - LongLat: GenericTable.Coordinate
@@ -21,12 +27,6 @@ dimensions:
       field_type: GenericTable.Country
   - State:
       field_type: GenericTable.State
-  - Timestamp:
-      field_type: CreationTimestamp
-      score: 100
-  - Timestamp:
-      field_type: DateTime
-      score: 90
 filters:
   - Nils: [is-null, [dimension, this]]
 dashboard_filters:
@@ -59,50 +59,43 @@ cards:
       metrics: Distinct
       group: Overview
       width: 6
-  - Distribution:
-      title: Distribution of [[this]]
-      visualization:
-        map:
-          map.type: region
-          map.region: world_countries
-      metrics: Count
-      dimensions: this
-      group: Overview
-  - Top5:
-      title: Top 5 [[this]]
-      visualization: row
-      metrics: Count
-      dimensions: this
-      limit: 5
-      order_by:
-        - Count: descending
-      group: Overview
-  - Bottom5:
-      title: Bottom 5 [[this]]
-      visualization: row
-      metrics: Count
-      dimensions: this
-      limit: 5
-      order_by:
-        - Count: ascending
-      group: Overview
-  - ByNumber:
-      title: "Sum of [[GenericNumber]] by [[this]]"
-      visualization:
-        map:
-          map.type: region
-          map.region: world_countries
+  - Stats:
+      title: Summary statistics
+      visualization: table
       metrics:
       - Sum
-      dimensions: this
-      group: Breakdowns
-  - Crosstab:
-      title: "[[this]] by [[GenericCategoryMedium]]"
-      visualization: table
+      - Avg
+      - Min
+      - Max
+      - SD
+      group: Overview
+      width: 9
+  - Distribution:
+      title: How [[this]] is distributed
+      visualization: bar
       metrics: Count
       dimensions:
-      - this
-      - GenericCategoryMedium
+        - this:
+            aggregation: default
+      group: Overview
+      width: 9
+  - ByDateTime:
+      title: "[[this]] by [[Timestamp]]"
+      visualization: line
+      metrics:
+      - Sum
+      - Avg
+      dimensions: Timestamp
       group: Breakdowns
       width: 9
-      height: 8
+      height: 6
+  - ByCategory:
+      title: "[[this]] by [[GenericCategoryMedium]]"
+      visualization: bar
+      metrics:
+      - Sum
+      - Avg
+      dimensions: GenericCategoryMedium
+      group: Breakdowns
+      height: 6
+      width: 9
