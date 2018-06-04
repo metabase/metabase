@@ -183,7 +183,7 @@ export default class PublicQuestion extends Component {
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
       >
-        <LoadingAndErrorWrapper loading={!result}>
+        <LoadingAndErrorWrapper loading={!result} className="flex flex-full">
           {() => (
             <Visualization
               rawSeries={[{ card: card, data: result && result.data }]}

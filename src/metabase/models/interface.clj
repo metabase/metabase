@@ -162,16 +162,18 @@
          (-has-perms? read-or-write (entity object-id))))
     ([read-or-write object]
      (and object
-          ((resolve perms-check-fn-symb) (current-user-permissions-set) (perms-objects-set object read-or-write))))))
+          (-has-perms? (perms-objects-set object read-or-write))))
+    ([perms-set]
+     ((resolve perms-check-fn-symb) (current-user-permissions-set) perms-set))))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object])}
+(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
   ^Boolean current-user-has-full-permissions?
   "Implementation of `can-read?`/`can-write?` for the new permissions system. `true` if the current user has *full*
   permissions for the paths returned by its implementation of `perms-objects-set`. (READ-OR-WRITE is either `:read` or
   `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (make-perms-check-fn 'metabase.models.permissions/set-has-full-permissions-for-set?))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object])}
+(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
   ^Boolean current-user-has-partial-permissions?
   "Implementation of `can-read?`/`can-write?` for the new permissions system. `true` if the current user has *partial*
   permissions for the paths returned by its implementation of `perms-objects-set`. (READ-OR-WRITE is either `:read` or

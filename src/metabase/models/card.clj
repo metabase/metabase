@@ -9,12 +9,10 @@
              [util :as u]]
             [metabase.api.common :as api :refer [*current-user-id*]]
             [metabase.models
-             [card-label :refer [CardLabel]]
              [collection :as collection]
              [dependency :as dependency]
              [field-values :as field-values]
              [interface :as i]
-             [label :refer [Label]]
              [params :as params]
              [permissions :as perms]
              [query :as query]
@@ -36,14 +34,6 @@
   {:hydrate :dashboard_count}
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
-
-(defn labels
-  "Return `Labels` for CARD."
-  {:hydrate :labels}
-  [{:keys [id]}]
-  (if-let [label-ids (seq (db/select-field :label_id CardLabel, :card_id id))]
-    (db/select Label, :id [:in label-ids], {:order-by [:%lower.name]})
-    []))
 
 (defn with-in-public-dashboard
   "Efficiently add a `:in_public_dashboard` key to each item in a sequence of `cards`. This boolean key predictably
@@ -357,8 +347,7 @@
   (db/delete! 'Revision :model "Card", :model_id id)
   (db/delete! 'DashboardCardSeries :card_id id)
   (db/delete! 'DashboardCard :card_id id)
-  (db/delete! 'CardFavorite :card_id id)
-  (db/delete! 'CardLabel :card_id id))
+  (db/delete! 'CardFavorite :card_id id))
 
 
 (u/strict-extend (class Card)

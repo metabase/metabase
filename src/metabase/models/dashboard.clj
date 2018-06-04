@@ -8,17 +8,18 @@
             [metabase
              [events :as events]
              [public-settings :as public-settings]
+             [query-processor :as qp]
              [util :as u]]
             [metabase.models
              [card :as card :refer [Card]]
+             [collection :as collection]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
              [field-values :as field-values]
              [interface :as i]
              [params :as params]
              [revision :as revision]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.interface :as qpi]
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.query-processor.interface :as qpi]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -33,20 +34,37 @@
           card     (cons (:card dashcard) (:series dashcard))]
       card)))
 
-(defn- can-read? [{public-uuid :public_uuid, :as dashboard}]
-  (or
-   ;; if the Dashboard is shared publicly then there is simply no need to check permissions for it because people
-   ;; can see it already!!!
-   (and (public-settings/enable-public-sharing)
+(defn- can-read-or-write-based-on-cards? [dashboard read-or-write]
+  ;; otherwise if Dashboard is already hydrated no need to do it a second time
+  (let [cards (or (dashcards->cards (:ordered_cards dashboard))
+                  (dashcards->cards (-> (db/select [DashboardCard :id :card_id]
+                                          :dashboard_id (u/get-id dashboard)
+                                          :card_id      [:not= nil]) ; skip text-only Cards
+                                        (hydrate [:card :in_public_dashboard] :series))))]
+    ;; you can read/write a Dashboard if it has *no* Cards or if you can read/write at least one of those Cards
+    (or (empty? cards)
+        (some (case read-or-write
+                :read  i/can-read?
+                :write i/can-write?)
+              cards))))
+
+(defn- can-read-or-write?
+  [{public-uuid :public_uuid, collection-id :collection_id, :as dashboard} read-or-write]
+  (cond
+   ;; if the Dashboard is shared publicly then there is simply no need to check *read* permissions for it because
+   ;; people can see it already!!!
+   (and (= read-or-write :read)
+        (public-settings/enable-public-sharing)
         (some? public-uuid))
-   ;; if Dashboard is already hydrated no need to do it a second time
-   (let [cards (or (dashcards->cards (:ordered_cards dashboard))
-                   (dashcards->cards (-> (db/select [DashboardCard :id :card_id]
-                                           :dashboard_id (u/get-id dashboard)
-                                           :card_id      [:not= nil]) ; skip text-only Cards
-                                         (hydrate [:card :in_public_dashboard] :series))))]
-     (or (empty? cards)
-         (some i/can-read? cards)))))
+   true
+
+   ;; otherwise if the Dashboard is in a Collection then use Collection permission...
+   collection-id
+   (i/current-user-has-full-permissions? (collection/perms-objects-set collection-id read-or-write))
+
+   ;; ...finally if not use the "traditional" artifact-based Permissions, which are derived from the Cards in the Dash
+   :else
+   (can-read-or-write-based-on-cards? dashboard read-or-write)))
 
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
@@ -91,8 +109,8 @@
           :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
-         {:can-read?  can-read?
-          :can-write? can-read?}))
+         {:can-read?  #(can-read-or-write? % :read)
+          :can-write? #(can-read-or-write? % :write)}))
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -249,7 +267,7 @@
                                                          result-metadata-for-query)))
                      (dissoc :id)))]
       (events/publish-event! :card-create card)
-      (hydrate card :creator :dashboard_count :labels :can_write :collection))))
+      (hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- applied-filters-blurb
   [applied-filters]
@@ -273,7 +291,7 @@
   (let [dashcards  (:ordered_cards dashboard)
         dashboard  (db/insert! Dashboard
                      (-> dashboard
-                         (dissoc :ordered_cards :rule :related :transient_name
+                         (dissoc :ordered_cards :rule :related :more :transient_name
                                  :transient_filters)
                          (assoc :description (->> dashboard
                                                   :transient_filters

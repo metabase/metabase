@@ -55,7 +55,7 @@
         ;; match, we should suggest that the user configure a report timezone
         (when (and (not report-timezone)
                    jvm-data-tz-conflict?)
-          (log/warn (str (trs "Possible imezone conflict found on database {0}." (:name db))
+          (log/warn (str (trs "Possible timezone conflict found on database {0}." (:name db))
                          (trs "JVM timezone is {0} and detected database timezone is {1}."
                               (.getID jvm-timezone) (.getID data-timezone))
                          (trs "Configure a report timezone to ensure proper date and time conversions."))))

@@ -59,6 +59,28 @@
        (or (isa? (:base_type field) :type/DateTime)
            (field/unix-timestamp? field))))
 
+(defn- interestingness
+  [{:keys [base_type special_type fingerprint] :as field}]
+  (cond-> 0
+    (some-> fingerprint :global :distinct-count (< 10)) inc
+    (some-> fingerprint :global :distinct-count (> 20)) dec
+    ((descendants :type/Category) special_type)         inc
+    (field/unix-timestamp? field)                       inc
+    (isa? base_type :type/DateTime)                     inc
+    ((descendants :type/DateTime) special_type)         inc
+    (isa? special_type :type/CreationTimestamp)         inc
+    (#{:type/State :type/Country} special_type)         inc))
+
+
+(defn interesting-fields
+  "Pick out interesting fields and sort them by interestingness."
+  [fields]
+  (->> fields
+       (filter (fn [{:keys [special_type] :as field}]
+                 (or (datetime? field)
+                     (isa? special_type :type/Category))))
+       (sort-by interestingness >)))
+
 (defn- candidates-for-filtering
   [fieldset cards]
   (->> cards
@@ -66,9 +88,7 @@
        (map field-reference->id)
        distinct
        (map fieldset)
-       (filter (fn [{:keys [special_type] :as field}]
-                 (or (datetime? field)
-                     (isa? special_type :type/Category))))))
+       interesting-fields))
 
 (defn- build-fk-map
   [fks field]
@@ -110,18 +130,6 @@
     (isa? special_type :type/Country)  "location/country"
     (isa? special_type :type/Category) "category"))
 
-(defn- score
-  [{:keys [base_type special_type fingerprint] :as field}]
-  (cond-> 0
-    (some-> fingerprint :global :distinct-count (< 10)) inc
-    (some-> fingerprint :global :distinct-count (> 20)) dec
-    ((descendants :type/Category) special_type)         inc
-    (field/unix-timestamp? field)                       inc
-    (isa? base_type :type/DateTime)                     inc
-    ((descendants :type/DateTime) special_type)         inc
-    (isa? special_type :type/CreationTimestamp)         inc
-    (#{:type/State :type/Country} special_type)         inc))
-
 (def ^:private ^{:arglists '([dimensions])} remove-unqualified
   (partial remove (fn [{:keys [fingerprint]}]
                     (some-> fingerprint :global :distinct-count (< 2)))))
@@ -142,7 +150,7 @@
                   field/with-targets)]
      (->> dimensions
           remove-unqualified
-          (sort-by score >)
+          (sort-by interestingness >)
           (take max-filters)
           (map #(assoc % :fk-map (build-fk-map fks %)))
           (reduce

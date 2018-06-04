@@ -1,5 +1,27 @@
+:root {
+  --search-bar-color: #60a6e4;
+  --search-bar-active-color: #7bb7ec;
+  --search-bar-active-border-color: #4894d8;
+}
+
 .Nav {
   z-index: 4;
+}
+
+/* temporary css for the navbar and search */
+.search-bar {
+  background-color: var(--search-bar-color);
+  border-color: transparent;
+  color: white;
+}
+
+.nav-light {
+  background-color: var(--search-bar-color);
+}
+
+.search-bar--active {
+  background-color: var(--search-bar-active-color);
+  border-color: var(--search-bar-active-border-color);
 }
 
 .NavItem.NavItem--selected {

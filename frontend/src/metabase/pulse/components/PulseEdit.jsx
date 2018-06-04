@@ -1,26 +1,30 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
 import { t, jt, ngettext, msgid } from "c-3po";
+import { withRouter } from "react-router";
 
 import PulseEditName from "./PulseEditName.jsx";
+import PulseEditCollection from "./PulseEditCollection";
 import PulseEditCards from "./PulseEditCards.jsx";
 import PulseEditChannels from "./PulseEditChannels.jsx";
 import PulseEditSkip from "./PulseEditSkip.jsx";
 import WhatsAPulse from "./WhatsAPulse.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
+import Link from "metabase/components/Link";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm.jsx";
 
 import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
+import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 import cx from "classnames";
 
+@withRouter
 export default class PulseEdit extends Component {
   constructor(props) {
     super(props);
@@ -40,6 +44,7 @@ export default class PulseEdit extends Component {
     saveEditingPulse: PropTypes.func.isRequired,
     deletePulse: PropTypes.func.isRequired,
     onChangeLocation: PropTypes.func.isRequired,
+    location: PropTypes.object,
   };
 
   componentDidMount() {
@@ -65,7 +70,7 @@ export default class PulseEdit extends Component {
       this.props.pulse.cards.length,
     );
 
-    this.props.onChangeLocation("/pulse");
+    this.props.onChangeLocation(Urls.collection(pulse.collection_id));
   }
 
   async delete() {
@@ -114,7 +119,7 @@ export default class PulseEdit extends Component {
   }
 
   render() {
-    const { pulse, formInput } = this.props;
+    const { pulse, formInput, location } = this.props;
     const isValid = pulseIsValid(pulse, formInput.channels);
     const attachmentsEnabled = emailIsEnabled(pulse);
     return (
@@ -143,6 +148,11 @@ export default class PulseEdit extends Component {
         </div>
         <div className="PulseEdit-content pt2 pb4">
           <PulseEditName {...this.props} setPulse={this.setPulse} />
+          <PulseEditCollection
+            {...this.props}
+            setPulse={this.setPulse}
+            initialCollectionId={location.query.collectionId}
+          />
           <PulseEditCards
             {...this.props}
             setPulse={this.setPulse}
@@ -197,7 +207,10 @@ export default class PulseEdit extends Component {
             failedText={t`Save failed`}
             successText={t`Saved`}
           />
-          <Link to="/pulse" className="Button ml2">{t`Cancel`}</Link>
+          <Link
+            to={Urls.collection(location.query.collectionId)}
+            className="Button ml2"
+          >{t`Cancel`}</Link>
         </div>
       </div>
     );

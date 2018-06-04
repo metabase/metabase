@@ -16,9 +16,7 @@
              [user :as user :refer [User]]]
             [metabase.util.date :as du]
             [puppetlabs.i18n.core :refer [tru]]
-            [toucan
-             [db :as db]
-             [models :as models]])
+            [toucan.db :as db])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
@@ -117,7 +115,8 @@
       response-unauthentic)))
 
 (def ^:private current-user-fields
-  (vec (concat [User :is_active :google_auth :ldap_auth] (models/default-fields User))))
+  (vec (cons User user/all-user-fields)))
+
 
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and
@@ -298,9 +297,6 @@
 (add-encoder org.postgresql.util.PGobject       encode-jdbc-clob) ; Postgres
 
 ;; Encode BSON undefined like `nil`
-;;
-;; TODO - not sure this is actually needed anymore now that we are loading monger.json --
-;; see http://clojuremongodb.info/articles/integration.html
 (add-encoder org.bson.BsonUndefined encode-nil)
 
 ;; Binary arrays ("[B") -- hex-encode their first four bytes, e.g. "0xC42360D7"

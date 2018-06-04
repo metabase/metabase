@@ -8,6 +8,8 @@ import { createAction } from "redux-actions";
 import _ from "underscore";
 import { assocIn } from "icepick";
 
+import * as Urls from "metabase/lib/urls";
+
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
@@ -29,7 +31,7 @@ import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
 import { addUndo, createUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
-import { cardIsEquivalent } from "metabase/meta/Card";
+import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
 import {
   getTableMetadata,
@@ -41,6 +43,7 @@ import {
   getIsShowingDataReference,
   getTransformedSeries,
   getResultsMetadata,
+  getFirstQueryResult,
 } from "./selectors";
 
 import {
@@ -705,14 +708,14 @@ export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
   ({ nextCard, previousCard }) => {
     return async (dispatch, getState) => {
-      const nextCardIsClean =
-        _.isEqual(previousCard.dataset_query, nextCard.dataset_query) &&
-        previousCard.display === nextCard.display;
-
-      if (nextCardIsClean) {
+      if (cardIsEquivalent(previousCard, nextCard)) {
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(setCardAndRun(await loadCard(nextCard.id)));
       } else {
+        if (!cardQueryIsEquivalent(previousCard, nextCard)) {
+          // clear the query result so we don't try to display the new visualization before running the new query
+          dispatch(clearQueryResult());
+        }
         dispatch(
           setCardAndRun(getCardAfterVisualizationClick(nextCard, previousCard)),
         );
@@ -872,7 +875,8 @@ export const SET_QUERY_MODE = "metabase/qb/SET_QUERY_MODE";
 export const setQueryMode = createThunkAction(SET_QUERY_MODE, type => {
   return (dispatch, getState) => {
     // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-    const { qb: { card, queryResult, uiControls } } = getState();
+    const { qb: { card, uiControls } } = getState();
+    const queryResult = getFirstQueryResult(getState());
     const tableMetadata = getTableMetadata(getState());
 
     // if the type didn't actually change then nothing has been modified
@@ -1217,6 +1221,9 @@ export const runQuestionQuery = ({
   };
 };
 
+export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
+export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
+
 export const getDisplayTypeForCard = (card, queryResults) => {
   // TODO Atte Keinänen 6/1/17: Make a holistic decision based on all queryResults, not just one
   // This method seems to has been a candidate for a rewrite anyway
@@ -1315,7 +1322,8 @@ export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
 export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
   return async (dispatch, getState) => {
     // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-    const { qb: { card, queryResult } } = getState();
+    const { qb: { card } } = getState();
+    const queryResult = getFirstQueryResult(getState());
 
     if (!queryResult || !fk) return false;
 
@@ -1349,7 +1357,8 @@ export const loadObjectDetailFKReferences = createThunkAction(
   () => {
     return async (dispatch, getState) => {
       // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-      const { qb: { card, queryResult, tableForeignKeys } } = getState();
+      const { qb: { card, tableForeignKeys } } = getState();
+      const queryResult = getFirstQueryResult(getState());
 
       function getObjectDetailIdValue(data) {
         for (let i = 0; i < data.cols.length; i++) {
@@ -1432,7 +1441,7 @@ export const archiveQuestion = createThunkAction(
       ),
     );
 
-    dispatch(push("/questions"));
+    dispatch(push(Urls.collection(card.collection_id)));
     return response;
   },
 );
