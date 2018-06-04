@@ -15,11 +15,11 @@
   visibility
   hide and show a child element using visibility
 */
-.hover-parent.hover--visibility .hover-child,
-.hover-parent:hover.hover--visibility .hover-child--hidden {
+.hover-parent.hover--visibility > .hover-child,
+.hover-parent:hover.hover--visibility > .hover-child--hidden {
   visibility: hidden;
 }
 
-.hover-parent:hover.hover--visibility .hover-child {
+.hover-parent:hover.hover--visibility > .hover-child {
   visibility: visible;
 }
