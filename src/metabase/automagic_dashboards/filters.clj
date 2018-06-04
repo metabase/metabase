@@ -1,9 +1,5 @@
 (ns metabase.automagic-dashboards.filters
-  (:require [clojure.string :as str]
-            [clj-time.format :as t.format]
-            [metabase.models
-             [field :refer [Field] :as field]
-             [table :refer [Table]]]
+  (:require [metabase.models.field :refer [Field] :as field]
             [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
