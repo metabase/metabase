@@ -217,6 +217,16 @@
 (expect
   (with-rasta
     (with-dashboard-cleanup
+      (let [q (query/adhoc-query {:query {:aggregation [[:count]]
+                                          :breakout [[:field-id (data/id :venues :category_id)]]
+                                          :source_table (data/id :venues)}
+                                  :type :query
+                                  :database (data/id)})]
+        (-> q (automagic-analysis {}) valid-dashboard?)))))
+
+(expect
+  (with-rasta
+    (with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                                           :source_table (data/id :venues)}
                                   :type :query

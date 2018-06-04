@@ -704,7 +704,7 @@
           (map ->related-entity)))))
 
 (s/defn ^:private indepth
-  [root, rule :- rules/Rule]
+  [root, rule :- (s/maybe rules/Rule)]
   (->> (rules/get-rules (concat (:rules-prefix root) [(:rule rule)]))
        (keep (fn [indepth]
                (when-let [[dashboard _] (apply-rule root indepth)]
@@ -724,7 +724,7 @@
        (map ->related-entity)))
 
 (s/defn ^:private related
-  [dashboard, rule :- rules/Rule]
+  [dashboard, rule :- (s/maybe rules/Rule)]
   (let [root    (-> dashboard :context :root)
         indepth (indepth root rule)]
     (if (not-empty indepth)
@@ -766,7 +766,7 @@
           (assoc :more (when (and (-> dashboard :cards count (> max-cards))
                                 (not= show :all))
                          (format "%s#show=all" (:url root))))))
-    (throw (ex-info (format (trs "Can't create dashboard for %s") full-name)
+    (throw (ex-info (trs "Can't create dashboard for {0}" full-name)
              {:root            root
               :available-rules (map :rule (or (some-> rule rules/get-rule vector)
                                               (rules/get-rules rules-prefix)))}))))
@@ -836,7 +836,7 @@
       (let [opts (assoc opts :show :all)]
         (->> (decompose-question root card opts)
              (apply populate/merge-dashboards (automagic-dashboard root))
-             (merge {:related (related {:entity card} nil)}))))))
+             (merge {:related (related {:context {:root {:entity card}}} nil)}))))))
 
 (defmethod automagic-analysis (type Query)
   [query {:keys [cell-query] :as opts}]
@@ -856,7 +856,7 @@
       (let [opts (assoc opts :show :all)]
         (->> (decompose-question root query opts)
              (apply populate/merge-dashboards (automagic-dashboard root))
-             (merge {:related (related {:entity query} nil)}))))))
+             (merge {:related (related {:context {:root {:entity query}}} nil)}))))))
 
 (defmethod automagic-analysis (type Field)
   [field opts]
