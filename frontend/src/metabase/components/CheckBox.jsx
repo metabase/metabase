@@ -19,10 +19,11 @@ export default class CheckBox extends Component {
     color: "blue",
   };
 
-  onClick() {
+  onClick(e) {
     if (this.props.onChange) {
       // TODO: use a proper event object?
       this.props.onChange({ target: { checked: !this.props.checked } });
+      e.stopPropagation()
     }
   }
 
@@ -38,7 +39,7 @@ export default class CheckBox extends Component {
       border: `2px solid ${checked ? themeColor : "#ddd"}`,
     };
     return (
-      <div className="cursor-pointer" onClick={() => this.onClick()}>
+      <div className="cursor-pointer" onClick={e => { this.onClick(e)}}>
         <div
           style={checkboxStyle}
           className="flex align-center justify-center rounded"

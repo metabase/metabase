@@ -3,6 +3,7 @@ import { Box, Flex, Subhead, Truncate } from "rebass";
 import { t } from "c-3po";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
+import listSelect from "metabase/hoc/ListSelect";
 
 import Question from "metabase/entities/questions";
 import Dashboard from "metabase/entities/dashboards";
@@ -83,14 +84,68 @@ const CollectionList = () => {
 };
 
 @withRouter
+@listSelect()
 @connect(() => ({}), mapDispatchToProps)
 class DefaultLanding extends React.Component {
   state = {
     reload: false,
   };
 
+  _getItemProps(item) {
+    switch (item.type) {
+      case "card":
+        return {
+          url: Urls.question(item.id),
+          iconName: "beaker",
+          iconColor: "#93B3C9",
+        };
+      case "dashboard":
+        return {
+          url: Urls.dashboard(item.id),
+          iconName: "dashboard",
+          iconColor: normal.blue,
+        };
+      case "pulse":
+        return {
+          url: Urls.pulseEdit(item.id),
+          iconName: "pulse",
+          iconColor: normal.yellow,
+        };
+    }
+  }
+  _reload() {
+    this.setState({ reload: true });
+    setTimeout(() => this.setState({ relaod: false }), 2000);
+  }
+  async _pinItem({ id, type, collection_position }) {
+    const { updateQuestion, updateDashboard } = this.props;
+    switch (type) {
+      case "card":
+        // hack in 1 as the collection position just to be able to get "pins"
+        await updateQuestion({ id, collection_position: 1 });
+        break;
+      case "dashboard":
+        await updateDashboard({ id, collection_position: 1 });
+        break;
+    }
+    this._reload();
+  }
+
+  async _unPinItem({ id, type, collection_position }) {
+    const { updateQuestion, updateDashboard } = this.props;
+    switch (type) {
+      case "card":
+        await updateQuestion({ id, collection_position: null });
+        break;
+      case "dashboard":
+        await updateDashboard({ id, collection_position: null });
+        break;
+    }
+    this._reload();
+  }
+
   render() {
-    const { collectionId, location } = this.props;
+    const { collectionId, location, selected, onToggleSelected, selection } = this.props;
 
     // Show the
     const showCollectionList = collectionId === "root";
@@ -107,17 +162,34 @@ class DefaultLanding extends React.Component {
         )}
         <Box w={2 / 3}>
           <Box>
-            <CollectionItemsLoader
-              reload
-              wrapped
-              collectionId={collectionId || "root"}
-            >
-              {({ collection, items }) => {
-                if (items.length === 0) {
+            <CollectionItemsLoader reload collectionId={collectionId || "root"}>
+              {({ collection, allItems, pulses, cards, dashboards, empty }) => {
+                let items = allItems;
+
+                if (!items.length) {
                   return <CollectionEmptyState />;
                 }
 
-                console.log(items);
+                // Hack in filtering
+                if (location.query.show) {
+                  switch (location.query.show) {
+                    case "dashboards":
+                      items = dashboards.map(d => ({
+                        ...d,
+                        type: "dashboard",
+                      }));
+                      break;
+                    case "pulses":
+                      items = pulses.map(p => ({ ...p, type: "pulse" }));
+                      break;
+                    case "questions":
+                      items = cards.map(c => ({ ...c, type: "card" }));
+                      break;
+                    default:
+                      items = allItems;
+                      break;
+                  }
+                }
 
                 const pinned = items.filter(i => i.collection_position);
                 const other = items.filter(i => !i.collection_position);
@@ -131,40 +203,47 @@ class DefaultLanding extends React.Component {
                         </Box>
                       )}
                       <Grid>
-                        {pinned.map(item => (
-                          <GridItem w={1 / 2}>
-                            <Link
-                              to={item.getUrl()}
-                              className="hover-parent hover--visibility"
-                              hover={{ color: normal.blue }}
-                            >
-                              <Card hoverable p={3}>
-                                <Icon
-                                  name={item.getIcon()}
-                                  color={item.getColor()}
-                                  size={28}
-                                  mb={2}
-                                />
-                                <Flex align="center">
-                                  <h3>{item.getName()}</h3>
-                                  {collection.can_write &&
-                                    item.unpin && (
+                        {pinned.map(item => {
+                          // TODO - move this over to use item fns like getUrl()
+                          const {
+                            url,
+                            iconName,
+                            iconColor,
+                          } = this._getItemProps(item);
+                          return (
+                            <GridItem w={1 / 2}>
+                              <Link
+                                to={url}
+                                className="hover-parent hover--visibility"
+                                hover={{ color: normal.blue }}
+                              >
+                                <Card hoverable p={3}>
+                                  <Icon
+                                    name={iconName}
+                                    color={iconColor}
+                                    size={28}
+                                    mb={2}
+                                  />
+                                  <Flex align="center">
+                                    <h3>{item.name}</h3>
+                                    {collection.can_write && (
                                       <Box
                                         ml="auto"
                                         className="hover-child"
                                         onClick={ev => {
                                           ev.preventDefault();
-                                          item.unpin();
+                                          this._unPinItem(item);
                                         }}
                                       >
                                         <Icon name="pin" />
                                       </Box>
                                     )}
-                                </Flex>
-                              </Card>
-                            </Link>
-                          </GridItem>
-                        ))}
+                                  </Flex>
+                                </Card>
+                              </Link>
+                            </GridItem>
+                          );
+                        })}
                       </Grid>
                     </Box>
                     <Flex align="center" mb={2}>
@@ -175,23 +254,30 @@ class DefaultLanding extends React.Component {
                       )}
                     </Flex>
                     <Card>
-                      {other.map(item => (
-                        <Box>
-                          <Link to={item.getUrl()}>
-                            <EntityItem
-                              item={item}
-                              name={item.getName()}
-                              iconName={item.getIcon()}
-                              iconColor={item.getColor()}
-                              onPin={
-                                collection.can_write && item.pin
-                                  ? () => item.pin()
-                                  : null
-                              }
-                            />
-                          </Link>
-                        </Box>
-                      ))}
+                      {other.map(item => {
+                        const { url, iconName, iconColor } = this._getItemProps(
+                          item,
+                        );
+                        return (
+                          <Box>
+                            <Link to={url}>
+                              <EntityItem
+                                item={item}
+                                name={item.name}
+                                iconName={iconName}
+                                iconColor={iconColor}
+                                onPin={
+                                  collection.can_write
+                                    ? this._pinItem.bind(this)
+                                    : null
+                                }
+                                selected={selection.has(item)}
+                                onToggleSelected={() => onToggleSelected(item) }
+                              />
+                            </Link>
+                          </Box>
+                        );
+                      })}
                     </Card>
                   </Box>
                 );

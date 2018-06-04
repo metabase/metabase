@@ -1,6 +1,8 @@
 import React from "react";
 
 import { Flex, Box, Truncate } from "rebass";
+
+import CheckBox from "metabase/components/CheckBox"
 import Icon from "metabase/components/Icon";
 
 import { normal } from "metabase/lib/colors";
@@ -22,11 +24,12 @@ const IconWrapper = Flex.extend`
   border-radius: 6px;
 `;
 
-const EntityItem = ({ name, iconName, iconColor, item, onPin }) => {
+const EntityItem = ({ name, iconName, iconColor, item, onPin, selected, onToggleSelected }) => {
   return (
     <EntityItemWrapper py={2} px={2} className="hover-parent hover--visibility">
-      <IconWrapper p={1} mr={1} align="center" justify="center">
+      <IconWrapper p={1} mr={1} align="center" justify="center" className="hover-parent hover--visibility">
         <Icon name={iconName} color={iconColor} />
+        <CheckBox checked={selected} onChange={onToggleSelected} className="hover-child" />
       </IconWrapper>
       <h3>
         <Truncate>{name}</Truncate>

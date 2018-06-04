@@ -2,12 +2,13 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "c-3po";
 
-import { Box, Fixed, Flex } from "rebass";
+import { Box, Flex } from "rebass";
 
 import HeaderWithBack from "metabase/components/HeaderWithBack";
 import Card from "metabase/components/Card";
 import ArchivedItem from "../../components/ArchivedItem";
-import Icon from "metabase/components/Icon";
+import Button from "metabase/components/Button";
+import BulkActionBar from "metabase/components/BulkActionBar"
 
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 
@@ -44,16 +45,6 @@ export default class ArchiveApp extends Component {
         <Flex align="center" mb={2} py={3}>
           <HeaderWithBack name={t`Archive`} />
         </Flex>
-        {selected.length > 0 && (
-          <Fixed bottom left right>
-            <Card dark>
-              <Flex align='center' py={2} px={2}>
-                <SelectionControls {...this.props} />
-                <BulkActionControls {...this.props} />
-              </Flex>
-            </Card>
-          </Fixed>
-        )}
         <Box w={2/3}>
           <Card>
             {list.map(item => (
@@ -78,26 +69,27 @@ export default class ArchiveApp extends Component {
             ))}
           </Card>
         </Box>
+        <BulkActionBar showing={selected.length > 0 }>
+          <SelectionControls {...this.props} />
+          <BulkActionControls {...this.props} />
+        </BulkActionBar>
       </Box>
     );
   }
 }
 
 const BulkActionControls = ({ selected, reload }) => (
-  <span className="ml-auto">
-    {selected.length > 0 && (
-      <Icon
-        name="unarchive"
-        className="cursor-pointer text-brand-hover"
-        onClick={async () => {
-          try {
-            await Promise.all(selected.map(item => item.setArchived(false)));
-          } finally {
-            reload();
-          }
-        }}
-      />
-    )}
+  <span>
+    <Button
+      medium
+      onClick={async () => {
+        try {
+          await Promise.all(selected.map(item => item.setArchived(false)));
+        } finally {
+          reload();
+        }
+      }}
+    >{t`Unarchive`}</Button>
   </span>
 );
 
