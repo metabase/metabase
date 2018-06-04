@@ -24,7 +24,7 @@
              [user :refer [User]]]
             [metabase.util.i18n :refer [set-locale]]
             [puppetlabs.i18n.core :refer [locale-negotiator trs]]
-            [ring.adapter.jetty :as ring-jetty]
+            [ring.adapter.jetty9 :as ring-jetty]
             [ring.middleware
              [cookies :refer [wrap-cookies]]
              [gzip :refer [wrap-gzip]]
@@ -207,7 +207,9 @@
                                                             :max-threads   (config/config-int :mb-jetty-maxthreads)
                                                             :min-threads   (config/config-int :mb-jetty-minthreads)
                                                             :max-queued    (config/config-int :mb-jetty-maxqueued)
-                                                            :max-idle-time (config/config-int :mb-jetty-maxidletime)})
+                                                            :max-idle-time (config/config-int :mb-jetty-maxidletime)
+                                                            :h2c?          true
+                                                            :h2?           true})
                              (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
                              (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
                                                                       (merge jetty-ssl-config)))]
