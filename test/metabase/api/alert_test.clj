@@ -22,7 +22,9 @@
              [util :as tu]]
             [metabase.test.data.users :as users :refer :all]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
-            [toucan.db :as db]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -39,6 +41,7 @@
   (-> card
       (select-keys [:name :description :display])
       (update :display name)
+      (update :collection_id boolean)
       (assoc :id true, :include_csv false, :include_xls false)))
 
 (defn- recipient-details [user-kwd]
@@ -76,22 +79,35 @@
        ~@body)))
 
 (defmacro ^:private with-alert-in-collection
+  "Do `body` with a temporary Alert whose Card is in a Collection, setting the stage to write various tests below."
   {:style/indent 1}
-  [[db-binding collection-binding alert-binding] & body]
-  `(pulse-test/with-pulse-in-collection [~(or db-binding '_) ~(or collection-binding '_) alert#]
+  [[db-binding collection-binding alert-binding card-binding] & body]
+  `(pulse-test/with-pulse-in-collection [~(or db-binding '_) collection# alert# card#]
      ;; Make this Alert actually be an alert
      (db/update! Pulse (u/get-id alert#) :alert_condition "rows")
-     (let [~(or alert-binding '_) alert#]
+     ;; Since Alerts do not actually go in Collections, but rather their Cards do, put the Card in the Collection
+     (db/update! Card (u/get-id card#) :collection_id (u/get-id collection#))
+     (let [~(or alert-binding '_) alert#
+           ~(or collection-binding '_) collection#
+           ~(or card-binding '_) card#]
        ~@body)))
 
-(defn- do-with-alerts-in-a-collection [grant-collection-perms-fn! alerts-or-ids f]
+;; This stuff below is separate from `with-alert-in-collection` above!
+(defn- do-with-alerts-in-a-collection
+  "Do `f` with the Cards associated with `alerts-or-ids` in a new temporary Collection. Grant perms to All Users to that
+  Collection using `f`.
+
+  (The name of this function is somewhat of a misnomer since the Alerts themselves aren't in Collections; it is their
+  Cards that are. Alerts do not go in Collections; their perms are derived from their Cards.)"
+  [grant-collection-perms-fn! alerts-or-ids f]
   (tt/with-temp Collection [collection]
     (grant-collection-perms-fn! (group/all-users) collection)
-    ;; use db/execute! instead of db/update! so the updated_at field doesn't get automatically updated!
+    ;; Go ahead and put all the Cards for all of the Alerts in the temp Collection
     (when (seq alerts-or-ids)
-      (db/execute! {:update Pulse
-                    :set    [[:collection_id (u/get-id collection)]]
-                    :where  [:in :id (set (map u/get-id alerts-or-ids))]}))
+      (doseq [alert (hydrate (db/select Pulse :id [:in (map u/get-id alerts-or-ids)])
+                             :cards)
+              card  (:cards alert)]
+        (db/update! Card (u/get-id card) :collection_id (u/get-id collection))))
     (f)))
 
 (defmacro ^:private with-alerts-in-readable-collection [alerts-or-ids & body]
@@ -206,26 +222,26 @@
    :recipients    []})
 
 ;; Check creation of a new rows alert with email notification
-(tt/expect-with-temp [Card       [card {:name "My question"}]
-                      Collection [collection]]
+(tt/expect-with-temp [Collection [collection]
+                      Card       [card {:name          "My question"
+                                        :collection_id (u/get-id collection)}]]
   [(-> (default-alert card)
        (assoc-in [:card :include_csv] true)
-       (assoc :collection_id true)
+       (assoc-in [:card :collection_id] true)
        (update-in [:channels 0] merge {:schedule_hour 12, :schedule_type "daily", :recipients []}))
    (rasta-new-alert-email {"has any results" true})]
-  (card-api-test/with-cards-in-readable-collection [card]
-    (with-alert-setup
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-      [(et/with-expected-messages 1
-         ((alert-client :rasta) :post 200 "alert"
-          {:card             {:id (u/get-id card), :include_csv false, :include_xls false}
-           :collection_id    (u/get-id collection)
-           :alert_condition  "rows"
-           :alert_first_only false
-           :channels         [daily-email-channel]}))
-       (et/regex-email-bodies #"https://metabase.com/testmb"
-                              #"has any results"
-                              #"My question")])))
+  (with-alert-setup
+    (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+    [(et/with-expected-messages 1
+       ((alert-client :rasta) :post 200 "alert"
+        {:card             {:id (u/get-id card), :include_csv false, :include_xls false}
+         :collection_id    (u/get-id collection)
+         :alert_condition  "rows"
+         :alert_first_only false
+         :channels         [daily-email-channel]}))
+     (et/regex-email-bodies #"https://metabase.com/testmb"
+                            #"has any results"
+                            #"My question")]))
 
 (defn- setify-recipient-emails [results]
   (update results :channels (fn [channels]
@@ -268,79 +284,42 @@
 (expect
   (rasta-new-alert-email {"goes below its goal" true})
   (tt/with-temp* [Collection [collection]
-                  Card       [card {:name    "My question"
-                                    :display "line"}]]
-    (card-api-test/with-cards-in-readable-collection [card]
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-      (with-alert-setup
-        (et/with-expected-messages 1
-          ((user->client :rasta) :post 200 "alert"
-           {:card             {:id (u/get-id card), :include_csv false, :include_xls false}
-            :collection_id    (u/get-id collection)
-            :alert_condition  "goal"
-            :alert_above_goal false
-            :alert_first_only false
-            :channels         [daily-email-channel]}))
-        (et/regex-email-bodies #"https://metabase.com/testmb"
-                               #"goes below its goal"
-                               #"My question")))))
+                  Card       [card {:name          "My question"
+                                    :display       "line"
+                                    :collection_id (u/get-id collection)}]]
+    (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+    (with-alert-setup
+      (et/with-expected-messages 1
+        ((user->client :rasta) :post 200 "alert"
+         {:card             {:id (u/get-id card), :include_csv false, :include_xls false}
+          :alert_condition  "goal"
+          :alert_above_goal false
+          :alert_first_only false
+          :channels         [daily-email-channel]}))
+      (et/regex-email-bodies #"https://metabase.com/testmb"
+                             #"goes below its goal"
+                             #"My question"))))
 
 ;; Check creation of a above goal alert
 (expect
   (rasta-new-alert-email {"meets its goal" true})
   (tt/with-temp* [Collection [collection]
-                  Card       [card {:name    "My question"
-                                    :display "bar"}]]
-    (card-api-test/with-cards-in-readable-collection [card]
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-      (with-alert-setup
-        (et/with-expected-messages 1
-          ((user->client :rasta) :post 200 "alert"
-           {:card             {:id (u/get-id card), :include_csv false, :include_xls false}
-            :collection_id    (u/get-id collection)
-            :alert_condition  "goal"
-            :alert_above_goal true
-            :alert_first_only false
-            :channels         [daily-email-channel]}))
-        (et/regex-email-bodies #"https://metabase.com/testmb"
-                               #"meets its goal"
-                               #"My question")))))
-
-;; Make sure we can create a Pulse with a Collection position
-(expect
- #metabase.models.pulse.PulseInstance{:collection_id true, :collection_position 1}
- (tu/with-model-cleanup [Pulse]
-   (tt/with-temp* [Collection [collection]
-                   Card       [card {:collection_id (u/get-id collection)}]]
-     (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-     ((user->client :rasta) :post 200 "alert" {:card                {:id          (u/get-id card)
-                                                                     :include_csv false
-                                                                     :include_xls false}
-                                               :alert_condition     "goal"
-                                               :alert_above_goal    false
-                                               :alert_first_only    false
-                                               :channels            [daily-email-channel]
-                                               :collection_id       (u/get-id collection)
-                                               :collection_position 1})
-     (some-> (db/select-one [Pulse :collection_id :collection_position] :collection_id (u/get-id collection))
-             (update :collection_id (partial = (u/get-id collection)))))))
-
-;; ...but not if we don't have permissions for the Collection
-(expect
-  nil
-  (tt/with-temp* [Card       [card]
-                  Collection [collection]]
-    ((user->client :rasta) :post 403 "alert" {:card                {:id          (u/get-id card)
-                                                                    :include_csv false
-                                                                    :include_xls false}
-                                              :alert_condition     "goal"
-                                              :alert_above_goal    false
-                                              :alert_first_only    false
-                                              :channels            [daily-email-channel]
-                                              :collection_id       (u/get-id collection)
-                                              :collection_position 1})
-    (some-> (db/select-one [Pulse :collection_id :collection_position] :collection_id (u/get-id collection))
-            (update :collection_id (partial = (u/get-id collection))))))
+                  Card       [card {:name          "My question"
+                                    :display       "bar"
+                                    :collection_id (u/get-id collection)}]]
+    (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+    (with-alert-setup
+      (et/with-expected-messages 1
+        ((user->client :rasta) :post 200 "alert"
+         {:card             {:id (u/get-id card), :include_csv false, :include_xls false}
+          :collection_id    (u/get-id collection)
+          :alert_condition  "goal"
+          :alert_above_goal true
+          :alert_first_only false
+          :channels         [daily-email-channel]}))
+      (et/regex-email-bodies #"https://metabase.com/testmb"
+                             #"meets its goal"
+                             #"My question"))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -420,8 +399,8 @@
                       PulseCard             [_     (pulse-card alert card)]
                       PulseChannel          [pc    (pulse-channel alert)]
                       PulseChannelRecipient [_     (recipient pc :rasta)]]
-  (assoc (default-alert card)
-    :collection_id true)
+  (-> (default-alert card)
+      (assoc-in [:card :collection_id] true))
   (with-alerts-in-writeable-collection [alert]
     (tu/with-model-cleanup [Pulse]
       ((alert-client :rasta) :put 200 (alert-url alert)
@@ -518,83 +497,6 @@
       ((alert-client :rasta) :put 403 (alert-url alert)
        (default-alert-req card pc)))))
 
-;; Can we update *just* the Collection ID of an Alert?
-(expect
-  (tt/with-temp* [Pulse      [alert      {:alert_condition "rows"}]
-                  Collection [collection]]
-    ((user->client :crowberto) :put 200 (str "alert/" (u/get-id alert))
-     {:collection_id (u/get-id collection)})
-    (= (db/select-one-field :collection_id Pulse :id (u/get-id alert))
-       (u/get-id collection))))
-
-;; Can we change the Collection a Alert is in (assuming we have the permissions to do so)?
-(expect
-  (with-alert-in-collection [_ collection alert]
-    (tt/with-temp Collection [new-collection]
-      ;; grant Permissions for both new and old collections
-      (doseq [coll [collection new-collection]]
-        (perms/grant-collection-readwrite-permissions! (group/all-users) coll))
-      ;; now make an API call to move collections
-      ((user->client :rasta) :put 200 (str "alert/" (u/get-id alert)) {:collection_id (u/get-id new-collection)})
-      ;; Check to make sure the ID has changed in the DB
-      (= (db/select-one-field :collection_id Pulse :id (u/get-id alert))
-         (u/get-id new-collection)))))
-
-;; ...but if we don't have the Permissions for the old collection, we should get an Exception
-(expect
-  "You don't have permissions to do that."
-  (with-alert-in-collection [_ collection alert]
-    (tt/with-temp Collection [new-collection]
-      ;; grant Permissions for only the *new* collection
-      (perms/grant-collection-readwrite-permissions! (group/all-users) new-collection)
-      ;; now make an API call to move collections. Should fail
-      ((user->client :rasta) :put 403 (str "alert/" (u/get-id alert)) {:collection_id (u/get-id new-collection)}))))
-
-;; ...and if we don't have the Permissions for the new collection, we should get an Exception
-(expect
-  "You don't have permissions to do that."
-  (with-alert-in-collection [_ collection alert]
-    (tt/with-temp Collection [new-collection]
-      ;; grant Permissions for only the *old* collection
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-      ;; now make an API call to move collections. Should fail
-      ((user->client :rasta) :put 403 (str "alert/" (u/get-id alert)) {:collection_id (u/get-id new-collection)}))))
-
-;; Can we change the Collection position of an Alert?
-(expect
-  1
-  (with-alert-in-collection [_ collection pulse]
-    (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-    ((user->client :rasta) :put 200 (str "alert/" (u/get-id pulse))
-     {:collection_position 1})
-    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
-
-;; ...and unset (unpin) it as well?
-(expect
-  nil
-  (with-alert-in-collection [_ collection pulse]
-    (db/update! Pulse (u/get-id pulse) :collection_position 1)
-    (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-    ((user->client :rasta) :put 200 (str "alert/" (u/get-id pulse))
-     {:collection_position nil})
-    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
-
-;; ...we shouldn't be able to if we don't have permissions for the Collection
-(expect
-  nil
-  (with-alert-in-collection [_ collection pulse]
-    ((user->client :rasta) :put 403 (str "alert/" (u/get-id pulse))
-     {:collection_position 1})
-    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
-
-(expect
-  1
-  (with-alert-in-collection [_ collection pulse]
-    (db/update! Pulse (u/get-id pulse) :collection_position 1)
-    ((user->client :rasta) :put 403 (str "alert/" (u/get-id pulse))
-     {:collection_position nil})
-    (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            GET /alert/question/:id                                             |
@@ -625,9 +527,9 @@
                       PulseChannelRecipient [_    (recipient pc :rasta)]]
   [(-> (default-alert card)
        ;; The read_only flag is used by the UI to determine what the user is allowed to update
-       (assoc :read_only     true
-              :collection_id true)
-       (update-in [:channels 0] merge {:schedule_hour 15 :schedule_type "daily"}))]
+       (assoc :read_only true)
+       (update-in [:channels 0] merge {:schedule_hour 15 :schedule_type "daily"})
+       (assoc-in [:card :collection_id] true))]
   (with-alert-setup
     (with-alerts-in-readable-collection [alert]
       ((alert-client :rasta) :get 200 (alert-question-url card)))))

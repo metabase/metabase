@@ -208,6 +208,9 @@
    Using this will mean the current User is allowed to read or write these objects if they are allowed to read or
   write their parent Collection."
   (merge i/IObjectPermissionsDefaults
+         ;; TODO - we use these same partial implementations of `can-read?` and `can-write?` all over the place for
+         ;; different models. Consider making them a mixin of some sort. (I was going to do this but I couldn't come
+         ;; up with a good name for the Mixin. - Cam)
          {:can-read?         (partial i/current-user-has-full-permissions? :read)
           :can-write?        (partial i/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set-for-parent-collection}))

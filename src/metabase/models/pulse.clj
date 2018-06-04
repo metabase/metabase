@@ -41,36 +41,58 @@
   (doseq [model [PulseCard PulseChannel]]
     (db/delete! model :pulse_id (u/get-id notification))))
 
+(defn- alert->card
+  "Return the Card associated with an Alert, fetching it if needed, for permissions-checking purposes."
+  [alert]
+  (or
+   ;; if `card` is already present as a top-level key we can just use that directly
+   (:card alert)
+   ;; otherwise fetch the associated `:cards` (if not already fetched) and then pull the first one out, since Alerts
+   ;; can only have one Card
+   (-> (hydrate alert :cards) :cards first)))
+
+(defn- perms-objects-set
+  "Permissions to read or write a *Pulse* are the same as those of its parent Collection.
+
+  Permissions to read or write an *Alert* are the same as those of its 'parent' *Card*. For all intents and purposes,
+  an Alert cannot be put into a Collection."
+  [notification read-or-write]
+  (let [is-alert? (boolean (:alert_condition notification))]
+    (if is-alert?
+      (i/perms-objects-set (alert->card notification) read-or-write)
+      (perms/perms-objects-set-for-parent-collection notification read-or-write))))
+
 (u/strict-extend (class Pulse)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:pulse])
           :properties     (constantly {:timestamped? true})
           :pre-delete     pre-delete})
-  ;; You can read/write a Pulse if you can read/write its parent Collection
   i/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection)
+  {:can-read?         (partial i/current-user-has-full-permissions? :read)
+   :can-write?        (partial i/current-user-has-full-permissions? :write)
+   :perms-objects-set perms-objects-set})
 
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn ^:hydrate channels
-  "Return the PulseChannels associated with this PULSE."
-  [{:keys [id]}]
-  (db/select PulseChannel, :pulse_id id))
+  "Return the PulseChannels associated with this `notification`."
+  [notification-or-id]
+  (db/select PulseChannel, :pulse_id (u/get-id notification-or-id)))
 
 
 (defn ^:hydrate cards
-  "Return the `Cards` associated with this PULSE."
-  [{:keys [id]}]
-  (map #(models/do-post-select Card %)
+  "Return the Cards associated with this `notification`."
+  [notification-or-id]
+  (map (partial models/do-post-select Card)
        (db/query
-        {:select    [:c.id :c.name :c.description :c.display :pc.include_csv :pc.include_xls]
+        {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls]
          :from      [[Pulse :p]]
          :join      [[PulseCard :pc] [:= :p.id :pc.pulse_id]
                      [Card :c] [:= :c.id :pc.card_id]]
          :where     [:and
-                     [:= :p.id id]
+                     [:= :p.id (u/get-id notification-or-id)]
                      [:= :c.archived false]]
          :order-by [[:pc.position :asc]]})))
 

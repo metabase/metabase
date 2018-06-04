@@ -41,7 +41,7 @@
   "Functions for fetching the 'children' of a Collection. Each function takes `collection-id` as a param."
   {:cards      #(db/select [Card :name :id :collection_position],      :collection_id %, :archived false)
    :dashboards #(db/select [Dashboard :name :id :collection_position], :collection_id %, :archived false)
-   :pulses     #(db/select [Pulse :name :id :collection_position],     :collection_id %)})
+   :pulses     #(db/select [Pulse :name :id :collection_position],     :collection_id %, :alert_condition nil)}) ; exclude Alerts
 
 (defn- collection-children
   "Fetch a map of the 'child' objects belonging to a Collection of type `model`, or of all available types if `model` is

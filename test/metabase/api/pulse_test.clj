@@ -37,9 +37,10 @@
   (select-keys user [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name]))
 
 (defn- pulse-card-details [card]
-  (-> (select-keys card [:id :name :description :display])
+  (-> (select-keys card [:id :collection_id :name :description :display])
       (update :display name)
-      (assoc :include_csv false :include_xls false)))
+      (update :collection_id boolean)
+      (assoc :include_csv false, :include_xls false))) ; why??
 
 (defn- pulse-channel-details [channel]
   (select-keys channel [:schedule_type :schedule_details :channel_type :updated_at :details :pulse_id :id :enabled
@@ -64,7 +65,9 @@
       (dissoc :id)
       (assoc :created_at (some? created_at)
              :updated_at (some? updated_at))
-      (update :collection_id boolean)))
+      (update :collection_id boolean)
+      (update :cards #(for [card %]
+                        (update card :collection_id boolean)))))
 
 (defn- do-with-pulses-in-a-collection [grant-collection-perms-fn! pulses-or-ids f]
   (tt/with-temp Collection [collection]
@@ -165,7 +168,9 @@
    {:name          "A Pulse"
     :creator_id    (user->id :rasta)
     :creator       (user-details (fetch-user :rasta))
-    :cards         (mapv pulse-card-details [card-1 card-2])
+    :cards         (for [card [card-1 card-2]]
+                     (assoc (pulse-card-details card)
+                       :collection_id true))
     :channels      [(merge pulse-channel-defaults
                            {:channel_type  "email"
                             :schedule_type "daily"
@@ -197,8 +202,8 @@
    {:name          "A Pulse"
     :creator_id    (user->id :rasta)
     :creator       (user-details (fetch-user :rasta))
-    :cards         [(assoc (pulse-card-details card-1) :include_csv true :include_xls true)
-                    (pulse-card-details card-2)]
+    :cards         [(assoc (pulse-card-details card-1) :include_csv true, :include_xls true, :collection_id true)
+                    (assoc (pulse-card-details card-2) :collection_id true)]
     :channels      [(merge pulse-channel-defaults
                            {:channel_type  "email"
                             :schedule_type "daily"
@@ -308,7 +313,8 @@
    {:name          "Updated Pulse"
     :creator_id    (user->id :rasta)
     :creator       (user-details (fetch-user :rasta))
-    :cards         [(pulse-card-details card)]
+    :cards         [(assoc (pulse-card-details card)
+                      :collection_id true)]
     :channels      [(merge pulse-channel-defaults
                            {:channel_type  "slack"
                             :schedule_type "hourly"
@@ -319,9 +325,9 @@
     (card-api-test/with-cards-in-readable-collection [card]
       (-> ((user->client :rasta) :put 200 (format "pulse/%d" (u/get-id pulse))
            {:name          "Updated Pulse"
-            :cards         [{:id          (u/get-id card)
-                             :include_csv false
-                             :include_xls false}]
+            :cards         [{:id            (u/get-id card)
+                             :include_csv   false
+                             :include_xls   false}]
             :channels      [{:enabled       true
                              :channel_type  "slack"
                              :schedule_type "hourly"
