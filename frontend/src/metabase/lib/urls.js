@@ -74,11 +74,11 @@ export function modelToUrl(model, modelId) {
 }
 
 export function pulse(pulseId) {
-  return `/pulse/#${pulseId}`;
+  return `/pulse/${pulseId}`;
 }
 
 export function pulseEdit(pulseId) {
-  return `/pulse/${pulseId}`;
+  return `/pulse/${pulseId}/edit`;
 }
 
 export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
