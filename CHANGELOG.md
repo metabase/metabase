@@ -4,7 +4,7 @@
 
 * Pending changelog
 
-## 0.29.0-d524010 (Built: May 24, 2018 | Pre-release)
+## 0.29.0-d524010 (Built: May 24, 2018 | Released: June 04, 2018)
 
 * [DGPB-1171] Add Armadillo admin logic for User auto-creation
 * [DGPB-1130] Versioning improvement
