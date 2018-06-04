@@ -218,7 +218,7 @@ export default class GettingStartedGuideEditForm extends Component {
         {isDashboardModalOpen && (
           <Modal>
             <CreateDashboardModal
-              createDashboardFn={async newDashboard => {
+              createDashboard={async newDashboard => {
                 try {
                   await createDashboard(newDashboard, { redirect: true });
                 } catch (error) {

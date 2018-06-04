@@ -22,7 +22,10 @@ const mapStateToProps = state => ({
   metadata: getMetadata(state),
   isLoading:
     Metrics.selectors.getLoading(state) ||
-    Databases.selectors.getLoading(state),
+    Databases.selectors.getLoading(state, {
+      // must match entityQuery used by fetchDatabases
+      entityQuery: { include_tables: true, include_cards: true },
+    }),
 });
 const mapDispatchToProps = {
   fetchMetrics,

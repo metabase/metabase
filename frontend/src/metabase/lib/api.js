@@ -67,6 +67,12 @@ class Api extends EventEmitter {
           }
           url = url.replace(tag, value);
         }
+        // remove undefined
+        for (const name in data) {
+          if (data[name] === undefined) {
+            delete data[name];
+          }
+        }
 
         let headers: { [key: string]: string } = {
           Accept: "application/json",

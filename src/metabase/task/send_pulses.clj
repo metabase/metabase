@@ -93,7 +93,7 @@
     (doseq [pulse-id (keys channels-by-pulse)]
       (try
         (log/debug (format "Starting Pulse Execution: %d" pulse-id))
-        (when-let [pulse (pulse/retrieve-pulse-or-alert pulse-id)]
+        (when-let [pulse (pulse/retrieve-notification pulse-id)]
           (p/send-pulse! pulse :channel-ids (mapv :id (get channels-by-pulse pulse-id))))
         (log/debug (format "Finished Pulse Execution: %d" pulse-id))
         (catch Throwable e

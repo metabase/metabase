@@ -1,7 +1,6 @@
 (ns metabase.api.card
   "/api/card endpoints."
   (:require [cheshire.core :as json]
-            [clojure.data :as data]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
@@ -13,17 +12,14 @@
              [util :as u]]
             [metabase.api
              [common :as api]
-             [dataset :as dataset-api]
-             [label :as label-api]]
+             [dataset :as dataset-api]]
             [metabase.email.messages :as messages]
             [metabase.models
              [card :as card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
-             [card-label :refer [CardLabel]]
-             [collection :refer [Collection]]
+             [collection :as collection :refer [Collection]]
              [database :refer [Database]]
              [interface :as mi]
-             [label :refer [Label]]
              [permissions :as perms]
              [pulse :as pulse :refer [Pulse]]
              [query :as query]
@@ -44,17 +40,6 @@
   (:import java.util.UUID))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
-
-(defn- ^:deprecated hydrate-labels
-  "Efficiently hydrate the `Labels` for a large collection of `Cards`."
-  [cards]
-  (let [card-labels          (db/select [CardLabel :card_id :label_id])
-        label-id->label      (when (seq card-labels)
-                               (u/key-by :id (db/select Label :id [:in (map :label_id card-labels)])))
-        card-id->card-labels (group-by :card_id card-labels)]
-    (for [card cards]
-      (assoc card :labels (for [card-label (card-id->card-labels (:id card))] ; TODO - do these need to be sorted ?
-                            (label-id->label (:label_id card-label)))))))
 
 (defn- hydrate-favorites
   "Efficiently add `favorite` status for a large collection of `Cards`."
@@ -145,9 +130,6 @@
    :popular  (u/drop-first-arg cards:popular)
    :archived (u/drop-first-arg cards:archived)})
 
-(defn- ^:deprecated card-has-label? [label-slug card]
-  (contains? (set (map :slug (:labels card))) label-slug))
-
 (defn- collection-slug->id [collection-slug]
   (when (seq collection-slug)
     ;; special characters in the slugs are always URL-encoded when stored in the DB, e.g.  "Obsługa klienta" becomes
@@ -158,18 +140,15 @@
                               [:= :slug (codec/url-encode collection-slug)]]}))))
 
 ;; TODO - do we need to hydrate the cards' collections as well?
-(defn- cards-for-filter-option [filter-option model-id label collection-slug]
+(defn- cards-for-filter-option [filter-option model-id collection-slug]
   (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
                   (hydrate :creator :collection :in_public_dashboard)
-                  hydrate-labels
                   hydrate-favorites)]
-    ;; Since labels and collections are hydrated in Clojure-land we need to wait until this point to apply
-    ;; label/collection filtering. If applicable COLLECTION can optionally be an empty string which is used to
-    ;; represent *no collection*
+    ;; Since Collections are hydrated in Clojure-land we need to wait until this point to apply Collection filtering.
+    ;; If applicable, `collection` can optionally be an empty string which is used to represent the Root Collection
     (filter (cond
               collection-slug (let [collection-id (collection-slug->id collection-slug)]
                                 (comp (partial = collection-id) :collection_id))
-              (seq label)     (partial card-has-label? label)
               :else           identity)
             cards)))
 
@@ -181,24 +160,19 @@
   (apply s/enum (map name (keys filter-option->fn))))
 
 (api/defendpoint GET "/"
-  "Get all the `Cards`. Option filter param `f` can be used to change the set of Cards that are returned; default is
+  "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See
   corresponding implementation functions above for the specific behavior of each filter option. :card_index:
 
-  Optionally filter cards by LABEL or COLLECTION slug. (COLLECTION can be a blank string, to signify cards with *no
-  collection* should be returned.)
+  Optionally filter cards by `collection` slug. (`collection` can be a blank string, to signify cards in the Root
+  Collection should be returned.)
 
   NOTES:
 
-  *  Filtering by LABEL is considered *deprecated*, as `Labels` will be removed from an upcoming version of Metabase
-     in favor of `Collections`.
-  *  LABEL and COLLECTION params are mutually exclusive; if both are specified, LABEL will be ignored and Cards will
-     only be filtered by their `Collection`.
-  *  If no `Collection` exists with the slug COLLECTION, this endpoint will return a 404."
-  [f model_id label collection]
+  *  If no Collection exists with the slug `collection`, this endpoint will return a 404."
+  [f model_id collection]
   {f          (s/maybe CardFilterOption)
    model_id   (s/maybe su/IntGreaterThanZero)
-   label      (s/maybe su/NonBlankString)
    collection (s/maybe s/Str)}
   (let [f (keyword f)]
     (when (contains? #{:database :table} f)
@@ -207,7 +181,7 @@
       (case f
         :database (api/read-check Database model_id)
         :table    (api/read-check Database (db/select-one-field :db_id Table, :id model_id))))
-    (->> (cards-for-filter-option f model_id label collection)
+    (->> (cards-for-filter-option f model_id collection)
          ;; filterv because we want make sure all the filtering is done while current user perms set is still bound
          (filterv mi/can-read?))))
 
@@ -216,7 +190,7 @@
   "Get `Card` with ID."
   [id]
   (u/prog1 (-> (Card id)
-               (hydrate :creator :dashboard_count :labels :can_write :collection :in_public_dashboard)
+               (hydrate :creator :dashboard_count :can_write :collection :in_public_dashboard)
                api/read-check)
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
 
@@ -253,13 +227,14 @@
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
-  [:as {{:keys [dataset_query description display name visualization_settings collection_id result_metadata
-                metadata_checksum]} :body}]
+  [:as {{:keys [collection_id collection_position dataset_query description display metadata_checksum name
+                result_metadata visualization_settings], :as body} :body}]
   {name                   su/NonBlankString
    description            (s/maybe su/NonBlankString)
    display                su/NonBlankString
    visualization_settings su/Map
    collection_id          (s/maybe su/IntGreaterThanZero)
+   collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe results-metadata/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)}
   ;; check that we have permissions to run the query that we're trying to save
@@ -267,8 +242,7 @@
                    (card/query-perms-set dataset_query :write)))
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (when collection_id
-    (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                     (perms/collection-readwrite-path collection_id))))
+    (collection/check-write-perms-for-collection collection_id))
   ;; everything is g2g, now save the card
   (let [card (db/insert! Card
                :creator_id             api/*current-user-id*
@@ -278,27 +252,15 @@
                :name                   name
                :visualization_settings visualization_settings
                :collection_id          collection_id
+               :collection_position    collection_position
                :result_metadata        (result-metadata dataset_query result_metadata metadata_checksum))]
     (events/publish-event! :card-create card)
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has
     ;; with returned one -- See #4283
-    (hydrate card :creator :dashboard_count :labels :can_write :collection)))
+    (hydrate card :creator :dashboard_count :can_write :collection)))
 
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
-
-(defn- check-permissions-for-collection
-  "Check that we have permissions to add or remove cards from `Collection` with COLLECTION-ID."
-  [collection-id]
-  (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                                  (perms/collection-readwrite-path collection-id))))
-
-(defn- check-allowed-to-change-collection
-  "If we're changing the `collection_id` of the Card, make sure we have write permissions for the new group."
-  [card collection-id]
-  (when (and collection-id
-             (not= collection-id (:collection_id card)))
-    (check-permissions-for-collection collection-id)))
 
 (defn check-data-permissions-for-query
   "Check that we have *data* permissions to run the QUERY in question."
@@ -422,7 +384,7 @@
 
 (defn- delete-alerts-if-needed! [old-card {card-id :id :as new-card}]
   ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (seq (pulse/retrieve-alerts-for-card card-id))]
+  (when-let [alerts (seq (pulse/retrieve-alerts-for-cards card-id))]
     (cond
 
       (card-archived? old-card new-card)
@@ -440,7 +402,8 @@
 (api/defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   enable_embedding embedding_params result_metadata metadata_checksum], :as body} :body}]
+                   collection_position enable_embedding embedding_params result_metadata metadata_checksum]
+            :as card-updates} :body}]
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
    display                (s/maybe su/NonBlankString)
@@ -450,34 +413,34 @@
    enable_embedding       (s/maybe s/Bool)
    embedding_params       (s/maybe su/EmbeddingParams)
    collection_id          (s/maybe su/IntGreaterThanZero)
+   collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe results-metadata/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)}
   (let [card-before-update (api/write-check Card id)]
     ;; Do various permissions checks
-    (check-allowed-to-change-collection card-before-update collection_id)
+    (collection/check-allowed-to-change-collection card-before-update collection_id)
     (check-allowed-to-modify-query card-before-update dataset_query)
     (check-allowed-to-unarchive card-before-update archived)
     (check-allowed-to-change-embedding card-before-update enable_embedding embedding_params)
     ;; make sure we have the correct `result_metadata`
-    (let [body (assoc body :result_metadata (result-metadata-for-updating card-before-update dataset_query
-                                                                          result_metadata metadata_checksum))]
+    (let [card-updates (assoc card-updates
+                         :result_metadata (result-metadata-for-updating card-before-update dataset_query
+                                                                        result_metadata metadata_checksum))]
       ;; ok, now save the Card
       (db/update! Card id
         ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
         ;; modified if they're passed in as non-nil
-        (u/select-keys-when body
-          :present #{:collection_id :description}
+        (u/select-keys-when card-updates
+          :present #{:collection_id :collection_position :description}
           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
                      :embedding_params :result_metadata})))
     ;; Fetch the updated Card from the DB
     (let [card (Card id)]
-
       (delete-alerts-if-needed! card-before-update card)
-
       (publish-card-update! card archived)
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
       ;; returned one -- See #4142
-      (hydrate card :creator :dashboard_count :labels :can_write :collection))))
+      (hydrate card :creator :dashboard_count :can_write :collection))))
 
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
@@ -511,25 +474,6 @@
   (api/let-404 [id (db/select-one-id CardFavorite :card_id card-id, :owner_id api/*current-user-id*)]
     (db/delete! CardFavorite, :id id))
   api/generic-204-no-content)
-
-
-;;; ---------------------------------------------- Editing Card Labels -----------------------------------------------
-
-
-(api/defendpoint POST "/:card-id/labels"
-  "Update the set of `Labels` that apply to a `Card`.
-   (This endpoint is considered DEPRECATED as Labels will be removed in a future version of Metabase.)"
-  [card-id :as {{:keys [label_ids]} :body}]
-  {label_ids [su/IntGreaterThanZero]}
-  (label-api/warn-about-labels-being-deprecated)
-  (api/write-check Card card-id)
-  (let [[labels-to-remove labels-to-add] (data/diff (set (db/select-field :label_id CardLabel :card_id card-id))
-                                                    (set label_ids))]
-    (when (seq labels-to-remove)
-      (db/delete! CardLabel, :label_id [:in labels-to-remove], :card_id card-id))
-    (doseq [label-id labels-to-add]
-      (db/insert! CardLabel :label_id label-id, :card_id card-id)))
-  {:status :ok})
 
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------

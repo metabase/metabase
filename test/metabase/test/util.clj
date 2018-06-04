@@ -106,7 +106,7 @@
   ([data]
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
-                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id :fields_hash}
+                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id :fields_hash :date_joined :date-joined}
                          #(.endsWith (name %) "_id")))
     data))
   ([pred data]
@@ -437,7 +437,7 @@
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)
                                    :data          (into {} (.getJobDataMap trigger))}))))}))))))
 
-(defn- clear-connection-pool
+(defn clear-connection-pool
   "It's possible that a previous test ran and set the session's timezone to something, then returned the session to
   the pool. Sometimes that connection's session can remain intact and subsequent queries will continue in that
   timezone. That causes problems for tests that we can determine the database's timezone. This function will reset the

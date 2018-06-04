@@ -12,6 +12,7 @@ export default class UserAvatar extends Component {
       borderRadius: "99px",
       width: "2rem",
       height: "2rem",
+      color: "white",
     };
   }
 
