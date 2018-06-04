@@ -6,6 +6,8 @@ import EntityItem from "metabase/components/EntityItem";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 
+import * as Urls from "metabase/lib/urls";
+
 import Question from "metabase-lib/lib/Question";
 
 import { normal } from "metabase/lib/colors";
@@ -363,7 +365,9 @@ export class TableInfoApp extends React.Component {
                 console.log("description", object);
                 return (
                   <Box>
-                    <Button primary>Xray this table</Button>
+                    <Link to={Urls.xrayTable(tableId)}>
+                      <Button primary>Xray this table</Button>
+                    </Link>
 
                     <h3>About this table</h3>
                     <Text>{object.description}</Text>

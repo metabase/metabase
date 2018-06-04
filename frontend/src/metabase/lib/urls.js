@@ -106,3 +106,7 @@ export function embedCard(token, type = null) {
 export function embedDashboard(token) {
   return `/embed/dashboard/${token}`;
 }
+
+export function xrayTable(tableId) {
+  return `/auto/dashboard/table/${tableId}`;
+}
