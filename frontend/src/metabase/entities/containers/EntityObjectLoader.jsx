@@ -2,13 +2,27 @@
 
 import React from "react";
 import { connect } from "react-redux";
+import { createSelector } from "reselect";
 
 import entityType from "./EntityType";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export type Props = {
-  entityType?: string,
+  // Entity ID, such as a database ID
+  entityId: any,
+  // Entity type name (e.x. "databases", "questions", etc)
+  entityType: string,
+  // Reload the object when the component is mounted (or entityId changes)
+  reload?: boolean,
+  // Wrap the object in the a class that contains helper functions
+  wrapped?: boolean,
+  // List of required properties, if the object is loaded and they are all
+  // present don't bother loading as the object has been loaded by some other means
+  properties?: string[],
+  // Wrap the children in LoadingAndErrorWrapper to display loading and error states
+  // When true (default) the children render prop won't be called until loaded
   loadingAndErrorWrapper: boolean,
+  // Children render prop
   children: (props: RenderProps) => ?React$Element<any>,
 };
 
@@ -30,23 +44,59 @@ export default class EntitiesObjectLoader extends React.Component {
 
   static defaultProps = {
     loadingAndErrorWrapper: true,
+    reload: false,
+    wrapped: false,
   };
+
+  _getWrappedObject: ?(props: Props) => any;
+
+  constructor(props: Props) {
+    super(props);
+
+    this._getWrappedObject = createSelector(
+      [
+        props => props.object,
+        props => props.dispatch,
+        props => props.entityDef,
+      ],
+      (object, dispatch, entityDef) =>
+        object && entityDef.wrapEntity(object, dispatch),
+    );
+  }
 
   componentWillMount() {
     // $FlowFixMe: provided by @connect
     const { entityId, fetch } = this.props;
-    fetch({ id: entityId });
+    fetch(
+      { id: entityId },
+      { reload: this.props.reload, properties: this.props.properties },
+    );
   }
   componentWillReceiveProps(nextProps: Props) {
-    // $FlowFixMe: provided by @connect
     if (nextProps.entityId !== this.props.entityId) {
-      nextProps.fetch({ id: nextProps.entityId });
+      // $FlowFixMe: provided by @connect
+      nextProps.fetch(
+        { id: nextProps.entityId },
+        { reload: nextProps.reload, properties: nextProps.properties },
+      );
     }
   }
   renderChildren = () => {
     // $FlowFixMe: provided by @connect
-    const { children, object, loading, error } = this.props;
-    return children({ object, loading, error, remove: this._remove });
+    let { children, entityDef, wrapped, object, ...props } = this.props; // eslint-disable-line no-unused-vars
+
+    if (wrapped) {
+      // $FlowFixMe:
+      object = this._getWrappedObject(this.props);
+    }
+
+    // $FlowFixMe: missing loading/error
+    return children({
+      ...props,
+      object: object,
+      reload: this.reload,
+      remove: this.remove,
+    });
   };
   render() {
     // $FlowFixMe: provided by @connect
@@ -62,7 +112,15 @@ export default class EntitiesObjectLoader extends React.Component {
     );
   }
 
-  _remove = () => {
+  reload = () => {
+    // $FlowFixMe: provided by @connect
+    return this.props.fetch(
+      { id: this.props.entityId },
+      { reload: true, properties: this.props.properties },
+    );
+  };
+
+  remove = () => {
     // $FlowFixMe: provided by @connect
     return this.props.delete(this.props.object);
   };

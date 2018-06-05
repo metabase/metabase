@@ -85,20 +85,30 @@ export function canRun(card: Card): boolean {
   }
 }
 
+export function cardVisualizationIsEquivalent(
+  cardA: Card,
+  cardB: Card,
+): boolean {
+  return _.isEqual(
+    _.pick(cardA, "display", "visualization_settings"),
+    _.pick(cardB, "display", "visualization_settings"),
+  );
+}
+
+export function cardQueryIsEquivalent(cardA: Card, cardB: Card): boolean {
+  cardA = updateIn(cardA, ["dataset_query", "parameters"], p => p || []);
+  cardB = updateIn(cardB, ["dataset_query", "parameters"], p => p || []);
+  return _.isEqual(
+    _.pick(cardA, "dataset_query"),
+    _.pick(cardB, "dataset_query"),
+  );
+}
+
 export function cardIsEquivalent(cardA: Card, cardB: Card): boolean {
-  cardA = updateIn(
-    cardA,
-    ["dataset_query", "parameters"],
-    parameters => parameters || [],
+  return (
+    cardQueryIsEquivalent(cardA, cardB) &&
+    cardVisualizationIsEquivalent(cardA, cardB)
   );
-  cardB = updateIn(
-    cardB,
-    ["dataset_query", "parameters"],
-    parameters => parameters || [],
-  );
-  cardA = _.pick(cardA, "dataset_query", "display", "visualization_settings");
-  cardB = _.pick(cardB, "dataset_query", "display", "visualization_settings");
-  return _.isEqual(cardA, cardB);
 }
 
 export function getQuery(card: Card): ?StructuredQuery {

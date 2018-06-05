@@ -3,6 +3,8 @@ import {
   createThunkAction,
   handleActions,
   combineReducers,
+  momentifyTimestamps,
+  momentifyObjectsTimestamps,
 } from "metabase/lib/redux";
 import { normalize, schema } from "normalizr";
 
@@ -10,7 +12,6 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { SessionApi, UserApi, PermissionsApi } from "metabase/services";
 
-import moment from "moment";
 import _ from "underscore";
 import { assoc, dissoc } from "icepick";
 
@@ -18,8 +19,9 @@ const user = new schema.Entity("user");
 
 // action constants
 export const CREATE_USER = "metabase/admin/people/CREATE_USER";
-export const DELETE_USER = "metabase/admin/people/DELETE_USER";
 export const FETCH_USERS = "metabase/admin/people/FETCH_USERS";
+export const DEACTIVATE_USER = "metabase/admin/people/DEACTIVATE_USER";
+export const REACTIVATE_USER = "metabase/admin/people/REACTIVATE_USER";
 export const RESEND_INVITE = "metabase/admin/people/RESEND_INVITE";
 export const RESET_PASSWORD_EMAIL =
   "metabase/admin/people/RESET_PASSWORD_EMAIL";
@@ -81,16 +83,13 @@ export const deleteMembership = createAction(
   },
 );
 
-export const createUser = createThunkAction(CREATE_USER, function(user) {
-  return async function(dispatch, getState) {
+export const createUser = createThunkAction(
+  CREATE_USER,
+  user => async (dispatch, getState) => {
     // apply any user defaults here
     user.is_superuser = false;
 
     let newUser = await UserApi.create(user);
-    newUser.date_joined = newUser.date_joined
-      ? moment(newUser.date_joined)
-      : null;
-    newUser.last_login = newUser.last_login ? moment(newUser.last_login) : null;
 
     if (user.groups) {
       await Promise.all(
@@ -107,78 +106,69 @@ export const createUser = createThunkAction(CREATE_USER, function(user) {
     );
 
     return newUser;
-  };
-});
+  },
+);
 
-export const deleteUser = createThunkAction(DELETE_USER, function(user) {
-  return async function(dispatch, getState) {
+export const deactivateUser = createThunkAction(
+  DEACTIVATE_USER,
+  user => async () => {
     await UserApi.delete({
       userId: user.id,
     });
 
     MetabaseAnalytics.trackEvent("People Admin", "User Removed");
-    return user;
-  };
+
+    // NOTE: DELETE doesn't return the object, so just fake it:
+    return { ...user, is_active: false };
+  },
+);
+
+export const reactivateUser = createThunkAction(
+  REACTIVATE_USER,
+  user => async () => {
+    const newUser = await UserApi.reactivate({
+      userId: user.id,
+    });
+
+    MetabaseAnalytics.trackEvent("People Admin", "User Reactivated");
+
+    return newUser;
+  },
+);
+
+export const fetchUsers = createThunkAction(FETCH_USERS, () => async () => {
+  let users = await UserApi.list({ include_deactivated: true });
+  return normalize(users, [user]);
 });
 
-export const fetchUsers = createThunkAction(FETCH_USERS, function() {
-  return async function(dispatch, getState) {
-    let users = await UserApi.list();
-
-    for (let u of users) {
-      u.date_joined = u.date_joined ? moment(u.date_joined) : null;
-      u.last_login = u.last_login ? moment(u.last_login) : null;
-    }
-
-    return normalize(users, [user]);
-  };
-});
-
-export const resendInvite = createThunkAction(RESEND_INVITE, function(user) {
-  return async function(dispatch, getState) {
+export const resendInvite = createThunkAction(
+  RESEND_INVITE,
+  user => async () => {
     MetabaseAnalytics.trackEvent("People Admin", "Resent Invite");
     return await UserApi.send_invite({ id: user.id });
-  };
-});
+  },
+);
 
 export const resetPasswordManually = createThunkAction(
   RESET_PASSWORD_MANUAL,
-  function(user, password) {
-    return async function(dispatch, getState) {
-      MetabaseAnalytics.trackEvent("People Admin", "Manual Password Reset");
-      return await UserApi.update_password({ id: user.id, password: password });
-    };
+  (user, password) => async () => {
+    MetabaseAnalytics.trackEvent("People Admin", "Manual Password Reset");
+    return await UserApi.update_password({ id: user.id, password: password });
   },
 );
 
 export const resetPasswordViaEmail = createThunkAction(
   RESET_PASSWORD_EMAIL,
-  function(user) {
-    return async function(dispatch, getState) {
-      MetabaseAnalytics.trackEvent(
-        "People Admin",
-        "Trigger User Password Reset",
-      );
-      return await SessionApi.forgot_password({ email: user.email });
-    };
+  user => async () => {
+    MetabaseAnalytics.trackEvent("People Admin", "Trigger User Password Reset");
+    return await SessionApi.forgot_password({ email: user.email });
   },
 );
 
-export const updateUser = createThunkAction(UPDATE_USER, function(user) {
-  return async function(dispatch, getState) {
-    let updatedUser = await UserApi.update(user);
-
-    updatedUser.date_joined = updatedUser.date_joined
-      ? moment(updatedUser.date_joined)
-      : null;
-    updatedUser.last_login = updatedUser.last_login
-      ? moment(updatedUser.last_login)
-      : null;
-
-    MetabaseAnalytics.trackEvent("People Admin", "Update Updated");
-
-    return updatedUser;
-  };
+export const updateUser = createThunkAction(UPDATE_USER, user => async () => {
+  MetabaseAnalytics.trackEvent("People Admin", "Update Updated");
+  const newUser = await UserApi.update(user);
+  return newUser;
 });
 
 const modal = handleActions(
@@ -188,19 +178,34 @@ const modal = handleActions(
   null,
 );
 
+const TIMESTAMP_KEYS = [
+  "date_joined",
+  "last_login",
+  "updated_at",
+  "created_at",
+];
+
 const users = handleActions(
   {
     [FETCH_USERS]: {
-      next: (state, { payload }) => ({ ...payload.entities.user }),
+      next: (state, { payload }) =>
+        momentifyObjectsTimestamps(payload.entities.user, TIMESTAMP_KEYS),
     },
     [CREATE_USER]: {
-      next: (state, { payload: user }) => ({ ...state, [user.id]: user }),
+      next: (state, { payload: user }) =>
+        assoc(state, user.id, momentifyTimestamps(user, TIMESTAMP_KEYS)),
     },
-    [DELETE_USER]: {
-      next: (state, { payload: user }) => _.omit(state, user.id),
+    [DEACTIVATE_USER]: {
+      next: (state, { payload: user }) =>
+        assoc(state, user.id, momentifyTimestamps(user, TIMESTAMP_KEYS)),
+    },
+    [REACTIVATE_USER]: {
+      next: (state, { payload: user }) =>
+        assoc(state, user.id, momentifyTimestamps(user, TIMESTAMP_KEYS)),
     },
     [UPDATE_USER]: {
-      next: (state, { payload: user }) => ({ ...state, [user.id]: user }),
+      next: (state, { payload: user }) =>
+        assoc(state, user.id, momentifyTimestamps(user, TIMESTAMP_KEYS)),
     },
   },
   null,

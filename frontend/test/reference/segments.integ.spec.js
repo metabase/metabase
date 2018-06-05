@@ -15,7 +15,7 @@ import {
   FETCH_SEGMENT_REVISIONS,
 } from "metabase/redux/metadata";
 
-import { LOAD_ENTITIES } from "metabase/questions/questions";
+import Questions from "metabase/entities/questions";
 
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
@@ -137,7 +137,10 @@ describe("The Reference Section", () => {
         const store = await createTestStore();
         store.pushPath("/reference/segments/" + segmentIds[0] + "/questions");
         mount(store.connectContainer(<SegmentQuestionsContainer />));
-        await store.waitForActions([FETCH_SEGMENT_TABLE, LOAD_ENTITIES]);
+        await store.waitForActions([
+          FETCH_SEGMENT_TABLE,
+          Questions.actions.fetchList,
+        ]);
       });
       // segment revisions
       it("Should show revisions", async () => {
@@ -160,7 +163,10 @@ describe("The Reference Section", () => {
         const store = await createTestStore();
         store.pushPath("/reference/segments/" + segmentIds[0] + "/questions");
         mount(store.connectContainer(<SegmentQuestionsContainer />));
-        await store.waitForActions([FETCH_SEGMENT_TABLE, LOAD_ENTITIES]);
+        await store.waitForActions([
+          FETCH_SEGMENT_TABLE,
+          Questions.actions.fetchList,
+        ]);
       });
     });
   });

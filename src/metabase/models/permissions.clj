@@ -23,7 +23,7 @@
 ;;; |                                                    UTIL FNS                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; ---------------------------------------- Dynamic Vars ----------------------------------------
+;;; -------------------------------------------------- Dynamic Vars --------------------------------------------------
 
 (def ^:dynamic ^Boolean *allow-root-entries*
   "Show we allow permissions entries like `/`? By default, this is disallowed, but you can temporarily disable it here
@@ -36,7 +36,7 @@
   false)
 
 
-;;; ---------------------------------------- Validation ----------------------------------------
+;;; --------------------------------------------------- Validation ---------------------------------------------------
 
 (def ^:private ^:const valid-object-path-patterns
   [#"^/db/(\d+)/$"                                ; permissions for the entire DB -- native and all schemas
@@ -57,6 +57,15 @@
              (some (u/rpartial re-matches object-path)
                    valid-object-path-patterns))))
 
+(def ObjectPath
+  "Schema for a valid permissions path to an object."
+  (s/pred valid-object-path? "Valid permissions object path."))
+
+(def UserPath
+  "Schema for a valid permissions path that a user might possess in their `*current-user-permissions-set*`. This is the
+  same as what's allowed for `ObjectPath` but also includes root permissions, which admins will have."
+  (s/pred #(or (= % "/") (valid-object-path? %))
+          "Valid user permissions path."))
 
 (defn- assert-not-admin-group
   "Check to make sure the `:group_id` for PERMISSIONS entry isn't the admin group."
@@ -83,7 +92,7 @@
   (assert-not-admin-group permissions)
   (assert-valid-object permissions))
 
-;;; ---------------------------------------- Path Util Fns ----------------------------------------
+;;; ------------------------------------------------- Path Util Fns --------------------------------------------------
 
 (defn object-path
   "Return the permissions path for a database, schema, or table."
@@ -120,7 +129,7 @@
   (str "/collection/" (u/get-id collection-or-id) "/"))
 
 
-;;; ---------------------------------------- Permissions Checking Fns ----------------------------------------
+;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
 (defn is-permissions-for-object?
   "Does PERMISSIONS-PATH grant *full* access for OBJECT-PATH?"
@@ -228,9 +237,10 @@
   {:revision s/Int
    :groups   {su/IntGreaterThanZero GroupPermissionsGraph}})
 
-;; The "Strict" versions of the various graphs below are intended for schema checking when *updating* the permissions graph.
-;; In other words, we shouldn't be stopped from returning the graph if it violates the "strict" rules, but we *should* refuse to update the
-;; graph unless it matches the strict schema.
+;; The "Strict" versions of the various graphs below are intended for schema checking when *updating* the permissions
+;; graph. In other words, we shouldn't be stopped from returning the graph if it violates the "strict" rules, but we
+;; *should* refuse to update the graph unless it matches the strict schema.
+;;
 ;; TODO - It might be possible at some point in the future to just use the strict versions everywhere
 
 (defn- check-native-and-schemas-permissions-allowed-together [{:keys [native schemas]}]
@@ -317,7 +327,7 @@
 ;;; |                                                  GRAPH UPDATE                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; ---------------------------------------- Helper Fns ----------------------------------------
+;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 ;; TODO - why does this take a PATH when everything else takes PATH-COMPONENTS or IDs?
 (defn delete-related-permissions!

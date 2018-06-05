@@ -68,7 +68,7 @@ export default class AddToDashSelectDashModal extends Component {
     ) {
       return (
         <CreateDashboardModal
-          createDashboardFn={this.createDashboard}
+          createDashboard={this.createDashboard}
           onClose={this.props.onClose}
         />
       );

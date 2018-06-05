@@ -548,5 +548,21 @@
   (delete-all-field-values-for-database! id)
   {:status :ok})
 
+;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
+
+(api/defendpoint GET "/:id/schemas"
+  "Returns a list of all the schemas found for the database `id`"
+  [id]
+  (let [db (api/read-check Database id)]
+    (sort (db/select-field :schema Table :db_id id))))
+
+;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
+
+(api/defendpoint GET "/:id/schema/:schema"
+  "Returns a list of tables for the given database `id` and `schema`"
+  [id schema]
+  (let [db (api/read-check Database id)]
+    (api/let-404 [tables (seq (db/select Table :db_id id :schema schema {:order-by [[:name :asc]]}))]
+      tables)))
 
 (api/define-routes)

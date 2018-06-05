@@ -8,11 +8,15 @@ export default class ModalContent extends Component {
     id: PropTypes.string,
     title: PropTypes.string,
     onClose: PropTypes.func.isRequired,
+    // takes over the entire screen
     fullPageModal: PropTypes.bool,
+    // standard modal
     formModal: PropTypes.bool,
   };
 
-  static defaultProps = {};
+  static defaultProps = {
+    formModal: true,
+  };
 
   render() {
     const {
@@ -32,6 +36,8 @@ export default class ModalContent extends Component {
           "ModalContent NewForm flex-full flex flex-column relative",
           className,
           { "full-height": fullPageModal && !formModal },
+          // add bottom padding if this is a standard "form modal" with no footer
+          { pb4: formModal && !footer },
         )}
       >
         {onClose && (
@@ -95,18 +101,14 @@ export const ModalBody = ({ children, fullPageModal, formModal }) => (
 export const ModalFooter = ({ children, fullPageModal, formModal }) => (
   <div
     className={cx(
-      "ModalFooter flex-no-shrink px4",
-      fullPageModal ? "py4" : "py2",
-      {
-        "border-top": !fullPageModal || (fullPageModal && !formModal),
-      },
+      "ModalFooter flex flex-no-shrink px4",
+      fullPageModal ? "py4" : "py3",
     )}
   >
     <div
-      className="flex-full ml-auto mr-auto flex"
+      className="ml-auto flex align-center"
       style={{ maxWidth: formModal && fullPageModal ? FORM_WIDTH : undefined }}
     >
-      <div className="flex-full" />
       {Array.isArray(children)
         ? children.map((child, index) => (
             <span key={index} className="ml2">
