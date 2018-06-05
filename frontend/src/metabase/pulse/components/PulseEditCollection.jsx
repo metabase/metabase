@@ -17,7 +17,11 @@ export default class PulseEditCollection extends React.Component {
             return (
               <Box my={2} width={400}>
                 <Select
-                  value={this.props.pulse.collection_id}
+                  placeholder="Select a collection"
+                  value={
+                    this.props.pulse.collection_id ||
+                    parseInt(this.props.initialCollectionId)
+                  }
                   onChange={({ target }) =>
                     this.props.setPulse({
                       ...this.props.pulse,

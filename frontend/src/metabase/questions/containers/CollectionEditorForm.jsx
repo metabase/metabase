@@ -28,7 +28,8 @@ const formConfig = {
   },
   initialValues: {
     name: "",
-    description: "",
+    // the api expects nil or a non blank string for collection descriptions
+    description: null,
     // pick a random color to start so everything isn't blue all the time
     color: getRandomColor(normal),
   },

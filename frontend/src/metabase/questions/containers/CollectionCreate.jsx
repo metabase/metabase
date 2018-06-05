@@ -21,6 +21,7 @@ export default class CollectionCreate extends Component {
           const created = await this.props.createCollection(values);
           this.props.push(`/collection/${created.payload.result}`);
         }}
+        {...this.props}
       />
     );
   }

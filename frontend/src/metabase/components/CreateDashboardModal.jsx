@@ -2,6 +2,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "rebass";
 import { t } from "c-3po";
+import { connect } from "react-redux";
+import { withRouter } from "react-router";
+
 import FormField from "metabase/components/form/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 
@@ -10,6 +13,14 @@ import Select, { Option } from "metabase/components/Select.jsx";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
+import { createDashboard } from "metabase/dashboards/dashboards";
+
+const mapDispatchToProps = {
+  createDashboard,
+};
+
+@connect(null, mapDispatchToProps)
+@withRouter
 export default class CreateDashboardModal extends Component {
   constructor(props, context) {
     super(props, context);
@@ -17,11 +28,14 @@ export default class CreateDashboardModal extends Component {
     this.setDescription = this.setDescription.bind(this);
     this.setName = this.setName.bind(this);
 
+    console.log(props.params);
     this.state = {
       name: null,
       description: null,
       errors: null,
-      collection_id: null,
+      // collectionId in the url starts off as a string, but the select will
+      // compare it to the integer ID on colleciton objects
+      collection_id: parseInt(props.params.collectionId),
     };
   }
 
@@ -78,6 +92,10 @@ export default class CreateDashboardModal extends Component {
         footer={[
           formError,
           <Button
+            mr={1}
+            onClick={() => this.props.onClose()}
+          >{t`Cancel`}</Button>,
+          <Button
             primary={formReady}
             disabled={!formReady}
             onClick={this.createNewDash}
@@ -86,7 +104,7 @@ export default class CreateDashboardModal extends Component {
         onClose={this.props.onClose}
       >
         <form className="Modal-form" onSubmit={this.createNewDash}>
-          <div className="Form-inputs">
+          <div>
             <FormField
               name="name"
               displayName={t`Name`}
