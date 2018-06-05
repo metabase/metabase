@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import * as SchemaMetadata from "metabase/lib/schema_metadata";
 import { formatValue } from "metabase/lib/formatting";
 
@@ -66,18 +64,19 @@ export function pivot(data) {
     if (idx === 0) {
       // first column is always the coldef of the normal column
       return data.cols[normalCol];
+    } else {
+      return {
+        ...data.cols[cellCol],
+        // `name` must be the same for conditional formatting, but put the
+        // formatted pivotted value in the `display_name`
+        display_name: formatValue(value, { column: data.cols[pivotCol] }) || "",
+        // for onVisualizationClick:
+        _dimension: {
+          value: value,
+          column: data.cols[pivotCol],
+        },
+      };
     }
-
-    let colDef = _.clone(data.cols[cellCol]);
-    colDef.name = colDef.display_name =
-      formatValue(value, { column: data.cols[pivotCol] }) || "";
-    // for onVisualizationClick:
-    colDef._dimension = {
-      value: value,
-      column: data.cols[pivotCol],
-    };
-    // delete colDef.id
-    return colDef;
   });
 
   return {
