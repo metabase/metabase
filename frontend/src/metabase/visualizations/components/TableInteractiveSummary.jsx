@@ -89,7 +89,6 @@ export default class TableInteractiveSummary extends Component {
 
   header: GridComponent;
   grid: GridComponent;
-  debugger;
 
   constructor(props: Props) {
     super(props);

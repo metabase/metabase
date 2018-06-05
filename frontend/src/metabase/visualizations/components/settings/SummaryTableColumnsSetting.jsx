@@ -16,20 +16,25 @@ import cx from "classnames";
 import Button from "metabase/components/Button";
 
 
+const GROUPS_SOURCES = 'groupsSources';
+const COLUMNS_SOURCE = 'columnsSource';
+const VALUES_SOURCES = 'valuesSources';
+const UNUSED_COLUMNS = 'unusedColumns';
+
 type StateSerialized = {
-  groupsSources: string[],
-  columnsSource: string[],
-  valuesSources: string[],
+  [GROUPS_SOURCES]: string[],
+  [COLUMNS_SOURCE]: string[],
+  [VALUES_SOURCES]: string[],
   columnNameToProps: { [key: string]: ColumnProps },
 }
 
 
 type State = {
-  groupsSources: string[],
-  columnsSource: string[],
-  valuesSources: string[],
+  [GROUPS_SOURCES]: string[],
+  [COLUMNS_SOURCE]: string[],
+  [VALUES_SOURCES]: string[],
   columnNameToProps: { [key: string]: ColumnProps },
-  unused: string[],
+  [UNUSED_COLUMNS]: string[],
 };
 
 type Props = {
@@ -44,12 +49,14 @@ type ColumnProps = {
   sortOrder: any,
 };
 
+type RowBuilder = (rowKey: String, displayName: String, clickAction: Function) => Component;
+
 
 export const settingsAreValid = (settings: StateSerialized, data) =>
   settings
-  && columnsAreValid(settings.columnsSource || [], data)
-  && columnsAreValid(settings.groupsSources || [], data)
-  && columnsAreValid(settings.valuesSources || [], data);
+  && columnsAreValid(settings[COLUMNS_SOURCE] || [], data)
+  && columnsAreValid(settings[GROUPS_SOURCES] || [], data)
+  && columnsAreValid(settings[VALUES_SOURCES] || [], data);
 
 const getUnusedColumns = (settings: StateSerialized, columnNames): String[] => {
   const allColumns = getColumnsFromSettings(settings);
@@ -57,7 +64,7 @@ const getUnusedColumns = (settings: StateSerialized, columnNames): String[] => {
     .filter(p => !allColumns.includes(p));
 };
 
-export const getColumnsFromSettings = (state: StateSerialized) => [...state.groupsSources || [], ...state.columnsSource || [], ...state.valuesSources || []];
+export const getColumnsFromSettings = (state: StateSerialized) => [...state[GROUPS_SOURCES] || [], ...state[COLUMNS_SOURCE] || [], ...state[VALUES_SOURCES] || []];
 
 const emptyStateSerialized: StateSerialized = ({
   groupsSources: [],
@@ -70,7 +77,7 @@ const buildState = (stateSerialized: StateSerialized, columnNames) => {
   const fatStateSerialized = {...emptyStateSerialized, ...stateSerialized};
   return {
     ...fatStateSerialized,
-    unused: getUnusedColumns(fatStateSerialized, columnNames)
+    [UNUSED_COLUMNS]: getUnusedColumns(fatStateSerialized, columnNames)
   }
 };
 
@@ -84,8 +91,22 @@ export default class SummaryTableColumnsSetting extends Component<Props, State> 
 
   updateState = newState => {
     this.setState(newState);
-    this.props.onChange({...this.state, 'unused': undefined});
+    // if(!newState.isUpdating)
+      this.props.onChange(this.state);
   };
+
+
+  // componentWillReceiveProps(nextProps) {
+  //
+  //   // if(!this.state.isUpdating)
+  //   // {
+  //   //
+  //   // }
+  //   // console.log('***************')
+  //   // console.log(nextProps);
+  //   // console.log(this.props)
+  //   // this.setState({ data: { items: [...nextProps.value] } });
+  // }
 
   // shouldUpdate = (newState: UnboxedState) => {
   //   // if(newState.columnsSource.)
@@ -127,23 +148,23 @@ export default class SummaryTableColumnsSetting extends Component<Props, State> 
 
 
 
-  render() {
-    const {columnNames} = this.props;
-    const {groupsSources, columnsSource, valuesSources, unused} = this.state;
-
-    // const anySelected = this.isAnySelected();
-    return (
+  render = () =>
       <div>
-        {createSortableSection(t`Fields to use for the table rows`, groupsSources.map(name => createFatRow(name, columnNames[name], () => this.updateState({groupsSources:groupsSources.filter(p => p !== name), unused : [name,...unused]}))), items => this.updateState({groupsSources: items}))}
-        {createSortableSection(t`Field to use for the table columns`, columnsSource.map(name => createFatRow(name, columnNames[name], () => this.updateState({columnsSource:columnsSource.filter(p => p !== name), unused : [name,...unused]}))), items => this.updateState({columnsSource: items}))}
-        {createSortableSection(t`Fields to use for the table values`, valuesSources.map(name => createValueSourceRow(name, columnNames[name], () => this.updateState({valuesSources:valuesSources.filter(p => p !== name), unused : [name,...unused]}))), items => this.updateState({valuesSources: items}))}
-        {createSortableSection(t`Unused fields`, unused.map(name => createUnusedSourceRow(name, columnNames[name])), items => this.updateState({unused: items}))}
-      </div>
-    );
-  }
+        {createSortableSection(this, t`Fields to use for the table rows`, GROUPS_SOURCES, createFatRow)}
+        {createSortableSection(this, t`Field to use for the table columns`, COLUMNS_SOURCE, createFatRow)}
+        {createSortableSection(this, t`Fields to use for the table values`, VALUES_SOURCES, createValueSourceRow)}
+        {createSortableSection(this, t`Unused fields`, UNUSED_COLUMNS, createUnusedSourceRow)}
+      </div>;
+
 }
 
-const createSortableSection = (title: String, rows: Component[], updateStateFunc: (string[] => (void))): Component =>
+const createSortableSection = (self: SummaryTableColumnsSetting ,title: String, columnsPropertyName: String, rowBuilder : RowBuilder): Component => {
+  const {columnNames} = self.props;
+  const rowsSource = self.state[columnsPropertyName];
+
+  const removeRowForSource =  removeColumn(self, columnsPropertyName);
+
+  return (
   <div>
     <h4 className="mb1">{title}</h4>
     <ReactSortable
@@ -155,14 +176,23 @@ const createSortableSection = (title: String, rows: Component[], updateStateFunc
           put: true
         },
       }}
-      onChange={updateStateFunc}
+      onChange={items => self.updateState({[columnsPropertyName]: items, isUpdating: !self.state.isUpdating})}
 
       style={{minHeight: 20}}
     >
-      {rows}
+      {rowsSource.map(name => rowBuilder(name, columnNames[name], removeRowForSource(name)))}
     </ReactSortable>
-  </div>
-;
+  </div>);
+};
+
+
+const removeColumn = (self: SummaryTableColumnsSetting, statePropertyName :string) => (name: string) => () =>{
+  const rowsSource = self.state[statePropertyName];
+  const unusedColumns = self.state[UNUSED_COLUMNS];
+  const newState ={[statePropertyName]:rowsSource.filter(p => p !== name), [UNUSED_COLUMNS] : [name,...unusedColumns]};
+  self.updateState(newState);
+};
+
 
 
 const createFatRow = (rowKey: String, displayName: String, clickAction): Component => {

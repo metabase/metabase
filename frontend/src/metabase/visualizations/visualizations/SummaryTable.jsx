@@ -100,7 +100,6 @@ export default class SummaryTable extends Component {
 
   constructor(props: Props) {
     super(props);
-
     this.state = {
       data: null,
     };
@@ -111,6 +110,7 @@ export default class SummaryTable extends Component {
   }
 
   componentWillReceiveProps(newProps: Props) {
+    // console.log(newProps);
     // TODO: remove use of deprecated "card" and "data" props
     if (
       newProps.data !== this.props.data ||
@@ -128,6 +128,9 @@ export default class SummaryTable extends Component {
     settings: VisualizationSettings,
   }) {
  {
+
+   // console.log(data);
+   // console.log(settings);
       const { cols, rows, columns } = data;
       const columnIndexes = getColumnsFromSettings(settings[COLUMNS_SETTINGS])
       //todo:
