@@ -1,6 +1,6 @@
 title: A look at your [[this]]
 transient_title: Here's an overview of your [[this]]
-description: How [[this]] is distributed and more.
+description: How this field is distributed, how many distinct values it has, and how it changes over time.
 applies_to: GenericTable.*
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]
