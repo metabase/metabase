@@ -8,7 +8,7 @@ import HeaderWithBack from "metabase/components/HeaderWithBack";
 import Card from "metabase/components/Card";
 import ArchivedItem from "../../components/ArchivedItem";
 import Button from "metabase/components/Button";
-import BulkActionBar from "metabase/components/BulkActionBar"
+import BulkActionBar from "metabase/components/BulkActionBar";
 
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 
@@ -45,7 +45,7 @@ export default class ArchiveApp extends Component {
         <Flex align="center" mb={2} py={3}>
           <HeaderWithBack name={t`Archive`} />
         </Flex>
-        <Box w={2/3}>
+        <Box w={2 / 3}>
           <Card>
             {list.map(item => (
               <ArchivedItem
@@ -69,9 +69,10 @@ export default class ArchiveApp extends Component {
             ))}
           </Card>
         </Box>
-        <BulkActionBar showing={selected.length > 0 }>
+        <BulkActionBar showing={selected.length > 0}>
           <SelectionControls {...this.props} />
           <BulkActionControls {...this.props} />
+          <Box ml="auto">{t`${selected.length} items selected`}</Box>
         </BulkActionBar>
       </Box>
     );
@@ -81,6 +82,7 @@ export default class ArchiveApp extends Component {
 const BulkActionControls = ({ selected, reload }) => (
   <span>
     <Button
+      ml={1}
       medium
       onClick={async () => {
         try {
@@ -100,13 +102,7 @@ const SelectionControls = ({
   onSelectNone,
 }) =>
   deselected.length === 0 ? (
-    <span className="flex align-center">
-      <StackedCheckBox checked={true} onChange={onSelectNone} />
-      <div className="ml1">Select None</div>
-    </span>
+    <StackedCheckBox checked={true} onChange={onSelectNone} />
   ) : (
-    <span className="flex align-center">
-      <StackedCheckBox checked={false} onChange={onSelectAll} />
-      <div className="ml1">Select All</div>
-    </span>
+    <StackedCheckBox checked={false} onChange={onSelectAll} />
   );

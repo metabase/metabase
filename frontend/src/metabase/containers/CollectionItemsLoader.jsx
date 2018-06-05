@@ -3,8 +3,6 @@ import React from "react";
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 
-import _ from "underscore";
-
 type Props = {
   collectionId: number,
   children: () => void,

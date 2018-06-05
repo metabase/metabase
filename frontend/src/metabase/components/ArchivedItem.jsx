@@ -6,8 +6,8 @@ import { t } from "c-3po";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import CheckBox from "metabase/components/CheckBox.jsx";
-import { Box } from "rebass"
-import cx from "classnames"
+import { Box } from "rebass";
+import cx from "classnames";
 
 const ArchivedItem = ({
   name,
@@ -22,7 +22,7 @@ const ArchivedItem = ({
 }) => (
   <div className="flex align-center p2 hover-parent hover--visibility border-bottom bg-grey-0-hover">
     <Box className="hover-parent hover--visibility">
-      <Box className="hover-child--hiden">
+      <Box className="hover-child hover-child--hiden">
         <Icon name={icon} className="mr2" style={{ color: color }} size={20} />
       </Box>
       {onToggleSelected && (

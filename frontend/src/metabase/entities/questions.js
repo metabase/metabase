@@ -20,6 +20,11 @@ const Questions = createEntity({
     pin: ({ id }) => Questions.actions.update({ id, collection_position: 1 }),
     unpin: ({ id }) =>
       Questions.actions.update({ id, collection_position: null }),
+    setFavorited: ({ id }, favorited) =>
+      Questions.actions.updated({
+        id,
+        favorited,
+      }),
   },
 
   objectSelectors: {

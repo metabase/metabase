@@ -145,8 +145,15 @@ class DefaultLanding extends React.Component {
   }
 
   render() {
-    const { collectionId, location, selected, onToggleSelected, selection } = this.props;
+    const {
+      collectionId,
+      location,
+      selected,
+      onToggleSelected,
+      selection,
+    } = this.props;
 
+    console.log(this.props);
     // Show the
     const showCollectionList = collectionId === "root";
 
@@ -272,7 +279,10 @@ class DefaultLanding extends React.Component {
                                     : null
                                 }
                                 selected={selection.has(item)}
-                                onToggleSelected={() => onToggleSelected(item) }
+                                onToggleSelected={ev => {
+                                  ev.preventDefault();
+                                  onToggleSelected(item);
+                                }}
                               />
                             </Link>
                           </Box>
