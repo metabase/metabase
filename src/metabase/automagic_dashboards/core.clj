@@ -17,7 +17,6 @@
             [metabase.automagic-dashboards
              [filters :as filters]
              [populate :as populate]
-             [filters :as filters]
              [rules :as rules]]
             [metabase.models
              [card :as card :refer [Card]]
@@ -111,7 +110,7 @@
   {:entity       table
    :full-name    (if (isa? (:entity_type table) :entity/GoogleAnalyticsTable)
                    (:display_name table)
-                   (str (:display_name table) (tru " table")))
+                   (tru "{0} table" (:display_name table)))
    :source       table
    :database     (:db_id table)
    :url          (format "%stable/%s" public-endpoint (u/get-id table))
@@ -121,7 +120,7 @@
   [segment]
   (let [table (-> segment :table_id Table)]
     {:entity       segment
-     :full-name    (str (:name segment) (tru " segment"))
+     :full-name    (tru "{0} segment" (:name segment))
      :source       table
      :database     (:db_id table)
      :query-filter (-> segment :definition :filter)
@@ -132,7 +131,7 @@
   [metric]
   (let [table (-> metric :table_id Table)]
     {:entity       metric
-     :full-name    (str (:name metric) (tru " metric"))
+     :full-name    (tru "{0} metric" (:name metric))
      :source       table
      :database     (:db_id table)
      ;; We use :id here as it might not be a concrete field but rather one from a nested query which
@@ -144,7 +143,7 @@
   [field]
   (let [table (field/table field)]
     {:entity       field
-     :full-name    (str (:display_name field) (tru " field"))
+     :full-name    (tru "{0} field" (:display_name field))
      :source       table
      :database     (:db_id table)
      ;; We use :id here as it might not be a concrete metric but rather one from a nested query
@@ -180,7 +179,7 @@
    :source       (source card)
    :database     (:database_id card)
    :query-filter (qp.util/get-in-normalized card [:dataset_query :query :filter])
-   :full-name    (str (:name card) (tru " question"))
+   :full-name    (tru "{0} question" (:name card))
    :url          (format "%squestion/%s" public-endpoint (u/get-id card))
    :rules-prefix [(if (table-like? card)
                     "table"
@@ -648,12 +647,9 @@
    (make-dashboard root rule {:tables [(:source root)]
                               :root   root}))
   ([root, rule :- rules/Rule, context]
-   (-> (walk/postwalk
-           (fn [form]
-             (if (string? form)
-               (fill-templates :string context {} form)
-               form))
-           (select-keys rule [:title :description :transient_title :groups]))
+   (-> rule
+       (select-keys [:title :description :transient_title :groups])
+       (instantiate-metadata context {})
        (assoc :refinements (:cell-query root)))))
 
 (s/defn ^:private apply-rule
@@ -664,7 +660,8 @@
                        :dashboard_filters
                        (mapcat (comp :matches (:dimensions context))))
         cards     (make-cards context rule)]
-    (when (or cards (-> rule :cards nil?))
+    (when (or (not-empty cards)
+              (-> rule :cards nil?))
       [(assoc dashboard
          :filters  filters
          :cards    cards
@@ -691,15 +688,18 @@
      :title       (:full-name root)
      :description (:description dashboard)}))
 
-(defn- others
-  ([root] (others max-related root))
+(defn- related-entities
+  ([root] (related-entities max-related root))
   ([n root]
-   (let [recommendations (-> root :entity related/related)]
-     (->> (reduce (fn [acc selector]
+   (let [recommendations     (-> root :entity related/related)
+         ;; Not everything `related/related` returns is relevent for us. Also note that the order
+         ;; influences which entities get shown when results are trimmed.
+         relevant-dimensions [:table :segments :metrics :linking-to :dashboard-mates
+                              :similar-questions :linked-from :tables :fields]]
+     (->> relevant-dimensions
+          (reduce (fn [acc selector]
                     (concat acc (-> selector recommendations rules/ensure-seq)))
-                  []
-                  [:table :segments :metrics :linking-to :dashboard-mates :similar-questions
-                   :linked-from :tables :fields])
+                  [])
           (take n)
           (map ->related-entity)))))
 
@@ -729,12 +729,12 @@
         indepth (indepth root rule)]
     (if (not-empty indepth)
       {:indepth indepth
-       :related (others (- max-related (count indepth)) root)}
-      (let [drilldown-fields (drilldown-fields dashboard)
-            n-others         (max (math/floor (* (/ 2 3) max-related))
-                                  (- max-related (count drilldown-fields)))]
-        {:related          (others n-others root)
-         :drilldown-fields (take (- max-related n-others) drilldown-fields)}))))
+       :related (related-entities (- max-related (count indepth)) root)}
+      (let [drilldown-fields   (drilldown-fields dashboard)
+            n-related-entities (max (math/floor (* (/ 2 3) max-related))
+                                    (- max-related (count drilldown-fields)))]
+        {:related          (related-entities n-related-entities root)
+         :drilldown-fields (take (- max-related n-related-entities) drilldown-fields)}))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
@@ -760,13 +760,13 @@
                  (-> dashboard :context :filters u/pprint-to-str))
       (-> (cond-> dashboard
             (or query-filter cell-query)
-            (assoc :title (str (tru "A closer look at ") full-name)))
+            (assoc :title (tru "A closer look at {0}" full-name)))
           (populate/create-dashboard (or show max-cards))
           (assoc :related (related dashboard rule))
           (assoc :more (when (and (-> dashboard :cards count (> max-cards))
                                 (not= show :all))
                          (format "%s#show=all" (:url root))))))
-    (throw (ex-info (trs "Can't create dashboard for {0}" full-name)
+    (throw (ex-info (trs "Can''t create dashboard for {0}" full-name)
              {:root            root
               :available-rules (map :rule (or (some-> rule rules/get-rule vector)
                                               (rules/get-rules rules-prefix)))}))))
