@@ -301,7 +301,9 @@ export default class Visualization extends Component {
   };
 
   hideActions = () => {
-    this.setState({ clicked: null });
+    if (this.state.clicked !== null) {
+      this.setState({ clicked: null });
+    }
   };
 
   render() {
