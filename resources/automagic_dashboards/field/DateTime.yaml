@@ -1,6 +1,6 @@
 title: A look at your [[this]]
 transient_title: Here's a closer look at your [[this]]
-description: See how [[GenericTable]] are distributed across this field, and if it has any seasonal patterns.
+description: How [[GenericTable]] are distributed across this time field, and if it has any seasonal patterns.
 applies_to: GenericTable.DateTime
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]
