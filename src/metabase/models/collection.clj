@@ -237,6 +237,13 @@
 (defn- is-root-collection? [m]
   (boolean (::is-root? m)))
 
+(def ^:private CollectionWithLocation
+  (s/pred (fn [collection]
+            (and (map? collection)
+                 (or (::is-root? collection)
+                     (valid-location-path? (:location collection)))))
+          "Collection with a valid `:location` or the Root Collection"))
+
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
   Collection.
@@ -245,7 +252,7 @@
 
      ;; To get children of this collection:
      (db/select Collection :location \"/10/20/30/\")"
-  [{:keys [location], :as collection} :- su/Map]
+  [{:keys [location], :as collection} :- CollectionWithLocation]
   (if (is-root-collection? collection)
     "/"
     (str location (u/get-id collection) "/")))
@@ -257,9 +264,9 @@
     s/Keyword s/Any}))
 
 (s/defn ^:private descendants :- #{Children}
-  "Return all descendants of a `collection`, including children, grandchildren, and so forth. This is done primarily
-  to power the `effective-children` feature below, and thus the descendants are returned in a hierarchy, rather than
-  as a flat set. e.g. results will be something like:
+  "Return all descendant Collections of a `collection`, including children, grandchildren, and so forth. This is done
+  primarily to power the `effective-children` feature below, and thus the descendants are returned in a hierarchy,
+  rather than as a flat set. e.g. results will be something like:
 
        +-> B
        |
@@ -269,7 +276,7 @@
 
   where each letter represents a Collection, and the arrows represent values of its respective `:children`
   set."
-  [collection :- su/Map]
+  [collection :- CollectionWithLocation]
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
   (let [location->children (group-by :location (db/select [Collection :name :id :location]
@@ -310,7 +317,7 @@
    the current User. This needs to be done so we can give a User a way to navigate to nodes that are children of
    Collections they cannot access; in the example above, E and F are such nodes."
   {:hydrate :effective_children}
-  [collection :- su/Map]
+  [collection :- CollectionWithLocation]
   ;; Hydrate `:children` if it's not already done
   (-> (for [child (if (contains? collection :children)
                     (:children collection)
@@ -326,12 +333,12 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                               Moving Collections                                               |
+;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
-  [collection :- su/Map, new-location :- LocationPath]
+  [collection :- CollectionWithLocation, new-location :- LocationPath]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))]
     ;; first move this Collection
@@ -345,6 +352,41 @@
         :set    {:location (hsql/call :replace :location orig-children-location new-children-location)}
         :where  [:like :location (str orig-children-location "%")]}))))
 
+(s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
+  [collection :- CollectionWithLocation, & additional-conditions]
+  (apply db/select-ids Collection
+         :location [:like (str (children-location collection) "%")]
+         additional-conditions))
+
+(s/defn ^:private archive-collection!
+  "Archive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
+  [collection :- CollectionWithLocation]
+  (let [affected-collection-ids (cons (u/get-id collection)
+                                      (collection->descendant-ids collection, :archived false))]
+    (db/transaction
+      (db/update-where! Collection {:id       [:in affected-collection-ids]
+                                    :archived false}
+        :archived true)
+      (doseq [model '[Card Dashboard]]
+        (db/update-where! model {:collection_id [:in affected-collection-ids]
+                                 :archived      false}
+          :archived true))
+      (db/delete! 'Pulse :collection_id [:in affected-collection-ids]))))
+
+(s/defn ^:private unarchive-collection!
+  "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
+  [collection :- CollectionWithLocation]
+  (let [affected-collection-ids (cons (u/get-id collection)
+                                      (collection->descendant-ids collection, :archived true))]
+    (db/transaction
+      (db/update-where! Collection {:id       [:in affected-collection-ids]
+                                    :archived true}
+        :archived false)
+      (doseq [model '[Card Dashboard]]
+        (db/update-where! model {:collection_id [:in affected-collection-ids]
+                                 :archived      true}
+          :archived false)))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
@@ -356,22 +398,40 @@
   (assoc collection :slug (u/prog1 (slugify collection-name)
                             (assert-unique-slug <>))))
 
-(defn- pre-update [{collection-name :name, id :id, color :color, archived? :archived, :as collection}]
-  (assert-valid-location collection)
-  ;; make sure hex color is valid
-  (when (contains? collection :color)
-    (assert-valid-hex-color color))
-  ;; archive / unarchive cards in this collection as needed
-  (db/update-where! 'Card {:collection_id id}
-    :archived archived?)
-  ;; slugify the collection name and make sure it's unique
-  (if-not collection-name
-    collection
-    (assoc collection :slug (u/prog1 (slugify collection-name)
-                              ;; if slug hasn't changed no need to check for uniqueness otherwise check to make sure
-                              ;; the new slug is unique
-                              (or (db/exists? Collection, :slug <>, :id id)
-                                  (assert-unique-slug <>))))))
+(s/defn ^:private maybe-archive-or-unarchive
+  "If `:archived` specified in the updates map, archive/unarchive as needed."
+  [collection-before-updates :- CollectionWithLocation, collection-updates :- su/Map]
+  ;; If the updates map contains a value for `:archived`, see if it's actually something different than current value
+  (when (and (contains? collection-updates :archived)
+             (not= (:archived collection-before-updates)
+                   (:archived collection-updates)))
+    ;; check to make sure we're not trying to change location at the same time
+    (when (and (contains? collection-updates :location)
+               (not= (:location collection-updates)
+                     (:location collection-before-updates)))
+      (throw (ex-info (tru "You cannot move a Collection and archive it at the same time.")
+               {:status-code 400
+                :errors      {:archived (tru "You cannot move a Collection and archive it at the same time.")}})))
+    ;; ok, go ahead and do the archive/unarchive operation
+    ((if (:archived collection-updates)
+       archive-collection!
+       unarchive-collection!) collection-before-updates)))
+
+(defn- pre-update [{collection-name :name, id :id, color :color, :as collection-updates}]
+  (let [collection-before-updates (db/select-one Collection :id id)]
+    (assert-valid-location collection-updates)
+    ;; make sure hex color is valid
+    (when (contains? collection-updates :color)
+      (assert-valid-hex-color color))
+    ;; archive or unarchive as appropriate
+    (maybe-archive-or-unarchive collection-before-updates collection-updates)
+    ;; slugify the collection name and make sure it's unique *if* we're changing collection-name
+    (cond-> collection-updates
+      collection-name (assoc :slug (u/prog1 (slugify collection-name)
+                                     ;; if slug hasn't changed no need to check for uniqueness otherwise check to make
+                                     ;; sure the new slug is unique
+                                     (or (db/exists? Collection, :slug <>, :id id)
+                                         (assert-unique-slug <>)))))))
 
 (defn- pre-delete [collection]
   ;; unset the collection_id for Cards/Pulses in this collection. This is mostly for the sake of tests since IRL we

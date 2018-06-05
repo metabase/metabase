@@ -5,8 +5,10 @@
             [metabase.api.common :refer [*current-user-permissions-set*]]
             [metabase.models
              [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
              [collection :as collection :refer [Collection]]
-             [permissions :as perms]]
+             [permissions :as perms]
+             [pulse :refer [Pulse]]]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -584,10 +586,10 @@
 
 (defn- collection-locations
   "Print out an amazingly useful map that charts the hierarchy of `collections`."
-  [collections]
+  [collections & additional-conditions]
   (apply
    merge-with combine
-   (for [collection (-> (db/select Collection :id [:in (map u/get-id collections)])
+   (for [collection (-> (apply db/select Collection, :id [:in (map u/get-id collections)], additional-conditions)
                         format-collections)]
      (assoc-in {} (concat (filter seq (str/split (:location collection) #"/"))
                           [(:name collection)])
@@ -659,7 +661,6 @@
 ;; A -+-> C -+-> D -> E   ===>  F -+-> A -+-> C -+-> D -> E
 ;;           |                     |
 ;;           +-> F -> G            +-> G
-
 (expect
   {"F" {"A" {"B" {}
              "C" {"D" {"E" {}}}}
@@ -668,3 +669,194 @@
     (collection/move-collection! f (collection/children-location collection/root-collection))
     (collection/move-collection! a (collection/children-location (Collection (u/get-id f))))
     (collection-locations (vals collections))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                   Nested Collections: Archiving/Unarchiving                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Make sure the 'additional-conditions' for collection-locations is working normally
+(expect
+  {"A" {"B" {}
+        "C" {"D" {"E" {}}
+             "F" {"G" {}}}}}
+  (with-collection-hierarchy [collections]
+    (collection-locations (vals collections) :archived false)))
+
+;; Test that we can archive a Collection with no descendants!
+;;
+;;    +-> B                        +-> B
+;;    |                            |
+;; A -+-> C -+-> D -> E   ===>  A -+-> C -+-> D
+;;           |                            |
+;;           +-> F -> G                   +-> F -> G
+(expect
+  {"A" {"B" {}
+        "C" {"D" {}
+             "F" {"G" {}}}}}
+  (with-collection-hierarchy [{:keys [e], :as collections}]
+    (db/update! Collection (u/get-id e) :archived true)
+    (collection-locations (vals collections) :archived false)))
+
+;; Test that we can archive a Collection *with* descendants
+;;
+;;    +-> B                        +-> B
+;;    |                            |
+;; A -+-> C -+-> D -> E   ===>  A -+
+;;           |
+;;           +-> F -> G
+(expect
+  {"A" {"B" {}}}
+  (with-collection-hierarchy [{:keys [c], :as collections}]
+    (db/update! Collection (u/get-id c) :archived true)
+    (collection-locations (vals collections) :archived false)))
+
+;; Test that we can unarchive a Collection with no descendants
+;;
+;;    +-> B                        +-> B
+;;    |                            |
+;; A -+-> C -+-> D        ===>  A -+-> C -+-> D -> E
+;;           |                            |
+;;           +-> F -> G                   +-> F -> G
+(expect
+  {"A" {"B" {}
+        "C" {"D" {"E" {}}
+             "F" {"G" {}}}}}
+  (with-collection-hierarchy [{:keys [e], :as collections}]
+    (db/update! Collection (u/get-id e) :archived true)
+    (db/update! Collection (u/get-id e) :archived false)
+    (collection-locations (vals collections) :archived false)))
+
+
+;; Test that we can unarchive a Collection *with* descendants
+;;
+;;    +-> B                        +-> B
+;;    |                            |
+;; A -+                   ===>  A -+-> C -+-> D -> E
+;;                                        |
+;;                                        +-> F -> G
+(expect
+  {"A" {"B" {}
+        "C" {"D" {"E" {}}
+             "F" {"G" {}}}}}
+  (with-collection-hierarchy [{:keys [c], :as collections}]
+    (db/update! Collection (u/get-id c) :archived true)
+    (db/update! Collection (u/get-id c) :archived false)
+    (collection-locations (vals collections) :archived false)))
+
+;; Test that archiving applies to Cards
+;; Card is in E; archiving E should cause Card to be archived
+(expect
+  (with-collection-hierarchy [{:keys [e], :as collections}]
+    (tt/with-temp Card [card {:collection_id (u/get-id e)}]
+      (db/update! Collection (u/get-id e) :archived true)
+      (db/select-one-field :archived Card :id (u/get-id card)))))
+
+;; Test that archiving applies to Cards belonging to descendant Collections
+;; Card is in E, a descendant of C; archiving C should cause Card to be archived
+(expect
+  (with-collection-hierarchy [{:keys [c e], :as collections}]
+    (tt/with-temp Card [card {:collection_id (u/get-id e)}]
+      (db/update! Collection (u/get-id c) :archived true)
+      (db/select-one-field :archived Card :id (u/get-id card)))))
+
+;; Test that archiving applies to Dashboards
+;; Dashboard is in E; archiving E should cause Dashboard to be archived
+(expect
+  (with-collection-hierarchy [{:keys [e], :as collections}]
+    (tt/with-temp Dashboard [dashboard {:collection_id (u/get-id e)}]
+      (db/update! Collection (u/get-id e) :archived true)
+      (db/select-one-field :archived Dashboard :id (u/get-id dashboard)))))
+
+;; Test that archiving applies to Dashboards belonging to descendant Collections
+;; Dashboard is in E, a descendant of C; archiving C should cause Dashboard to be archived
+(expect
+  (with-collection-hierarchy [{:keys [c e], :as collections}]
+    (tt/with-temp Dashboard [dashboard {:collection_id (u/get-id e)}]
+      (db/update! Collection (u/get-id c) :archived true)
+      (db/select-one-field :archived Dashboard :id (u/get-id dashboard)))))
+
+;; Test that archiving *deletes* Pulses (Pulses cannot currently be archived)
+;; Pulse is in E; archiving E should cause Pulse to get deleted
+(expect
+  false
+  (with-collection-hierarchy [{:keys [e], :as collections}]
+    (tt/with-temp Pulse [pulse {:collection_id (u/get-id e)}]
+      (db/update! Collection (u/get-id e) :archived true)
+      (db/exists? Pulse :id (u/get-id pulse)))))
+
+;; Test that archiving *deletes* Pulses belonging to descendant Collections
+;; Pulse is in E, a descendant of C; archiving C should cause Pulse to be archived
+(expect
+  false
+  (with-collection-hierarchy [{:keys [c e], :as collections}]
+    (tt/with-temp Pulse [pulse {:collection_id (u/get-id e)}]
+      (db/update! Collection (u/get-id c) :archived true)
+      (db/exists? Pulse :id (u/get-id pulse)))))
+
+;; Test that unarchiving applies to Cards
+;; Card is in E; unarchiving E should cause Card to be unarchived
+(expect
+  false
+  (with-collection-hierarchy [{:keys [e], :as collections}]
+    (db/update! Collection (u/get-id e) :archived true)
+    (tt/with-temp Card [card {:collection_id (u/get-id e), :archived true}]
+      (db/update! Collection (u/get-id e) :archived false)
+      (db/select-one-field :archived Card :id (u/get-id card)))))
+
+;; Test that unarchiving applies to Cards belonging to descendant Collections
+;; Card is in E, a descendant of C; unarchiving C should cause Card to be unarchived
+(expect
+  false
+  (with-collection-hierarchy [{:keys [c e], :as collections}]
+    (db/update! Collection (u/get-id c) :archived true)
+    (tt/with-temp Card [card {:collection_id (u/get-id e), :archived true}]
+      (db/update! Collection (u/get-id c) :archived false)
+      (db/select-one-field :archived Card :id (u/get-id card)))))
+
+;; Test that unarchiving applies to Dashboards
+;; Dashboard is in E; unarchiving E should cause Dashboard to be unarchived
+(expect
+  false
+  (with-collection-hierarchy [{:keys [e], :as collections}]
+    (db/update! Collection (u/get-id e) :archived true)
+    (tt/with-temp Dashboard [dashboard {:collection_id (u/get-id e), :archived true}]
+      (db/update! Collection (u/get-id e) :archived false)
+      (db/select-one-field :archived Dashboard :id (u/get-id dashboard)))))
+
+;; Test that unarchiving applies to Dashboards belonging to descendant Collections
+;; Dashboard is in E, a descendant of C; unarchiving C should cause Dashboard to be unarchived
+(expect
+  false
+  (with-collection-hierarchy [{:keys [c e], :as collections}]
+    (db/update! Collection (u/get-id c) :archived true)
+    (tt/with-temp Dashboard [dashboard {:collection_id (u/get-id e), :archived true}]
+      (db/update! Collection (u/get-id c) :archived false)
+      (db/select-one-field :archived Dashboard :id (u/get-id dashboard)))))
+
+;; Test that we cannot archive a Collection at the same time we are moving it
+(expect
+  Exception
+  (with-collection-hierarchy [{:keys [c], :as collections}]
+    (db/update! Collection (u/get-id c), :archived true, :location "/")))
+
+;; Test that we cannot unarchive a Collection at the same time we are moving it
+(expect
+  Exception
+  (with-collection-hierarchy [{:keys [c], :as collections}]
+    (db/update! Collection (u/get-id c), :archived true)
+    (db/update! Collection (u/get-id c), :archived false, :location "/")))
+
+;; Passing in a value of archived that is the same as the value in the DB shouldn't affect anything however!
+(expect
+  (with-collection-hierarchy [{:keys [c], :as collections}]
+    (db/update! Collection (u/get-id c), :archived false, :location "/")))
+
+;; Check that attempting to unarchive a Card that's not archived doesn't affect arcived descendants
+(expect
+  (with-collection-hierarchy [{:keys [c e], :as collections}]
+    (db/update! Collection (u/get-id e), :archived true)
+    (db/update! Collection (u/get-id c), :archived false)
+    (db/select-one-field :archived Collection :id (u/get-id e))))
+
+;; TODO - can you unarchive a Card that is inside an archived Collection??
