@@ -34,7 +34,7 @@ groups:
   - Breakdowns:
       title: How [[this]] is distributed
   - Seasonality:
-      title: Seasonal components of [[this]]
+      title: Seasonal patterns in [[this]]
 cards:
   - Count:
       title: Count
