@@ -22,15 +22,16 @@
 (expect (get middleware/response-unauthentic :body) (http/client :get 401 "user/current"))
 
 (def ^:private user-defaults
-  {:ldap_auth    false
-   :is_active    true
-   :is_superuser false
-   :google_auth  false
-   :is_qbnewb    true
-   :id           true
-   :last_login   nil
-   :updated_at   true
-   :date_joined  true})
+  {:ldap_auth        false
+   :is_active        true
+   :is_superuser     false
+   :google_auth      false
+   :is_qbnewb        true
+   :id               true
+   :last_login       nil
+   :updated_at       true
+   :date_joined      true
+   :login_attributes nil})
 
 (def ^:private test-users
   (map #(merge user-defaults %)
@@ -81,16 +82,18 @@
       email     (str user-name "@metabase.com")]
   (expect
     (merge user-defaults
-           {:email        email
-            :first_name   user-name
-            :last_name    user-name
-            :common_name  (str user-name " " user-name)})
+           {:email            email
+            :first_name       user-name
+            :last_name        user-name
+            :common_name      (str user-name " " user-name)
+            :login_attributes {:test "value"}})
     (et/with-fake-inbox
       (try
         (tu/boolean-ids-and-timestamps
-         ((user->client :crowberto) :post 200 "user" {:first_name user-name
-                                                      :last_name  user-name
-                                                      :email      email}))
+         ((user->client :crowberto) :post 200 "user" {:first_name       user-name
+                                                      :last_name        user-name
+                                                      :email            email
+                                                      :login_attributes {:test "value"}}))
         (finally
           ;; clean up after ourselves
           (db/delete! User :email email))))))
@@ -98,7 +101,7 @@
 ;; Test that reactivating a disabled account works
 (expect
   ;; create a random inactive user
-  (tt/with-temp User [ user {:is_active false}]
+  (tt/with-temp User [user {:is_active false}]
     ;; now try creating the same user again, should re-activiate the original
     ((user->client :crowberto) :put 200 (format "user/%s/reactivate" (u/get-id user))
      {:first_name (:first_name user)
@@ -207,6 +210,16 @@
         ((user->client :crowberto) :put 200 (str "user/" user-id) {:last_name "Eron"
                                                                    :email     "cam.eron@metabase.com"}))
        (user)])))
+
+;; Test that we can update login attributes after a user has been created
+(expect
+  (merge user-defaults
+         {:is_superuser     true,            :email       "testuser@metabase.com", :first_name "Test",
+          :login_attributes {:test "value"}, :common_name "Test User",             :last_name  "User"})
+  (tt/with-temp User [{user-id :id} {:first_name "Test", :last_name "User", :email "testuser@metabase.com", :is_superuser true}]
+    (tu/boolean-ids-and-timestamps
+     ((user->client :crowberto) :put 200 (str "user/" user-id) {:email            "testuser@metabase.com"
+                                                                :login_attributes {:test "value"}}))))
 
 ;; ## PUT /api/user/:id
 ;; Test that updating a user's email to an existing inactive user's email fails
