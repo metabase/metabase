@@ -38,7 +38,11 @@ groups:
   - Overview:
       title: Overview
   - Breakdowns:
-      title: How [[this]] are distributed
+      title: How [[this]] is distributed across categories
+  - Seasonality:
+      title: How [[this]] changes with time
+  - Geographical:
+      title: How [[this]] is distributed geographically
 cards:
   - Count:
       title: Count
@@ -86,9 +90,8 @@ cards:
       - Sum
       - Avg
       dimensions: Timestamp
-      group: Breakdowns
+      group: Seasonality
       width: 9
-      height: 6
   - ByCategory:
       title: "[[this]] by [[GenericCategoryMedium]]"
       visualization: bar
@@ -99,3 +102,43 @@ cards:
       group: Breakdowns
       height: 6
       width: 9
+  - ByCountrySum:
+      title: "Sum of [[this]] by [[Country]]"
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      metrics:
+      - Sum
+      dimensions: Country
+      group: Geographical
+  - ByCountryAvg:
+      title: "Average of [[this]] by [[Country]]"
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      metrics:
+      - Avg
+      dimensions: Country
+      group: Geographical
+  - ByStateSum:
+      title: "Sum of [[this]] by [[State]]"
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      metrics:
+      - Sum
+      dimensions: State
+      group: Geographical
+  - ByStateAvg:
+      title: "Average of [[this]] by [[State]]"
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      metrics:
+      - Avg
+      dimensions: State
+      group: Geographical
