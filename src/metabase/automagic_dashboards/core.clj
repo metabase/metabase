@@ -63,13 +63,13 @@
                                     filters/field-reference->id
                                     (->field root))]
     (if field
-      (tru "{0} of {0}" (-> aggregation-clause first name str/capitalize) (:display_name field))
+      (tru "{0} of {1}" (-> aggregation-clause first name str/capitalize) (:display_name field))
       (-> aggregation-clause first name str/capitalize))))
 
 (defn- join-enumeration
   [[x & xs]]
   (if xs
-    (tru "{0} and {0}" (str/join ", " (butlast xs)) (last xs))
+    (tru "{0} and {1}" (str/join ", " (butlast xs)) (last xs))
     x))
 
 (defn- question-description
@@ -81,7 +81,7 @@
                                    (-> arg Metric :name)
 
                                    arg
-                                   (tru "{0} of {0}" (name op) (->> arg
+                                   (tru "{0} of {1}" (name op) (->> arg
                                                                     filters/field-reference->id
                                                                     (->field root)
                                                                     :display_name))
@@ -95,7 +95,7 @@
                                      (partial ->field root)
                                      filters/field-reference->id))
                           join-enumeration)]
-    (tru "{0} by {0}" aggregations dimensions)))
+    (tru "{0} by {1}" aggregations dimensions)))
 
 (def ^:private ^{:arglists '([x])} encode-base64-json
   (comp codec/base64-encode codecs/str->bytes json/encode))
