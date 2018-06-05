@@ -12,7 +12,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
   return [
     {
       name: "xray-card",
-      title: t`X-Ray the results of this question`,
+      title: t`X-Ray this question`,
       icon: "beaker",
       url: () =>
         question.card().id
