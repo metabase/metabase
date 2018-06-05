@@ -1,6 +1,6 @@
 title: A look at your [[this]]
 transient_title: Here's an overview of your [[this]]
-description: How many [[GenericTable]] there are per state, and how [[this]] is distributed across other categories.
+description: How many [[GenericTable]] there are per state, and how each state is represented across other categories.
 applies_to: GenericTable.State
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]
