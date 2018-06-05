@@ -5,29 +5,19 @@ import { t } from "c-3po";
 import { parse as urlParse } from "url";
 import querystring from "querystring";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import ModalContent from "metabase/components/ModalContent"
 import DownloadButton from "metabase/components/DownloadButton.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
 
 import FieldSet from "metabase/components/FieldSet.jsx";
 
 import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
-import cx from "classnames";
 
 const EXPORT_FORMATS = ["csv", "xlsx", "json"];
 
 const QueryDownloadWidget = ({ className, card, result, uuid, token }) => (
-  <PopoverWithTrigger
-    triggerElement={
-      <Tooltip tooltip={t`Download full results`}>
-        <Icon title={t`Download this data`} name="downarrow" size={16} />
-      </Tooltip>
-    }
-    triggerClasses={cx(className, "text-brand-hover")}
-  >
+  <ModalContent>
     <div className="p2" style={{ maxWidth: 320 }}>
       <h4>{t`Download full results`}</h4>
       {result.data.rows_truncated != null && (
@@ -74,7 +64,7 @@ const QueryDownloadWidget = ({ className, card, result, uuid, token }) => (
         )}
       </div>
     </div>
-  </PopoverWithTrigger>
+  </ModalContent>
 );
 
 const UnsavedQueryButton = ({

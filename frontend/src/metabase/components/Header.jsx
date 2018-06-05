@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
+import { Box, Flex } from "rebass"
 
 import Input from "metabase/components/Input.jsx";
 import HeaderModal from "metabase/components/HeaderModal.jsx";
@@ -14,15 +15,11 @@ export default class Header extends Component {
     editingTitle: "",
     editingSubtitle: "",
     editingButtons: [],
-    headerClassName: "py1 lg-py2 xl-py3 wrapper",
+    headerClassName: "",
   };
 
-  constructor(props, context) {
-    super(props, context);
-
-    this.state = {
-      headerHeight: 0,
-    };
+  state = {
+    headerHeight: 0,
   }
 
   componentDidMount() {
@@ -126,43 +123,41 @@ export default class Header extends Component {
         return (
           section &&
           section.length > 0 && (
-            <span
+            <Box
               key={sectionIndex}
-              className="Header-buttonSection flex align-center"
+              mx={1}
             >
               {section.map((button, buttonIndex) => (
                 <span key={buttonIndex} className="Header-button">
                   {button}
                 </span>
               ))}
-            </span>
+            </Box>
           )
         );
       },
     );
 
     return (
-      <div>
+      <Box>
         {this.renderEditHeader()}
         {this.renderHeaderModal()}
-        <div
-          className={
-            "QueryBuilder-section flex align-center " +
-            this.props.headerClassName
-          }
+        <Flex
+          align='center'
           ref="header"
+          px={4}
         >
-          <div className="Entity py3">
+          <Box className="Entity py3">
             {titleAndDescription}
             {attribution}
-          </div>
+          </Box>
 
-          <div className="flex align-center flex-align-right">
+          <Flex align='center' ml='auto'>
             {headerButtons}
-          </div>
-        </div>
+          </Flex>
+        </Flex>
         {this.props.children}
-      </div>
+      </Box>
     );
   }
 }

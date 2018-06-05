@@ -6,6 +6,7 @@ import { connect } from "react-redux";
 import { t } from "c-3po";
 import cx from "classnames";
 import _ from "underscore";
+import { Box } from "rebass"
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 
@@ -259,26 +260,27 @@ class LegacyQueryBuilder extends Component {
                 datasetQuery={card && card.dataset_query}
               />
             ) : query instanceof StructuredQuery ? (
-              <div className="wrapper">
+              <Box mx={4} width='100%'>
                 <GuiQueryEditor
                   {...this.props}
                   datasetQuery={card && card.dataset_query}
                 />
-              </div>
+              </Box>
             ) : null}
           </div>
 
-          <div
+          <Box
+            mx={4}
             ref="viz"
             id="react_qb_viz"
-            className="flex z1"
+            className="z1"
             style={{ transition: "opacity 0.25s ease-in-out" }}
           >
             <QueryVisualization
               {...this.props}
-              className="full wrapper mb2 z1"
+              className="full mb2 z1"
             />
-          </div>
+          </Box>
 
           {ModeFooter && (
             <ModeFooter {...this.props} className="flex-no-shrink" />

@@ -15,7 +15,6 @@ import VisualizationError from "./VisualizationError.jsx";
 import VisualizationResult from "./VisualizationResult.jsx";
 
 import Warnings from "./Warnings.jsx";
-import QueryDownloadWidget from "./QueryDownloadWidget.jsx";
 import QuestionEmbedWidget from "../containers/QuestionEmbedWidget";
 
 import { formatNumber, duration } from "metabase/lib/formatting";
@@ -200,13 +199,6 @@ export default class QueryVisualization extends Component {
               size={18}
             />
           )}
-          {!isResultDirty && result && !result.error ? (
-            <QueryDownloadWidget
-              className="mx1 hide sm-show"
-              card={question.card()}
-              result={result}
-            />
-          ) : null}
           {question.isSaved() &&
           ((isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
             (isEmbeddingEnabled && isAdmin)) ? (
