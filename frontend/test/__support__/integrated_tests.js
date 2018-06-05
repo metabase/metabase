@@ -17,6 +17,8 @@ import {
   CardApi,
   MetricApi,
   SegmentApi,
+  CollectionsApi,
+  PermissionsApi,
 } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from "metabase/reducers-main";
@@ -96,11 +98,15 @@ export function useSharedNormalLogin() {
     id: process.env.TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID,
   };
 }
-export const forBothAdminsAndNormalUsers = async tests => {
-  useSharedAdminLogin();
-  await tests();
-  useSharedNormalLogin();
-  await tests();
+export const forBothAdminsAndNormalUsers = tests => {
+  describe("for admins", () => {
+    beforeEach(useSharedAdminLogin);
+    tests();
+  });
+  describe("for normal users", () => {
+    beforeEach(useSharedNormalLogin);
+    tests();
+  });
 };
 
 export function logout() {
@@ -424,6 +430,22 @@ export const createDashboard = async details => {
   return savedDashboard;
 };
 
+// useful for tests where multiple users need access to the same questions
+export async function createAllUsersWritableCollection() {
+  const group = _.findWhere(await PermissionsApi.groups(), {
+    name: "All Users",
+  });
+  const collection = await CollectionsApi.create({
+    name: "test" + Math.random(),
+    description: "description",
+    color: "#F1B556",
+  });
+  const graph = await CollectionsApi.graph();
+  graph.groups[group.id][collection.id] = "write";
+  await CollectionsApi.updateGraph(graph);
+  return collection;
+}
+
 /**
  * Waits for a API request with a given method (GET/POST/PUT...) and a url which matches the given regural expression.
  * Useful in those relatively rare situations where React components do API requests inline instead of using Redux actions.
@@ -559,17 +581,24 @@ export const eventually = async (assertion, timeout = 5000, period = 250) => {
 // })
 // afterAll(cleanup);
 //
-export const cleanup = () => {
+export const cleanup = async () => {
   useSharedAdminLogin();
-  Promise.all(
-    cleanup.actions.splice(0, cleanup.actions.length).map(action => action()),
-  );
+  try {
+    await Promise.all(
+      cleanup.actions.splice(0, cleanup.actions.length).map(action => action()),
+    );
+  } catch (e) {
+    console.warn("CLEANUP FAILED", e);
+    throw e;
+  }
 };
 cleanup.actions = [];
 cleanup.fn = action => cleanup.actions.push(action);
 cleanup.metric = metric => cleanup.fn(() => deleteMetric(metric));
 cleanup.segment = segment => cleanup.fn(() => deleteSegment(segment));
 cleanup.question = question => cleanup.fn(() => deleteQuestion(question));
+cleanup.collection = collection =>
+  cleanup.fn(() => deleteCollection(collection));
 
 export const deleteQuestion = question =>
   CardApi.delete({ cardId: getId(question) });
@@ -577,6 +606,8 @@ export const deleteSegment = segment =>
   SegmentApi.delete({ segmentId: getId(segment), revision_message: "Please" });
 export const deleteMetric = metric =>
   MetricApi.delete({ metricId: getId(metric), revision_message: "Please" });
+export const deleteCollection = collection =>
+  CollectionsApi.update({ id: getId(collection), archived: true });
 
 const getId = o =>
   typeof o === "object" && o != null
