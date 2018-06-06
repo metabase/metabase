@@ -4,6 +4,7 @@ import { t } from "c-3po";
 import ActionButton from "metabase/components/ActionButton.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
+import { RevisionApi } from "metabase/services";
 
 import moment from "moment";
 
@@ -19,30 +20,40 @@ function formatDate(date) {
 }
 
 export default class HistoryModal extends Component {
-  constructor(props, context) {
-    super(props, context);
 
-    this.state = {
-      error: null,
-    };
-  }
+  state = {
+    error: null,
+    revisions: []
+  };
 
   static propTypes = {
     revisions: PropTypes.array,
     entityType: PropTypes.string.isRequired,
     entityId: PropTypes.number.isRequired,
 
-    onFetchRevisions: PropTypes.func.isRequired,
-    onRevertToRevision: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
-    onReverted: PropTypes.func.isRequired,
   };
+
+  onFetchRevisions = async ({ entity, id }) => {
+    // TODO: reduxify
+    let revisions = await RevisionApi.list({ entity, id });
+    this.setState({ revisions });
+  }
+
+  onRevertToRevision = async({ entity, id, revision_id }) => {
+    // TODO: reduxify
+    return RevisionApi.revert({ entity, id, revision_id });
+  }
+
+  onReverted () {
+
+  }
 
   async componentDidMount() {
     let { entityType, entityId } = this.props;
 
     try {
-      await this.props.onFetchRevisions({ entity: entityType, id: entityId });
+      await this.onFetchRevisions({ entity: entityType, id: parseInt(entityId) });
     } catch (error) {
       this.setState({ error: error });
     }
@@ -51,12 +62,12 @@ export default class HistoryModal extends Component {
   async revert(revision) {
     let { entityType, entityId } = this.props;
     try {
-      await this.props.onRevertToRevision({
+      await this.onRevertToRevision({
         entity: entityType,
         id: entityId,
         revision_id: revision.id,
       });
-      this.props.onReverted();
+      this.onReverted();
     } catch (e) {
       console.warn("revert failed", e);
       throw e;
@@ -74,37 +85,36 @@ export default class HistoryModal extends Component {
   }
 
   render() {
-    let { revisions } = this.props;
+    const { revisions, error } = this.state;
     return (
       <ModalContent
         title={t`Revision history`}
         onClose={() => this.props.onClose()}
       >
         <LoadingAndErrorWrapper
-          className="flex flex-full flex-basis-auto"
           loading={!revisions}
-          error={this.state.error}
+          error={error}
         >
           {() => (
-            <div className="pb4 flex-full">
-              <div className="border-bottom flex px4 py1 text-uppercase text-grey-3 text-bold h5">
-                <span className="flex-half">{t`When`}</span>
-                <span className="flex-half">{t`Who`}</span>
-                <span className="flex-full">{t`What`}</span>
-              </div>
-              <div className="px2 scroll-y">
+            <table>
+              <thead className="border-bottom py1 text-uppercase text-grey-3 text-bold h5">
+                <th>{t`When`}</th>
+                <th>{t`Who`}</th>
+                <th>{t`What`}</th>
+              </thead>
+              <tbody className=" scroll-y">
                 {revisions.map((revision, index) => (
-                  <div
+                  <tr
                     key={revision.id}
-                    className="border-row-divider flex py1 px2"
+                    className="border-row-divider"
                   >
-                    <span className="flex-half">
+                    <td>
                       {formatDate(revision.timestamp)}
-                    </span>
-                    <span className="flex-half">
+                    </td>
+                    <td>
                       {revision.user.common_name}
-                    </span>
-                    <span className="flex-full flex">
+                    </td>
+                    <td>
                       <span>{this.revisionDescription(revision)}</span>
                       {index !== 0 ? (
                         <div className="flex-align-right pl1">
@@ -118,11 +128,11 @@ export default class HistoryModal extends Component {
                           />
                         </div>
                       ) : null}
-                    </span>
-                  </div>
+                    </td>
+                  </tr>
                 ))}
-              </div>
-            </div>
+              </tbody>
+            </table>
           )}
         </LoadingAndErrorWrapper>
       </ModalContent>

@@ -23,7 +23,7 @@ import SaveQuestionModal from "metabase/containers/SaveQuestionModal.jsx";
 
 import { clearRequestState } from "metabase/redux/requests";
 
-import { CardApi, RevisionApi } from "metabase/services";
+import { CardApi } from "metabase/services";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import * as Urls from "metabase/lib/urls";
@@ -74,9 +74,6 @@ export default class QueryHeader extends Component {
       "onDelete",
       "onFollowBreadcrumb",
       "onToggleDataReference",
-      "onFetchRevisions",
-      "onRevertToRevision",
-      "onRevertedRevision",
     );
   }
 
@@ -172,21 +169,6 @@ export default class QueryHeader extends Component {
     this.props.onChangeLocation(this.props.fromUrl || "/");
   }
 
-  async onFetchRevisions({ entity, id }) {
-    // TODO: reduxify
-    let revisions = await RevisionApi.list({ entity, id });
-    this.setState({ revisions });
-  }
-
-  onRevertToRevision({ entity, id, revision_id }) {
-    // TODO: reduxify
-    return RevisionApi.revert({ entity, id, revision_id });
-  }
-
-  onRevertedRevision() {
-    this.props.reloadCardFn();
-    this.refs.cardHistory.toggle();
-  }
 
   getHeaderButtons() {
     const {
