@@ -58,6 +58,7 @@
      :channels            (map pulse-channel-details (:channels pulse))
      :collection_id       $
      :collection_position $
+     :archived            $
      :skip_if_empty       $}))
 
 (defn- pulse-response [{:keys [created_at updated_at], :as pulse}]
@@ -151,7 +152,8 @@
    :collection_position nil
    :created_at          true
    :skip_if_empty       false
-   :updated_at          true})
+   :updated_at          true
+   :archived            false})
 
 (def ^:private daily-email-channel
   {:enabled       true

@@ -200,6 +200,7 @@
    :alert_condition     "rows"
    :alert_first_only    false
    :alert_above_goal    nil
+   :archived            false
    :channels            [(merge pulse-channel-defaults
                                 {:channel_type  "email"
                                  :schedule_type "hourly"

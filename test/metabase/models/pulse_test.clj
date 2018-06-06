@@ -55,7 +55,8 @@
 (def ^:private pulse-defaults
   {:collection_id       nil
    :collection_position nil
-   :skip_if_empty       false})
+   :skip_if_empty       false
+   :archived            false})
 
 ;; retrieve-pulse
 ;; this should cover all the basic Pulse attributes

@@ -51,13 +51,6 @@
       (merge-name-search search-ctx)
       (h/merge-where [:= :archived archived?])))
 
-(s/defn ^:private  merge-name-and-active-search
-  [query-map {:keys [search-string archived?] :as search-ctx} :- SearchContext]
-  (-> query-map
-      (merge-name-search search-ctx)
-      ;; archived? = true is the same as is_active = false, so flip it here
-      (h/merge-where [:= :is_active (not archived?)])))
-
 (s/defn ^:private add-collection-criteria
   "Update the query to only include collections the user has access to"
   [query-map column-kwd {:keys [visible-collections collection]} :- SearchContext]
@@ -115,13 +108,13 @@
   [_ {:keys [collection] :as search-ctx} :- SearchContext]
   (when-not collection
     (-> (make-honeysql-search-query Metric "metric" search-columns-without-type)
-        (merge-name-and-active-search search-ctx))))
+        (merge-name-and-archived-search search-ctx))))
 
 (s/defmethod ^:private create-search-query :segment
   [_ {:keys [collection] :as search-ctx} :- SearchContext]
   (when-not collection
     (-> (make-honeysql-search-query Segment "segment" search-columns-without-type)
-        (merge-name-and-active-search search-ctx))))
+        (merge-name-and-archived-search search-ctx))))
 
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
