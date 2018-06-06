@@ -188,8 +188,8 @@ describe("Alerts", () => {
   });
 
   describe("missing email/slack credentials", () => {
-    it("should prompt you to add email/slack credentials", async () => {
-      await forBothAdminsAndNormalUsers(async () => {
+    forBothAdminsAndNormalUsers(() => {
+      it("should prompt you to add email/slack credentials", async () => {
         MetabaseCookies.getHasSeenAlertSplash = () => false;
 
         const store = await createTestStore();

@@ -98,11 +98,15 @@ export function useSharedNormalLogin() {
     id: process.env.TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID,
   };
 }
-export const forBothAdminsAndNormalUsers = async tests => {
-  useSharedAdminLogin();
-  await tests();
-  useSharedNormalLogin();
-  await tests();
+export const forBothAdminsAndNormalUsers = tests => {
+  describe("for admins", () => {
+    beforeEach(useSharedAdminLogin);
+    tests();
+  });
+  describe("for normal users", () => {
+    beforeEach(useSharedNormalLogin);
+    tests();
+  });
 };
 
 export function logout() {
