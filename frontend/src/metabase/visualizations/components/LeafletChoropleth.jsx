@@ -99,6 +99,10 @@ const LeafletChoropleth = ({
 
       map.fitBounds(minimalBounds);
       // map.fitBounds(geoFeatureGroup.getBounds());
+
+      return () => {
+        map.remove();
+      };
     }}
   />
 );
