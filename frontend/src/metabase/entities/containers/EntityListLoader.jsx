@@ -107,7 +107,7 @@ export const entityListLoader = (ellProps: Props) =>
   (ComposedComponent: any) =>
     // eslint-disable-next-line react/display-name
     (props: Props) => (
-      <EntityListLoader {...ellProps}>
+      <EntityListLoader {...props} {...ellProps}>
         {childProps => <ComposedComponent {...props} {...childProps} />}
       </EntityListLoader>
     );

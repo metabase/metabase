@@ -22,7 +22,7 @@ import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
-import CollectionLoader from "metabase/containers/CollectionItemsLoader";
+import CollectionLoader from "metabase/containers/CollectionLoader";
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
 import Collections from "metabase/entities/collections";
@@ -86,7 +86,12 @@ const CollectionList = () => {
   );
 };
 
-@connect((state, { collectionId }) => ({ entityQuery: { collectionId } }))
+@connect((state, { collectionId }) => ({
+  entityQuery:
+    collectionId === "root"
+      ? {} // FIXME /api/search doesn't yet support root collection
+      : { collection_id: collectionId },
+}))
 @entityListLoader({
   entityType: "search",
   wrapped: true,
@@ -116,7 +121,7 @@ class DefaultLanding extends React.Component {
         <Box w={2 / 3}>
           <Box>
             <CollectionLoader collectionId={collectionId || "root"}>
-              {({ collection }) => {
+              {({ object: collection }) => {
                 if (list.length === 0) {
                   return <CollectionEmptyState />;
                 }
