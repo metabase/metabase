@@ -22,7 +22,8 @@ import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
-import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
+import CollectionLoader from "metabase/containers/CollectionItemsLoader";
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
 import Collections from "metabase/entities/collections";
 
@@ -85,15 +86,19 @@ const CollectionList = () => {
   );
 };
 
+@connect((state, { collectionId }) => ({ entityQuery: { collectionId } }))
+@entityListLoader({
+  entityType: "search",
+  wrapped: true,
+})
 @listSelect()
-@connect(null, mapDispatchToProps)
 class DefaultLanding extends React.Component {
   state = {
     reload: false,
   };
 
   render() {
-    const { collectionId, onToggleSelected, selection } = this.props;
+    const { collectionId, list, onToggleSelected, selection } = this.props;
 
     // Show the
     const showCollectionList = collectionId === "root";
@@ -110,18 +115,14 @@ class DefaultLanding extends React.Component {
         )}
         <Box w={2 / 3}>
           <Box>
-            <CollectionItemsLoader
-              reload
-              wrapped
-              collectionId={collectionId || "root"}
-            >
-              {({ collection, items }) => {
-                if (items.length === 0) {
+            <CollectionLoader collectionId={collectionId || "root"}>
+              {({ collection }) => {
+                if (list.length === 0) {
                   return <CollectionEmptyState />;
                 }
 
                 const [pinned, other] = _.partition(
-                  items,
+                  list,
                   i => i.collection_position != null,
                 );
 
@@ -212,7 +213,7 @@ class DefaultLanding extends React.Component {
                   </Box>
                 );
               }}
-            </CollectionItemsLoader>
+            </CollectionLoader>
           </Box>
         </Box>
       </Flex>
