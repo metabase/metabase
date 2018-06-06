@@ -98,7 +98,7 @@
 (defn- escape-value
   "Escapes a value for use in an LDAP filter expression."
   [value]
-  (str/replace value #"[\*\(\)\\\\0]" (comp (partial format "\\%02X") int first)))
+  (str/replace value #"(?:^\s|\s$|[,\\\#\+<>;\"=\*\(\)\\0])" (comp (partial format "\\%02X") int first)))
 
 (defn- get-connection
   "Connects to LDAP with the currently set settings and returns the connection."
