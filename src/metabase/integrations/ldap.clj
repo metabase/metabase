@@ -209,7 +209,10 @@
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   [{:keys [first-name last-name email groups]} password]
   (let [user (or (db/select-one [User :id :last_login] :email email)
-             (user/create-new-ldap-auth-user! first-name last-name email password))]
+                 (user/create-new-ldap-auth-user! {:first_name first-name
+                                                   :last_name  last-name
+                                                   :email      email
+                                                   :password   password}))]
     (u/prog1 user
       (when password
         (user/set-password! (:id user) password))
