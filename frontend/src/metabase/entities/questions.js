@@ -17,16 +17,18 @@ const Questions = createEntity({
         id,
         collection_id: collection && collection.id,
       }),
+    pin: ({ id }) => Questions.actions.update({ id, collection_position: 1 }),
+    unpin: ({ id }) =>
+      Questions.actions.update({ id, collection_position: null }),
   },
 
   objectSelectors: {
     getName: question => question && question.name,
     getUrl: question => question && Urls.question(question.id),
     getColor: () => "#93B3C9",
-    getIcon: question =>
-      //
-      (require("metabase/visualizations").default.get(question.display) || {})
-        .iconName || "question",
+    getIcon: question => "beaker",
+    // (require("metabase/visualizations").default.get(question.display) || {})
+    //   .iconName || "question",
   },
 
   form: {

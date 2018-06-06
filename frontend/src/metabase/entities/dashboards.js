@@ -16,6 +16,9 @@ const Dashboards = createEntity({
         id,
         collection_id: collection && collection.id,
       }),
+    pin: ({ id }) => Dashboards.actions.update({ id, collection_position: 1 }),
+    unpin: ({ id }) =>
+      Dashboards.actions.update({ id, collection_position: null }),
   },
 
   objectSelectors: {

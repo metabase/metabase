@@ -35,9 +35,9 @@ class Overworld extends React.Component {
           <h4>{t`Pinned dashboards`}</h4>
         </Box>
         <CollectionItemsLoader collectionId="root" reload>
-          {({ dashboards }) => {
-            let pinnedDashboards = dashboards.filter(
-              d => d.collection_position,
+          {({ items }) => {
+            let pinnedDashboards = items.filter(
+              d => d.type === "dashboard" && d.collection_position,
             );
             return (
               <Grid w={1 / 3}>

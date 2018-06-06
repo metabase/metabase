@@ -22,7 +22,7 @@
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
-  {:search-string       su/NonBlankString
+  {:search-string       (s/maybe su/NonBlankString)
    :archived?           s/Bool
    :collection          (s/maybe su/IntGreaterThanZero)
    :visible-collections coll/VisibleCollections})
@@ -42,7 +42,9 @@
 (s/defn ^:private merge-name-search
   "Add case-insensitive name query criteria to `query-map`"
   [query-map {:keys [search-string]} :- SearchContext]
-  (h/merge-where query-map [:like :%lower.name search-string]))
+  (if (empty? search-string)
+    query-map
+    (h/merge-where query-map [:like :%lower.name (str "%" (str/lower-case search-string) "%")])))
 
 (s/defn ^:private merge-name-and-archived-search
   "Add name and archived query criteria to `query-map`"
@@ -83,7 +85,7 @@
 
 (defmulti ^:private create-search-query (fn [entity search-context] entity))
 
-(s/defmethod ^:private create-search-query :card
+(s/defmethod ^:private create-search-query :question
   [_ search-ctx :- SearchContext]
   (-> (make-honeysql-search-query Card "card" search-columns-without-type)
       (merge-name-and-archived-search search-ctx)
@@ -131,24 +133,24 @@
            (not= :all visible-collections)
            (not (contains? visible-collections collection)))
     []
-    (db/query {:union-all (for [entity [:card :collection :dashboard :pulse :segment :metric]
+    (db/query {:union-all (for [entity [:question :collection :dashboard :pulse :segment :metric]
                                 :let [query-map (create-search-query entity search-ctx)]
                                 :when query-map]
                             query-map)})))
 
 (s/defn ^:private make-search-context :- SearchContext
-  [search-string :- su/NonBlankString
+  [search-string :- (s/maybe su/NonBlankString)
    archived-string :- (s/maybe su/BooleanString)
    collection-id :- (s/maybe su/IntGreaterThanZero)]
-  {:search-string       (str "%" (str/lower-case search-string) "%")
+  {:search-string       search-string
    :archived?           (Boolean/parseBoolean archived-string)
    :collection          collection-id
    :visible-collections (coll/permissions-set->visible-collection-ids @*current-user-permissions-set*)})
 
 (defendpoint GET "/"
-  "Search Cards, Dashboards, Collections and Pulses for the substring `q`."
+  "Search Cards, Dashboards, Collections and Pulses, optionally filtered by `q`, `archived`, and/or `collection_id`."
   [q archived collection_id]
-  {q             su/NonBlankString
+  {q             (s/maybe su/NonBlankString)
    archived      (s/maybe su/BooleanString)
    collection_id (s/maybe su/IntGreaterThanZero)}
   (let [{:keys [visible-collections collection] :as search-ctx} (make-search-context q archived collection_id)]
