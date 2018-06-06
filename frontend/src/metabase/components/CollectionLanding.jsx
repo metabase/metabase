@@ -150,13 +150,13 @@ class DefaultLanding extends React.Component {
                                 <Flex align="center">
                                   <h3>{item.getName()}</h3>
                                   {collection.can_write &&
-                                    item.unpin && (
+                                    item.setPinned && (
                                       <Box
                                         ml="auto"
                                         className="hover-child"
                                         onClick={ev => {
                                           ev.preventDefault();
-                                          item.unpin();
+                                          item.setPinned(false);
                                         }}
                                       >
                                         <Icon name="pin" />
@@ -194,8 +194,8 @@ class DefaultLanding extends React.Component {
                                   item.getFavorited && item.getFavorited()
                                 }
                                 onPin={
-                                  collection.can_write && item.pin
-                                    ? () => item.pin()
+                                  collection.can_write && item.setPinned
+                                    ? () => item.setPinned(true)
                                     : null
                                 }
                                 selected={selection.has(item)}

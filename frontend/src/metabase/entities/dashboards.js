@@ -16,12 +16,10 @@ const Dashboards = createEntity({
         id,
         collection_id: collection && collection.id,
       }),
-    pin: ({ id }) => Dashboards.actions.update({ id, collection_position: 1 }),
-    unpin: ({ id }) =>
-    Dashboards.actions.update({ id, collection_position: null }),
-    setFavorited: ({id}, favorited) =>
+    setPinned: ({ id }, pinned) =>
+      Dashboards.actions.update({ id, collection_position: pinned ? 1 : null }),
+    setFavorited: ({ id }, favorited) =>
       Dashboards.actions.update({ id, favorited }),
-
   },
 
   objectSelectors: {
