@@ -18,12 +18,13 @@
 
 ;; test that we can create a new Collection with valid inputs
 (expect
-  {:name        "My Favorite Cards"
-   :slug        "my_favorite_cards"
-   :description nil
-   :color       "#ABCDEF"
-   :archived    false
-   :location    "/"}
+  {:name              "My Favorite Cards"
+   :slug              "my_favorite_cards"
+   :description       nil
+   :color             "#ABCDEF"
+   :archived          false
+   :location          "/"
+   :personal_owner_id nil}
   (tt/with-temp Collection [collection {:name "My Favorite Cards", :color "#ABCDEF"}]
     (dissoc collection :id)))
 
@@ -40,16 +41,25 @@
   (tt/with-temp* [Collection [_]]
     :ok))
 
-;; test that duplicate names aren't allowed
+;; test that duplicate names ARE allowed
 (expect
-  Exception
+  :ok
   (tt/with-temp* [Collection [_ {:name "My Favorite Cards"}]
                   Collection [_ {:name "My Favorite Cards"}]]
     :ok))
 
-;; things with different names that would cause the same slug shouldn't be allowed either
+;; Duplicate names should result in duplicate slugs...
 (expect
-  Exception
+  ["my_favorite_cards"
+   "my_favorite_cards"]
+  (tt/with-temp* [Collection [collection-1 {:name "My Favorite Cards"}]
+                  Collection [collection-2 {:name "My Favorite Cards"}]]
+    (map :slug [collection-1 collection-2])))
+
+
+;; things with different names that would cause the same slug SHOULD be allowed
+(expect
+  :ok
   (tt/with-temp* [Collection [_ {:name "My Favorite Cards"}]
                   Collection [_ {:name "my_favorite Cards"}]]
     :ok))

@@ -127,7 +127,6 @@
 
 (defn- rasta-id [] (user-id :rasta))
 
-
 (u/strict-extend (class Card)
   test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)
@@ -490,15 +489,31 @@
   [dtz & body]
   `(call-with-jvm-tz ~dtz (fn [] ~@body)))
 
+
+(defmulti ^:private do-model-cleanup! class)
+
+(defmethod do-model-cleanup! :default
+  [model]
+  (db/delete! model))
+
+(defmethod do-model-cleanup! (class Collection)
+  [_]
+  ;; don't delete Personal Collections <3
+  (db/delete! Collection :personal_owner_id nil))
+
+(defn do-with-model-cleanup [model-seq f]
+  (try
+    (f)
+    (finally
+      (doseq [model model-seq]
+        (do-model-cleanup! (db/resolve-model model))))))
+
 (defmacro with-model-cleanup
-  "This will delete all rows found for each model in `MODEL-SEQ`. This calls `delete!`, so if the model has defined
-  any `pre-delete` behavior, that will be preserved."
+  "This will delete all rows found for each model in `model-seq`. By default, this calls `delete!`, so if the model has
+  defined any `pre-delete` behavior, that will be preserved. Alternatively, you can define a custom implementation by
+  using the `do-model-cleanup!` multimethod above."
   [model-seq & body]
-  `(try
-     ~@body
-     (finally
-       (doseq [model# ~model-seq]
-         (db/delete! model#)))))
+  `(do-with-model-cleanup ~model-seq (fn [] ~@body)))
 
 (defn call-with-paused-query
   "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads

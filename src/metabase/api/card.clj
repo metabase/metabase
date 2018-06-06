@@ -132,27 +132,10 @@
    :popular  (u/drop-first-arg cards:popular)
    :archived (u/drop-first-arg cards:archived)})
 
-(defn- collection-slug->id [collection-slug]
-  (when (seq collection-slug)
-    ;; special characters in the slugs are always URL-encoded when stored in the DB, e.g.  "Obsługa klienta" becomes
-    ;; "obs%C5%82uga_klienta". But for some weird reason sometimes the slug is passed in like "obsługa_klientaa" (not
-    ;; URL-encoded) so go ahead and URL-encode the input as well so we can match either case
-    (api/check-404 (db/select-one-id Collection
-                     {:where [:or [:= :slug collection-slug]
-                              [:= :slug (codec/url-encode collection-slug)]]}))))
-
-;; TODO - do we need to hydrate the cards' collections as well?
-(defn- cards-for-filter-option [filter-option model-id collection-slug]
-  (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
-                  (hydrate :creator :collection)
-                  hydrate-favorites)]
-    ;; Since Collections are hydrated in Clojure-land we need to wait until this point to apply Collection filtering.
-    ;; If applicable, `collection` can optionally be an empty string which is used to represent the Root Collection
-    (filter (cond
-              collection-slug (let [collection-id (collection-slug->id collection-slug)]
-                                (comp (partial = collection-id) :collection_id))
-              :else           identity)
-            cards)))
+(defn- cards-for-filter-option [filter-option model-id]
+  (-> ((filter-option->fn (or filter-option :all)) model-id)
+      (hydrate :creator :collection)
+      hydrate-favorites))
 
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
@@ -164,18 +147,10 @@
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See
-  corresponding implementation functions above for the specific behavior of each filter option. :card_index:
-
-  Optionally filter cards by `collection` slug. (`collection` can be a blank string, to signify cards in the Root
-  Collection should be returned.)
-
-  NOTES:
-
-  *  If no Collection exists with the slug `collection`, this endpoint will return a 404."
-  [f model_id collection]
+  corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
+  [f model_id]
   {f          (s/maybe CardFilterOption)
-   model_id   (s/maybe su/IntGreaterThanZero)
-   collection (s/maybe s/Str)}
+   model_id   (s/maybe su/IntGreaterThanZero)}
   (let [f (keyword f)]
     (when (contains? #{:database :table} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
@@ -183,7 +158,7 @@
       (case f
         :database (api/read-check Database model_id)
         :table    (api/read-check Database (db/select-one-field :db_id Table, :id model_id))))
-    (->> (cards-for-filter-option f model_id collection)
+    (->> (cards-for-filter-option f model_id)
          ;; filterv because we want make sure all the filtering is done while current user perms set is still bound
          (filterv mi/can-read?))))
 

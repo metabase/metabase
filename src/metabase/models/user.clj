@@ -7,6 +7,8 @@
              [util :as u]]
             [metabase.email.messages :as email]
             [metabase.models
+             [collection :as collection]
+             [permissions :as perms]
              [permissions-group :as group]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
             [metabase.util
@@ -211,8 +213,11 @@
   "Return a set of all permissions object paths that USER-OR-ID has been granted access to."
   [user-or-id]
   (set (when-let [user-id (u/get-id user-or-id)]
-         (map :object (db/query {:select [:p.object]
-                                 :from   [[:permissions_group_membership :pgm]]
-                                 :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
-                                          [:permissions :p]        [:= :p.group_id :pg.id]]
-                                 :where  [:= :pgm.user_id user-id]})))))
+         (cons
+          ;; Current User always gets readwrite perms for their Personal Collection!
+          (perms/collection-readwrite-path (collection/user->personal-collection user-id))
+          (map :object (db/query {:select [:p.object]
+                                  :from   [[:permissions_group_membership :pgm]]
+                                  :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
+                                           [:permissions :p]        [:= :p.group_id :pg.id]]
+                                  :where  [:= :pgm.user_id user-id]}))))))

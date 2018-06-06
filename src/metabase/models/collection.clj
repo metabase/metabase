@@ -29,11 +29,6 @@
 ;;; |                                         Slug & Hex Color & Validation                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- assert-unique-slug [slug]
-  (when (db/exists? Collection :slug slug)
-    (throw (ex-info (tru "Name already taken")
-             {:status-code 400, :errors {:name (tru "A collection with this name already exists")}}))))
-
 (def ^:const ^java.util.regex.Pattern hex-color-regex
   "Regex for a valid value of `:color`, a 7-character hex string including the preceding hash sign."
   #"^#[0-9A-Fa-f]{6}$")
@@ -135,12 +130,21 @@
   a schema standpoint, and from a 'do the referenced Collections exist' standpoint. Intended for use as part of
   `pre-update` and `pre-insert`."
   [{:keys [location], :as collection}]
+  ;; if setting/updating the `location` of this Collection make sure it matches the schema for valid location paths
   (when (contains? collection :location)
     (when-not (valid-location-path? location)
       (throw
        (ex-info (tru "Invalid Collection location: path is invalid.")
          {:status-code 400
           :errors      {:location (tru "Invalid Collection location: path is invalid.")}})))
+    ;; if this is a Personal Collection it's only allowed to go in the Root Collection: you can't put it anywhere else!
+    (when (contains? collection :personal_owner_id)
+      (when-not (= location "/")
+        (throw
+         (ex-info (tru "You cannot move a Personal Collection.")
+           {:status-code 400
+            :errors      {:location (tru "You cannot move a Personal Collection.")}}))))
+    ;; Also make sure that all the IDs referenced in the Location path actually correspond to real Collections
     (when-not (all-ids-in-location-path-are-valid? location)
       (throw
        (ex-info (tru "Invalid Collection location: some or all ancestors do not exist.")
@@ -395,8 +399,26 @@
 (defn- pre-insert [{collection-name :name, color :color, :as collection}]
   (assert-valid-location collection)
   (assert-valid-hex-color color)
-  (assoc collection :slug (u/prog1 (slugify collection-name)
-                            (assert-unique-slug <>))))
+  (assoc collection :slug (slugify collection-name)))
+
+(defn- check-changes-allowed-for-personal-collection
+  "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
+  have lots of restrictions -- you can't archive them, for example, nor can you transfer them to other Users."
+  [collection]
+  ;; you're not allowed to change the `:personal_owner_id` of a Collection!
+  ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
+  (when (not= (:personal_owner_id collection)
+              (db/select-one-field :personal_owner_id Collection :id (u/get-id collection)))
+    (throw
+     (ex-info (tru "You're not allowed to change the owner of a Personal Collection.")
+       {:status-code 400
+        :errors      {:personal_owner_id (tru "You're not allowed to change the owner of a Personal Collection.")}})))
+  ;; You also can't archive a Personal Collection
+  (when (:archived collection)
+    (throw
+     (ex-info (tru "You cannot archive a Personal Collection!")
+       {:status-code 400
+        :errors   {:archived (tru "You cannot archive a Personal Collection!")}}))))
 
 (s/defn ^:private maybe-archive-or-unarchive
   "If `:archived` specified in the updates map, archive/unarchive as needed."
@@ -425,13 +447,9 @@
       (assert-valid-hex-color color))
     ;; archive or unarchive as appropriate
     (maybe-archive-or-unarchive collection-before-updates collection-updates)
-    ;; slugify the collection name and make sure it's unique *if* we're changing collection-name
+    ;; slugify the collection name
     (cond-> collection-updates
-      collection-name (assoc :slug (u/prog1 (slugify collection-name)
-                                     ;; if slug hasn't changed no need to check for uniqueness otherwise check to make
-                                     ;; sure the new slug is unique
-                                     (or (db/exists? Collection, :slug <>, :id id)
-                                         (assert-unique-slug <>)))))))
+      collection-name (assoc :slug (slugify collection-name)))))
 
 (defn- pre-delete [collection]
   ;; unset the collection_id for Cards/Pulses in this collection. This is mostly for the sake of tests since IRL we
@@ -440,7 +458,10 @@
     (db/update-where! model {:collection_id (u/get-id collection)}
       :collection_id nil))
   ;; Now delete all the Children of this Collection
-  (db/delete! Collection :location (children-location collection)))
+  (db/delete! Collection :location (children-location collection))
+  ;; You can't delete a Personal Collection!
+  (when (:personal_owner_id collection)
+    (throw (Exception. (str (tru "You cannot delete a Personal Collection!"))))))
 
 (defn perms-objects-set
   "Return the required set of permissions to READ-OR-WRITE COLLECTION-OR-ID."
@@ -513,7 +534,7 @@
   function."
   []
   (let [group-id->perms (group-id->permissions-set)
-        collection-ids  (db/select-ids 'Collection)]
+        collection-ids  (db/select-ids 'Collection, :personal_owner_id nil)] ; exclude personal collections!
     {:revision (collection-revision/latest-id)
      :groups   (into {} (for [group-id (db/select-ids 'PermissionsGroup)]
                           {group-id (group-permissions-graph (group-id->perms group-id) collection-ids)}))}))
@@ -608,3 +629,32 @@
       (check-write-perms-for-collection (:collection_id object-before-update))
       ;; check that we're allowed to modify the new Collection
       (check-write-perms-for-collection (:collection_id object-updates)))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Personal Collections                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(s/defn ^:private user->personal-collection-name :- su/NonBlankString
+  "Come up with a nice name for the Personal Collection for `user-or-id`."
+  [user-or-id]
+  ;; TODO - we currently enforce a unique constraint on Collection names... what are we going to do if two Users have
+  ;; the same first & last name! This will *ruin* their lives :(
+  (let [{first-name :first_name, last-name :last_name} (db/select-one ['User :first_name :last_name]
+                                                         :id (u/get-id user-or-id))]
+    (tru "{0} {1}'s Personal Collection" first-name last-name)))
+
+(s/defn user->personal-collection :- CollectionInstance
+  "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
+  [user-or-id]
+  (or (db/select-one Collection :personal_owner_id (u/get-id user-or-id))
+      (try
+        (db/insert! Collection
+          :name              (user->personal-collection-name user-or-id)
+          :personal_owner_id (u/get-id user-or-id)
+          ;; a nice slate blue color
+          :color             "#31698A")
+        ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
+        ;; condition where some other thread created it in the meantime; try one last time to fetch it
+        (catch Throwable _
+          (db/select-one Collection :personal_owner_id (u/get-id user-or-id))))))

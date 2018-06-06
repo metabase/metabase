@@ -25,25 +25,59 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; check that we can get a basic list of collections
+;; (for the purposes of test purposes remove the personal collections)
 (tt/expect-with-temp [Collection [collection]]
   [(assoc (into {} collection) :can_write true)]
-  ((user->client :crowberto) :get 200 "collection"))
+  (for [collection ((user->client :crowberto) :get 200 "collection")
+        :when (not (:personal_owner_id collection))]
+    collection))
+
+(defn- force-create-personal-collections!
+  "Force the creation of the Personal Collections for our various test users. They are eventually going to get
+  automatically created anyway as soon as those Users' permissions get calculated in `user/permissions-set`; better to
+  do it now so the test results will be consistent."
+  []
+  (doseq [username [:rasta :lucky :crowberto :trashbird]]
+    (collection/user->personal-collection (user->id username))))
+
+;; We should only see our own Personal Collections!
+(expect
+  ["Collection for Lucky Pigeon"]
+  (do
+    (force-create-personal-collections!)
+    ;; now fetch those Collections as the Lucky bird
+    (map :name ((user->client :lucky) :get 200 "collection"))))
+
+;; ...unless we are *admins*
+(expect
+  ["Collection for Crowberto Corv"
+   "Collection for Lucky Pigeon"
+   "Collection for Rasta Toucan"
+   "Collection for Trash Bird"]
+  (do
+    (force-create-personal-collections!)
+    ;; now fetch those Collections as a superuser
+    (map :name ((user->client :crowberto) :get 200 "collection"))))
 
 ;; check that we don't see collections if we don't have permissions for them
 (expect
-  ["Collection 1"]
+  ["Collection 1"
+   "Collection for Rasta Toucan"]
   (tt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
                   Collection [collection-2 {:name "Collection 2"}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection-1)
+    (force-create-personal-collections!)
     (map :name ((user->client :rasta) :get 200 "collection"))))
 
 ;; check that we don't see collections if they're archived
 (expect
-  ["Regular Collection"]
+  ["Collection for Rasta Toucan"
+   "Regular Collection"]
   (tt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
                   Collection [collection-2 {:name "Regular Collection"}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection-1)
     (perms/grant-collection-read-permissions! (group/all-users) collection-2)
+    (force-create-personal-collections!)
     (map :name ((user->client :rasta) :get 200 "collection"))))
 
 ;; Check that if we pass `?archived=true` we instead see archived cards
@@ -53,6 +87,7 @@
                   Collection [collection-2 {:name "Regular Collection"}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection-1)
     (perms/grant-collection-read-permissions! (group/all-users) collection-2)
+    (force-create-personal-collections!)
     (map :name ((user->client :rasta) :get 200 "collection" :archived :true))))
 
 
@@ -286,12 +321,17 @@
   "Call the API with Rasta to fetch the 'Root' Collection and put the `:effective_` results in a nice format for the
   tests below."
   []
+  ;; call the API endpoint with some of the other users so we can make sure their Personal Collections don't show up
+  ;; inappropriately
+  ((user->client :crowberto) :get 200 "collection/root")
+  ((user->client :lucky) :get 200 "collection/root")
   (-> ((user->client :rasta) :get 200 "collection/root")
       format-ancestors-and-children))
 
 ;; Do top-level collections show up as children of the Root Collection?
 (expect
-  {:effective_children  #{{:name "A", :id true}}
+  {:effective_children  #{{:name "A", :id true}
+                          {:name "Collection for Rasta Toucan", :id true}}
    :effective_ancestors []
    :effective_location  nil}
   (with-collection-hierarchy [a b c d e f g]
@@ -301,7 +341,8 @@
 (expect
   {:effective_children  #{{:name "B", :id true}
                           {:name "D", :id true}
-                          {:name "F", :id true}}
+                          {:name "F", :id true}
+                          {:name "Collection for Rasta Toucan", :id true}}
    :effective_ancestors []
    :effective_location  nil}
   (with-collection-hierarchy [b d e f g]
@@ -314,12 +355,13 @@
 
 ;; test that we can create a new collection (POST /api/collection)
 (expect
-  {:name        "Stamp Collection"
-   :slug        "stamp_collection"
-   :description nil
-   :color       "#123456"
-   :archived    false
-   :location    "/"}
+  {:name              "Stamp Collection"
+   :slug              "stamp_collection"
+   :description       nil
+   :color             "#123456"
+   :archived          false
+   :location          "/"
+   :personal_owner_id nil}
   (tu/with-model-cleanup [Collection]
     (-> ((user->client :crowberto) :post 200 "collection"
          {:name "Stamp Collection", :color "#123456"})
@@ -333,13 +375,14 @@
 
 ;; Can I create a Collection as a child of an existing collection?
 (expect
-  {:id          true
-   :name        "Trading Card Collection"
-   :slug        "trading_card_collection"
-   :description "Collection of basketball cards including limited-edition holographic Draymond Green"
-   :color       "#ABCDEF"
-   :archived    false
-   :location    "/A/C/D/"}
+  {:id                true
+   :name              "Trading Card Collection"
+   :slug              "trading_card_collection"
+   :description       "Collection of basketball cards including limited-edition holographic Draymond Green"
+   :color             "#ABCDEF"
+   :archived          false
+   :location          "/A/C/D/"
+   :personal_owner_id nil}
   (tu/with-model-cleanup [Collection]
     (with-collection-hierarchy [a c d]
       (-> ((user->client :crowberto) :post 200 "collection"
@@ -356,13 +399,14 @@
 
 ;; test that we can update a collection (PUT /api/collection/:id)
 (tt/expect-with-temp [Collection [collection]]
-  {:id          (u/get-id collection)
-   :name        "My Beautiful Collection"
-   :slug        "my_beautiful_collection"
-   :description nil
-   :color       "#ABCDEF"
-   :archived    false
-   :location    "/"}
+  {:id                (u/get-id collection)
+   :name              "My Beautiful Collection"
+   :slug              "my_beautiful_collection"
+   :description       nil
+   :color             "#ABCDEF"
+   :archived          false
+   :location          "/"
+   :personal_owner_id nil}
   ((user->client :crowberto) :put 200 (str "collection/" (u/get-id collection))
    {:name "My Beautiful Collection", :color "#ABCDEF"}))
 
@@ -405,13 +449,14 @@
 
 ;; Can I *change* the `location` of a Collection? (i.e. move it into a different parent Colleciton)
 (expect
-  {:id          true
-   :name        "E"
-   :slug        "e"
-   :description nil
-   :color       "#ABCDEF"
-   :archived    false
-   :location    "/A/B/"}
+  {:id                true
+   :name              "E"
+   :slug              "e"
+   :description       nil
+   :color             "#ABCDEF"
+   :archived          false
+   :location          "/A/B/"
+   :personal_owner_id nil}
   (with-collection-hierarchy [a b e]
     (-> ((user->client :crowberto) :put 200 (str "collection/" (u/get-id e))
          {:parent_id (u/get-id b)})
