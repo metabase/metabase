@@ -1,6 +1,8 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
   (:require [cheshire.generate :refer [add-encoder encode-nil encode-str]]
+            [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
@@ -8,7 +10,6 @@
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
-            [metabase.api.common.internal :refer [*automatically-catch-api-exceptions*]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models
              [session :refer [Session]]
@@ -17,7 +18,8 @@
             [metabase.util.date :as du]
             [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+  (:import com.fasterxml.jackson.core.JsonGenerator
+           java.sql.SQLException))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
 
@@ -117,6 +119,8 @@
 (def ^:private current-user-fields
   (vec (cons User user/all-user-fields)))
 
+(defn- find-user [user-id]
+  (db/select-one current-user-fields, :id user-id))
 
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and
@@ -131,7 +135,7 @@
     (if-let [current-user-id (:metabase-user-id request)]
       (binding [*current-user-id*              current-user-id
                 *is-superuser?*                (:is-superuser? request)
-                *current-user*                 (delay (db/select-one current-user-fields, :id current-user-id))
+                *current-user*                 (delay (find-user current-user-id))
                 *current-user-permissions-set* (delay (user/permissions-set current-user-id))]
         (handler request))
       (handler request))))
@@ -349,6 +353,12 @@
 
 ;;; ----------------------------------------------- EXCEPTION HANDLING -----------------------------------------------
 
+(def ^:dynamic ^:private ^Boolean *automatically-catch-api-exceptions*
+  "Should API exceptions automatically be caught? By default, this is `true`, but this can be disabled when we want to
+  catch Exceptions and return something generic to avoid leaking information, e.g. with the `api/public` and
+  `api/embed` endpoints. generic exceptions"
+  true)
+
 (defn genericize-exceptions
   "Catch any exceptions thrown in the request handler body and rethrow a generic 400 exception instead. This minimizes
   information available to bad actors when exceptions occur on public endpoints."
@@ -370,3 +380,43 @@
            (handler request))
          (catch Throwable e
            {:status 400, :body (.getMessage e)}))))
+
+(defn- api-exception-response
+  "Convert an exception from an API endpoint into an appropriate HTTP response."
+  [^Throwable e]
+  (let [{:keys [status-code], :as info} (ex-data e)
+        other-info                      (dissoc info :status-code)
+        message                         (.getMessage e)]
+    {:status (or status-code 500)
+     :body   (cond
+               ;; Exceptions that include a status code *and* other info are things like Field validation exceptions.
+               ;; Return those as is
+               (and status-code
+                    (seq other-info))
+               other-info
+               ;; If status code was specified but other data wasn't, it's something like a 404. Return message as the
+               ;; body.
+               status-code
+               message
+               ;; Otherwise it's a 500. Return a body that includes exception & filtered stacktrace for debugging
+               ;; purposes
+               :else
+               (let [stacktrace (u/filtered-stacktrace e)]
+                 (merge (assoc other-info
+                          :message    message
+                          :type       (class e)
+                          :stacktrace stacktrace)
+                        (when (instance? SQLException e)
+                          {:sql-exception-chain (str/split (with-out-str (jdbc/print-sql-exception-chain e))
+                                                           #"\s*\n\s*")}))))}))
+
+(defn catch-api-exceptions
+  "Middleware that catches API Exceptions and returns them in our normal-style format rather than the Jetty 500
+  Stacktrace page, which is not so useful for our frontend."
+  [handler]
+  (fn [request]
+    (if *automatically-catch-api-exceptions*
+      (try (handler request)
+           (catch Throwable e
+             (api-exception-response e)))
+      (handler request))))

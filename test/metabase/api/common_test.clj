@@ -1,8 +1,9 @@
 (ns metabase.api.common-test
   (:require [clojure.core.async :as async]
             [expectations :refer :all]
-            [metabase.api.common :refer :all :as api]
+            [metabase.api.common :as api :refer :all]
             [metabase.api.common.internal :refer :all]
+            [metabase.middleware :as mb-middleware]
             [metabase.test.data :refer :all]
             [metabase.util.schema :as su]))
 
@@ -13,33 +14,41 @@
   {:status 404
    :body "Not found."})
 
-(defn ^:private my-mock-api-fn [_]
-  (catch-api-exceptions
-   (check-404 @*current-user*)
-   {:status 200
-    :body @*current-user*}))
+(defn ^:private my-mock-api-fn []
+  ((mb-middleware/catch-api-exceptions
+    (fn [_]
+      (check-404 @*current-user*)
+      {:status 200
+       :body @*current-user*}))
+   nil))
 
 ; check that `check-404` doesn't throw an exception if TEST is true
 (expect {:status 200
          :body "Cam Saul"}
   (binding [*current-user* (atom "Cam Saul")]
-    (my-mock-api-fn nil)))
+    (my-mock-api-fn)))
 
 ; check that 404 is returned otherwise
 (expect four-oh-four
-  (my-mock-api-fn nil))
+  (my-mock-api-fn))
 
 ;;let-404 should return nil if test fails
-(expect four-oh-four
-  (catch-api-exceptions
-    (let-404 [user nil]
-      {:user user})))
+(expect
+  four-oh-four
+  ((mb-middleware/catch-api-exceptions
+    (fn [_]
+      (let-404 [user nil]
+        {:user user})))
+   nil))
 
 ;; otherwise let-404 should bind as expected
-(expect {:user {:name "Cam"}}
-  (catch-api-exceptions
-    (let-404 [user {:name "Cam"}]
-      {:user user})))
+(expect
+  {:user {:name "Cam"}}
+  ((mb-middleware/catch-api-exceptions
+    (fn [_]
+      (let-404 [user {:name "Cam"}]
+        {:user user})))
+   nil))
 
 
 (defmacro ^:private expect-expansion
@@ -53,7 +62,8 @@
 
 
 ;;; TESTS FOR AUTO-PARSE
-;; TODO - these need to be moved to `metabase.api.common.internal-test`. But first `expect-expansion` needs to be put somewhere central
+;; TODO - these need to be moved to `metabase.api.common.internal-test`. But first `expect-expansion` needs to be put
+;; somewhere central
 
 ;; when auto-parse gets an args form where arg is present in *autoparse-types*
 ;; the appropriate let binding should be generated
@@ -88,10 +98,9 @@
   (expect-expansion
     (def GET_:id
       (GET ["/:id" :id "#[0-9]+"] [id]
-        (metabase.api.common.internal/catch-api-exceptions
-          (metabase.api.common.internal/auto-parse [id]
-            (metabase.api.common.internal/validate-param 'id id su/IntGreaterThanZero)
-            (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id)))))))
+           (metabase.api.common.internal/auto-parse [id]
+             (metabase.api.common.internal/validate-param 'id id su/IntGreaterThanZero)
+             (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id))))))
     (defendpoint GET "/:id" [id]
       {id su/IntGreaterThanZero}
       (select-one Card :id id))))

@@ -9,6 +9,7 @@
              [core :as core]
              [db :as mdb]
              [driver :as driver]
+             [plugins :as plugins]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models.setting :as setting]))
@@ -70,8 +71,8 @@
   ;; Start Jetty in the BG so if test setup fails we have an easier time debugging it -- it's trickier to debug things
   ;; on a BG thread
   (let [start-jetty! (future (core/start-jetty!))]
-
     (try
+      (plugins/setup-plugins!)
       (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
       (mdb/setup-db! :auto-migrate true)
       (setting/set! :site-name "Metabase Test")
