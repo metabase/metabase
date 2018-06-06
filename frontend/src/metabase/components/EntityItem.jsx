@@ -37,7 +37,8 @@ const EntityItem = ({
   onFavorite,
   selected,
   onToggleSelected,
-  selectable
+  selectable,
+  showSelect
 }) => {
   return (
     <EntityItemWrapper py={2} px={2} className="hover-parent hover--visibility">
@@ -49,6 +50,7 @@ const EntityItem = ({
       >
       { selectable ? (
         <Swapper
+          startSwapped={showSelect}
           defaultElement={<Icon name={iconName} color={iconColor} />}
           swappedElement={
             <CheckBox
@@ -122,7 +124,7 @@ class Swapper extends React.Component {
   }
 
   render () {
-    const { defaultElement, swappedElement } = this.props
+    const { defaultElement, swappedElement, startSwapped } = this.props
     const { hovered } = this.state
 
     return (
@@ -136,7 +138,7 @@ class Swapper extends React.Component {
             scale: 1
           }}
           style={{
-            scale: hovered ? spring(0): spring(1)
+            scale: hovered || startSwapped ? spring(0): spring(1)
           }}
         >
           {({ scale }) => {
@@ -152,7 +154,7 @@ class Swapper extends React.Component {
             scale: 0
           }}
           style={{
-            scale: hovered ? spring(1): spring(0)
+            scale: hovered || startSwapped ? spring(1): spring(0)
           }}
         >
           {({ scale }) => {
