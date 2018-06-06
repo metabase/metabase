@@ -7,6 +7,8 @@ import {
   DashboardSchema,
   PulseSchema,
   CollectionSchema,
+  SegmentSchema,
+  MetricSchema,
 } from "metabase/schema";
 import {
   CardApi,
@@ -29,6 +31,8 @@ export default createEntity({
       dashboards: DashboardSchema,
       pulses: PulseSchema,
       collections: CollectionSchema,
+      segments: SegmentSchema,
+      metrics: MetricSchema,
     },
     (object, parent, key) => backendTypeToEntitiesName(object),
   ),
