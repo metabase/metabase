@@ -9,27 +9,23 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
-import dc from "dc";
-
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 type DeregisterFunction = () => void;
 
 type Props = VisualizationProps & {
-  width: number,
-  height: number,
   renderer: (element: Element, props: VisualizationProps) => DeregisterFunction,
 };
 
 @ExplicitSize
 export default class CardRenderer extends Component {
+  props: Props;
+
   static propTypes = {
+    className: PropTypes.string,
     series: PropTypes.array.isRequired,
-    width: PropTypes.number,
-    height: PropTypes.number,
     renderer: PropTypes.func.isRequired,
     onRenderError: PropTypes.func.isRequired,
-    className: PropTypes.string,
   };
 
   _deregister: ?DeregisterFunction;
@@ -37,7 +33,9 @@ export default class CardRenderer extends Component {
   shouldComponentUpdate(nextProps: Props) {
     // a chart only needs re-rendering when the result itself changes OR the chart type is different
     let sameSize =
+      // $FlowFixMe: width/height provided by ExplicitSize
       this.props.width === nextProps.width &&
+      // $FlowFixMe: width/height provided by ExplicitSize
       this.props.height === nextProps.height;
     let sameSeries = isSameSeries(this.props.series, nextProps.series);
     return !(sameSize && sameSeries);
@@ -64,6 +62,7 @@ export default class CardRenderer extends Component {
   }
 
   renderChart() {
+    // $FlowFixMe: width/height provided by ExplicitSize
     if (this.props.width == null || this.props.height == null) {
       return;
     }
