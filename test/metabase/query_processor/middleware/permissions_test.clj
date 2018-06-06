@@ -28,7 +28,8 @@
   [query]
   (do-with-rasta (fn [] (check-perms query))))
 
-;;; ------------------------------------------------------------ Native Queries ------------------------------------------------------------
+
+;;; ------------------------------------------------- Native Queries -------------------------------------------------
 
 ;; Make sure the NATIVE query fails to run if current user doesn't have perms
 (expect
@@ -50,7 +51,7 @@
      :native   {:query "SELECT * FROM VENUES"}}))
 
 
-;;; ------------------------------------------------------------ MBQL Queries ------------------------------------------------------------
+;;; -------------------------------------------------- MBQL Queries --------------------------------------------------
 
 (expect
   Exception
@@ -67,14 +68,14 @@
   ;; query should be returned by middleware unchanged
   {:database (u/get-id db)
    :type     :query
-   :query    {:source-table {:name "Toucans", :id (u/get-id table)}}}
+   :query    {:source-table (u/get-id table)}}
   (check-perms-for-rasta
     {:database (u/get-id db)
      :type     :query
-     :query    {:source-table {:name "Toucans", :id (u/get-id table)}}}))
+     :query    {:source-table (u/get-id table)}}))
 
 
-;;; ------------------------------------------------------------ Nested Native Queries ------------------------------------------------------------
+;;; --------------------------------------------- Nested Native Queries ----------------------------------------------
 
 (expect
   Exception
@@ -94,7 +95,7 @@
      :query   {:source-query {:native "SELECT * FROM VENUES"}}}))
 
 
-;;; ------------------------------------------------------------ Nested MBQL Queries ------------------------------------------------------------
+;;; ---------------------------------------------- Nested MBQL Queries -----------------------------------------------
 
 ;; For nested queries MBQL make sure perms are checked
 (expect
@@ -111,8 +112,8 @@
                       Table    [table {:db_id (u/get-id db)}]]
   {:database (u/get-id db)
    :type     :query
-   :query    {:source-query {:source-table {:name "Toucans", :id (u/get-id table)}}}}
+   :query    {:source-query {:source-table (u/get-id table)}}}
   (check-perms-for-rasta
     {:database (u/get-id db)
      :type     :query
-     :query    {:source-query {:source-table {:name "Toucans", :id (u/get-id table)}}}}))
+     :query    {:source-query {:source-table (u/get-id table)}}}))

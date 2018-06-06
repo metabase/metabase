@@ -3,7 +3,8 @@ import { Box, Flex, Subhead, Truncate } from "rebass";
 import { t } from "c-3po";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
-import listSelect from "metabase/hoc/ListSelect"
+import _ from "underscore";
+import listSelect from "metabase/hoc/ListSelect";
 
 import Question from "metabase/entities/questions";
 import Dashboard from "metabase/entities/dashboards";
@@ -119,8 +120,10 @@ class DefaultLanding extends React.Component {
                   return <CollectionEmptyState />;
                 }
 
-                const pinned = items.filter(i => i.collection_position);
-                const other = items.filter(i => !i.collection_position);
+                const [pinned, other] = _.partition(
+                  items,
+                  i => i.collection_position != null,
+                );
 
                 return (
                   <Box>
@@ -187,21 +190,24 @@ class DefaultLanding extends React.Component {
                                 iconName={item.getIcon()}
                                 iconColor={item.getColor()}
                                 onFavorite={item.setFavorited}
-                                isFavorite={item.getFavorited && item.getFavorited()}
+                                isFavorite={
+                                  item.getFavorited && item.getFavorited()
+                                }
                                 onPin={
                                   collection.can_write && item.pin
                                     ? () => item.pin()
                                     : null
                                 }
                                 selected={selection.has(item)}
-                                onToggleSelected={(ev) => {
-                                  ev.preventDefault()
-                                  onToggleSelected(item)
+                                onToggleSelected={ev => {
+                                  ev.preventDefault();
+                                  onToggleSelected(item);
                                 }}
                               />
                             </Link>
                           </Box>
-                        )})}
+                        );
+                      })}
                     </Card>
                   </Box>
                 );
@@ -219,6 +225,7 @@ class CollectionLanding extends React.Component {
   render() {
     const { params, currentCollection } = this.props;
     const collectionId = params.collectionId;
+    const isRoot = collectionId === "root";
 
     return (
       <Box mx={4}>
@@ -232,9 +239,7 @@ class CollectionLanding extends React.Component {
                       to={`/collection/${collectionId}`}
                       hover={{ color: normal.blue }}
                     >
-                      {collectionId === "root"
-                        ? "Saved items"
-                        : currentCollection.name}
+                      {isRoot ? "Saved items" : currentCollection.name}
                     </Link>
                   </Flex>
                 )}
@@ -270,7 +275,7 @@ class CollectionLanding extends React.Component {
                 <Box mx={1}>
                   <EntityMenu
                     items={[
-                      ...(collectionId
+                      ...(!isRoot
                         ? [
                             {
                               title: t`Edit this collection`,
@@ -286,7 +291,7 @@ class CollectionLanding extends React.Component {
                           currentCollection.id
                         }`,
                       },
-                      ...(collectionId
+                      ...(!isRoot
                         ? [
                             {
                               title: t`Archive this collection`,

@@ -4069,6 +4069,17 @@ databaseChangeLog:
               type: text
               remarks: 'Computed hash of all of the fields associated to this table'
   - changeSet:
+      id: 77
+      author: senior
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              name: login_attributes
+              type: text
+              remarks: 'JSON serialized map with attributes used for row level permissions'
+  - changeSet:
       id: 79
       author: camsaul
       comment: 'Added 0.30.0'

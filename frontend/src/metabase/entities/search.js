@@ -7,6 +7,8 @@ import {
   DashboardSchema,
   PulseSchema,
   CollectionSchema,
+  SegmentSchema,
+  MetricSchema,
 } from "metabase/schema";
 import {
   CardApi,
@@ -14,6 +16,10 @@ import {
   PulseApi,
   CollectionsApi,
 } from "metabase/services";
+
+// backend returns type = "card" instead of "question"
+const backendTypeToEntitiesName = object =>
+  object.type === "card" ? "questions" : `${object.type}s`;
 
 export default createEntity({
   name: "search",
@@ -25,15 +31,17 @@ export default createEntity({
       dashboards: DashboardSchema,
       pulses: PulseSchema,
       collections: CollectionSchema,
+      segments: SegmentSchema,
+      metrics: MetricSchema,
     },
-    (object, parent, key) => `${object.type}s`,
+    (object, parent, key) => backendTypeToEntitiesName(object),
   ),
 
   // delegate to the actual object's entity wrapEntity
   wrapEntity(object, dispatch) {
     const entities = require("metabase/entities");
     // NOTE: special case card -> questions
-    const type = object.type === "card" ? "questions" : `${object.type}s`;
+    const type = backendTypeToEntitiesName(object);
     const entity = entities[type];
     return entity.wrapEntity(object, dispatch);
   },

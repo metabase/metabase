@@ -25,13 +25,15 @@
             [toucan.util.test :as tt])
   (:import java.util.UUID))
 
-;; ## Helper Fns
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Helper Fns & Macros                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn remove-ids-and-boolean-timestamps [m]
+(defn- remove-ids-and-booleanize-timestamps [m]
   (let [f (fn [v]
             (cond
-              (map? v) (remove-ids-and-boolean-timestamps v)
-              (coll? v) (mapv remove-ids-and-boolean-timestamps v)
+              (map? v) (remove-ids-and-booleanize-timestamps v)
+              (coll? v) (mapv remove-ids-and-booleanize-timestamps v)
               :else v))]
     (into {} (for [[k v] m]
                (when-not (or (= :id k)
@@ -59,19 +61,37 @@
       (assoc :created_at (boolean created_at)
              :updated_at (boolean updated_at)
              :card       (-> (into {} card)
-                             (dissoc :id :database_id :table_id :created_at :updated_at)))))
+                             (dissoc :id :database_id :table_id :created_at :updated_at)
+                             (update :collection_id boolean)))))
 
 (defn- dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
   (let [dash (-> (into {} dashboard)
                  (dissoc :id)
                  (assoc :created_at (boolean created_at)
-                        :updated_at (boolean updated_at)))]
+                        :updated_at (boolean updated_at))
+                 (update :collection_id boolean))]
     (cond-> dash
       creator       (update :creator #(into {} %))
       ordered_cards (update :ordered_cards #(mapv dashcard-response %)))))
 
+(defn- do-with-dashboards-in-a-collection [grant-collection-perms-fn! dashboards-or-ids f]
+  (tt/with-temp Collection [collection]
+    (grant-collection-perms-fn! (group/all-users) collection)
+    (doseq [dashboard-or-id dashboards-or-ids]
+      (db/update! Dashboard (u/get-id dashboard-or-id) :collection_id (u/get-id collection)))
+    (f)))
 
-;; ## /api/dashboard/* AUTHENTICATION Tests
+(defmacro ^:private with-dashboards-in-readable-collection [dashboards-or-ids & body]
+  `(do-with-dashboards-in-a-collection perms/grant-collection-read-permissions! ~dashboards-or-ids (fn [] ~@body)))
+
+(defmacro ^:private with-dashboards-in-writeable-collection [dashboards-or-ids & body]
+  `(do-with-dashboards-in-a-collection perms/grant-collection-readwrite-permissions! ~dashboards-or-ids (fn [] ~@body)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     /api/dashboard/* AUTHENTICATION Tests                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
@@ -92,7 +112,7 @@
   ((user->client :crowberto) :post 400 "dashboard" {:name       "Test"
                                                     :parameters "abc"}))
 
-(def ^:private ^:const dashboard-defaults
+(def ^:private dashboard-defaults
   {:archived                false
    :caveats                 nil
    :collection_id           nil
@@ -111,15 +131,19 @@
 
 (expect
   (merge dashboard-defaults
-         {:name       "Test Create Dashboard"
-          :creator_id (user->id :rasta)
-          :parameters [{:hash "abc123", :name "test", :type "date"}]
-          :updated_at true
-          :created_at true})
+         {:name          "Test Create Dashboard"
+          :creator_id    (user->id :rasta)
+          :parameters    [{:hash "abc123", :name "test", :type "date"}]
+          :updated_at    true
+          :created_at    true
+          :collection_id true})
   (tu/with-model-cleanup [Dashboard]
-    (-> ((user->client :rasta) :post 200 "dashboard" {:name       "Test Create Dashboard"
-                                                      :parameters [{:hash "abc123", :name "test", :type "date"}]})
-        dashboard-response)))
+    (tt/with-temp Collection [collection]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+      (-> ((user->client :rasta) :post 200 "dashboard" {:name          "Test Create Dashboard"
+                                                        :parameters    [{:hash "abc123", :name "test", :type "date"}]
+                                                        :collection_id (u/get-id collection)})
+          dashboard-response))))
 
 ;; Make sure we can create a Dashboard with a Collection position
 (expect
@@ -155,6 +179,7 @@
   (merge dashboard-defaults
          {:name          "Test Dashboard"
           :creator_id    (user->id :rasta)
+          :collection_id true
           :ordered_cards [{:sizeX                  2
                            :sizeY                  2
                            :col                    0
@@ -166,20 +191,22 @@
                            :card                   (merge card-api-test/card-defaults
                                                           {:name                   "Dashboard Test Card"
                                                            :creator_id             (user->id :rasta)
+                                                           :collection_id          true
                                                            :display                "table"
                                                            :query_type             nil
                                                            :dataset_query          {}
                                                            :read_permissions       nil
                                                            :visualization_settings {}
                                                            :query_average_duration nil
-                                                           :in_public_dashboard    false
                                                            :result_metadata        nil})
                            :series                 []}]})
   ;; fetch a dashboard WITH a dashboard card on it
   (tt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                   Card          [{card-id :id}      {:name "Dashboard Test Card"}]
                   DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
-    (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id)))))
+    (with-dashboards-in-readable-collection [dashboard-id]
+      (card-api-test/with-cards-in-readable-collection [card-id]
+        (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id)))))))
 
 ;; ## GET /api/dashboard/:id with a series, should fail if the user doesn't have access to the collection
 (expect
@@ -201,48 +228,58 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (expect
-  [(merge dashboard-defaults {:name        "Test Dashboard"
-                              :creator_id  (user->id :rasta)})
-   (merge dashboard-defaults {:name        "My Cool Dashboard"
-                              :description "Some awesome description"
-                              :creator_id  (user->id :rasta)})
-   (merge dashboard-defaults {:name        "My Cool Dashboard"
-                              :description "Some awesome description"
-                              :creator_id  (user->id :rasta)})]
+  {1 (merge dashboard-defaults {:name          "Test Dashboard"
+                                :creator_id    (user->id :rasta)
+                                :collection_id true})
+   2 (merge dashboard-defaults {:name          "My Cool Dashboard"
+                                :description   "Some awesome description"
+                                :creator_id    (user->id :rasta)
+                                :collection_id true})
+   3 (merge dashboard-defaults {:name          "My Cool Dashboard"
+                                :description   "Some awesome description"
+                                :creator_id    (user->id :rasta)
+                                :collection_id true})}
   (tt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
-    (mapv dashboard-response [(Dashboard dashboard-id)
-                              ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id)
-                               {:name         "My Cool Dashboard"
-                                :description  "Some awesome description"
-                                ;; these things should fail to update
-                                :creator_id   (user->id :trashbird)})
-                              (Dashboard dashboard-id)])))
+    (with-dashboards-in-writeable-collection [dashboard-id]
+      (array-map
+       1 (dashboard-response (Dashboard dashboard-id))
+       2 (dashboard-response
+          ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id)
+           {:name        "My Cool Dashboard"
+            :description "Some awesome description"
+            ;; these things should fail to update
+            :creator_id  (user->id :trashbird)}))
+       3 (dashboard-response (Dashboard dashboard-id))))))
 
 ;; allow "caveats" and "points_of_interest" to be empty strings, and "show_in_getting_started" should be a boolean
 (expect
-  (merge dashboard-defaults {:name        "Test Dashboard"
-                             :creator_id  (user->id :rasta)
+  (merge dashboard-defaults {:name                    "Test Dashboard"
+                             :creator_id              (user->id :rasta)
+                             :collection_id           true
                              :caveats                 ""
                              :points_of_interest      ""
                              :show_in_getting_started true})
   (tt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
-    (dashboard-response ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id)
-                         {:caveats                 ""
-                          :points_of_interest      ""
-                          :show_in_getting_started true}))))
+    (with-dashboards-in-writeable-collection [dashboard-id]
+      (dashboard-response ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id)
+                           {:caveats                 ""
+                            :points_of_interest      ""
+                            :show_in_getting_started true})))))
 
 ;; Can we clear the description of a Dashboard? (#4738)
 (expect
   nil
   (tt/with-temp Dashboard [dashboard {:description "What a nice Dashboard"}]
-    ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard)) {:description nil})
-    (db/select-one-field :description Dashboard :id (u/get-id dashboard))))
+    (with-dashboards-in-writeable-collection [dashboard]
+      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard)) {:description nil})
+      (db/select-one-field :description Dashboard :id (u/get-id dashboard)))))
 
 (expect
   ""
   (tt/with-temp Dashboard [dashboard {:description "What a nice Dashboard"}]
-    ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard)) {:description ""})
-    (db/select-one-field :description Dashboard :id (u/get-id dashboard))))
+    (with-dashboards-in-writeable-collection [dashboard]
+      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard)) {:description ""})
+      (db/select-one-field :description Dashboard :id (u/get-id dashboard)))))
 
 ;; Can we change the Collection a Dashboard is in (assuming we have the permissions to do so)?
 (expect
@@ -323,8 +360,9 @@
 (expect
   [nil nil]
   (tt/with-temp Dashboard [{dashboard-id :id}]
-    [((user->client :rasta) :delete 204 (format "dashboard/%d" dashboard-id))
-     (Dashboard dashboard-id)]))
+    (with-dashboards-in-writeable-collection [dashboard-id]
+      [((user->client :rasta) :delete 204 (format "dashboard/%d" dashboard-id))
+       (Dashboard dashboard-id)])))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -333,68 +371,74 @@
 
 ;; simple creation with no additional series
 (expect
-  [{:sizeX                  2
-    :sizeY                  2
-    :col                    4
-    :row                    4
-    :series                 []
-    :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
-    :visualization_settings {}
-    :created_at             true
-    :updated_at             true}
-   [{:sizeX                  2
-     :sizeY                  2
-     :col                    4
-     :row                    4
-     :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
-     :visualization_settings {}}]]
+  {1 {:sizeX                  2
+      :sizeY                  2
+      :col                    4
+      :row                    4
+      :series                 []
+      :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+      :visualization_settings {}
+      :created_at             true
+      :updated_at             true}
+   2 [{:sizeX                  2
+       :sizeY                  2
+       :col                    4
+       :row                    4
+       :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+       :visualization_settings {}}]}
   (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]]
-    [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id)
-          {:cardId                 card-id
-           :row                    4
-           :col                    4
-           :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
-           :visualization_settings {}})
-         (dissoc :id :dashboard_id :card_id)
-         (update :created_at boolean)
-         (update :updated_at boolean))
-     (map (partial into {})
-          (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings]
-            :dashboard_id dashboard-id))]))
+    (with-dashboards-in-writeable-collection [dashboard-id]
+      (card-api-test/with-cards-in-readable-collection [card-id]
+        (array-map
+         1 (-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id)
+                {:cardId                 card-id
+                 :row                    4
+                 :col                    4
+                 :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+                 :visualization_settings {}})
+               (dissoc :id :dashboard_id :card_id)
+               (update :created_at boolean)
+               (update :updated_at boolean))
+         2 (map (partial into {})
+                (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings]
+                  :dashboard_id dashboard-id)))))))
 
 ;; new dashboard card w/ additional series
 (expect
-  [{:sizeX                  2
-    :sizeY                  2
-    :col                    4
-    :row                    4
-    :parameter_mappings     []
-    :visualization_settings {}
-    :series                 [{:name                   "Series Card"
-                              :description            nil
-                              :display                "table"
-                              :dataset_query          {}
-                              :visualization_settings {}}]
-    :created_at             true
-    :updated_at             true}
-   [{:sizeX 2
-     :sizeY 2
-     :col   4
-     :row   4}]
-   #{0}]
+  {1 {:sizeX                  2
+      :sizeY                  2
+      :col                    4
+      :row                    4
+      :parameter_mappings     []
+      :visualization_settings {}
+      :series                 [{:name                   "Series Card"
+                                :description            nil
+                                :display                "table"
+                                :dataset_query          {}
+                                :visualization_settings {}}]
+      :created_at             true
+      :updated_at             true}
+   2 [{:sizeX 2
+       :sizeY 2
+       :col   4
+       :row   4}]
+   3 #{0}}
   (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]
                   Card      [{series-id-1 :id} {:name "Series Card"}]]
-    (let [dashboard-card ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id)
-                          {:cardId card-id
-                           :row    4
-                           :col    4
-                           :series [{:id series-id-1}]})]
-      [(remove-ids-and-boolean-timestamps dashboard-card)
-       (map (partial into {})
-            (db/select [DashboardCard :sizeX :sizeY :col :row], :dashboard_id dashboard-id))
-       (db/select-field :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card))])))
+    (with-dashboards-in-writeable-collection [dashboard-id]
+      (card-api-test/with-cards-in-readable-collection [card-id series-id-1]
+        (let [dashboard-card ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id)
+                              {:cardId card-id
+                               :row    4
+                               :col    4
+                               :series [{:id series-id-1}]})]
+          (array-map
+           1 (remove-ids-and-booleanize-timestamps dashboard-card)
+           2 (map (partial into {})
+                  (db/select [DashboardCard :sizeX :sizeY :col :row], :dashboard_id dashboard-id))
+           3 (db/select-field :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -402,9 +446,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (expect
-  [1
-   {:success true}
-   0]
+  {1 1
+   2 {:success true}
+   3 0}
   ;; fetch a dashboard WITH a dashboard card on it
   (tt/with-temp* [Dashboard           [{dashboard-id :id}]
                   Card                [{card-id :id}]
@@ -413,9 +457,11 @@
                   DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
-    [(count (db/select-ids DashboardCard, :dashboard_id dashboard-id))
-     ((user->client :rasta) :delete 200 (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)
-     (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))]))
+    (with-dashboards-in-writeable-collection [dashboard-id]
+      (array-map
+       1 (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))
+       2 ((user->client :rasta) :delete 200 (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)
+       3 (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -423,68 +469,70 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (expect
-  [[{:sizeX                  2
-     :sizeY                  2
-     :col                    0
-     :row                    0
-     :series                 []
-     :parameter_mappings     []
-     :visualization_settings {}
-     :created_at             true
-     :updated_at             true}
-    {:sizeX                  2
-     :sizeY                  2
-     :col                    0
-     :row                    0
-     :parameter_mappings     []
-     :visualization_settings {}
-     :series                 []
-     :created_at             true
-     :updated_at             true}]
-   {:status "ok"}
-   [{:sizeX                  4
-     :sizeY                  2
-     :col                    0
-     :row                    0
-     :parameter_mappings     []
-     :visualization_settings {}
-     :series                 [{:name                   "Series Card"
-                               :description            nil
-                               :display                :table
-                               :dataset_query          {}
-                               :visualization_settings {}}]
-     :created_at             true
-     :updated_at             true}
-    {:sizeX                  1
-     :sizeY                  1
-     :col                    1
-     :row                    3
-     :parameter_mappings     []
-     :visualization_settings {}
-     :series                 []
-     :created_at             true
-     :updated_at             true}]]
+  {1 [{:sizeX                  2
+       :sizeY                  2
+       :col                    0
+       :row                    0
+       :series                 []
+       :parameter_mappings     []
+       :visualization_settings {}
+       :created_at             true
+       :updated_at             true}
+      {:sizeX                  2
+       :sizeY                  2
+       :col                    0
+       :row                    0
+       :parameter_mappings     []
+       :visualization_settings {}
+       :series                 []
+       :created_at             true
+       :updated_at             true}]
+   2 {:status "ok"}
+   3 [{:sizeX                  4
+       :sizeY                  2
+       :col                    0
+       :row                    0
+       :parameter_mappings     []
+       :visualization_settings {}
+       :series                 [{:name                   "Series Card"
+                                 :description            nil
+                                 :display                :table
+                                 :dataset_query          {}
+                                 :visualization_settings {}}]
+       :created_at             true
+       :updated_at             true}
+      {:sizeX                  1
+       :sizeY                  1
+       :col                    1
+       :row                    3
+       :parameter_mappings     []
+       :visualization_settings {}
+       :series                 []
+       :created_at             true
+       :updated_at             true}]}
   ;; fetch a dashboard WITH a dashboard card on it
   (tt/with-temp* [Dashboard     [{dashboard-id :id}]
                   Card          [{card-id :id}]
                   DashboardCard [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   Card          [{series-id-1 :id}   {:name "Series Card"}]]
-    [[(remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-1))
-      (remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-2))]
-     ((user->client :rasta) :put 200 (format "dashboard/%d/cards" dashboard-id) {:cards [{:id     dashcard-id-1
-                                                                                          :sizeX  4
-                                                                                          :sizeY  2
-                                                                                          :col    0
-                                                                                          :row    0
-                                                                                          :series [{:id series-id-1}]}
-                                                                                         {:id    dashcard-id-2
-                                                                                          :sizeX 1
-                                                                                          :sizeY 1
-                                                                                          :col   1
-                                                                                          :row   3}]})
-     [(remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-1))
-      (remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-2))]]))
+    (with-dashboards-in-writeable-collection [dashboard-id]
+      (array-map
+       1 [(remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-1))
+          (remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-2))]
+       2 ((user->client :rasta) :put 200 (format "dashboard/%d/cards" dashboard-id) {:cards [{:id     dashcard-id-1
+                                                                                              :sizeX  4
+                                                                                              :sizeY  2
+                                                                                              :col    0
+                                                                                              :row    0
+                                                                                              :series [{:id series-id-1}]}
+                                                                                             {:id    dashcard-id-2
+                                                                                              :sizeX 1
+                                                                                              :sizeY 1
+                                                                                              :col   1
+                                                                                              :row   3}]})
+       3 [(remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-1))
+          (remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-2))]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -551,7 +599,7 @@
 
 
 (expect
-  [ ;; the api response
+  {:response
    {:is_reversion true
     :is_creation  false
     :message      nil
@@ -560,7 +608,8 @@
     :diff         {:before {:name "b"}
                    :after  {:name "a"}}
     :description  "renamed it from \"b\" to \"a\"."}
-   ;; full list of final revisions, first one should be same as the revision returned by the endpoint
+
+   :revisions
    [{:is_reversion true
      :is_creation  false
      :message      nil
@@ -583,7 +632,7 @@
      :user         (-> (user-details (fetch-user :rasta))
                        (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
      :diff         nil
-     :description  nil}]]
+     :description  nil}]}
   (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Revision  [{revision-id :id} {:model        "Dashboard"
                                                 :model_id     dashboard-id
@@ -598,11 +647,15 @@
                                                                :description  nil
                                                                :cards        []}
                                                 :message      "updated"}]]
-    [(dissoc ((user->client :crowberto) :post 200 (format "dashboard/%d/revert" dashboard-id)
+    (array-map
+     :response
+     (dissoc ((user->client :crowberto) :post 200 (format "dashboard/%d/revert" dashboard-id)
               {:revision_id revision-id})
              :id :timestamp)
+
+     :revisions
      (doall (for [revision ((user->client :crowberto) :get 200 (format "dashboard/%d/revisions" dashboard-id))]
-              (dissoc revision :timestamp :id)))]))
+              (dissoc revision :timestamp :id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

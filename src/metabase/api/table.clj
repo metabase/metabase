@@ -258,7 +258,7 @@
    'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-fields?]}]
   ;; if collection isn't already hydrated then do so
-  (let [card (hydrate card :colllection)]
+  (let [card (hydrate card :collection)]
     (cond-> {:id           (str "card__" (u/get-id card))
              :db_id        database/virtual-id
              :display_name (:name card)
