@@ -2,18 +2,16 @@ import React from "react";
 import { Box, Flex, Subhead, Truncate } from "rebass";
 import { t } from "c-3po";
 import { connect } from "react-redux";
-import { withRouter } from "react-router";
 import _ from "underscore";
 import listSelect from "metabase/hoc/ListSelect";
-
-import Question from "metabase/entities/questions";
-import Dashboard from "metabase/entities/dashboards";
+import BulkActionBar from "metabase/components/BulkActionBar"
 
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 
+import Button from "metabase/components/Button";
 import Card from "metabase/components/Card";
-import CheckBox from "metabase/components/CheckBox";
+import StackedCheckBox from "metabase/components/StackedCheckBox";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
@@ -34,11 +32,6 @@ const mapStateToProps = (state, props) => ({
       entityId: props.params.collectionId,
     }) || {},
 });
-
-const mapDispatchToProps = {
-  updateQuestion: Question.actions.update,
-  updateDashboard: Dashboard.actions.update,
-};
 
 const CollectionItem = ({ collection }) => (
   <Link
@@ -98,7 +91,7 @@ class DefaultLanding extends React.Component {
   };
 
   render() {
-    const { collectionId, list, onToggleSelected, selection } = this.props;
+    const { collectionId, list, onToggleSelected, selection, selected } = this.props;
 
     // Show the
     const showCollectionList = collectionId === "root";
@@ -184,6 +177,7 @@ class DefaultLanding extends React.Component {
                           <Box key={item.type + item.id}>
                             <Link to={item.getUrl()}>
                               <EntityItem
+                                showSelect={selected.length > 0}
                                 selectable
                                 item={item}
                                 type={item.type}
@@ -214,12 +208,56 @@ class DefaultLanding extends React.Component {
                 );
               }}
             </CollectionLoader>
+            <BulkActionBar showing={selected.length > 0}>
+              <SelectionControls {...this.props} />
+              <BulkActionControls {...this.props} />
+              <Box ml="auto">{t`${selected.length} items selected`}</Box>
+            </BulkActionBar>
           </Box>
         </Box>
       </Flex>
     );
   }
 }
+
+const BulkActionControls = ({ selected, reload }) => (
+  <Box>
+    <Button
+      ml={1}
+      medium
+      onClick={async () => {
+        try {
+          await Promise.all(selected.map(item => item.setArchived(true)));
+        } finally {
+          reload();
+        }
+      }}
+    >{t`Archive`}</Button>
+    <Button
+      ml={1}
+      medium
+      onClick={async () => {
+        try {
+          await Promise.all(selected.map(item => item.setArchived(true)));
+        } finally {
+          reload();
+        }
+      }}
+    >{t`Move`}</Button>
+  </Box>
+);
+
+const SelectionControls = ({
+  selected,
+  deselected,
+  onSelectAll,
+  onSelectNone,
+}) =>
+  deselected.length === 0 ? (
+    <StackedCheckBox checked={true} onChange={onSelectNone} />
+  ) : (
+    <StackedCheckBox checked={false} onChange={onSelectAll} />
+  );
 
 @connect(mapStateToProps)
 class CollectionLanding extends React.Component {
