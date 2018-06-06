@@ -1,24 +1,37 @@
 import React from "react";
+import PropTypes from "prop-types";
 
 import _ from "underscore";
 
-const keyForItem = item => `${item.type}:${item.id}`;
+const DEFAULT_KEY_FOR_ITEM = item => `${item.type}:${item.id}`;
 
 // Higher order component for managing selection of a list.
 //
+// Expects component to be provided a `list` prop (or prop named by `listProp`)
 // Injects `selected` and `deselected` arrays, a `selection` set, and various
 // methods to select or deselect individual or all items
 //
 // Composes with EntityListLoader, ListSearch, etc
-const listSelect = ({ listProp = "list" } = {}) => ComposedComponent =>
+const listSelect = ({
+  listProp = "list",
+  keyForItem = DEFAULT_KEY_FOR_ITEM,
+} = {}) => ComposedComponent =>
   class extends React.Component {
     state = {
-      selection: new Set(),
+      selectionKeys: new Set(),
+    };
+
+    static displayName = "ListSelect[" +
+      (ComposedComponent.displayName || ComposedComponent.name) +
+      "]";
+
+    static propTypes = {
+      [listProp]: PropTypes.array.isRequired,
     };
 
     render() {
       const [selected, deselected] = _.partition(this.props[listProp], item =>
-        this.state.selection.has(keyForItem(item)),
+        this.state.selectionKeys.has(keyForItem(item)),
       );
       return (
         <ComposedComponent
@@ -36,13 +49,14 @@ const listSelect = ({ listProp = "list" } = {}) => ComposedComponent =>
     }
 
     _setSelected(item, selected) {
-      const selection = new Set(this.state.selection);
+      // copy so we can mutate selectionKeys
+      const selectionKeys = new Set(this.state.selectionKeys);
       if (selected) {
-        selection.add(keyForItem(item));
+        selectionKeys.add(keyForItem(item));
       } else {
-        selection.delete(keyForItem(item));
+        selectionKeys.delete(keyForItem(item));
       }
-      this.setState({ selection });
+      this.setState({ selectionKeys });
     }
 
     handleSelect = item => {
@@ -52,15 +66,17 @@ const listSelect = ({ listProp = "list" } = {}) => ComposedComponent =>
       this._setSelected(item, false);
     };
     handleToggleSelected = item => {
-      this._setSelected(item, !this.state.selection.has(keyForItem(item)));
+      this._setSelected(item, !this.state.selectionKeys.has(keyForItem(item)));
     };
     handleSelectAll = () => {
+      // set selectionKeys to key for every item in list
       this.setState({
-        selection: new Set((this.props[listProp] || []).map(keyForItem)),
+        selectionKeys: new Set((this.props[listProp] || []).map(keyForItem)),
       });
     };
     handleSelectNone = () => {
-      this.setState({ selection: new Set() });
+      // reset selectionKeys
+      this.setState({ selectionKeys: new Set() });
     };
   };
 

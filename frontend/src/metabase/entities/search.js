@@ -10,12 +10,6 @@ import {
   SegmentSchema,
   MetricSchema,
 } from "metabase/schema";
-import {
-  CardApi,
-  DashboardApi,
-  PulseApi,
-  CollectionsApi,
-} from "metabase/services";
 
 // backend returns type = "card" instead of "question"
 const backendTypeToEntitiesName = object =>
