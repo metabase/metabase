@@ -96,7 +96,12 @@ const EntityItem = ({
             {
               title: t`Archive`,
               icon: "archive",
-              action: () => item.setArchived(item),
+              action: () => {
+                try {
+                  item.setArchived(true)
+                } finally {
+                }
+              }
             },
           ]}
         />
