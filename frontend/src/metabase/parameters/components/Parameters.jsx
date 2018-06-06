@@ -86,6 +86,16 @@ export default class Parameters extends Component {
           document.title,
           window.location.pathname + search + window.location.hash,
         );
+        // if we're in an iframe, notify the parent document that the parameters
+        // have changed.
+        window.parent.postMessage(
+          {
+            source: "Metabase",
+            name: "dashboard-parameters",
+            value: search,
+          },
+          "*",
+        );
       }
     }
   }
