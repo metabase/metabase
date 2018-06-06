@@ -7,12 +7,10 @@
              [email :as email]
              [events :as events]
              [util :as u]]
-            [metabase.api
-             [common :as api]
-             [pulse :as pulse-api]]
+            [metabase.api.common :as api]
             [metabase.email.messages :as messages]
             [metabase.models
-             [collection :as collection]
+             [card :refer [Card]]
              [interface :as mi]
              [pulse :as pulse :refer [Pulse]]]
             [metabase.util.schema :as su]
@@ -41,7 +39,7 @@
 
 (defn- only-alert-keys [request]
   (u/select-keys-when request
-    :present [:alert_condition :alert_first_only :alert_above_goal :collection_id :collection_position]))
+    :present [:alert_condition :alert_first_only :alert_above_goal]))
 
 (defn- email-channel [alert]
   (m/find-first #(= :email (:channel_type %)) (:channels alert)))
@@ -113,18 +111,16 @@
 
 (api/defendpoint POST "/"
   "Create a new Alert."
-  [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal collection_id collection_position]
+  [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal]
          :as new-alert-request-body} :body}]
   {alert_condition     pulse/AlertConditions
    alert_first_only    s/Bool
    alert_above_goal    (s/maybe s/Bool)
    card                pulse/CardRef
-   channels            (su/non-empty [su/Map])
-   collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
-  ;; do various perms checks as needed
-  (pulse-api/check-card-read-permissions [card])
-  (collection/check-write-perms-for-collection collection_id)
+   channels            (su/non-empty [su/Map])}
+  ;; do various perms checks as needed. Perms for an Alert == perms for its Card. So to create an Alert you need write
+  ;; perms for its Card
+  (api/write-check Card (u/get-id card))
   ;; ok, now create the Alert
   (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/card->ref)
         new-alert  (api/check-500
@@ -138,20 +134,21 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Alert` with ID."
-  [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels collection_id
-                   collection_position] :as alert-updates} :body}]
+  [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels]
+            :as alert-updates} :body}]
   {alert_condition     (s/maybe pulse/AlertConditions)
    alert_first_only    (s/maybe s/Bool)
    alert_above_goal    (s/maybe s/Bool)
    card                (s/maybe pulse/CardRef)
-   channels            (s/maybe (su/non-empty [su/Map]))
-   collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+   channels            (s/maybe (su/non-empty [su/Map]))}
   ;; fethc the existing Alert in the DB
   (let [alert-before-update (api/check-404 (pulse/retrieve-alert id))]
-    ;; check permissions as needed
-    (api/write-check alert-before-update)
-    (collection/check-allowed-to-change-collection alert-before-update collection_id)
+    ;; check permissions as needed.
+    ;; Check permissions to update existing Card
+    (api/write-check Card (u/get-id (:card alert-before-update)))
+    ;; if trying to change the card, check perms for that as well
+    (when card
+      (api/write-check Card (u/get-id card)))
     ;; now update the Alert
     (let [updated-alert (pulse/update-alert!
                          (merge

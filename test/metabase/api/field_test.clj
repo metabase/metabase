@@ -92,15 +92,17 @@
   ((user->client :rasta) :get 200 (format "field/%d" (data/id :users :name))))
 
 
-;; ## GET /api/field/:id/summary
+
+;;; ------------------------------------------- GET /api/field/:id/summary -------------------------------------------
+
 (expect [["count" 75]      ; why doesn't this come back as a dictionary ?
          ["distincts" 75]]
   ((user->client :rasta) :get 200 (format "field/%d/summary" (data/id :categories :name))))
 
 
-;; ## PUT /api/field/:id
+;;; ----------------------------------------------- PUT /api/field/:id -----------------------------------------------
 
-(defn- simple-field-details [field]
+(defn simple-field-details [field]
   (select-keys field [:name :display_name :description :visibility_type :special_type :fk_target_field_id]))
 
 ;; test that we can do basic field update work, including unsetting some fields such as special-type
@@ -141,15 +143,16 @@
 
 ;; when we set the special-type from :type/FK to something else, make sure fk_target_field_id is set to nil
 (expect
-  [true
-   nil]
+  {1 true
+   2 nil}
   (tt/with-temp* [Field [{fk-field-id :id}]
                   Field [{field-id :id}    {:special_type :type/FK, :fk_target_field_id fk-field-id}]]
     (let [original-val (boolean (db/select-one-field :fk_target_field_id Field, :id field-id))]
       ;; unset the :type/FK special-type
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type :type/Name})
-      [original-val
-       (db/select-one-field :fk_target_field_id Field, :id field-id)])))
+      (array-map
+       1 original-val
+       2 (db/select-one-field :fk_target_field_id Field, :id field-id)))))
 
 
 ;; check that you *can* set it if it *is* the proper base type
@@ -189,9 +192,10 @@
   {:values [], :field_id (data/id :users :password)}
   ((user->client :rasta) :get 200 (format "field/%d/values" (data/id :users :password))))
 
-(def ^:private list-field {:name "Field Test", :base_type :type/Integer, :has_field_values "list"})
 
-;; ## POST /api/field/:id/values
+;;; ------------------------------------------- POST /api/field/:id/values -------------------------------------------
+
+(def ^:private list-field {:name "Field Test", :base_type :type/Integer, :has_field_values "list"})
 
 ;; Human readable values are optional
 (expect

@@ -115,7 +115,8 @@
       cache/maybe-return-cached-results
       log-query/log-results-metadata
       catch-exceptions/catch-exceptions))
-;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are (eventually) passed to `expand-resolve`
+;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
+;; `substitute-parameters`
 
 (defn query->native
   "Return the native form for QUERY (e.g. for a MBQL query on Postgres this would return a map containing the compiled

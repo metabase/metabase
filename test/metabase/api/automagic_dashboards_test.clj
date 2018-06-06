@@ -24,8 +24,7 @@
 
 (defmacro ^:private with-dashboard-cleanup
   [& body]
-  `(tu/with-model-cleanup [(quote ~'Card) (quote ~'Dashboard) (quote ~'Collection)
-                           (quote ~'DashboardCard)]
+  `(tu/with-model-cleanup ['~'Card '~'Dashboard '~'Collection '~'DashboardCard]
      ~@body))
 
 (defn- api-call

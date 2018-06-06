@@ -188,14 +188,6 @@ export class FullPageModal extends Component {
   }
 }
 
-export class InlineModal extends Component {
-  render() {
-    return (
-      <div>{this.props.isOpen ? <FullPageModal {...this.props} /> : null}</div>
-    );
-  }
-}
-
 /**
  * A modified version of Modal for Jest/Enzyme tests. Renders the modal content inline instead of document root.
  */
@@ -224,13 +216,11 @@ export class TestModal extends Component {
 // the "routeless" version should only be used for non-inline modals
 const RoutelessFullPageModal = routeless(FullPageModal);
 
-const Modal = ({ full, inline, ...props }) =>
+const Modal = ({ full, ...props }) =>
   full ? (
     props.isOpen ? (
       <RoutelessFullPageModal {...props} />
     ) : null
-  ) : inline ? (
-    <InlineModal {...props} />
   ) : (
     <WindowModal {...props} />
   );

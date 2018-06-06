@@ -4,19 +4,19 @@
              [set :as set]
              [string :as str]]
             [clojure.tools.logging :as log]
-            [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase
              [events :as events]
              [public-settings :as public-settings]
              [query-processor :as qp]
              [util :as u]]
+            [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.models
              [card :as card :refer [Card]]
-             [collection :as collection]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
              [field-values :as field-values]
              [interface :as i]
              [params :as params]
+             [permissions :as perms]
              [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.query-processor.interface :as qpi]
@@ -25,52 +25,10 @@
              [hydrate :refer [hydrate]]
              [models :as models]]))
 
-;;; ------------------------------------------------- Perms Checking -------------------------------------------------
-
-(defn- dashcards->cards [dashcards]
-  (when (seq dashcards)
-    (for [dashcard dashcards
-          :when    (:card dashcard) ; skip over ones that are cardless, e.g. text-only DashCards
-          card     (cons (:card dashcard) (:series dashcard))]
-      card)))
-
-(defn- can-read-or-write-based-on-cards? [dashboard read-or-write]
-  ;; otherwise if Dashboard is already hydrated no need to do it a second time
-  (let [cards (or (dashcards->cards (:ordered_cards dashboard))
-                  (dashcards->cards (-> (db/select [DashboardCard :id :card_id]
-                                          :dashboard_id (u/get-id dashboard)
-                                          :card_id      [:not= nil]) ; skip text-only Cards
-                                        (hydrate [:card :in_public_dashboard] :series))))]
-    ;; you can read/write a Dashboard if it has *no* Cards or if you can read/write at least one of those Cards
-    (or (empty? cards)
-        (some (case read-or-write
-                :read  i/can-read?
-                :write i/can-write?)
-              cards))))
-
-(defn- can-read-or-write?
-  [{public-uuid :public_uuid, collection-id :collection_id, :as dashboard} read-or-write]
-  (cond
-   ;; if the Dashboard is shared publicly then there is simply no need to check *read* permissions for it because
-   ;; people can see it already!!!
-   (and (= read-or-write :read)
-        (public-settings/enable-public-sharing)
-        (some? public-uuid))
-   true
-
-   ;; otherwise if the Dashboard is in a Collection then use Collection permission...
-   collection-id
-   (i/current-user-has-full-permissions? (collection/perms-objects-set collection-id read-or-write))
-
-   ;; ...finally if not use the "traditional" artifact-based Permissions, which are derived from the Cards in the Dash
-   :else
-   (can-read-or-write-based-on-cards? dashboard read-or-write)))
-
-
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn ordered-cards
-  "Return the `DashboardCards` associated with DASHBOARD, in the order they were created."
+  "Return the DashboardCards associated with `dashboard`, in the order they were created."
   {:hydrate :ordered_cards}
   [dashboard-or-id]
   (db/do-post-select DashboardCard
@@ -107,16 +65,16 @@
           :pre-delete  pre-delete
           :pre-insert  pre-insert
           :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+
+  ;; You can read/write a Dashboard if you can read/write its parent Collection
   i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?  #(can-read-or-write? % :read)
-          :can-write? #(can-read-or-write? % :write)}))
+  perms/IObjectPermissionsForParentCollection)
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (defn serialize-dashboard
-  "Serialize a `Dashboard` for use in a `Revision`."
+  "Serialize a Dashboard for use in a Revision."
   [dashboard]
   (-> dashboard
       (select-keys [:description :name])
@@ -125,7 +83,7 @@
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
 
 (defn- revert-dashboard!
-  "Revert a `Dashboard` to the state defined by SERIALIZED-DASHBOARD."
+  "Revert a Dashboard to the state defined by `serialized-dashboard`."
   [dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
   (db/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
@@ -154,7 +112,7 @@
   serialized-dashboard)
 
 (defn diff-dashboards-str
-  "Describe the difference between 2 `Dashboard` instances."
+  "Describe the difference between two Dashboard instances."
   [dashboard₁ dashboard₂]
   (when dashboard₁
     (let [[removals changes]  (diff dashboard₁ dashboard₂)
@@ -164,16 +122,22 @@
                                   (let [num-series₁ (count (get-in dashboard₁ [:cards idx :series]))
                                         num-series₂ (count (get-in dashboard₂ [:cards idx :series]))]
                                     (cond
-                                      (< num-series₁ num-series₂) (format "added some series to card %d" (get-in dashboard₁ [:cards idx :card_id]))
-                                      (> num-series₁ num-series₂) (format "removed some series from card %d" (get-in dashboard₁ [:cards idx :card_id]))
-                                      :else                       (format "modified the series on card %d" (get-in dashboard₁ [:cards idx :card_id]))))))]
+                                      (< num-series₁ num-series₂)
+                                      (format "added some series to card %d" (get-in dashboard₁ [:cards idx :card_id]))
+
+                                      (> num-series₁ num-series₂)
+                                      (format "removed some series from card %d" (get-in dashboard₁ [:cards idx :card_id]))
+
+                                      :else
+                                      (format "modified the series on card %d" (get-in dashboard₁ [:cards idx :card_id]))))))]
       (-> [(when (:name changes)
              (format "renamed it from \"%s\" to \"%s\"" (:name dashboard₁) (:name dashboard₂)))
            (when (:description changes)
              (cond
                (nil? (:description dashboard₁)) "added a description"
                (nil? (:description dashboard₂)) "removed the description"
-               :else (format "changed the description from \"%s\" to \"%s\"" (:description dashboard₁) (:description dashboard₂))))
+               :else (format "changed the description from \"%s\" to \"%s\""
+                             (:description dashboard₁) (:description dashboard₂))))
            (when (or (:cards changes) (:cards removals))
              (let [num-cards₁  (count (:cards dashboard₁))
                    num-cards₂  (count (:cards dashboard₂))]
@@ -235,7 +199,7 @@
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
 (defn update-dashcards!
-  "Update the DASHCARDS belonging to DASHBOARD-OR-ID.
+  "Update the `dashcards` belonging to `dashboard-or-id`.
    This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
    are performed when finished, for example updating FieldValues for On-Demand DBs.
    Returns `nil`."
@@ -252,7 +216,7 @@
 
 
 (defn- result-metadata-for-query
-  "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return."
+  "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
   [query]
   (binding [qpi/*disable-qp-logging* true]
     (get-in (qp/process-query query) [:data :results_metadata :columns])))
@@ -286,7 +250,7 @@
       (format "%s %s" collection (inc c)))))
 
 (defn save-transient-dashboard!
-  "Save a denormalized description of dashboard."
+  "Save a denormalized description of `dashboard`."
   [dashboard]
   (let [dashcards  (:ordered_cards dashboard)
         dashboard  (db/insert! Dashboard
