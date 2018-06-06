@@ -209,6 +209,7 @@ class CollectionLanding extends React.Component {
   render() {
     const { params, currentCollection } = this.props;
     const collectionId = params.collectionId;
+    const isRoot = collectionId === "root";
 
     return (
       <Box mx={4}>
@@ -222,9 +223,7 @@ class CollectionLanding extends React.Component {
                       to={`/collection/${collectionId}`}
                       hover={{ color: normal.blue }}
                     >
-                      {collectionId === "root"
-                        ? "Saved items"
-                        : currentCollection.name}
+                      {isRoot ? "Saved items" : currentCollection.name}
                     </Link>
                   </Flex>
                 )}
@@ -260,7 +259,7 @@ class CollectionLanding extends React.Component {
                 <Box mx={1}>
                   <EntityMenu
                     items={[
-                      ...(collectionId
+                      ...(!isRoot
                         ? [
                             {
                               title: t`Edit this collection`,
@@ -276,7 +275,7 @@ class CollectionLanding extends React.Component {
                           currentCollection.id
                         }`,
                       },
-                      ...(collectionId
+                      ...(!isRoot
                         ? [
                             {
                               title: t`Archive this collection`,

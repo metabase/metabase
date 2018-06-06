@@ -1,6 +1,6 @@
 (ns metabase.models.user
   (:require [cemerick.friend.credentials :as creds]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [public-settings :as public-settings]
@@ -9,7 +9,10 @@
             [metabase.models
              [permissions-group :as group]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
-            [metabase.util.date :as du]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
+            [schema.core :as s]
             [toucan
              [db :as db]
              [models :as models]])
@@ -23,7 +26,7 @@
   (assert (u/email? email)
     (format "Not a valid email: '%s'" email))
   (assert (and (string? password)
-               (not (s/blank? password))))
+               (not (str/blank? password))))
   (assert (not (:password_salt user))
     "Don't try to pass an encrypted password to (insert! User). Password encryption is handled by pre-insert.")
   (let [salt     (str (UUID/randomUUID))
@@ -102,7 +105,7 @@
 
 (def all-user-fields
   "Seq of all the columns stored for a user"
-  (vec (concat default-user-fields [:google_auth :ldap_auth :is_active :updated_at])))
+  (vec (concat default-user-fields [:google_auth :ldap_auth :is_active :updated_at :login_attributes])))
 
 (u/strict-extend (class User)
   models/IModel
@@ -114,7 +117,8 @@
           :post-insert    post-insert
           :pre-update     pre-update
           :post-select    post-select
-          :pre-delete     pre-delete}))
+          :pre-delete     pre-delete
+          :types          (constantly {:login_attributes :json})}))
 
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
@@ -127,42 +131,51 @@
         join-url    (str (form-password-reset-url reset-token) "#new")]
     (email/send-new-user-email! new-user invitor join-url)))
 
-(defn invite-user!
+(def LoginAttributes
+  "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON"
+  {su/KeywordOrString (s/cond-pre s/Str s/Num)})
+
+(def NewUser
+  "Required/optionals parameters needed to create a new user (for any backend)"
+  {:first_name                        su/NonBlankString
+   :last_name                         su/NonBlankString
+   :email                             su/Email
+   (s/optional-key :password)         (s/maybe su/NonBlankString)
+   (s/optional-key :login_attributes) (s/maybe LoginAttributes)
+   (s/optional-key :google_auth)      s/Bool
+   (s/optional-key :ldap_auth)        s/Bool})
+
+(def ^:private Invitor
+  "Map with info about the admin admin creating the user, used in the new user notification code"
+  {:email      su/Email
+   :first_name su/NonBlankString
+   s/Any       s/Any})
+
+(s/defn ^:private insert-new-user!
+  "Creates a new user, defaulting the password when not provided"
+  [new-user :- NewUser]
+  (db/insert! User (update new-user :password #(or % (str (UUID/randomUUID))))))
+
+(s/defn invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."
-  [first-name last-name email-address password invitor]
-  {:pre [(string? first-name) (string? last-name) (u/email? email-address) (u/maybe? string? password) (map? invitor)]}
+  [new-user :- NewUser, invitor :- Invitor]
   ;; create the new user
-  (u/prog1 (db/insert! User
-             :email       email-address
-             :first_name  first-name
-             :last_name   last-name
-             :password    (or password (str (UUID/randomUUID))))
+  (u/prog1 (insert-new-user! new-user)
     (send-welcome-email! <> invitor)))
 
-(defn create-new-google-auth-user!
+(s/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will recieve an email right away."
-  [first-name last-name email-address]
-  {:pre [(string? first-name) (string? last-name) (u/email? email-address)]}
-  (u/prog1 (db/insert! User
-             :email       email-address
-             :first_name  first-name
-             :last_name   last-name
-             :password    (str (UUID/randomUUID))
-             :google_auth true)
+  [new-user :- NewUser]
+  (u/prog1 (insert-new-user! (assoc new-user :google_auth true))
     ;; send an email to everyone including the site admin if that's set
     (email/send-user-joined-admin-notification-email! <>, :google-auth? true)))
 
-(defn create-new-ldap-auth-user!
+(s/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will recieve an email right away."
-  [first-name last-name email-address password]
-  {:pre [(string? first-name) (string? last-name) (u/email? email-address)]}
-  (db/insert! User :email      email-address
-                   :first_name first-name
-                   :last_name  last-name
-                   :password   password
-                   :ldap_auth  true))
+  [new-user :- NewUser]
+  (insert-new-user! (assoc new-user :ldap_auth true)))
 
 (defn set-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
