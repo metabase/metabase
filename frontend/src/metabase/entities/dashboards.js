@@ -18,10 +18,14 @@ const Dashboards = createEntity({
       }),
     pin: ({ id }) => Dashboards.actions.update({ id, collection_position: 1 }),
     unpin: ({ id }) =>
-      Dashboards.actions.update({ id, collection_position: null }),
+    Dashboards.actions.update({ id, collection_position: null }),
+    setFavorited: ({id}, favorited) =>
+      Dashboards.actions.update({ id, favorited }),
+
   },
 
   objectSelectors: {
+    getFavorited: dashboard => dashboard && dashboard.favorited,
     getName: dashboard => dashboard && dashboard.name,
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard.id),
     getIcon: dashboard => "dashboard",

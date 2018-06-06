@@ -21,13 +21,14 @@ const Questions = createEntity({
     unpin: ({ id }) =>
       Questions.actions.update({ id, collection_position: null }),
     setFavorited: ({ id }, favorited) =>
-      Questions.actions.updated({
+      Questions.actions.update({
         id,
         favorited,
       }),
   },
 
   objectSelectors: {
+    getFavorited: question => question && question.favorited,
     getName: question => question && question.name,
     getUrl: question => question && Urls.question(question.id),
     getColor: () => "#93B3C9",

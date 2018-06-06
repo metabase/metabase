@@ -18,6 +18,7 @@ const CollectionItemsLoader = ({ collectionId, children, ...props }: Props) => (
         {...props}
         entityType="search"
         entityQuery={{ collectionId }}
+        wrapped
         children={({ list }) =>
           object &&
           list &&
