@@ -5,19 +5,14 @@ import {
   forBothAdminsAndNormalUsers,
   useSharedAdminLogin,
   useSharedNormalLogin,
+  cleanup,
 } from "__support__/integrated_tests";
 import { click, clickButton } from "__support__/enzyme_utils";
 
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { mount } from "enzyme";
 import { setIn } from "icepick";
-import {
-  AlertApi,
-  CardApi,
-  PulseApi,
-  UserApi,
-  CollectionsApi,
-} from "metabase/services";
+import { AlertApi, PulseApi, UserApi } from "metabase/services";
 import Question from "metabase-lib/lib/Question";
 import * as Urls from "metabase/lib/urls";
 import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
@@ -88,7 +83,6 @@ const initQbWithAlertMenuItemClicked = async (
 };
 
 describe("Alerts", () => {
-  let collection = null;
   let rawDataQuestion = null;
   let timeSeriesQuestion = null;
   let timeSeriesWithGoalQuestion = null;
@@ -101,7 +95,7 @@ describe("Alerts", () => {
     const store = await createTestStore();
 
     // create a collection which all users have write permissions in
-    collection = await createAllUsersWritableCollection();
+    const collection = await createAllUsersWritableCollection();
 
     // table metadata is needed for `Question.alertType()` calls
     await store.dispatch(fetchTableMetadata(1));
@@ -115,6 +109,7 @@ describe("Alerts", () => {
         .setDisplayName("Just raw, untamed data")
         .setCollectionId(collection.id),
     );
+    cleanup.question(rawDataQuestion);
 
     timeSeriesQuestion = await createSavedQuestion(
       Question.create({ databaseId: 1, tableId: 1, metadata })
@@ -130,6 +125,7 @@ describe("Alerts", () => {
         .setDisplayName("Time series line")
         .setCollectionId(collection.id),
     );
+    cleanup.question(timeSeriesQuestion);
 
     timeSeriesWithGoalQuestion = await createSavedQuestion(
       Question.create({ databaseId: 1, tableId: 1, metadata })
@@ -147,6 +143,7 @@ describe("Alerts", () => {
         .setDisplayName("Time series line with goal")
         .setCollectionId(collection.id),
     );
+    cleanup.question(timeSeriesWithGoalQuestion);
 
     timeMultiSeriesWithGoalQuestion = await createSavedQuestion(
       Question.create({ databaseId: 1, tableId: 1, metadata })
@@ -165,6 +162,7 @@ describe("Alerts", () => {
         .setDisplayName("Time multiseries line with goal")
         .setCollectionId(collection.id),
     );
+    cleanup.question(timeMultiSeriesWithGoalQuestion);
 
     progressBarQuestion = await createSavedQuestion(
       Question.create({ databaseId: 1, tableId: 1, metadata })
@@ -176,16 +174,12 @@ describe("Alerts", () => {
         .setDisplayName("Progress bar question")
         .setCollectionId(collection.id),
     );
+    cleanup.question(progressBarQuestion);
+
+    cleanup.collection(collection);
   });
 
-  afterAll(async () => {
-    await CardApi.delete({ cardId: rawDataQuestion.id() });
-    await CardApi.delete({ cardId: timeSeriesQuestion.id() });
-    await CardApi.delete({ cardId: timeSeriesWithGoalQuestion.id() });
-    await CardApi.delete({ cardId: timeMultiSeriesWithGoalQuestion.id() });
-    await CardApi.delete({ cardId: progressBarQuestion.id() });
-    await CollectionsApi.update({ id: collection.id, archived: true });
-  });
+  afterAll(cleanup);
 
   describe("missing email/slack credentials", () => {
     forBothAdminsAndNormalUsers(() => {
