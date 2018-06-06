@@ -27,28 +27,38 @@
     obj
     (json/generate-string obj)))
 
-(defn- json-out [obj]
+(defn- json-out [obj keywordize-keys?]
   (let [s (u/jdbc-clob->str obj)]
     (if (string? s)
-      (json/parse-string s keyword)
+      (json/parse-string s keywordize-keys?)
       obj)))
+
+(defn- json-out-with-keywordization [obj]
+  (json-out obj true))
+
+(defn- json-out-without-keywordization [obj]
+  (json-out obj false))
 
 (models/add-type! :json
   :in  json-in
-  :out json-out)
+  :out json-out-with-keywordization)
+
+(models/add-type! :json-no-keywordization
+  :in  json-in
+  :out json-out-without-keywordization)
 
 ;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
 ;; permissions set
 (models/add-type! :json-set
   :in  json-in
-  :out #(when % (set (json-out %))))
+  :out #(when % (set (json-out-with-keywordization %))))
 
 (models/add-type! :clob
   :in  identity
   :out u/jdbc-clob->str)
 
 (def ^:private encrypted-json-in  (comp encryption/maybe-encrypt json-in))
-(def ^:private encrypted-json-out (comp json-out encryption/maybe-decrypt))
+(def ^:private encrypted-json-out (comp json-out-with-keywordization encryption/maybe-decrypt))
 
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
 ;; cache the decrypted JSON for one hour

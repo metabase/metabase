@@ -16,8 +16,8 @@
              [query :as query]
              [revision :as revision]]
             [metabase.models.query.permissions :as query-perms]
-            [metabase.util.query :as q]
             [metabase.query-processor.util :as qputil]
+            [metabase.util.query :as q]
             [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
@@ -32,7 +32,6 @@
   {:hydrate :dashboard_count}
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
-
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 

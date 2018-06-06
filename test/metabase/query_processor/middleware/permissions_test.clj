@@ -18,9 +18,7 @@
 (defn- do-with-rasta
   "Call F with rasta as the current user."
   [f]
-  (binding [api/*current-user-id*              (users/user->id :rasta)
-            api/*current-user-permissions-set* (atom (user/permissions-set (users/user->id :rasta)))]
-    (f)))
+  (users/call-with-api-vars :rasta f))
 
 (defn- check-perms-for-rasta
   "Check permissions for QUERY with rasta as the current user."
