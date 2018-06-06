@@ -3,6 +3,7 @@ import { Box, Flex, Subhead, Truncate } from "rebass";
 import { t } from "c-3po";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
+import _ from "underscore";
 
 import Question from "metabase/entities/questions";
 import Dashboard from "metabase/entities/dashboards";
@@ -117,10 +118,7 @@ class DefaultLanding extends React.Component {
                   return <CollectionEmptyState />;
                 }
 
-                console.log(items);
-
-                const pinned = items.filter(i => i.collection_position);
-                const other = items.filter(i => !i.collection_position);
+                const [pinned, other] = _.partition(items, i => i.collection_position != null);
 
                 return (
                   <Box>
