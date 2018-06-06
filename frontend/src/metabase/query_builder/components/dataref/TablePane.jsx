@@ -165,7 +165,7 @@ export default class TablePane extends Component {
                 type="metrics"
                 show={this.props.show.bind(null, "metric")}
                 items={table.metrics.filter(
-                  metric => metric.is_active === true,
+                  metric => metric.archived === false,
                 )}
               />
             )}
@@ -176,7 +176,7 @@ export default class TablePane extends Component {
                 type="segments"
                 show={this.props.show.bind(null, "segment")}
                 items={table.segments.filter(
-                  segment => segment.is_active === true,
+                  segment => segment.archived === false,
                 )}
               />
             )}
