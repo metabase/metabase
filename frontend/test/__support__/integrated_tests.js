@@ -98,15 +98,11 @@ export function useSharedNormalLogin() {
     id: process.env.TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID,
   };
 }
-export const forBothAdminsAndNormalUsers = tests => {
-  describe("for admins", () => {
-    beforeEach(useSharedAdminLogin);
-    tests();
-  });
-  describe("for normal users", () => {
-    beforeEach(useSharedNormalLogin);
-    tests();
-  });
+export const forBothAdminsAndNormalUsers = async tests => {
+  useSharedAdminLogin();
+  await tests();
+  useSharedNormalLogin();
+  await tests();
 };
 
 export function logout() {
@@ -581,24 +577,17 @@ export const eventually = async (assertion, timeout = 5000, period = 250) => {
 // })
 // afterAll(cleanup);
 //
-export const cleanup = async () => {
+export const cleanup = () => {
   useSharedAdminLogin();
-  try {
-    await Promise.all(
-      cleanup.actions.splice(0, cleanup.actions.length).map(action => action()),
-    );
-  } catch (e) {
-    console.warn("CLEANUP FAILED", e);
-    throw e;
-  }
+  Promise.all(
+    cleanup.actions.splice(0, cleanup.actions.length).map(action => action()),
+  );
 };
 cleanup.actions = [];
 cleanup.fn = action => cleanup.actions.push(action);
 cleanup.metric = metric => cleanup.fn(() => deleteMetric(metric));
 cleanup.segment = segment => cleanup.fn(() => deleteSegment(segment));
 cleanup.question = question => cleanup.fn(() => deleteQuestion(question));
-cleanup.collection = collection =>
-  cleanup.fn(() => deleteCollection(collection));
 
 export const deleteQuestion = question =>
   CardApi.delete({ cardId: getId(question) });
@@ -606,8 +595,6 @@ export const deleteSegment = segment =>
   SegmentApi.delete({ segmentId: getId(segment), revision_message: "Please" });
 export const deleteMetric = metric =>
   MetricApi.delete({ metricId: getId(metric), revision_message: "Please" });
-export const deleteCollection = collection =>
-  CollectionsApi.update({ id: getId(collection), archived: true });
 
 const getId = o =>
   typeof o === "object" && o != null
