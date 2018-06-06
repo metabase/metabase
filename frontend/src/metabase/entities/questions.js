@@ -17,9 +17,8 @@ const Questions = createEntity({
         id,
         collection_id: collection && collection.id,
       }),
-    pin: ({ id }) => Questions.actions.update({ id, collection_position: 1 }),
-    unpin: ({ id }) =>
-      Questions.actions.update({ id, collection_position: null }),
+    setPinned: ({ id }, pinned) =>
+      Questions.actions.update({ id, collection_position: pinned ? 1 : null }),
     setFavorited: ({ id }, favorited) =>
       Questions.actions.update({
         id,
