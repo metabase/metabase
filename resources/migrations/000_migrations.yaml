@@ -4172,3 +4172,51 @@ databaseChangeLog:
               remarks: 'When was this User last updated?'
         - sql:
             sql: update core_user set updated_at=date_joined
+# Switch the logic for metric/segment archiving to be more consistent with other entities in the model.
+# Similarly, add the archived flag to pulses which doesn't have one.
+  - changeSet:
+      id: 84
+      author: senior
+      comment: 'Added 0.30.0'
+      changes:
+        - renameColumn:
+            tableName: metric
+            columnDataType: boolean
+            newColumnName: archived
+            oldColumnName: is_active
+        - addDefaultValue:
+            tableName: metric
+            columnDataType: boolean
+            columnName: archived
+            defaultValueBoolean: false
+        - renameColumn:
+            tableName: segment
+            columnDataType: boolean
+            newColumnName: archived
+            oldColumnName: is_active
+        - addDefaultValue:
+            tableName: segment
+            columnDataType: boolean
+            columnName: archived
+            defaultValueBoolean: false
+        - addColumn:
+            tableName: pulse
+            columns:
+              name: archived
+              type: boolean
+              remarks: 'Has this pulse been archived?'
+              defaultValueBoolean: false
+        # Before this change, metrics/segments had opposite logic, rather than marking something as archived
+        # it was marked as active. Since the column is now an archived column, flip the boolean value
+        - sql:
+            sql: update metric set archived = not(archived)
+            sql: update segment set archived = not(archived)
+# In 0.30.0 we finally removed the long-deprecated native read permissions. Since they're no longer considered valid by
+# our permissions code, remove any entries for them so they don't cause problems.
+  - changeSet:
+      id: 86
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - sql:
+            sql: DELETE FROM permissions WHERE object LIKE '%/native/read/'

@@ -79,7 +79,7 @@ export default class MetricSearch extends Component {
               <EntitySearch
                 title={t`Which metric?`}
                 // TODO Atte Keinänen 8/22/17: If you call `/api/table/:id/table_metadata` it returns
-                // all metrics (also retired ones) and is missing `is_active` prop. Currently this
+                // all metrics (also retired ones) and is missing `archived` prop. Currently this
                 // filters them out but we should definitely update the endpoints in the upcoming metadata API refactoring.
                 entities={sortedActiveMetrics}
                 getUrlForEntity={this.getUrlForMetric}

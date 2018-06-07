@@ -1,4 +1,5 @@
 (ns metabase.api.user
+  "/api/user endpoints"
   (:require [cemerick.friend.credentials :as creds]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api
@@ -78,7 +79,6 @@
   (check-self-or-superuser id)
   (api/check-404 (fetch-user :id id, :is_active true)))
 
-
 (api/defendpoint PUT "/:id"
   "Update an existing, active `User`."
   [id :as {{:keys [email first_name last_name is_superuser login_attributes] :as body} :body}]
@@ -95,9 +95,10 @@
   (api/check-500
    (db/update! User id
      (u/select-keys-when body
-       :present #{:login_attributes}
+       :present (when api/*is-superuser?*
+                  #{:login_attributes})
        :non-nil (set (concat [:first_name :last_name :email]
-                             (when (:is_superuser @api/*current-user*)
+                             (when api/*is-superuser?*
                                [:is_superuser]))))))
   (fetch-user :id id))
 

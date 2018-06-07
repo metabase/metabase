@@ -6,7 +6,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [compojure.core :refer [defroutes]]
+            [compojure.core :as compojure]
             [medley.core :as m]
             [metabase
              [public-settings :as public-settings]
@@ -227,6 +227,11 @@
   [& body]
   `(api-let ~generic-403 ~@body))
 
+(defn throw-403
+  "Throw a generic 403 (no permissions) error response."
+  []
+  (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
+
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
 (def ^:private generic-500
@@ -251,7 +256,7 @@
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
-;; e.g. `catch-api-exceptions` and `auto-parse`
+;; e.g. `auto-parse`
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
@@ -283,25 +288,50 @@
                       :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
                       :is-endpoint? true)
        (~method ~route ~args
-        (catch-api-exceptions
-          (auto-parse ~args
-            ~@validate-param-calls
-            (wrap-response-if-needed (do ~@body))))))))
+        (auto-parse ~args
+          ~@validate-param-calls
+          (wrap-response-if-needed (do ~@body)))))))
 
+(defn- namespace->api-route-fns
+  "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
+  [nmspace]
+  (for [[symb varr] (ns-publics nmspace)
+        :when       (:is-endpoint? (meta varr))]
+    symb))
+
+(defn- api-routes-docstring [nmspace route-fns middleware]
+  (str
+   (format "Ring routes for %s:\n%s"
+           (-> (ns-name nmspace)
+               (str/replace #"^metabase\." "")
+               (str/replace #"\." "/"))
+           (u/pprint-to-str route-fns))
+   (when (seq middleware)
+     (str "\nMiddleware applied to all endpoints in this namespace:\n"
+          (u/pprint-to-str middleware)))))
 
 (defmacro define-routes
-  "Create a `(defroutes routes ...)` form that automatically includes all functions created with
-   `defendpoint` in the current namespace."
-  [& additional-routes]
-  (let [api-routes (for [[symb varr] (ns-publics *ns*)
-                         :when       (:is-endpoint? (meta varr))]
-                     symb)]
-    `(defroutes ~(vary-meta 'routes assoc :doc (format "Ring routes for %s:\n%s"
-                                                       (-> (ns-name *ns*)
-                                                           (str/replace #"^metabase\." "")
-                                                           (str/replace #"\." "/"))
-                                                       (u/pprint-to-str (concat api-routes additional-routes))))
-       ~@additional-routes ~@api-routes)))
+  "Create a `(defroutes routes ...)` form that automatically includes all functions created with `defendpoint` in the
+  current namespace. Optionally specify middleware that will apply to all of the endpoints in the current namespace.
+
+     (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
+  {:style/indent 0}
+  [& middleware]
+  (let [api-route-fns (namespace->api-route-fns *ns*)
+        routes        `(compojure/routes ~@api-route-fns)]
+    `(def ~(vary-meta 'routes assoc :doc (api-routes-docstring *ns* api-route-fns middleware))
+       ~(if (seq middleware)
+          `(-> ~routes ~@middleware)
+          routes))))
+
+(defn +check-superuser
+  "Wrap a Ring handler to make sure the current user is a superuser before handling any requests.
+
+     (api/+check-superuser routes)"
+  [handler]
+  (fn [request]
+    (check-superuser)
+    (handler request)))
 
 
 ;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------

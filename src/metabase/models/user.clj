@@ -12,6 +12,7 @@
             [metabase.util
              [date :as du]
              [schema :as su]]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -118,7 +119,7 @@
           :pre-update     pre-update
           :post-select    post-select
           :pre-delete     pre-delete
-          :types          (constantly {:login_attributes :json})}))
+          :types          (constantly {:login_attributes :json-no-keywordization})}))
 
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
@@ -133,7 +134,8 @@
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON"
-  {su/KeywordOrString (s/cond-pre s/Str s/Num)})
+  {su/KeywordOrString (su/with-api-error-message (s/cond-pre s/Str s/Num)
+                        (tru "value must be a string or number."))})
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"

@@ -113,7 +113,8 @@
     :pulse_id     nil
     :card_id      nil
     :dashboard_id nil}]
-  ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check that it exists and contains the substring "Syntax error in SQL statement"
+  ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check that
+  ;; it exists and contains the substring "Syntax error in SQL statement"
   (let [check-error-message (fn [output]
                               (update output :error (fn [error-message]
                                                       (boolean (re-find #"Syntax error in SQL statement" error-message)))))

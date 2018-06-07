@@ -4,8 +4,7 @@
             [metabase.models
              [card :as card :refer :all]
              [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [permissions :as perms]]
+             [dashboard-card :refer [DashboardCard]]]
             [metabase.test
              [data :as data]
              [util :as tu]]
