@@ -76,20 +76,6 @@
 ;;; |                                                   MIGRATIONS                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Upgrade for the `Card` model when `:database_id`, `:table_id`, and `:query_type` were added and needed populating.
-;;
-;; This reads through all saved cards, extracts the JSON from the `:dataset_query`, and tries to populate
-;; the values for `:database_id`, `:table_id`, and `:query_type` if possible.
-(defmigration ^{:author "agilliland", :added "0.12.0"} set-card-database-and-table-ids
-  ;; only execute when `:database_id` column on all cards is `nil`
-  (when (zero? (db/count Card
-                 :database_id [:not= nil]))
-    (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/select [Card :id :dataset_query])]
-      (when type
-        ;; simply resave the card with the dataset query which will automatically set the database, table, and type
-        (db/update! Card id, :dataset_query dataset-query)))))
-
-
 ;; Set the `:ssl` key in `details` to `false` for all existing MongoDB `Databases`.
 ;; UI was automatically setting `:ssl` to `true` for every database added as part of the auto-SSL detection.
 ;; Since Mongo did *not* support SSL, all existing Mongo DBs should actually have this key set to `false`.
