@@ -1,6 +1,8 @@
 import { createEntity } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 
+import { normal } from "metabase/lib/colors";
+
 const Pulses = createEntity({
   name: "pulses",
   path: "/api/pulse",
@@ -18,6 +20,7 @@ const Pulses = createEntity({
     getName: pulse => pulse && pulse.name,
     getUrl: pulse => pulse && Urls.pulse(pulse.id),
     getIcon: pulse => "pulse",
+    getColor: pulse => normal.yellow,
   },
 });
 

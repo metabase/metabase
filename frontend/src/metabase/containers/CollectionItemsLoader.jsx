@@ -1,6 +1,9 @@
 /* @flow */
 import React from "react";
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
+import EntityListLoader from "metabase/entities/containers/EntityListLoader";
+
+import _ from "underscore";
 
 type Props = {
   collectionId: number,
@@ -12,24 +15,21 @@ const CollectionItemsLoader = ({ collectionId, children, ...props }: Props) => (
     {...props}
     entityType="collections"
     entityId={collectionId}
-    children={({ object }) =>
-      object &&
-      children({
-        collection: object,
-        dashboards: object.dashboards,
-        cards: object.cards,
-        pulses: object.pulses,
-        allItems: [].concat(
-          object.dashboards.map(d => ({ ...d, type: "dashboard" })),
-          object.cards.map(c => ({ ...c, type: "card" })),
-          object.pulses.map(p => ({ ...p, type: "pulse" })),
-        ),
-        empty:
-          object.dashboards.length === 0 &&
-          object.cards.length === 0 &&
-          object.pulses.length,
-      })
-    }
+    children={({ object }) => (
+      <EntityListLoader
+        {...props}
+        entityType="search"
+        entityQuery={{ collectionId }}
+        children={({ list }) =>
+          object &&
+          list &&
+          children({
+            collection: object,
+            items: list,
+          })
+        }
+      />
+    )}
   />
 );
 
