@@ -189,7 +189,11 @@ class DefaultLanding extends React.Component {
                                 name={item.getName()}
                                 iconName={item.getIcon()}
                                 iconColor={item.getColor()}
-                                onFavorite={item.setFavorited}
+                                onFavorite={
+                                  item.setFavorited
+                                    ? () => item.setFavorited(true)
+                                    : null
+                                }
                                 isFavorite={
                                   item.getFavorited && item.getFavorited()
                                 }
@@ -203,6 +207,11 @@ class DefaultLanding extends React.Component {
                                   ev.preventDefault();
                                   onToggleSelected(item);
                                 }}
+                                onArchived={
+                                  item.setArchived
+                                  ? () => item.setArchived(true)
+                                  : null
+                                }
                               />
                             </Link>
                           </Box>
@@ -215,7 +224,7 @@ class DefaultLanding extends React.Component {
             </CollectionLoader>
             <BulkActionBar showing={selected.length > 0}>
               <SelectionControls {...this.props} />
-              <BulkActionControls {...this.props} />
+              <BulkActionControls move archive {...this.props} />
               <Box ml="auto">{t`${selected.length} items selected`}</Box>
             </BulkActionBar>
           </Box>

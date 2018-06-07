@@ -22,12 +22,12 @@ const Questions = createEntity({
     setFavorited: ({ id }, favorited) =>
       Questions.actions.update({
         id,
-        favorited,
+        is_favorite: favorited,
       }),
   },
 
   objectSelectors: {
-    getFavorited: question => question && question.favorited,
+    getFavorited: question => question && question.is_favorited,
     getName: question => question && question.name,
     getUrl: question => question && Urls.question(question.id),
     getColor: () => "#93B3C9",

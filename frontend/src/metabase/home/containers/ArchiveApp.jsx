@@ -65,6 +65,7 @@ export default class ArchiveApp extends Component {
                 }
                 selected={selection.has(item)}
                 onToggleSelected={() => onToggleSelected(item)}
+                showSelect={selected.length > 0}
               />
             ))}
           </Card>

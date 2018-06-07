@@ -1,7 +1,8 @@
 import React from "react";
 import { t } from "c-3po";
 import EntityMenu from "metabase/components/EntityMenu";
-import { Motion, spring } from "react-motion"
+import Swapper from "metabase/components/Swapper"
+import IconWrapper from "metabase/components/IconWrapper"
 
 import { Flex, Box, Truncate } from "rebass";
 
@@ -20,11 +21,6 @@ const EntityItemWrapper = Flex.extend`
   &:last-child {
     border-bottom: none;
   }
-`;
-
-const IconWrapper = Flex.extend`
-  background: #f4f5f6;
-  border-radius: 6px;
 `;
 
 const EntityItem = ({
@@ -74,11 +70,11 @@ const EntityItem = ({
         onClick={e => e.preventDefault()}
       >
         { onFavorite && (
-        <Icon
-          name={isFavorite ? "star" : "staroutline"}
-          mr={1}
-          onClick={() => onFavorite(item)}
-        />
+          <Icon
+            name={isFavorite ? "star" : "staroutline"}
+            mr={1}
+            onClick={() => onFavorite()}
+          />
         )}
         <EntityMenu
           triggerIcon="ellipsis"
@@ -97,10 +93,7 @@ const EntityItem = ({
               title: t`Archive`,
               icon: "archive",
               action: () => {
-                try {
-                  item.setArchived(true)
-                } finally {
-                }
+                item.setArchived(true)
               }
             },
           ]}
@@ -110,70 +103,6 @@ const EntityItem = ({
   );
 };
 
-class Swapper extends React.Component {
-  props: {
-    defaultElement: React$Element,
-    swappedElement: React$Element
-  }
-
-  state = {
-    hovered: false
-  }
-
-  _onMouseEnter () {
-    this.setState({ hovered: true })
-  }
-
-  _onMouseLeave () {
-    this.setState({ hovered: false })
-  }
-
-  render () {
-    const { defaultElement, swappedElement, startSwapped } = this.props
-    const { hovered } = this.state
-
-    return (
-      <span
-        onMouseEnter={() => this._onMouseEnter()}
-        onMouseLeave={() => this._onMouseLeave()}
-        className="block relative"
-      >
-        <Motion
-          defaultStyle={{
-            scale: 1
-          }}
-          style={{
-            scale: hovered || startSwapped ? spring(0): spring(1)
-          }}
-        >
-          {({ scale }) => {
-            return (
-              <span className="" style={{ display: 'block', transform: `scale(${scale})` }}>
-                { defaultElement }
-              </span>
-            )
-          }}
-        </Motion>
-        <Motion
-          defaultStyle={{
-            scale: 0
-          }}
-          style={{
-            scale: hovered || startSwapped ? spring(1): spring(0)
-          }}
-        >
-          {({ scale }) => {
-            return (
-              <span className="absolute top left bottom right" style={{ display: 'block', transform: `scale(${scale})` }}>
-                { swappedElement }
-              </span>
-            )
-          }}
-        </Motion>
-      </span>
-    )
-  }
-}
 
 EntityItem.defaultProps = {
   selectable: false
