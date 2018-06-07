@@ -220,8 +220,7 @@ class DefaultLanding extends React.Component {
                                     : null
                                 }
                                 selected={selection.has(item)}
-                                onToggleSelected={ev => {
-                                  ev.preventDefault();
+                                onToggleSelected={() => {
                                   onToggleSelected(item);
                                 }}
                               />

@@ -57,17 +57,25 @@ const EntityItem = ({
 
   return (
     <EntityItemWrapper py={2} px={2} className="hover-parent hover--visibility">
-      <IconWrapper p={1} mr={1} align="center" justify="center">
+      <IconWrapper
+        p={1}
+        mr={1}
+        align="center"
+        justify="center"
+        onClick={
+          selectable
+            ? e => {
+                e.preventDefault();
+                onToggleSelected();
+              }
+            : null
+        }
+      >
         {selectable ? (
           <Swapper
             startSwapped={showSelect}
             defaultElement={<Icon name={iconName} color={iconColor} />}
-            swappedElement={
-              <CheckBox
-                checked={selected}
-                onChange={ev => onToggleSelected(ev)}
-              />
-            }
+            swappedElement={<CheckBox checked={selected} />}
           />
         ) : (
           <Icon name={iconName} color={iconColor} />
