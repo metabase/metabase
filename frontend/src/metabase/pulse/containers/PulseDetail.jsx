@@ -1,5 +1,5 @@
 import React from "react"
-import { Box, Flex, Text } from "rebass"
+import { Box, Flex } from "rebass"
 import { t } from 'c-3po'
 import { connect } from "react-redux"
 

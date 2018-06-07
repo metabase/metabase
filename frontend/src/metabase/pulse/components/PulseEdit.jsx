@@ -82,7 +82,7 @@ export default class PulseEdit extends Component {
 
     MetabaseAnalytics.trackEvent("PulseDelete", "Complete");
 
-    this.props.onChangeLocation("/pulse");
+    this.props.onChangeLocation(Urls.collection(this.props.pulse.collection_id));
   }
 
   setPulse(pulse) {
