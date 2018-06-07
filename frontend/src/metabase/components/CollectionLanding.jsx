@@ -49,7 +49,7 @@ const CollectionItem = ({ collection }) => (
       py={1}
       key={`collection-${collection.id}`}
     >
-      <Icon name="all" mx={1} />
+      <Icon name={collection.personal_owner_id ? "star" : "all"} mx={1} />
       <h4>
         <Truncate>{collection.name}</Truncate>
       </h4>
@@ -70,7 +70,7 @@ const CollectionList = () => {
           return (
             <Box>
               {collections.map(collection => (
-                <Box key={collection.id} mb={1}>
+                <Box key={collection.id} mb={collection.personal_owner_id ? 3 : 1 }>
                   <CollectionItem collection={collection} />
                 </Box>
               ))}
