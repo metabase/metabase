@@ -4,7 +4,7 @@ import { t } from "c-3po";
 import { connect } from "react-redux";
 import _ from "underscore";
 import listSelect from "metabase/hoc/ListSelect";
-import BulkActionBar from "metabase/components/BulkActionBar"
+import BulkActionBar from "metabase/components/BulkActionBar";
 
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
@@ -96,7 +96,13 @@ class DefaultLanding extends React.Component {
   };
 
   render() {
-    const { collectionId, list, onToggleSelected, selection, selected } = this.props;
+    const {
+      collectionId,
+      list,
+      onToggleSelected,
+      selection,
+      selected,
+    } = this.props;
 
     // Show the
     const showCollectionList = collectionId === "root";
@@ -189,17 +195,31 @@ class DefaultLanding extends React.Component {
                                 name={item.getName()}
                                 iconName={item.getIcon()}
                                 iconColor={item.getColor()}
+                                isFavorite={
+                                  item.getFavorited && item.getFavorited()
+                                }
                                 onFavorite={
                                   item.setFavorited
                                     ? () => item.setFavorited(true)
                                     : null
                                 }
-                                isFavorite={
-                                  item.getFavorited && item.getFavorited()
-                                }
                                 onPin={
                                   collection.can_write && item.setPinned
                                     ? () => item.setPinned(true)
+                                    : null
+                                }
+                                onMove={
+                                  collection.can_write
+                                    ? () => {
+                                        alert(
+                                          "FIXME: move not yet implemented!",
+                                        );
+                                      }
+                                    : null
+                                }
+                                onArchive={
+                                  collection.can_write && item.setArchived
+                                    ? () => item.setArchived(true)
                                     : null
                                 }
                                 selected={selection.has(item)}
@@ -207,11 +227,6 @@ class DefaultLanding extends React.Component {
                                   ev.preventDefault();
                                   onToggleSelected(item);
                                 }}
-                                onArchived={
-                                  item.setArchived
-                                  ? () => item.setArchived(true)
-                                  : null
-                                }
                               />
                             </Link>
                           </Box>

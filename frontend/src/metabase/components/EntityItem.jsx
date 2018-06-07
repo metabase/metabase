@@ -1,8 +1,8 @@
 import React from "react";
 import { t } from "c-3po";
 import EntityMenu from "metabase/components/EntityMenu";
-import Swapper from "metabase/components/Swapper"
-import IconWrapper from "metabase/components/IconWrapper"
+import Swapper from "metabase/components/Swapper";
+import IconWrapper from "metabase/components/IconWrapper";
 
 import { Flex, Box, Truncate } from "rebass";
 
@@ -27,37 +27,51 @@ const EntityItem = ({
   name,
   iconName,
   iconColor,
-  item,
   isFavorite,
   onPin,
   onFavorite,
+  onMove,
+  onArchive,
   selected,
   onToggleSelected,
   selectable,
-  showSelect
+  showSelect,
 }) => {
+  const actions = [
+    onPin && {
+      title: t`Pin this item`,
+      icon: "pin",
+      action: onPin,
+    },
+    onMove && {
+      title: t`Move this item`,
+      icon: "move",
+      action: onMove,
+    },
+    onArchive && {
+      title: t`Archive`,
+      icon: "archive",
+      action: onArchive,
+    },
+  ].filter(action => action);
+
   return (
     <EntityItemWrapper py={2} px={2} className="hover-parent hover--visibility">
-      <IconWrapper
-        p={1}
-        mr={1}
-        align="center"
-        justify="center"
-      >
-      { selectable ? (
-        <Swapper
-          startSwapped={showSelect}
-          defaultElement={<Icon name={iconName} color={iconColor} />}
-          swappedElement={
-            <CheckBox
-              checked={selected}
-              onChange={(ev) => onToggleSelected(ev)}
-            />
-          }
-        />
-      ) : (
-        <Icon name={iconName} color={iconColor} />
-      )}
+      <IconWrapper p={1} mr={1} align="center" justify="center">
+        {selectable ? (
+          <Swapper
+            startSwapped={showSelect}
+            defaultElement={<Icon name={iconName} color={iconColor} />}
+            swappedElement={
+              <CheckBox
+                checked={selected}
+                onChange={ev => onToggleSelected(ev)}
+              />
+            }
+          />
+        ) : (
+          <Icon name={iconName} color={iconColor} />
+        )}
       </IconWrapper>
       <h3>
         <Truncate>{name}</Truncate>
@@ -69,43 +83,23 @@ const EntityItem = ({
         className="hover-child"
         onClick={e => e.preventDefault()}
       >
-        { onFavorite && (
+        {(onFavorite || isFavorite) && (
           <Icon
             name={isFavorite ? "star" : "staroutline"}
             mr={1}
-            onClick={() => onFavorite()}
+            onClick={onFavorite}
           />
         )}
-        <EntityMenu
-          triggerIcon="ellipsis"
-          items={[
-            {
-              title: t`Pin this item`,
-              icon: "pin",
-              action: () => onPin(item),
-            },
-            {
-              title: t`Move this item`,
-              icon: "move",
-              action: () => onPin(item),
-            },
-            {
-              title: t`Archive`,
-              icon: "archive",
-              action: () => {
-                item.setArchived(true)
-              }
-            },
-          ]}
-        />
+        {actions.length > 0 && (
+          <EntityMenu triggerIcon="ellipsis" items={actions} />
+        )}
       </Flex>
     </EntityItemWrapper>
   );
 };
 
-
 EntityItem.defaultProps = {
-  selectable: false
-}
+  selectable: false,
+};
 
 export default EntityItem;
