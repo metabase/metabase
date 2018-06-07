@@ -207,8 +207,6 @@ export default class PeopleListingApp extends Component {
 
     return (
       <Modal
-        full
-        form
         title={t`Edit ${user.first_name}'s details`}
         onClose={this.onCloseModal}
       >
@@ -222,7 +220,6 @@ export default class PeopleListingApp extends Component {
 
     return (
       <Modal
-        small
         title={t`${user.first_name} has been added`}
         footer={[
           <Button
@@ -230,9 +227,10 @@ export default class PeopleListingApp extends Component {
           >{t`Add another person`}</Button>,
           <Button primary onClick={this.onCloseModal}>{t`Done`}</Button>,
         ]}
+        formModal
         onClose={this.onCloseModal}
       >
-        <div className="px4 pb4">
+        <div>
           <div className="pb4">{jt`We couldn’t send them an email invitation,
                     so make sure to tell them to log in using ${(
                       <span className="text-bold">{user.email}</span>
@@ -358,7 +356,7 @@ export default class PeopleListingApp extends Component {
         ]}
         onClose={this.onCloseModal}
       >
-        <div className="px4 pb4">{t`Are you sure you want to do this?`}</div>
+        {t`Are you sure you want to do this?`}
       </Modal>
     );
   }
@@ -372,17 +370,15 @@ export default class PeopleListingApp extends Component {
         title={t`${user.first_name}'s password has been reset`}
         footer={
           <button
-            className="Button Button--primary mr2"
+            className="Button Button--primary"
             onClick={this.onCloseModal}
           >{t`Done`}</button>
         }
         onClose={this.onCloseModal}
       >
-        <div className="px4 pb4">
-          <span className="pb3 block">{t`Here’s a temporary password they can use to log in and then change their password.`}</span>
+        <span className="pb3 block">{t`Here’s a temporary password they can use to log in and then change their password.`}</span>
 
-          <PasswordReveal password={password} />
-        </div>
+        <PasswordReveal password={password} />
       </Modal>
     );
   }
@@ -397,7 +393,7 @@ export default class PeopleListingApp extends Component {
         footer={<Button primary onClick={this.onCloseModal}>{t`Done`}</Button>}
         onClose={this.onCloseModal}
       >
-        <div className="px4 pb4">{t`We've sent them an email with instructions for creating a new password.`}</div>
+        {t`We've sent them an email with instructions for creating a new password.`}
       </Modal>
     );
   }
