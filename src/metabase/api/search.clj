@@ -16,9 +16,32 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
+(def ^:priviate card-columns-without-type
+  [:id :name :description :archived :collection_id :collection_position])
+
+(def ^:priviate dashboard-columns-without-type
+  [:id :name :description :archived :collection_id :collection_position])
+
+(def ^:priviate pulse-columns-without-type
+  [:id :name :collection_id])
+
+(def ^:priviate collection-columns-without-type
+  [:id :name :description :archived])
+
+(def ^:priviate segment-columns-without-type
+  [:id :name :description :archived])
+
+(def ^:priviate metric-columns-without-type
+  [:id :name :description :archived])
+
 (def ^:private search-columns-without-type
   "The columns found in search query clauses except type. Type is added automatically"
-  [:name :description :id])
+  (vec (set (concat card-columns-without-type
+                    dashboard-columns-without-type
+                    pulse-columns-without-type
+                    collection-columns-without-type
+                    segment-columns-without-type
+                    metric-columns-without-type))))
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
@@ -80,7 +103,7 @@
 
 (s/defmethod ^:private create-search-query :question
   [_ search-ctx :- SearchContext]
-  (-> (make-honeysql-search-query Card "card" search-columns-without-type)
+  (-> (make-honeysql-search-query Card "card" card-columns-without-type)
       (merge-name-and-archived-search search-ctx)
       (add-collection-criteria :collection_id search-ctx)))
 
@@ -88,13 +111,13 @@
   [_ {:keys [collection] :as search-ctx} :- SearchContext]
   ;; If we have a collection, no need to search collections
   (when-not collection
-    (-> (make-honeysql-search-query Collection "collection" search-columns-without-type)
+    (-> (make-honeysql-search-query Collection "collection" collection-columns-without-type)
         (merge-name-and-archived-search search-ctx)
         (add-collection-criteria :id search-ctx))))
 
 (s/defmethod ^:private create-search-query :dashboard
   [_ search-ctx :- SearchContext]
-  (-> (make-honeysql-search-query Dashboard "dashboard" search-columns-without-type)
+  (-> (make-honeysql-search-query Dashboard "dashboard" dashboard-columns-without-type)
       (merge-name-and-archived-search search-ctx)
       (add-collection-criteria :collection_id search-ctx)))
 
@@ -102,20 +125,20 @@
   [_ {:keys [archived?] :as search-ctx} :- SearchContext]
   ;; Pulses don't currently support being archived, omit if archived is true
   (when-not archived?
-    (-> (make-honeysql-search-query Pulse "pulse" [:name :id])
+    (-> (make-honeysql-search-query Pulse "pulse" pulse-columns-without-type)
         (merge-name-search search-ctx)
         (add-collection-criteria :collection_id search-ctx))))
 
 (s/defmethod ^:private create-search-query :metric
   [_ {:keys [collection] :as search-ctx} :- SearchContext]
   (when-not collection
-    (-> (make-honeysql-search-query Metric "metric" search-columns-without-type)
+    (-> (make-honeysql-search-query Metric "metric" metric-columns-without-type)
         (merge-name-and-archived-search search-ctx))))
 
 (s/defmethod ^:private create-search-query :segment
   [_ {:keys [collection] :as search-ctx} :- SearchContext]
   (when-not collection
-    (-> (make-honeysql-search-query Segment "segment" search-columns-without-type)
+    (-> (make-honeysql-search-query Segment "segment" segment-columns-without-type)
         (merge-name-and-archived-search search-ctx))))
 
 (s/defn ^:private search
