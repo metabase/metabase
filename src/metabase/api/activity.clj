@@ -42,9 +42,9 @@
              {model (case model
                       "card"      (db/select-ids 'Card,      :id [:in ids])
                       "dashboard" (db/select-ids 'Dashboard, :id [:in ids])
-                      "metric"    (db/select-ids 'Metric,    :id [:in ids], :is_active true)
+                      "metric"    (db/select-ids 'Metric,    :id [:in ids], :archived false)
                       "pulse"     (db/select-ids 'Pulse,     :id [:in ids])
-                      "segment"   (db/select-ids 'Segment,   :id [:in ids], :is_active true)
+                      "segment"   (db/select-ids 'Segment,   :id [:in ids], :archived false)
                       nil)}))) ; don't care about other models
 
 (defn- add-model-exists-info

@@ -487,7 +487,7 @@ export default class StructuredQuery extends AtomicQuery {
    */
   filterSegmentOptions(): Segment[] {
     return this.table().segments.filter(
-      sgmt => sgmt.is_active === true && !this.segments().includes(sgmt),
+      sgmt => sgmt.archived === false && !this.segments().includes(sgmt),
     );
   }
 

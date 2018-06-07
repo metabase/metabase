@@ -196,7 +196,7 @@
                   :show_in_getting_started false
                   :caveats                 nil
                   :points_of_interest      nil
-                  :is_active               true
+                  :archived                false
                   :creator_id              (user->id :rasta)
                   :definition              {:a "b"}}
    :is_reversion false
@@ -222,7 +222,7 @@
                   :show_in_getting_started false
                   :caveats                 nil
                   :points_of_interest      nil
-                  :is_active               true
+                  :archived                false
                   :creator_id              (user->id :rasta)
                   :definition              {:a "b"}}
    :is_reversion false
@@ -249,7 +249,7 @@
                   :show_in_getting_started false
                   :caveats                 nil
                   :points_of_interest      nil
-                  :is_active               false
+                  :archived                true
                   :creator_id              (user->id :rasta)
                   :definition              {:a "b"}}
    :is_reversion false
@@ -257,7 +257,7 @@
    :message      nil}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
-                  Metric   [metric       {:table_id id, :definition {:a "b"}, :is_active false}]]
+                  Metric   [metric       {:table_id id, :definition {:a "b"}, :archived true}]]
     (process-revision-event! {:topic :metric-delete
                               :item  metric})
     (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
@@ -273,7 +273,7 @@
                   :show_in_getting_started false
                   :caveats                 nil
                   :points_of_interest      nil
-                  :is_active               true
+                  :archived                false
                   :creator_id              (user->id :rasta)
                   :definition              {:a "b"}}
    :is_reversion false
@@ -298,7 +298,7 @@
                   :show_in_getting_started false
                   :caveats                 nil
                   :points_of_interest      nil
-                  :is_active               true
+                  :archived                false
                   :creator_id              (user->id :rasta)
                   :definition              {:a "b"}}
    :is_reversion false
@@ -324,7 +324,7 @@
                   :show_in_getting_started false
                   :caveats                 nil
                   :points_of_interest      nil
-                  :is_active               false
+                  :archived                true
                   :creator_id              (user->id :rasta)
                   :definition              {:a "b"}}
    :is_reversion false
@@ -334,7 +334,7 @@
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [segment      {:table_id   id
                                           :definition {:a "b"}
-                                          :is_active  false}]]
+                                          :archived   true}]]
     (process-revision-event! {:topic :segment-delete
                               :item  segment})
     (update (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))

@@ -21,7 +21,7 @@ export default class QueryDefinitionTooltip extends Component {
     return (
       <div className="p2" style={{ width: 250 }}>
         <div>
-          {type && type === "metric" && !object.is_active
+          {type && type === "metric" && object.archived
             ? t`This metric has been retired.  It's no longer available for use.`
             : object.description}
         </div>

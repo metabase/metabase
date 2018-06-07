@@ -201,7 +201,7 @@ export default class AggregationPopover extends Component {
         tableMetadata.metrics &&
         tableMetadata.metrics.filter(
           mtrc =>
-            mtrc.is_active === true ||
+            mtrc.archived === false ||
             (selectedAggregation && selectedAggregation.id === mtrc.id),
         );
       if (metrics && metrics.length > 0) {
@@ -339,7 +339,7 @@ export default class AggregationPopover extends Component {
           renderSectionIcon={s => <Icon name={s.icon} size={18} />}
           renderItemExtra={this.renderItemExtra.bind(this)}
           getItemClasses={item =>
-            item.metric && !item.metric.is_active ? "text-grey-3" : null
+            item.metric && item.metric.archived ? "text-grey-3" : null
           }
           onChangeSection={index => {
             if (index === customExpressionIndex) {
