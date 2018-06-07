@@ -11,6 +11,7 @@ import { normal } from "metabase/lib/colors";
 
 import Button from "metabase/components/Button";
 import Card from "metabase/components/Card";
+import Modal from "metabase/components/Modal";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
@@ -21,6 +22,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 import CollectionLoader from "metabase/containers/CollectionLoader";
+import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
 import Collections from "metabase/entities/collections";
@@ -90,6 +92,7 @@ const CollectionList = () => {
 class DefaultLanding extends React.Component {
   state = {
     reload: false,
+    moveItems: null,
   };
 
   render() {
@@ -99,7 +102,9 @@ class DefaultLanding extends React.Component {
       onToggleSelected,
       selection,
       selected,
+      reload,
     } = this.props;
+    const { moveItems } = this.state;
 
     // Show the
     const showCollectionList = collectionId === "root";
@@ -197,26 +202,33 @@ class DefaultLanding extends React.Component {
                                 }
                                 onFavorite={
                                   item.setFavorited
-                                    ? () => item.setFavorited(true)
+                                    ? async () => {
+                                        await item.setFavorited(true);
+                                        reload();
+                                      }
                                     : null
                                 }
                                 onPin={
                                   collection.can_write && item.setPinned
-                                    ? () => item.setPinned(true)
+                                    ? async () => {
+                                        await item.setPinned(true);
+                                        reload();
+                                      }
                                     : null
                                 }
                                 onMove={
-                                  collection.can_write
+                                  collection.can_write && item.setCollection
                                     ? () => {
-                                        alert(
-                                          "FIXME: move not yet implemented!",
-                                        );
+                                        this.setState({ moveItems: [item] });
                                       }
                                     : null
                                 }
                                 onArchive={
                                   collection.can_write && item.setArchived
-                                    ? () => item.setArchived(true)
+                                    ? async () => {
+                                        await item.setArchived(true);
+                                        reload();
+                                      }
                                     : null
                                 }
                                 selected={selection.has(item)}
@@ -235,40 +247,69 @@ class DefaultLanding extends React.Component {
             </CollectionLoader>
             <BulkActionBar showing={selected.length > 0}>
               <SelectionControls {...this.props} />
-              <BulkActionControls move archive {...this.props} />
+              <BulkActionControls
+                onArchive={
+                  _.all(selected, item => item.setArchived)
+                    ? async () => {
+                        try {
+                          await Promise.all(
+                            selected.map(item => item.setArchived(true)),
+                          );
+                        } finally {
+                          reload();
+                        }
+                      }
+                    : null
+                }
+                onMove={
+                  _.all(selected, item => item.setCollection)
+                    ? () => {
+                        this.setState({ moveItems: selected });
+                      }
+                    : null
+                }
+              />
               <Box ml="auto">{t`${selected.length} items selected`}</Box>
             </BulkActionBar>
           </Box>
         </Box>
+        {moveItems &&
+          moveItems.length > 0 && (
+            <Modal>
+              <CollectionMoveModal
+                title={
+                  moveItems.length > 1
+                    ? t`Move ${moveItems.length} items?`
+                    : `Move "${moveItems[0].getName()}"?`
+                }
+                onClose={() => this.setState({ moveItems: null })}
+                onMove={async collection => {
+                  try {
+                    await Promise.all(
+                      moveItems.map(item => item.setCollection(collection)),
+                    );
+                    this.setState({ moveItems: null });
+                  } finally {
+                    reload();
+                  }
+                }}
+              />
+            </Modal>
+          )}
       </Flex>
     );
   }
 }
 
-const BulkActionControls = ({ selected, reload }) => (
+const BulkActionControls = ({ onArchive, onMove }) => (
   <Box>
     <Button
       ml={1}
       medium
-      onClick={async () => {
-        try {
-          await Promise.all(selected.map(item => item.setArchived(true)));
-        } finally {
-          reload();
-        }
-      }}
+      disabled={!onArchive}
+      onClick={onArchive}
     >{t`Archive`}</Button>
-    <Button
-      ml={1}
-      medium
-      onClick={async () => {
-        try {
-          await Promise.all(selected.map(item => item.setArchived(true)));
-        } finally {
-          reload();
-        }
-      }}
-    >{t`Move`}</Button>
+    <Button ml={1} medium disabled={!onMove} onClick={onMove}>{t`Move`}</Button>
   </Box>
 );
 
