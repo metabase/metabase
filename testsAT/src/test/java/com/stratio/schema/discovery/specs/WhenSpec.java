@@ -16,15 +16,13 @@ import java.io.FileReader;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
-import java.sql.Connection;
-import java.sql.Statement;
 
 import static com.stratio.qa.assertions.Assertions.assertThat;
 
 public class WhenSpec extends BaseSpec {
 
     public WhenSpec(Common spec) {
-	    this.commonspec = spec;
+        this.commonspec = spec;
     }
 
     @When("^I start a socket in '([^:]+?):(.+?)?'$")
@@ -44,33 +42,10 @@ public class WhenSpec extends BaseSpec {
         BufferedReader br = new BufferedReader(new FileReader(baseData));
 
         while ((line = br.readLine()) != null) {
-	        // use comma as separator
-			String[] data = line.split(",");
+            // use comma as separator
+            String[] data = line.split(",");
             out.println(line);
-		}
+        }
         out.flush();
     }
-
-    /*
-     * @param query
-    * executes query in database
-    *
-    *
-    */
-    @When("^I execute query '(.+?)'$")
-    public void executeQuery(String query) throws Exception{
-        Statement myStatement = null;
-        int result = 0;
-        Connection myConnection = this.commonspec.getConnection();
-
-        try {
-            myStatement = myConnection.createStatement();
-            result = myStatement.executeUpdate(query);
-            myStatement.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            assertThat(result).as(e.getClass().getName() + ": " + e.getMessage()).isNotEqualTo(0);
-        }
-    }
-
 }

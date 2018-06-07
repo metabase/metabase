@@ -9,20 +9,10 @@
  */
 package com.stratio.schema.discovery.specs;
 
-import cucumber.api.java.en.Then;
-
 public class ThenSpec extends BaseSpec {
 
     public ThenSpec(Common spec) {
         this.commonspec = spec;
     }
 
-    /*
-    * closes opened database
-    *
-    */
-    @Then("^I close database connection$")
-    public void closeDatabase() throws Exception {
-        this.commonspec.getConnection().close();
-    }
 }
