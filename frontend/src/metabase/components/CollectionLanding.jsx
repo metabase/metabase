@@ -337,7 +337,7 @@ class CollectionLanding extends React.Component {
                   />
                 </Box>
               )}
-              {currentCollection.can_write && (
+              {currentCollection.can_write && !currentCollection.personal_owner_id && (
                 <Box mx={1}>
                   <EntityMenu
                     items={[
