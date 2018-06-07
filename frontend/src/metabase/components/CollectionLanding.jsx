@@ -80,10 +80,7 @@ const CollectionList = () => {
 };
 
 @connect((state, { collectionId }) => ({
-  entityQuery:
-    collectionId === "root"
-      ? {} // FIXME /api/search doesn't yet support root collection
-      : { collection_id: collectionId },
+  entityQuery: { collection: collectionId },
 }))
 @entityListLoader({
   entityType: "search",
