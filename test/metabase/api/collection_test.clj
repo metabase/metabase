@@ -32,19 +32,11 @@
         :when (not (:personal_owner_id collection))]
     collection))
 
-(defn- force-create-personal-collections!
-  "Force the creation of the Personal Collections for our various test users. They are eventually going to get
-  automatically created anyway as soon as those Users' permissions get calculated in `user/permissions-set`; better to
-  do it now so the test results will be consistent."
-  []
-  (doseq [username [:rasta :lucky :crowberto :trashbird]]
-    (collection/user->personal-collection (user->id username))))
-
 ;; We should only see our own Personal Collections!
 (expect
   ["Lucky Pigeon's Personal Collection"]
   (do
-    (force-create-personal-collections!)
+    (collection-test/force-create-personal-collections!)
     ;; now fetch those Collections as the Lucky bird
     (map :name ((user->client :lucky) :get 200 "collection"))))
 
@@ -55,7 +47,7 @@
    "Rasta Toucan's Personal Collection"
    "Trash Bird's Personal Collection"]
   (do
-    (force-create-personal-collections!)
+    (collection-test/force-create-personal-collections!)
     ;; now fetch those Collections as a superuser
     (map :name ((user->client :crowberto) :get 200 "collection"))))
 
@@ -66,7 +58,7 @@
   (tt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
                   Collection [collection-2 {:name "Collection 2"}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection-1)
-    (force-create-personal-collections!)
+    (collection-test/force-create-personal-collections!)
     (map :name ((user->client :rasta) :get 200 "collection"))))
 
 ;; check that we don't see collections if they're archived
@@ -77,7 +69,7 @@
                   Collection [collection-2 {:name "Regular Collection"}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection-1)
     (perms/grant-collection-read-permissions! (group/all-users) collection-2)
-    (force-create-personal-collections!)
+    (collection-test/force-create-personal-collections!)
     (map :name ((user->client :rasta) :get 200 "collection"))))
 
 ;; Check that if we pass `?archived=true` we instead see archived cards
@@ -87,7 +79,7 @@
                   Collection [collection-2 {:name "Regular Collection"}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection-1)
     (perms/grant-collection-read-permissions! (group/all-users) collection-2)
-    (force-create-personal-collections!)
+    (collection-test/force-create-personal-collections!)
     (map :name ((user->client :rasta) :get 200 "collection" :archived :true))))
 
 

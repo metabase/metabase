@@ -66,7 +66,8 @@
   "Return an automagic dashboard for table with id `ìd`."
   [id show]
   {show Show}
-  (-> id Table api/check-404 (magic/automagic-analysis {:show (keyword show)})))
+  (toucan.db/debug-print-queries
+    (-> id Table api/check-404 (magic/automagic-analysis {:show (keyword show)}))))
 
 (api/defendpoint GET "/table/:id/rule/:prefix/:rule"
   "Return an automagic dashboard for table with id `ìd` using rule `rule`."

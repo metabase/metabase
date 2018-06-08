@@ -16,6 +16,14 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
+(defn force-create-personal-collections!
+  "Force the creation of the Personal Collections for our various test users. They are eventually going to get
+  automatically created anyway as soon as those Users' permissions get calculated in `user/permissions-set`; better to
+  do it now so the test results will be consistent."
+  []
+  (doseq [username [:rasta :lucky :crowberto :trashbird]]
+    (collection/user->personal-collection (test-users/user->id username))))
+
 ;; test that we can create a new Collection with valid inputs
 (expect
   {:name              "My Favorite Cards"
@@ -264,6 +272,43 @@
     (collection/update-graph! (assoc-in (graph :clear-revisions? true)
                                         [:groups (u/get-id new-group) :root]
                                         :none))
+    (graph)))
+
+;; Make sure that personal Collections *do not* appear in the Collections graph
+(expect
+  {:revision 0
+   :groups   {(u/get-id (group/all-users)) {:root :none}
+              (u/get-id (group/metabot))   {:root :none}
+              (u/get-id (group/admin))     {:root :write}}}
+  (do
+    (force-create-personal-collections!)
+    (graph :clear-revisions? true)))
+
+;; Make sure that if we try to be sneaky and edit a Personal Collection via the graph, an Exception is thrown
+(expect
+  Exception
+  (do
+    (force-create-personal-collections!)
+    (let [lucky-personal-collection-id (db/select-one-id Collection
+                                         :personal_owner_id (test-users/user->id :lucky))]
+      (collection/update-graph! (assoc-in (graph :clear-revisions? true)
+                                          [:groups (u/get-id (group/all-users)) lucky-personal-collection-id]
+                                          :read)))))
+
+;; double-check that the graph is unchanged
+(expect
+  {:revision 0
+   :groups   {(u/get-id (group/all-users)) {:root :none}
+              (u/get-id (group/metabot))   {:root :none}
+              (u/get-id (group/admin))     {:root :write}}}
+  (do
+    (force-create-personal-collections!)
+    (u/ignore-exceptions
+      (let [lucky-personal-collection-id (db/select-one-id Collection
+                                           :personal_owner_id (test-users/user->id :lucky))]
+        (collection/update-graph! (assoc-in (graph :clear-revisions? true)
+                                            [:groups (u/get-id (group/all-users)) lucky-personal-collection-id]
+                                            :read))))
     (graph)))
 
 

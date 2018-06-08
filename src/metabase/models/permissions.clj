@@ -429,26 +429,45 @@
   {:pre [(integer? group-id) (integer? database-id)]}
   (grant-permissions! group-id (object-path database-id)))
 
+(defn- check-not-personal-collection
+  "Check whether `collection-or-id` refers to a Personal Collection; if so, throw an Exception. This is done because we
+  *should* never be editing granting/etc. permissions for *Personal* Collections to entire Groups! Their owner will
+  get implicit permissions automatically, and of course admins will be able to see them,but a whole group should never
+  be given some sort of access."
+  [collection-or-id]
+  ;; don't apply this check to the Root Collection, because it's never personal
+  (when-not (:metabase.models.collection/is-root? collection-or-id)
+    ;; ok, once we've confirmed this isn't the Root Collection, see if it's in the DB with a personal_owner_id
+    (when (db/exists? 'Collection :id (u/get-id collection-or-id), :personal_owner_id [:not= nil])
+      (throw (Exception. (str (tru "You cannot edit permissions for a Personal Collection.")))))))
+
 (defn revoke-collection-permissions!
-  "Revoke all access for GROUP-OR-ID to a Collection."
+  "Revoke all access for `group-or-id` to a Collection."
   [group-or-id collection-or-id]
+  (check-not-personal-collection collection-or-id)
   (delete-related-permissions! group-or-id (collection-readwrite-path collection-or-id)))
 
 (defn grant-collection-readwrite-permissions!
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."
   [group-or-id collection-or-id]
+  (check-not-personal-collection collection-or-id)
   (grant-permissions! (u/get-id group-or-id) (collection-readwrite-path collection-or-id)))
 
 (defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
   [group-or-id collection-or-id]
+  (check-not-personal-collection collection-or-id)
   (grant-permissions! (u/get-id group-or-id) (collection-read-path collection-or-id)))
 
 
-;;; ---------------------------------------- Graph Updating Fns ----------------------------------------
+;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
 
 (s/defn ^:private update-table-perms!
-  [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, schema :- s/Str, table-id :- su/IntGreaterThanZero, new-table-perms :- SchemaPermissionsGraph]
+  [group-id        :- su/IntGreaterThanZero
+   db-id           :- su/IntGreaterThanZero
+   schema          :- s/Str
+   table-id        :- su/IntGreaterThanZero
+   new-table-perms :- SchemaPermissionsGraph]
   (case new-table-perms
     :all  (grant-permissions! group-id db-id schema table-id)
     :none (revoke-permissions! group-id db-id schema table-id)))
