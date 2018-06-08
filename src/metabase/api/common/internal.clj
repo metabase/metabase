@@ -4,6 +4,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.config :as config]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [trs tru]]
@@ -51,8 +52,12 @@
   (if-not schema
     ""
     (or (su/api-error-message schema)
-        (log/warn (str (trs "We don't have a nice error message for schema: {0}." schema)
-                       (trs "Consider wrapping it in `su/with-api-error-message`."))))))
+        ;; Don't try to i18n this stuff! It's developer-facing only.
+        (when config/is-dev?
+          (log/warn
+           (u/format-color 'red (str "We don't have a nice error message for schema: %s\n"
+                                     "Consider wrapping it in `su/with-api-error-message`.")
+             schema))))))
 
 (defn- param-name
   "Return the appropriate name for this PARAM-SYMB based on its SCHEMA. Usually this is just the name of the
