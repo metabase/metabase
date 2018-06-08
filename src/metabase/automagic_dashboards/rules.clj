@@ -112,7 +112,7 @@
   (comp key first))
 
 (def ^:private ^{:arglists '([definitions])} identifiers
-  (partial into #{"this"} (map identifier)))
+  (partial into #{"this" "UserDefinedMetric"} (map identifier)))
 
 (defn- all-references
   [k cards]

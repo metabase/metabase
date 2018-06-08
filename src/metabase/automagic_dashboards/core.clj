@@ -42,13 +42,12 @@
   (some-fn :id :name))
 
 (defn- ->field
-  [root id-or-name]
-  (if (->> root :source (instance? (type Table)))
+  [{:keys [source]} id-or-name]
+  (if (->> source (instance? (type Table)))
     (Field id-or-name)
-    (let [field (->> root
-                     :source
+    (let [field (->> source
                      :result_metadata
-                     (some (comp #{id-or-name} :name)))]
+                     (m/find-first (comp #{id-or-name} :name)))]
       (-> field
           (update :base_type keyword)
           (update :special_type keyword)
@@ -67,8 +66,8 @@
       (-> aggregation-clause first name str/capitalize))))
 
 (defn- join-enumeration
-  [[x & xs]]
-  (if xs
+  [[x & more :as xs]]
+  (if more
     (tru "{0} and {1}" (str/join ", " (butlast xs)) (last xs))
     x))
 
@@ -81,10 +80,12 @@
                                    (-> arg Metric :name)
 
                                    arg
-                                   (tru "{0} of {1}" (name op) (->> arg
-                                                                    filters/field-reference->id
-                                                                    (->field root)
-                                                                    :display_name))
+                                   (tru "{0} of {1}"
+                                        (str/capitalize (name op))
+                                        (->> arg
+                                             filters/field-reference->id
+                                             (->field root)
+                                             :display_name))
 
                                    :else
                                    (name op))))
@@ -329,12 +330,14 @@
                (keep (fn [[k v]]
                        (when-let [pred (field-filters k)]
                          (some-> v pred))))
-               (apply every-pred))
+               (apply every-pred related/visible?))
           fields))
 
 (defn- filter-tables
   [tablespec tables]
-  (filter #(-> % :entity_type (isa? tablespec)) tables))
+  (filter (every-pred related/visible?
+                      #(-> % :entity_type (isa? tablespec)))
+          tables))
 
 (defn- fill-templates
   [template-type {:keys [root tables]} bindings s]
@@ -414,14 +417,14 @@
 
 (defn- build-order-by
   [dimensions metrics order-by]
-  (let [dimensions (set dimensions)]
+  (let [dimension? (set dimensions)]
     (for [[identifier ordering] (map first order-by)]
-      [(if (dimensions identifier)
-          [:dimension identifier]
-          [:aggregation (u/index-of #{identifier} metrics)])
-        (if (= ordering "ascending")
-          :ascending
-          :descending)])))
+      [(if (dimension? identifier)
+         [:dimension identifier]
+         [:aggregation (u/index-of #{identifier} metrics)])
+       (if (= ordering "ascending")
+         :ascending
+         :descending)])))
 
 (defn- build-query
   ([context bindings filters metrics dimensions limit order_by]
@@ -442,16 +445,17 @@
                                            filters))
 
                  (not-empty dimensions)
-                 (assoc :breakout dimensions)
+                 (assoc :breakout (for [{:keys [identifier opts]} dimensions]
+                                    [:dimension identifier opts]))
 
                  (not-empty metrics)
-                 (assoc :aggregation (map :metric metrics))
+                 (assoc :aggregation metrics)
 
                  limit
                  (assoc :limit limit)
 
                  (not-empty order_by)
-                 (assoc :order_by order_by))}))
+                 (assoc :order_by (build-order-by dimensions metrics  order_by)))}))
   ([context bindings query]
    {:type     :native
     :native   {:query (fill-templates :native context bindings query)}
@@ -474,7 +478,7 @@
                         (max-key :score a b)))
          definitions))
 
-(defn- instantate-visualization
+(defn- instantiate-visualization
   [[k v] dimensions metrics]
   (let [dimension->name (comp vector :name dimensions)
         metric->name    (comp vector first :metric metrics)]
@@ -492,48 +496,61 @@
            (fill-templates :string context bindings form)
            form))
        x)
-      (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
+      (u/update-when :visualization #(instantiate-visualization % bindings (:metrics context)))))
+
+(defn- used-dimensions
+  [context dimensions]
+  (->> dimensions
+       (map (some-fn #(get-in (:dimensions context) [% :matches])
+                     (comp #(filter-tables % (:tables context)) rules/->entity)))
+       (apply combo/cartesian-product)
+       (map (partial zipmap dimensions))))
+
+(defn- metrics-sets
+  [metrics]
+  (->> metrics
+       (map :matches)
+       (apply combo/cartesian-product)))
+
+(defn- card-score
+  [{:keys [metrics filters dimensions query score]}]
+  (if query
+    score
+    (* (or (transduce (keep :score) stats/mean (concat dimensions filters metrics))
+           rules/max-score)
+       (/ score
+          rules/max-score))))
 
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
   [context {:keys [metrics filters dimensions score limit order_by query] :as card}]
-  (let [order_by        (build-order-by dimensions metrics order_by)
-        metrics         (map (partial get (:metrics context)) metrics)
-        filters         (cond-> (map (partial get (:filters context)) filters)
-                          (:query-filter context)
-                          (conj {:filter (:query-filter context)}))
-        score           (if query
-                          score
-                          (* (or (->> dimensions
-                                      (map (partial get (:dimensions context)))
-                                      (concat filters metrics)
-                                      (transduce (keep :score) stats/mean))
-                                 rules/max-score)
-                             (/ score rules/max-score)))
-        dimensions      (map (comp (partial into [:dimension]) first) dimensions)
-        used-dimensions (rules/collect-dimensions [dimensions metrics filters query])]
-    (->> used-dimensions
-         (map (some-fn #(get-in (:dimensions context) [% :matches])
-                       (comp #(filter-tables % (:tables context)) rules/->entity)))
-         (apply combo/cartesian-product)
-         (map (fn [instantiations]
-                (let [bindings (zipmap used-dimensions instantiations)
-                      query    (if query
-                                 (build-query context bindings query)
-                                 (build-query context bindings
-                                              filters
-                                              metrics
-                                              dimensions
-                                              limit
-                                              order_by))]
+  (let [filters (cond-> filters
+                  (:query-filter context) (conj {:filter (:query-filter context)}))
+        score   (card-score card)]
+    (->> (combo/cartesian-product
+          (used-dimensions context (concat (map :identifier dimensions)
+                                           (rules/collect-dimensions [metrics filters query])))
+          (metrics-sets metrics))
+         (map (fn [[bindings metrics-set]]
+                (let [query         (if query
+                                      (build-query context bindings query)
+                                      (build-query context bindings filters metrics-set dimensions
+                                                   limit order_by))
+                      metrics-names (map (fn [definition metric]
+                                           (or (:name definition)
+                                               (let [[op & args] metric]
+                                                 (if (-> op qp.util/normalize-token (= :metric))
+                                                   (-> args first Metric :name)
+                                                   (-> op name str/capitalize)))))
+                                         metrics
+                                         metrics-set)]
                   (-> card
-                      (assoc :metrics metrics)
-                      (instantiate-metadata context (->> metrics
-                                                         (map :name)
-                                                         (zipmap (:metrics card))
-                                                         (merge bindings)))
+                      (instantiate-metadata context (merge bindings
+                                                           (zipmap (map :identifier metrics)
+                                                                   metrics-names)))
                       (assoc :score         score
+                             :metrics       metrics-names
                              :dataset_query query))))))))
 
 (s/defn ^:private rule-specificity
@@ -589,13 +606,28 @@
 
 (defmethod inject-root (type Metric)
   [context metric]
-  (update context :metrics assoc "this" {:metric (->reference :mbql metric)
-                                         :name   (:name metric)
-                                         :score  rules/max-score}))
+  (update context :metrics assoc "this" {:matches [(->reference :mbql metric)]
+                                         :name    (:name metric)
+                                         :score   rules/max-score}))
 
 (defmethod inject-root :default
   [context _]
   context)
+
+(defn- user-defined-metrics
+  [source]
+  {:matches    (->> (db/select Metric :table_id (:id source))
+                    (filter related/visible?)
+                    (map (comp (partial vector :metric) u/get-id)))
+   :score      rules/max-score})
+
+(defn- bind-metrics
+  [context metrics]
+  (let [metrics (for [[identifier metric] (map first metrics)]
+                  {identifier (assoc metric :matches [(:metric metric)])})]
+    (-> context
+        (resolve-overloading metrics)
+        (assoc "UserDefinedMetric" (user-defined-metrics (:source context))))))
 
 (s/defn ^:private make-context
   [root, rule :- rules/Rule]
@@ -625,9 +657,24 @@
            :query-filter (filters/inject-refinement (:query-filter root)
                                                     (:cell-query root))} context
       (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
-      (assoc context :metrics (resolve-overloading context (:metrics rule)))
+      (assoc context :metrics (bind-metrics context (:metrics rule)))
       (assoc context :filters (resolve-overloading context (:filters rule)))
       (inject-root context (:entity root)))))
+
+(defn- instantiate-card
+  [{:keys [metrics filters dimensions]} card]
+  (-> card
+      (update :metrics (partial map (fn [identifier]
+                                      (-> metrics
+                                          (get identifier)
+                                          (assoc :identifier identifier)))))
+      (update :filters (partial map (partial get filters)))
+      (update :dimensions (partial map (comp (fn [[identifier opts]]
+                                               (-> dimensions
+                                                   (get identifier)
+                                                   (assoc :identifier identifier
+                                                          :opts       opts)))
+                                             first)))))
 
 (defn- make-cards
   [context {:keys [cards]}]
@@ -635,6 +682,7 @@
            (map first)
            (map-indexed (fn [position [identifier card]]
                           (some->> (assoc card :position position)
+                                   (instantiate-card context)
                                    (card-candidates context)
                                    not-empty
                                    (hash-map (name identifier)))))

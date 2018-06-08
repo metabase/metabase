@@ -131,6 +131,25 @@ cards:
       score: 100
       group: Overview
 # General
+  - MetricByCategoryMedium:
+      title: "[[UserDefinedMetric]] per [[GenericCategoryMedium]]"
+      dimensions: GenericCategoryMedium
+      metrics: UserDefinedMetric
+      visualization: bar
+      score: 100
+      group: General
+      order_by:
+        - UserDefinedMetric: descending
+  - MetricByCategoryLarge:
+      title: "[[UserDefinedMetric]] per [[GenericCategoryLarge]]"
+      dimensions: GenericCategoryLarge
+      metrics: UserDefinedMetric
+      visualization: table
+      score: 80
+      group: General
+      height: 8
+      order_by:
+        - UserDefinedMetric: descending
   - NumberDistribution:
       title: How [[this]] are distributed across [[GenericNumber]]
       dimensions:
@@ -194,6 +213,48 @@ cards:
       group: Geographical
       height: 6
 # By Time
+  - MetricOverTime:
+      title: "[[UserDefinedMetric]] over time"
+      visualization: line
+      dimensions: Timestamp
+      metrics: UserDefinedMetric
+      score: 100
+      group: ByTime
+  - MetricOverTime:
+      title: "[[UserDefinedMetric]] over time"
+      visualization: line
+      dimensions: Date
+      metrics: UserDefinedMetric
+      score: 100
+      group: ByTime
+  - MetricOverJoinDate:
+      title: "[[UserDefinedMetric]] by join date"
+      visualization: line
+      dimensions: JoinTimestamp
+      metrics: UserDefinedMetric
+      score: 80
+      group: ByTime
+  - MetricOverJoinDate:
+      title: "[[UserDefinedMetric]] by join date"
+      visualization: line
+      dimensions: JoinDate
+      metrics: UserDefinedMetric
+      score: 90
+      group: ByTime
+  - MetricOverCreateDate:
+      title: "[[UserDefinedMetric]] over time"
+      visualization: line
+      dimensions: CreateTimestamp
+      metrics: UserDefinedMetric
+      score: 100
+      group: ByTime
+  - MetricOverCreateDate:
+      title: "[[UserDefinedMetric]] over time"
+      visualization: line
+      dimensions: CreateDate
+      metrics: UserDefinedMetric
+      score: 100
+      group: ByTime
   - CountByJoinDate:
       title: "[[this]] that have joined over time"
       visualization: line

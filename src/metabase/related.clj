@@ -92,24 +92,25 @@
   (let [[best rest] (split-at max-best-matches matches)]
     (concat best (->> rest shuffle (take max-serendipity-matches)))))
 
-(def ^:private ^{:arglists '([entities])} filter-visible
-  (partial filter (fn [{:keys [archived visibility_type] :as entity}]
-                    (and (or (nil? visibility_type)
-                             (= (name visibility_type) "normal"))
-                         (not archived)
-                         (mi/can-read? entity)))))
+(defn visible?
+  "Is entity normally visible (ie. not archived or hidden) to the current user?"
+  [{:keys [archived visibility_type] :as entity}]
+  (and (or (nil? visibility_type)
+           (-> visibility_type qp.util/normalize-token (= :normal)))
+       (not archived)
+       (mi/can-read? entity)))
 
 (defn- metrics-for-table
   [table]
-  (filter-visible (db/select Metric
-                    :table_id  (:id table)
-                    :is_active true)))
+  (filter visible? (db/select Metric
+                     :table_id  (:id table)
+                     :is_active true)))
 
 (defn- segments-for-table
   [table]
-  (filter-visible (db/select Segment
-                    :table_id  (:id table)
-                    :is_active true)))
+  (filter visible? (db/select Segment
+                     :table_id  (:id table)
+                     :is_active true)))
 
 (defn- linking-to
   [table]
@@ -118,7 +119,7 @@
          :fk_target_field_id [:not= nil])
        (map (comp Table :table_id Field))
        distinct
-       filter-visible
+       (filter visible?)
        (take max-matches)))
 
 (defn- linked-from
@@ -127,7 +128,7 @@
     (->> (db/select-field :table_id Field
            :fk_target_field_id [:in fields])
          (map Table)
-         filter-visible
+         (filter visible?)
          (take max-matches))
     []))
 
@@ -139,7 +140,7 @@
            :dashboard_id [:in dashboards]
            :card_id [:not= (:id card)])
          (map Card)
-         filter-visible
+         (filter visible?)
          (take max-matches))
     []))
 
@@ -148,7 +149,7 @@
   (->> (db/select Card
          :table_id (:table_id card)
          :archived false)
-       filter-visible
+       (filter visible?)
        (rank-by-similarity card)
        (filter (comp pos? :similarity))))
 
@@ -157,8 +158,8 @@
   (->> (db/select Metric
          :table_id (:table_id card)
          :is_active true)
-       filter-visible
-       (m/find-first (comp #{(-> card :dataset_query :query :aggregation)}
+       (filter visible?)
+       (m/find-first (comp #{(qp.util/get-in-normalized card [:dataset_query :query :aggregation])}
                            :aggregation
                            :definition))))
 
@@ -169,7 +170,7 @@
          :user_id api/*current-user-id*
          {:order-by [[:timestamp :desc]]})
        (map Dashboard)
-       filter-visible
+       (filter visible?)
        (take max-serendipity-matches)))
 
 (defn- recommended-dashboards
@@ -187,7 +188,7 @@
                               (mapcat (comp card->dashboards :id))
                               distinct
                               (map Dashboard)
-                              filter-visible
+                              (filter visible?)
                               (take max-best-matches))]
     (concat best recent)))
 
@@ -197,7 +198,7 @@
        (m/distinct-by :collection_id)
        interesting-mix
        (keep (comp Collection :collection_id))
-       filter-visible))
+       (filter visible?)))
 
 (defmulti
   ^{:doc "Return related entities."
@@ -268,7 +269,7 @@
                          :id              [:not= (:id table)]
                          :visibility_type nil)
                        (remove (set (concat linking-to linked-from)))
-                       filter-visible
+                       (filter visible?)
                        interesting-mix)}))
 
 (defmethod related (type Field)
@@ -288,7 +289,7 @@
                       :table_id        (:id table)
                       :id              [:not= (:id field)]
                       :visibility_type "normal")
-                    filter-visible
+                    (filter visible?)
                     interesting-mix)}))
 
 (defmethod related (type Dashboard)
@@ -299,5 +300,5 @@
                  (mapcat (comp similar-questions))
                  (remove (set cards))
                  distinct
-                 filter-visible
+                 (filter visible?)
                  interesting-mix)}))

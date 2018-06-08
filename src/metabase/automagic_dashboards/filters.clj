@@ -12,10 +12,9 @@
             [toucan.db :as db]))
 
 (def ^:private FieldReference
-  [(s/one (s/constrained su/KeywordOrString
-                         (comp #{:field-id :fk-> :field-literal} qp.util/normalize-token))
-          "head")
-   s/Any])
+  [(s/one (s/constrained su/KeywordOrString (comp #{:field-id :fk-> :field-literal}
+                                                  qp.util/normalize-token)) "head")
+   (s/cond-pre s/Int s/Str s/Keyword)])
 
 (def ^:private ^{:arglists '([form])} field-reference?
   "Is given form an MBQL field reference?"
