@@ -1,6 +1,6 @@
-title: A look at your [[this]] per country
-transient_title: Here's a closer look at your [[this]] per country
-description: Which countries are represented the most and least.
+title: A look at your [[this]]
+transient_title: Here's a closer look at your [[this]] field
+description: The number of [[GenericTable]] per country, and how each country is represented in different categories.
 applies_to: GenericTable.Country
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]

@@ -1,6 +1,6 @@
-title: A look at your [[this]] over time
-transient_title: Here's a closer look at your [[this]] over time
-description: How [[this]] is distributed, and how different numbers change across it.
+title: A look at your [[this]]
+transient_title: Here's a closer look at your [[this]]
+description: How [[GenericTable]] are distributed across this time field, and if it has any seasonal patterns.
 applies_to: GenericTable.DateTime
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]
@@ -34,7 +34,7 @@ groups:
   - Breakdowns:
       title: How [[this]] is distributed
   - Seasonality:
-      title: Seasonal components of [[this]]
+      title: Seasonal patterns in [[this]]
 cards:
   - Count:
       title: Count
