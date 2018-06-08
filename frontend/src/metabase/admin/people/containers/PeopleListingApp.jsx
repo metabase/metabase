@@ -267,12 +267,11 @@ export default class PeopleListingApp extends Component {
         ]}
         onClose={this.onCloseModal}
       >
-        <div
-          style={{ paddingLeft: "5em", paddingRight: "5em" }}
-          className="pb4"
-        >{jt`We’ve sent an invite to ${(
-          <span className="text-bold">{user.email}</span>
-        )} with instructions to set their password.`}</div>
+        <div className="pb4">
+          {jt`We’ve sent an invite to ${(
+            <span className="text-bold">{user.email}</span>
+          )} with instructions to set their password.`}
+        </div>
       </Modal>
     );
   }
@@ -310,9 +309,7 @@ export default class PeopleListingApp extends Component {
         ]}
         onClose={this.onCloseModal}
       >
-        <div className="px4 pb4">
-          {t`${user.first_name} won't be able to log in anymore.`}
-        </div>
+        {t`${user.first_name} won't be able to log in anymore.`}
       </Modal>
     );
   }
@@ -333,9 +330,7 @@ export default class PeopleListingApp extends Component {
         ]}
         onClose={this.onCloseModal}
       >
-        <div className="px4 pb4">
-          {t`They'll be able to log in again, and they'll be placed back into the groups they were in before their account was deactivated.`}
-        </div>
+        {t`They'll be able to log in again, and they'll be placed back into the groups they were in before their account was deactivated.`}
       </Modal>
     );
   }
