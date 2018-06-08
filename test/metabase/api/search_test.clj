@@ -53,9 +53,6 @@
 (defn- archived [m]
   (assoc m :archived true))
 
-(defn- inactive [m]
-  (assoc m :is_active false))
-
 ;; Should return unarchived results by default
 (expect
   default-search-results
@@ -67,9 +64,9 @@
                   Collection [_ (archived  {:name "collection foo collection2"})]
                   Pulse      [_ {:name "pulse foo pulse"}]
                   Metric     [_ {:name "metric foo metric"}]
-                  Metric     [_ (inactive {:name "metric foo metric2"})]
+                  Metric     [_ (archived {:name "metric foo metric2"})]
                   Segment    [_ {:name "segment foo segment"}]
-                  Segment    [_ (inactive {:name "segment foo segment2"})]]
+                  Segment    [_ (archived {:name "segment foo segment2"})]]
     (tu/boolean-ids-and-timestamps (set ((user->client :crowberto) :get 200 "search", :q "foo")))))
 
 ;; Should return archived results when specified
@@ -82,9 +79,9 @@
                   Collection [_ (archived {:name "collection foo collection"})]
                   Collection [_ {:name "collection foo collection2"}]
                   Pulse      [_ {:name "pulse foo pulse"}]
-                  Metric     [_ (inactive {:name "metric foo metric"})]
+                  Metric     [_ (archived {:name "metric foo metric"})]
                   Metric     [_ {:name "metric foo metric2"}]
-                  Segment    [_ (inactive {:name "segment foo segment"})]
+                  Segment    [_ (archived {:name "segment foo segment"})]
                   Segment    [_ {:name "segment foo segment2"}]]
     (tu/boolean-ids-and-timestamps (set ((user->client :crowberto) :get 200 "search",
                                          :q "foo", :archived "true")))))
@@ -102,7 +99,7 @@
                   Pulse      [_ {:name "pulse foo pulse2"}]
                   Metric     [_ {:name "metric foo metric"}]
                   Segment    [_ {:name "segment foo segment"}]]
-    (tu/boolean-ids-and-timestamps (set ((user->client :crowberto) :get 200 "search", :q "foo", :collection_id coll-id)))))
+    (tu/boolean-ids-and-timestamps (set ((user->client :crowberto) :get 200 "search", :q "foo", :collection coll-id)))))
 
 ;; Querying for a collection you don't have access to just returns empty
 (expect
@@ -110,7 +107,7 @@
   (tt/with-temp* [Collection [coll-1          {:name "collection 1"}]
                   Collection [{coll-2-id :id} {:name "collection 2"}]]
     (perms/grant-collection-read-permissions! (group/all-users) coll-1)
-    ((user->client :rasta) :get 200 "search", :q "foo", :collection_id coll-2-id)))
+    ((user->client :rasta) :get 200 "search", :q "foo", :collection coll-2-id)))
 
 ;; Users with access to a collection should be able to search it
 (expect
@@ -126,7 +123,7 @@
                   Metric     [_ {:name "metric foo metric"}]
                   Segment    [_ {:name "segment foo segment"}]]
     (perms/grant-collection-read-permissions! (group/all-users) coll)
-    (tu/boolean-ids-and-timestamps (set ((user->client :rasta) :get 200 "search", :q "foo", :collection_id coll-id)))))
+    (tu/boolean-ids-and-timestamps (set ((user->client :rasta) :get 200 "search", :q "foo", :collection coll-id)))))
 
 ;; Collections a user doesn't have access to are automatically omitted from the results
 (expect
@@ -143,3 +140,17 @@
                   Segment    [_ {:name "segment foo segment"}]]
     (perms/grant-collection-read-permissions! (group/all-users) coll-1)
     (tu/boolean-ids-and-timestamps (set ((user->client :rasta) :get 200 "search", :q "foo")))))
+
+;; Searching for the root collection will return all items with a nil collection_id
+(expect
+  (set (remove #(contains? #{"collection" "metric" "segment"} (:type %)) default-search-results))
+  (tt/with-temp* [Collection [{coll-id :id, :as coll} {:name "collection foo collection"}]
+                  Card       [_ {:name "card foo card"}]
+                  Card       [_ {:name "card foo card2", :collection_id coll-id}]
+                  Dashboard  [_ {:name "dashboard foo dashboard"}]
+                  Dashboard  [_ {:name "dashboard bar dashboard2", :collection_id coll-id}]
+                  Pulse      [_ {:name "pulse foo pulse"}]
+                  Pulse      [_ {:name "pulse foo pulse2", :collection_id coll-id}]
+                  Metric     [_ {:name "metric foo metric"}]
+                  Segment    [_ {:name "segment foo segment"}]]
+    (tu/boolean-ids-and-timestamps (set ((user->client :rasta) :get 200 "search", :q "foo", :collection "root")))))

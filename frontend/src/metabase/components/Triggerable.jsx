@@ -118,13 +118,16 @@ export default ComposedComponent =>
         });
       }
 
-      // if we have a single child which isn't an HTML element and doesn't have an onClose prop go ahead and inject it directly
       let { children } = this.props;
-      if (
+      if (typeof children === "function") {
+        // if children is a render prop, pass onClose to it
+        children = children({ onClose: this.onClose });
+      } else if (
         React.Children.count(children) === 1 &&
         React.Children.only(children).props.onClose === undefined &&
         typeof React.Children.only(children).type !== "string"
       ) {
+        // if we have a single child which isn't an HTML element and doesn't have an onClose prop go ahead and inject it directly
         children = React.cloneElement(children, { onClose: this.onClose });
       }
 

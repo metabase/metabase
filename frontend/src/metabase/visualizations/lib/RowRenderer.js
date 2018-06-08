@@ -13,7 +13,7 @@ import { checkXAxisLabelOverlap } from "./LineAreaBarPostRender";
 export default function rowRenderer(
   element,
   { settings, series, onHoverChange, onVisualizationClick, height },
-) {
+): DeregisterFunction {
   const { cols } = series[0].data;
 
   if (series.length > 1) {
@@ -174,4 +174,8 @@ export default function rowRenderer(
   if (checkXAxisLabelOverlap(chart, ".axis text")) {
     chart.selectAll(".axis").remove();
   }
+
+  return () => {
+    dc.chartRegistry.deregister(chart);
+  };
 }

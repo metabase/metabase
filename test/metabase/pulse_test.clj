@@ -1,16 +1,17 @@
 (ns metabase.pulse-test
-  (:require [clojure.string :as str]
-            [clojure.walk :as walk]
+  (:require [clojure
+             [string :as str]
+             [walk :as walk]]
             [expectations :refer :all]
             [medley.core :as m]
-            [metabase.integrations.slack :as slack]
             [metabase
              [email-test :as et]
              [pulse :refer :all]
              [query-processor :as qp]]
+            [metabase.integrations.slack :as slack]
             [metabase.models
              [card :refer [Card]]
-             [pulse :refer [Pulse retrieve-pulse retrieve-notification]]
+             [pulse :refer [Pulse retrieve-notification retrieve-pulse]]
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
@@ -67,10 +68,10 @@
      (pulse-test-fixture (fn [] ~@body))))
 
 (def ^:private png-attachment
-  {:type :inline,
-   :content-id true,
-   :content-type "image/png",
-   :content java.net.URL})
+  {:type         :inline
+   :content-id   true
+   :content-type "image/png"
+   :content      java.net.URL})
 
 (defn- rasta-pulse-email [& [email]]
   (et/email-to :rasta (merge {:subject "Pulse: Pulse Name",

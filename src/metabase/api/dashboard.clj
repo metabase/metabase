@@ -191,7 +191,7 @@
   [id]
   (u/prog1 (-> (Dashboard id)
                api/check-404
-               (hydrate [:ordered_cards [:card :in_public_dashboard] :series])
+               (hydrate [:ordered_cards :card :series])
                api/read-check
                api/check-not-archived
                hide-unreadable-cards
@@ -218,7 +218,7 @@
   superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
                    embedding_params position archived collection_id collection_position]
-            :as dashboard-updates} :body}]
+            :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
    caveats                 (s/maybe s/Str)
@@ -233,13 +233,13 @@
    collection_position     (s/maybe su/IntGreaterThanZero)}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
-    (collection/check-allowed-to-change-collection dash-before-update collection_id)
+    (collection/check-allowed-to-change-collection dash-before-update dash-updates)
     (check-allowed-to-change-embedding dash-before-update enable_embedding embedding_params))
   (api/check-500
    (db/update! Dashboard id
      ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
      ;; non-nil
-     (u/select-keys-when dashboard-updates
+     (u/select-keys-when dash-updates
        :present #{:description :position :collection_id :collection_position}
        :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                   :embedding_params :archived})))

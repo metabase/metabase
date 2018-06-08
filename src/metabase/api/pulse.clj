@@ -80,10 +80,9 @@
    skip_if_empty (s/maybe s/Bool)
    collection_id (s/maybe su/IntGreaterThanZero)}
   ;; do various perms checks
-  (api/write-check Pulse id)
-  (check-card-read-permissions cards)
-  (when collection_id
-    (collection/check-allowed-to-change-collection (db/select-one [Pulse :collection_id] :id id) collection_id))
+  (let [pulse-before-update (api/write-check Pulse id)]
+    (check-card-read-permissions cards)
+    (collection/check-allowed-to-change-collection pulse-before-update pulse-updates))
   ;; ok, now update the Pulse
   (pulse/update-pulse!
    (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position])

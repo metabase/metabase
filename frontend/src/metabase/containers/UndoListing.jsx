@@ -26,7 +26,7 @@ const mapDispatchToProps = {
 };
 
 const UndoList = styled.ul`
-  ${space}, z-index: 99;
+  ${space};
 `;
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -41,7 +41,7 @@ export default class UndoListing extends Component {
   render() {
     const { undos, performUndo, dismissUndo } = this.props;
     return (
-      <UndoList m={2} className="fixed left bottom">
+      <UndoList m={2} className="fixed left bottom zF">
         {undos.map(undo => (
           <Card key={undo._domId} dark p={2}>
             <Flex align="center">

@@ -15,7 +15,7 @@ export default class MetricsList extends Component {
 
     tableMetadata.metrics = tableMetadata.metrics || [];
     tableMetadata.metrics = tableMetadata.metrics.filter(
-      mtrc => mtrc.is_active === true,
+      mtrc => mtrc.archived === false,
     );
 
     return (

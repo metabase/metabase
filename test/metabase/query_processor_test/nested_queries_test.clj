@@ -10,18 +10,20 @@
             [metabase.driver.generic-sql :as generic-sql]
             [metabase.models
              [card :as card :refer [Card]]
+             [collection :as collection :refer [Collection]]
              [database :as database :refer [Database]]
              [field :refer [Field]]
              [permissions :as perms]
-             [permissions-group :as perms-group]
+             [permissions-group :as group]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.models.query.permissions :as query-perms]
             [metabase.test
              [data :as data]
              [util :as tu]]
             [metabase.test.data
-             [datasets :as datasets]
              [dataset-definitions :as defs]
+             [datasets :as datasets]
              [users :refer [create-users-if-needed! user->client]]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -496,16 +498,21 @@
 ;; Make suer you're allowed to save a query that uses a SQL-based source query even if you don't have SQL *write*
 ;; permissions (#6845)
 
-;; Check that write perms for a Card with a source query require that you are able to *read* (i.e., view) the source
-;; query rather than be able to write (i.e., save) it. For example you should be able to save a query that uses a
-;; native query as its source query if you have permissions to view that query, even if you aren't allowed to create
-;; new ad-hoc SQL queries yourself.
+;; Check that perms for a Card with a source query require that you have read permissions for its Collection!
 (expect
- #{(perms/native-read-path (data/id))}
- (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                           :type     :native
-                                           :native   {:query "SELECT * FROM VENUES"}}}]
-   (card/query-perms-set (query-with-source-card card :aggregation [:count]) :write)))
+  #{(perms/collection-read-path collection/root-collection)}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM VENUES"}}}]
+    (query-perms/perms-set (query-with-source-card card :aggregation [:count]))))
+
+(tt/expect-with-temp [Collection [collection]]
+  #{(perms/collection-read-path collection)}
+  (tt/with-temp Card [card {:collection_id (u/get-id collection)
+                            :dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM VENUES"}}}]
+    (query-perms/perms-set (query-with-source-card card :aggregation [:count]))))
 
 ;; try this in an end-to-end fashion using the API and make sure we can save a Card if we have appropriate read
 ;; permissions for the source query
@@ -519,36 +526,74 @@
       (f db))))
 
 (defn- save-card-via-API-with-native-source-query!
-  "Attempt to save a Card that uses a native source query for Database with `db-id` via the API using Rasta. Use this to
-  test how the API endpoint behaves based on certain permissions grants for the `All Users` group."
-  [expected-status-code db-id]
-  (tt/with-temp Card [card {:dataset_query {:database db-id
+  "Attempt to save a Card that uses a native source query and belongs to a Collection with `collection-id` via the API
+  using Rasta. Use this to test how the API endpoint behaves based on certain permissions grants for the `All Users`
+  group."
+  [expected-status-code db-or-id source-collection-or-id-or-nil dest-collection-or-id-or-nil]
+  (tt/with-temp Card [card {:collection_id (some-> source-collection-or-id-or-nil u/get-id)
+                            :dataset_query {:database (u/get-id db-or-id)
                                             :type     :native
                                             :native   {:query "SELECT * FROM VENUES"}}}]
     ((user->client :rasta) :post expected-status-code "card"
      {:name                   (tu/random-name)
+      :collection_id          (some-> dest-collection-or-id-or-nil u/get-id)
       :display                "scalar"
       :visualization_settings {}
       :dataset_query          (query-with-source-card card
                                 :aggregation [:count])})))
 
-;; ok... grant native *read* permissions which means we should be able to view our source query generated with the
-;; function above. API should allow use to save here because write permissions for a query require read permissions
-;; for any source queries
+;; to save a Card that uses another Card as its source, you only need read permissions for the Collection the Source
+;; Card is in, and write permissions for the Collection you're trying to save the new Card in
 (expect
   :ok
   (do-with-temp-copy-of-test-db
    (fn [db]
-     (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
-     (perms/grant-permissions! (perms-group/all-users) (perms/native-read-path (u/get-id db)))
-     (save-card-via-API-with-native-source-query! 200 (u/get-id db))
-     :ok)))
+     (tt/with-temp* [Collection [source-card-collection]
+                     Collection [dest-card-collection]]
+       (perms/grant-collection-read-permissions!      (group/all-users) source-card-collection)
+       (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
+       (save-card-via-API-with-native-source-query! 200 db source-card-collection dest-card-collection)
+       :ok))))
 
-;; however, if we do *not* have read permissions for the source query, we shouldn't be allowed to save the query. This
-;; API call should fail
+;; however, if we do *not* have read permissions for the source Card's collection we shouldn't be allowed to save the
+;; query. This API call should fail
+
+;; Card in the Root Collection
 (expect
   "You don't have permissions to do that."
   (do-with-temp-copy-of-test-db
    (fn [db]
-     (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
-     (save-card-via-API-with-native-source-query! 403 (u/get-id db)))))
+     (tt/with-temp Collection [dest-card-collection]
+       (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
+       (save-card-via-API-with-native-source-query! 403 db nil dest-card-collection)))))
+
+;; Card in a different Collection for which we do not have perms
+(expect
+  "You don't have permissions to do that."
+  (do-with-temp-copy-of-test-db
+   (fn [db]
+     (tt/with-temp* [Collection [source-card-collection]
+                     Collection [dest-card-collection]]
+       (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
+       (save-card-via-API-with-native-source-query! 403 db source-card-collection dest-card-collection)))))
+
+;; similarly, if we don't have *write* perms for the dest collection it should also fail
+
+;; Try to save in the Root Collection
+(expect
+  "You don't have permissions to do that."
+  (do-with-temp-copy-of-test-db
+   (fn [db]
+     (tt/with-temp Collection [source-card-collection]
+       (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
+       (save-card-via-API-with-native-source-query! 403 db source-card-collection nil)))))
+
+;; Try to save in a different Collection for which we do not have perms
+(expect
+  "You don't have permissions to do that."
+  (do-with-temp-copy-of-test-db
+   (fn [db]
+     (tt/with-temp* [Collection [source-card-collection]
+                     Collection [dest-card-collection]]
+       (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
+       (save-card-via-API-with-native-source-query! 403 db source-card-collection dest-card-collection)))))

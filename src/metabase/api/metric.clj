@@ -42,7 +42,7 @@
 (api/defendpoint GET "/"
   "Fetch *all* `Metrics`."
   [id]
-  (as-> (db/select Metric, :is_active true, {:order-by [:%lower.name]}) <>
+  (as-> (db/select Metric, :archived false, {:order-by [:%lower.name]}) <>
     (hydrate <> :creator)
     (add-db-ids <>)
     (filter mi/can-read? <>)))

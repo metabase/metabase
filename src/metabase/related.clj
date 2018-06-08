@@ -104,13 +104,13 @@
   [table]
   (filter visible? (db/select Metric
                      :table_id  (:id table)
-                     :is_active true)))
+                     :archived false)))
 
 (defn- segments-for-table
   [table]
   (filter visible? (db/select Segment
                      :table_id  (:id table)
-                     :is_active true)))
+                     :archived false)))
 
 (defn- linking-to
   [table]
@@ -157,7 +157,7 @@
   [card]
   (->> (db/select Metric
          :table_id (:table_id card)
-         :is_active true)
+         :archived false)
        (filter visible?)
        (m/find-first (comp #{(qp.util/get-in-normalized card [:dataset_query :query :aggregation])}
                            :aggregation
