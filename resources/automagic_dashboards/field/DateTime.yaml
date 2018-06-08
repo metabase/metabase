@@ -1,11 +1,12 @@
-title: A look at your [[this]] over time
-transient_title: Here's a closer look at your [[this]] over time
-description: How [[this]] is distributed, and how different numbers change across it.
+title: A look at your [[this]]
+transient_title: Here's a closer look at your [[this]]
+description: How [[GenericTable]] are distributed across this time field, and if it has any seasonal patterns.
 applies_to: GenericTable.DateTime
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]
 - Avg: [avg, [dimension, GenericNumber]]
 - Count: [count]
+- Distinct: [distinct, [dimension, this]]
 dimensions:
   - GenericNumber: GenericTable.Number
   - GenericCategoryMedium:
@@ -20,6 +21,8 @@ dimensions:
       field_type: GenericTable.Country
   - State:
       field_type: GenericTable.State
+filters:
+  - Nils: [is-null, [dimension, this]]
 dashboard_filters:
   - this
   - State
@@ -29,10 +32,29 @@ groups:
   - Overview:
       title: Overview
   - Breakdowns:
-      title: Different numbers across [[this]]
-  - Seasonality:
       title: How [[this]] is distributed
+  - Seasonality:
+      title: Seasonal patterns in [[this]]
 cards:
+  - Count:
+      title: Count
+      visualization: scalar
+      metrics: Count
+      group: Overview
+      width: 6
+  - Nils:
+      title: Null values
+      visualization: scalar
+      metrics: Count
+      filters: Nils
+      group: Overview
+      width: 6
+  - Distinct:
+      title: Distinct values
+      visualization: scalar
+      metrics: Distinct
+      group: Overview
+      width: 6
   - Distribution:
       title: "[[GenericTable]] by [[this]]"
       visualization: line
@@ -51,7 +73,9 @@ cards:
       group: Breakdowns
   - ByCategory:
       title: "Count of [[GenericCategoryMedium]] by [[this]]"
-      visualization: area
+      visualization:
+        area:
+          stackable.stack_type: stacked
       metrics: Count
       dimensions:
         - this
