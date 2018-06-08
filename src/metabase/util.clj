@@ -520,10 +520,9 @@
   (boolean (when (string? s)
              (re-find #"^[0-9A-Za-z/+]+=*$" s))))
 
-(defn safe-inc
+(def ^{:arglists '([n])} safe-inc
   "Increment N if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
-  [n]
-  (if n (inc n) 1))
+  (fnil inc 0))
 
 (defn occurances-of-substring
   "Return the number of times SUBSTR occurs in string S."

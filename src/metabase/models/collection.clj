@@ -308,8 +308,8 @@
               |
               +-> F -> G
 
-   Suppose the current User can see A, B, E, F, and G, but not C, or D. The 'effective' children of A would be C and
-   E, and the current user would be presented with a hierarchy like:
+   Suppose the current User can see A, B, E, F, and G, but not C, or D. The 'effective' children of A would be B, E,
+   and F, and the current user would be presented with a hierarchy like:
 
        +-> B
        |
@@ -318,9 +318,9 @@
        +-> F -> G
 
    You can think of this process as 'collapsing' the Collection hierarchy and removing nodes that aren't visible to
-   the current User. This needs to be done so we can give a User a way to navigate to nodes that are children of
-   Collections they cannot access; in the example above, E and F are such nodes."
-  {:hydrate :effective_children}
+   the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
+   access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
+   {:hydrate :effective_children}
   [collection :- CollectionWithLocation]
   ;; Hydrate `:children` if it's not already done
   (-> (for [child (if (contains? collection :children)
