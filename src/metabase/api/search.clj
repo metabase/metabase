@@ -26,7 +26,7 @@
   [:id :name :collection_id])
 
 (def ^:priviate collection-columns-without-type
-  [:id :name :description :archived])
+  [:id [:id :collection_id] :name :description :archived])
 
 (def ^:priviate segment-columns-without-type
   [:id :name :description :archived])
@@ -36,12 +36,16 @@
 
 (def ^:private search-columns-without-type
   "The columns found in search query clauses except type. Type is added automatically"
-  (vec (set (concat card-columns-without-type
-                    dashboard-columns-without-type
-                    pulse-columns-without-type
-                    collection-columns-without-type
-                    segment-columns-without-type
-                    metric-columns-without-type))))
+  (vec (set (map (fn [column-or-aliased]
+                   (if (sequential? column-or-aliased)
+                     (second column-or-aliased)
+                     column-or-aliased))
+                 (concat card-columns-without-type
+                         dashboard-columns-without-type
+                         pulse-columns-without-type
+                         collection-columns-without-type
+                         segment-columns-without-type
+                         metric-columns-without-type)))))
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"

@@ -14,13 +14,25 @@
             [toucan.util.test :as tt]))
 
 (def ^:private default-search-results
-  (set (map #(merge {:description nil :id true} %)
+  (set (map #(merge {:description nil, :id true, :collection_id false,
+                     :collection_position nil, :archived false} %)
             [{:name "dashboard foo dashboard", :type "dashboard"}
              {:name "collection foo collection", :type "collection"}
              {:name "card foo card", :type "card"}
-             {:name "pulse foo pulse", :type "pulse"}
+             {:name "pulse foo pulse", :type "pulse", :archived nil}
              {:name "metric foo metric", :description "Lookin' for a blueberry", :type "metric"}
              {:name "segment foo segment", :description "Lookin' for a blueberry", :type "segment"}])))
+
+(def ^:private default-archived-results
+  (set (for [result default-search-results
+             :when (false? (:archived result))]
+         (assoc result :archived true))))
+
+(def ^:private default-results-with-collection
+  (set (for [result default-search-results]
+         (if (contains? #{"dashboard" "pulse" "card"} (:type result))
+           (assoc result :collection_id true)
+           result))))
 
 ;; Basic search, should find 1 of each entity type
 (expect
@@ -71,7 +83,7 @@
 
 ;; Should return archived results when specified
 (expect
-  (set (remove #(= "pulse" (:type %)) default-search-results))
+  default-archived-results
   (tt/with-temp* [Card       [_ (archived {:name "card foo card"})]
                   Card       [_ {:name "card foo card2"}]
                   Dashboard  [_ (archived {:name "dashboard foo dashboard"})]
@@ -89,7 +101,7 @@
 ;; Search within a collection will omit the collection, only return cards/dashboards/pulses in the collection
 (expect
   ;; Metrics and segments don't have a collection, so they shouldn't be included in the results
-  (set (remove #(contains? #{"collection" "metric" "segment"} (:type %)) default-search-results))
+  (set (remove (comp #{"collection" "metric" "segment"} :type) default-results-with-collection))
   (tt/with-temp* [Collection [{coll-id :id} {:name "collection foo collection"}]
                   Card       [_ {:name "card foo card", :collection_id coll-id}]
                   Card       [_ {:name "card foo card2"}]
@@ -112,7 +124,7 @@
 ;; Users with access to a collection should be able to search it
 (expect
   ;; Metrics and segments don't have a collection, so they shouldn't be included in the results
-  (set (remove #(contains? #{"collection" "metric" "segment"} (:type %)) default-search-results))
+  (set (remove (comp #{"collection" "metric" "segment"} :type) default-results-with-collection))
   (tt/with-temp* [Collection [{coll-id :id, :as coll} {:name "collection foo collection"}]
                   Card       [_ {:name "card foo card", :collection_id coll-id}]
                   Card       [_ {:name "card foo card2"}]
@@ -127,7 +139,7 @@
 
 ;; Collections a user doesn't have access to are automatically omitted from the results
 (expect
-  default-search-results
+  default-results-with-collection
   (tt/with-temp* [Collection [{coll-id-1 :id, :as coll-1} {:name "collection foo collection"}]
                   Collection [{coll-id-2 :id, :as coll-2} {:name "collection foo collection2"}]
                   Card       [_ {:name "card foo card", :collection_id coll-id-1}]
