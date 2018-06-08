@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex, Subhead } from "rebass";
+import { Box, Flex } from "grid-styled";
 import cx from "classnames";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
@@ -13,6 +13,7 @@ import { addUndo, createUndo } from "metabase/redux/undo";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
+import Subhead from "metabase/components/Subhead"
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 

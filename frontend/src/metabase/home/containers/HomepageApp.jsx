@@ -7,6 +7,7 @@ import { push } from "react-router-redux";
 import Greeting from "metabase/lib/greeting";
 import Modal from "metabase/components/Modal";
 import Card from "metabase/components/Card";
+import Subhead from "metabase/components/Subhead"
 
 import Activity from "../components/Activity";
 import RecentViews from "../components/RecentViews";
@@ -16,7 +17,7 @@ import NextStep from "../components/NextStep";
 import * as homepageActions from "../actions";
 import { getActivity, getRecentViews, getUser } from "../selectors";
 
-import { Box, Flex, Subhead } from "rebass";
+import { Box, Flex } from "grid-styled";
 
 const mapStateToProps = (state, props) => ({
   activity: getActivity(state),

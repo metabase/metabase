@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex, Subhead, Truncate } from "rebass";
+import { Box, Flex } from "grid-styled";
 import { t } from "c-3po";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
@@ -17,6 +17,8 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
+import Subhead from "metabase/components/Subhead";
+import Ellipsified from "metabase/components/Ellipsified"
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
@@ -51,7 +53,7 @@ const CollectionItem = ({ collection }) => (
     >
       <Icon name="all" mx={1} />
       <h4>
-        <Truncate>{collection.name}</Truncate>
+        <Ellipsified>{collection.name}</Ellipsified>
       </h4>
     </Flex>
   </Link>
