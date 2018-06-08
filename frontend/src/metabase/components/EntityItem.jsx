@@ -2,7 +2,7 @@ import React from "react";
 
 import { Flex, Box } from "grid-styled";
 
-import Ellipsified from "metabase/components/Ellipsified"
+import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
 import { normal } from "metabase/lib/colors";

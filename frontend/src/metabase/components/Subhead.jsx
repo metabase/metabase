@@ -1,5 +1,5 @@
-import styled from "styled-components"
+import styled from "styled-components";
 
-const Subhead = styled.h2``
+const Subhead = styled.h2``;
 
-export default Subhead
+export default Subhead;

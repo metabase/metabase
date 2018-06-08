@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import Subhead from "metabase/components/Subhead"
+import Subhead from "metabase/components/Subhead";
 
 export const Wrapper = ({ children }) => (
   <Box w="80%" ml="auto" mr="auto">

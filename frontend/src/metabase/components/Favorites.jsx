@@ -1,7 +1,7 @@
 import React from "react";
 import { Box } from "grid-styled";
 import { Link } from "react-router";
-import Subhead from "metabase/components/Subhead"
+import Subhead from "metabase/components/Subhead";
 
 class FavoritesLoader extends React.Component {
   state = {

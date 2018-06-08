@@ -10,7 +10,7 @@ import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
-import Subhead from "metabase/components/Subhead"
+import Subhead from "metabase/components/Subhead";
 
 export default class SearchApp extends React.Component {
   render() {

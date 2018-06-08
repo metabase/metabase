@@ -3,7 +3,7 @@ import { Box } from "grid-styled";
 //import { Text, Subhead } from "rebass";
 import { t } from "c-3po";
 import RetinaImage from "react-retina-image";
-import Subhead from "metabase/components/Subhead"
+import Subhead from "metabase/components/Subhead";
 
 import { normal } from "metabase/lib/colors";
 

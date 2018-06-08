@@ -13,7 +13,7 @@ import { addUndo, createUndo } from "metabase/redux/undo";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Subhead from "metabase/components/Subhead"
+import Subhead from "metabase/components/Subhead";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
