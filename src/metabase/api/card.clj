@@ -39,7 +39,8 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]])
-  (:import java.util.UUID))
+  (:import java.util.UUID
+           metabase.models.card.CardInstance))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -85,13 +86,13 @@
   [table-id]
   (db/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(defn- cards-with-ids
+(s/defn ^:private cards-with-ids :- (s/maybe [CardInstance])
   "Return unarchived `Cards` with CARD-IDS.
    Make sure cards are returned in the same order as CARD-IDS`; `[in card-ids]` won't preserve the order."
-  [card-ids]
-  {:pre [(every? integer? card-ids)]}
-  (let [card-id->card (u/key-by :id (db/select Card, :id [:in (set card-ids)], :archived false))]
-    (filter identity (map card-id->card card-ids))))
+  [card-ids :- [su/IntGreaterThanZero]]
+  (when (seq card-ids)
+    (let [card-id->card (u/key-by :id (db/select Card, :id [:in (set card-ids)], :archived false))]
+      (filter identity (map card-id->card card-ids)))))
 
 (defn- cards:recent
   "Return the 10 `Cards` most recently viewed by the current user, sorted by how recently they were viewed."

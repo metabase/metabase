@@ -642,7 +642,7 @@
   ;; the same first & last name! This will *ruin* their lives :(
   (let [{first-name :first_name, last-name :last_name} (db/select-one ['User :first_name :last_name]
                                                          :id (u/get-id user-or-id))]
-    (tru "{0} {1}'s Personal Collection" first-name last-name)))
+    (tru "{0} {1}''s Personal Collection" first-name last-name)))
 
 (s/defn user->personal-collection :- CollectionInstance
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."

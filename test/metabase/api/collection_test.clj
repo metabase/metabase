@@ -42,7 +42,7 @@
 
 ;; We should only see our own Personal Collections!
 (expect
-  ["Collection for Lucky Pigeon"]
+  ["Lucky Pigeon's Personal Collection"]
   (do
     (force-create-personal-collections!)
     ;; now fetch those Collections as the Lucky bird
@@ -50,10 +50,10 @@
 
 ;; ...unless we are *admins*
 (expect
-  ["Collection for Crowberto Corv"
-   "Collection for Lucky Pigeon"
-   "Collection for Rasta Toucan"
-   "Collection for Trash Bird"]
+  ["Crowberto Corv's Personal Collection"
+   "Lucky Pigeon's Personal Collection"
+   "Rasta Toucan's Personal Collection"
+   "Trash Bird's Personal Collection"]
   (do
     (force-create-personal-collections!)
     ;; now fetch those Collections as a superuser
@@ -62,7 +62,7 @@
 ;; check that we don't see collections if we don't have permissions for them
 (expect
   ["Collection 1"
-   "Collection for Rasta Toucan"]
+   "Rasta Toucan's Personal Collection"]
   (tt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
                   Collection [collection-2 {:name "Collection 2"}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection-1)
@@ -71,7 +71,7 @@
 
 ;; check that we don't see collections if they're archived
 (expect
-  ["Collection for Rasta Toucan"
+  ["Rasta Toucan's Personal Collection"
    "Regular Collection"]
   (tt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
                   Collection [collection-2 {:name "Regular Collection"}]]
@@ -331,7 +331,7 @@
 ;; Do top-level collections show up as children of the Root Collection?
 (expect
   {:effective_children  #{{:name "A", :id true}
-                          {:name "Collection for Rasta Toucan", :id true}}
+                          {:name "Rasta Toucan's Personal Collection", :id true}}
    :effective_ancestors []
    :effective_location  nil}
   (with-collection-hierarchy [a b c d e f g]
@@ -342,7 +342,7 @@
   {:effective_children  #{{:name "B", :id true}
                           {:name "D", :id true}
                           {:name "F", :id true}
-                          {:name "Collection for Rasta Toucan", :id true}}
+                          {:name "Rasta Toucan's Personal Collection", :id true}}
    :effective_ancestors []
    :effective_location  nil}
   (with-collection-hierarchy [b d e f g]

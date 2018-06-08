@@ -947,43 +947,6 @@
        (u/get-id new-collection))))
 
 
-;;; Test GET /api/card?collection= -- Test that we can use empty string to return Cards in the Root Collection
-(expect
-  ["Card 2"]
-  (tt/with-temp* [Collection [collection]
-                  Card       [card-1 {:name "Card 1", :collection_id (u/get-id collection)}]
-                  Card       [card-2 {:name "Card 2"}]]
-    (map :name ((user->client :crowberto) :get 200 "card/" :collection ""))))
-
-;; Test GET /api/card?collection=<slug> filters by collection with slug
-(expect
-  ["Card 1"]
-  (tt/with-temp* [Collection [collection {:name "Favorite Places"}]
-                  Card       [card-1 {:name "Card 1", :collection_id (u/get-id collection)}]
-                  Card       [card-2 {:name "Card 2"}]]
-    (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-    (map :name ((user->client :rasta) :get 200 "card/" :collection :favorite_places))))
-
-;; Test GET /api/card?collection=<slug> should return a 404 if no such collection exists
-(expect
-  "Not found."
-  ((user->client :rasta) :get 404 "card/" :collection :some_fake_collection_slug))
-
-;; Make sure GET /api/card?collection=<slug> still works with Collections with URL-encoded Slugs (#4535)
-(expect
-  []
-  (tt/with-temp Collection [collection {:name "Obsługa klienta"}]
-    (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-    ((user->client :rasta) :get 200 "card/" :collection "obs%C5%82uga_klienta")))
-
-;; ...even if the slug isn't passed in URL-encoded
-(expect
-  []
-  (tt/with-temp Collection [collection {:name "Obsługa klienta"}]
-    (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-    ((user->client :rasta) :get 200 "card/" :collection "obsługa_klienta")))
-
-
 ;;; ------------------------------ Bulk Collections Update (POST /api/card/collections) ------------------------------
 
 (defn- collection-names
