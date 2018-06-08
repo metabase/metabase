@@ -16,22 +16,22 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:priviate card-columns-without-type
+(def ^:private card-columns-without-type
   [:id :name :description :archived :collection_id :collection_position])
 
-(def ^:priviate dashboard-columns-without-type
+(def ^:private dashboard-columns-without-type
   [:id :name :description :archived :collection_id :collection_position])
 
-(def ^:priviate pulse-columns-without-type
+(def ^:private pulse-columns-without-type
   [:id :name :collection_id])
 
-(def ^:priviate collection-columns-without-type
+(def ^:private collection-columns-without-type
   [:id [:id :collection_id] :name :description :archived])
 
-(def ^:priviate segment-columns-without-type
+(def ^:private segment-columns-without-type
   [:id :name :description :archived])
 
-(def ^:priviate metric-columns-without-type
+(def ^:private metric-columns-without-type
   [:id :name :description :archived])
 
 (def ^:private search-columns-without-type
