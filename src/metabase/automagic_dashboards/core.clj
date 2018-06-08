@@ -692,13 +692,14 @@
   ([root] (related-entities max-related root))
   ([n root]
    (let [recommendations     (-> root :entity related/related)
+         fields-selector     (comp (partial remove key-col?) :fields)
          ;; Not everything `related/related` returns is relevent for us. Also note that the order
          ;; influences which entities get shown when results are trimmed.
          relevant-dimensions [:table :segments :metrics :linking-to :dashboard-mates
-                              :similar-questions :linked-from :tables :fields]]
+                              :similar-questions :linked-from :tables fields-selector]]
      (->> relevant-dimensions
           (reduce (fn [acc selector]
-                    (concat acc (-> selector recommendations rules/ensure-seq)))
+                    (concat acc (-> recommendations selector rules/ensure-seq)))
                   [])
           (take n)
           (map ->related-entity)))))
