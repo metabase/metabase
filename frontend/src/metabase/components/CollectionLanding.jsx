@@ -70,7 +70,10 @@ const CollectionList = () => {
           return (
             <Box>
               {collections.map(collection => (
-                <Box key={collection.id} mb={collection.personal_owner_id ? 3 : 1 }>
+                <Box
+                  key={collection.id}
+                  mb={collection.personal_owner_id ? 3 : 1}
+                >
                   <CollectionItem collection={collection} />
                 </Box>
               ))}
@@ -337,40 +340,41 @@ class CollectionLanding extends React.Component {
                   />
                 </Box>
               )}
-              {currentCollection.can_write && !currentCollection.personal_owner_id && (
-                <Box mx={1}>
-                  <EntityMenu
-                    items={[
-                      ...(!isRoot
-                        ? [
-                            {
-                              title: t`Edit this collection`,
-                              icon: "editdocument",
-                              link: `/collections/${currentCollection.id}`,
-                            },
-                          ]
-                        : []),
-                      {
-                        title: t`Edit permissions`,
-                        icon: "lock",
-                        link: `/collections/permissions?collectionId=${
-                          currentCollection.id
-                        }`,
-                      },
-                      ...(!isRoot
-                        ? [
-                            {
-                              title: t`Archive this collection`,
-                              icon: "viewArchive",
-                              link: `/collection/${collectionId}/archive`,
-                            },
-                          ]
-                        : []),
-                    ]}
-                    triggerIcon="pencil"
-                  />
-                </Box>
-              )}
+              {currentCollection.can_write &&
+                !currentCollection.personal_owner_id && (
+                  <Box mx={1}>
+                    <EntityMenu
+                      items={[
+                        ...(!isRoot
+                          ? [
+                              {
+                                title: t`Edit this collection`,
+                                icon: "editdocument",
+                                link: `/collections/${currentCollection.id}`,
+                              },
+                            ]
+                          : []),
+                        {
+                          title: t`Edit permissions`,
+                          icon: "lock",
+                          link: `/collections/permissions?collectionId=${
+                            currentCollection.id
+                          }`,
+                        },
+                        ...(!isRoot
+                          ? [
+                              {
+                                title: t`Archive this collection`,
+                                icon: "viewArchive",
+                                link: `/collection/${collectionId}/archive`,
+                              },
+                            ]
+                          : []),
+                      ]}
+                      triggerIcon="pencil"
+                    />
+                  </Box>
+                )}
               <EntityMenu
                 items={[
                   {
