@@ -68,6 +68,7 @@ export type Entity = {
     getList: Function,
     getObject: Function,
     getLoading: Function,
+    getFetched: Function,
     getError: Function,
   },
   objectActions: {
@@ -275,16 +276,24 @@ export function createEntity(def: EntityDefinition): Entity {
 
   // REQUEST STATE SELECTORS
 
-  const getRequestState = (state, props = {}) => {
-    const path =
-      props.entityId != null
-        ? getObjectStatePath(props.entityId)
-        : getListStatePath(props.entityQuery);
-    return getIn(state, ["requests", "states", ...path, "fetch"]);
-  };
+  const getStatePath = props =>
+    props.entityId != null
+      ? getObjectStatePath(props.entityId)
+      : getListStatePath(props.entityQuery);
+
+  const getRequestState = (state, props = {}) =>
+    getIn(state, ["requests", "states", ...getStatePath(props), "fetch"]);
+
+  const getFetchState = (state, props = {}) =>
+    getIn(state, ["requests", "fetched", ...getStatePath(props)]);
+
   const getLoading = createSelector(
     [getRequestState],
     requestState => (requestState ? requestState.state === "LOADING" : true),
+  );
+  const getFetched = createSelector(
+    [getFetchState],
+    fetchState => !!fetchState,
   );
   const getError = createSelector(
     [getRequestState],
@@ -294,6 +303,7 @@ export function createEntity(def: EntityDefinition): Entity {
   entity.selectors = {
     getList,
     getObject,
+    getFetched,
     getLoading,
     getError,
   };
