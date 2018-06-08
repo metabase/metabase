@@ -12,7 +12,7 @@ import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
 import { createSelector } from "reselect";
 import { normalize, denormalize, schema } from "normalizr";
-import { getIn } from "icepick";
+import { getIn, dissocIn } from "icepick";
 
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
 //
@@ -68,6 +68,7 @@ export type Entity = {
     getList: Function,
     getObject: Function,
     getLoading: Function,
+    getLoaded: Function,
     getFetched: Function,
     getError: Function,
   },
@@ -289,7 +290,11 @@ export function createEntity(def: EntityDefinition): Entity {
 
   const getLoading = createSelector(
     [getRequestState],
-    requestState => (requestState ? requestState.state === "LOADING" : true),
+    requestState => (requestState ? requestState.state === "LOADING" : false),
+  );
+  const getLoaded = createSelector(
+    [getRequestState],
+    requestState => (requestState ? requestState.state === "LOADED" : false),
   );
   const getFetched = createSelector(
     [getFetchState],
@@ -305,6 +310,7 @@ export function createEntity(def: EntityDefinition): Entity {
     getObject,
     getFetched,
     getLoading,
+    getLoaded,
     getError,
   };
 
@@ -354,6 +360,25 @@ export function createEntity(def: EntityDefinition): Entity {
         ...state,
         "": state[""].filter(id => id !== payload.result),
       };
+    }
+    return state;
+  };
+
+  // REQUEST STATE REDUCER
+
+  // NOTE: ideally we'd only reset lists where there's a possibility the action,
+  // or even better, add/remove the item from appropriate lists in the reducer
+  // above. This will be difficult with pagination
+
+  entity.requestReducer = (state, action) => {
+    // reset all list request states when creating, deleting, or updating
+    // to force a reload
+    if (
+      action.type === CREATE_ACTION ||
+      action.type === DELETE_ACTION ||
+      action.type === UPDATE_ACTION
+    ) {
+      return dissocIn(state, ["states", "entities", entity.name + "_list"]);
     }
     return state;
   };
@@ -426,9 +451,19 @@ export function combineEntities(entities: Entity[]): CombinedEntities {
     }
   }
 
+  const entitiesRequestsReducer = (state, action) => {
+    for (const entity of entities) {
+      if (entity.requestReducer) {
+        state = entity.requestReducer(state, action);
+      }
+    }
+    return state;
+  };
+
   return {
     entities: entitiesMap,
     reducers: reducersMap,
     reducer: combineReducers(reducersMap),
+    entitiesRequestsReducer,
   };
 }
