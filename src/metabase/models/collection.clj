@@ -401,9 +401,6 @@
   (assert-valid-hex-color color)
   (assoc collection :slug (slugify collection-name)))
 
-(def ^:private CollectionUpdatesWithID
-  {:id su/IntGreaterThanZero, s/Keyword s/Any})
-
 (s/defn ^:private field-will-change? :- s/Bool
   "True if a `field-kw` is present in the `collection-updates` map of changes being passed into `pre-update`, and if
   the value is acually different from the current value in the DB."

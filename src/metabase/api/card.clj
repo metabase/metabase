@@ -34,7 +34,6 @@
              [results-metadata :as results-metadata]]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [trs]]
-            [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan
              [db :as db]

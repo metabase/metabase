@@ -140,8 +140,8 @@
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON"
-  {su/KeywordOrString (su/with-api-error-message (s/cond-pre s/Str s/Num)
-                        (tru "value must be a string or number."))})
+  (su/with-api-error-message {su/KeywordOrString (s/cond-pre s/Str s/Num)}
+    (tru "value must be a map with each value either a string or number.")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
