@@ -10,6 +10,26 @@ const CLEAR_REQUEST_STATE = "metabase/requests/CLEAR_REQUEST_STATE";
 export const setRequestState = createAction(SET_REQUEST_STATE);
 export const clearRequestState = createAction(CLEAR_REQUEST_STATE);
 
+// e.x. for statePath ["a", "b", "fetch"]
+//
+// {
+//   states: {
+//     a: {
+//       b: {
+//         fetch: {
+//           state: "LOADING"|"LOADED",
+//           error: ...
+//         }
+//       }
+//     }
+//   }
+//   fetched: {
+//     a: {
+//       b: true
+//     }
+//   }
+// }
+
 // For a given state path, returns the current request state ("LOADING", "LOADED" or a request error)
 export const states = handleActions(
   {

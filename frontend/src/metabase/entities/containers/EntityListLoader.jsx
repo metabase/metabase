@@ -27,6 +27,7 @@ export type RenderProps = {
 @entityType()
 @connect((state, { entityDef, entityQuery }) => ({
   list: entityDef.selectors.getList(state, { entityQuery }),
+  fetched: entityDef.selectors.getFetched(state, { entityQuery }),
   loading: entityDef.selectors.getLoading(state, { entityQuery }),
   error: entityDef.selectors.getError(state, { entityQuery }),
 }))
@@ -84,10 +85,10 @@ export default class EntityListLoader extends React.Component {
 
   render() {
     // $FlowFixMe: provided by @connect
-    const { loading, error, loadingAndErrorWrapper } = this.props;
+    const { fetched, loading, error, loadingAndErrorWrapper } = this.props;
     return loadingAndErrorWrapper ? (
       <LoadingAndErrorWrapper
-        loading={loading}
+        loading={!fetched && loading}
         error={error}
         children={this.renderChildren}
       />
