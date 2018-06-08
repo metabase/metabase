@@ -417,17 +417,19 @@
 
 (defn- build-order-by
   [dimensions metrics order-by]
-  (let [dimension? (set dimensions)]
+  (let [dimension? (into #{}
+                         (map :identifier)
+                         dimensions)]
     (for [[identifier ordering] (map first order-by)]
       [(if (dimension? identifier)
          [:dimension identifier]
-         [:aggregation (u/index-of #{identifier} metrics)])
+         [:aggregation (u/index-of (comp #{identifier} :identifier) metrics)])
        (if (= ordering "ascending")
          :ascending
          :descending)])))
 
 (defn- build-query
-  ([context bindings filters metrics dimensions limit order_by]
+  ([context bindings filters metrics dimensions limit order-by]
    (walk/postwalk
     (fn [subform]
       (if (rules/dimension-form? subform)
@@ -454,8 +456,8 @@
                  limit
                  (assoc :limit limit)
 
-                 (not-empty order_by)
-                 (assoc :order_by (build-order-by dimensions metrics  order_by)))}))
+                 (not-empty order-by)
+                 (assoc :order_by order-by))}))
   ([context bindings query]
    {:type     :native
     :native   {:query (fill-templates :native context bindings query)}
@@ -525,9 +527,10 @@
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
   [context {:keys [metrics filters dimensions score limit order_by query] :as card}]
-  (let [filters (cond-> filters
-                  (:query-filter context) (conj {:filter (:query-filter context)}))
-        score   (card-score card)]
+  (let [filters  (cond-> filters
+                   (:query-filter context) (conj {:filter (:query-filter context)}))
+        score    (card-score card)
+        order-by (build-order-by dimensions metrics order_by)]
     (->> (combo/cartesian-product
           (used-dimensions context (concat (map :identifier dimensions)
                                            (rules/collect-dimensions [metrics filters query])))
@@ -536,7 +539,7 @@
                 (let [query         (if query
                                       (build-query context bindings query)
                                       (build-query context bindings filters metrics-set dimensions
-                                                   limit order_by))
+                                                   limit order-by))
                       metrics-names (map (fn [definition metric]
                                            (or (:name definition)
                                                (let [[op & args] metric]
