@@ -237,6 +237,13 @@
 (defn- is-root-collection? [m]
   (boolean (::is-root? m)))
 
+(def ^:private CollectionWithLocation
+  (s/pred (fn [collection]
+            (and (map? collection)
+                 (or (::is-root? collection)
+                     (valid-location-path? (:location collection)))))
+          "Collection with a valid `:location` or the Root Collection"))
+
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
   Collection.
@@ -245,7 +252,7 @@
 
      ;; To get children of this collection:
      (db/select Collection :location \"/10/20/30/\")"
-  [{:keys [location], :as collection} :- su/Map]
+  [{:keys [location], :as collection} :- CollectionWithLocation]
   (if (is-root-collection? collection)
     "/"
     (str location (u/get-id collection) "/")))
@@ -257,9 +264,9 @@
     s/Keyword s/Any}))
 
 (s/defn ^:private descendants :- #{Children}
-  "Return all descendants of a `collection`, including children, grandchildren, and so forth. This is done primarily
-  to power the `effective-children` feature below, and thus the descendants are returned in a hierarchy, rather than
-  as a flat set. e.g. results will be something like:
+  "Return all descendant Collections of a `collection`, including children, grandchildren, and so forth. This is done
+  primarily to power the `effective-children` feature below, and thus the descendants are returned in a hierarchy,
+  rather than as a flat set. e.g. results will be something like:
 
        +-> B
        |
@@ -269,7 +276,7 @@
 
   where each letter represents a Collection, and the arrows represent values of its respective `:children`
   set."
-  [collection :- su/Map]
+  [collection :- CollectionWithLocation]
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
   (let [location->children (group-by :location (db/select [Collection :name :id :location]
@@ -286,9 +293,9 @@
         :children)))
 
 
-(s/defn effective-children ;; :- #{CollectionInstance}
-  "Return the descendants of a `collection` that should be presented to the current user as the children of this
-  Collection. This takes into account descendants that get filtered out when the current user can't see them. For
+(s/defn effective-children :- #{CollectionInstance}
+  "Return the descendant Collections of a `collection` that should be presented to the current user as the children of
+  this Collection. This takes into account descendants that get filtered out when the current user can't see them. For
   example, suppose we have some Collections with a hierarchy like this:
 
        +-> B
@@ -310,7 +317,7 @@
    the current User. This needs to be done so we can give a User a way to navigate to nodes that are children of
    Collections they cannot access; in the example above, E and F are such nodes."
   {:hydrate :effective_children}
-  [collection :- su/Map]
+  [collection :- CollectionWithLocation]
   ;; Hydrate `:children` if it's not already done
   (-> (for [child (if (contains? collection :children)
                     (:children collection)
@@ -326,12 +333,12 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                               Moving Collections                                               |
+;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
-  [collection :- su/Map, new-location :- LocationPath]
+  [collection :- CollectionWithLocation, new-location :- LocationPath]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))]
     ;; first move this Collection
@@ -345,6 +352,41 @@
         :set    {:location (hsql/call :replace :location orig-children-location new-children-location)}
         :where  [:like :location (str orig-children-location "%")]}))))
 
+(s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
+  [collection :- CollectionWithLocation, & additional-conditions]
+  (apply db/select-ids Collection
+         :location [:like (str (children-location collection) "%")]
+         additional-conditions))
+
+(s/defn ^:private archive-collection!
+  "Archive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
+  [collection :- CollectionWithLocation]
+  (let [affected-collection-ids (cons (u/get-id collection)
+                                      (collection->descendant-ids collection, :archived false))]
+    (db/transaction
+      (db/update-where! Collection {:id       [:in affected-collection-ids]
+                                    :archived false}
+        :archived true)
+      (doseq [model '[Card Dashboard]]
+        (db/update-where! model {:collection_id [:in affected-collection-ids]
+                                 :archived      false}
+          :archived true))
+      (db/delete! 'Pulse :collection_id [:in affected-collection-ids]))))
+
+(s/defn ^:private unarchive-collection!
+  "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
+  [collection :- CollectionWithLocation]
+  (let [affected-collection-ids (cons (u/get-id collection)
+                                      (collection->descendant-ids collection, :archived true))]
+    (db/transaction
+      (db/update-where! Collection {:id       [:in affected-collection-ids]
+                                    :archived true}
+        :archived false)
+      (doseq [model '[Card Dashboard]]
+        (db/update-where! model {:collection_id [:in affected-collection-ids]
+                                 :archived      true}
+          :archived false)))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
@@ -356,22 +398,40 @@
   (assoc collection :slug (u/prog1 (slugify collection-name)
                             (assert-unique-slug <>))))
 
-(defn- pre-update [{collection-name :name, id :id, color :color, archived? :archived, :as collection}]
-  (assert-valid-location collection)
-  ;; make sure hex color is valid
-  (when (contains? collection :color)
-    (assert-valid-hex-color color))
-  ;; archive / unarchive cards in this collection as needed
-  (db/update-where! 'Card {:collection_id id}
-    :archived archived?)
-  ;; slugify the collection name and make sure it's unique
-  (if-not collection-name
-    collection
-    (assoc collection :slug (u/prog1 (slugify collection-name)
-                              ;; if slug hasn't changed no need to check for uniqueness otherwise check to make sure
-                              ;; the new slug is unique
-                              (or (db/exists? Collection, :slug <>, :id id)
-                                  (assert-unique-slug <>))))))
+(s/defn ^:private maybe-archive-or-unarchive
+  "If `:archived` specified in the updates map, archive/unarchive as needed."
+  [collection-before-updates :- CollectionWithLocation, collection-updates :- su/Map]
+  ;; If the updates map contains a value for `:archived`, see if it's actually something different than current value
+  (when (and (contains? collection-updates :archived)
+             (not= (:archived collection-before-updates)
+                   (:archived collection-updates)))
+    ;; check to make sure we're not trying to change location at the same time
+    (when (and (contains? collection-updates :location)
+               (not= (:location collection-updates)
+                     (:location collection-before-updates)))
+      (throw (ex-info (tru "You cannot move a Collection and archive it at the same time.")
+               {:status-code 400
+                :errors      {:archived (tru "You cannot move a Collection and archive it at the same time.")}})))
+    ;; ok, go ahead and do the archive/unarchive operation
+    ((if (:archived collection-updates)
+       archive-collection!
+       unarchive-collection!) collection-before-updates)))
+
+(defn- pre-update [{collection-name :name, id :id, color :color, :as collection-updates}]
+  (let [collection-before-updates (db/select-one Collection :id id)]
+    (assert-valid-location collection-updates)
+    ;; make sure hex color is valid
+    (when (contains? collection-updates :color)
+      (assert-valid-hex-color color))
+    ;; archive or unarchive as appropriate
+    (maybe-archive-or-unarchive collection-before-updates collection-updates)
+    ;; slugify the collection name and make sure it's unique *if* we're changing collection-name
+    (cond-> collection-updates
+      collection-name (assoc :slug (u/prog1 (slugify collection-name)
+                                     ;; if slug hasn't changed no need to check for uniqueness otherwise check to make
+                                     ;; sure the new slug is unique
+                                     (or (db/exists? Collection, :slug <>, :id id)
+                                         (assert-unique-slug <>)))))))
 
 (defn- pre-delete [collection]
   ;; unset the collection_id for Cards/Pulses in this collection. This is mostly for the sake of tests since IRL we
@@ -418,7 +478,8 @@
 
 (def ^:private GroupPermissionsGraph
   "collection-id -> status"
-  {su/IntGreaterThanZero CollectionPermissions})
+  {(s/optional-key :root) CollectionPermissions   ; when doing a delta between old graph and new graph root won't always
+   su/IntGreaterThanZero  CollectionPermissions}) ; be present, which is why it's *optional*
 
 (def ^:private PermissionsGraph
   {:revision s/Int
@@ -432,17 +493,19 @@
              {group-id (set (map :object perms))})))
 
 (s/defn ^:private perms-type-for-collection :- CollectionPermissions
-  [permissions-set collection-id]
+  [permissions-set collection-or-id]
   (cond
-    (perms/set-has-full-permissions? permissions-set (perms/collection-readwrite-path collection-id)) :write
-    (perms/set-has-full-permissions? permissions-set (perms/collection-read-path collection-id))      :read
-    :else                                                                                             :none))
+    (perms/set-has-full-permissions? permissions-set (perms/collection-readwrite-path collection-or-id)) :write
+    (perms/set-has-full-permissions? permissions-set (perms/collection-read-path collection-or-id))      :read
+    :else                                                                                                :none))
 
 (s/defn ^:private group-permissions-graph :- GroupPermissionsGraph
   "Return the permissions graph for a single group having PERMISSIONS-SET."
   [permissions-set collection-ids]
-  (into {} (for [collection-id collection-ids]
-             {collection-id (perms-type-for-collection permissions-set collection-id)})))
+  (into
+   {:root (perms-type-for-collection permissions-set root-collection)}
+   (for [collection-id collection-ids]
+     {collection-id (perms-type-for-collection permissions-set collection-id)})))
 
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
@@ -460,14 +523,17 @@
 
 (s/defn ^:private update-collection-permissions!
   [group-id             :- su/IntGreaterThanZero
-   collection-id        :- su/IntGreaterThanZero
+   collection-id        :- (s/cond-pre (s/eq :root) su/IntGreaterThanZero)
    new-collection-perms :- CollectionPermissions]
-  ;; remove whatever entry is already there (if any) and add a new entry if applicable
-  (perms/revoke-collection-permissions! group-id collection-id)
-  (case new-collection-perms
-    :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
-    :read  (perms/grant-collection-read-permissions! group-id collection-id)
-    :none  nil))
+  (let [collection-id (if (= collection-id :root)
+                        root-collection
+                        collection-id)]
+    ;; remove whatever entry is already there (if any) and add a new entry if applicable
+    (perms/revoke-collection-permissions! group-id collection-id)
+    (case new-collection-perms
+      :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
+      :read  (perms/grant-collection-read-permissions! group-id collection-id)
+      :none  nil)))
 
 (s/defn ^:private update-group-permissions!
   [group-id :- su/IntGreaterThanZero, new-group-perms :- GroupPermissionsGraph]
@@ -513,19 +579,32 @@
 
 (defn check-write-perms-for-collection
   "Check that we have write permissions for Collection with `collection-id`, or throw a 403 Exception. If
-  `collection-id` is `nil`, this check is skipped."
-  [collection-or-id]
-  (when collection-or-id
-    (api/check-403 (perms/set-has-full-permissions? @*current-user-permissions-set*
-                     (perms/collection-readwrite-path collection-or-id)))))
+  `collection-id` is `nil`, this check is done for the Root Collection."
+  [collection-or-id-or-nil]
+  (api/check-403 (perms/set-has-full-permissions? @*current-user-permissions-set*
+                   (perms/collection-readwrite-path (if collection-or-id-or-nil
+                                                      collection-or-id-or-nil
+                                                      root-collection)))))
 
 (defn check-allowed-to-change-collection
-  "If we're changing the `collection_id` of an `object`, make sure we have write permissions for the new Collection, and
-  throw a 403 if not. If `collection-id` is `nil`, or hasn't changed from the original `object`, this check does
-  nothing."
-  [object collection-or-id]
-  ;; TODO - what about when someone wants to *unset* the Collection? We should tweak this check to handle that case as
-  ;; well
-  (when (and collection-or-id
-             (not= (u/get-id collection-or-id) (:collection_id object)))
-    (check-write-perms-for-collection collection-or-id)))
+  "If we're changing the `collection_id` of an object, make sure we have write permissions for both the old and new
+  Collections, or throw a 403 if not. If `collection_id` isn't present in `object-updates`, or the value is the same
+  as the original, this check is a no-op.
+
+  As usual, an `collection-id` of `nil` represents the Root Collection.
+
+
+  Intended for use with `PUT` or `PATCH`-style operations. Usage should look something like:
+
+    ;; `object-before-update` is the object as it currently exists in the application DB
+    ;; `object-updates` is a map of updated values for the object
+    (check-allowed-to-change-collection (Card 100) http-request-body)"
+  [object-before-update object-updates]
+  ;; if collection_id is set to change...
+  (when (contains? object-updates :collection_id)
+    (when (not= (:collection_id object-updates)
+                (:collection_id object-before-update))
+      ;; check that we're allowed to modify the old Collection
+      (check-write-perms-for-collection (:collection_id object-before-update))
+      ;; check that we're allowed to modify the new Collection
+      (check-write-perms-for-collection (:collection_id object-updates)))))

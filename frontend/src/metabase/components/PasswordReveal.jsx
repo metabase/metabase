@@ -39,7 +39,7 @@ export default class PasswordReveal extends Component {
     return (
       <div
         style={{ borderWidth: 2 }}
-        className="bordered rounded flex align-center  p3 relative"
+        className="bordered rounded flex align-center p3 relative"
       >
         <Label />
 

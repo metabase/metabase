@@ -16,7 +16,7 @@
 }
 
 /* ensure that a border-top item inside of a bordred element won't double up */
-.bordered .border-bottom:last-child {
+.bordered > .border-bottom:last-child {
   border-bottom: none;
 }
 
@@ -26,7 +26,7 @@
 }
 
 /* ensure that a border-top item inside of a bordred element won't double up */
-.bordered .border-top:first-child {
+.bordered > .border-top:first-child {
   border-top: none;
 }
 
@@ -94,6 +94,10 @@
 .border-brand,
 :local(.border-brand) {
   border-color: var(--brand-color) !important;
+}
+
+.border-transparent {
+  border-color: transparent;
 }
 
 .border-brand-hover:hover {

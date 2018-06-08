@@ -24,7 +24,7 @@
   "Map with the various allowed search parameters, used to construct the SQL query"
   {:search-string       su/NonBlankString
    :archived?           s/Bool
-   :collection          (s/maybe su/IntGreaterThanZero)
+   :collection          (s/maybe (s/cond-pre (s/eq :root) su/IntGreaterThanZero))
    :visible-collections coll/VisibleCollections})
 
 (defn- merge-search-select
@@ -51,18 +51,15 @@
       (merge-name-search search-ctx)
       (h/merge-where [:= :archived archived?])))
 
-(s/defn ^:private  merge-name-and-active-search
-  [query-map {:keys [search-string archived?] :as search-ctx} :- SearchContext]
-  (-> query-map
-      (merge-name-search search-ctx)
-      ;; archived? = true is the same as is_active = false, so flip it here
-      (h/merge-where [:= :is_active (not archived?)])))
-
 (s/defn ^:private add-collection-criteria
   "Update the query to only include collections the user has access to"
   [query-map column-kwd {:keys [visible-collections collection]} :- SearchContext]
   (cond
-    collection
+    ;; The root collection is the same as a nil collection id
+    (= :root collection)
+    (h/merge-where query-map [:= column-kwd nil])
+
+    (number? collection)
     (h/merge-where query-map [:= column-kwd collection])
 
     (= :all visible-collections)
@@ -115,19 +112,20 @@
   [_ {:keys [collection] :as search-ctx} :- SearchContext]
   (when-not collection
     (-> (make-honeysql-search-query Metric "metric" search-columns-without-type)
-        (merge-name-and-active-search search-ctx))))
+        (merge-name-and-archived-search search-ctx))))
 
 (s/defmethod ^:private create-search-query :segment
   [_ {:keys [collection] :as search-ctx} :- SearchContext]
   (when-not collection
     (-> (make-honeysql-search-query Segment "segment" search-columns-without-type)
-        (merge-name-and-active-search search-ctx))))
+        (merge-name-and-archived-search search-ctx))))
 
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
   [{:keys [collection visible-collections] :as search-ctx} :- SearchContext]
   ;; If searching for a collection you don't have access to, no need to run a query
   (if (and collection
+           (not= :root collection)
            (not= :all visible-collections)
            (not (contains? visible-collections collection)))
     []
@@ -136,22 +134,32 @@
                                 :when query-map]
                             query-map)})))
 
+(def ^:private CollectionSearchParam
+  "Search parameters that can either be a `collection_id`, but in string form, or `root`"
+  (s/maybe (s/cond-pre (s/eq "root") su/IntString)))
+
 (s/defn ^:private make-search-context :- SearchContext
   [search-string :- su/NonBlankString
    archived-string :- (s/maybe su/BooleanString)
-   collection-id :- (s/maybe su/IntGreaterThanZero)]
+   collection :- CollectionSearchParam]
   {:search-string       (str "%" (str/lower-case search-string) "%")
    :archived?           (Boolean/parseBoolean archived-string)
-   :collection          collection-id
+   :collection          (cond
+                          (= "root" collection)
+                          :root
+                          collection
+                          (Long/parseLong collection)
+                          :else
+                          collection)
    :visible-collections (coll/permissions-set->visible-collection-ids @*current-user-permissions-set*)})
 
 (defendpoint GET "/"
   "Search Cards, Dashboards, Collections and Pulses for the substring `q`."
-  [q archived collection_id]
+  [q archived collection]
   {q             su/NonBlankString
    archived      (s/maybe su/BooleanString)
-   collection_id (s/maybe su/IntGreaterThanZero)}
-  (let [{:keys [visible-collections collection] :as search-ctx} (make-search-context q archived collection_id)]
+   collection    CollectionSearchParam}
+  (let [{:keys [visible-collections collection] :as search-ctx} (make-search-context q archived collection)]
     ;; Throw if the user doesn't have access to any collections
     (check-403 (or (= :all visible-collections)
                    (seq visible-collections)))

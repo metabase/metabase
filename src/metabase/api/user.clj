@@ -1,4 +1,5 @@
 (ns metabase.api.user
+  "/api/user endpoints"
   (:require [cemerick.friend.credentials :as creds]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api
@@ -9,6 +10,7 @@
             [metabase.models.user :as user :refer [User]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -53,14 +55,16 @@
 
 (api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
-  [:as {{:keys [first_name last_name email password]} :body}]
-  {first_name su/NonBlankString
-   last_name  su/NonBlankString
-   email      su/Email}
+  [:as {{:keys [first_name last_name email password login_attributes] :as body} :body}]
+  {first_name       su/NonBlankString
+   last_name        su/NonBlankString
+   email            su/Email
+   login_attributes (s/maybe user/LoginAttributes)}
   (api/check-superuser)
   (api/checkp (not (db/exists? User :email email))
-    "email" "Email address already in use.")
-  (let [new-user-id (u/get-id (user/invite-user! first_name last_name email password @api/*current-user*))]
+    "email" (tru "Email address already in use."))
+  (let [new-user-id (u/get-id (user/invite-user! (select-keys body [:first_name :last_name :email :password :login_attributes])
+                                                 @api/*current-user*))]
     (fetch-user :id new-user-id)))
 
 (api/defendpoint GET "/current"
@@ -75,25 +79,27 @@
   (check-self-or-superuser id)
   (api/check-404 (fetch-user :id id, :is_active true)))
 
-
 (api/defendpoint PUT "/:id"
   "Update an existing, active `User`."
-  [id :as {{:keys [email first_name last_name is_superuser]} :body}]
-  {email      su/Email
-   first_name (s/maybe su/NonBlankString)
-   last_name  (s/maybe su/NonBlankString)}
+  [id :as {{:keys [email first_name last_name is_superuser login_attributes] :as body} :body}]
+  {email            (s/maybe su/Email)
+   first_name       (s/maybe su/NonBlankString)
+   last_name        (s/maybe su/NonBlankString)
+   login_attributes (s/maybe user/LoginAttributes)}
   (check-self-or-superuser id)
   ;; only allow updates if the specified account is active
   (api/check-404 (db/exists? User, :id id, :is_active true))
   ;; can't change email if it's already taken BY ANOTHER ACCOUNT
   (api/checkp (not (db/exists? User, :email email, :id [:not= id]))
-    "email" "Email address already associated to another user.")
-  (api/check-500 (db/update-non-nil-keys! User id
-                   :email        email
-                   :first_name   first_name
-                   :last_name    last_name
-                   :is_superuser (when (:is_superuser @api/*current-user*)
-                                   is_superuser)))
+    "email" (tru "Email address already associated to another user."))
+  (api/check-500
+   (db/update! User id
+     (u/select-keys-when body
+       :present (when api/*is-superuser?*
+                  #{:login_attributes})
+       :non-nil (set (concat [:first_name :last_name :email]
+                             (when api/*is-superuser?*
+                               [:is_superuser]))))))
   (fetch-user :id id))
 
 (api/defendpoint PUT "/:id/reactivate"
@@ -104,7 +110,7 @@
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
-      [400 {:message "Not able to reactivate an active user"}])
+      [400 {:message (tru "Not able to reactivate an active user")}])
     (reactivate-user! user)))
 
 
@@ -119,7 +125,7 @@
     (when-not (:is_superuser @api/*current-user*)
       (api/checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user))
         "old_password"
-        "Invalid password")))
+        (tru "Invalid password"))))
   (user/set-password! id password)
   ;; return the updated User
   (fetch-user :id id))
