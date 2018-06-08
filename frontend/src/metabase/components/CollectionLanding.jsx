@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import listSelect from "metabase/hoc/ListSelect";
 import BulkActionBar from "metabase/components/BulkActionBar";
+import cx from "classnames";
 
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
@@ -69,9 +70,7 @@ const CollectionList = () => {
           return (
             <Box>
               {collections.map(collection => (
-                <Box key={collection.id} mb={1}>
-                  <CollectionItem collection={collection} />
-                </Box>
+                <Collection key={collection.id} collection={collection} />
               ))}
             </Box>
           );
@@ -134,49 +133,22 @@ class DefaultLanding extends React.Component {
 
                 return (
                   <Box>
-                    <Box mb={2}>
-                      {pinned.length > 0 && (
+                    {pinned.length > 0 && (
+                      <Box mb={2}>
                         <Box mb={2}>
                           <h4>{t`Pinned items`}</h4>
                         </Box>
-                      )}
-                      <Grid>
-                        {pinned.map(item => (
-                          <GridItem w={1 / 2}>
-                            <Link
-                              to={item.getUrl()}
-                              className="hover-parent hover--visibility"
-                              hover={{ color: normal.blue }}
-                            >
-                              <Card hoverable p={3}>
-                                <Icon
-                                  name={item.getIcon()}
-                                  color={item.getColor()}
-                                  size={28}
-                                  mb={2}
-                                />
-                                <Flex align="center">
-                                  <h3>{item.getName()}</h3>
-                                  {collection.can_write &&
-                                    item.setPinned && (
-                                      <Box
-                                        ml="auto"
-                                        className="hover-child"
-                                        onClick={ev => {
-                                          ev.preventDefault();
-                                          item.setPinned(false);
-                                        }}
-                                      >
-                                        <Icon name="pin" />
-                                      </Box>
-                                    )}
-                                </Flex>
-                              </Card>
-                            </Link>
-                          </GridItem>
-                        ))}
-                      </Grid>
-                    </Box>
+                        <Grid>
+                          {pinned.map(item => (
+                            <PinnedItem
+                              key={`${item.type}:${item.id}`}
+                              item={item}
+                              collection={collection}
+                            />
+                          ))}
+                        </Grid>
+                      </Box>
+                    )}
                     <Flex align="center" mb={2}>
                       {pinned.length > 0 && (
                         <Box>
@@ -185,61 +157,17 @@ class DefaultLanding extends React.Component {
                       )}
                     </Flex>
                     <Card>
-                      {other.map(item => {
-                        return (
-                          <Box key={item.type + item.id}>
-                            <Link to={item.getUrl()}>
-                              <EntityItem
-                                showSelect={selected.length > 0}
-                                selectable
-                                item={item}
-                                type={item.type}
-                                name={item.getName()}
-                                iconName={item.getIcon()}
-                                iconColor={item.getColor()}
-                                isFavorite={
-                                  item.getFavorited && item.getFavorited()
-                                }
-                                onFavorite={
-                                  item.setFavorited
-                                    ? async () => {
-                                        await item.setFavorited(true);
-                                        reload();
-                                      }
-                                    : null
-                                }
-                                onPin={
-                                  collection.can_write && item.setPinned
-                                    ? async () => {
-                                        await item.setPinned(true);
-                                        reload();
-                                      }
-                                    : null
-                                }
-                                onMove={
-                                  collection.can_write && item.setCollection
-                                    ? () => {
-                                        this.setState({ moveItems: [item] });
-                                      }
-                                    : null
-                                }
-                                onArchive={
-                                  collection.can_write && item.setArchived
-                                    ? async () => {
-                                        await item.setArchived(true);
-                                        reload();
-                                      }
-                                    : null
-                                }
-                                selected={selection.has(item)}
-                                onToggleSelected={() => {
-                                  onToggleSelected(item);
-                                }}
-                              />
-                            </Link>
-                          </Box>
-                        );
-                      })}
+                      {other.map(item => (
+                        <NormalItemDraggable
+                          key={`${item.type}:${item.id}`}
+                          item={item}
+                          collection={collection}
+                          reload={reload}
+                          selection={selection}
+                          onToggleSelected={onToggleSelected}
+                          onMove={moveItems => this.setState({ moveItems })}
+                        />
+                      ))}
                     </Card>
                   </Box>
                 );
@@ -296,7 +224,254 @@ class DefaultLanding extends React.Component {
               />
             </Modal>
           )}
+        <CustomDragLayer selected={selected} />
       </Flex>
+    );
+  }
+}
+
+import { DragSource, DropTarget, DragLayer } from "react-dnd";
+import { getEmptyImage } from "react-dnd-html5-backend";
+
+const DragTypes = {
+  ITEM: "ITEM",
+};
+
+@DragSource(
+  DragTypes.ITEM,
+  {
+    canDrag(props, monitor) {
+      // if items are selected only allow dragging selected items
+      if (props.selection.size > 0 && !props.selection.has(props.item)) {
+        return false;
+      } else {
+        return true;
+      }
+    },
+    beginDrag(props, monitor, component) {
+      return { item: props.item };
+    },
+    async endDrag(props, monitor, component) {
+      if (!monitor.didDrop()) {
+        return;
+      }
+      const { item } = monitor.getItem();
+      const { collection, pin } = monitor.getDropResult();
+      if (item) {
+        const items =
+          props.selection.size > 0 ? Array.from(props.selection) : [item];
+        if (collection) {
+          try {
+            await Promise.all(
+              items.map(i => i.setCollection && i.setCollection(collection)),
+            );
+          } catch (e) {
+            alert("There was a problem moving these items: " + e);
+          } finally {
+            props.reload();
+          }
+        }
+      }
+    },
+  },
+  (connect, monitor) => ({
+    connectDragSource: connect.dragSource(),
+    connectDragPreview: connect.dragPreview(),
+    isDragging: monitor.isDragging(),
+  }),
+)
+class NormalItemDraggable extends React.Component {
+  componentDidMount() {
+    // Use empty image as a drag preview so browsers don't draw it
+    // and we can draw whatever we want on the custom drag layer instead.
+    if (this.props.connectDragPreview) {
+      this.props.connectDragPreview(getEmptyImage(), {
+        // IE fallback: specify that we'd rather screenshot the node
+        // when it already knows it's being dragged so we can hide it with CSS.
+        captureDraggingState: true,
+      });
+    }
+  }
+  render() {
+    const { connectDragSource, isDragging, ...props } = this.props;
+    return connectDragSource(
+      // must be a native DOM element or use innerRef which appears to be broken
+      // https://github.com/react-dnd/react-dnd/issues/1021
+      // https://github.com/jxnblk/styled-system/pull/188
+      <div>
+        <NormalItemContent {...props} />
+      </div>,
+    );
+  }
+}
+
+const NormalItemContent = ({
+  item,
+  collection = {},
+  selection = new Set(),
+  onToggleSelected,
+  onMove,
+  reload,
+}) => (
+  <Link to={item.getUrl()}>
+    <EntityItem
+      showSelect={selection.size > 0}
+      selectable
+      item={item}
+      type={item.type}
+      name={item.getName()}
+      iconName={item.getIcon()}
+      iconColor={item.getColor()}
+      isFavorite={item.getFavorited && item.getFavorited()}
+      onFavorite={
+        item.setFavorited
+          ? async () => {
+              await item.setFavorited(true);
+              reload();
+            }
+          : null
+      }
+      onPin={
+        collection.can_write && item.setPinned
+          ? async () => {
+              await item.setPinned(true);
+              reload();
+            }
+          : null
+      }
+      onMove={
+        collection.can_write && item.setCollection
+          ? () => {
+              onMove([item]);
+            }
+          : null
+      }
+      onArchive={
+        collection.can_write && item.setArchived
+          ? async () => {
+              await item.setArchived(true);
+              reload();
+            }
+          : null
+      }
+      selected={selection.has(item)}
+      onToggleSelected={() => {
+        onToggleSelected(item);
+      }}
+    />
+  </Link>
+);
+
+@DropTarget(
+  DragTypes.ITEM,
+  {
+    drop(props, monitor, component) {
+      return { collection: props.collection };
+    },
+  },
+  (connect, monitor) => ({
+    highlighted: monitor.canDrop(),
+    hovered: monitor.isOver(),
+    connectDropTarget: connect.dropTarget(),
+  }),
+)
+class Collection extends React.Component {
+  render() {
+    const { collection, hovered, connectDropTarget } = this.props;
+    return connectDropTarget(
+      // must be a native DOM element or use innerRef which appears to be broken
+      // https://github.com/react-dnd/react-dnd/issues/1021
+      // https://github.com/jxnblk/styled-system/pull/188
+      <div className={cx("mb1", { "bg-brand rounded": hovered })}>
+        <CollectionItem collection={collection} />
+      </div>,
+    );
+  }
+}
+
+const PinnedItem = ({ item, collection }) => (
+  <GridItem w={1 / 2}>
+    <Link
+      to={item.getUrl()}
+      className="hover-parent hover--visibility"
+      hover={{ color: normal.blue }}
+    >
+      <Card hoverable p={3}>
+        <Icon name={item.getIcon()} color={item.getColor()} size={28} mb={2} />
+        <Flex align="center">
+          <h3>{item.getName()}</h3>
+          {collection.can_write &&
+            item.setPinned && (
+              <Box
+                ml="auto"
+                className="hover-child"
+                onClick={ev => {
+                  ev.preventDefault();
+                  item.setPinned(false);
+                }}
+              >
+                <Icon name="pin" />
+              </Box>
+            )}
+        </Flex>
+      </Card>
+    </Link>
+  </GridItem>
+);
+
+import BodyComponent from "metabase/components/BodyComponent";
+
+@DragLayer((monitor, props) => ({
+  item: monitor.getItem(),
+  // itemType: monitor.getItemType(),
+  initialOffset: monitor.getInitialSourceClientOffset(),
+  currentOffset: monitor.getSourceClientOffset(),
+  isDragging: monitor.isDragging(),
+}))
+@BodyComponent
+class CustomDragLayer extends React.Component {
+  render() {
+    const { isDragging, currentOffset, selected, item } = this.props;
+    if (!isDragging || !currentOffset) {
+      return null;
+    }
+    const items = selected.length > 0 ? selected : [item.item];
+    return (
+      <div
+        style={{
+          position: "absolute",
+          top: 0, //currentOffset.y,
+          left: 0, //currentOffset.x,
+          transform: `translate(${currentOffset.x}px, ${currentOffset.y}px)`,
+          pointerEvents: "none",
+        }}
+      >
+        <DraggedItems items={items} draggedItem={item.item} />
+      </div>
+    );
+  }
+}
+
+class DraggedItems extends React.Component {
+  shouldComponentUpdate(nextProps) {
+    // necessary for decent drag performance
+    return (
+      nextProps.items.length !== this.props.items.length ||
+      nextProps.draggedItem !== this.props.draggedItem
+    );
+  }
+  render() {
+    const { items, draggedItem } = this.props;
+    const index = _.findIndex(items, draggedItem);
+    return (
+      <div
+        style={{
+          position: "absolute",
+          transform: index > 0 ? `translate(0px, ${-index * 72}px)` : null,
+        }}
+      >
+        {items.map(item => <NormalItemContent item={item} />)}
+      </div>
     );
   }
 }
