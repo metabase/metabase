@@ -9,7 +9,8 @@
              [dashboard :refer [Dashboard]]
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]
-             [pulse :refer [Pulse]]]
+             [pulse :refer [Pulse]]
+             [user :refer [User]]]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
             [metabase.util :as u]
@@ -1088,3 +1089,30 @@
     (db/select-one-field :archived Collection :id (u/get-id e))))
 
 ;; TODO - can you unarchive a Card that is inside an archived Collection??
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Personal Collections                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Make sure we're not allowed to *unarchive* a Personal Collection
+(expect
+  Exception
+  (tt/with-temp User [my-cool-user]
+    (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (db/update! Collection (u/get-id personal-collection) :archived true))))
+
+;; Make sure we're not allowed to *move* a Personal Collection
+(expect
+  Exception
+  (tt/with-temp* [User       [my-cool-user]
+                  Collection [some-other-collection]]
+    (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (db/update! Collection (u/get-id personal-collection) :location (collection/location-path some-other-collection)))))
+
+;; Make sure we're not allowed to change the owner of a Personal Collection
+(expect
+  Exception
+  (tt/with-temp User [my-cool-user]
+    (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (db/update! Collection (u/get-id personal-collection) :personal_owner_id (test-users/user->id :crowberto)))))

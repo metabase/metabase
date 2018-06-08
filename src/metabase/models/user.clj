@@ -85,11 +85,15 @@
   (cond-> user
     (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
 
+;; `pre-delete` is more for the benefit of tests than anything else since these days we archive users instead of fully
+;; deleting them. In other words the following code is only ever called by tests
 (defn- pre-delete [{:keys [id]}]
-  (binding [perm-membership/*allow-changing-all-users-group-members* true]
+  (binding [perm-membership/*allow-changing-all-users-group-members* true
+            collection/*allow-deleting-personal-collections*         true]
     (doseq [[model k] [['Activity                   :user_id]
                        ['Card                       :creator_id]
                        ['Card                       :made_public_by_id]
+                       ['Collection                 :personal_owner_id]
                        ['Dashboard                  :creator_id]
                        ['Dashboard                  :made_public_by_id]
                        ['Metric                     :creator_id]

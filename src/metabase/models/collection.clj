@@ -401,36 +401,49 @@
   (assert-valid-hex-color color)
   (assoc collection :slug (slugify collection-name)))
 
-(defn- check-changes-allowed-for-personal-collection
+(def ^:private CollectionUpdatesWithID
+  {:id su/IntGreaterThanZero, s/Keyword s/Any})
+
+(s/defn ^:private field-will-change? :- s/Bool
+  "True if a `field-kw` is present in the `collection-updates` map of changes being passed into `pre-update`, and if
+  the value is acually different from the current value in the DB."
+  [field-kw :- s/Keyword, collection-before-updates :- CollectionInstance, collection-updates :- su/Map]
+  (boolean
+   (and (contains? collection-updates field-kw)
+        (not= (get collection-before-updates field-kw)
+              (get collection-updates        field-kw)))))
+
+(s/defn ^:private check-changes-allowed-for-personal-collection
   "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
   have lots of restrictions -- you can't archive them, for example, nor can you transfer them to other Users."
-  [collection]
+  [collection-before-updates :- CollectionWithLocation, collection-updates :- su/Map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
-  (when (not= (:personal_owner_id collection)
-              (db/select-one-field :personal_owner_id Collection :id (u/get-id collection)))
+  (when (field-will-change? :personal_owner_id collection-before-updates collection-updates)
     (throw
      (ex-info (tru "You're not allowed to change the owner of a Personal Collection.")
        {:status-code 400
         :errors      {:personal_owner_id (tru "You're not allowed to change the owner of a Personal Collection.")}})))
+  ;; You also definitely cannot *move* a Personal Collection
+  (when (field-will-change? :location collection-before-updates collection-updates)
+    (throw
+     (ex-info (tru "You're not allowed to move a Personal Collection.")
+       {:status-code 400
+        :errors      {:location (tru "You're not allowed to move a Personal Collection.")}})))
   ;; You also can't archive a Personal Collection
-  (when (:archived collection)
+  (when (field-will-change? :archived collection-before-updates collection-updates)
     (throw
      (ex-info (tru "You cannot archive a Personal Collection!")
        {:status-code 400
         :errors   {:archived (tru "You cannot archive a Personal Collection!")}}))))
 
-(s/defn ^:private maybe-archive-or-unarchive
+(s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
   [collection-before-updates :- CollectionWithLocation, collection-updates :- su/Map]
   ;; If the updates map contains a value for `:archived`, see if it's actually something different than current value
-  (when (and (contains? collection-updates :archived)
-             (not= (:archived collection-before-updates)
-                   (:archived collection-updates)))
+  (when (field-will-change? :archived collection-before-updates collection-updates)
     ;; check to make sure we're not trying to change location at the same time
-    (when (and (contains? collection-updates :location)
-               (not= (:location collection-updates)
-                     (:location collection-before-updates)))
+    (when (field-will-change? :location collection-before-updates collection-updates)
       (throw (ex-info (tru "You cannot move a Collection and archive it at the same time.")
                {:status-code 400
                 :errors      {:archived (tru "You cannot move a Collection and archive it at the same time.")}})))
@@ -440,16 +453,29 @@
        unarchive-collection!) collection-before-updates)))
 
 (defn- pre-update [{collection-name :name, id :id, color :color, :as collection-updates}]
-  (let [collection-before-updates (db/select-one Collection :id id)]
+  (let [collection-before-updates (Collection id)]
+    ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
+    ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
+    (when (:personal_owner_id collection-before-updates)
+      (check-changes-allowed-for-personal-collection collection-before-updates collection-updates))
+    ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
-    ;; make sure hex color is valid
-    (when (contains? collection-updates :color)
+    ;; (3) make sure hex color is valid
+    (when (field-will-change? :color collection-before-updates collection-updates)
       (assert-valid-hex-color color))
-    ;; archive or unarchive as appropriate
-    (maybe-archive-or-unarchive collection-before-updates collection-updates)
-    ;; slugify the collection name
+    ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
+    ;; (1) archive or unarchive as appropriate
+    (maybe-archive-or-unarchive! collection-before-updates collection-updates)
+    ;; (2) slugify the collection name in case it's changed in the output; the results of this will get passed along
+    ;; to Toucan's `update!` impl
     (cond-> collection-updates
       collection-name (assoc :slug (slugify collection-name)))))
+
+(def ^:dynamic *allow-deleting-personal-collections*
+  "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but in the single case of
+  deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get deleted, but rather
+  archived; thus this code is used solely by our test suite, by things such as the `with-temp` macros.)"
+  false)
 
 (defn- pre-delete [collection]
   ;; unset the collection_id for Cards/Pulses in this collection. This is mostly for the sake of tests since IRL we
@@ -459,12 +485,13 @@
       :collection_id nil))
   ;; Now delete all the Children of this Collection
   (db/delete! Collection :location (children-location collection))
-  ;; You can't delete a Personal Collection!
-  (when (:personal_owner_id collection)
-    (throw (Exception. (str (tru "You cannot delete a Personal Collection!"))))))
+  ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
+  (when-not *allow-deleting-personal-collections*
+    (when (:personal_owner_id collection)
+      (throw (Exception. (str (tru "You cannot delete a Personal Collection!")))))))
 
 (defn perms-objects-set
-  "Return the required set of permissions to READ-OR-WRITE COLLECTION-OR-ID."
+  "Return the required set of permissions to `read-or-write` `collection-or-id`."
   [collection-or-id read-or-write]
   ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
   ;; name) but if you have write perms you can add/remove cards
