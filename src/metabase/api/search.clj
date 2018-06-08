@@ -20,10 +20,10 @@
             [toucan.db :as db]))
 
 (def ^:private card-columns-without-type
-  [:id :name :description :archived :collection_id :collection_position [(hx/->boolean :card_fav.id) :favorited]])
+  [:id :name :description :archived :collection_id :collection_position [:card_fav.id :favorited]])
 
 (def ^:private dashboard-columns-without-type
-  [:id :name :description :archived :collection_id :collection_position [(hx/->boolean :dashboard_fav.id) :favorited]])
+  [:id :name :description :archived :collection_id :collection_position [:dashboard_fav.id :favorited]])
 
 (def ^:private pulse-columns-without-type
   [:id :name :collection_id])
@@ -170,6 +170,12 @@
     (-> (make-honeysql-search-query Segment "segment" segment-columns-without-type)
         (merge-name-and-archived-search search-ctx))))
 
+(defn- favorited->boolean [row]
+  (if-let [fav-value (get row :favorited)]
+    (assoc row :favorited (and (integer? fav-value)
+                               (not (zero? fav-value))))
+    row))
+
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
   [{:keys [collection visible-collections] :as search-ctx} :- SearchContext]
@@ -178,10 +184,11 @@
            (not= :all visible-collections)
            (not (contains? visible-collections collection)))
     []
-    (db/query {:union-all (for [entity [:card :collection :dashboard :pulse :segment :metric]
-                                :let [query-map (create-search-query entity search-ctx)]
-                                :when query-map]
-                            query-map)})))
+    (map favorited->boolean
+         (db/query {:union-all (for [entity [:card :collection :dashboard :pulse :segment :metric]
+                                     :let [query-map (create-search-query entity search-ctx)]
+                                     :when query-map]
+                                 query-map)}))))
 
 (s/defn ^:private make-search-context :- SearchContext
   [search-string :- su/NonBlankString
