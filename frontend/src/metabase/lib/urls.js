@@ -27,7 +27,7 @@ export function question(cardId, hash = "", query = "") {
 }
 
 export const extractQueryParams = (query: Object): Array => {
-  return Object.entries(query).flatMap(flattenParam);
+  return [].concat(...Object.entries(query).map(flattenParam));
 };
 
 const flattenParam = ([key, value]) => {
