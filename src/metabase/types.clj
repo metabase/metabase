@@ -132,8 +132,9 @@
 
 (derive :type/Special :type/*)
 
-(derive :type/FK :type/Special)
-(derive :type/PK :type/Special)
+(derive :type/ID :type/Special)
+(derive :type/FK :type/ID)
+(derive :type/PK :type/ID)
 
 (derive :type/Category :type/Special)
 

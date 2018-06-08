@@ -101,7 +101,10 @@
    [#"title"                       text-type        :type/Title]
    [#"comment"                     text-type        :type/Comment]
    [#"birthda(?:te|y)"             timestamp-type   :type/Birthdate]
-   [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]])
+   [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]
+   [#"^id_"                        int-or-text-type :type/ID]
+   [#"_id$"                        int-or-text-type :type/ID]
+   [#"^id$"                        int-or-text-type :type/PK]])
 
 ;; Check that all the pattern tuples are valid
 (when-not config/is-prod?
@@ -114,18 +117,17 @@
 (s/defn ^:private special-type-for-name-and-base-type :- (s/maybe su/FieldType)
   "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it."
   [field-name :- su/NonBlankString, base-type :- su/FieldType]
-  (or (when (= "id" (str/lower-case field-name)) :type/PK)
-      (some (fn [[name-pattern valid-base-types special-type]]
-              (when (and (some (partial isa? base-type) valid-base-types)
-                         (re-find name-pattern (str/lower-case field-name)))
-                special-type))
-            pattern+base-types+special-type)))
+  (some (fn [[name-pattern valid-base-types special-type]]
+          (when (and (some (partial isa? base-type) valid-base-types)
+                     (re-find name-pattern (str/lower-case field-name)))
+            special-type))
+        pattern+base-types+special-type))
 
 (s/defn infer-special-type :- (s/maybe i/FieldInstance)
   "Classifer that infers the special type of a FIELD based on its name and base type."
   [field :- i/FieldInstance, _ :- (s/maybe i/Fingerprint)]
-  ;; Don't overwrite keys, else we're ok with overwriting as a new more precise type might have
-  ;; been added.
+  ;; Don't overwrite keys as they are from a different (upstream) analysis step, else we're ok
+  ;; with overwriting as a new more precise type might have been added.
   (when (not-any? (partial isa? (:special_type field)) [:type/PK :type/FK])
     (when-let [inferred-special-type (special-type-for-name-and-base-type (:name field) (:base_type field))]
       (log/debug (format "Based on the name of %s, we're giving it a special type of %s."

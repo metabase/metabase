@@ -283,13 +283,8 @@
 
 (defn- key-col?
   "Workaround for our leaky type system which conflates types with properties."
-  [{:keys [base_type special_type name]}]
-  (and (isa? base_type :type/Number)
-       (or (#{:type/PK :type/FK} special_type)
-           (let [name (str/lower-case name)]
-             (or (= name "id")
-                 (str/starts-with? name "id_")
-                 (str/ends-with? name "_id"))))))
+  [{:keys [special_type]}]
+  (isa? special_type :type/ID))
 
 (def ^:private field-filters
   {:fieldspec       (fn [fieldspec]
@@ -299,7 +294,7 @@
                         (fn [{:keys [special_type target] :as field}]
                           (cond
                             ;; This case is mostly relevant for native queries
-                            (#{:type/PK :type/FK} fieldspec)
+                            (isa? fieldspec :type/ID)
                             (isa? special_type fieldspec)
 
                             target
