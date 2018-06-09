@@ -48,14 +48,14 @@ export default class CollectionPicker extends React.Component {
     const crumbs = this._getCrumbs(collection, collectionsById);
 
     return (
-      <Box px={2} pt={2} pb={1} style={style} className={className}>
+      <Box style={style} className={className}>
         <Box pb={1} mb={2} className="border-bottom">
           <Breadcrumbs crumbs={crumbs} />
         </Box>
         {collection &&
           collection.children.map(collection => (
             <Box
-              my={1}
+              mt={1}
               p={1}
               onClick={() => onChange(collection.id)}
               className={cx(

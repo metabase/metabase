@@ -6,9 +6,8 @@ import { CSSTransitionGroup } from "react-transition-group";
 import FormField from "metabase/components/form/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Radio from "metabase/components/Radio.jsx";
-import Select, { Option } from "metabase/components/Select.jsx";
 import Button from "metabase/components/Button";
-import CollectionListLoader from "metabase/containers/CollectionListLoader";
+import CollectionSelect from "metabase/containers/CollectionSelect";
 
 import Query from "metabase/lib/query";
 import { t } from "c-3po";
@@ -238,41 +237,17 @@ export default class SaveQuestionModal extends Component {
                     onChange={e => this.onChange("description", e.target.value)}
                   />
                 </FormField>
-                <CollectionListLoader writable reload>
-                  {({ collections }) =>
-                    collections.length > 0 && (
-                      <FormField
-                        name="collection_id"
-                        displayName={t`Which collection should this go in?`}
-                        formError={this.state.errors}
-                      >
-                        <Select
-                          className="block"
-                          value={this.state.details.collection_id}
-                          onChange={e =>
-                            this.onChange("collection_id", e.target.value)
-                          }
-                        >
-                          {[{ name: t`None`, id: null }]
-                            .concat(collections)
-                            .map((collection, index) => (
-                              <Option
-                                key={index}
-                                value={collection.id}
-                                icon={
-                                  collection.id != null ? "collection" : null
-                                }
-                                iconColor={collection.color}
-                                iconSize={18}
-                              >
-                                {collection.name}
-                              </Option>
-                            ))}
-                        </Select>
-                      </FormField>
-                    )
-                  }
-                </CollectionListLoader>
+                <FormField
+                  name="collection_id"
+                  displayName={t`Which collection should this go in?`}
+                  formError={this.state.errors}
+                >
+                  <CollectionSelect
+                    className="block"
+                    value={this.state.details.collection_id}
+                    onChange={value => this.onChange("collection_id", value)}
+                  />
+                </FormField>
               </div>
             )}
           </CSSTransitionGroup>

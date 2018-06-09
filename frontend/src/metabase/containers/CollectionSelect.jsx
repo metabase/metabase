@@ -22,15 +22,18 @@ export default class CollectionSelect extends React.Component {
         {({ collections }) => (
           <PopoverWithTrigger
             triggerElement={
-              <SelectButton>
+              <SelectButton hasValue={value !== undefined}>
                 {(_.findWhere(collections, { id: value }) || {}).name ||
                   ROOT_COLLECTION.name}
               </SelectButton>
             }
+            sizeToFit
+            pinInitialAttachment
           >
             {({ onClose }) => (
               <CollectionPicker
                 style={{ minWidth: 300 }}
+                className="p2 overflow-auto"
                 value={value}
                 onChange={value => {
                   onChange(value);
