@@ -2,8 +2,10 @@
   (:require [expectations :refer :all]
             [metabase.models
              [card :refer [Card]]
+             [card-favorite :refer [CardFavorite]]
              [collection :as coll :refer [Collection]]
              [dashboard :refer [Dashboard]]
+             [dashboard-favorite :refer [DashboardFavorite]]
              [metric :refer [Metric]]
              [permissions :as perms]
              [permissions-group :as group]
@@ -14,19 +16,68 @@
             [toucan.util.test :as tt]))
 
 (def ^:private default-search-results
-  (set (map #(merge {:description nil :id true} %)
+  (set (map #(merge {:description nil, :id true, :collection_id false,
+                     :collection_position nil, :archived false, :favorited nil} %)
             [{:name "dashboard foo dashboard", :type "dashboard"}
-             {:name "collection foo collection", :type "collection"}
+             {:name "collection foo collection", :type "collection", :collection_id true}
              {:name "card foo card", :type "card"}
-             {:name "pulse foo pulse", :type "pulse"}
+             {:name "pulse foo pulse", :type "pulse", :archived nil}
              {:name "metric foo metric", :description "Lookin' for a blueberry", :type "metric"}
              {:name "segment foo segment", :description "Lookin' for a blueberry", :type "segment"}])))
+
+(def ^:private default-archived-results
+  (set (for [result default-search-results
+             :when (false? (:archived result))]
+         (assoc result :archived true))))
+
+(defn- on-search-types [types-set f coll]
+  (set (for [search-item coll]
+         (if (contains? types-set (:type search-item))
+           (f search-item)
+           search-item))))
+
+(def ^:private default-results-with-collection
+  (on-search-types #{"dashboard" "pulse" "card"}
+                   #(assoc % :collection_id true)
+                   default-search-results))
 
 ;; Basic search, should find 1 of each entity type
 (expect
   default-search-results
   (tt/with-temp* [Card       [_ {:name "card foo card"}]
                   Dashboard  [_ {:name "dashboard foo dashboard"}]
+                  Collection [_ {:name "collection foo collection"}]
+                  Pulse      [_ {:name "pulse foo pulse"}]
+                  Metric     [_ {:name "metric foo metric"}]
+                  Segment    [_ {:name "segment foo segment"}]]
+    (tu/boolean-ids-and-timestamps (set ((user->client :crowberto) :get 200 "search", :q "foo")))))
+
+;; Favorites are per user, so other user's favorites don't cause search results to be favorited
+(expect
+  default-search-results
+  (tt/with-temp* [Card       [{card-id :id} {:name "card foo card"}]
+                  CardFavorite  [_ {:card_id card-id
+                                    :owner_id (user->id :rasta)}]
+                  Dashboard  [{dash-id :id} {:name "dashboard foo dashboard"}]
+                  DashboardFavorite [_ {:dashboard_id dash-id
+                                        :user_id (user->id :rasta)}]
+                  Collection [_ {:name "collection foo collection"}]
+                  Pulse      [_ {:name "pulse foo pulse"}]
+                  Metric     [_ {:name "metric foo metric"}]
+                  Segment    [_ {:name "segment foo segment"}]]
+    (tu/boolean-ids-and-timestamps (set ((user->client :crowberto) :get 200 "search", :q "foo")))))
+
+;; Basic search, should find 1 of each entity type and include favorites when available
+(expect
+  (on-search-types #{"dashboard" "card"}
+                   #(assoc % :favorited true)
+                   default-search-results)
+  (tt/with-temp* [Card       [{card-id :id} {:name "card foo card"}]
+                  CardFavorite  [_ {:card_id card-id
+                                    :owner_id (user->id :crowberto)}]
+                  Dashboard  [{dash-id :id} {:name "dashboard foo dashboard"}]
+                  DashboardFavorite [_ {:dashboard_id dash-id
+                                        :user_id (user->id :crowberto)}]
                   Collection [_ {:name "collection foo collection"}]
                   Pulse      [_ {:name "pulse foo pulse"}]
                   Metric     [_ {:name "metric foo metric"}]
@@ -71,7 +122,7 @@
 
 ;; Should return archived results when specified
 (expect
-  (set (remove #(= "pulse" (:type %)) default-search-results))
+  default-archived-results
   (tt/with-temp* [Card       [_ (archived {:name "card foo card"})]
                   Card       [_ {:name "card foo card2"}]
                   Dashboard  [_ (archived {:name "dashboard foo dashboard"})]
@@ -89,7 +140,7 @@
 ;; Search within a collection will omit the collection, only return cards/dashboards/pulses in the collection
 (expect
   ;; Metrics and segments don't have a collection, so they shouldn't be included in the results
-  (set (remove #(contains? #{"collection" "metric" "segment"} (:type %)) default-search-results))
+  (set (remove (comp #{"collection" "metric" "segment"} :type) default-results-with-collection))
   (tt/with-temp* [Collection [{coll-id :id} {:name "collection foo collection"}]
                   Card       [_ {:name "card foo card", :collection_id coll-id}]
                   Card       [_ {:name "card foo card2"}]
@@ -112,7 +163,7 @@
 ;; Users with access to a collection should be able to search it
 (expect
   ;; Metrics and segments don't have a collection, so they shouldn't be included in the results
-  (set (remove #(contains? #{"collection" "metric" "segment"} (:type %)) default-search-results))
+  (set (remove (comp #{"collection" "metric" "segment"} :type) default-results-with-collection))
   (tt/with-temp* [Collection [{coll-id :id, :as coll} {:name "collection foo collection"}]
                   Card       [_ {:name "card foo card", :collection_id coll-id}]
                   Card       [_ {:name "card foo card2"}]
@@ -127,7 +178,7 @@
 
 ;; Collections a user doesn't have access to are automatically omitted from the results
 (expect
-  default-search-results
+  default-results-with-collection
   (tt/with-temp* [Collection [{coll-id-1 :id, :as coll-1} {:name "collection foo collection"}]
                   Collection [{coll-id-2 :id, :as coll-2} {:name "collection foo collection2"}]
                   Card       [_ {:name "card foo card", :collection_id coll-id-1}]
