@@ -191,23 +191,15 @@ class DefaultLanding extends React.Component {
                                 name={item.getName()}
                                 iconName={item.getIcon()}
                                 iconColor={item.getColor()}
-                                isFavorite={
-                                  item.getFavorited && item.getFavorited()
-                                }
+                                isFavorite={item.favorited}
                                 onFavorite={
                                   item.setFavorited
-                                    ? async () => {
-                                        await item.setFavorited(true);
-                                        reload();
-                                      }
+                                    ? () => item.setFavorited(!item.favorited)
                                     : null
                                 }
                                 onPin={
                                   collection.can_write && item.setPinned
-                                    ? async () => {
-                                        await item.setPinned(true);
-                                        reload();
-                                      }
+                                    ? () => item.setPinned(true)
                                     : null
                                 }
                                 onMove={
@@ -219,10 +211,7 @@ class DefaultLanding extends React.Component {
                                 }
                                 onArchive={
                                   collection.can_write && item.setArchived
-                                    ? async () => {
-                                        await item.setArchived(true);
-                                        reload();
-                                      }
+                                    ? () => item.setArchived(true)
                                     : null
                                 }
                                 selected={selection.has(item)}
