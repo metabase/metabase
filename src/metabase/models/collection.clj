@@ -284,7 +284,17 @@
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
   (let [location->children (group-by :location (db/select [Collection :name :id :location]
-                                                 :location [:like (str (children-location collection) "%")]))
+                                                 {:where
+                                                  [:and
+                                                   [:like :location (str (children-location collection) "%")]
+                                                   ;; Only return the Personal Collection belonging to the Current
+                                                   ;; User, regardless of whether we should actually be allowed to see
+                                                   ;; it (e.g., admins have perms for all Collections). This is done
+                                                   ;; to keep the Root Collection View for admins from getting crazily
+                                                   ;; cluttered with Personal Collections belonging to randos
+                                                   [:or
+                                                    [:= :personal_owner_id nil]
+                                                    [:= :personal_owner_id *current-user-id*]]]}))
         ;; Next, build a function to add children to a given `coll`. This function will recursively call itself to add
         ;; children to each child
         add-children       (fn add-children [coll]
@@ -682,3 +692,14 @@
         ;; condition where some other thread created it in the meantime; try one last time to fetch it
         (catch Throwable _
           (db/select-one Collection :personal_owner_id (u/get-id user-or-id))))))
+
+(defn include-personal-collection-ids
+  "Efficiently hydrate the `:personal_collection_id` property of a sequence of Users. (This is, predictably, the ID of
+  their Personal Collection.)"
+  {:batched-hydrate :personal_collection_id}
+  [users]
+  (when (seq users)
+    (let [user-id->collection-id (db/select-field->id :personal_owner_id Collection
+                                   :personal_owner_id [:in (set (map u/get-id users))])]
+      (for [user users]
+        (assoc user :personal_collection_id (user-id->collection-id (u/get-id user)))))))

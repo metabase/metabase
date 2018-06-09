@@ -306,6 +306,37 @@
       (-> ((user->client :rasta) :get 200 "collection/root")
           (remove-ids-from-collection-detail :keep-collection-id? true)))))
 
+;; So I suppose my Personal Collection should show up when I fetch the Root Collection, shouldn't it...
+(expect
+  {:pulses              []
+   :can_write           false
+   :dashboards          []
+   :name                "Root Collection"
+   :effective_ancestors []
+   :effective_location  nil
+   :id                  "root"
+   :cards               []
+   :effective_children  [{:name "Rasta Toucan's Personal Collection"
+                          :id   (u/get-id (collection/user->personal-collection (user->id :rasta)))}]}
+  (do
+    (collection-test/force-create-personal-collections!)
+    ((user->client :rasta) :get 200 "collection/root")))
+
+;; And for admins, only return our own Personal Collection (!)
+(expect
+  {:pulses              []
+   :can_write           true
+   :dashboards          []
+   :name                "Root Collection"
+   :effective_ancestors []
+   :effective_location  nil
+   :id                  "root"
+   :cards               []
+   :effective_children  [{:name "Crowberto Corv's Personal Collection"
+                          :id   (u/get-id (collection/user->personal-collection (user->id :crowberto)))}]}
+  (do
+    (collection-test/force-create-personal-collections!)
+    ((user->client :crowberto) :get 200 "collection/root")))
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
 

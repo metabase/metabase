@@ -107,17 +107,25 @@
                        ['ViewLog                    :user_id]]]
       (db/delete! model k id))))
 
-(def ^:private default-user-fields
+(def ^:private default-user-columns
+  "Sequence of columns that are normally returned when fetching a User from the DB."
   [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
 
-(def all-user-fields
-  "Seq of all the columns stored for a user"
-  (vec (concat default-user-fields [:google_auth :ldap_auth :is_active :updated_at :login_attributes])))
+(def admin-or-self-visible-columns
+  "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
+  fetching themselves. Needed to power the admin page."
+  (vec (concat default-user-columns [:google_auth :ldap_auth :is_active :updated_at :login_attributes])))
+
+(def non-admin-or-self-visible-columns
+  "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
+  other Users at all? I honestly would prefer they couldn't, but we need to give them a list of emails to power
+  Pulses."
+  [:id :email :first_name :last_name])
 
 (u/strict-extend (class User)
   models/IModel
   (merge models/IModelDefaults
-         {:default-fields (constantly default-user-fields)
+         {:default-fields (constantly default-user-columns)
           :hydration-keys (constantly [:author :creator :user])
           :properties     (constantly {:updated-at-timestamped? true})
           :pre-insert     pre-insert
