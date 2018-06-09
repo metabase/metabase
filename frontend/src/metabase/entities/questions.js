@@ -1,8 +1,11 @@
 /* @flow */
 
+import React from "react";
+
 import { createEntity } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 
+import CollectionSelect from "metabase/containers/CollectionSelect";
 // import visualizations from "metabase/visualizations";
 
 const Questions = createEntity({
@@ -37,7 +40,15 @@ const Questions = createEntity({
   },
 
   form: {
-    fields: [{ name: "name" }, { name: "description", type: "text" }],
+    fields: [
+      { name: "name" },
+      { name: "description", type: "text" },
+      {
+        name: "collection_id",
+        title: "Collection",
+        type: ({ field }) => <CollectionSelect {...field} />,
+      },
+    ],
   },
 });
 

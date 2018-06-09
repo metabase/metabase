@@ -37,8 +37,8 @@ import {
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 
-import CollectionEdit from "metabase/questions/containers/CollectionEdit.jsx";
-import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx";
+import CollectionEdit from "metabase/collections/containers/CollectionEdit.jsx";
+import CollectionCreate from "metabase/collections/containers/CollectionCreate.jsx";
 import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 

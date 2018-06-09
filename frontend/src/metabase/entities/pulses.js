@@ -1,7 +1,10 @@
+import React from "react";
+
 import { createEntity } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 
 import { normal } from "metabase/lib/colors";
+import CollectionSelect from "metabase/containers/CollectionSelect";
 
 const Pulses = createEntity({
   name: "pulses",
@@ -22,6 +25,17 @@ const Pulses = createEntity({
     getUrl: pulse => pulse && Urls.pulse(pulse.id),
     getIcon: pulse => "pulse",
     getColor: pulse => normal.yellow,
+  },
+
+  form: {
+    fields: [
+      { name: "name" },
+      {
+        name: "collection_id",
+        title: "Collection",
+        type: ({ field }) => <CollectionSelect {...field} />,
+      },
+    ],
   },
 });
 

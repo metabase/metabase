@@ -4,6 +4,9 @@ import { createEntity } from "metabase/lib/entities";
 import { normal, getRandomColor } from "metabase/lib/colors";
 import { CollectionSchema } from "metabase/schema";
 
+import React from "react";
+import CollectionSelect from "metabase/containers/CollectionSelect";
+
 import { t } from "c-3po";
 
 const Collections = createEntity({
@@ -17,7 +20,7 @@ const Collections = createEntity({
     setCollection: ({ id }, collection) =>
       Collections.actions.update({
         id,
-        collection_id: collection && collection.id,
+        parent_id: collection && collection.id,
       }),
   },
 
@@ -30,7 +33,7 @@ const Collections = createEntity({
   },
 
   form: {
-    fields: [
+    fields: (values = {}) => [
       {
         name: "name",
         placeholder: "My new fantastic collection",
@@ -49,6 +52,13 @@ const Collections = createEntity({
         type: "color",
         initial: () => getRandomColor(normal),
         validate: color => !color && t`Color is required`,
+      },
+      {
+        name: "parent_id",
+        title: "Parent collection",
+        type: ({ field }) => (
+          <CollectionSelect {...field} collectionId={values.id} />
+        ),
       },
     ],
   },
