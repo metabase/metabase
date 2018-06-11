@@ -1,4 +1,4 @@
-import { Flex } from "rebass";
+import { Flex } from "grid-styled";
 
 const IconWrapper = Flex.extend`
   background: #f4f5f6;

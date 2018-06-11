@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box } from "rebass";
+import { Box } from "grid-styled";
 import { t } from "c-3po";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";

@@ -1,7 +1,7 @@
 import React from "react";
 import cx from "classnames";
 
-import { Box, Flex } from "rebass";
+import { Flex, Box } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 

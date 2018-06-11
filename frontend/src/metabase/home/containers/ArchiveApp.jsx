@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "c-3po";
 
-import { Box, Flex } from "rebass";
+import { Box, Flex } from "grid-styled";
 
 import HeaderWithBack from "metabase/components/HeaderWithBack";
 import Card from "metabase/components/Card";

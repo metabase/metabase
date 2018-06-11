@@ -1,12 +1,12 @@
 import React from "react";
 import { t } from "c-3po";
+
+import { Flex, Box } from "grid-styled";
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
 import IconWrapper from "metabase/components/IconWrapper";
-
-import { Flex, Box, Truncate } from "rebass";
-
 import CheckBox from "metabase/components/CheckBox";
+import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
 import { normal } from "metabase/lib/colors";
@@ -81,7 +81,7 @@ const EntityItem = ({
         )}
       </IconWrapper>
       <h3>
-        <Truncate>{name}</Truncate>
+        <Ellipsified>{name}</Ellipsified>
       </h3>
 
       <Flex

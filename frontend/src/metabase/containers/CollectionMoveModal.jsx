@@ -1,9 +1,10 @@
 import React from "react";
-import { Box, Flex, Subhead } from "rebass";
 import cx from "classnames";
 import _ from "underscore";
 import { t } from "c-3po";
 
+import { Flex, Box } from "grid-styled";
+import Subhead from "metabase/components/Subhead";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 

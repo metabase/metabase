@@ -1,7 +1,14 @@
 import React from "react";
-import { Fixed, Flex } from "rebass";
+import { Box, Flex } from "grid-styled";
 import Card from "metabase/components/Card";
 import { Motion, spring } from "react-motion";
+
+const FixedBottomBar = Box.extend`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+`;
 
 const BulkActionBar = ({ children, showing }) => (
   <Motion
@@ -15,7 +22,7 @@ const BulkActionBar = ({ children, showing }) => (
     }}
   >
     {({ opacity, translateY }) => (
-      <Fixed bottom left right>
+      <FixedBottomBar>
         <Card
           style={{
             borderRadius: 0,
@@ -27,7 +34,7 @@ const BulkActionBar = ({ children, showing }) => (
             {children}
           </Flex>
         </Card>
-      </Fixed>
+      </FixedBottomBar>
     )}
   </Motion>
 );

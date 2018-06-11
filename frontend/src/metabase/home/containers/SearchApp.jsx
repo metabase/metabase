@@ -4,12 +4,13 @@ import { t, jt } from "c-3po";
 import _ from "underscore";
 import Link from "metabase/components/Link";
 
-import { Box, Flex, Subhead, Text } from "rebass";
+import { Box, Flex } from "grid-styled";
 
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
+import Subhead from "metabase/components/Subhead";
 
 export default class SearchApp extends React.Component {
   render() {
