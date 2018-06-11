@@ -9,21 +9,31 @@
              [dashboard :refer [Dashboard]]
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]
-             [pulse :refer [Pulse]]]
+             [pulse :refer [Pulse]]
+             [user :refer [User]]]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
+(defn force-create-personal-collections!
+  "Force the creation of the Personal Collections for our various test users. They are eventually going to get
+  automatically created anyway as soon as those Users' permissions get calculated in `user/permissions-set`; better to
+  do it now so the test results will be consistent."
+  []
+  (doseq [username [:rasta :lucky :crowberto :trashbird]]
+    (collection/user->personal-collection (test-users/user->id username))))
+
 ;; test that we can create a new Collection with valid inputs
 (expect
-  {:name        "My Favorite Cards"
-   :slug        "my_favorite_cards"
-   :description nil
-   :color       "#ABCDEF"
-   :archived    false
-   :location    "/"}
+  {:name              "My Favorite Cards"
+   :slug              "my_favorite_cards"
+   :description       nil
+   :color             "#ABCDEF"
+   :archived          false
+   :location          "/"
+   :personal_owner_id nil}
   (tt/with-temp Collection [collection {:name "My Favorite Cards", :color "#ABCDEF"}]
     (dissoc collection :id)))
 
@@ -40,16 +50,25 @@
   (tt/with-temp* [Collection [_]]
     :ok))
 
-;; test that duplicate names aren't allowed
+;; test that duplicate names ARE allowed
 (expect
-  Exception
+  :ok
   (tt/with-temp* [Collection [_ {:name "My Favorite Cards"}]
                   Collection [_ {:name "My Favorite Cards"}]]
     :ok))
 
-;; things with different names that would cause the same slug shouldn't be allowed either
+;; Duplicate names should result in duplicate slugs...
 (expect
-  Exception
+  ["my_favorite_cards"
+   "my_favorite_cards"]
+  (tt/with-temp* [Collection [collection-1 {:name "My Favorite Cards"}]
+                  Collection [collection-2 {:name "My Favorite Cards"}]]
+    (map :slug [collection-1 collection-2])))
+
+
+;; things with different names that would cause the same slug SHOULD be allowed
+(expect
+  :ok
   (tt/with-temp* [Collection [_ {:name "My Favorite Cards"}]
                   Collection [_ {:name "my_favorite Cards"}]]
     :ok))
@@ -254,6 +273,43 @@
     (collection/update-graph! (assoc-in (graph :clear-revisions? true)
                                         [:groups (u/get-id new-group) :root]
                                         :none))
+    (graph)))
+
+;; Make sure that personal Collections *do not* appear in the Collections graph
+(expect
+  {:revision 0
+   :groups   {(u/get-id (group/all-users)) {:root :none}
+              (u/get-id (group/metabot))   {:root :none}
+              (u/get-id (group/admin))     {:root :write}}}
+  (do
+    (force-create-personal-collections!)
+    (graph :clear-revisions? true)))
+
+;; Make sure that if we try to be sneaky and edit a Personal Collection via the graph, an Exception is thrown
+(expect
+  Exception
+  (do
+    (force-create-personal-collections!)
+    (let [lucky-personal-collection-id (db/select-one-id Collection
+                                         :personal_owner_id (test-users/user->id :lucky))]
+      (collection/update-graph! (assoc-in (graph :clear-revisions? true)
+                                          [:groups (u/get-id (group/all-users)) lucky-personal-collection-id]
+                                          :read)))))
+
+;; double-check that the graph is unchanged
+(expect
+  {:revision 0
+   :groups   {(u/get-id (group/all-users)) {:root :none}
+              (u/get-id (group/metabot))   {:root :none}
+              (u/get-id (group/admin))     {:root :write}}}
+  (do
+    (force-create-personal-collections!)
+    (u/ignore-exceptions
+      (let [lucky-personal-collection-id (db/select-one-id Collection
+                                           :personal_owner_id (test-users/user->id :lucky))]
+        (collection/update-graph! (assoc-in (graph :clear-revisions? true)
+                                            [:groups (u/get-id (group/all-users)) lucky-personal-collection-id]
+                                            :read))))
     (graph)))
 
 
@@ -1033,3 +1089,30 @@
     (db/select-one-field :archived Collection :id (u/get-id e))))
 
 ;; TODO - can you unarchive a Card that is inside an archived Collection??
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Personal Collections                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Make sure we're not allowed to *unarchive* a Personal Collection
+(expect
+  Exception
+  (tt/with-temp User [my-cool-user]
+    (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (db/update! Collection (u/get-id personal-collection) :archived true))))
+
+;; Make sure we're not allowed to *move* a Personal Collection
+(expect
+  Exception
+  (tt/with-temp* [User       [my-cool-user]
+                  Collection [some-other-collection]]
+    (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (db/update! Collection (u/get-id personal-collection) :location (collection/location-path some-other-collection)))))
+
+;; Make sure we're not allowed to change the owner of a Personal Collection
+(expect
+  Exception
+  (tt/with-temp User [my-cool-user]
+    (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (db/update! Collection (u/get-id personal-collection) :personal_owner_id (test-users/user->id :crowberto)))))

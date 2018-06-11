@@ -7,6 +7,8 @@
              [util :as u]]
             [metabase.email.messages :as email]
             [metabase.models
+             [collection :as collection]
+             [permissions :as perms]
              [permissions-group :as group]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
             [metabase.util
@@ -83,11 +85,15 @@
   (cond-> user
     (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
 
+;; `pre-delete` is more for the benefit of tests than anything else since these days we archive users instead of fully
+;; deleting them. In other words the following code is only ever called by tests
 (defn- pre-delete [{:keys [id]}]
-  (binding [perm-membership/*allow-changing-all-users-group-members* true]
+  (binding [perm-membership/*allow-changing-all-users-group-members* true
+            collection/*allow-deleting-personal-collections*         true]
     (doseq [[model k] [['Activity                   :user_id]
                        ['Card                       :creator_id]
                        ['Card                       :made_public_by_id]
+                       ['Collection                 :personal_owner_id]
                        ['Dashboard                  :creator_id]
                        ['Dashboard                  :made_public_by_id]
                        ['Metric                     :creator_id]
@@ -101,17 +107,25 @@
                        ['ViewLog                    :user_id]]]
       (db/delete! model k id))))
 
-(def ^:private default-user-fields
+(def ^:private default-user-columns
+  "Sequence of columns that are normally returned when fetching a User from the DB."
   [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
 
-(def all-user-fields
-  "Seq of all the columns stored for a user"
-  (vec (concat default-user-fields [:google_auth :ldap_auth :is_active :updated_at :login_attributes])))
+(def admin-or-self-visible-columns
+  "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
+  fetching themselves. Needed to power the admin page."
+  (vec (concat default-user-columns [:google_auth :ldap_auth :is_active :updated_at :login_attributes])))
+
+(def non-admin-or-self-visible-columns
+  "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
+  other Users at all? I honestly would prefer they couldn't, but we need to give them a list of emails to power
+  Pulses."
+  [:id :email :first_name :last_name])
 
 (u/strict-extend (class User)
   models/IModel
   (merge models/IModelDefaults
-         {:default-fields (constantly default-user-fields)
+         {:default-fields (constantly default-user-columns)
           :hydration-keys (constantly [:author :creator :user])
           :properties     (constantly {:updated-at-timestamped? true})
           :pre-insert     pre-insert
@@ -134,8 +148,8 @@
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON"
-  {su/KeywordOrString (su/with-api-error-message (s/cond-pre s/Str s/Num)
-                        (tru "value must be a string or number."))})
+  (su/with-api-error-message {su/KeywordOrString (s/cond-pre s/Str s/Num)}
+    (tru "value must be a map with each value either a string or number.")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
@@ -213,8 +227,11 @@
   "Return a set of all permissions object paths that USER-OR-ID has been granted access to."
   [user-or-id]
   (set (when-let [user-id (u/get-id user-or-id)]
-         (map :object (db/query {:select [:p.object]
-                                 :from   [[:permissions_group_membership :pgm]]
-                                 :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
-                                          [:permissions :p]        [:= :p.group_id :pg.id]]
-                                 :where  [:= :pgm.user_id user-id]})))))
+         (cons
+          ;; Current User always gets readwrite perms for their Personal Collection!
+          (perms/collection-readwrite-path (collection/user->personal-collection user-id))
+          (map :object (db/query {:select [:p.object]
+                                  :from   [[:permissions_group_membership :pgm]]
+                                  :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
+                                           [:permissions :p]        [:= :p.group_id :pg.id]]
+                                  :where  [:= :pgm.user_id user-id]}))))))

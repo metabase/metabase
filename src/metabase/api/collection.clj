@@ -20,10 +20,8 @@
              [hydrate :refer [hydrate]]]))
 
 (api/defendpoint GET "/"
-  "Fetch a list of all Collections that the current user has read permissions for.
-  This includes `:can_write`, which means whether the current user is allowed to add or remove Cards to this
-  Collection; keep in mind that regardless of this status you must be a superuser to modify properties of Collections
-  themselves.
+  "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
+  additional property of each Collection so you can tell which of these you have write permissions for.)
 
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`."
