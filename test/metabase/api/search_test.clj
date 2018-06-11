@@ -15,9 +15,11 @@
             [metabase.test.util :as tu]
             [toucan.util.test :as tt]))
 
+(def ^:private default-search-result
+  {:description nil, :id true, :collection_id false, :collection_position nil, :archived false, :favorited nil})
+
 (def ^:private default-search-results
-  (set (map #(merge {:description nil, :id true, :collection_id false,
-                     :collection_position nil, :archived false, :favorited nil} %)
+  (set (map #(merge default-search-result %)
             [{:name "dashboard foo dashboard", :type "dashboard"}
              {:name "collection foo collection", :type "collection", :collection_id true}
              {:name "card foo card", :type "card"}
@@ -40,6 +42,10 @@
   (on-search-types #{"dashboard" "pulse" "card"}
                    #(assoc % :collection_id true)
                    default-search-results))
+
+(def ^:private default-collection-search-results
+  "Includes collection and removes types that don't have a collection"
+  (set (remove (comp #{"collection" "metric" "segment"} :type) default-results-with-collection)))
 
 ;; Basic search, should find 1 of each entity type
 (expect
@@ -140,7 +146,7 @@
 ;; Search within a collection will omit the collection, only return cards/dashboards/pulses in the collection
 (expect
   ;; Metrics and segments don't have a collection, so they shouldn't be included in the results
-  (set (remove (comp #{"collection" "metric" "segment"} :type) default-results-with-collection))
+  default-collection-search-results
   (tt/with-temp* [Collection [{coll-id :id} {:name "collection foo collection"}]
                   Card       [_ {:name "card foo card", :collection_id coll-id}]
                   Card       [_ {:name "card foo card2"}]
@@ -163,7 +169,7 @@
 ;; Users with access to a collection should be able to search it
 (expect
   ;; Metrics and segments don't have a collection, so they shouldn't be included in the results
-  (set (remove (comp #{"collection" "metric" "segment"} :type) default-results-with-collection))
+  default-collection-search-results
   (tt/with-temp* [Collection [{coll-id :id, :as coll} {:name "collection foo collection"}]
                   Card       [_ {:name "card foo card", :collection_id coll-id}]
                   Card       [_ {:name "card foo card2"}]
@@ -205,3 +211,66 @@
                   Metric     [_ {:name "metric foo metric"}]
                   Segment    [_ {:name "segment foo segment"}]]
     (tu/boolean-ids-and-timestamps (set ((user->client :rasta) :get 200 "search", :q "foo", :collection "root")))))
+
+;; Search within a collection will omit the collection, but include it's direct child collections along with the
+;; cards/dashboards/pulses in that collection. Analogy is collections/cards/dashboards etc are files and this is like
+;; an `ls`. Should only return one level deep
+(expect
+  (set (concat default-collection-search-results
+               ;; foo2 and foo3 are direct children of foo and so should be returned. foo4 is a grandchild and should not
+               (set (map #(merge default-search-result {:collection_id true, :type "collection", :name %})
+                         ["collection foo2 collection" "collection foo3 collection"]))))
+  (tt/with-temp* [Collection [{coll-id-1 :id
+                               :as coll-1}   {:name "collection foo collection"}]
+                  Collection [coll-2         {:name "collection foo2 collection"
+                                              :location (coll/location-path coll-1)}]
+                  Collection [coll-3         {:name "collection foo3 collection"
+                                              :location (coll/location-path coll-1)}]
+                  Collection [coll-4         {:name "collection foo4 collection"
+                                              :location (coll/location-path coll-3)}]
+                  Card       [_ {:name "card foo card", :collection_id coll-id-1}]
+                  Card       [_ {:name "card foo card2"}]
+                  Dashboard  [_ {:name "dashboard foo dashboard", :collection_id coll-id-1}]
+                  Dashboard  [_ {:name "dashboard bar dashboard2"}]
+                  Pulse      [_ {:name "pulse foo pulse", :collection_id coll-id-1}]
+                  Pulse      [_ {:name "pulse foo pulse2"}]
+                  Metric     [_ {:name "metric foo metric"}]
+                  Segment    [_ {:name "segment foo segment"}]]
+    (tu/boolean-ids-and-timestamps
+     (set ((user->client :crowberto) :get 200 "search", :q "foo", :collection coll-id-1)))))
+
+;; Child collections a user doesn't have access to are automatically omitted from the results
+(expect
+  (set (conj default-collection-search-results
+             (merge default-search-result {:collection_id true, :type "collection", :name "collection foo2 collection"})))
+  (tt/with-temp* [Collection [{coll-id-1 :id
+                               :as coll-1}   {:name "collection foo collection"}]
+                  Collection [coll-2         {:name "collection foo2 collection"
+                                              :location (coll/location-path coll-1)}]
+                  Collection [coll-3         {:name "collection foo3 collection"
+                                              :location (coll/location-path coll-1)}]
+                  Card       [_ {:name "card foo card", :collection_id coll-id-1}]
+                  Dashboard  [_ {:name "dashboard foo dashboard", :collection_id coll-id-1}]
+                  Pulse      [_ {:name "pulse foo pulse", :collection_id coll-id-1}]
+                  Metric     [_ {:name "metric foo metric"}]
+                  Segment    [_ {:name "segment foo segment"}]]
+    (perms/grant-collection-read-permissions! (group/all-users) coll-1)
+    (perms/grant-collection-read-permissions! (group/all-users) coll-2)
+    (tu/boolean-ids-and-timestamps
+     (set ((user->client :rasta) :get 200 "search", :q "foo" :collection coll-id-1)))))
+
+;; Searching for a root collection, will also include top-level "child" collections in the result
+(expect
+  (set (map #(merge default-search-result {:collection_id true, :type "collection", :name %})
+            ["collection foo collection" "collection foo2 collection" "collection foo3 collection"]))
+  (tt/with-temp* [Collection [{coll-id-1 :id
+                               :as coll-1}   {:name "collection foo collection"}]
+                  Collection [coll-2         {:name "collection foo2 collection"}]
+                  Collection [coll-3         {:name "collection foo3 collection"}]
+                  Card       [_ {:name "card foo card", :collection_id coll-id-1}]
+                  Dashboard  [_ {:name "dashboard foo dashboard", :collection_id coll-id-1}]
+                  Pulse      [_ {:name "pulse foo pulse", :collection_id coll-id-1}]
+                  Metric     [_ {:name "metric foo metric"}]
+                  Segment    [_ {:name "segment foo segment"}]]
+    (tu/boolean-ids-and-timestamps
+     (set ((user->client :crowberto) :get 200 "search", :q "foo" :collection "root")))))
