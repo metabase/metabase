@@ -180,7 +180,7 @@ class DefaultLanding extends React.Component {
                         </Box>
                       )}
                     </Flex>
-                    <Card>
+                    <Card mb={selected.length > 0 ? 5 : 2}>
                       {other.map(item => {
                         return (
                           <Box key={item.type + item.id}>
@@ -230,32 +230,41 @@ class DefaultLanding extends React.Component {
               }}
             </CollectionLoader>
             <BulkActionBar showing={selected.length > 0}>
-              <Box px={2}>
-                <SelectionControls {...this.props} />
-              </Box>
-              <BulkActionControls
-                onArchive={
-                  _.all(selected, item => item.setArchived)
-                    ? async () => {
-                        try {
-                          await Promise.all(
-                            selected.map(item => item.setArchived(true)),
-                          );
-                        } finally {
-                          reload();
-                        }
-                      }
-                    : null
-                }
-                onMove={
-                  _.all(selected, item => item.setCollection)
-                    ? () => {
-                        this.setState({ moveItems: selected });
-                      }
-                    : null
-                }
-              />
-              <Box ml="auto">{t`${selected.length} items selected`}</Box>
+              <Flex align="center" w="100%">
+                {showCollectionList && (
+                  <Box w={1 / 3}>
+                    <span className="hidden">spacer</span>
+                  </Box>
+                )}
+                <Flex w={2 / 3} mx={showCollectionList ? 3 : 0} align="center">
+                  <Box ml={showCollectionList ? 3 : 2}>
+                    <SelectionControls {...this.props} />
+                  </Box>
+                  <BulkActionControls
+                    onArchive={
+                      _.all(selected, item => item.setArchived)
+                        ? async () => {
+                            try {
+                              await Promise.all(
+                                selected.map(item => item.setArchived(true)),
+                              );
+                            } finally {
+                              reload();
+                            }
+                          }
+                        : null
+                    }
+                    onMove={
+                      _.all(selected, item => item.setCollection)
+                        ? () => {
+                            this.setState({ moveItems: selected });
+                          }
+                        : null
+                    }
+                  />
+                  <Box ml="auto">{t`${selected.length} items selected`}</Box>
+                </Flex>
+              </Flex>
             </BulkActionBar>
           </Box>
         </Box>
