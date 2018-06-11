@@ -35,7 +35,6 @@ const EntityItem = ({
   selected,
   onToggleSelected,
   selectable,
-  showSelect,
 }) => {
   const actions = [
     onPin && {
@@ -73,7 +72,7 @@ const EntityItem = ({
       >
         {selectable ? (
           <Swapper
-            startSwapped={showSelect}
+            startSwapped={selected}
             defaultElement={<Icon name={iconName} color={iconColor} />}
             swappedElement={<CheckBox checked={selected} />}
           />

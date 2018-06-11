@@ -17,7 +17,6 @@ const BulkActionBar = ({ children, showing }) => (
     {({ opacity, translateY }) => (
       <Fixed bottom left right>
         <Card
-          dark
           style={{
             borderRadius: 0,
             opacity,

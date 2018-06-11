@@ -184,7 +184,6 @@ class DefaultLanding extends React.Component {
                           <Box key={item.type + item.id}>
                             <Link to={item.getUrl()}>
                               <EntityItem
-                                showSelect={selected.length > 0}
                                 selectable
                                 item={item}
                                 type={item.type}
@@ -229,7 +228,9 @@ class DefaultLanding extends React.Component {
               }}
             </CollectionLoader>
             <BulkActionBar showing={selected.length > 0}>
-              <SelectionControls {...this.props} />
+              <Box px={2}>
+                <SelectionControls {...this.props} />
+              </Box>
               <BulkActionControls
                 onArchive={
                   _.all(selected, item => item.setArchived)
@@ -285,7 +286,7 @@ class DefaultLanding extends React.Component {
 }
 
 const BulkActionControls = ({ onArchive, onMove }) => (
-  <Box>
+  <Box ml={1}>
     <Button
       ml={1}
       medium
