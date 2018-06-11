@@ -19,36 +19,46 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
+(def ^:private default-columns
+  [:id :name :description :archived])
+
 (def ^:private card-columns-without-type
-  [:id :name :description :archived :collection_id :collection_position [:card_fav.id :favorited]])
+  (concat default-columns
+          [:collection_id :collection_position [:card_fav.id :favorited]]))
 
 (def ^:private dashboard-columns-without-type
-  [:id :name :description :archived :collection_id :collection_position [:dashboard_fav.id :favorited]])
+  (concat default-columns
+          [:collection_id :collection_position [:dashboard_fav.id :favorited]]))
 
 (def ^:private pulse-columns-without-type
   [:id :name :collection_id])
 
 (def ^:private collection-columns-without-type
-  [:id [:id :collection_id] :name :description :archived])
+  (concat default-columns
+          [[:id :collection_id]]))
 
 (def ^:private segment-columns-without-type
-  [:id :name :description :archived])
+  default-columns)
 
 (def ^:private metric-columns-without-type
-  [:id :name :description :archived])
+  default-columns)
+
+(defn- ->column
+  "Returns the column name. If the column is aliased, i.e. [`:original_namd` `:aliased_name`], return the aliased
+  column name"
+  [column-or-aliased]
+  (if (sequential? column-or-aliased)
+    (second column-or-aliased)
+    column-or-aliased))
 
 (def ^:private search-columns-without-type
   "The columns found in search query clauses except type. Type is added automatically"
-  (vec (set (map (fn [column-or-aliased]
-                   (if (sequential? column-or-aliased)
-                     (second column-or-aliased)
-                     column-or-aliased))
-                 (concat card-columns-without-type
-                         dashboard-columns-without-type
-                         pulse-columns-without-type
-                         collection-columns-without-type
-                         segment-columns-without-type
-                         metric-columns-without-type)))))
+  (set (map ->column (concat card-columns-without-type
+                             dashboard-columns-without-type
+                             pulse-columns-without-type
+                             collection-columns-without-type
+                             segment-columns-without-type
+                             metric-columns-without-type))))
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
@@ -57,31 +67,35 @@
    :collection          (s/maybe su/IntGreaterThanZero)
    :visible-collections coll/VisibleCollections})
 
+(defn- make-canonical-columns
+  "Returns a seq of canonicalized list of columns for the search query with the given `entity-type`. Will return
+  column names prefixed with the `entity-type` name so that it can be used in criteria. Projects a nil for columns the
+  `entity-type` doesn't have and doesn't modify aliases."
+  [entity-type col-name->columns]
+  (concat (for [search-col search-columns-without-type
+                :let [maybe-aliased-col (get col-name->columns search-col)]]
+            (cond
+              ;; This is an aliased column, no need to include the table alias
+              (sequential? maybe-aliased-col)
+              maybe-aliased-col
+
+              ;; This is a column reference, need to add the table alias to the column
+              maybe-aliased-col
+              (keyword (str entity-type "." (name maybe-aliased-col)))
+
+              ;; This entity is missing the column, project a null for that column value
+              :else
+              [nil search-col]))
+          [[(hx/literal entity-type) :type]]))
+
 (defn- merge-search-select
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take `entity-columns` and will inject constant `nil` values for any column missing
   from `entity-columns` but found in `search-columns`"
   [query-map entity-type entity-columns]
-  (let [entity-columns (u/key-by (fn [col]
-                                   (if (vector? col)
-                                     (second col)
-                                     col))
-                         entity-columns)
-        cols-or-nils   (for [search-col search-columns-without-type
-                             :let [maybe-aliased-col (get entity-columns search-col)]]
-                         (cond
-                           ;; This is an aliased column, no need to include the table alias
-                           (vector? maybe-aliased-col)
-                           maybe-aliased-col
-
-                           ;; This is a column reference, need to add the table alias to the column
-                           maybe-aliased-col
-                           (keyword (str entity-type "." (name maybe-aliased-col)))
-
-                           ;; This entity is missing the column, project a null for that column value
-                           :else
-                           [nil search-col]))]
-    (apply h/merge-select query-map (concat cols-or-nils [[(hx/literal entity-type) :type]]))))
+  (let [col-name->column (u/key-by ->column entity-columns)
+        cols-or-nils     (make-canonical-columns entity-type col-name->column)]
+    (apply h/merge-select query-map (concat cols-or-nils ))))
 
 (s/defn ^:private merge-name-search
   "Add case-insensitive name query criteria to `query-map`"
