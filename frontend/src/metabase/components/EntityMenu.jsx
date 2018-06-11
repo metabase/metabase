@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import { Motion, spring } from "react-motion";
+import cx from "classnames";
 
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
@@ -17,6 +18,7 @@ type EntityMenuOption = {
 type Props = {
   items: Array<EntityMenuOption>,
   triggerIcon: string,
+  className?: string,
 };
 
 class EntityMenu extends Component {
@@ -44,10 +46,10 @@ class EntityMenu extends Component {
   };
 
   render() {
-    const { items, triggerIcon } = this.props;
+    const { items, triggerIcon, className } = this.props;
     const { open, menuItemContent } = this.state;
     return (
-      <div className="relative">
+      <div className={cx("relative", className)}>
         <EntityMenuTrigger
           icon={triggerIcon}
           onClick={this.toggleMenu}

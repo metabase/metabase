@@ -84,21 +84,21 @@ const EntityItem = ({
         <Ellipsified>{name}</Ellipsified>
       </h3>
 
-      <Flex
-        ml="auto"
-        align="center"
-        className="hover-child"
-        onClick={e => e.preventDefault()}
-      >
+      <Flex ml="auto" align="center" onClick={e => e.preventDefault()}>
         {(onFavorite || isFavorite) && (
           <Icon
             name={isFavorite ? "star" : "staroutline"}
             mr={1}
+            className={isFavorite ? "text-gold" : "hover-child"}
             onClick={onFavorite}
           />
         )}
         {actions.length > 0 && (
-          <EntityMenu triggerIcon="ellipsis" items={actions} />
+          <EntityMenu
+            className="hover-child"
+            triggerIcon="ellipsis"
+            items={actions}
+          />
         )}
       </Flex>
     </EntityItemWrapper>
