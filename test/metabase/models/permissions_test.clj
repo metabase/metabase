@@ -1,6 +1,7 @@
 (ns metabase.models.permissions-test
   (:require [expectations :refer :all]
             [metabase.models
+             [collection :as collection]
              [database :refer [Database]]
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]
@@ -146,6 +147,23 @@
 (expect Exception (perms/object-path 1 "public" false))
 (expect Exception (perms/object-path 1 "public"{}))
 (expect Exception (perms/object-path 1 "public"[]))
+
+;;; ---------------------------------- Generating permissions paths for Collections ----------------------------------
+
+(expect "/collection/1/read/" (perms/collection-read-path 1))
+(expect "/collection/1/read/" (perms/collection-read-path {:id 1}))
+(expect Exception             (perms/collection-read-path {}))
+(expect Exception             (perms/collection-read-path nil))
+(expect Exception             (perms/collection-read-path "1"))
+
+(expect "/collection/1/" (perms/collection-readwrite-path 1))
+(expect "/collection/1/" (perms/collection-readwrite-path {:id 1}))
+(expect Exception        (perms/collection-readwrite-path {}))
+(expect Exception        (perms/collection-readwrite-path nil))
+(expect Exception        (perms/collection-readwrite-path "1"))
+
+(expect "/collection/root/read/" (perms/collection-read-path      collection/root-collection))
+(expect "/collection/root/"      (perms/collection-readwrite-path collection/root-collection))
 
 
 ;;; ------------------------------------------- is-permissions-for-object? -------------------------------------------
