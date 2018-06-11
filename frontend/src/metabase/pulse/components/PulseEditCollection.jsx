@@ -1,5 +1,5 @@
 import React from "react";
-import { Box } from "rebass";
+import { Box } from "grid-styled";
 import { t } from "c-3po";
 
 import Select, { Option } from "metabase/components/Select";

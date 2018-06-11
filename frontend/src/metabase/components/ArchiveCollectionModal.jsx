@@ -1,6 +1,6 @@
 import React from "react";
 import { connect } from "react-redux";
-import { Box, Flex, Text } from "rebass";
+import { Box, Flex } from "grid-styled";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "c-3po";

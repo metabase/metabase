@@ -1,6 +1,8 @@
 import React from "react";
 
-import { Flex, Box, Truncate } from "rebass";
+import { Flex, Box } from "grid-styled";
+
+import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
 import { normal } from "metabase/lib/colors";
@@ -29,7 +31,7 @@ const EntityItem = ({ name, iconName, iconColor, item, onPin }) => {
         <Icon name={iconName} color={iconColor} />
       </IconWrapper>
       <h3>
-        <Truncate>{name}</Truncate>
+        <Ellipsified>{name}</Ellipsified>
       </h3>
 
       {onPin && (
