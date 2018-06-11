@@ -23,9 +23,9 @@
 
 (defn- can-connect? [details]
   (with-mongo-connection [^DB conn, details]
-    (= (-> (cmd/db-stats conn)
-           (conv/from-db-object :keywordize)
-           :ok)
+    (= (float (-> (cmd/db-stats conn)
+                  (conv/from-db-object :keywordize)
+                  :ok))
        1.0)))
 
 (defn- humanize-connection-error-message [message]
