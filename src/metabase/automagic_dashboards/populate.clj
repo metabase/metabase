@@ -244,7 +244,7 @@
          dashboard     {:name              title
                         :transient_name    (or transient_title title)
                         :transient_filters refinements
-                        :param_fields      (magic.filters/filter-referenced-fields refinements)
+                        :param_fields      (filters/filter-referenced-fields refinements)
                         :description       description
                         :creator_id        api/*current-user-id*
                         :parameters        []}
