@@ -433,7 +433,7 @@
   ((user->client :crowberto) :put 200 (str "collection/" (u/get-id collection))
    {:name "My Beautiful Collection", :color "#ABCDEF"}))
 
-;; check that non-admins aren't allowed to update a collection
+;; check that users without write perms aren't allowed to update a Collection
 (expect
   "You don't have permissions to do that."
   (tt/with-temp Collection [collection]
@@ -470,6 +470,25 @@
        :emails (et/regex-email-bodies #"the question was archived by Crowberto Corv")
        :pulse  (Pulse pulse-id)))))
 
+;; I shouldn't be allowed to archive a Collection without proper perms
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp Collection [collection]
+    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection))
+     {:archived true})))
+
+;; Perms checking should be recursive as well...
+;;
+;; Create Collections A > B, and grant permissions for A. You should not be allowed to archive A because you would
+;; also need perms for B
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Collection [collection-a]
+                  Collection [collection-b {:location (collection/children-location collection-a)}]]
+    (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
+    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
+     {:archived true})))
+
 ;; Can I *change* the `location` of a Collection? (i.e. move it into a different parent Colleciton)
 (expect
   {:id                true
@@ -485,3 +504,64 @@
          {:parent_id (u/get-id b)})
         (update :location collection-test/location-path-ids->names)
         (update :id integer?))))
+
+;; I shouldn't be allowed to move the Collection without proper perms.
+;; If I want to move A into B, I should need permissions for both A and B
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Collection [collection-a]
+                  Collection [collection-b]]
+    (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
+    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
+     {:parent_id (u/get-id collection-b)})))
+
+;; Perms checking should be recursive as well...
+;;
+;; Create A, B, and C; B is a child of A. Grant perms for A and B. Moving A into C should fail because we need perms
+;; for C:
+;; (collections with readwrite perms marked below with a `*`)
+;;
+;; A* -> B*  ==>  C -> A -> B
+;; C
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Collection [collection-a]
+                  Collection [collection-b {:location (collection/children-location collection-a)}]
+                  Collection [collection-c]]
+    (doseq [collection [collection-a collection-b]]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
+    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
+     {:parent_id (u/get-id collection-c)})))
+
+
+;; Create A, B, and C; B is a child of A. Grant perms for A and C. Moving A into C should fail because we need perms
+;; for B:
+;; (collections with readwrite perms marked below with a `*`)
+;;
+;; A* -> B  ==>  C -> A -> B
+;; C*
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Collection [collection-a]
+                  Collection [collection-b {:location (collection/children-location collection-a)}]
+                  Collection [collection-c]]
+    (doseq [collection [collection-a collection-c]]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
+    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
+     {:parent_id (u/get-id collection-c)})))
+
+;; Create A, B, and C; B is a child of A. Grant perms for B and C. Moving A into C should fail because we need perms
+;; for A:
+;; (collections with readwrite perms marked below with a `*`)
+;;
+;; A -> B*  ==>  C -> A -> B
+;; C*
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Collection [collection-a]
+                  Collection [collection-b {:location (collection/children-location collection-a)}]
+                  Collection [collection-c]]
+    (doseq [collection [collection-b collection-c]]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
+    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
+     {:parent_id (u/get-id collection-c)})))

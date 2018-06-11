@@ -798,6 +798,194 @@
     (with-current-user-perms-for-collections [b d e f g]
       (effective-children collection/root-collection))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                Nested Collections: Perms for Moving & Archiving                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; The tests in this section continue to use the Collection hierarchy above. The hierarchy doesn't get modified here,
+;; so it's the same in each test:
+;;
+;;    +-> B
+;;    |
+;; A -+-> C -+-> D -> E
+;;           |
+;;           +-> F -> G
+
+(defn- perms-path-ids->names
+  "Given a set of permissions and the `collections` map returned by the `with-collection-hierarchy` macro above, replace
+  the numeric IDs in the permissions paths with corresponding Collection names, making our tests easier to read."
+  [collections perms-set]
+  ;; first build a function that will replace any instances of numeric IDs with their respective names
+  ;; e.g. /123/ would become something like /A/
+  ;; Do this by composing together a series of functions that will handle one string replacement for each ID + name
+  ;; pair
+  (let [replace-ids-with-names (reduce comp (for [{:keys [id name]} (vals collections)]
+                                              #(str/replace % (re-pattern (format "/%d/" id)) (str "/" name "/"))))]
+    (set (for [perms-path perms-set]
+           (replace-ids-with-names perms-path)))))
+
+;;; ---------------------------------------------- Perms for Archiving -----------------------------------------------
+
+;; To Archive A, you should need *write* perms for A and all of its descendants...
+(expect
+  #{"/collection/A/"
+    "/collection/B/"
+    "/collection/C/"
+    "/collection/D/"
+    "/collection/E/"
+    "/collection/F/"
+    "/collection/G/"}
+  (with-collection-hierarchy [{:keys [a], :as collections}]
+    (->> (collection/perms-for-archiving a)
+         (perms-path-ids->names collections))))
+
+;; Now let's move down a level. To archive B, you should only need permissions for B itself, since it doesn't
+;; have any descendants
+(expect
+  #{"/collection/B/"}
+  (with-collection-hierarchy [{:keys [b], :as collections}]
+    (->> (collection/perms-for-archiving b)
+         (perms-path-ids->names collections))))
+
+;; but for C, you should need perms for C, D, E, F, and G
+(expect
+  #{"/collection/C/"
+    "/collection/D/"
+    "/collection/E/"
+    "/collection/F/"
+    "/collection/G/"}
+  (with-collection-hierarchy [{:keys [c], :as collections}]
+    (->> (collection/perms-for-archiving c)
+         (perms-path-ids->names collections))))
+
+;; For D you should need D + E
+(expect
+  #{"/collection/D/"
+    "/collection/E/"}
+  (with-collection-hierarchy [{:keys [d], :as collections}]
+    (->> (collection/perms-for-archiving d)
+         (perms-path-ids->names collections))))
+
+;; If you try to calculate permissions to archive the Root Collection, throw an Exception! Because you can't do
+;; that...
+(expect
+  Exception
+  (collection/perms-for-archiving collection/root-collection))
+
+;; Let's make sure we get an Exception when we try to archive a Personal Collection
+(expect
+  Exception
+  (collection/perms-for-archiving (collection/user->personal-collection (test-users/fetch-user :lucky))))
+
+;; also you should get an Exception if you try to pull a fast one on use and pass in some sort of invalid input...
+(expect Exception (collection/perms-for-archiving nil))
+(expect Exception (collection/perms-for-archiving {}))
+(expect Exception (collection/perms-for-archiving 1))
+
+
+;;; ------------------------------------------------ Perms for Moving ------------------------------------------------
+
+;; `*` marks the things that require permissions in charts below!
+
+;; If we want to move B into C, we should need perms for B and C. B because it is being moved; C we are moving
+;; something into it. Note that we do NOT require perms for A
+;;
+;;    +-> B                             +-> B*
+;;    |                                 |
+;; A -+-> C -+-> D -> E  ===>  A -> C* -+-> D -> E
+;;           |                          |
+;;           +-> F -> G                 +-> F -> G
+
+(expect
+  #{"/collection/B/"
+    "/collection/C/"}
+  (with-collection-hierarchy [{:keys [b c], :as collections}]
+    (->> (collection/perms-for-moving b c)
+         (perms-path-ids->names collections))))
+
+;; Ok, now let's try moving something with descendants. If we move C into B, we need perms for C and all its
+;; descendants, and B, since it's the new parent; we do not need perms for A, the old parent
+;;
+;;    +-> B
+;;    |
+;; A -+-> C -+-> D -> E  ===>  A -> B* -> C* -+-> D* -> E*
+;;           |                                |
+;;           +-> F -> G                       +-> F* -> G*
+(expect
+  #{"/collection/B/"
+    "/collection/C/"
+    "/collection/D/"
+    "/collection/E/"
+    "/collection/F/"
+    "/collection/G/"}
+  (with-collection-hierarchy [{:keys [b c], :as collections}]
+    (->> (collection/perms-for-moving c b)
+         (perms-path-ids->names collections))))
+
+;; Ok, now how about moving B into the Root Collection?
+;;
+;;    +-> B                    B* [and Root*]
+;;    |
+;; A -+-> C -+-> D -> E  ===>  A -> C -+-> D -> E
+;;           |                         |
+;;           +-> F -> G                +-> F -> G
+(expect
+  #{"/collection/root/"
+    "/collection/B/"}
+  (with-collection-hierarchy [{:keys [b], :as collections}]
+    (->> (collection/perms-for-moving b collection/root-collection)
+         (perms-path-ids->names collections))))
+
+;; How about moving C into the Root Collection?
+;;
+;;    +-> B                    A -> B
+;;    |
+;; A -+-> C -+-> D -> E  ===>  C* -+-> D* -> E* [and Root*]
+;;           |                     |
+;;           +-> F -> G            +-> F* -> G*
+(expect
+  #{"/collection/root/"
+    "/collection/C/"
+    "/collection/D/"
+    "/collection/E/"
+    "/collection/F/"
+    "/collection/G/"}
+  (with-collection-hierarchy [{:keys [c], :as collections}]
+    (->> (collection/perms-for-moving c collection/root-collection)
+         (perms-path-ids->names collections))))
+
+;; If you try to calculate permissions to move or archive the Root Collection, throw an Exception! Because you can't
+;; do that...
+(expect
+  Exception
+  (with-collection-hierarchy [{:keys [a]}]
+    (collection/perms-for-moving collection/root-collection a)))
+
+;; You should also see an Exception if you try to move a Collection into itself or into one its descendants...
+(expect
+  Exception
+  (with-collection-hierarchy [{:keys [b]}]
+    (collection/perms-for-moving b b)))
+
+(expect
+  Exception
+  (with-collection-hierarchy [{:keys [a b]}]
+    (collection/perms-for-moving a b)))
+
+;; Let's make sure we get an Exception when we try to *move* a Collection
+(expect
+  Exception
+  (with-collection-hierarchy [{:keys [a]}]
+    (collection/perms-for-moving (collection/user->personal-collection (test-users/fetch-user :lucky)) a)))
+
+;; also you should get an Exception if you try to pull a fast one on use and pass in some sort of invalid input...
+(expect Exception (collection/perms-for-moving {:location "/"} nil))
+(expect Exception (collection/perms-for-moving {:location "/"} {}))
+(expect Exception (collection/perms-for-moving {:location "/"} 1))
+(expect Exception (collection/perms-for-moving nil {:location "/"}))
+(expect Exception (collection/perms-for-moving {}  {:location "/"}))
+(expect Exception (collection/perms-for-moving 1   {:location "/"}))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Nested Collections: Moving Collections                                     |
