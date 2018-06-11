@@ -32,11 +32,11 @@ class Overworld extends React.Component {
   render() {
     return (
       <Box px={4}>
-        <Flex my={3} align="center">
+        <Flex mt={3} mb={1} align="center">
           <MetabotLogo />
           <Box ml={2}>
             <Subhead>{Greeting.sayHello(this.props.user.first_name)}</Subhead>
-            <p>{t`Don't tell anyone but you're my favorite`}</p>
+            <p className="text-paragraph m0 text-grey-3">{t`Don't tell anyone but you're my favorite`}</p>
           </Box>
         </Flex>
         <CollectionItemsLoader collectionId="root" reload>
@@ -49,9 +49,6 @@ class Overworld extends React.Component {
               return (
                 <CandidateListLoader>
                   {({ candidates, sampleCandidates, isSample }) => {
-                    if (!candidates) {
-                      <Box>Hey?</Box>;
-                    }
                     return (
                       <ExplorePane
                         candidates={candidates}
