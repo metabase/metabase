@@ -1,6 +1,6 @@
 /* @flow */
 
-import { createEntity } from "metabase/lib/entities";
+import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 import { assocIn } from "icepick";
@@ -20,15 +20,25 @@ const Dashboards = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id }, archived) =>
-      Dashboards.actions.update({ id, archived }),
-    setCollection: ({ id }, collection) =>
-      Dashboards.actions.update({
-        id,
-        collection_id: collection && collection.id,
-      }),
-    setPinned: ({ id }, pinned) =>
-      Dashboards.actions.update({ id, collection_position: pinned ? 1 : null }),
+    @undo("dashboard", (o, archived) => (archived ? "archived" : "unarchived"))
+    setArchived: ({ id }, archived, opts) =>
+      Dashboards.actions.update({ id }, { archived }, opts),
+
+    @undo("dashboard", "moved")
+    setCollection: ({ id }, collection, opts) =>
+      Dashboards.actions.update(
+        { id },
+        { collection_id: collection && collection.id },
+        opts,
+      ),
+
+    setPinned: ({ id }, pinned, opts) =>
+      Dashboards.actions.update(
+        { id },
+        { collection_position: pinned ? 1 : null },
+        opts,
+      ),
+
     setFavorited: async ({ id }, favorited) => {
       if (favorited) {
         await Dashboards.api.favorite({ id });

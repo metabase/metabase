@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import { createEntity } from "metabase/lib/entities";
+import { createEntity, undo } from "metabase/lib/entities";
 import { normal, getRandomColor } from "metabase/lib/colors";
 import { CollectionSchema } from "metabase/schema";
 
@@ -15,8 +15,11 @@ const Collections = createEntity({
   schema: CollectionSchema,
 
   objectActions: {
+    @undo("collection", (o, archived) => (archived ? "archived" : "unarchived"))
     setArchived: ({ id }, archived) =>
       Collections.actions.update({ id, archived }),
+
+    @undo("collection", "moved")
     setCollection: ({ id }, collection) =>
       Collections.actions.update({
         id,

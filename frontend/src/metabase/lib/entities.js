@@ -6,13 +6,16 @@ import {
   fetchData,
   handleEntities,
 } from "metabase/lib/redux";
+
 import { setRequestState } from "metabase/redux/requests";
+import { addUndo } from "metabase/redux/undo";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
 import { createSelector } from "reselect";
 import { normalize, denormalize, schema } from "normalizr";
-import { getIn, dissocIn } from "icepick";
+import { getIn, dissocIn, merge } from "icepick";
+import _ from "underscore";
 
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
 //
@@ -175,7 +178,14 @@ export function createEntity(def: EntityDefinition): Entity {
 
     update: createThunkAction(
       UPDATE_ACTION,
-      (entityObject, updatedObject = null) => async (dispatch, getState) => {
+      (entityObject, updatedObject = null, { notify } = {}) => async (
+        dispatch,
+        getState,
+      ) => {
+        // save the original object for undo
+        const originalObject = entity.selectors.getObject(getState(), {
+          entityId: entityObject.id,
+        });
         // If a second object is provided just take the id from the first and
         // update it with all the properties in the second
         // NOTE: this is so that the object.update(updatedObject) method on
@@ -191,6 +201,26 @@ export function createEntity(def: EntityDefinition): Entity {
             entity.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));
+          if (notify) {
+            if (notify.undo) {
+              dispatch(
+                addUndo({
+                  actions: [
+                    entity.objectActions.update(
+                      entityObject,
+                      // pick only the attributes that were updated
+                      _.pick(originalObject, ..._.keys(updatedObject)),
+                      // don't show an undo for the undo
+                      { notify: false },
+                    ),
+                  ],
+                  ...notify,
+                }),
+              );
+            } else {
+              dispatch(addUndo(notify));
+            }
+          }
           return result;
         } catch (error) {
           console.error(`${UPDATE_ACTION} failed:`, error);
@@ -479,4 +509,36 @@ export function combineEntities(entities: Entity[]): CombinedEntities {
     reducer: combineReducers(reducersMap),
     entitiesRequestsReducer,
   };
+}
+
+// OBJECT ACTION DECORATORS
+
+// merges in options to give an object action a notification
+export function notify(subject, verb, undo = false) {
+  return function(target, name, descriptor) {
+    // https://github.com/loganfsmyth/babel-plugin-transform-decorators-legacy/issues/34
+    const original = descriptor.initializer
+      ? descriptor.initializer()
+      : descriptor.value;
+    delete descriptor.initializer;
+    descriptor.value = function(o, arg, opts = {}) {
+      opts = merge(
+        {
+          notify: {
+            subject: typeof subject === "function" ? subject(o, arg) : subject,
+            verb: typeof verb === "function" ? verb(o, arg) : verb,
+            undo,
+          },
+        },
+        opts,
+      );
+      console.log("opts", opts);
+      return original(o, arg, opts);
+    };
+  };
+}
+
+// merges in options to give make object action undo-able
+export function undo(subject, verb) {
+  return notify(subject, verb, true);
 }

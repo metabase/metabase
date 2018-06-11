@@ -8,7 +8,7 @@ import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 
 import { DashboardApi } from "metabase/services";
-import { addUndo, createUndo } from "metabase/redux/undo";
+import { addUndo } from "metabase/redux/undo";
 
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
@@ -19,7 +19,6 @@ import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
 const mapDispatchToProps = {
   addUndo,
-  createUndo,
 };
 
 const DashbordMoveToast = ({ collection }) => (
@@ -47,7 +46,7 @@ class DashboardMoveModal extends React.Component {
   };
 
   async _moveDashboard() {
-    const { addUndo, createUndo } = this.props;
+    const { addUndo } = this.props;
     const { selectedCollection } = this.state;
 
     try {
@@ -55,12 +54,9 @@ class DashboardMoveModal extends React.Component {
         id: this.props.params.dashboardId,
         collection_id: this.state.selectedCollection.id,
       });
-      addUndo(
-        createUndo({
-          type: "dashboard-move-confirm",
-          message: <DashbordMoveToast collection={selectedCollection} />,
-        }),
-      );
+      addUndo({
+        message: <DashbordMoveToast collection={selectedCollection} />,
+      });
       this.props.onClose();
     } catch (error) {
       this.setState({ error, moving: false });

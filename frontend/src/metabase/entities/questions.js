@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { createEntity } from "metabase/lib/entities";
+import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { assocIn } from "icepick";
 
@@ -23,15 +23,25 @@ const Questions = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id }, archived) =>
-      Questions.actions.update({ id, archived }),
-    setCollection: ({ id }, collection) =>
-      Questions.actions.update({
-        id,
-        collection_id: collection && collection.id,
-      }),
-    setPinned: ({ id }, pinned) =>
-      Questions.actions.update({ id, collection_position: pinned ? 1 : null }),
+    @undo("question", (o, archived) => (archived ? "archived" : "unarchived"))
+    setArchived: ({ id }, archived, opts) =>
+      Questions.actions.update({ id }, { archived }, opts),
+
+    @undo("question", "moved")
+    setCollection: ({ id }, collection, opts) =>
+      Questions.actions.update(
+        { id },
+        { collection_id: collection && collection.id },
+        opts,
+      ),
+
+    setPinned: ({ id }, pinned, opts) =>
+      Questions.actions.update(
+        { id },
+        { collection_position: pinned ? 1 : null },
+        opts,
+      ),
+
     setFavorited: async ({ id }, favorited) => {
       if (favorited) {
         await Questions.api.favorite({ id });

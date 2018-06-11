@@ -1,6 +1,6 @@
 import React from "react";
 
-import { createEntity } from "metabase/lib/entities";
+import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 
 import { normal } from "metabase/lib/colors";
@@ -12,7 +12,10 @@ const Pulses = createEntity({
 
   objectActions: {
     // FIXME: not implemented in backend
+    // @undo("pulse", (o, archived) => archived ? "archived" : "unarchived")
     // setArchived: ({ id }, archived) => Pulses.actions.update({ id, archived }),
+
+    @undo("pulse", "moved")
     setCollection: ({ id }, collection) =>
       Pulses.actions.update({
         id,

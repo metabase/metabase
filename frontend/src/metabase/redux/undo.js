@@ -11,16 +11,6 @@ const PERFORM_UNDO = "metabase/questions/PERFORM_UNDO";
 
 let nextUndoId = 0;
 
-// A convenience shorthand for creating single undos
-export function createUndo({ type, message, action }) {
-  return {
-    type,
-    count: 1,
-    message,
-    actions: action ? [action] : null,
-  };
-}
-
 export const addUndo = createThunkAction(ADD_UNDO, undo => {
   return (dispatch, getState) => {
     let id = nextUndoId++;
@@ -57,17 +47,35 @@ export default function(state = [], { type, payload, error }) {
         console.warn("ADD_UNDO", payload);
         return state;
       }
+
+      const undo = {
+        ...payload,
+        // normalize "action" to "actions"
+        actions: payload.action ? [payload.action] : payload.actions || [],
+        action: null,
+        // default "count"
+        count: payload.count || 1,
+      };
+
       let previous = state[state.length - 1];
-      // if last undo was same type then merge them
-      if (previous && payload.type != null && payload.type === previous.type) {
+      // if last undo was same verb then merge them
+      if (previous && undo.verb != null && undo.verb === previous.verb) {
         return state.slice(0, -1).concat({
-          ...payload,
-          count: previous.count + payload.count,
+          // use new undo so the timeout is extended
+          ...undo,
+
+          // merge the verb, count, and subject appropriately
+          verb: previous.verb,
+          count: previous.count + undo.count,
+          subject: previous.subject === undo.subject ? undo.subject : "item",
+
+          // merge items
           actions: [...previous.actions, ...payload.actions],
+
           _domId: previous._domId, // use original _domId so we don't get funky animations swapping for the new one
         });
       } else {
-        return state.concat(payload);
+        return state.concat(undo);
       }
     case DISMISS_UNDO:
       if (error) {
