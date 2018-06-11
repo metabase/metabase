@@ -47,7 +47,7 @@ class Overworld extends React.Component {
 
             if (!pinnedDashboards.length > 0) {
               return (
-                <CandidateListLoader databaseId={1}>
+                <CandidateListLoader>
                   {({ candidates, sampleCandidates, isSample }) => {
                     if (!candidates) {
                       <Box>Hey?</Box>;
