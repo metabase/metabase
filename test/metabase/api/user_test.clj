@@ -37,9 +37,9 @@
 ;; ## GET /api/user
 ;; Check that anyone can get a list of all active Users
 (expect
-  [{:id 1, :email "crowberto@metabase.com", :first_name "Crowberto", :last_name "Corv",   :common_name "Crowberto Corv"}
-   {:id 2, :email "lucky@metabase.com",     :first_name "Lucky",     :last_name "Pigeon", :common_name "Lucky Pigeon"}
-   {:id 3, :email "rasta@metabase.com",     :first_name "Rasta",     :last_name "Toucan", :common_name "Rasta Toucan"}]
+  [{:id (test-users/user->id :crowberto), :email "crowberto@metabase.com", :first_name "Crowberto", :last_name "Corv",   :common_name "Crowberto Corv"}
+   {:id (test-users/user->id :lucky),     :email "lucky@metabase.com",     :first_name "Lucky",     :last_name "Pigeon", :common_name "Lucky Pigeon"}
+   {:id (test-users/user->id :rasta),     :email "rasta@metabase.com",     :first_name "Rasta",     :last_name "Toucan", :common_name "Rasta Toucan"}]
   (do
     ;; Delete all the other random Users we've created so far
     (test-users/delete-temp-users!)

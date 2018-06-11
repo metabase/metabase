@@ -9,7 +9,8 @@
             [metabase.test.data.users :as test-users]
             [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import clojure.lang.ExceptionInfo))
 
 ;;; ----------------------------------------------- valid-object-path? -----------------------------------------------
 
@@ -349,23 +350,23 @@
 
 ;; If either set is invalid, it should throw an exception
 
-(expect AssertionError (perms/set-has-full-permissions-for-set? #{"/" "/toucans/"}
-                                                                #{"/db/1/"}))
+(expect ExceptionInfo (perms/set-has-full-permissions-for-set? #{"/" "/toucans/"}
+                        #{"/db/1/"}))
 
-(expect AssertionError (perms/set-has-full-permissions-for-set? #{"/db/1/" "//"}
-                                                                #{"/db/1/"}))
+(expect ExceptionInfo (perms/set-has-full-permissions-for-set? #{"/db/1/" "//"}
+                        #{"/db/1/"}))
 
-(expect AssertionError (perms/set-has-full-permissions-for-set? #{"/db/1/" "/db/1/table/2/"}
-                                                                #{"/db/1/"}))
+(expect ExceptionInfo (perms/set-has-full-permissions-for-set? #{"/db/1/" "/db/1/table/2/"}
+                        #{"/db/1/"}))
 
-(expect AssertionError (perms/set-has-full-permissions-for-set? #{"/db/1/"}
-                                                                #{"/db/1/native/schema/"}))
+(expect ExceptionInfo (perms/set-has-full-permissions-for-set? #{"/db/1/"}
+                        #{"/db/1/native/schema/"}))
 
-(expect AssertionError (perms/set-has-full-permissions-for-set? #{"/db/1/"}
-                                                                #{"/db/1/schema/public/" "/kanye/"}))
+(expect ExceptionInfo (perms/set-has-full-permissions-for-set? #{"/db/1/"}
+                        #{"/db/1/schema/public/" "/kanye/"}))
 
-(expect AssertionError (perms/set-has-full-permissions-for-set? #{"/db/1/"}
-                                                                #{"/db/1/schema/public/table/1/" "/ocean/"}))
+(expect ExceptionInfo (perms/set-has-full-permissions-for-set? #{"/db/1/"}
+                        #{"/db/1/schema/public/table/1/" "/ocean/"}))
 
 
 ;;; -------------------------------------- set-has-partial-permissions-for-set? --------------------------------------
