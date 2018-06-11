@@ -379,14 +379,18 @@ export function createEntity(def: EntityDefinition): Entity {
   // or even better, add/remove the item from appropriate lists in the reducer
   // above. This will be difficult with pagination
 
+  if (!entity.actionShouldInvalidateLists) {
+    entity.actionShouldInvalidateLists = action =>
+      action.type === CREATE_ACTION ||
+      action.type === DELETE_ACTION ||
+      action.type === UPDATE_ACTION;
+  }
+
   entity.requestReducer = (state, action) => {
     // reset all list request states when creating, deleting, or updating
     // to force a reload
-    if (
-      action.type === CREATE_ACTION ||
-      action.type === DELETE_ACTION ||
-      action.type === UPDATE_ACTION
-    ) {
+    if (entity.actionShouldInvalidateLists(action)) {
+      console.log("invalidating", entity.name + "_list");
       return dissocIn(state, ["states", "entities", entity.name + "_list"]);
     }
     return state;
@@ -434,7 +438,7 @@ export function createEntity(def: EntityDefinition): Entity {
       };
     }
 
-    entity.wrapEntity = (object, dispatch) =>
+    entity.wrapEntity = (object, dispatch = null) =>
       new EntityWrapper(object, dispatch);
   }
 
