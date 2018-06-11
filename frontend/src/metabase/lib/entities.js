@@ -122,6 +122,15 @@ export function createEntity(def: EntityDefinition): Entity {
   const DELETE_ACTION = `metabase/entities/${entity.name}/DELETE`;
   const FETCH_LIST_ACTION = `metabase/entities/${entity.name}/FETCH_LIST`;
 
+  entity.actionTypes = {
+    CREATE: CREATE_ACTION,
+    FETCH: FETCH_ACTION,
+    UPDATE: UPDATE_ACTION,
+    DELETE: DELETE_ACTION,
+    FETCH_LIST: FETCH_LIST_ACTION,
+    ...(entity.actionTypes || {}),
+  };
+
   entity.objectActions = {
     create: createThunkAction(
       CREATE_ACTION,

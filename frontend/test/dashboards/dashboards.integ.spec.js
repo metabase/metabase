@@ -5,12 +5,9 @@ import {
 import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 
 import { mount } from "enzyme";
-import {
-  FETCH_ARCHIVE,
-  FETCH_DASHBOARDS,
-  SET_ARCHIVED,
-  SET_FAVORITED,
-} from "metabase/dashboards/dashboards";
+
+import Dashboards from "metabase/entities/dashboards";
+
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import { FETCH_DASHBOARD } from "metabase/dashboard/dashboard";
 import { DashboardApi } from "metabase/services";
@@ -47,7 +44,7 @@ xdescribe("dashboards list", () => {
     store.pushPath("/dashboards");
     const app = mount(store.getAppContainer());
 
-    await store.waitForActions([FETCH_DASHBOARDS]);
+    await store.waitForActions([Dashboards.actionTypes.FETCH_LIST]);
 
     // // Create a new dashboard in the empty state (EmptyState react component)
     click(app.find(".Button.Button--primary"));
@@ -76,7 +73,7 @@ xdescribe("dashboards list", () => {
     store.pushPath("/dashboards");
     const app = mount(store.getAppContainer());
 
-    await store.waitForActions([FETCH_DASHBOARDS]);
+    await store.waitForActions([Dashboards.actionTypes.FETCH_LIST]);
     expect(app.find(DashboardListItem).length).toBe(1);
 
     // Create another one
@@ -96,7 +93,7 @@ xdescribe("dashboards list", () => {
     const store = await createTestStore();
     store.pushPath("/dashboards");
     const app = mount(store.getAppContainer());
-    await store.waitForActions([FETCH_DASHBOARDS]);
+    await store.waitForActions([Dashboards.actionTypes.FETCH_LIST]);
 
     setInputValue(
       app.find(SearchHeader).find("input"),
@@ -115,7 +112,7 @@ xdescribe("dashboards list", () => {
     const store = await createTestStore();
     store.pushPath("/dashboards");
     const app = mount(store.getAppContainer());
-    await store.waitForActions([FETCH_DASHBOARDS]);
+    await store.waitForActions([Dashboards.actionTypes.FETCH_LIST]);
 
     click(
       app
@@ -123,7 +120,7 @@ xdescribe("dashboards list", () => {
         .first()
         .find(".Icon-staroutline"),
     );
-    await store.waitForActions([SET_FAVORITED]);
+    await store.waitForActions([Dashboards.actionTypes.UPDATE]);
     click(app.find(ListFilterWidget));
 
     click(app.find(".TestPopover").find('h4[children="Favorites"]'));
@@ -135,7 +132,7 @@ xdescribe("dashboards list", () => {
         .find(".Icon-star")
         .first(),
     );
-    await store.waitForActions([SET_FAVORITED]);
+    await store.waitForActions([Dashboards.actionTypes.UPDATE]);
     expect(app.find(EmptyState).length).toBe(1);
   });
 
@@ -143,7 +140,7 @@ xdescribe("dashboards list", () => {
     const store = await createTestStore();
     store.pushPath("/dashboards");
     const app = mount(store.getAppContainer());
-    await store.waitForActions([FETCH_DASHBOARDS]);
+    await store.waitForActions([Dashboards.actionTypes.FETCH_LIST]);
 
     click(
       app
@@ -151,7 +148,7 @@ xdescribe("dashboards list", () => {
         .first()
         .find(".Icon-archive"),
     );
-    await store.waitForActions([SET_ARCHIVED]);
+    await store.waitForActions([Dashboards.actionTypes.UPDATE_ACTION]);
 
     click(app.find(".Icon-viewArchive"));
     await store.waitForActions([FETCH_ARCHIVE]);

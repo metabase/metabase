@@ -13,10 +13,10 @@ import CollectionSelect from "metabase/containers/CollectionSelect.jsx";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
-import { createDashboard } from "metabase/dashboards/dashboards";
+import Dashboards from "metabase/entities/dashboards";
 
 const mapDispatchToProps = {
-  createDashboard,
+  createDashboard: Dashboards.actions.create,
 };
 
 @connect(null, mapDispatchToProps)
