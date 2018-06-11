@@ -15,8 +15,8 @@ type Props = {
 type RenderProps = {
   candidates: ?DatabaseCandidates,
   sampleCandidates: ?DatabaseCandidates,
-  isSample: ?boolean
-}
+  isSample: ?boolean,
+};
 
 type State = {
   databaseId: ?number,

@@ -42,7 +42,8 @@ export default class PostSetupApp extends Component {
           style={{ maxWidth: 587 }}
           className="ml-auto mr-auto mt-auto mb-auto py2"
         >
-          <CandidateListLoader databaseId={this.props.params.databaseId}
+          <CandidateListLoader
+            databaseId={this.props.params.databaseId}
             children={({ candidates, sampleCandidates, isSample }) => {
               if (!candidates) {
                 return (
