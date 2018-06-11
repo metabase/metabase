@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "c-3po";
 
-import { Flex, Box } from "grid-styled";
+import { Flex } from "grid-styled";
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
 import IconWrapper from "metabase/components/IconWrapper";

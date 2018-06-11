@@ -59,6 +59,7 @@ const Collections = createEntity({
       {
         name: "parent_id",
         title: "Parent collection",
+        // eslint-disable-next-line react/display-name
         type: ({ field }) => (
           <CollectionSelect {...field} collectionId={values.id} />
         ),

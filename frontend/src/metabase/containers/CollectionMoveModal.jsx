@@ -1,5 +1,4 @@
 import React from "react";
-import cx from "classnames";
 import _ from "underscore";
 import { t } from "c-3po";
 

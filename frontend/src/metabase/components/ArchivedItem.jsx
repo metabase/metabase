@@ -52,6 +52,10 @@ ArchivedItem.propTypes = {
   color: PropTypes.string,
   isAdmin: PropTypes.bool,
   onUnarchive: PropTypes.func.isRequired,
+
+  selected: PropTypes.bool.isRequired,
+  onToggleSelected: PropTypes.func.isRequired,
+  showSelect: PropTypes.bool.isRequired,
 };
 
 export default ArchivedItem;

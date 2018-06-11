@@ -36,6 +36,7 @@ const Pulses = createEntity({
       {
         name: "collection_id",
         title: "Collection",
+        // eslint-disable-next-line react/display-name
         type: ({ field }) => <CollectionSelect {...field} />,
       },
     ],
