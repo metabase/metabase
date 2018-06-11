@@ -83,7 +83,7 @@ export class ExplorePane extends React.Component {
           </div>
         )}
         {description && (
-          <div className="px4 mb4 text-paragraph">
+          <div className="mb2 text-paragraph">
             <span>{description}</span>
           </div>
         )}

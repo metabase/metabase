@@ -59,6 +59,11 @@ class Overworld extends React.Component {
                         title=""
                         gridColumns={1 / 3}
                         asCards={true}
+                        description={
+                          isSample
+                            ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
+                            : t`I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!`
+                        }
                       />
                     );
                   }}
