@@ -656,10 +656,7 @@ export const getDatabasesPermissionsGrid = createSelector(
   },
 );
 
-import Collections, {
-  getCollectionsById,
-  ROOT_COLLECTION,
-} from "metabase/entities/collections";
+import Collections, { getCollectionsById } from "metabase/entities/collections";
 
 const getCollectionId = (state, props) => props && props.collectionId;
 
