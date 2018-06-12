@@ -53,9 +53,6 @@
 (defn- archived [m]
   (assoc m :archived true))
 
-(defn- inactive [m]
-  (assoc m :is_active false))
-
 ;; Should return unarchived results by default
 (expect
   default-search-results
@@ -67,9 +64,9 @@
                   Collection [_ (archived  {:name "collection foo collection2"})]
                   Pulse      [_ {:name "pulse foo pulse"}]
                   Metric     [_ {:name "metric foo metric"}]
-                  Metric     [_ (inactive {:name "metric foo metric2"})]
+                  Metric     [_ (archived {:name "metric foo metric2"})]
                   Segment    [_ {:name "segment foo segment"}]
-                  Segment    [_ (inactive {:name "segment foo segment2"})]]
+                  Segment    [_ (archived {:name "segment foo segment2"})]]
     (tu/boolean-ids-and-timestamps (set ((user->client :crowberto) :get 200 "search", :q "foo")))))
 
 ;; Should return archived results when specified
@@ -82,9 +79,9 @@
                   Collection [_ (archived {:name "collection foo collection"})]
                   Collection [_ {:name "collection foo collection2"}]
                   Pulse      [_ {:name "pulse foo pulse"}]
-                  Metric     [_ (inactive {:name "metric foo metric"})]
+                  Metric     [_ (archived {:name "metric foo metric"})]
                   Metric     [_ {:name "metric foo metric2"}]
-                  Segment    [_ (inactive {:name "segment foo segment"})]
+                  Segment    [_ (archived {:name "segment foo segment"})]
                   Segment    [_ {:name "segment foo segment2"}]]
     (tu/boolean-ids-and-timestamps (set ((user->client :crowberto) :get 200 "search",
                                          :q "foo", :archived "true")))))

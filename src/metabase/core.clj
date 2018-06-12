@@ -86,7 +86,9 @@
 
 (def ^:private app
   "The primary entry point to the Ring HTTP server."
+  ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
   (-> #'routes/routes                    ; the #' is to allow tests to redefine endpoints
+      mb-middleware/catch-api-exceptions ; catch exceptions and return them in our expected format
       (mb-middleware/log-api-call
        jetty-stats)
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
@@ -104,6 +106,7 @@
       wrap-cookies                       ; Parses cookies in the request map and assocs as :cookies
       wrap-session                       ; reads in current HTTP session and sets :session/key
       wrap-gzip))                        ; GZIP response if client can handle it
+;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
 
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
@@ -131,6 +134,7 @@
   (task/stop-scheduler!)
   (log/info (trs "Metabase Shutdown COMPLETE")))
 
+
 (defn init!
   "General application initialization function which should be run once at application startup."
   []
@@ -145,6 +149,8 @@
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
+  (plugins/setup-plugins!)
+  (init-status/set-progress! 0.35)
 
   ;; Load up all of our Database drivers, which are used for app db work
   (driver/find-and-load-drivers!)
