@@ -141,7 +141,7 @@ In `/etc/default/metabase`, replace configurable items (they look like `<some-va
     export MB_EMOJI_IN_LOGS=<true|false>
     # any other env vars you want available to Metabase
 
-~                               
+                               
 ### Final Steps
 
 The best part of setting up Metabase as a service on a Debian-based system is to be confident it will start up at every system boot. We only have a few more quick steps to finish registering our service and having Metabase up and running.
@@ -180,9 +180,9 @@ Now, it's time to register our Metabase service with `systemd` so it will start 
     # ensure unprivileged deploy user owns log (or it won't be able to write)
     $ sudo chown <your_deploy_user>:<your_deploy_user> /var/log/metabase.log
 
-#### Systemd unit file
-If you are working with systemd, is prefered to create service with systemd unit file. So if you can, follow this method below.
-You have to create a file /etc/systemd/system/metabase.service
+#### Create a service  systemd unit file
+If you are working with systemd, is prefered to create service with systemd unit file.
+You have to create a file /etc/systemd/system/metabase.service and paste the following:
 
     [Unit]
     Description=Metabase server
