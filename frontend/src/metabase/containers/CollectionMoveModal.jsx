@@ -52,7 +52,6 @@ class CollectionMoveModal extends React.Component {
         <Flex mt={2}>
           <Button
             primary
-            icon="move"
             className="ml-auto"
             disabled={!selectedCollection}
             onClick={() => {
@@ -66,9 +65,7 @@ class CollectionMoveModal extends React.Component {
               }
             }}
           >
-            {selectedCollection
-              ? t`Move to ${selectedCollection.name}`
-              : t`Move`}
+              { t`Move`}
           </Button>
         </Flex>
       </Box>
