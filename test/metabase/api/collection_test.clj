@@ -18,6 +18,7 @@
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
             [metabase.test.data.users :refer [user->client user->id]]
             [metabase.test.util :as tu]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -108,26 +109,22 @@
                       Card       [card        {:collection_id (u/get-id collection)}]]
   (tu/obj->json->obj
     (assoc collection
-      :cards               [(select-keys card [:name :id :collection_position])]
-      :dashboards          []
-      :pulses              []
+      :items [{:id                  (u/get-id card)
+               :name                (:name card)
+               :description         nil
+               :collection_position nil
+               :favorite            false
+               :model               "card"}]
       :effective_ancestors []
       :effective_location  "/"
-      :effective_children  []
       :can_write           true))
   (tu/obj->json->obj
     ((user->client :crowberto) :get 200 (str "collection/" (u/get-id collection)))))
 
-;; check that collections detail doesn't return archived collections
-(expect
-  "Not found."
-  (tt/with-temp Collection [collection {:archived true}]
-    (perms/grant-collection-read-permissions! (group/all-users) collection)
-    ((user->client :rasta) :get 404 (str "collection/" (u/get-id collection)))))
 
 (defn- remove-ids-from-collection-detail [results & {:keys [keep-collection-id?]
                                                      :or {keep-collection-id? false}}]
-  (into {} (for [[k items] (select-keys results (cond->> [:name :cards :dashboards :pulses :can_write]
+  (into {} (for [[k items] (select-keys results (cond->> [:name :items :can_write]
                                                   keep-collection-id? (cons :id)))]
              [k (if-not (sequential? items)
                   items
@@ -135,6 +132,7 @@
                     (dissoc item :id)))])))
 
 (defn- do-with-some-children-of-collection [collection-or-id-or-nil f]
+  (collection-test/force-create-personal-collections!)
   (let [collection-id-or-nil (when collection-or-id-or-nil
                                (u/get-id collection-or-id-or-nil))]
     (tt/with-temp* [Card       [_ {:name "Birthday Card",          :collection_id collection-id-or-nil}]
@@ -147,11 +145,11 @@
 
 ;; check that you get to see the children as appropriate
 (expect
-  {:name       "Debt Collection"
-   :cards      [{:name "Birthday Card",          :collection_position nil}]
-   :dashboards [{:name "Dine & Dashboard",       :collection_position nil}]
-   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]
-   :can_write  false}
+  {:name      "Debt Collection"
+   :items     [{:name "Birthday Card", :description nil, :collection_position nil, :favorite false, :model "card"}
+               {:name "Dine & Dashboard", :description nil, :collection_position nil, :model "dashboard"}
+               {:name "Electro-Magnetic Pulse", :collection_position nil, :model "pulse"}]
+   :can_write false}
   (tt/with-temp Collection [collection {:name "Debt Collection"}]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
@@ -160,13 +158,25 @@
 
 ;; ...and that you can also filter so that you only see the children you want to see
 (expect
-  {:name       "Art Collection"
-   :dashboards [{:name "Dine & Dashboard", :collection_position nil}]
-   :can_write  false}
+  {:name      "Art Collection"
+   :items     [{:name "Dine & Dashboard", :description nil, :collection_position nil, :model "dashboard"}]
+   :can_write false}
   (tt/with-temp Collection [collection {:name "Art Collection"}]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
-      (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "?model=dashboards"))
+      (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "?model=dashboard"))
+          remove-ids-from-collection-detail))))
+
+;; Let's make sure the `archived` option works.
+(expect
+  {:name      "Art Collection"
+   :items     [{:name "Dine & Dashboard", :description nil, :collection_position nil, :model "dashboard"}]
+   :can_write false}
+  (tt/with-temp Collection [collection {:name "Art Collection"}]
+    (perms/grant-collection-read-permissions! (group/all-users) collection)
+    (with-some-children-of-collection collection
+      (db/update-where! Dashboard {:collection_id (u/get-id collection)} :archived true)
+      (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "?archived=true"))
           remove-ids-from-collection-detail))))
 
 
@@ -188,21 +198,23 @@
   "Nicely format the `:effective_` results from an API call."
   [results]
   (-> results
-      (select-keys [:effective_children :effective_ancestors :effective_location])
-      (update :effective_children  (comp set (partial map #(update % :id integer?))))
+      (select-keys [:items :effective_ancestors :effective_location])
+      (update :items (partial map #(update % :id integer?)))
       (update :effective_ancestors (partial map #(update % :id integer?)))
       (update :effective_location collection-test/location-path-ids->names)))
 
 (defn- api-get-collection-ancestors-and-children
   "Call the API with Rasta to fetch `collection-or-id` and put the `:effective_` results in a nice format for the tests
   below."
-  [collection-or-id]
-  (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection-or-id)))
+  [collection-or-id & additional-get-params]
+  (-> (apply (user->client :rasta) :get 200 (str "collection/" (u/get-id collection-or-id))
+             additional-get-params)
       format-ancestors-and-children))
 
 ;; does a top-level Collection like A have the correct Children?
 (expect
-  {:effective_children  #{{:name "B", :id true} {:name "C", :id true}}
+  {:items               [{:name "B", :id true, :description nil, :model "collection"}
+                         {:name "C", :id true, :description nil, :model "collection"}]
    :effective_ancestors []
    :effective_location  "/"}
   (with-collection-hierarchy [a b c d g]
@@ -210,7 +222,8 @@
 
 ;; ok, does a second-level Collection have its parent and its children?
 (expect
-  {:effective_children  #{{:name "D", :id true} {:name "G", :id true}}
+  {:items               [{:name "D", :id true, :description nil, :model "collection"}
+                         {:name "G", :id true, :description nil, :model "collection"}]
    :effective_ancestors [{:name "A", :id true}]
    :effective_location  "/A/"}
   (with-collection-hierarchy [a b c d g]
@@ -218,46 +231,57 @@
 
 ;; what about a third-level Collection?
 (expect
-  {:effective_children #{}
-   :effective_ancestors [{:name "A", :id true} {:name "C", :id true}]
-   :effective_location "/A/C/"}
+  {:items               []
+   :effective_ancestors [{:name "A", :id true}
+                         {:name "C", :id true}]
+   :effective_location  "/A/C/"}
   (with-collection-hierarchy [a b c d g]
     (api-get-collection-ancestors-and-children d)))
 
 ;; for D: if we remove perms for C we should only have A as an ancestor; effective_location should lie and say we are
 ;; a child of A
 (expect
-  {:effective_children #{}
+  {:items               []
    :effective_ancestors [{:name "A", :id true}]
-   :effective_location "/A/"}
+   :effective_location  "/A/"}
   (with-collection-hierarchy [a b d g]
     (api-get-collection-ancestors-and-children d)))
 
 ;; for D: If, on the other hand, we remove A, we should see C as the only ancestor and as a root-level Collection.
 (expect
-  {:effective_children #{},
+  {:items               [],
    :effective_ancestors [{:name "C", :id true}]
-   :effective_location "/C/"}
+   :effective_location  "/C/"}
   (with-collection-hierarchy [b c d g]
     (api-get-collection-ancestors-and-children d)))
 
 ;; for C: if we remove D we should get E and F as effective children
 (expect
-  {:effective_children #{{:name "E", :id true} {:name "F", :id true}}
+  {:items               [{:name "E", :id true, :description nil, :model "collection"}
+                         {:name "F", :id true, :description nil, :model "collection"}]
    :effective_ancestors [{:name "A", :id true}]
-   :effective_location "/A/"}
+   :effective_location  "/A/"}
   (with-collection-hierarchy [a b c e f g]
     (api-get-collection-ancestors-and-children c)))
 
 ;; Make sure we can collapse multiple generations. For A: removing C and D should move up E and F
 (expect
-  {:effective_children #{{:name "B", :id true}
-                         {:name "E", :id true}
-                         {:name "F", :id true}}
+  {:items               [{:name "B", :id true, :description nil, :model "collection"}
+                         {:name "E", :id true, :description nil, :model "collection"}
+                         {:name "F", :id true, :description nil, :model "collection"}]
    :effective_ancestors []
-   :effective_location "/"}
+   :effective_location  "/"}
   (with-collection-hierarchy [a b e f g]
     (api-get-collection-ancestors-and-children a)))
+
+;; Let's make sure the 'archived` option works on Collections
+(expect
+  {:items               [{:name "B", :id true, :description nil, :model "collection"}]
+   :effective_ancestors []
+   :effective_location  "/"}
+  (with-collection-hierarchy [a b c]
+    (db/update! Collection (u/get-id b) :archived true)
+    (api-get-collection-ancestors-and-children a :archived true)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -268,24 +292,23 @@
 
 ;; Make sure you can see everything for Users that can see everything
 (expect
-  {:name       "Root Collection"
-   :id         "root"
-   :cards      [{:name "Birthday Card",          :collection_position nil}]
-   :dashboards [{:name "Dine & Dashboard",       :collection_position nil}]
-   :pulses     [{:name "Electro-Magnetic Pulse", :collection_position nil}]
-   :can_write  true}
+  {:name      "Root Collection"
+   :id        "root"
+   :items     [{:name "Birthday Card", :description nil, :collection_position nil, :favorite false, :model "card"}
+               {:name "Crowberto Corv's Personal Collection", :description nil, :model "collection"}
+               {:name "Dine & Dashboard", :description nil, :collection_position nil, :model "dashboard"}
+               {:name "Electro-Magnetic Pulse", :collection_position nil, :model "pulse"}]
+   :can_write true}
   (with-some-children-of-collection nil
     (-> ((user->client :crowberto) :get 200 "collection/root")
         (remove-ids-from-collection-detail :keep-collection-id? true))))
 
 ;; ...but we don't let you see stuff you wouldn't otherwise be allowed to see
 (expect
-  {:name       "Root Collection"
-   :id         "root"
-   :cards      []
-   :dashboards []
-   :pulses     []
-   :can_write  false}
+  {:name      "Root Collection"
+   :id        "root"
+   :items     [{:name "Rasta Toucan's Personal Collection", :description nil, :model "collection"}]
+   :can_write false}
   ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no collection_id
   (with-some-children-of-collection nil
     (-> ((user->client :rasta) :get 200 "collection/root")
@@ -295,9 +318,10 @@
 (expect
   {:name       "Root Collection"
    :id         "root"
-   :cards      [{:name "Birthday Card"          :collection_position nil}]
-   :dashboards [{:name "Dine & Dashboard"       :collection_position nil}]
-   :pulses     [{:name "Electro-Magnetic Pulse" :collection_position nil}]
+   :items      [{:name "Birthday Card", :collection_position nil, :description nil, :favorite false, :model "card"}
+                {:name "Dine & Dashboard", :collection_position nil, :description nil, :model "dashboard"}
+                {:name "Electro-Magnetic Pulse", :collection_position nil, :model "pulse"}
+                {:name "Rasta Toucan's Personal Collection", :description nil, :model "collection"}]
    :can_write  false}
   (with-some-children-of-collection nil
     (tt/with-temp* [PermissionsGroup           [group]
@@ -308,53 +332,67 @@
 
 ;; So I suppose my Personal Collection should show up when I fetch the Root Collection, shouldn't it...
 (expect
-  {:pulses              []
-   :can_write           false
-   :dashboards          []
+  {:can_write           false
    :name                "Root Collection"
    :effective_ancestors []
    :effective_location  nil
    :id                  "root"
-   :cards               []
-   :effective_children  [{:name "Rasta Toucan's Personal Collection"
-                          :id   (u/get-id (collection/user->personal-collection (user->id :rasta)))}]}
+   :items               [{:name        "Rasta Toucan's Personal Collection"
+                          :id          (u/get-id (collection/user->personal-collection (user->id :rasta)))
+                          :description nil
+                          :model       "collection"}]}
   (do
     (collection-test/force-create-personal-collections!)
     ((user->client :rasta) :get 200 "collection/root")))
 
 ;; And for admins, only return our own Personal Collection (!)
 (expect
-  {:pulses              []
-   :can_write           true
-   :dashboards          []
+  {:can_write           true
    :name                "Root Collection"
    :effective_ancestors []
    :effective_location  nil
    :id                  "root"
-   :cards               []
-   :effective_children  [{:name "Crowberto Corv's Personal Collection"
-                          :id   (u/get-id (collection/user->personal-collection (user->id :crowberto)))}]}
+   :items               [{:name        "Crowberto Corv's Personal Collection"
+                          :id          (u/get-id (collection/user->personal-collection (user->id :crowberto)))
+                          :description nil
+                          :model       "collection"}]}
   (do
     (collection-test/force-create-personal-collections!)
     ((user->client :crowberto) :get 200 "collection/root")))
+
+;; Can we look for `archived` stuff with this endpoint?
+(expect
+  {:can_write           true
+   :name                "Root Collection"
+   :effective_ancestors []
+   :effective_location  nil
+   :id                  "root"
+   :items               [{:name                "Business Card"
+                          :description         nil
+                          :collection_position nil
+                          :favorite            false
+                          :model               "card"}]}
+  (tt/with-temp Card [card {:name "Business Card", :archived true}]
+    (collection-test/force-create-personal-collections!)
+    (-> ((user->client :crowberto) :get 200 "collection/root?archived=true")
+        (update :items #(for [item %]
+                          (dissoc item :id))))))
+
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
 
 (defn- api-get-root-collection-ancestors-and-children
   "Call the API with Rasta to fetch the 'Root' Collection and put the `:effective_` results in a nice format for the
   tests below."
-  []
-  ;; call the API endpoint with some of the other users so we can make sure their Personal Collections don't show up
-  ;; inappropriately
-  ((user->client :crowberto) :get 200 "collection/root")
-  ((user->client :lucky) :get 200 "collection/root")
-  (-> ((user->client :rasta) :get 200 "collection/root")
+  [& additional-get-params]
+  (collection-test/force-create-personal-collections!)
+  (-> (apply (user->client :rasta) :get 200 "collection/root" additional-get-params)
       format-ancestors-and-children))
 
 ;; Do top-level collections show up as children of the Root Collection?
 (expect
-  {:effective_children  #{{:name "A", :id true}
-                          {:name "Rasta Toucan's Personal Collection", :id true}}
+  {:items               [{:name "A", :id true, :description nil, :model "collection"}
+                         {:name "Rasta Toucan's Personal Collection", :id true, :description nil, :model "collection"}]
    :effective_ancestors []
    :effective_location  nil}
   (with-collection-hierarchy [a b c d e f g]
@@ -362,14 +400,23 @@
 
 ;; ...and collapsing children should work for the Root Collection as well
 (expect
-  {:effective_children  #{{:name "B", :id true}
-                          {:name "D", :id true}
-                          {:name "F", :id true}
-                          {:name "Rasta Toucan's Personal Collection", :id true}}
+  {:items               [{:name "B", :id true, :description nil, :model "collection"}
+                         {:name "D", :id true, :description nil, :model "collection"}
+                         {:name "F", :id true, :description nil, :model "collection"}
+                         {:name "Rasta Toucan's Personal Collection", :id true, :description nil, :model "collection"}]
    :effective_ancestors []
    :effective_location  nil}
   (with-collection-hierarchy [b d e f g]
     (api-get-root-collection-ancestors-and-children)))
+
+;; does `archived` work on Collections as well?
+(expect
+  {:items               [{:name "A", :id true, :description nil, :model "collection"}]
+   :effective_ancestors []
+   :effective_location  nil}
+  (with-collection-hierarchy [a b d e f g]
+    (db/update! Collection (u/get-id a) :archived true)
+    (api-get-root-collection-ancestors-and-children :archived true)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

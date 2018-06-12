@@ -1,4 +1,9 @@
 (ns metabase.models.collection
+  "Collections are used to organize Cards, Dashboards, and Pulses; as of v0.30, they are the primary way we determine
+  permissions for these objects.
+
+  TODO - I think this namespace is too big now! Maybe move the graph stuff into somewhere like
+  `metabase.models.collection.graph`"
   (:refer-clojure :exclude [ancestors descendants])
   (:require [clojure
              [data :as data]
@@ -85,6 +90,7 @@
   "Schema for a directory-style 'path' to the location of a Collection."
   (s/pred valid-location-path?))
 
+
 (s/defn location-path :- LocationPath
   "Build a 'location path' from a sequence of `collections-or-ids`.
 
@@ -153,6 +159,49 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                   Root Collection Special Placeholder Object                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; The Root Collection special placeholder object is used to represent the fact that we're working with the 'Root'
+;; Collection in many of the functions in this namespace. The Root Collection is not a true Collection, but instead
+;; represents things that have no collection_id, or are otherwise to be seen at the top-level by the current user.
+
+(defrecord ^:private RootCollection [])
+
+(u/strict-extend RootCollection
+  i/IObjectPermissions
+  (merge
+   i/IObjectPermissionsDefaults
+   {:perms-objects-set (fn [this read-or-write]
+                         #{((case read-or-write
+                               :read  perms/collection-read-path
+                               :write perms/collection-readwrite-path) this)})
+    :can-read?         (partial i/current-user-has-full-permissions? :read)
+    :can-write?        (partial i/current-user-has-full-permissions? :write)}))
+
+(def ^RootCollection root-collection
+  "Special placeholder object representing the Root Collection, which isn't really a real Collection."
+  (map->RootCollection {::is-root? true}))
+
+(defn- is-root-collection? [x]
+  (instance? RootCollection x))
+
+(def ^:private CollectionWithLocationOrRoot
+  (s/cond-pre
+   RootCollection
+   {:location LocationPath
+    s/Keyword s/Any}))
+
+(def CollectionWithLocationAndIDOrRoot
+  "Schema for a valid `CollectionInstance` that has valid `:location` and `:id` properties, or the special
+  `root-collection` placeholder object."
+  (s/cond-pre
+   RootCollection
+   {:location LocationPath
+    :id       su/IntGreaterThanZero
+    s/Keyword s/Any}))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Nested Collections: "Effective" Location Paths                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -182,7 +231,7 @@
                :when id-str]
            (Integer/parseInt id-str)))))
 
-(s/defn effective-location-path :- LocationPath
+(s/defn effective-location-path :- (s/maybe LocationPath)
   "Given a `location-path` and a set of Collection IDs one is allowed to view (obtained from
   `permissions-set->visibile-collection-ids` above), calculate the 'effective' location path (excluding IDs of
   Collections for which we do not have read perms) we should show to the User.
@@ -190,9 +239,11 @@
   When called with a single argument, `collection`, this is used as a hydration function to hydrate
   `:effective_location`."
   {:hydrate :effective_location}
-  ([collection :- su/Map]
-   (effective-location-path (:location collection)
-                            (permissions-set->visible-collection-ids @*current-user-permissions-set*)))
+  ([collection :- CollectionWithLocationOrRoot]
+   (if (is-root-collection? collection)
+     nil
+     (effective-location-path (:location collection)
+                              (permissions-set->visible-collection-ids @*current-user-permissions-set*))))
 
   ([real-location-path :- LocationPath, allowed-collection-ids :- (s/cond-pre (s/eq :all) #{su/IntGreaterThanZero})]
    (if (= allowed-collection-ids :all)
@@ -231,24 +282,10 @@
   Thus the existence of C will be kept hidden from the current User, and for all intents and purposes the current User
   can effectively treat A as the parent of C."
   {:hydrate :effective_ancestors}
-  [collection]
-  (filter i/can-read? (ancestors collection)))
-
-(def root-collection
-  "Special placeholder map representing the Root Collection, which isn't really a real Collection."
-  {::is-root? true})
-
-(defn- is-root-collection? [m]
-  (boolean (::is-root? m)))
-(def ^:private CollectionWithLocationAndID
-  "Schema for a Collection Instance that has a valid Location *and* ID, or the Root Collection special placeholder
-  object."
-  (s/pred (fn [collection]
-            (and (map? collection)
-                 (or (::is-root? collection)
-                     (and (valid-location-path? (:location collection))
-                          (integer? (:id collection))))))
-          "Collection with a valid `:location` and `:id`, or the Root Collection."))
+  [collection :- CollectionWithLocationAndIDOrRoot]
+  (if (is-root-collection? collection)
+    []
+    (filter i/can-read? (ancestors collection))))
 
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
@@ -258,7 +295,7 @@
 
      ;; To get children of this collection:
      (db/select Collection :location \"/10/20/30/\")"
-  [{:keys [location], :as collection} :- CollectionWithLocationAndID]
+  [{:keys [location], :as collection} :- CollectionWithLocationAndIDOrRoot]
   (if (is-root-collection? collection)
     "/"
     (str location (u/get-id collection) "/")))
@@ -282,12 +319,14 @@
 
   where each letter represents a Collection, and the arrows represent values of its respective `:children`
   set."
-  [collection :- CollectionWithLocationAndID]
+  [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
-  (let [location->children (group-by :location (db/select [Collection :name :id :location]
+  (let [location->children (group-by :location (db/select [Collection :name :id :location :description]
                                                  {:where
-                                                  [:and
+                                                  (apply
+                                                   vector
+                                                   :and
                                                    [:like :location (str (children-location collection) "%")]
                                                    ;; Only return the Personal Collection belonging to the Current
                                                    ;; User, regardless of whether we should actually be allowed to see
@@ -296,7 +335,8 @@
                                                    ;; cluttered with Personal Collections belonging to randos
                                                    [:or
                                                     [:= :personal_owner_id nil]
-                                                    [:= :personal_owner_id *current-user-id*]]]}))
+                                                    [:= :personal_owner_id *current-user-id*]]
+                                                   additional-honeysql-where-clauses)}))
         ;; Next, build a function to add children to a given `coll`. This function will recursively call itself to add
         ;; children to each child
         add-children       (fn add-children [coll]
@@ -332,11 +372,11 @@
    the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
    {:hydrate :effective_children}
-  [collection :- CollectionWithLocationAndID]
+  [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
   ;; Hydrate `:children` if it's not already done
   (-> (for [child (if (contains? collection :children)
                     (:children collection)
-                    (descendants collection))]
+                    (apply descendants collection additional-honeysql-where-clauses))]
         ;; if we can read this `child` then we can go ahead and keep it as is. Discard its `children` and `location`
         (if (i/can-read? child)
           (dissoc child :children :location)
@@ -364,7 +404,7 @@
   need permissions for A, even though in some sense you are affecting to contents of A; this is allowed because we
   want to let people archive Collections they can see (via 'effectively' pulling them up), even if they can't see the
   parent Collection."
-  [collection :- CollectionWithLocationAndID]
+  [collection :- CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to archive the Root Collection...
   (when (is-root-collection? collection)
     (throw (Exception. (str (tru "You cannot archive the Root Collection.")))))
@@ -397,7 +437,7 @@
 
   Note that, like archiving, you *do not* need any permissions for A, the original parent; you can think of this
   operation as something done on the Collection itself, rather than 'curating' its parent."
-  [collection :- CollectionWithLocationAndID, new-parent :- CollectionWithLocationAndID]
+  [collection :- CollectionWithLocationAndIDOrRoot, new-parent :- CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to move the Root Collection...
   (when (is-root-collection? collection)
     (throw (Exception. (str (tru "You cannot move the Root Collection.")))))
@@ -412,7 +452,7 @@
 
 (s/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
-  [collection :- CollectionWithLocationAndID, new-location :- LocationPath]
+  [collection :- CollectionWithLocationAndIDOrRoot, new-location :- LocationPath]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))]
     ;; first move this Collection
@@ -427,14 +467,14 @@
         :where  [:like :location (str orig-children-location "%")]}))))
 
 (s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
-  [collection :- CollectionWithLocationAndID, & additional-conditions]
+  [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
   (apply db/select-ids Collection
          :location [:like (str (children-location collection) "%")]
          additional-conditions))
 
 (s/defn ^:private archive-collection!
   "Archive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
-  [collection :- CollectionWithLocationAndID]
+  [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/get-id collection)
                                       (collection->descendant-ids collection, :archived false))]
     (db/transaction
@@ -449,7 +489,7 @@
 
 (s/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
-  [collection :- CollectionWithLocationAndID]
+  [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/get-id collection)
                                       (collection->descendant-ids collection, :archived true))]
     (db/transaction
@@ -474,7 +514,7 @@
 (s/defn ^:private check-changes-allowed-for-personal-collection
   "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
   have lots of restrictions -- you can't archive them, for example, nor can you transfer them to other Users."
-  [collection-before-updates :- CollectionWithLocationAndID, collection-updates :- su/Map]
+  [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/Map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (when (api/column-will-change? :personal_owner_id collection-before-updates collection-updates)
@@ -502,7 +542,7 @@
 
 (s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
-  [collection-before-updates :- CollectionWithLocationAndID, collection-updates :- su/Map]
+  [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/Map]
   ;; If the updates map contains a value for `:archived`, see if it's actually something different than current value
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     ;; check to make sure we're not trying to change location at the same time
