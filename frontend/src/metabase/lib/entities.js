@@ -351,6 +351,7 @@ export function createEntity(def: EntityDefinition): Entity {
     getLoading,
     getLoaded,
     getError,
+    ...(def.selectors || {}),
   };
 
   entity.objectSelectors = {

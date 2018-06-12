@@ -8,7 +8,7 @@ import {
 import { canEditPermissions } from "metabase/lib/groups";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { t } from "c-3po";
-import { PermissionsApi, CollectionsApi } from "metabase/services";
+import { PermissionsApi } from "metabase/services";
 
 const RESET = "metabase/admin/permissions/RESET";
 export const reset = createAction(RESET);
@@ -20,12 +20,6 @@ export const initialize = createThunkAction(
     dispatch(reset({ load, save }));
     await Promise.all([dispatch(loadPermissions()), dispatch(loadGroups())]);
   },
-);
-
-// TODO: move these to their respective ducks
-const LOAD_COLLECTIONS = "metabase/admin/permissions/LOAD_COLLECTIONS";
-export const loadCollections = createAction(LOAD_COLLECTIONS, () =>
-  CollectionsApi.list(),
 );
 
 const LOAD_GROUPS = "metabase/admin/permissions/LOAD_GROUPS";
@@ -128,13 +122,6 @@ const groups = handleActions(
   null,
 );
 
-const collections = handleActions(
-  {
-    [LOAD_COLLECTIONS]: { next: (state, { payload }) => payload },
-  },
-  null,
-);
-
 const saveError = handleActions(
   {
     [RESET]: { next: () => null },
@@ -161,6 +148,4 @@ export default combineReducers({
   saveError,
   revision,
   groups,
-
-  collections,
 });

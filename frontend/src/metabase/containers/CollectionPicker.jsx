@@ -5,38 +5,42 @@ import { Flex, Box } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 
-export const ROOT_COLLECTION = {
-  id: null,
-  name: "Saved Items",
-  location: "",
-};
+import { getCollectionsById } from "metabase/entities/collections";
 
 const COLLECTION_ICON_COLOR = "#DCE1E4";
+
+const isRoot = collection => collection.id === "root" || collection.id == null;
+
+const getCollectionValue = collection =>
+  collection.id === "root" ? null : collection.id;
 
 export default class CollectionPicker extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      parentId: "",
+      parentId: "root",
     };
   }
 
   // returns a list of "crumbs" starting with the "root" collection
   _getCrumbs(collection, collectionsById) {
-    let crumbs = [
-      [collectionsById[""].name, () => this.setState({ parentId: "" })],
-    ];
-    if (collection && collection.id != null) {
-      crumbs = [
-        ...crumbs,
+    if (collection && collection.path) {
+      return [
         ...collection.path.map(id => [
           collectionsById[id].name,
           () => this.setState({ parentId: id }),
         ]),
         [collection.name],
       ];
+    } else {
+      return [
+        [
+          collectionsById["root"].name,
+          () => this.setState({ parentId: collectionsById["root"].id }),
+        ],
+        ["Unknown"],
+      ];
     }
-    return crumbs;
   }
 
   render() {
@@ -44,31 +48,38 @@ export default class CollectionPicker extends React.Component {
     const { parentId } = this.state;
 
     const collectionsById = getCollectionsById(collections);
-    const collection = collectionsById[parentId || ""];
+    const collection = collectionsById[parentId];
     const crumbs = this._getCrumbs(collection, collectionsById);
+
+    let items = (collection && collection.children) || [];
+
+    // show root in itself
+    if (collection && isRoot(collection)) {
+      items = [collection, ...items];
+    }
 
     return (
       <Box style={style} className={className}>
         <Box pb={1} mb={2} className="border-bottom">
           <Breadcrumbs crumbs={crumbs} />
         </Box>
-        {collection &&
-          collection.children.map(collection => (
-            <Box
-              mt={1}
-              p={1}
-              onClick={() => onChange(collection.id)}
-              className={cx(
-                "bg-brand-hover text-white-hover cursor-pointer rounded",
-                {
-                  "bg-brand text-white": value === collection.id,
-                },
-              )}
-            >
-              <Flex align="center">
-                <Icon name="all" color={COLLECTION_ICON_COLOR} size={32} />
-                <h4 className="mx1">{collection.name}</h4>
-                {collection.children.length > 0 && (
+        {items.map(collection => (
+          <Box
+            mt={1}
+            p={1}
+            onClick={() => onChange(getCollectionValue(collection))}
+            className={cx(
+              "bg-brand-hover text-white-hover cursor-pointer rounded",
+              {
+                "bg-brand text-white": value == getCollectionValue(collection),
+              },
+            )}
+          >
+            <Flex align="center">
+              <Icon name="all" color={COLLECTION_ICON_COLOR} size={32} />
+              <h4 className="mx1">{collection.name}</h4>
+              {collection.children.length > 0 &&
+                !isRoot(collection) && (
                   <Icon
                     name="chevronright"
                     className="p1 ml-auto circular text-grey-2 border-grey-2 bordered bg-white-hover cursor-pointer"
@@ -78,42 +89,10 @@ export default class CollectionPicker extends React.Component {
                     }}
                   />
                 )}
-              </Flex>
-            </Box>
-          ))}
+            </Flex>
+          </Box>
+        ))}
       </Box>
     );
   }
-}
-
-// given list of collections with { id, name, location } returns a map of ids to
-// expanded collection objects like { id, name, location, path, children }
-// including a root collection with "" as the key
-function getCollectionsById(collections) {
-  const collectionsById = {};
-  for (const c of collections.concat(ROOT_COLLECTION)) {
-    collectionsById[c.id || ""] = {
-      ...c,
-      path: c.location.split("/").filter(l => l),
-      children: [],
-    };
-  }
-  collectionsById[""].children.push({
-    name: "None",
-    id: null,
-    children: [],
-  });
-  // iterate over original collections so we don't include ROOT_COLLECTION as
-  // a child of itself
-  for (const { id } of collections) {
-    const c = collectionsById[id];
-    const parent = c.path[c.path.length - 1] || "";
-    // need to ensure the parent collection exists, it may have been filtered
-    // because we're selecting a collection's parent collection and it can't
-    // contain itself
-    if (collectionsById[parent]) {
-      collectionsById[parent].children.push(c);
-    }
-  }
-  return collectionsById;
 }

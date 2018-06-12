@@ -69,3 +69,39 @@ const Collections = createEntity({
 });
 
 export default Collections;
+
+export const ROOT_COLLECTION = {
+  id: "root",
+  name: "Saved Items",
+  location: "",
+};
+
+// given list of collections with { id, name, location } returns a map of ids to
+// expanded collection objects like { id, name, location, path, children }
+// including a root collection
+export function getCollectionsById(collections) {
+  const collectionsById = {};
+  for (const c of collections.concat([ROOT_COLLECTION])) {
+    collectionsById[c.id] = {
+      ...c,
+      path:
+        c.id === "root"
+          ? []
+          : ["root", ...c.location.split("/").filter(l => l)],
+      children: [],
+    };
+  }
+  // iterate over original collections so we don't include ROOT_COLLECTION as
+  // a child of itself
+  for (const { id } of collections) {
+    const c = collectionsById[id];
+    const parent = c.path[c.path.length - 1] || "root";
+    // need to ensure the parent collection exists, it may have been filtered
+    // because we're selecting a collection's parent collection and it can't
+    // contain itself
+    if (collectionsById[parent]) {
+      collectionsById[parent].children.push(c);
+    }
+  }
+  return collectionsById;
+}

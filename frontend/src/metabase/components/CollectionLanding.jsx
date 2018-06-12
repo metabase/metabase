@@ -300,11 +300,7 @@ const NormalItemContent = ({
           : null
       }
       onMove={
-        collection.can_write && item.setCollection
-          ? () => {
-              this.setState({ moveItems: [item] });
-            }
-          : null
+        collection.can_write && item.setCollection ? () => onMove([item]) : null
       }
       onArchive={
         collection.can_write && item.setArchived

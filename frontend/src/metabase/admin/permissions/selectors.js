@@ -656,10 +656,27 @@ export const getDatabasesPermissionsGrid = createSelector(
   },
 );
 
-// "root" collection we should include in the grid even though it's not listed by the endpoints
-const ROOT_COLLECTION = { id: "root", name: "Saved Items" };
+import Collections, {
+  getCollectionsById,
+  ROOT_COLLECTION,
+} from "metabase/entities/collections";
 
-const getCollections = state => state.admin.permissions.collections;
+const getCollectionId = (state, props) => props && props.collectionId;
+
+const getCollections = createSelector(
+  [Collections.selectors.getList, getCollectionId],
+  (collections, collectionId) => {
+    if (!collections) {
+      return null;
+    }
+    const collectionsById = getCollectionsById(collections);
+    if (collectionId && collectionsById[collectionId]) {
+      return collectionsById[collectionId].children;
+    } else {
+      return [collectionsById["root"]];
+    }
+  },
+);
 const getCollectionPermission = (permissions, groupId, { collectionId }) =>
   getIn(permissions, [groupId, collectionId]);
 
@@ -671,8 +688,6 @@ export const getCollectionsPermissionsGrid = createSelector(
     if (!groups || groups.length === 0 || !permissions || !collections) {
       return null;
     }
-
-    collections = [ROOT_COLLECTION, ...collections];
 
     const defaultGroup = _.find(groups, isDefaultGroup);
 
@@ -726,6 +741,11 @@ export const getCollectionsPermissionsGrid = createSelector(
             collectionId: collection.id,
           },
           name: collection.name,
+          link: collection.children &&
+            collection.children.length > 0 && {
+              name: t`View collections`,
+              url: `/collections/permissions?collectionId=${collection.id}`,
+            },
         };
       }),
     };

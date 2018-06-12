@@ -6,7 +6,8 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 import { SelectButton } from "metabase/components/Select";
 
-import CollectionPicker, { ROOT_COLLECTION } from "./CollectionPicker";
+import CollectionPicker from "./CollectionPicker";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 
 export default class CollectionSelect extends React.Component {
   static propTypes = {
