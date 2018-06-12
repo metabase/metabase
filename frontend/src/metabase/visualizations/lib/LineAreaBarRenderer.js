@@ -579,7 +579,12 @@ type LineAreaBarProps = VisualizationProps & {
   maxSeries: number,
 };
 
-export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
+type DeregisterFunction = () => void;
+
+export default function lineAreaBar(
+  element: Element,
+  props: LineAreaBarProps,
+): DeregisterFunction {
   const { onRender, chartType, isScalarSeries, settings } = props;
 
   const warnings = {};
@@ -677,7 +682,10 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
       warnings: Object.keys(warnings),
     });
 
-  return parent;
+  // return an unregister function
+  return () => {
+    dc.chartRegistry.deregister(parent);
+  };
 }
 
 export const lineRenderer = (element, props) =>

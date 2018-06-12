@@ -20,6 +20,6 @@ export default class Segment extends Base {
   }
 
   isActive(): boolean {
-    return !!this.is_active;
+    return !this.archived;
   }
 }

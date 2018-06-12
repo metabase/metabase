@@ -10,8 +10,11 @@
              [database :as database :refer [Database]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
+             [permissions :as perms]
+             [permissions-group :as perms-group]
              [table :refer [Table]]]
             [metabase.sync
+             [analyze :as analyze]
              [field-values :as field-values]
              [sync-metadata :as sync-metadata]]
             [metabase.test
@@ -172,7 +175,8 @@
                 :id              $
                 :db_id           $
                 :raw_table_id    $
-                :created_at      $}))
+                :created_at      $
+                :fields_hash     $}))
       (update :entity_type (comp (partial str "entity/") name))))
 
 
@@ -325,7 +329,8 @@
                                    :id           (data/id :categories)
                                    :raw_table_id $
                                    :db_id        (data/id)
-                                   :created_at   $}))]}))
+                                   :created_at   $
+                                   :fields_hash  $}))]}))
   (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (data/id)))]
     (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
 
@@ -545,15 +550,27 @@
     (-> ((user->client :crowberto) :get 200 (format "database/%d" (u/get-id db)))
         (select-keys [:cache_field_values_schedule :metadata_sync_schedule :schedules]))))
 
+;; Five minutes
+(def ^:private long-timeout (* 5 60 1000))
+
+(defn- deliver-when-db [promise-to-deliver expected-db]
+  (fn [db]
+    (when (= (u/get-id db) (u/get-id expected-db))
+      (deliver promise-to-deliver true))))
+
 ;; Can we trigger a metadata sync for a DB?
 (expect
-  (let [sync-called? (atom false)]
+  [true true]
+  (let [sync-called?    (promise)
+        analyze-called? (promise)]
     (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
-      (with-redefs [sync-metadata/sync-db-metadata! (fn [synced-db]
-                                                      (when (= (u/get-id synced-db) (u/get-id db))
-                                                        (reset! sync-called? true)))]
+      (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
+                    analyze/analyze-db!             (deliver-when-db analyze-called? db)]
         ((user->client :crowberto) :post 200 (format "database/%d/sync_schema" (u/get-id db)))
-        @sync-called?))))
+        ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
+        ;; however if something went wrong, don't hang forever, eventually timeout and fail
+        [(deref sync-called? long-timeout :sync-never-called)
+         (deref analyze-called? long-timeout :analyze-never-called)]))))
 
 ;; (Non-admins should not be allowed to trigger sync)
 (expect
@@ -562,13 +579,14 @@
 
 ;; Can we RESCAN all the FieldValues for a DB?
 (expect
-  (let [update-field-values-called? (atom false)]
+  :sync-called
+  (let [update-field-values-called? (promise)]
     (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
       (with-redefs [field-values/update-field-values! (fn [synced-db]
                                                         (when (= (u/get-id synced-db) (u/get-id db))
-                                                          (reset! update-field-values-called? true)))]
+                                                          (deliver update-field-values-called? :sync-called)))]
         ((user->client :crowberto) :post 200 (format "database/%d/rescan_values" (u/get-id db)))
-        @update-field-values-called?))))
+        (deref update-field-values-called? long-timeout :sync-never-called)))))
 
 ;; (Non-admins should not be allowed to trigger re-scan)
 (expect
@@ -634,3 +652,57 @@
   (with-redefs [database-api/test-database-connection test-database-connection]
     ((user->client :crowberto) :post 200 "database/validate"
      {:details {:engine :h2, :details {:db "ABC"}}})))
+
+;; Tests for GET /api/database/:id/schemas
+(expect
+  ["schema1"]
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [t1          {:db_id db-id, :schema "schema1"}]
+                  Table    [t2          {:db_id db-id, :schema "schema1"}]]
+    ((user->client :crowberto) :get 200 (format "database/%d/schemas" db-id))))
+
+;; Multiple schemas are ordered by name
+(expect
+  ["schema1" "schema2" "schema3"]
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [t1          {:db_id db-id, :schema "schema3"}]
+                  Table    [t2          {:db_id db-id, :schema "schema2"}]
+                  Table    [t3          {:db_id db-id, :schema "schema1"}]]
+    ((user->client :crowberto) :get 200 (format "database/%d/schemas" db-id))))
+
+;; Multiple schemas are ordered by name
+(expect
+  ["t1" "t3"]
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [{t1-id :id} {:db_id db-id, :schema "schema1", :name "t1"}]
+                  Table    [t2          {:db_id db-id, :schema "schema2"}]
+                  Table    [{t3-id :id} {:db_id db-id, :schema "schema1", :name "t3"}]]
+    (map :name ((user->client :crowberto) :get 200 (format "database/%d/schema/%s" db-id "schema1")))))
+
+;; GET /api/database/:id/schemas should return a 403 for a user that doesn't have read permissions
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id} {:db_id database-id, :schema "test"}]]
+    (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
+    ((user->client :rasta) :get 403 (format "database/%s/schemas" database-id))))
+
+;; GET /api/database/:id/schemas should return a 403 for a user that doesn't have read permissions
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id} {:db_id database-id, :schema "test"}]]
+    (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
+    ((user->client :rasta) :get 403 (format "database/%s/schema/%s" database-id "test"))))
+
+;; Looking for a database that doesn't exist should return a 404
+(expect
+  "Not found."
+  ((user->client :rasta) :get 404 (format "database/%s/schemas" Integer/MAX_VALUE)))
+
+;; Check that a 404 returns if the schema isn't found
+(expect
+  "Not found."
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [{t1-id :id} {:db_id db-id, :schema "schema1"}]]
+    ((user->client :crowberto) :get 404 (format "database/%d/schema/%s" db-id "not schema1"))))

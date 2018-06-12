@@ -3,6 +3,7 @@
             [metabase.models.revision.diff :refer [diff-string]]
             [metabase.models.user :refer [User]]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
@@ -63,7 +64,7 @@
 (models/defmodel Revision :revision)
 
 (defn- pre-insert [revision]
-  (assoc revision :timestamp (u/new-sql-timestamp)))
+  (assoc revision :timestamp (du/new-sql-timestamp)))
 
 (u/strict-extend (class Revision)
   models/IModel

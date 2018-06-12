@@ -203,7 +203,7 @@ export const ChartClickAction = ({
 }) => {
   const className = cx(
     "text-brand-hover cursor-pointer no-decoration",
-    isLastItem ? "pr2" : "pr4",
+    isLastItem ? "pr2" : "pr3",
   );
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through

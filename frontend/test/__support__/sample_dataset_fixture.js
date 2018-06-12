@@ -31,7 +31,7 @@ export const PEOPLE_LONGITUDE_FIELD_ID = 15;
 export const PEOPLE_STATE_FIELD_ID = 19;
 
 export const state = {
-  metadata: {
+  entities: {
     metrics: {
       "1": {
         description: "Because we want to know the total I ugess",
@@ -54,7 +54,7 @@ export const state = {
         database_id: 1,
         show_in_getting_started: false,
         name: "Total Order Value",
-        is_active: true,
+        archived: false,
         caveats: null,
         creator_id: 1,
         updated_at: "2017-06-14T23:32:12.266Z",
@@ -85,7 +85,7 @@ export const state = {
         },
         show_in_getting_started: false,
         name: "Expensive Things",
-        is_active: true,
+        archived: false,
         caveats: null,
         creator_id: 1,
         updated_at: "2017-06-14T23:31:46.480Z",
@@ -1443,21 +1443,21 @@ export const orders_count_by_id_card = {
 
 export const clickedFloatHeader = {
   column: {
-    ...metadata.fields[ORDERS_TOTAL_FIELD_ID],
+    ...metadata.field(ORDERS_TOTAL_FIELD_ID),
     source: "fields",
   },
 };
 
 export const clickedCategoryHeader = {
   column: {
-    ...metadata.fields[PRODUCT_CATEGORY_FIELD_ID],
+    ...metadata.field(PRODUCT_CATEGORY_FIELD_ID),
     source: "fields",
   },
 };
 
 export const clickedFloatValue = {
   column: {
-    ...metadata.fields[ORDERS_TOTAL_FIELD_ID],
+    ...metadata.field(ORDERS_TOTAL_FIELD_ID),
     source: "fields",
   },
   value: 1234,
@@ -1465,7 +1465,7 @@ export const clickedFloatValue = {
 
 export const clickedPKValue = {
   column: {
-    ...metadata.fields[ORDERS_PK_FIELD_ID],
+    ...metadata.field(ORDERS_PK_FIELD_ID),
     source: "fields",
   },
   value: 42,
@@ -1473,7 +1473,7 @@ export const clickedPKValue = {
 
 export const clickedFKValue = {
   column: {
-    ...metadata.fields[ORDERS_PRODUCT_FK_FIELD_ID],
+    ...metadata.field(ORDERS_PRODUCT_FK_FIELD_ID),
     source: "fields",
   },
   value: 43,
@@ -1481,10 +1481,10 @@ export const clickedFKValue = {
 
 export const clickedDateTimeValue = {
   column: {
-    ...metadata.fields[ORDERS_CREATED_DATE_FIELD_ID],
+    ...metadata.field(ORDERS_CREATED_DATE_FIELD_ID),
     source: "fields",
   },
-  value: "2018-01-01T00:00:00.000Z",
+  value: "2018-01-01T00:00:00Z",
 };
 
 export const clickedMetric = {
@@ -1498,7 +1498,7 @@ export const clickedMetric = {
   value: 42,
 };
 
-export const tableMetadata = metadata.tables[ORDERS_TABLE_ID];
+export const tableMetadata = metadata.table(ORDERS_TABLE_ID);
 
 export function makeQuestion(fn = (card, state) => ({ card, state })) {
   const result = fn(card, state);
@@ -1512,7 +1512,7 @@ export const unsavedOrderCountQuestion = new Question(
 );
 export const productQuestion = new Question(metadata, product_card);
 const NoFieldsMetadata = getMetadata(
-  assocIn(state, ["metadata", "tables", ORDERS_TABLE_ID, "fields"], []),
+  assocIn(state, ["entities", "tables", ORDERS_TABLE_ID, "fields"], []),
 );
 export const questionNoFields = new Question(NoFieldsMetadata, card);
 
@@ -1538,11 +1538,11 @@ export const vendor_count_metric = {
   },
 };
 
-const nopMetadataReducer = (s = state.metadata, a) => s;
+const nopEntitiesReducer = (s = state.entities, a) => s;
 
 // simple provider which only supports static metadata defined above, no actions will take effect
-export const StaticMetadataProvider = ({ children }) => (
-  <Provider store={getStore({ metadata: nopMetadataReducer }, null, state)}>
+export const StaticEntitiesProvider = ({ children }) => (
+  <Provider store={getStore({ entities: nopEntitiesReducer }, null, state)}>
     {children}
   </Provider>
 );

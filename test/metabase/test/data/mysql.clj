@@ -1,27 +1,32 @@
 (ns metabase.test.data.mysql
   "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
-  (:require [metabase.test.data
+  (:require [clojure.java.jdbc :as jdbc]
+            [metabase.driver.generic-sql :as gsql]
+            [metabase.driver.mysql :as mysql]
+            [metabase.test.data
              [generic-sql :as generic]
              [interface :as i]]
-            [metabase.util :as u])
-  (:import metabase.driver.mysql.MySQLDriver))
+            [metabase.util :as u]))
 
 (def ^:private ^:const field-base-type->sql-type
-  {:type/BigInteger "BIGINT"
-   :type/Boolean    "BOOLEAN" ; Synonym of TINYINT(1)
-   :type/Date       "DATE"
-   :type/DateTime   "TIMESTAMP"
-   :type/Decimal    "DECIMAL"
-   :type/Float      "DOUBLE"
-   :type/Integer    "INTEGER"
-   :type/Text       "TEXT"
-   :type/Time       "TIME"})
+  {:type/BigInteger     "BIGINT"
+   :type/Boolean        "BOOLEAN" ; Synonym of TINYINT(1)
+   :type/Date           "DATE"
+   :type/DateTime       "TIMESTAMP"
+   :type/DateTimeWithTZ "TIMESTAMP"
+   :type/Decimal        "DECIMAL"
+   :type/Float          "DOUBLE"
+   :type/Integer        "INTEGER"
+   :type/Text           "TEXT"
+   :type/Time           "TIME"})
 
 (defn- database->connection-details [context {:keys [database-name]}]
   (merge {:host         (i/db-test-env-var-or-throw :mysql :host "localhost")
           :port         (i/db-test-env-var-or-throw :mysql :port 3306)
           :user         (i/db-test-env-var :mysql :user "root")
-          :timezone     :America/Los_Angeles}
+          :timezone     :America/Los_Angeles
+;;          :serverTimezone "UTC"
+          }
          (when-let [password (i/db-test-env-var :mysql :password)]
            {:password password})
          (when (= context :db)
@@ -34,7 +39,8 @@
 (defn- quote-name [nm]
   (str \` nm \`))
 
-(u/strict-extend MySQLDriver
+
+(u/strict-extend (class (mysql/->MySQLDriver))
   generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:database->spec            (comp add-connection-params (:database->spec generic/DefaultsMixin))

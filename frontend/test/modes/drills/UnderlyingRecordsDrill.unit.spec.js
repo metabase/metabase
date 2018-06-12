@@ -47,7 +47,7 @@ describe("UnderlyingRecordsDrill", () => {
     expect(UnderlyingRecordsDrill({ question })).toHaveLength(0);
   });
   it("should be return correct new card for breakout by month", () => {
-    const value = "2018-01-01T00:00:00.000Z";
+    const value = "2018-01-01T00:00:00Z";
     const actions = UnderlyingRecordsDrill(
       getActionPropsForTimeseriesClick("month", value),
     );

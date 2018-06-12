@@ -1,16 +1,17 @@
 (ns metabase.pulse-test
-  (:require [clojure.string :as str]
-            [clojure.walk :as walk]
+  (:require [clojure
+             [string :as str]
+             [walk :as walk]]
             [expectations :refer :all]
             [medley.core :as m]
-            [metabase.integrations.slack :as slack]
             [metabase
              [email-test :as et]
              [pulse :refer :all]
              [query-processor :as qp]]
+            [metabase.integrations.slack :as slack]
             [metabase.models
              [card :refer [Card]]
-             [pulse :refer [Pulse retrieve-pulse retrieve-pulse-or-alert]]
+             [pulse :refer [Pulse retrieve-notification retrieve-pulse]]
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
@@ -67,10 +68,10 @@
      (pulse-test-fixture (fn [] ~@body))))
 
 (def ^:private png-attachment
-  {:type :inline,
-   :content-id true,
-   :content-type "image/png",
-   :content java.net.URL})
+  {:type         :inline
+   :content-id   true
+   :content-type "image/png"
+   :content      java.net.URL})
 
 (defn- rasta-pulse-email [& [email]]
   (et/email-to :rasta (merge {:subject "Pulse: Pulse Name",
@@ -262,7 +263,7 @@
                   PulseChannelRecipient [_              {:user_id          (rasta-id)
                                                          :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      @et/inbox)))
 
 (defn- rasta-alert-email
@@ -287,7 +288,7 @@
                   PulseChannelRecipient [_             {:user_id          (rasta-id)
                                                         :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      (et/summarize-multipart-email test-card-regex #"More results have been included"))))
 
 ;; Rows alert with too much data will attach as CSV and include a table
@@ -308,7 +309,7 @@
                   PulseChannelRecipient [_             {:user_id          (rasta-id)
                                                         :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      (et/summarize-multipart-email test-card-regex #"More results have been included" #"ID</th>"))))
 
 ;; Above goal alert with data
@@ -329,7 +330,7 @@
                   PulseChannelRecipient [_             {:user_id          (rasta-id)
                                                         :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      (et/summarize-multipart-email test-card-regex))))
 
 ;; Native query with user-specified x and y axis
@@ -357,7 +358,7 @@
                   PulseChannelRecipient [_             {:user_id          (rasta-id)
                                                         :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      (et/summarize-multipart-email test-card-regex))))
 
 ;; Above goal alert, with no data above goal
@@ -377,7 +378,7 @@
                   PulseChannelRecipient [_             {:user_id          (rasta-id)
                                                         :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      @et/inbox)))
 
 ;; Below goal alert with no satisfying data
@@ -397,7 +398,7 @@
                   PulseChannelRecipient [_             {:user_id          (rasta-id)
                                                         :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      @et/inbox)))
 
 ;; Below goal alert with data
@@ -419,7 +420,7 @@
                                                         :pulse_channel_id pc-id}]]
 
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      (et/summarize-multipart-email test-card-regex))))
 
 (defn- thunk->boolean [{:keys [attachments] :as result}]
@@ -634,7 +635,7 @@
                    :fallback card-name}]}
    true]
   (slack-test-setup
-   (let [[result] (send-pulse! (retrieve-pulse-or-alert pulse-id))]
+   (let [[result] (send-pulse! (retrieve-notification pulse-id))]
      [(thunk->boolean result)
       (every? produces-bytes? (:attachments result))])))
 
@@ -662,7 +663,7 @@
                   PulseChannelRecipient [_             {:user_id          (rasta-id)
                                                         :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      (et/summarize-multipart-email test-card-regex))))
 
 ;; Below goal alert with progress bar
@@ -682,7 +683,7 @@
                   PulseChannelRecipient [_             {:user_id          (rasta-id)
                                                         :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      (et/summarize-multipart-email test-card-regex))))
 
 ;; Rows alert, first run only with data
@@ -700,7 +701,7 @@
                   PulseChannelRecipient [_             {:user_id          (rasta-id)
                                                         :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      (et/summarize-multipart-email test-card-regex
                                    #"stop sending you alerts"))))
 
@@ -718,7 +719,7 @@
                   PulseChannelRecipient [_              {:user_id          (rasta-id)
                                                          :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      [@et/inbox
       (db/exists? Pulse :id pulse-id)])))
 
@@ -760,7 +761,7 @@
                   PulseChannelRecipient [_              {:user_id          (rasta-id)
                                                          :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      (et/summarize-multipart-email test-card-regex))))
 
 ;; Basic test of card with CSV and XLS attachments, but no data. Should not include an attachment
@@ -817,5 +818,5 @@
                   PulseChannelRecipient [_             {:user_id          (rasta-id)
                                                         :pulse_channel_id pc-id}]]
     (email-test-setup
-     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (send-pulse! (retrieve-notification pulse-id))
      (et/summarize-multipart-email test-card-regex))))

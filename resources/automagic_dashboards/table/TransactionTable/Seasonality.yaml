@@ -9,6 +9,14 @@ dimensions:
     field_type: CreationTimestamp
 - Timestamp:
     field_type: DateTime
+- Datetime:
+    field_type: CreationDate
+- Date:
+    field_type: Date
+- Time:
+    field_type: CreationTime
+- Time:
+    field_type: DateTime
 - Country: GenericTable.Country
 - State: GenericTable.State
 - Source:
@@ -20,6 +28,7 @@ dimensions:
 dashboard_filters:
 - Source
 - Timestamp
+- Date
 - State
 - Country
 - ProductCategory
@@ -32,6 +41,14 @@ cards:
       score: 100
       width: 18
       height: 6
+  - CountByTimestamp:
+      title: Transactions over time
+      visualization: line
+      dimensions: Date
+      metrics: Count
+      score: 90
+      width: 18
+      height: 6
   - DayOfWeekTimestamp:
       title: Transactions per day of the week
       visualization: bar
@@ -40,6 +57,17 @@ cards:
             aggregation: day-of-week
       metrics: Count
       score: 60
+      width: 9
+      height: 6
+      x_label: "[[Timestamp]] by day of week"
+  - DayOfWeekTimestamp:
+      title: Transactions per day of the week
+      visualization: bar
+      dimensions:
+        - Date:
+            aggregation: day-of-week
+      metrics: Count
+      score: 50
       width: 9
       height: 6
       x_label: "[[Timestamp]] by day of week"
@@ -54,6 +82,17 @@ cards:
       width: 9
       height: 6
       x_label: "[[Timestamp]] by hour of day"
+  - HourOfDayTimestamp:
+      title: Transactions per hour of the day
+      visualization: bar
+      dimensions:
+      - Time:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 40
+      width: 9
+      height: 6
+      x_label: "[[Timestamp]] by hour of day"
   - MonthOfYearTimestamp:
       title: Transactions per month of the year
       visualization: bar
@@ -65,6 +104,17 @@ cards:
       width: 9
       height: 6
       x_label: "[[Timestamp]] by month of year"
+  - MonthOfYearTimestamp:
+      title: Transactions per month of the year
+      visualization: bar
+      dimensions:
+        - Date:
+            aggregation: month-of-year
+      metrics: Count
+      score: 30
+      width: 9
+      height: 6
+      x_label: "[[Timestamp]] by month of year"
   - QuarterOfYearTimestamp:
       title: Transactions per quarter of the year
       visualization: bar
@@ -73,6 +123,17 @@ cards:
             aggregation: quarter-of-year
       metrics: Count
       score: 40
+      width: 9
+      height: 6
+      x_label: "[[Timestamp]] by quarter of year"
+  - QuarterOfYearTimestamp:
+      title: Transactions per quarter of the year
+      visualization: bar
+      dimensions:
+        - Date:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 30
       width: 9
       height: 6
       x_label: "[[Timestamp]] by quarter of year"

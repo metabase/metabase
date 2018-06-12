@@ -1,7 +1,6 @@
 (ns metabase.related
   "Related entities recommendations."
   (:require [clojure.set :as set]
-            [clojure.string :as str]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.models
@@ -104,13 +103,13 @@
   [table]
   (filter-visible (db/select Metric
                     :table_id  (:id table)
-                    :is_active true)))
+                    :archived false)))
 
 (defn- segments-for-table
   [table]
   (filter-visible (db/select Segment
                     :table_id  (:id table)
-                    :is_active true)))
+                    :archived false)))
 
 (defn- linking-to
   [table]
@@ -157,7 +156,7 @@
   [card]
   (->> (db/select Metric
          :table_id (:table_id card)
-         :is_active true)
+         :archived false)
        filter-visible
        (m/find-first (comp #{(-> card :dataset_query :query :aggregation)}
                            :aggregation

@@ -7,11 +7,12 @@
              [common :as common]
              [setting :as setting :refer [defsetting]]]
             [metabase.public-settings.metastore :as metastore]
-            [metabase.util.i18n :refer [available-locales-with-names set-locale]]
-            [metabase.util.password :as password]
+            [metabase.util
+             [i18n :refer [available-locales-with-names set-locale]]
+             [password :as password]]
             [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db])
-  (:import [java.util Locale TimeZone UUID]))
+  (:import [java.util TimeZone UUID]))
 
 (defsetting check-for-updates
   (tru "Identify when new versions of Metabase are available.")
@@ -158,7 +159,6 @@
    :embedding             (enable-embedding)
    :enable_query_caching  (enable-query-caching)
    :enable_nested_queries (enable-nested-queries)
-   :enable_xrays          (setting/get :enable-xrays)
    :engines               ((resolve 'metabase.driver/available-drivers))
    :ga_code               "UA-60817802-1"
    :google_auth_client_id (setting/get :google-auth-client-id)
@@ -179,5 +179,4 @@
    :timezones             common/timezones
    :types                 (types/types->parents :type/*)
    :entities              (types/types->parents :entity/*)
-   :version               config/mb-version-info
-   :xray_max_cost         (setting/get :xray-max-cost)})
+   :version               config/mb-version-info})

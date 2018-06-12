@@ -414,23 +414,6 @@ const SECTIONS = [
       },
     ],
   },
-  {
-    name: t`X-Rays`,
-    slug: "x_rays",
-    settings: [
-      {
-        key: "enable-xrays",
-        display_name: t`Enable X-Rays`,
-        type: "boolean",
-        allowValueCollection: true,
-      },
-      {
-        key: "xray-max-cost",
-        type: "string",
-        allowValueCollection: true,
-      },
-    ],
-  },
   /*
     {
         name: "Premium Embedding",

@@ -50,8 +50,19 @@
   (->> (data/id :users)
        Table
        (#'magic/->root)
-       (#'magic/matching-rules (rules/load-rules "table"))
+       (#'magic/matching-rules (rules/get-rules ["table"]))
        (map (comp first :applies_to))))
+
+;; Test fallback to GenericTable
+(expect
+  [:entity/GenericTable :entity/*]
+  (->> (-> (data/id :users)
+           Table
+           (assoc :entity_type nil)
+           (#'magic/->root))
+       (#'magic/matching-rules (rules/get-rules ["table"]))
+       (map (comp first :applies_to))))
+
 
 (defn- collect-urls
   [dashboard]
@@ -71,14 +82,14 @@
 
 (defn- valid-dashboard?
   [dashboard]
-  (and (:name dashboard)
-       (-> dashboard :ordered_cards count pos?)
-       (valid-urls? dashboard)))
+  (assert (:name dashboard))
+  (assert (-> dashboard :ordered_cards count pos?))
+  (assert (valid-urls? dashboard))
+  true)
 
 (defmacro ^:private with-dashboard-cleanup
   [& body]
-  `(tu/with-model-cleanup [(quote ~'Card) (quote ~'Dashboard) (quote ~'Collection)
-                           (quote ~'DashboardCard)]
+  `(tu/with-model-cleanup ['~'Card '~'Dashboard '~'Collection '~'DashboardCard]
      ~@body))
 
 (expect
@@ -101,6 +112,17 @@
 (expect
   (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
                                        :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
+                                                               :source_table (data/id :venues)}
+                                                       :type :query
+                                                       :database (data/id)}}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
+
+(expect
+  (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :dataset_query {:query {:aggregation [[:count]]
+                                                               :breakout [[:field-id (data/id :venues :category_id)]]
                                                                :source_table (data/id :venues)}
                                                        :type :query
                                                        :database (data/id)}}]]
@@ -146,6 +168,15 @@
         (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
 
 (expect
+  (tt/with-temp* [Card [{card-id :id} {:table_id      nil
+                                       :dataset_query {:native {:query "select * from users"}
+                                                       :type :native
+                                                       :database (data/id)}}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
+
+(expect
   (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
                                        :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                                                                :source_table (data/id :venues)}
@@ -169,7 +200,7 @@
       (with-dashboard-cleanup
         (-> card-id
             Card
-            (automagic-analysis {:cell-query [:!= [:field-id (data/id :venues :category_id) 2]]})
+            (automagic-analysis {:cell-query [:!= [:field-id (data/id :venues :category_id)] 2]})
             valid-dashboard?)))))
 
 
@@ -185,44 +216,40 @@
 (expect
   (with-rasta
     (with-dashboard-cleanup
+      (let [q (query/adhoc-query {:query {:aggregation [[:count]]
+                                          :breakout [[:field-id (data/id :venues :category_id)]]
+                                          :source_table (data/id :venues)}
+                                  :type :query
+                                  :database (data/id)})]
+        (-> q (automagic-analysis {}) valid-dashboard?)))))
+
+(expect
+  (with-rasta
+    (with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                                           :source_table (data/id :venues)}
                                   :type :query
                                   :database (data/id)})]
         (-> q
-            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]})
+            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id)] 2]})
             valid-dashboard?)))))
-
-
-(expect
-  [true true]
-  (tt/with-temp* [Table [{table-id :id}]]
-    (with-rasta
-      (with-dashboard-cleanup
-        (let [table               (Table table-id)
-              not-analyzed-result (automagic-analysis table {})
-              analyzed-result     (-> table
-                                      (assoc :entity_type :entity/GenericTable)
-                                      (automagic-analysis {}))]
-          [(nil? not-analyzed-result) (some? analyzed-result)])))))
-
-(expect
-  (tt/with-temp* [Database [{db-id :id}]
-                  Table    [{table-id :id} {:db_id db-id}]
-                  Field    [{} {:table_id table-id}]
-                  Field    [{} {:table_id table-id}]]
-    (with-rasta
-      (with-dashboard-cleanup
-        (let [database           (Database db-id)
-              not-analyzed-count (count (candidate-tables database))]
-          (db/update! Table table-id :entity_type :entity/GenericTable)
-          (= (inc not-analyzed-count) (count (candidate-tables database))))))))
 
 
 (expect
   3
   (with-rasta
     (->> (Database (data/id)) candidate-tables first :tables count)))
+
+;; /candidates should work with unanalyzed tables
+(expect
+  1
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [{table-id :id} {:db_id db-id}]
+                  Field    [{} {:table_id table-id}]
+                  Field    [{} {:table_id table-id}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (count (candidate-tables (Database db-id)))))))
 
 
 ;; Identity

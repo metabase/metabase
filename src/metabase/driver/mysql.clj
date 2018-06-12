@@ -6,7 +6,7 @@
              [format :as time]]
             [clojure
              [set :as set]
-             [string :as s]]
+             [string :as str]]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
@@ -15,13 +15,17 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [schema.core :as s])
   (:import java.sql.Time
            [java.util Date TimeZone]
+           metabase.util.honeysql_extensions.Literal
            org.joda.time.format.DateTimeFormatter))
 
 (defrecord MySQLDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "MySQL"))
 
@@ -60,7 +64,7 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Integer} (keyword (s/replace (name column-type) #"\sUNSIGNED$" "")))) ; strip off " UNSIGNED" from end if present
+    :YEAR       :type/Integer} (keyword (str/replace (name column-type) #"\sUNSIGNED$" "")))) ; strip off " UNSIGNED" from end if present
 
 (def ^:private ^:const default-connection-args
   "Map of args for the MySQL JDBC connection string.
@@ -77,8 +81,8 @@
    :useJDBCCompliantTimezoneShift :true})
 
 (def ^:private ^:const ^String default-connection-args-string
-  (s/join \& (for [[k v] default-connection-args]
-               (str (name k) \= (name v)))))
+  (str/join \& (for [[k v] default-connection-args]
+                 (str (name k) \= (name v)))))
 
 (defn- append-connection-args
   "Append `default-connection-args-string` to the connection string in CONNECTION-DETAILS, and an additional option to
@@ -126,11 +130,14 @@
   [date-time]
   (timezone-id->offset-str (.getID (TimeZone/getDefault)) date-time))
 
-;; MySQL doesn't seem to correctly want to handle timestamps no matter how nicely we ask. SAD! Thus we will just
-;; convert them to appropriate timestamp literals and include functions to convert timezones as needed
-(defmethod sqlqp/->honeysql [MySQLDriver Date]
-  [_ date]
-  (let [date-as-dt                 (tcoerce/from-date date)
+(s/defn ^:private create-hsql-for-date
+  "Returns an HoneySQL structure representing the date for MySQL. If there's a report timezone, we need to ensure the
+  timezone conversion is wrapped around the `date-literal-or-string`. It supports both an `hx/literal` and a plain
+  string depending on whether or not the date value should be emedded in the statement or separated as a prepared
+  statement parameter. Use a string for prepared statement values, a literal if you want it embedded in the statement"
+  [date-obj :- java.util.Date
+   date-literal-or-string :- (s/either s/Str Literal)]
+  (let [date-as-dt                 (tcoerce/from-date date-obj)
         report-timezone-offset-str (timezone-id->offset-str (driver/report-timezone) date-as-dt)
         system-timezone-offset-str (system-timezone->offset-str date-as-dt)]
     (if (and report-timezone-offset-str
@@ -149,12 +156,29 @@
       ;; preferable to have timezones slightly wrong in these rare theoretical situations, instead of all the time, as
       ;; was the previous behavior.
       (hsql/call :convert_tz
-        (hx/literal (u/format-date :date-hour-minute-second-ms date))
+        date-literal-or-string
         (hx/literal system-timezone-offset-str)
         (hx/literal report-timezone-offset-str))
       ;; otherwise if we don't have a report timezone we can continue to pass the object as-is, e.g. as a prepared
       ;; statement param
-      date)))
+      date-obj)))
+
+;; MySQL doesn't seem to correctly want to handle timestamps no matter how nicely we ask. SAD! Thus we will just
+;; convert them to appropriate timestamp literals and include functions to convert timezones as needed
+(defmethod sqlqp/->honeysql [MySQLDriver Date]
+  [_ date]
+  (create-hsql-for-date date (hx/literal (du/format-date :date-hour-minute-second-ms date))))
+
+;; The sqlqp/->honeysql entrypoint is used by MBQL, but native queries with field filters have the same issue. Below
+;; will return a map that will be used in the prepared statement to correctly convert and parameterize the date
+(s/defmethod sql/->prepared-substitution [MySQLDriver Date] :- sql/PreparedStatementSubstitution
+  [_ date]
+  (let [date-str (du/format-date :date-hour-minute-second-ms date)]
+    (sql/make-stmt-subs (-> (create-hsql-for-date date date-str)
+                            hx/->date
+                            (hsql/format :quoting (sql/quote-style (MySQLDriver.)))
+                            first)
+                        [(du/format-date :date-hour-minute-second-ms date)])))
 
 (defmethod sqlqp/->honeysql [MySQLDriver Time]
   [_ time-value]

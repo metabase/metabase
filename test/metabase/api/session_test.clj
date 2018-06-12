@@ -220,8 +220,10 @@
 ;; shouldn't be allowed to create a new user via Google Auth if their email doesn't match the auto-create accounts domain
 (expect
   clojure.lang.ExceptionInfo
-  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domains "sf-toucannery.com"]
-    (#'session-api/google-auth-create-new-user! "Rasta" "Toucan" "rasta@metabase.com")))
+  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
+    (#'session-api/google-auth-create-new-user! {:first_name "Rasta"
+                                                 :last_name  "Toucan"
+                                                 :email      "rasta@metabase.com"})))
 
 ;; should totally work if the email domains match up
 (expect
@@ -229,7 +231,9 @@
   (et/with-fake-inbox
     (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domains "sf-toucannery.com"
                                        admin-email                             "rasta@toucans.com"]
-      (select-keys (u/prog1 (#'session-api/google-auth-create-new-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
+      (select-keys (u/prog1 (#'session-api/google-auth-create-new-user! {:first_name "Rasta"
+                                                                         :last_name  "Toucan"
+                                                                         :email      "rasta@sf-toucannery.com"})
                      (db/delete! User :id (:id <>))) ; make sure we clean up after ourselves !
                    [:first_name :last_name :email]))))
 

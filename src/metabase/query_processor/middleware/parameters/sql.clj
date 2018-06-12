@@ -4,16 +4,16 @@
    The new implementation uses prepared statement args instead of substituting them directly into the query,
    and is much better-organized and better-documented."
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [instaparse.core :as insta]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.models.field :as field :refer [Field]]
-            [metabase.query-processor.middleware.parameters.dates :as date-params]
+            [metabase.driver.generic-sql :as sql]
             [metabase.query-processor.middleware.expand :as ql]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.query-processor.middleware.parameters.dates :as date-params]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db])
@@ -21,6 +21,7 @@
            honeysql.types.SqlCall
            java.text.NumberFormat
            java.util.regex.Pattern
+           java.util.TimeZone
            metabase.models.field.FieldInstance))
 
 ;; The Basics:
@@ -45,9 +46,6 @@
 ;; TODO - we have dynamic *driver* variables like this in several places; it probably makes more sense to see if we
 ;; can share one used somewhere else instead
 (def ^:private ^:dynamic *driver* nil)
-
-(def ^:private ^:dynamic *timezone* nil)
-
 
 ;; various record types below are used as a convenience for differentiating the different param types.
 
@@ -300,7 +298,7 @@
 (s/defn ^:private relative-date-dimension-value->replacement-snippet-info :- ParamSnippetInfo
   [value]
   ;; TODO - get timezone from query dict
-  (-> (date-params/date-string->range value *timezone*)
+  (-> (date-params/date-string->range value (.getID du/*report-timezone*))
       map->DateRange
       ->replacement-snippet-info))
 
@@ -331,7 +329,7 @@
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [x]
-  (let [[snippet & args] (hsql/format x, :quoting ((resolve 'metabase.driver.generic-sql/quote-style) *driver*))]
+  (let [[snippet & args] (hsql/format x, :quoting (sql/quote-style *driver*))]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
@@ -340,9 +338,9 @@
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the PARAM-TYPE."
   [field param-type]
-  (-> (honeysql->replacement-snippet-info (let [identifier ((resolve 'metabase.driver.generic-sql/field->identifier) *driver* field)]
+  (-> (honeysql->replacement-snippet-info (let [identifier (sql/field->identifier *driver* field)]
                                             (if (date-param-type? param-type)
-                                              ((resolve 'metabase.driver.generic-sql/date) *driver* :day identifier)
+                                              (sql/date *driver* :day identifier)
                                               identifier)))
       :replacement-snippet))
 
@@ -352,13 +350,23 @@
   {:replacement-snippet     (str \( (str/join " AND " (map :replacement-snippet replacement-snippet-maps)) \))
    :prepared-statement-args (reduce concat (map :prepared-statement-args replacement-snippet-maps))})
 
+(defn- create-replacement-snippet [nil-or-obj]
+  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution *driver* nil-or-obj)]
+    {:replacement-snippet sql-string
+     :prepared-statement-args param-values}))
+
+(defn- prepared-ts-subs [operator date-str]
+  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution *driver* (du/->Timestamp date-str))]
+    {:replacement-snippet (str operator " " sql-string)
+     :prepared-statement-args param-values}))
+
 (extend-protocol ISQLParamSubstituion
-  nil     (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  Object  (->replacement-snippet-info [this] (honeysql->replacement-snippet-info (str this)))
-  Number  (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  Boolean (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  Keyword (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  SqlCall (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
+  nil     (->replacement-snippet-info [this] (create-replacement-snippet this))
+  Object  (->replacement-snippet-info [this] (create-replacement-snippet (str this)))
+  Number  (->replacement-snippet-info [this] (create-replacement-snippet this))
+  Boolean (->replacement-snippet-info [this] (create-replacement-snippet this))
+  Keyword (->replacement-snippet-info [this] (create-replacement-snippet this))
+  SqlCall (->replacement-snippet-info [this] (create-replacement-snippet this))
   NoValue (->replacement-snippet-info [_]    {:replacement-snippet ""})
 
   CommaSeparatedNumbers
@@ -373,15 +381,24 @@
 
   Date
   (->replacement-snippet-info [{:keys [s]}]
-    (honeysql->replacement-snippet-info (u/->Timestamp s)))
+    (create-replacement-snippet (du/->Timestamp s)))
 
   DateRange
   (->replacement-snippet-info [{:keys [start end]}]
     (cond
-      (= start end) {:replacement-snippet "= ?",             :prepared-statement-args [(u/->Timestamp start)]}
-      (nil? start)  {:replacement-snippet "< ?",             :prepared-statement-args [(u/->Timestamp end)]}
-      (nil? end)    {:replacement-snippet "> ?",             :prepared-statement-args [(u/->Timestamp start)]}
-      :else         {:replacement-snippet "BETWEEN ? AND ?", :prepared-statement-args [(u/->Timestamp start) (u/->Timestamp end)]}))
+      (= start end)
+      (prepared-ts-subs \= start)
+
+      (nil? start)
+      (prepared-ts-subs \< end)
+
+      (nil? end)
+      (prepared-ts-subs \> start)
+
+      :else
+      (let [params (map (comp #(sql/->prepared-substitution *driver* %) du/->Timestamp) [start end])]
+        {:replacement-snippet     (apply format "BETWEEN %s AND %s" (map :sql-string params)),
+         :prepared-statement-args (vec (mapcat :param-values params))})))
 
   ;; TODO - clean this up if possible!
   Dimension
@@ -509,14 +526,9 @@
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- prepare-sql-param-for-driver [param]
-  ((resolve 'metabase.driver.generic-sql/prepare-sql-param) *driver* param))
-
 (s/defn ^:private expand-query-params
   [{sql :query, :as native}, param-key->value :- ParamValues]
-  (merge native
-         ;; `prepare-sql-param-for-driver` can't be lazy as it needs `*driver*` to be bound
-         (update (parse-template sql param-key->value) :params #(mapv prepare-sql-param-for-driver %))))
+  (merge native (parse-template sql param-key->value)))
 
 (defn- ensure-driver
   "Depending on where the query came from (the user, permissions check etc) there might not be an driver associated to
@@ -529,8 +541,7 @@
 (defn expand
   "Expand parameters inside a *SQL* QUERY."
   [query]
-  (binding [*driver*   (ensure-driver query)
-            *timezone* (get-in query [:settings :report-timezone])]
+  (binding [*driver*   (ensure-driver query)]
     (if (driver/driver-supports? *driver* :native-query-params)
       (update query :native expand-query-params (query->params-map query))
       query)))

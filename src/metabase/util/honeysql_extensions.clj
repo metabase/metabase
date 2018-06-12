@@ -95,6 +95,7 @@
 
 ;; Single-quoted string literal
 (defrecord Literal [literal]
+  :load-ns true
   ToSql
   (to-sql [_]
     (str \' (name literal) \')))
@@ -144,6 +145,7 @@
 (defn ->timestamp-with-time-zone "CAST X to a `timestamp with time zone`." [x] (cast "timestamp with time zone" x))
 (defn ->integer                  "CAST X to a `integer`."                  [x] (cast :integer x))
 (defn ->time                     "CAST X to a `time` datatype"             [x] (cast :time x))
+(defn ->boolean                  "CAST X to a `boolean` datatype"          [x] (cast :boolean x))
 
 ;;; Random SQL fns. Not all DBs support all these!
 (def ^{:arglists '([& exprs])} floor   "SQL `floor` function."  (partial hsql/call :floor))

@@ -14,6 +14,7 @@
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate-and-sort :as annotate-and-sort]
+             [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
@@ -29,18 +30,20 @@
              [mbql-to-native :as mbql-to-native]
              [parameters :as parameters]
              [permissions :as perms]
-             [results-metadata :as results-metadata]
-             [resolve-driver :as resolve-driver]
              [resolve :as resolve]
+             [resolve-driver :as resolve-driver]
+             [results-metadata :as results-metadata]
              [source-table :as source-table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
-;;; +-------------------------------------------------------------------------------------------------------+
-;;; |                                           QUERY PROCESSOR                                             |
-;;; +-------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                QUERY PROCESSOR                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- execute-query
   "The pivotal stage of the `process-query` pipeline where the query is actually executed by the driver's Query
@@ -106,12 +109,14 @@
       driver-specific/process-query-in-context         ; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
       add-settings/add-settings
       resolve-driver/resolve-driver                    ; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲ All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
+      bind-timezone/bind-effective-timezone
       fetch-source-query/fetch-source-query
       log-query/log-initial-query
       cache/maybe-return-cached-results
       log-query/log-results-metadata
       catch-exceptions/catch-exceptions))
-;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are (eventually) passed to `expand-resolve`
+;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
+;; `substitute-parameters`
 
 (defn query->native
   "Return the native form for QUERY (e.g. for a MBQL query on Postgres this would return a map containing the compiled
@@ -140,14 +145,15 @@
        expand-macros/expand-macros
        driver-specific/process-query-in-context
        resolve-driver/resolve-driver
-       fetch-source-query/fetch-source-query))
+       fetch-source-query/fetch-source-query
+       bind-timezone/bind-effective-timezone))
 ;; ▲▲▲ This only does PRE-PROCESSING, so it happens from bottom to top, eventually returning the preprocessed query
 ;; instead of running it
 
 
-;;; +----------------------------------------------------------------------------------------------------+
-;;; |                                     DATASET-QUERY PUBLIC API                                       |
-;;; +----------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            DATASET-QUERY PUBLIC API                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; The only difference between `process-query` and `process-query-and-save-execution!` (below) is that the
 ;; latter records a `QueryExecution` (inserts a new row) recording some stats about this Query run including
@@ -229,7 +235,7 @@
    :hash              (or query-hash (throw (Exception. "Missing query hash!")))
    :native            (= query-type "native")
    :json_query        (dissoc query :info)
-   :started_at        (u/new-sql-timestamp)
+   :started_at        (du/new-sql-timestamp)
    :running_time      0
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})

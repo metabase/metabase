@@ -97,4 +97,5 @@
     ;; Hopefully this is never the case.
     (doseq [table (:tables (fetch-metadata/db-metadata database))]
       (when (is-metabase-metadata-table? table)
-        (sync-metabase-metadata-table! (driver/->driver database) database table)))))
+        (sync-metabase-metadata-table! (driver/->driver database) database table)))
+    {}))

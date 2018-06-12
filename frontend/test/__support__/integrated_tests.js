@@ -17,6 +17,8 @@ import {
   CardApi,
   MetricApi,
   SegmentApi,
+  CollectionsApi,
+  PermissionsApi,
 } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from "metabase/reducers-main";
@@ -96,11 +98,15 @@ export function useSharedNormalLogin() {
     id: process.env.TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID,
   };
 }
-export const forBothAdminsAndNormalUsers = async tests => {
-  useSharedAdminLogin();
-  await tests();
-  useSharedNormalLogin();
-  await tests();
+export const forBothAdminsAndNormalUsers = tests => {
+  describe("for admins", () => {
+    beforeEach(useSharedAdminLogin);
+    tests();
+  });
+  describe("for normal users", () => {
+    beforeEach(useSharedNormalLogin);
+    tests();
+  });
 };
 
 export function logout() {
@@ -123,16 +129,12 @@ export function restorePreviousLogin() {
  * Calls the provided function while simulating that the browser is offline
  */
 export async function whenOffline(callWhenOffline) {
-  simulateOfflineMode = true;
-  return callWhenOffline()
-    .then(result => {
-      simulateOfflineMode = false;
-      return result;
-    })
-    .catch(e => {
-      simulateOfflineMode = false;
-      throw e;
-    });
+  try {
+    simulateOfflineMode = true;
+    return await callWhenOffline();
+  } finally {
+    simulateOfflineMode = false;
+  }
 }
 
 export function switchToPlainDatabase() {
@@ -249,6 +251,17 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
         }
 
         actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes];
+
+        if (_.any(actionTypes, type => !type)) {
+          return Promise.reject(
+            new Error(
+              `You tried to wait for a null or undefined action type (${actionTypes})`,
+            ),
+          );
+        }
+
+        // supports redux-action style action creator that when cast to a string returns the action name
+        actionTypes = actionTypes.map(actionType => String(actionType));
 
         // Returns all actions that are triggered after the last action which belongs to `actionTypes
         const getRemainingActions = () => {
@@ -416,6 +429,22 @@ export const createDashboard = async details => {
   let savedDashboard = await DashboardApi.create(details);
   return savedDashboard;
 };
+
+// useful for tests where multiple users need access to the same questions
+export async function createAllUsersWritableCollection() {
+  const group = _.findWhere(await PermissionsApi.groups(), {
+    name: "All Users",
+  });
+  const collection = await CollectionsApi.create({
+    name: "test" + Math.random(),
+    description: "description",
+    color: "#F1B556",
+  });
+  const graph = await CollectionsApi.graph();
+  graph.groups[group.id][collection.id] = "write";
+  await CollectionsApi.updateGraph(graph);
+  return collection;
+}
 
 /**
  * Waits for a API request with a given method (GET/POST/PUT...) and a url which matches the given regural expression.

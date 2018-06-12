@@ -45,16 +45,12 @@ describe("ChartSettings", () => {
       it("should show null state", () => {
         const chartSettings = renderChartSettings();
 
-        expect(
-          chartSettings.find(".list-item [data-id=0] .Icon-check").length,
-        ).toEqual(1);
+        expect(chartSettings.find(".toggle-all .Icon-check").length).toEqual(1);
         expect(chartSettings.find("table").length).toEqual(1);
 
         click(chartSettings.find(".toggle-all .cursor-pointer"));
 
-        expect(
-          chartSettings.find(".list-item [data-id=0] .Icon-check").length,
-        ).toEqual(0);
+        expect(chartSettings.find(".toggle-all .Icon-check").length).toEqual(0);
         expect(chartSettings.find("table").length).toEqual(0);
         expect(chartSettings.text()).toContain(
           "Every field is hidden right now",
@@ -66,9 +62,7 @@ describe("ChartSettings", () => {
       it("should show all columns", () => {
         const chartSettings = renderChartSettings(false);
 
-        expect(
-          chartSettings.find(".list-item [data-id=0] .Icon-check").length,
-        ).toEqual(0);
+        expect(chartSettings.find(".toggle-all .Icon-check").length).toEqual(0);
         expect(chartSettings.find("table").length).toEqual(0);
         expect(chartSettings.text()).toContain(
           "Every field is hidden right now",
@@ -76,9 +70,7 @@ describe("ChartSettings", () => {
 
         click(chartSettings.find(".toggle-all .cursor-pointer"));
 
-        expect(
-          chartSettings.find(".list-item [data-id=0] .Icon-check").length,
-        ).toEqual(1);
+        expect(chartSettings.find(".toggle-all .Icon-check").length).toEqual(1);
         expect(chartSettings.find("table").length).toEqual(1);
         expect(chartSettings.text()).not.toContain(
           "Every field is hidden right now",

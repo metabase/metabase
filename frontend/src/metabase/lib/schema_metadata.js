@@ -141,7 +141,7 @@ export const isNumericBaseType = field =>
 export const isNumber = field =>
   field &&
   isNumericBaseType(field) &&
-  (field.special_type == null || field.special_type === TYPE.Number);
+  (field.special_type == null || isa(field.special_type, TYPE.Number));
 
 export const isTime = field => isa(field && field.base_type, TYPE.Time);
 

@@ -107,7 +107,7 @@ export const getFieldBySegment = createSelector(
 );
 
 const getQuestions = (state, props) =>
-  getIn(state, ["questions", "entities", "cards"]) || {};
+  getIn(state, ["entities", "questions"]) || {};
 
 export const getMetricQuestions = createSelector(
   [getMetricId, getQuestions],
@@ -125,7 +125,7 @@ export const getMetricQuestions = createSelector(
       .reduce((map, question) => assoc(map, question.id, question), {}),
 );
 
-const getRevisions = (state, props) => state.metadata.revisions;
+const getRevisions = (state, props) => state.revisions;
 
 export const getMetricRevisions = createSelector(
   [getMetricId, getRevisions],
