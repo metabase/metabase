@@ -38,7 +38,7 @@ const mapDispatchToProps = {
   updateDashboard: Dashboard.actions.update,
 };
 
-const CollectionItem = ({ collection }) => (
+const CollectionItem = ({ collection, iconName }) => (
   <Link
     to={`collection/${collection.id}`}
     hover={{ color: normal.blue }}
@@ -51,7 +51,7 @@ const CollectionItem = ({ collection }) => (
       py={1}
       key={`collection-${collection.id}`}
     >
-      <Icon name={collection.personal_owner_id ? "star" : "all"} mx={1} />
+      <Icon name={iconName} mx={1} />
       <h4>
         <Ellipsified>{collection.name}</Ellipsified>
       </h4>
@@ -59,33 +59,66 @@ const CollectionItem = ({ collection }) => (
   </Link>
 );
 
-const CollectionList = () => {
-  return (
-    <Box mb={2}>
-      <CollectionListLoader
-        // NOTE: preferably we wouldn't need to reload each time the page is shown
-        // but until we port everything to the Collections entity it will be difficult
-        // to ensure it's up to date
-        reload
-      >
-        {({ collections }) => {
-          return (
-            <Box>
-              {collections.map(collection => (
-                <Box
-                  key={collection.id}
-                  mb={collection.personal_owner_id ? 3 : 1}
-                >
-                  <CollectionItem collection={collection} />
+CollectionItem.defaultProps = {
+  iconName: "all"
+}
+
+@connect(({ currentUser }) => ({ currentUser }), null)
+class CollectionList extends React.Component {
+  render () {
+    const { currentUser } = this.props
+    return (
+      <Box mb={2}>
+        <CollectionListLoader
+          // NOTE: preferably we wouldn't need to reload each time the page is shown
+          // but until we port everything to the Collections entity it will be difficult
+          // to ensure it's up to date
+          reload
+        >
+          {({ collections }) => {
+            return (
+              <Box>
+                <Box mb={2}>
+                  <CollectionItem
+                    collection={{
+                      name: "My personal collection",
+                      id: currentUser.personal_collection_id
+                    }
+                    }
+                    iconName="star"
+                  />
+                  { currentUser.is_superuser && (
+                    <CollectionItem collection={{
+                      name: "Everyones personal collections",
+                      // Bit of a hack. The route /collection/users lists
+                      // user collections but is not itself a colllection,
+                      // but using the fake id users here works
+                      id: "users"
+                    }}
+                    iconName="person"
+                  />
+                  )}
                 </Box>
-              ))}
-            </Box>
-          );
-        }}
-      </CollectionListLoader>
-    </Box>
-  );
-};
+                {
+                  // HACK - temporary workaround to prevent personal collections
+                  // from being returned in the
+                  // personal collectiones are identified by having a
+                  collections.map(collection => !collection.personal_owner_id && (
+                    <Box
+                      key={collection.id}
+                      mb={1}
+                    >
+                      <CollectionItem collection={collection} />
+                    </Box>
+                  ))}
+              </Box>
+            );
+          }}
+        </CollectionListLoader>
+      </Box>
+    )
+  }
+}
 
 @withRouter
 @connect(() => ({}), mapDispatchToProps)
