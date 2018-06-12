@@ -127,7 +127,6 @@ Create your `/etc/default/metabase` environment config file and open it in your 
 In `/etc/default/metabase`, replace configurable items (they look like `<some-var-name>`) with values sensible for your system. Some Metabase configs have available options, some of which are shown below, separated by `|` symbols:
 
 
-    #!/bin/sh
     # /etc/default/metabase
     export MB_PASSWORD_COMPLEXITY=<weak|normal|strong>
     export MB_PASSWORD_LENGTH=<10>
@@ -142,6 +141,29 @@ In `/etc/default/metabase`, replace configurable items (they look like `<some-va
     export MB_EMOJI_IN_LOGS=<true|false>
     # any other env vars you want available to Metabase
 
+#### Systemd unit file
+
+    [Unit]
+    Description=Metabase server
+    After=syslog.target
+    After=network.target
+   
+    [Service]
+    WorkingDirectory=/opt/metabase/
+    ExecStart=/usr/bin/java -jar /opt/metabase/metabase.jar
+    EnvironmentFile=/etc/default/metabase
+    User=metabase
+    Type=simple
+    StandardOutput=/var/log/metabase.log
+    StandardError=/var/log/metabase.log
+    SyslogIdentifier=metabase
+    SuccessExitStatus=143
+    TimeoutStopSec=120
+    Restart=always
+   
+    [Install]
+    WantedBy=multi-user.target
+~                               
 ### Final Steps
 
 The best part of setting up Metabase as a service on a Debian-based system is to be confident it will start up at every system boot. We only have a few more quick steps to finish registering our service and having Metabase up and running.
@@ -180,14 +202,37 @@ Now, it's time to register our Metabase service with `systemd` so it will start 
     # ensure unprivileged deploy user owns log (or it won't be able to write)
     $ sudo chown <your_deploy_user>:<your_deploy_user> /var/log/metabase.log
 
-    # add to default services
-    $ sudo update-rc.d metabase defaults
+#### Systemd unit file
+If you are working with systemd, is prefered to create service with systemd unit file. So if you can, follow this method below.
+You have to create a file /etc/systemd/system/metabase.service
+
+    [Unit]
+    Description=Metabase server
+    After=syslog.target
+    After=network.target
+   
+    [Service]
+    WorkingDirectory=/opt/metabase/
+    ExecStart=/usr/bin/java -jar /opt/metabase/metabase.jar
+    EnvironmentFile=/etc/default/metabase
+    User=metabase
+    Type=simple
+    StandardOutput=/var/log/metabase.log
+    StandardError=/var/log/metabase.log
+    SyslogIdentifier=metabase
+    SuccessExitStatus=143
+    TimeoutStopSec=120
+    Restart=always
+   
+    [Install]
+    WantedBy=multi-user.target
+
 
 #### That's it!
 
 Now, whenever you need to start, stop, or restart Metabase, all you need to do is:
 
-    $ sudo service metabase start
-    $ sudo service metabase stop
-    $ sudo service metabase restart
+    $ sudo systemctl metabase start
+    $ sudo systemctl metabase stop
+    $ sudo systemctl metabase restart
 
