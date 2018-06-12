@@ -36,13 +36,6 @@
   "Colors used for coloring charts and collections."
   ["#509EE3" "#9CC177" "#A989C5" "#EF8C8C" "#f9d45c" "#F1B556" "#A6E7F3" "#7172AD"])
 
-(defn map-to-colors
-  "Map given objects to distinct colors."
-  [objs]
-  (->> objs
-       (map (comp colors #(mod % (count colors)) hash))
-       ensure-distinct-colors))
-
 (defn- ensure-distinct-colors
   [candidates]
   (->> candidates
@@ -53,6 +46,13 @@
             (conj acc color)
             (concat acc [color (first (drop-while (conj (set acc) color) colors))])))
         [])))
+
+(defn map-to-colors
+  "Map given objects to distinct colors."
+  [objs]
+  (->> objs
+       (map (comp colors #(mod % (count colors)) hash))
+       ensure-distinct-colors))
 
 (defn- colorize
   "Pick the chart colors acording to the following rules:
