@@ -13,8 +13,6 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
 
-import { withBackground } from "metabase/hoc/Background";
-
 import HomepageApp from "metabase/home/containers/HomepageApp";
 
 // auth containers
