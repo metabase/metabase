@@ -118,5 +118,5 @@ export function embedDashboard(token) {
 }
 
 export function userCollection(userCollectionId) {
-  return `/collection/${userCollectionId}/`
+  return `/collection/${userCollectionId}/`;
 }
