@@ -145,7 +145,7 @@ export const ExploreList = ({
         <GridItem w={gridColumns} key={index}>
           {asCards ? (
             <Card hoverable p={2}>
-              <ExploreOption option={option} />
+              <ExploreOption option={option} showDescription={false} />
             </Card>
           ) : (
             <ExploreOption option={option} />
@@ -155,7 +155,7 @@ export const ExploreList = ({
   </Grid>
 );
 
-export const ExploreOption = ({ option }: { option: Candidate }) => (
+export const ExploreOption = ({ showDescription, option }: { option: Candidate }) => (
   <Link to={option.url} className="flex align-center text-bold no-decoration">
     <div
       className="bg-grey-0 flex align-center rounded mr2 p2 justify-center text-gold"
@@ -165,7 +165,7 @@ export const ExploreOption = ({ option }: { option: Candidate }) => (
     </div>
     <div>
       <div className="link">{option.title}</div>
-      {option.description && (
+      {showDescription && option.description && (
         <div className="text-grey-4 text-small" style={{ marginTop: "0.25em" }}>
           {option.description}
         </div>
@@ -173,5 +173,9 @@ export const ExploreOption = ({ option }: { option: Candidate }) => (
     </div>
   </Link>
 );
+
+ExploreOption.defaultProps = {
+  showDescription: true
+}
 
 export default ExplorePane;

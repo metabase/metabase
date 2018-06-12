@@ -1,12 +1,13 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t, jt } from "c-3po";
 
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
 import CandidateListLoader from "metabase/containers/CandidateListLoader";
 import { DatabaseListLoader } from "metabase/components/BrowseApp";
 import ExplorePane from "metabase/components/ExplorePane";
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
@@ -26,8 +27,20 @@ const mapStateToProps = state => ({
   user: getUser(state),
 });
 
+const OverworldSectionEmptyState = ({ children }) =>
+  <Card p={1} faded className="flex align-center" color='#93A1AB'>
+    <Flex ml='auto' mr='auto' align='center'>{ children }</Flex>
+  </Card>
+
 //class Overworld extends Zelda
 @connect(mapStateToProps)
+@entityListLoader({
+  entityType: 'databases'
+})
+@entityListLoader({
+  entityType: 'collections',
+  entityId: 'root'
+})
 class Overworld extends React.Component {
   render() {
     return (
@@ -113,6 +126,19 @@ class Overworld extends React.Component {
             );
           }}
         </CollectionItemsLoader>
+        <Box mb={3}>
+          <h4>{t`Pinned items`}</h4>
+          <OverworldSectionEmptyState>
+            { jt`Click on the star ${<Icon name='pin' mx={1} color={normal.red} />}next to an item’s name to mark it as a personal favorite`}
+          </OverworldSectionEmptyState>
+        </Box>
+
+        <Box mb={3}>
+          <h4>{t`Favorites`}</h4>
+          <OverworldSectionEmptyState>
+            { jt`Click on the star ${<Icon name='star' mx={1} color={normal.yellow} />}next to an item’s name to mark it as a personal favorite`}
+          </OverworldSectionEmptyState>
+        </Box>
 
         <Box mt={4}>
           <h4>{t`Our data`}</h4>
@@ -120,25 +146,44 @@ class Overworld extends React.Component {
             <DatabaseListLoader>
               {({ databases }) => {
                 return (
-                  <Grid w={1 / 3}>
+                  <Grid>
                     {databases.map(database => (
-                      <GridItem>
+                      <GridItem w={1 / 3}>
                         <Link
                           to={`browse/${database.id}`}
                           hover={{ color: normal.blue }}
                         >
-                          <Box p={3} bg="#F2F5F7">
+                          <Card p={3} hoverable>
                             <Icon
                               name="database"
-                              color={normal.green}
-                              mb={3}
+                              color={normal.purple}
+                              mb={2}
                               size={28}
                             />
                             <h3>{database.name}</h3>
-                          </Box>
+                          </Card>
                         </Link>
                       </GridItem>
                     ))}
+                    <GridItem w={1/3}>
+                      <Link
+                        to={`/explore`}
+                        hover={{ color: normal.blue }}
+                      >
+                        <Card p={3} faded>
+                          <Icon
+                            name="bolt"
+                            color={normal.yellow}
+                            mb={2}
+                            size={28}
+                          />
+                          <h3 className="flex align-center">
+                            {t`See some automatic explorations`}
+                            <Icon name="chevronright" ml={1} />
+                          </h3>
+                        </Card>
+                      </Link>
+                    </GridItem>
                   </Grid>
                 );
               }}
