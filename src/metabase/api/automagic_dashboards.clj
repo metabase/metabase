@@ -9,7 +9,6 @@
              [rules :as rules]]
             [metabase.models
              [card :refer [Card]]
-             [dashboard :as dashboard :refer [Dashboard]]
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
@@ -21,8 +20,7 @@
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [tru]]
             [ring.util.codec :as codec]
-            [schema.core :as s]
-            [toucan.hydrate :refer [hydrate]]))
+            [schema.core :as s]))
 
 (def ^:private Show
   (su/with-api-error-message (s/maybe (s/enum "all"))
