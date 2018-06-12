@@ -104,12 +104,24 @@ class DefaultLanding extends React.Component {
       onToggleSelected,
       selection,
       selected,
+      onSelectNone,
       reload,
     } = this.props;
     const { moveItems } = this.state;
 
     // Show the
     const showCollectionList = collectionId === "root";
+
+    // Call this when finishing a bulk action
+    const onBulkActionSuccess = () => {
+      // reload the current list
+      reload();
+
+      // Clear the selection in listSelect
+      // Fixes an issue where things were staying selected when moving between
+      // different collection pages
+      onSelectNone();
+    };
 
     return (
       <Flex>
@@ -159,8 +171,11 @@ class DefaultLanding extends React.Component {
                                 />
                                 <Flex align="center">
                                   <h3>{item.getName()}</h3>
-                                  {collection.can_write &&
-                                    item.setPinned && (
+
+                                  {/* collection.can_write && (
+                                    <Box>
+                                    </Box>
+                                    { item.setPinned && (
                                       <Box
                                         ml="auto"
                                         className="hover-child"
@@ -171,7 +186,8 @@ class DefaultLanding extends React.Component {
                                       >
                                         <Icon name="pin" />
                                       </Box>
-                                    )}
+                                    )
+                                  ) */}
                                 </Flex>
                               </Card>
                             </Link>
@@ -230,7 +246,7 @@ class DefaultLanding extends React.Component {
                                 selected.map(item => item.setArchived(true)),
                               );
                             } finally {
-                              reload();
+                              onBulkActionSuccess();
                             }
                           }
                         : null
@@ -266,7 +282,7 @@ class DefaultLanding extends React.Component {
                     );
                     this.setState({ moveItems: null });
                   } finally {
-                    reload();
+                    onBulkActionSuccess();
                   }
                 }}
               />

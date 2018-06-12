@@ -13,9 +13,11 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
+             [permissions :as perms]
              [query :as query]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.models.query.permissions :as query-perms]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [tru]]
             [ring.util.codec :as codec]
@@ -56,9 +58,8 @@
   "Return a list of candidates for automagic dashboards orderd by interestingness."
   [id]
   (-> (Database id)
-      api/check-404
+      api/read-check
       magic/candidate-tables))
-
 
 ;; ----------------------------------------- API Endpoints for viewing a transient dashboard ----------------
 
@@ -66,7 +67,7 @@
   "Return an automagic dashboard for table with id `ìd`."
   [id show]
   {show Show}
-  (-> id Table api/check-404 (magic/automagic-analysis {:show (keyword show)})))
+  (-> id Table api/read-check (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/table/:id/rule/:prefix/:rule"
   "Return an automagic dashboard for table with id `ìd` using rule `rule`."
@@ -76,7 +77,7 @@
    rule   Rule}
   (-> id
       Table
-      api/check-404
+      api/read-check
       (magic/automagic-analysis
        {:rule ["table" prefix rule]
         :show (keyword show)})))
@@ -85,7 +86,7 @@
   "Return an automagic dashboard analyzing segment with id `id`."
   [id show]
   {show Show}
-  (-> id Segment api/check-404 (magic/automagic-analysis {:show (keyword show)})))
+  (-> id Segment api/read-check (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/segment/:id/rule/:prefix/:rule"
   "Return an automagic dashboard analyzing segment with id `id`. using rule `rule`."
@@ -95,7 +96,7 @@
    rule   Rule}
   (-> id
       Segment
-      api/check-404
+      api/read-check
       (magic/automagic-analysis
        {:rule ["table" prefix rule]
         :show (keyword show)})))
@@ -108,7 +109,7 @@
    cell-query Base64EncodedJSON}
   (-> id
       Card
-      api/check-404
+      api/read-check
       (magic/automagic-analysis {:show       (keyword show)
                                  :cell-query (decode-base64-json cell-query)})))
 
@@ -122,7 +123,7 @@
    cell-query Base64EncodedJSON}
   (-> id
       Card
-      api/check-404
+      api/read-check
       (magic/automagic-analysis {:show       (keyword show)
                                  :rule       ["table" prefix rule]
                                  :cell-query (decode-base64-json cell-query)})))
@@ -131,19 +132,19 @@
   "Return an automagic dashboard analyzing metric with id `id`."
   [id show]
   {show Show}
-  (-> id Metric api/check-404 (magic/automagic-analysis {:show (keyword show)})))
+  (-> id Metric api/read-check (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/field/:id"
   "Return an automagic dashboard analyzing field with id `id`."
   [id show]
   {show Show}
-  (-> id Field api/check-404 (magic/automagic-analysis {:show (keyword show)})))
+  (-> id Field api/read-check (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/question/:id"
   "Return an automagic dashboard analyzing question with id `id`."
   [id show]
   {show Show}
-  (-> id Card api/check-404 (magic/automagic-analysis {:show (keyword show)})))
+  (-> id Card api/read-check (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/question/:id/rule/:prefix/:rule"
   "Return an automagic dashboard analyzing question with id `id` using rule `rule`."
@@ -151,8 +152,15 @@
   {show Show
    prefix Prefix
    rule   Rule}
-  (-> id Card api/check-404 (magic/automagic-analysis {:show (keyword show)
-                                                       :rule ["table" prefix rule]})))
+  (-> id Card api/read-check (magic/automagic-analysis {:show (keyword show)
+                                                        :rule ["table" prefix rule]})))
+
+(defn- adhoc-query-read-check
+  [query]
+  (api/check-403 (perms/set-has-full-permissions-for-set?
+                   @api/*current-user-permissions-set*
+                   (query-perms/perms-set (:dataset_query query) :throw-exceptions)))
+  query)
 
 (api/defendpoint GET "/adhoc/:query"
   "Return an automagic dashboard analyzing ad hoc query."
@@ -162,6 +170,7 @@
   (-> query
       decode-base64-json
       query/adhoc-query
+      adhoc-query-read-check
       (magic/automagic-analysis {:show (keyword show)})))
 
 (api/defendpoint GET "/adhoc/:query/rule/:prefix/:rule"
@@ -174,6 +183,7 @@
   (-> query
       decode-base64-json
       query/adhoc-query
+      adhoc-query-read-check
       (magic/automagic-analysis {:show (keyword show)
                                  :rule ["table" prefix rule]})))
 
@@ -187,6 +197,7 @@
         cell-query (decode-base64-json cell-query)]
     (-> query
         query/adhoc-query
+        adhoc-query-read-check
         (magic/automagic-analysis {:show       (keyword show)
                                    :cell-query cell-query}))))
 
@@ -203,6 +214,7 @@
         cell-query (decode-base64-json cell-query)]
     (-> query
         query/adhoc-query
+        adhoc-query-read-check
         (magic/automagic-analysis {:show       (keyword show)
                                    :cell-query cell-query
                                    :rule       ["table" prefix rule]}))))
@@ -225,11 +237,11 @@
 
 (defmethod ->segment :table
   [{:keys [id]}]
-  (-> id Table api/check-404))
+  (-> id Table api/read-check))
 
 (defmethod ->segment :segment
   [{:keys [id]}]
-  (-> id Segment api/check-404))
+  (-> id Segment api/read-check))
 
 (defmethod ->segment :adhoc
   [{:keys [query name]}]
@@ -240,10 +252,10 @@
 (api/defendpoint POST "/compare"
   "Return an automagic comparison dashboard based on given dashboard."
   [:as {{:keys [dashboard left right]} :body}]
-  (api/check-404 (valid-comparison-pair? (map :type [left right])))
+  (api/read-check (valid-comparison-pair? (map :type [left right])))
   (magic.comparison/comparison-dashboard (if (number? dashboard)
                                            (-> (Dashboard dashboard)
-                                               api/check-404
+                                               api/read-check
                                                (hydrate [:ordered_cards
                                                          :card
                                                          :series]))

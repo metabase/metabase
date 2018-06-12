@@ -28,7 +28,11 @@ const Dashboards = createEntity({
     setCollection: ({ id }, collection, opts) =>
       Dashboards.actions.update(
         { id },
-        { collection_id: collection && collection.id },
+        // TODO - would be dope to make this check in one spot instead of on every movable item type
+        {
+          collection_id:
+            collection && collection.id === "root" ? null : collection.id,
+        },
         opts,
       ),
 

@@ -151,7 +151,7 @@ xdescribe("dashboards list", () => {
     await store.waitForActions([Dashboards.actionTypes.UPDATE_ACTION]);
 
     click(app.find(".Icon-viewArchive"));
-    await store.waitForActions([FETCH_ARCHIVE]);
+    //await store.waitForActions([FETCH_ARCHIVE]);
     expect(app.find(ArchivedItem).length).toBeGreaterThan(0);
   });
 });

@@ -39,7 +39,7 @@ class Overworld extends React.Component {
             <p className="text-paragraph m0 text-grey-3">{t`Don't tell anyone but you're my favorite`}</p>
           </Box>
         </Flex>
-        <CollectionItemsLoader collectionId="root" reload>
+        <CollectionItemsLoader collectionId="root">
           {({ items }) => {
             let pinnedDashboards = items.filter(
               d => d.type === "dashboard" && d.collection_position,
