@@ -19,6 +19,7 @@
             [metabase.util
              [password :as pass]
              [schema :as su]]
+            [clojure.string :as str]
             [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]
             [throttle.core :as throttle]
@@ -179,7 +180,7 @@
 (defsetting google-auth-client-id
   (tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled."))
 
-(defsetting google-auth-auto-create-accounts-domains
+(defsetting google-auth-auto-create-accounts-domain
   (tru "Comma-separated domains. When set, allow users to sign up on their own if their Google account email address is from these domains."))
 
 (defn- google-auth-token-info [^String token]
@@ -191,20 +192,16 @@
         (throw (ex-info (tru "Email is not verified.") {:status-code 400}))))))
 
 ;; TODO - are these general enough to move to `metabase.util`?
-(defn- split-domains [domains]
-  (apply vector
-    (map clojure.string/trim
-      (clojure.string/split domains #","))))
 
 (defn- email->domain ^String [email]
   (last (re-find #"^.*@(.*$)" email)))
 
-(defn- email-in-domains? ^Boolean [email domains]
+(defn- email-in-domains? ^Boolean [email domains-str]
   {:pre [(u/email? email)]}
-  (some #(= (email->domain email) %) (split-domains domains)))
+  (contains? (set (str/split domains-str #"\s*,\s*")) (email->domain email)))
 
 (defn- autocreate-user-allowed-for-email? [email]
-  (when-let [domains (google-auth-auto-create-accounts-domains)]
+  (when-let [domains (google-auth-auto-create-accounts-domain)]
     (email-in-domains? email domains)))
 
 (defn- check-autocreate-user-allowed-for-email [email]

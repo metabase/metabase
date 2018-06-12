@@ -188,7 +188,7 @@ const SECTIONS = [
         key: "google-auth-client-id",
       },
       {
-        key: "google-auth-auto-create-accounts-domains",
+        key: "google-auth-auto-create-accounts-domain",
       },
     ],
   },

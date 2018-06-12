@@ -279,8 +279,8 @@
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This
   works much the same way as `binding`.
 
-     (with-temporary-setting-values [google-auth-auto-create-accounts-domains \"metabase.com\"]
-       (google-auth-auto-create-accounts-domains)) -> \"metabase.com\""
+     (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
+       (google-auth-auto-create-accounts-domain)) -> \"metabase.com\""
   [[setting-k value & more] & body]
   (let [body `(do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body))]
     (if (seq more)
