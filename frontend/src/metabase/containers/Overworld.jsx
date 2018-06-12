@@ -86,10 +86,10 @@ class Overworld extends React.Component {
                 <Box mt={3} mb={1}>
                   <h4>{t`Pinned dashboards`}</h4>
                 </Box>
-                <Grid w={1 / 3}>
+                <Grid>
                   {pinnedDashboards.map(pin => {
                     return (
-                      <GridItem>
+                      <GridItem w={1/3}>
                         <Link
                           to={Urls.dashboard(pin.id)}
                           hover={{ color: normal.blue }}
@@ -101,7 +101,7 @@ class Overworld extends React.Component {
                               mb={2}
                               size={28}
                             />
-                            <Box mt={1}>
+                            <Box>
                               <h3>{pin.name}</h3>
                             </Box>
                           </Card>
@@ -109,16 +109,23 @@ class Overworld extends React.Component {
                       </GridItem>
                     );
                   })}
-                  <GridItem>
+                  <GridItem w={1/3}>
                     <Link
                       to="/collection/root"
                       color={normal.grey2}
                       className="text-brand-hover"
                     >
-                      <Flex p={4} align="center">
-                        <h3>See more items</h3>
-                        <Icon name="chevronright" size={14} ml={1} />
-                      </Flex>
+                      <Card faded p={3}>
+                        <Icon
+                          size={28}
+                          mb={2}
+                          name="all"
+                        />
+                        <Flex align="center">
+                          <h3>See more items</h3>
+                          <Icon name="chevronright" size={14} ml={1} />
+                        </Flex>
+                      </Card>
                     </Link>
                   </GridItem>
                 </Grid>
@@ -126,7 +133,8 @@ class Overworld extends React.Component {
             );
           }}
         </CollectionItemsLoader>
-        <Box mb={3}>
+
+        <Box mb={3} mt={3}>
           <h4>{t`Pinned items`}</h4>
           <OverworldSectionEmptyState>
             { jt`Click on the star ${<Icon name='pin' mx={1} color={normal.red} />}next to an item’s name to mark it as a personal favorite`}
@@ -168,7 +176,8 @@ class Overworld extends React.Component {
                     <GridItem w={1/3}>
                       <Link
                         to={`/explore`}
-                        hover={{ color: normal.blue }}
+                        color={normal.grey2}
+                        className="text-brand-hover"
                       >
                         <Card p={3} faded>
                           <Icon
