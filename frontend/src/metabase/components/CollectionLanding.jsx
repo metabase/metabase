@@ -410,9 +410,9 @@ class CollectionLanding extends React.Component {
                         {
                           title: t`Edit permissions`,
                           icon: "lock",
-                          link: `/collections/permissions?collectionId=${
+                          link: `/collection/${
                             currentCollection.id
-                          }`,
+                          }/permissions`,
                         },
                         ...(!isRoot
                           ? [

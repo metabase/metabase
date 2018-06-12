@@ -96,6 +96,7 @@ export function getCollectionsById(collections) {
   for (const { id } of collections) {
     const c = collectionsById[id];
     const parent = c.path[c.path.length - 1] || "root";
+    c.parent = collectionsById[parent];
     // need to ensure the parent collection exists, it may have been filtered
     // because we're selecting a collection's parent collection and it can't
     // contain itself
