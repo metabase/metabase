@@ -251,26 +251,23 @@
 
 (defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
-  [card query]
-  (when (and query
-             (not= query (:dataset_query card)))
-    (check-data-permissions-for-query query)))
+  [card-before-updates card-updates]
+  (when (api/column-will-change? :dataset_query card-before-updates card-updates)
+    (check-data-permissions-for-query (:dataset_query card-updates))))
 
 (defn- check-allowed-to-unarchive
   "When unarchiving a Card, make sure we have data permissions for the Card query before doing so."
-  [card archived?]
-  (when (and (false? archived?)
-             (:archived card))
-    (check-data-permissions-for-query (:dataset_query card))))
+  [card-before-updates card-updates]
+  (when (and (api/column-will-change? :archived card-before-updates card-updates)
+             (:archived card-before-updates))
+    (check-data-permissions-for-query (:dataset_query card-before-updates))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
   enabled."
-  [card enable-embedding? embedding-params]
-  (when (or (and (some? enable-embedding?)
-                 (not= enable-embedding? (:enable_embedding card)))
-            (and embedding-params
-                 (not= embedding-params (:embedding_params card))))
+  [card-before-updates card-updates]
+  (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
+            (api/column-will-change? :embedding_params card-before-updates card-updates))
     (api/check-embedding-enabled)
     (api/check-superuser)))
 
@@ -398,9 +395,9 @@
   (let [card-before-update (api/write-check Card id)]
     ;; Do various permissions checks
     (collection/check-allowed-to-change-collection card-before-update card-updates)
-    (check-allowed-to-modify-query card-before-update dataset_query)
-    (check-allowed-to-unarchive card-before-update archived)
-    (check-allowed-to-change-embedding card-before-update enable_embedding embedding_params)
+    (check-allowed-to-modify-query                 card-before-update card-updates)
+    (check-allowed-to-unarchive                    card-before-update card-updates)
+    (check-allowed-to-change-embedding             card-before-update card-updates)
     ;; make sure we have the correct `result_metadata`
     (let [card-updates (assoc card-updates
                          :result_metadata (result-metadata-for-updating card-before-update dataset_query
