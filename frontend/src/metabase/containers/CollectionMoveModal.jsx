@@ -65,7 +65,7 @@ class CollectionMoveModal extends React.Component {
               }
             }}
           >
-              { t`Move`}
+            {t`Move`}
           </Button>
         </Flex>
       </Box>
