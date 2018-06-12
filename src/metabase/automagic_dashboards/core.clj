@@ -723,18 +723,27 @@
        filters/interesting-fields
        (map ->related-entity)))
 
+(s/defn ^:private comparisons
+  [root, rule :- (s/maybe rules/Rule)]
+  (for [segment (->> root :entity related/related :segments (map ->root))]
+    {:url         (str (:url root) "/compare/segment/" (-> segment :entity u/get-id))
+     :title       (tru "Compare with {0}" (:full-name segment))
+     :description ""}))
+
 (s/defn ^:private related
   [dashboard, rule :- (s/maybe rules/Rule)]
   (let [root    (-> dashboard :context :root)
         indepth (indepth root rule)]
     (if (not-empty indepth)
       {:indepth indepth
-       :related (related-entities (- max-related (count indepth)) root)}
+       :related (related-entities (- max-related (count indepth)) root)
+       :comparisons (comparisons root rule)}
       (let [drilldown-fields   (drilldown-fields dashboard)
             n-related-entities (max (math/floor (* (/ 2 3) max-related))
                                     (- max-related (count drilldown-fields)))]
         {:related          (related-entities n-related-entities root)
-         :drilldown-fields (take (- max-related n-related-entities) drilldown-fields)}))))
+         :drilldown-fields (take (- max-related n-related-entities) drilldown-fields)
+         :comparisons (comparisons root rule)}))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
