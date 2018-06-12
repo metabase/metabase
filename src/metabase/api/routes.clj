@@ -16,6 +16,7 @@
              [field :as field]
              [geojson :as geojson]
              [getting-started :as getting-started]
+             [graphql :as graphql]
              [ldap :as ldap]
              [metric :as metric]
              [notify :as notify]
@@ -69,6 +70,7 @@
   (context "/field"                [] (+auth field/routes))
   (context "/getting_started"      [] (+auth getting-started/routes))
   (context "/geojson"              [] (+auth geojson/routes))
+  (context "/graphql"              [] graphql/routes)
   (context "/ldap"                 [] (+auth ldap/routes))
   (context "/metric"               [] (+auth metric/routes))
   (context "/notify"               [] (+apikey notify/routes))

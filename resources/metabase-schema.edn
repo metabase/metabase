@@ -1,0 +1,81 @@
+{:scalars
+ {:JSON
+  {:parse :json-parse
+   :serialize :json-serialize}}
+
+ :objects
+ {:Database
+  {:fields
+   {:id           {:type (non-null ID)}
+    :name         {:type (non-null String)}
+    :engine       {:type (non-null String)}
+    :details      {:type (non-null JSON)}
+    :tables       {:type (non-null (list :Table))
+                   :resolve :Database/tables}}}
+  :Table
+  {:fields
+   {:id           {:type (non-null ID)}
+    :name         {:type (non-null String)}
+    :display_name {:type (non-null String)}
+    :database     {:type (non-null Database)
+                   :resolve :Table/database}
+    :fields       {:type (non-null (list :Field))
+                   :resolve :Table/fields}
+    :segments     {:type (non-null (list :Segment))
+                   :resolve :Table/segments}
+    :metrics      {:type (non-null (list :Table))
+                   :resolve :Table/metrics}}}
+  :Field
+  {:fields
+   {:id           {:type (non-null ID)}
+    :name         {:type (non-null String)}
+    :display_name {:type (non-null String)}
+    :base_type    {:type (non-null String)}
+    :special_type {:type String}
+    :table        {:type (non-null Table)
+                   :resolve :Field/table}
+    :target       {:type Field
+                   :resolve :Field/target}}}
+  :Segment
+  {:fields
+   {:id           {:type (non-null ID)}
+    :name         {:type (non-null String)}
+    :table        {:type (non-null Table)
+                   :resolve :Segment/table}}}
+  :Metric
+  {:fields
+   {:id           {:type (non-null ID)}
+    :name         {:type (non-null String)}
+    :table        {:type (non-null Table)
+                   :resolve :Segment/table}}}}
+
+ :queries
+ {:databases
+  {:type (non-null (list :Database))
+   :resolve :query/databases}
+
+  :tables
+  {:type (non-null (list :Table))
+   :resolve :query/tables}
+
+  :fields
+  {:type (non-null (list :Field))
+   :resolve :query/fields}
+
+  :database_by_id
+  {:type :Database
+   :args
+   {:id {:type ID}}
+   :resolve :query/database-by-id}
+
+  :table_by_id
+  {:type :Table
+   :args
+   {:id {:type ID}}
+   :resolve :query/table-by-id}
+
+  :field_by_id
+  {:type :Field
+   :args
+   {:id {:type ID}}
+   :resolve :query/field-by-id}}}
