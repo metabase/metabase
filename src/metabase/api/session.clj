@@ -3,6 +3,7 @@
   (:require [cemerick.friend.credentials :as creds]
             [cheshire.core :as json]
             [clj-http.client :as http]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST]]
             [metabase
@@ -19,7 +20,6 @@
             [metabase.util
              [password :as pass]
              [schema :as su]]
-            [clojure.string :as str]
             [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]
             [throttle.core :as throttle]
