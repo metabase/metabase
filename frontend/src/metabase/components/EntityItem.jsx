@@ -1,12 +1,12 @@
 import React from "react";
 import { t } from "c-3po";
+
+import { Flex } from "grid-styled";
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
 import IconWrapper from "metabase/components/IconWrapper";
-
-import { Flex, Box, Truncate } from "rebass";
-
 import CheckBox from "metabase/components/CheckBox";
+import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
 import { normal } from "metabase/lib/colors";
@@ -35,7 +35,6 @@ const EntityItem = ({
   selected,
   onToggleSelected,
   selectable,
-  showSelect,
 }) => {
   const actions = [
     onPin && {
@@ -73,7 +72,7 @@ const EntityItem = ({
       >
         {selectable ? (
           <Swapper
-            startSwapped={showSelect}
+            startSwapped={selected}
             defaultElement={<Icon name={iconName} color={iconColor} />}
             swappedElement={<CheckBox checked={selected} />}
           />
@@ -82,24 +81,24 @@ const EntityItem = ({
         )}
       </IconWrapper>
       <h3>
-        <Truncate>{name}</Truncate>
+        <Ellipsified>{name}</Ellipsified>
       </h3>
 
-      <Flex
-        ml="auto"
-        align="center"
-        className="hover-child"
-        onClick={e => e.preventDefault()}
-      >
+      <Flex ml="auto" align="center" onClick={e => e.preventDefault()}>
         {(onFavorite || isFavorite) && (
           <Icon
             name={isFavorite ? "star" : "staroutline"}
             mr={1}
+            className={isFavorite ? "text-gold" : "hover-child"}
             onClick={onFavorite}
           />
         )}
         {actions.length > 0 && (
-          <EntityMenu triggerIcon="ellipsis" items={actions} />
+          <EntityMenu
+            className="hover-child"
+            triggerIcon="ellipsis"
+            items={actions}
+          />
         )}
       </Flex>
     </EntityItemWrapper>

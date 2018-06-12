@@ -127,7 +127,7 @@ export default class EditUserForm extends Component {
 
     return (
       <form onSubmit={this.formSubmitted.bind(this)} noValidate>
-        <div className="px4 pb2">
+        <div>
           <FormField fieldName="first_name" formError={formError}>
             <FormLabel
               title={t`First name`}
@@ -238,7 +238,7 @@ export default class EditUserForm extends Component {
           ) : null}
         </div>
 
-        <ModalFooter className="flex align-center">
+        <ModalFooter className="flex align-center p0">
           {formError &&
             formError.data &&
             formError.data.message && (

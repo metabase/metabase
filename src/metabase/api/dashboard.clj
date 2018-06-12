@@ -202,11 +202,9 @@
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
   enabled."
-  [dash enable-embedding? embedding-params]
-  (when (or (and (some? enable-embedding?)
-                 (not= enable-embedding? (:enable_embedding dash)))
-            (and embedding-params
-                 (not= embedding-params (:embedding_params dash))))
+  [dash-before-update dash-updates]
+  (when (or (api/column-will-change? :enable_embedding dash-before-update dash-updates)
+            (api/column-will-change? :embedding_params dash-before-update dash-updates))
     (api/check-embedding-enabled)
     (api/check-superuser)))
 
@@ -234,7 +232,7 @@
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
-    (check-allowed-to-change-embedding dash-before-update enable_embedding embedding_params))
+    (check-allowed-to-change-embedding dash-before-update dash-updates))
   (api/check-500
    (db/update! Dashboard id
      ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be

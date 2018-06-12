@@ -35,7 +35,7 @@
   (-> user-kwd
       fetch-user
       (select-keys [:email :first_name :last_login :is_qbnewb :is_superuser :last_name :common_name])
-      (assoc :id true :date_joined true)))
+      (assoc :id true, :date_joined true, :last_login false)))
 
 (defn- pulse-card-details [card]
   (-> card
@@ -529,7 +529,7 @@
   [(-> (default-alert card)
        ;; The read_only flag is used by the UI to determine what the user is allowed to update
        (assoc :read_only true)
-       (update-in [:channels 0] merge {:schedule_hour 15 :schedule_type "daily"})
+       (update-in [:channels 0] merge {:schedule_hour 15, :schedule_type "daily"})
        (assoc-in [:card :collection_id] true))]
   (with-alert-setup
     (with-alerts-in-readable-collection [alert]

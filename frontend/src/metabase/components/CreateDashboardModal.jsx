@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box } from "rebass";
 import { t } from "c-3po";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
@@ -9,14 +8,12 @@ import FormField from "metabase/components/form/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 
 import Button from "metabase/components/Button.jsx";
-import Select, { Option } from "metabase/components/Select.jsx";
+import CollectionSelect from "metabase/containers/CollectionSelect.jsx";
 
-import CollectionListLoader from "metabase/containers/CollectionListLoader";
-
-import { createDashboard } from "metabase/dashboards/dashboards";
+import Dashboards from "metabase/entities/dashboards";
 
 const mapDispatchToProps = {
-  createDashboard,
+  createDashboard: Dashboards.actions.create,
 };
 
 @connect(null, mapDispatchToProps)
@@ -133,41 +130,17 @@ export default class CreateDashboardModal extends Component {
                 onChange={this.setDescription}
               />
             </FormField>
-            <CollectionListLoader>
-              {({ collections, error, loading }) => {
-                if (loading) {
-                  return <Box>Loading...</Box>;
-                }
-                return (
-                  <FormField
-                    displayName={t`Which collection should this go in?`}
-                    fieldName="collection_id"
-                    errors={this.state.errors}
-                  >
-                    <Select
-                      value={this.state.collection_id}
-                      onChange={({ target }) =>
-                        this.setState({ collection_id: target.value })
-                      }
-                    >
-                      {[{ name: t`None`, id: null }]
-                        .concat(collections)
-                        .map((collection, index) => (
-                          <Option
-                            key={index}
-                            value={collection.id}
-                            icon={collection.id != null ? "collection" : null}
-                            iconColor={collection.color}
-                            iconSize={18}
-                          >
-                            {collection.name}
-                          </Option>
-                        ))}
-                    </Select>
-                  </FormField>
-                );
-              }}
-            </CollectionListLoader>
+
+            <FormField
+              displayName={t`Which collection should this go in?`}
+              fieldName="collection_id"
+              errors={this.state.errors}
+            >
+              <CollectionSelect
+                value={this.state.collection_id}
+                onChange={collection_id => this.setState({ collection_id })}
+              />
+            </FormField>
           </div>
         </form>
       </ModalContent>

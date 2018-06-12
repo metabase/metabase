@@ -2,46 +2,63 @@
   (:require [clojure.string :as str]
             [compojure.core :refer [GET]]
             [honeysql.helpers :as h]
-            [metabase.api.common :refer [*current-user-permissions-set* check-403 defendpoint define-routes]]
+            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set* check-403 defendpoint define-routes]]
             [metabase.models
              [card :refer [Card]]
+             [card-favorite :refer [CardFavorite]]
              [collection :as coll :refer [Collection]]
              [dashboard :refer [Dashboard]]
+             [dashboard-favorite :refer [DashboardFavorite]]
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
              [segment :refer [Segment]]]
+            [metabase.util :as u]
             [metabase.util
              [honeysql-extensions :as hx]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:priviate card-columns-without-type
-  [:id :name :description :archived :collection_id :collection_position])
+(def ^:private default-columns
+  [:id :name :description :archived])
 
-(def ^:priviate dashboard-columns-without-type
-  [:id :name :description :archived :collection_id :collection_position])
+(def ^:private card-columns-without-type
+  (concat default-columns
+          [:collection_id :collection_position [:card_fav.id :favorited]]))
 
-(def ^:priviate pulse-columns-without-type
+(def ^:private dashboard-columns-without-type
+  (concat default-columns
+          [:collection_id :collection_position [:dashboard_fav.id :favorited]]))
+
+(def ^:private pulse-columns-without-type
   [:id :name :collection_id])
 
-(def ^:priviate collection-columns-without-type
-  [:id :name :description :archived])
+(def ^:private collection-columns-without-type
+  (concat default-columns
+          [[:id :collection_id]]))
 
-(def ^:priviate segment-columns-without-type
-  [:id :name :description :archived])
+(def ^:private segment-columns-without-type
+  default-columns)
 
-(def ^:priviate metric-columns-without-type
-  [:id :name :description :archived])
+(def ^:private metric-columns-without-type
+  default-columns)
+
+(defn- ->column
+  "Returns the column name. If the column is aliased, i.e. [`:original_namd` `:aliased_name`], return the aliased
+  column name"
+  [column-or-aliased]
+  (if (sequential? column-or-aliased)
+    (second column-or-aliased)
+    column-or-aliased))
 
 (def ^:private search-columns-without-type
   "The columns found in search query clauses except type. Type is added automatically"
-  (vec (set (concat card-columns-without-type
-                    dashboard-columns-without-type
-                    pulse-columns-without-type
-                    collection-columns-without-type
-                    segment-columns-without-type
-                    metric-columns-without-type))))
+  (set (map ->column (concat card-columns-without-type
+                             dashboard-columns-without-type
+                             pulse-columns-without-type
+                             collection-columns-without-type
+                             segment-columns-without-type
+                             metric-columns-without-type))))
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
@@ -50,17 +67,35 @@
    :collection          (s/maybe (s/cond-pre (s/eq :root) su/IntGreaterThanZero))
    :visible-collections coll/VisibleCollections})
 
+(defn- make-canonical-columns
+  "Returns a seq of canonicalized list of columns for the search query with the given `entity-type`. Will return
+  column names prefixed with the `entity-type` name so that it can be used in criteria. Projects a nil for columns the
+  `entity-type` doesn't have and doesn't modify aliases."
+  [entity-type col-name->columns]
+  (concat (for [search-col search-columns-without-type
+                :let [maybe-aliased-col (get col-name->columns search-col)]]
+            (cond
+              ;; This is an aliased column, no need to include the table alias
+              (sequential? maybe-aliased-col)
+              maybe-aliased-col
+
+              ;; This is a column reference, need to add the table alias to the column
+              maybe-aliased-col
+              (keyword (str entity-type "." (name maybe-aliased-col)))
+
+              ;; This entity is missing the column, project a null for that column value
+              :else
+              [nil search-col]))
+          [[(hx/literal entity-type) :type]]))
+
 (defn- merge-search-select
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take `entity-columns` and will inject constant `nil` values for any column missing
   from `entity-columns` but found in `search-columns`"
   [query-map entity-type entity-columns]
-  (let [entity-column-set (set entity-columns)
-        cols-or-nils      (for [search-col search-columns-without-type]
-                            (if (contains? entity-column-set search-col)
-                              search-col
-                              [nil search-col]))]
-    (apply h/merge-select query-map (concat cols-or-nils [[(hx/literal entity-type) :type]]))))
+  (let [col-name->column (u/key-by ->column entity-columns)
+        cols-or-nils     (make-canonical-columns entity-type col-name->column)]
+    (apply h/merge-select query-map (concat cols-or-nils ))))
 
 (s/defn ^:private merge-name-search
   "Add case-insensitive name query criteria to `query-map`"
@@ -101,13 +136,18 @@
   [entity search-type projected-columns]
   (-> {}
       (merge-search-select search-type projected-columns)
-      (h/merge-from entity)))
+      (h/merge-from [entity (keyword search-type)])))
 
 (defmulti ^:private create-search-query (fn [entity search-context] entity))
 
 (s/defmethod ^:private create-search-query :question
   [_ search-ctx :- SearchContext]
   (-> (make-honeysql-search-query Card "card" card-columns-without-type)
+      (h/left-join [(-> (h/select :id :card_id)
+                        (h/merge-from CardFavorite)
+                        (h/merge-where [:= :owner_id *current-user-id*]))
+                    :card_fav]
+                   [:= :card.id :card_fav.card_id])
       (merge-name-and-archived-search search-ctx)
       (add-collection-criteria :collection_id search-ctx)))
 
@@ -122,6 +162,11 @@
 (s/defmethod ^:private create-search-query :dashboard
   [_ search-ctx :- SearchContext]
   (-> (make-honeysql-search-query Dashboard "dashboard" dashboard-columns-without-type)
+      (h/left-join [(-> (h/select :id :dashboard_id)
+                        (h/merge-from DashboardFavorite)
+                        (h/merge-where [:= :user_id *current-user-id*]))
+                    :dashboard_fav]
+                   [:= :dashboard.id :dashboard_fav.dashboard_id])
       (merge-name-and-archived-search search-ctx)
       (add-collection-criteria :collection_id search-ctx)))
 
@@ -145,6 +190,12 @@
     (-> (make-honeysql-search-query Segment "segment" segment-columns-without-type)
         (merge-name-and-archived-search search-ctx))))
 
+(defn- favorited->boolean [row]
+  (if-let [fav-value (get row :favorited)]
+    (assoc row :favorited (and (integer? fav-value)
+                               (not (zero? fav-value))))
+    row))
+
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
   [{:keys [collection visible-collections] :as search-ctx} :- SearchContext]
@@ -154,10 +205,11 @@
            (not= :all visible-collections)
            (not (contains? visible-collections collection)))
     []
-    (db/query {:union-all (for [entity [:question :collection :dashboard :pulse :segment :metric]
-                                :let [query-map (create-search-query entity search-ctx)]
-                                :when query-map]
-                            query-map)})))
+    (map favorited->boolean
+         (db/query {:union-all (for [entity [:question :collection :dashboard :pulse :segment :metric]
+                                     :let [query-map (create-search-query entity search-ctx)]
+                                     :when query-map]
+                                 query-map)}))))
 
 (def ^:private CollectionSearchParam
   "Search parameters that can either be a `collection_id`, but in string form, or `root`"

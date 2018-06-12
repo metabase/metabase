@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Box, Flex } from "rebass";
+import { Box, Flex } from "grid-styled";
 import { Link } from "react-router";
 
 import { PageSidebar, Wrapper, PageLayout } from "./EntityLayout";

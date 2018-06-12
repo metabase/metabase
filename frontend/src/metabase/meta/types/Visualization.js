@@ -90,6 +90,7 @@ export type VisualizationProps = {
     yAxisSplit?: number[][],
     warnings?: string[],
   }) => void,
+  onRenderError: (error: ?Error) => void,
 
   hovered: ?HoverObject,
   onHoverChange: (?HoverObject) => void,

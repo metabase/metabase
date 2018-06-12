@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex, Subhead, Truncate } from "rebass";
+import { Box, Flex } from "grid-styled";
 import { t } from "c-3po";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -20,6 +20,9 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
+import Subhead from "metabase/components/Subhead";
+import Ellipsified from "metabase/components/Ellipsified";
+import VirtualizedList from "metabase/components/VirtualizedList";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 import CollectionLoader from "metabase/containers/CollectionLoader";
@@ -49,9 +52,9 @@ const CollectionItem = ({ collection }) => (
       py={1}
       key={`collection-${collection.id}`}
     >
-      <Icon name="all" mx={1} />
+      <Icon name={collection.personal_owner_id ? "star" : "all"} mx={1} />
       <h4>
-        <Truncate>{collection.name}</Truncate>
+        <Ellipsified>{collection.name}</Ellipsified>
       </h4>
     </Flex>
   </Link>
@@ -75,6 +78,8 @@ const CollectionList = () => {
   );
 };
 
+const ROW_HEIGHT = 72;
+
 @connect((state, { collectionId }) => ({
   entityQuery: { collection: collectionId },
 }))
@@ -95,12 +100,24 @@ class DefaultLanding extends React.Component {
       onToggleSelected,
       selection,
       selected,
+      onSelectNone,
       reload,
     } = this.props;
     const { moveItems } = this.state;
 
     // Show the
     const showCollectionList = collectionId === "root";
+
+    // Call this when finishing a bulk action
+    const onBulkActionSuccess = () => {
+      // reload the current list
+      reload();
+
+      // Clear the selection in listSelect
+      // Fixes an issue where things were staying selected when moving between
+      // different collection pages
+      onSelectNone();
+    };
 
     return (
       <Flex>
@@ -150,48 +167,66 @@ class DefaultLanding extends React.Component {
                         </Box>
                       )}
                     </Flex>
-                    <Card>
-                      {other.map(item => (
-                        <NormalItemDraggable
-                          key={`${item.type}:${item.id}`}
-                          item={item}
-                          collection={collection}
-                          reload={reload}
-                          selection={selection}
-                          onToggleSelected={onToggleSelected}
-                          onMove={moveItems => this.setState({ moveItems })}
-                        />
-                      ))}
+                    <Card
+                      mb={selected.length > 0 ? 5 : 2}
+                      style={{ height: ROW_HEIGHT * other.length }}
+                    >
+                      <VirtualizedList
+                        items={other}
+                        rowHeight={ROW_HEIGHT}
+                        renderItem={({ item, index }) => (
+                          <NormalItemDraggable
+                            key={`${item.type}:${item.id}`}
+                            item={item}
+                            collection={collection}
+                            reload={reload}
+                            selection={selection}
+                            onToggleSelected={onToggleSelected}
+                            onMove={moveItems => this.setState({ moveItems })}
+                          />
+                        )}
+                      />
                     </Card>
                   </Box>
                 );
               }}
             </CollectionLoader>
             <BulkActionBar showing={selected.length > 0}>
-              <SelectionControls {...this.props} />
-              <BulkActionControls
-                onArchive={
-                  _.all(selected, item => item.setArchived)
-                    ? async () => {
-                        try {
-                          await Promise.all(
-                            selected.map(item => item.setArchived(true)),
-                          );
-                        } finally {
-                          reload();
-                        }
-                      }
-                    : null
-                }
-                onMove={
-                  _.all(selected, item => item.setCollection)
-                    ? () => {
-                        this.setState({ moveItems: selected });
-                      }
-                    : null
-                }
-              />
-              <Box ml="auto">{t`${selected.length} items selected`}</Box>
+              <Flex align="center" w="100%">
+                {showCollectionList && (
+                  <Box w={1 / 3}>
+                    <span className="hidden">spacer</span>
+                  </Box>
+                )}
+                <Flex w={2 / 3} mx={showCollectionList ? 3 : 0} align="center">
+                  <Box ml={showCollectionList ? 3 : 2}>
+                    <SelectionControls {...this.props} />
+                  </Box>
+                  <BulkActionControls
+                    onArchive={
+                      _.all(selected, item => item.setArchived)
+                        ? async () => {
+                            try {
+                              await Promise.all(
+                                selected.map(item => item.setArchived(true)),
+                              );
+                            } finally {
+                              onBulkActionSuccess();
+                            }
+                          }
+                        : null
+                    }
+                    onMove={
+                      _.all(selected, item => item.setCollection)
+                        ? () => {
+                            this.setState({ moveItems: selected });
+                          }
+                        : null
+                    }
+                  />
+                  <Box ml="auto">{t`${selected.length} items selected`}</Box>
+                </Flex>
+              </Flex>
             </BulkActionBar>
           </Box>
         </Box>
@@ -212,7 +247,7 @@ class DefaultLanding extends React.Component {
                     );
                     this.setState({ moveItems: null });
                   } finally {
-                    reload();
+                    onBulkActionSuccess();
                   }
                 }}
               />
@@ -316,36 +351,21 @@ const NormalItemContent = ({
       name={item.getName()}
       iconName={item.getIcon()}
       iconColor={item.getColor()}
-      isFavorite={item.getFavorited && item.getFavorited()}
+      isFavorite={item.favorited}
       onFavorite={
-        item.setFavorited
-          ? async () => {
-              await item.setFavorited(true);
-              reload();
-            }
-          : null
+        item.setFavorited ? () => item.setFavorited(!item.favorited) : null
       }
       onPin={
         collection.can_write && item.setPinned
-          ? async () => {
-              await item.setPinned(true);
-              reload();
-            }
+          ? () => item.setPinned(true)
           : null
       }
       onMove={
-        collection.can_write && item.setCollection
-          ? () => {
-              onMove([item]);
-            }
-          : null
+        collection.can_write && item.setCollection ? () => onMove([item]) : null
       }
       onArchive={
         collection.can_write && item.setArchived
-          ? async () => {
-              await item.setArchived(true);
-              reload();
-            }
+          ? () => item.setArchived(true)
           : null
       }
       selected={selection.has(item)}
@@ -376,7 +396,14 @@ class Collection extends React.Component {
       // must be a native DOM element or use innerRef which appears to be broken
       // https://github.com/react-dnd/react-dnd/issues/1021
       // https://github.com/jxnblk/styled-system/pull/188
-      <div className={cx("mb1", { "bg-brand rounded": hovered })}>
+      <div
+        className={cx(
+          {
+            "bg-brand rounded": hovered,
+          },
+          collection.personal_owner_id ? "mb3" : "mb1",
+        )}
+      >
         <CollectionItem collection={collection} />
       </div>,
     );
@@ -471,7 +498,7 @@ class DraggedItems extends React.Component {
 }
 
 const BulkActionControls = ({ onArchive, onMove }) => (
-  <Box>
+  <Box ml={1}>
     <Button
       ml={1}
       medium
@@ -545,40 +572,41 @@ class CollectionLanding extends React.Component {
                   />
                 </Box>
               )}
-              {currentCollection.can_write && (
-                <Box mx={1}>
-                  <EntityMenu
-                    items={[
-                      ...(!isRoot
-                        ? [
-                            {
-                              title: t`Edit this collection`,
-                              icon: "editdocument",
-                              link: `/collections/${currentCollection.id}`,
-                            },
-                          ]
-                        : []),
-                      {
-                        title: t`Edit permissions`,
-                        icon: "lock",
-                        link: `/collections/permissions?collectionId=${
-                          currentCollection.id
-                        }`,
-                      },
-                      ...(!isRoot
-                        ? [
-                            {
-                              title: t`Archive this collection`,
-                              icon: "viewArchive",
-                              link: `/collection/${collectionId}/archive`,
-                            },
-                          ]
-                        : []),
-                    ]}
-                    triggerIcon="pencil"
-                  />
-                </Box>
-              )}
+              {currentCollection.can_write &&
+                !currentCollection.personal_owner_id && (
+                  <Box mx={1}>
+                    <EntityMenu
+                      items={[
+                        ...(!isRoot
+                          ? [
+                              {
+                                title: t`Edit this collection`,
+                                icon: "editdocument",
+                                link: `/collections/${currentCollection.id}`,
+                              },
+                            ]
+                          : []),
+                        {
+                          title: t`Edit permissions`,
+                          icon: "lock",
+                          link: `/collection/${
+                            currentCollection.id
+                          }/permissions`,
+                        },
+                        ...(!isRoot
+                          ? [
+                              {
+                                title: t`Archive this collection`,
+                                icon: "viewArchive",
+                                link: `/collection/${collectionId}/archive`,
+                              },
+                            ]
+                          : []),
+                      ]}
+                      triggerIcon="pencil"
+                    />
+                  </Box>
+                )}
               <EntityMenu
                 items={[
                   {

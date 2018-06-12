@@ -22,7 +22,7 @@ const ModalWithRoute = ComposedModal =>
       render() {
         return (
           <Modal onClose={this.onClose}>
-            <ComposedModal onClose={this.onClose} />
+            <ComposedModal {...this.props} onClose={this.onClose} />
           </Modal>
         );
       }

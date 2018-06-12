@@ -2,7 +2,7 @@ import React from "react";
 import _ from "underscore";
 import { handleActions } from "redux-actions";
 import { combineReducers } from "redux";
-import { addUndo, createUndo } from "metabase/redux/undo";
+import { addUndo } from "metabase/redux/undo";
 import { t } from "c-3po";
 import { AlertApi } from "metabase/services";
 import { RestfulRequest } from "metabase/lib/request";
@@ -52,23 +52,15 @@ export const createAlert = alert => {
     await dispatch(createAlertRequest.trigger(alert));
 
     dispatch(
-      addUndo(
-        createUndo({
-          type: "create-alert",
-          // eslint-disable-next-line react/display-name
-          message: () => (
-            <div className="flex align-center text-bold">
-              <Icon
-                name="alertConfirm"
-                size="19"
-                className="mr2 text-success"
-              />
-              {t`Your alert is all set up.`}
-            </div>
-          ),
-          action: null, // alert creation is not undoable
-        }),
-      ),
+      addUndo({
+        // eslint-disable-next-line react/display-name
+        message: () => (
+          <div className="flex align-center text-bold">
+            <Icon name="alertConfirm" size="19" className="mr2 text-success" />
+            {t`Your alert is all set up.`}
+          </div>
+        ),
+      }),
     );
 
     dispatch.action(CREATE_ALERT);
@@ -101,23 +93,15 @@ export const updateAlert = alert => {
     await dispatch(updateAlertRequest.trigger(cleanAlert(alert)));
 
     dispatch(
-      addUndo(
-        createUndo({
-          type: "update-alert",
-          // eslint-disable-next-line react/display-name
-          message: () => (
-            <div className="flex align-center text-bold">
-              <Icon
-                name="alertConfirm"
-                size="19"
-                className="mr2 text-success"
-              />
-              {t`Your alert was updated.`}
-            </div>
-          ),
-          action: null, // alert updating is not undoable
-        }),
-      ),
+      addUndo({
+        // eslint-disable-next-line react/display-name
+        message: () => (
+          <div className="flex align-center text-bold">
+            <Icon name="alertConfirm" size="19" className="mr2 text-success" />
+            {t`Your alert was updated.`}
+          </div>
+        ),
+      }),
     );
 
     dispatch.action(UPDATE_ALERT);
@@ -157,23 +141,15 @@ export const deleteAlert = alertId => {
     await dispatch(deleteAlertRequest.trigger({ id: alertId }));
 
     dispatch(
-      addUndo(
-        createUndo({
-          type: "delete-alert",
-          // eslint-disable-next-line react/display-name
-          message: () => (
-            <div className="flex align-center text-bold">
-              <Icon
-                name="alertConfirm"
-                size="19"
-                className="mr2 text-success"
-              />
-              {t`The alert was successfully deleted.`}
-            </div>
-          ),
-          action: null, // alert deletion is not undoable
-        }),
-      ),
+      addUndo({
+        // eslint-disable-next-line react/display-name
+        message: () => (
+          <div className="flex align-center text-bold">
+            <Icon name="alertConfirm" size="19" className="mr2 text-success" />
+            {t`The alert was successfully deleted.`}
+          </div>
+        ),
+      }),
     );
     dispatch.action(DELETE_ALERT, alertId);
   };

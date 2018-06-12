@@ -1,29 +1,46 @@
 import React from "react";
-import { Box, Flex, Subhead } from "rebass";
-import cx from "classnames";
+import PropTypes from "prop-types";
 
+import _ from "underscore";
+import { t } from "c-3po";
+
+import { Flex, Box } from "grid-styled";
+import Subhead from "metabase/components/Subhead";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
+import CollectionPicker from "metabase/containers/CollectionPicker";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 
 class CollectionMoveModal extends React.Component {
   state = {
     // will eventually be the collection object representing the selected collection
     // we store the whole object instead of just the ID so that we can use its
     // name in the action button, and other properties
-    selectedCollection: {},
+    //
+    //  undefined = no selection
+    //  null = root collection
+    //  number = non-root collection id
+    selectedCollection: undefined,
     // whether the move action has started
     // TODO: use this loading and error state in the UI
     moving: false,
     error: null,
   };
+
+  static propTypes = {
+    title: PropTypes.string.isRequired,
+    onClose: PropTypes.func.isRequired,
+    onMove: PropTypes.func.isRequired,
+  };
+
   render() {
     const { selectedCollection } = this.state;
 
     return (
       <Box p={3}>
-        <Flex align="center">
+        <Flex align="center" mb={2}>
           <Subhead>{this.props.title}</Subhead>
           <Icon
             name="close"
@@ -32,40 +49,24 @@ class CollectionMoveModal extends React.Component {
           />
         </Flex>
         <CollectionListLoader>
-          {({ collections, loading, error }) => {
-            return (
-              <Box>
-                {collections
-                  .concat({ name: "None", id: null })
-                  .map(collection => (
-                    <Box
-                      my={1}
-                      p={1}
-                      onClick={() =>
-                        this.setState({ selectedCollection: collection })
-                      }
-                      className={cx(
-                        "bg-brand-hover text-white-hover cursor-pointer rounded",
-                        {
-                          "bg-brand text-white":
-                            selectedCollection.id === collection.id,
-                        },
-                      )}
-                    >
-                      <Flex align="center">
-                        <Icon name="all" color={"#DCE1E4"} size={32} />
-                        <h4 className="ml1">{collection.name}</h4>
-                      </Flex>
-                    </Box>
-                  ))}
-              </Box>
-            );
-          }}
+          {({ collections, loading, error }) => (
+            <CollectionPicker
+              value={selectedCollection && selectedCollection.id}
+              onChange={id =>
+                this.setState({
+                  selectedCollection:
+                    id == null ? null : _.find(collections, { id }),
+                })
+              }
+              collections={collections}
+            />
+          )}
         </CollectionListLoader>
-        <Flex>
+        <Flex mt={2}>
           <Button
             primary
             className="ml-auto"
+            disabled={selectedCollection === undefined}
             onClick={() => {
               try {
                 this.setState({ moving: true });
@@ -77,7 +78,7 @@ class CollectionMoveModal extends React.Component {
               }
             }}
           >
-            Move
+            {t`Move`}
           </Button>
         </Flex>
       </Box>

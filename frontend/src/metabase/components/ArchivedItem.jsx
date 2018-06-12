@@ -6,8 +6,8 @@ import { t } from "c-3po";
 
 import CheckBox from "metabase/components/CheckBox.jsx";
 import Icon from "metabase/components/Icon";
-import IconWrapper from "metabase/components/IconWrapper"
-import Swapper from "metabase/components/Swapper"
+import IconWrapper from "metabase/components/IconWrapper";
+import Swapper from "metabase/components/Swapper";
 import Tooltip from "metabase/components/Tooltip";
 
 const ArchivedItem = ({
@@ -23,12 +23,10 @@ const ArchivedItem = ({
   showSelect,
 }) => (
   <div className="flex align-center p2 hover-parent hover--visibility border-bottom bg-grey-0-hover">
-    <IconWrapper p={1} mr={1} align='center' justify='center'>
+    <IconWrapper p={1} mr={1} align="center" justify="center">
       <Swapper
         startSwapped={showSelect}
-        defaultElement={
-          <Icon name={icon} color={color} />
-        }
+        defaultElement={<Icon name={icon} color={color} />}
         swappedElement={
           <CheckBox checked={selected} onChange={onToggleSelected} />
         }
@@ -54,6 +52,10 @@ ArchivedItem.propTypes = {
   color: PropTypes.string,
   isAdmin: PropTypes.bool,
   onUnarchive: PropTypes.func.isRequired,
+
+  selected: PropTypes.bool.isRequired,
+  onToggleSelected: PropTypes.func.isRequired,
+  showSelect: PropTypes.bool.isRequired,
 };
 
 export default ArchivedItem;

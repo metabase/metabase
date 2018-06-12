@@ -12,7 +12,9 @@
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 (defn- check-self-or-superuser
   "Check that USER-ID is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -21,22 +23,26 @@
   (api/check-403 (or (= user-id api/*current-user-id*)
                      (:is_superuser @api/*current-user*))))
 
-(def ^:private all-user-fields
-  (vec (cons User user/all-user-fields)))
-
 (api/defendpoint GET "/"
-  "Fetch a list of `Users` for the admin People page. By default returns only active users. If `include_deactivated`
-  is true, return all users (active and inactive)."
+  "Fetch a list of `Users` for the admin People page or for Pulses. By default returns only active users. If
+  `include_deactivated` is true, return all Users (active and inactive). (Using `include_deactivated` requires
+  superuser permissions.)"
   [include_deactivated]
   {include_deactivated (s/maybe su/BooleanString)}
-  (db/select all-user-fields
-    (merge {:order-by [[:%lower.last_name :asc]
-                       [:%lower.first_name :asc]]}
-           (when-not include_deactivated
-             {:where [:= :is_active true]}))))
+  (when include_deactivated
+    (api/check-superuser))
+  (cond-> (db/select (vec (cons User (if api/*is-superuser?*
+                                       user/admin-or-self-visible-columns
+                                       user/non-admin-or-self-visible-columns)))
+            (merge {:order-by [[:%lower.last_name :asc]
+                               [:%lower.first_name :asc]]}
+                   (when-not include_deactivated
+                     {:where [:= :is_active true]})))
+    ;; For admins, also include the IDs of the  Users' Personal Collections
+    api/*is-superuser?* (hydrate :personal_collection_id)))
 
 (defn- fetch-user [& query-criteria]
-  (apply db/select-one all-user-fields query-criteria))
+  (apply db/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
 
 (defn- reactivate-user! [existing-user]
   (db/update! User (u/get-id existing-user)

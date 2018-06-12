@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex } from "rebass";
+import { Box, Flex } from "grid-styled";
 import cx from "classnames";
 import { withRouter } from "react-router";
 

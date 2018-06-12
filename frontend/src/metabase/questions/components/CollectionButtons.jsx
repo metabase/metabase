@@ -1,5 +1,5 @@
 import React from "react";
-import { Flex } from "rebass";
+import { Flex } from "grid-styled";
 import { Link } from "react-router";
 import { t } from "c-3po";
 
