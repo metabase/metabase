@@ -21,6 +21,7 @@ import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
 import Subhead from "metabase/components/Subhead";
 import Ellipsified from "metabase/components/Ellipsified";
+import VirtualizedList from "metabase/components/VirtualizedList";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 import CollectionLoader from "metabase/containers/CollectionLoader";
@@ -77,6 +78,8 @@ const CollectionList = () => {
     </Box>
   );
 };
+
+const ROW_HEIGHT = 72;
 
 @connect((state, { collectionId }) => ({
   entityQuery: { collection: collectionId },
@@ -180,50 +183,25 @@ class DefaultLanding extends React.Component {
                         </Box>
                       )}
                     </Flex>
-                    <Card mb={selected.length > 0 ? 5 : 2}>
-                      {other.map(item => {
-                        return (
-                          <Box key={item.type + item.id}>
-                            <Link to={item.getUrl()}>
-                              <EntityItem
-                                selectable
-                                item={item}
-                                type={item.type}
-                                name={item.getName()}
-                                iconName={item.getIcon()}
-                                iconColor={item.getColor()}
-                                isFavorite={item.favorited}
-                                onFavorite={
-                                  item.setFavorited
-                                    ? () => item.setFavorited(!item.favorited)
-                                    : null
-                                }
-                                onPin={
-                                  collection.can_write && item.setPinned
-                                    ? () => item.setPinned(true)
-                                    : null
-                                }
-                                onMove={
-                                  collection.can_write && item.setCollection
-                                    ? () => {
-                                        this.setState({ moveItems: [item] });
-                                      }
-                                    : null
-                                }
-                                onArchive={
-                                  collection.can_write && item.setArchived
-                                    ? () => item.setArchived(true)
-                                    : null
-                                }
-                                selected={selection.has(item)}
-                                onToggleSelected={() => {
-                                  onToggleSelected(item);
-                                }}
-                              />
-                            </Link>
-                          </Box>
-                        );
-                      })}
+                    <Card
+                      mb={selected.length > 0 ? 5 : 2}
+                      style={{ height: ROW_HEIGHT * other.length }}
+                    >
+                      <VirtualizedList
+                        items={other}
+                        rowHeight={ROW_HEIGHT}
+                        renderItem={({ item, index }) => (
+                          <NormalItemContent
+                            key={`${item.type}:${item.id}`}
+                            item={item}
+                            collection={collection}
+                            reload={reload}
+                            selection={selection}
+                            onToggleSelected={onToggleSelected}
+                            onMove={moveItems => this.setState({ moveItems })}
+                          />
+                        )}
+                      />
                     </Card>
                   </Box>
                 );
@@ -295,6 +273,51 @@ class DefaultLanding extends React.Component {
     );
   }
 }
+
+const NormalItemContent = ({
+  item,
+  collection = {},
+  selection = new Set(),
+  onToggleSelected,
+  onMove,
+  reload,
+}) => (
+  <Link to={item.getUrl()}>
+    <EntityItem
+      selectable
+      item={item}
+      type={item.type}
+      name={item.getName()}
+      iconName={item.getIcon()}
+      iconColor={item.getColor()}
+      isFavorite={item.favorited}
+      onFavorite={
+        item.setFavorited ? () => item.setFavorited(!item.favorited) : null
+      }
+      onPin={
+        collection.can_write && item.setPinned
+          ? () => item.setPinned(true)
+          : null
+      }
+      onMove={
+        collection.can_write && item.setCollection
+          ? () => {
+              this.setState({ moveItems: [item] });
+            }
+          : null
+      }
+      onArchive={
+        collection.can_write && item.setArchived
+          ? () => item.setArchived(true)
+          : null
+      }
+      selected={selection.has(item)}
+      onToggleSelected={() => {
+        onToggleSelected(item);
+      }}
+    />
+  </Link>
+);
 
 const BulkActionControls = ({ onArchive, onMove }) => (
   <Box ml={1}>
