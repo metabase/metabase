@@ -141,28 +141,6 @@ In `/etc/default/metabase`, replace configurable items (they look like `<some-va
     export MB_EMOJI_IN_LOGS=<true|false>
     # any other env vars you want available to Metabase
 
-#### Systemd unit file
-
-    [Unit]
-    Description=Metabase server
-    After=syslog.target
-    After=network.target
-   
-    [Service]
-    WorkingDirectory=/opt/metabase/
-    ExecStart=/usr/bin/java -jar /opt/metabase/metabase.jar
-    EnvironmentFile=/etc/default/metabase
-    User=metabase
-    Type=simple
-    StandardOutput=/var/log/metabase.log
-    StandardError=/var/log/metabase.log
-    SyslogIdentifier=metabase
-    SuccessExitStatus=143
-    TimeoutStopSec=120
-    Restart=always
-   
-    [Install]
-    WantedBy=multi-user.target
 ~                               
 ### Final Steps
 
