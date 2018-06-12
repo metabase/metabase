@@ -138,7 +138,6 @@ export default class QueryBuilder extends Component {
   constructor(props, context) {
     super(props, context);
 
-    console.log(props.metadata);
     // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
     this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
   }
@@ -231,9 +230,6 @@ export default class QueryBuilder extends Component {
 class LegacyQueryBuilder extends Component {
   render() {
     const { query, card, isDirty, databases, uiControls, mode } = this.props;
-
-    console.log('LegacyQueryBuilder');
-    console.log(this.props);
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
     if (!card || !databases) {

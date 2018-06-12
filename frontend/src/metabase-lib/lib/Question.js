@@ -189,11 +189,6 @@ export default class Question {
    */
   atomicQueries(): AtomicQuery[] {
     const query = this.query();
-    // this._card.visualization_settings.
-    // query._datasetQuery.query.
-    console.log('********atomic***********')
-    console.log('query')
-    console.log(query);
     if (query instanceof AtomicQuery) return [query, ...getFoo(this.visualizationSettings())(this.card(), this.metadata(), this)(query)];
     return [];
   }
@@ -449,8 +444,6 @@ export default class Question {
         parameters,
       };
 
-      console.log('kkdasdasdas')
-      console.log(datasetQueryWithParameters);
       return MetabaseApi.dataset(
         datasetQueryWithParameters,
         cancelDeferred ? { cancelled: cancelDeferred.promise } : {},
@@ -470,11 +463,6 @@ export default class Question {
         }),...datasetQueries.slice(1).map(getDatasetQueryResult)]
       );
     } else {
-
-      console.log('+++++++++++++++++')
-
-
-      console.log(datasetQueries);
       return Promise.all(datasetQueries.map(getDatasetQueryResult));
     }
   }
