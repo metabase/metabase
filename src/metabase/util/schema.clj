@@ -3,7 +3,9 @@
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [medley.core :as m]
-            [metabase.util :as u]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.util.password :as password]
             [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]))
@@ -69,6 +71,9 @@
       (when (instance? schema.core.EnumSchema schema)
         (tru "value must be one of: {0}." (str/join ", " (for [v (sort (:vs schema))]
                                                            (str "`" v "`")))))
+      ;; for `(s/eq value)` schemas, we can pretty easily generate a nice-looking error message
+      (when (instance? schema.core.EqSchema schema)
+        (tru "value must be ''{0}''." (:v schema)))
       ;; For cond-pre schemas we'll generate something like
       ;; value must satisfy one of the following requirements:
       ;; 1) value must be a boolean.
@@ -76,7 +81,17 @@
       (when (instance? schema.core.CondPre schema)
         (str (tru "value must satisfy one of the following requirements: ")
              (str/join " " (for [[i child-schema] (m/indexed (:schemas schema))]
-                             (format "%d) %s" (inc i) (api-error-message child-schema))))))
+                             (format "%d) %s"
+                                     (inc i)
+                                     (or (api-error-message child-schema)
+                                         ;; if api-error-message returns `nil` (the child schema doesn't have an API
+                                         ;; error message), issue a dev-only warning. No need to i18n or w/e because
+                                         ;; it's for dev purposes
+                                         (when config/is-dev?
+                                           (println (u/format-color 'red "Warning: no API error message for: %s"
+                                                      child-schema)))
+                                         ;; Go ahead an put a ? as a placeholder instead of something like "1) null"
+                                         "?"))))))
       ;; do the same for sequences of a schema
       (when (vector? schema)
         (str (tru "value must be an array.") (when (= (count schema) 1)

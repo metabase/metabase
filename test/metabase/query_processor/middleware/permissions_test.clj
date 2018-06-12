@@ -18,7 +18,7 @@
 (defn- do-with-rasta
   "Call F with rasta as the current user."
   [f]
-  (users/call-with-api-vars :rasta f))
+  (users/do-with-test-user :rasta f))
 
 (defn- check-perms-for-rasta
   "Check permissions for QUERY with rasta as the current user."
