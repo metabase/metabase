@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import cx from "classnames";
 
 import { Flex, Box } from "grid-styled";
@@ -21,6 +22,13 @@ export default class CollectionPicker extends React.Component {
       parentId: "root",
     };
   }
+
+  static propTypes = {
+    // undefined = no selection
+    // null = root collection
+    // number = non-root collection id
+    value: PropTypes.number,
+  };
 
   // returns a list of "crumbs" starting with the "root" collection
   _getCrumbs(collection, collectionsById) {
@@ -71,7 +79,7 @@ export default class CollectionPicker extends React.Component {
             className={cx(
               "bg-brand-hover text-white-hover cursor-pointer rounded",
               {
-                "bg-brand text-white": value == getCollectionValue(collection),
+                "bg-brand text-white": value === getCollectionValue(collection),
               },
             )}
           >

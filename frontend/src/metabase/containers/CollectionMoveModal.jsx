@@ -1,4 +1,6 @@
 import React from "react";
+import PropTypes from "prop-types";
+
 import _ from "underscore";
 import { t } from "c-3po";
 
@@ -16,12 +18,23 @@ class CollectionMoveModal extends React.Component {
     // will eventually be the collection object representing the selected collection
     // we store the whole object instead of just the ID so that we can use its
     // name in the action button, and other properties
-    selectedCollection: null,
+    //
+    //  undefined = no selection
+    //  null = root collection
+    //  number = non-root collection id
+    selectedCollection: undefined,
     // whether the move action has started
     // TODO: use this loading and error state in the UI
     moving: false,
     error: null,
   };
+
+  static propTypes = {
+    title: PropTypes.string.isRequired,
+    onClose: PropTypes.func.isRequired,
+    onMove: PropTypes.func.isRequired,
+  };
+
   render() {
     const { selectedCollection } = this.state;
 
@@ -38,11 +51,11 @@ class CollectionMoveModal extends React.Component {
         <CollectionListLoader>
           {({ collections, loading, error }) => (
             <CollectionPicker
-              value={selectedCollection ? selectedCollection.id : undefined}
+              value={selectedCollection && selectedCollection.id}
               onChange={id =>
                 this.setState({
                   selectedCollection:
-                    id == null ? ROOT_COLLECTION : _.find(collections, { id }),
+                    id == null ? null : _.find(collections, { id }),
                 })
               }
               collections={collections}
@@ -53,7 +66,7 @@ class CollectionMoveModal extends React.Component {
           <Button
             primary
             className="ml-auto"
-            disabled={!selectedCollection}
+            disabled={selectedCollection === undefined}
             onClick={() => {
               try {
                 this.setState({ moving: true });
