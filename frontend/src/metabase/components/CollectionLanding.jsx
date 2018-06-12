@@ -46,12 +46,10 @@ const CollectionItem = ({ collection, iconName }) => (
   >
     <Flex
       align="center"
-      my={1}
-      px={1}
       py={1}
       key={`collection-${collection.id}`}
     >
-      <Icon name={iconName} mx={1} />
+      <Icon name={iconName} mx={1} color='#93B3C9' />
       <h4>
         <Ellipsified>{collection.name}</Ellipsified>
       </h4>
@@ -78,10 +76,10 @@ class CollectionList extends React.Component {
           {({ collections }) => {
             return (
               <Box>
-                <Box mb={2}>
+                <Box my={2}>
                   <CollectionItem
                     collection={{
-                      name: "My personal collection",
+                      name: t`My personal collection`,
                       id: currentUser.personal_collection_id,
                     }}
                     iconName="star"
@@ -89,7 +87,7 @@ class CollectionList extends React.Component {
                   {currentUser.is_superuser && (
                     <CollectionItem
                       collection={{
-                        name: "Everyones personal collections",
+                        name: t`Everyone else's personal collections`,
                         // Bit of a hack. The route /collection/users lists
                         // user collections but is not itself a colllection,
                         // but using the fake id users here works
