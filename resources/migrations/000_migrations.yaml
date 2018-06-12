@@ -4211,6 +4211,70 @@ databaseChangeLog:
         - sql:
             sql: update metric set archived = not(archived)
             sql: update segment set archived = not(archived)
+  # Personal Collections, and removing Collection's unique constraint and index on slug
+  - changeSet:
+      id: 85
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              name: personal_owner_id
+              type: int
+              remarks: 'If set, this Collection is a personal Collection, for exclusive use of the User with this ID.'
+              constraints:
+                references: core_user(id)
+                foreignKeyName: fk_collection_personal_owner_id
+                unique: true
+                uniqueConstraintName: unique_collection_personal_owner_id
+                deleteCascade: true
+        # Needed so we can efficiently look up the Collection belonging to a User, and so we can efficiently enforce the
+        # unique constraint
+        - createIndex:
+            tableName: collection
+            indexName: idx_collection_personal_owner_id
+            columns:
+              - column:
+                  name: personal_owner_id
+        # We're no longer enforcing unique constraints on Collection slugs or using them directly in the URLs, so let's
+        # go ahead and remove stuff related to that...
+        #
+        # It's easier to just copy the value of slug to a new column and drop the old one than to try to deduce what the
+        # unique constraint is named locally across all of our different DBMSes
+        # (For example see https://stackoverflow.com/questions/10008476/dropping-unique-constraint-for-column-in-h2)
+        #
+        # Here's the plan: add new column _slug; copy values of slug into _slug; remove slug; rename _slug to slug
+        - addColumn:
+            tableName: collection
+            columns:
+              name: _slug
+              type: varchar(254)
+              remarks: 'Sluggified version of the Collection name. Used only for display purposes in URL; not unique or indexed.'
+        # I don't know of an easy way to copy existing values of slug to _slug with Liquibase as we create the column so
+        # just have to do it this way instead
+        - sql:
+            sql: UPDATE collection SET _slug = slug
+        - addNotNullConstraint:
+            tableName: collection
+            columnName: _slug
+            columnDataType: varchar(254)
+        - dropColumn:
+            tableName: collection
+            columnName: slug
+        - renameColumn:
+            tableName: collection
+            oldColumnName: _slug
+            newColumnName: slug
+            columnDataType: varchar(254)
+        # Let's try to make sure the comments on the name column of Collection actually reflect reality
+        - sql:
+            dbms: postgresql,h2
+            sql: "COMMENT ON COLUMN collection.name IS 'The user-facing name of this Collection.'"
+        - sql:
+            dbms: mysql
+            sql: "ALTER TABLE `collection` CHANGE `name` `name` TEXT NOT NULL COMMENT 'The user-facing name of this Collection.'"
+
 # In 0.30.0 we finally removed the long-deprecated native read permissions. Since they're no longer considered valid by
 # our permissions code, remove any entries for them so they don't cause problems.
   - changeSet:

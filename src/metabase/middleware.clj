@@ -117,7 +117,7 @@
       response-unauthentic)))
 
 (def ^:private current-user-fields
-  (vec (cons User user/all-user-fields)))
+  (vec (cons User user/admin-or-self-visible-columns)))
 
 (defn- find-user [user-id]
   (db/select-one current-user-fields, :id user-id))

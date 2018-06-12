@@ -20,10 +20,8 @@
              [hydrate :refer [hydrate]]]))
 
 (api/defendpoint GET "/"
-  "Fetch a list of all Collections that the current user has read permissions for.
-  This includes `:can_write`, which means whether the current user is allowed to add or remove Cards to this
-  Collection; keep in mind that regardless of this status you must be a superuser to modify properties of Collections
-  themselves.
+  "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
+  additional property of each Collection so you can tell which of these you have write permissions for.)
 
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`."
@@ -138,22 +136,53 @@
      (when parent_id
        {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))
 
-(defn- move-collection-if-needed! [collection-before-update collection-updates]
+;; TODO - I'm not 100% sure it makes sense that moving a Collection requires a special call to `move-collection!`,
+;; while archiving is handled automatically as part of the `pre-update` logic when you change a Collection's
+;; `archived` value. They are both recursive operations; couldn't we just have moving happen automatically when you
+;; change a `:location` as well?
+(defn- move-collection-if-needed!
+  "If input the `PUT /api/collection/:id` endpoint (`collection-updates`) specify that we should *move* a Collection, do
+  appropriate permissions checks and move it (and its descendants)."
+  [collection-before-update collection-updates]
   ;; is a [new] parent_id update specified in the PUT request?
   (when (contains? collection-updates :parent_id)
     (let [orig-location (:location collection-before-update)
           new-parent-id (:parent_id collection-updates)
-          new-location  (collection/children-location (if new-parent-id
-                                                        (db/select-one [Collection :location :id] :id new-parent-id)
-                                                        collection/root-collection))]
+          new-parent    (if new-parent-id
+                          (db/select-one [Collection :location :id] :id new-parent-id)
+                          collection/root-collection)
+          new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
       (when (not= orig-location new-location)
-        ;; ok, make sure we have perms to move something out of the original parent Collection
-        (write-check-collection-or-root-collection (collection/location-path->parent-id orig-location))
-        ;; now make sure we have perms to move something into the new parent Collection
-        (write-check-collection-or-root-collection new-parent-id)
+        ;; ok, make sure we have perms to do this operation
+        (api/check-403
+         (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
+           (collection/perms-for-moving collection-before-update new-parent)))
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
+
+(defn- check-allowed-to-archive-or-unarchive
+  "If input the `PUT /api/collection/:id` endpoint (`collection-updates`) specify that we should change the `archived`
+  status of a Collection, do appropriate permissions checks. (Actual recurisve (un)archiving logic is handled by
+  Collection's `pre-update`, so we do not need to manually call `collection/archive-collection!` and the like in this
+  namespace.)"
+  [collection-before-update collection-updates]
+  (when (api/column-will-change? :archived collection-before-update collection-updates)
+    ;; Check that we have approprate perms
+    (api/check-403
+     (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
+       (collection/perms-for-archiving collection-before-update)))))
+
+(defn- maybe-send-archived-notificaitons!
+  "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
+  which will not cause the archive notification code to fire. This will delete the relevant alerts and notify the
+  users just as if they had be archived individually via the card API."
+  [collection-before-update collection-updates]
+  (when (api/column-will-change? :archived collection-before-update collection-updates)
+    (when-let [alerts (seq (apply pulse/retrieve-alerts-for-cards (db/select-ids Card
+                                                                    :collection_id (u/get-id collection-before-update))))]
+        (card-api/delete-alert-and-notify-archived! alerts))))
+
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
@@ -165,21 +194,18 @@
    parent_id   (s/maybe su/IntGreaterThanZero)}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
-    ;; ok, go ahead and update it! Only update keys that were specified in the `body`
+    ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
+    (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
+    ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
+    ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived])]
       (when (seq updates)
         (db/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
-    ;; Check and see if if the Collection is switiching to archived
-    (when (and (not (:archived collection-before-update))
-               archived)
-      (when-let [alerts (seq (apply pulse/retrieve-alerts-for-cards (db/select-ids Card, :collection_id id)))]
-        ;; When a collection is archived, all of it's cards are also marked as archived, but this is down in the model
-        ;; layer which will not cause the archive notification code to fire. This will delete the relevant alerts and
-        ;; notify the users just as if they had be archived individually via the card API
-        (card-api/delete-alert-and-notify-archived! alerts))))
-  ;; return the updated object
+    ;; if we *did* end up archiving this Collection, we most post a few notifications
+    (maybe-send-archived-notificaitons! collection-before-update collection-updates))
+  ;; finally, return the updated object
   (Collection id))
 
 

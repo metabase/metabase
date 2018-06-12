@@ -34,12 +34,12 @@
              [results-metadata :as results-metadata]]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [trs]]
-            [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]])
-  (:import java.util.UUID))
+  (:import java.util.UUID
+           metabase.models.card.CardInstance))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -85,13 +85,13 @@
   [table-id]
   (db/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(defn- cards-with-ids
+(s/defn ^:private cards-with-ids :- (s/maybe [CardInstance])
   "Return unarchived `Cards` with CARD-IDS.
    Make sure cards are returned in the same order as CARD-IDS`; `[in card-ids]` won't preserve the order."
-  [card-ids]
-  {:pre [(every? integer? card-ids)]}
-  (let [card-id->card (u/key-by :id (db/select Card, :id [:in (set card-ids)], :archived false))]
-    (filter identity (map card-id->card card-ids))))
+  [card-ids :- [su/IntGreaterThanZero]]
+  (when (seq card-ids)
+    (let [card-id->card (u/key-by :id (db/select Card, :id [:in (set card-ids)], :archived false))]
+      (filter identity (map card-id->card card-ids)))))
 
 (defn- cards:recent
   "Return the 10 `Cards` most recently viewed by the current user, sorted by how recently they were viewed."
@@ -132,27 +132,10 @@
    :popular  (u/drop-first-arg cards:popular)
    :archived (u/drop-first-arg cards:archived)})
 
-(defn- collection-slug->id [collection-slug]
-  (when (seq collection-slug)
-    ;; special characters in the slugs are always URL-encoded when stored in the DB, e.g.  "Obsługa klienta" becomes
-    ;; "obs%C5%82uga_klienta". But for some weird reason sometimes the slug is passed in like "obsługa_klientaa" (not
-    ;; URL-encoded) so go ahead and URL-encode the input as well so we can match either case
-    (api/check-404 (db/select-one-id Collection
-                     {:where [:or [:= :slug collection-slug]
-                              [:= :slug (codec/url-encode collection-slug)]]}))))
-
-;; TODO - do we need to hydrate the cards' collections as well?
-(defn- cards-for-filter-option [filter-option model-id collection-slug]
-  (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
-                  (hydrate :creator :collection)
-                  hydrate-favorites)]
-    ;; Since Collections are hydrated in Clojure-land we need to wait until this point to apply Collection filtering.
-    ;; If applicable, `collection` can optionally be an empty string which is used to represent the Root Collection
-    (filter (cond
-              collection-slug (let [collection-id (collection-slug->id collection-slug)]
-                                (comp (partial = collection-id) :collection_id))
-              :else           identity)
-            cards)))
+(defn- cards-for-filter-option [filter-option model-id]
+  (-> ((filter-option->fn (or filter-option :all)) model-id)
+      (hydrate :creator :collection)
+      hydrate-favorites))
 
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
@@ -164,18 +147,10 @@
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See
-  corresponding implementation functions above for the specific behavior of each filter option. :card_index:
-
-  Optionally filter cards by `collection` slug. (`collection` can be a blank string, to signify cards in the Root
-  Collection should be returned.)
-
-  NOTES:
-
-  *  If no Collection exists with the slug `collection`, this endpoint will return a 404."
-  [f model_id collection]
+  corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
+  [f model_id]
   {f          (s/maybe CardFilterOption)
-   model_id   (s/maybe su/IntGreaterThanZero)
-   collection (s/maybe s/Str)}
+   model_id   (s/maybe su/IntGreaterThanZero)}
   (let [f (keyword f)]
     (when (contains? #{:database :table} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
@@ -183,7 +158,7 @@
       (case f
         :database (api/read-check Database model_id)
         :table    (api/read-check Database (db/select-one-field :db_id Table, :id model_id))))
-    (->> (cards-for-filter-option f model_id collection)
+    (->> (cards-for-filter-option f model_id)
          ;; filterv because we want make sure all the filtering is done while current user perms set is still bound
          (filterv mi/can-read?))))
 
@@ -276,26 +251,23 @@
 
 (defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
-  [card query]
-  (when (and query
-             (not= query (:dataset_query card)))
-    (check-data-permissions-for-query query)))
+  [card-before-updates card-updates]
+  (when (api/column-will-change? :dataset_query card-before-updates card-updates)
+    (check-data-permissions-for-query (:dataset_query card-updates))))
 
 (defn- check-allowed-to-unarchive
   "When unarchiving a Card, make sure we have data permissions for the Card query before doing so."
-  [card archived?]
-  (when (and (false? archived?)
-             (:archived card))
-    (check-data-permissions-for-query (:dataset_query card))))
+  [card-before-updates card-updates]
+  (when (and (api/column-will-change? :archived card-before-updates card-updates)
+             (:archived card-before-updates))
+    (check-data-permissions-for-query (:dataset_query card-before-updates))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
   enabled."
-  [card enable-embedding? embedding-params]
-  (when (or (and (some? enable-embedding?)
-                 (not= enable-embedding? (:enable_embedding card)))
-            (and embedding-params
-                 (not= embedding-params (:embedding_params card))))
+  [card-before-updates card-updates]
+  (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
+            (api/column-will-change? :embedding_params card-before-updates card-updates))
     (api/check-embedding-enabled)
     (api/check-superuser)))
 
@@ -423,9 +395,9 @@
   (let [card-before-update (api/write-check Card id)]
     ;; Do various permissions checks
     (collection/check-allowed-to-change-collection card-before-update card-updates)
-    (check-allowed-to-modify-query card-before-update dataset_query)
-    (check-allowed-to-unarchive card-before-update archived)
-    (check-allowed-to-change-embedding card-before-update enable_embedding embedding_params)
+    (check-allowed-to-modify-query                 card-before-update card-updates)
+    (check-allowed-to-unarchive                    card-before-update card-updates)
+    (check-allowed-to-change-embedding             card-before-update card-updates)
     ;; make sure we have the correct `result_metadata`
     (let [card-updates (assoc card-updates
                          :result_metadata (result-metadata-for-updating card-before-update dataset_query
