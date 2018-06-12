@@ -1,6 +1,7 @@
 /* @flow weak */
 
 import Query from "./queries/Query";
+import {getFoo} from "./barQbilder";
 
 import Metadata from "./metadata/Metadata";
 import Table from "./metadata/Table";
@@ -188,9 +189,16 @@ export default class Question {
    */
   atomicQueries(): AtomicQuery[] {
     const query = this.query();
-    if (query instanceof AtomicQuery) return [query];
+    // this._card.visualization_settings.
+    // query._datasetQuery.query.
+    console.log('********atomic***********')
+    console.log('query')
+    console.log(query);
+    if (query instanceof AtomicQuery) return [query, ...getFoo(this.visualizationSettings())(this.card(), this.metadata(), this)(query)];
     return [];
   }
+
+
 
   /**
    * The visualization type of the question
@@ -433,6 +441,22 @@ export default class Question {
       // only the superset of parameters object that API expects
       .map(param => _.pick(param, "type", "target", "value"));
 
+    const datasetQueries = this.atomicQueries().map(query => query.datasetQuery());
+
+    const getDatasetQueryResult = datasetQuery => {
+      const datasetQueryWithParameters = {
+        ...datasetQuery,
+        parameters,
+      };
+
+      console.log('kkdasdasdas')
+      console.log(datasetQueryWithParameters);
+      return MetabaseApi.dataset(
+        datasetQueryWithParameters,
+        cancelDeferred ? { cancelled: cancelDeferred.promise } : {},
+      );
+    };
+
     if (canUseCardApiEndpoint) {
       const queryParams = {
         cardId: this.id(),
@@ -440,27 +464,17 @@ export default class Question {
         parameters,
       };
 
-      return [
-        await CardApi.query(queryParams, {
+      return Promise.all([
+          CardApi.query(queryParams, {
           cancelled: cancelDeferred.promise,
-        }),
-      ];
-    } else {
-      const getDatasetQueryResult = datasetQuery => {
-        const datasetQueryWithParameters = {
-          ...datasetQuery,
-          parameters,
-        };
-
-        return MetabaseApi.dataset(
-          datasetQueryWithParameters,
-          cancelDeferred ? { cancelled: cancelDeferred.promise } : {},
-        );
-      };
-
-      const datasetQueries = this.atomicQueries().map(query =>
-        query.datasetQuery(),
+        }),...datasetQueries.slice(1).map(getDatasetQueryResult)]
       );
+    } else {
+
+      console.log('+++++++++++++++++')
+
+
+      console.log(datasetQueries);
       return Promise.all(datasetQueries.map(getDatasetQueryResult));
     }
   }

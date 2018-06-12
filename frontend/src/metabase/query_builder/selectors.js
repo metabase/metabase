@@ -166,6 +166,7 @@ export const getIsResultDirty = createSelector(
 export const getQuestion = createSelector(
   [getMetadata, getCard, getParameterValues],
   (metadata, card, parameterValues) => {
+    console.log(card);
     return metadata && card && new Question(metadata, card, parameterValues);
   },
 );
@@ -220,16 +221,23 @@ export const getRawSeries = createSelector(
     // we want to provide the visualization with a card containing the latest
     // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
     // BUT the last executed "dataset_query" (to ensure data matches the query)
+    console.log('******raw*******')
+    console.log('*************')
+    console.log(results);
     return (
       results &&
-      question.atomicQueries().map((metricQuery, index) => ({
+      question.atomicQueries().slice(0, results.length).map((metricQuery, index) => {
+
+        console.log('*************')
+        const res = {
         card: {
           ...question.card(),
           display: isObjectDetail ? "object" : question.card().display,
           dataset_query: lastRunDatasetQuery,
         },
         data: results[index] && results[index].data,
-      }))
+      };
+        return res;})
     );
   },
 );

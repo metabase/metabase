@@ -16,9 +16,9 @@ import cx from "classnames";
 import Button from "metabase/components/Button";
 
 
-const GROUPS_SOURCES = 'groupsSources';
+export const GROUPS_SOURCES = 'groupsSources';
 const COLUMNS_SOURCE = 'columnsSource';
-const VALUES_SOURCES = 'valuesSources';
+export const VALUES_SOURCES = 'valuesSources';
 const UNUSED_COLUMNS = 'unusedColumns';
 
 type StateSerialized = {

@@ -25,20 +25,23 @@ import type { DatasetData } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 
 import { GroupingManager } from "../lib/GroupingManager";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type Props = {
   card: Card,
   data: DatasetData,
   settings: VisualizationSettings,
   isDashboard: boolean,
+  query: StructuredQuery,
 };
 type State = {
   data: ?DatasetData,
+  query: any
 };
 
 
 const GRAND_TOTAL_SETTINGS = "summaryTable" + "." + "grandTotal";
-const COLUMNS_SETTINGS = "summaryTable"  + "." + "columns";
+export const COLUMNS_SETTINGS = "summaryTable"  + "." + "columns";
 
 
 export default class SummaryTable extends Component {
@@ -73,35 +76,40 @@ export default class SummaryTable extends Component {
     },
     [COLUMNS_SETTINGS]: {
       widget: SummaryTableColumnsSetting,
-      getHidden: () => false,
+      getHidden: (x, y, z) => {console.log(z); return false;} ,
       isValid: ([{ card, data }]) =>
         settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
-      getDefault: ([{ data: { cols } }]) => (
-        {
-
-        columnNameToProps:cols.reduce(
-          (o, col) => ({ ...o, [col.name]: {enabled: col.visibility_type !== "details-only"} }),
-          {},
-        )
-      }
+      getDefault: ([{ data }, ...tmp]) => (
+      //   {
+      //
+      //   columnNameToProps:cols.reduce(
+      //     (o, col) => ({ ...o, [col.name]: {enabled: col.visibility_type !== "details-only"} }),
+      //     {},
+      //   )
+      // }
+        undefined
       ),
         // cols.map(col => ({
         //   name: col.name,
         //   //todo: ?details-only
         //   enabled: col.visibility_type !== "details-only",
         // })),
-      getProps: ([{ data: { cols } }]) => ({
-        columnNames: cols.reduce(
-          (o, col) => ({ ...o, [col.name]: getFriendlyName(col) }),
-          {},
-        ),
+      getProps: ([props]) => ({
+        // columnNames: props.data.cols.reduce(
+        //   (o, col) => ({ ...o, [col.name]: getFriendlyName(col) }),
+        //   {},
+        // ),
+        tmp : props
       }),},
   };
 
   constructor(props: Props) {
     super(props);
+    console.log('555');
+    console.log(props);
     this.state = {
       data: null,
+      query: props.query
     };
   }
 
@@ -129,6 +137,8 @@ export default class SummaryTable extends Component {
   }) {
  {
 
+   console.log('props.rawSeries');
+   console.log(this.props.rawSeries);
    // console.log(data);
    // console.log(settings);
       const { cols, rows, columns } = data;
