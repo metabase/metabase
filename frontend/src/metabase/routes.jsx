@@ -143,9 +143,10 @@ const UserIsNotAuthenticated = UserAuthWrapper({
 const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
-const IsAdmin = withBackground("bg-white")(
-  MetabaseIsSetup(UserIsAuthenticated(UserIsAdmin(({ children }) => children))),
+const IsAdmin = MetabaseIsSetup(
+  UserIsAuthenticated(UserIsAdmin(({ children }) => children)),
 );
+
 const IsNotAuthenticated = MetabaseIsSetup(
   UserIsNotAuthenticated(({ children }) => children),
 );

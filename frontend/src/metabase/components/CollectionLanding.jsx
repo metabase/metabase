@@ -60,13 +60,13 @@ const CollectionItem = ({ collection, iconName }) => (
 );
 
 CollectionItem.defaultProps = {
-  iconName: "all"
-}
+  iconName: "all",
+};
 
 @connect(({ currentUser }) => ({ currentUser }), null)
 class CollectionList extends React.Component {
-  render () {
-    const { currentUser } = this.props
+  render() {
+    const { currentUser } = this.props;
     return (
       <Box mb={2}>
         <CollectionListLoader
@@ -82,41 +82,40 @@ class CollectionList extends React.Component {
                   <CollectionItem
                     collection={{
                       name: "My personal collection",
-                      id: currentUser.personal_collection_id
-                    }
-                    }
+                      id: currentUser.personal_collection_id,
+                    }}
                     iconName="star"
                   />
-                  { currentUser.is_superuser && (
-                    <CollectionItem collection={{
-                      name: "Everyones personal collections",
-                      // Bit of a hack. The route /collection/users lists
-                      // user collections but is not itself a colllection,
-                      // but using the fake id users here works
-                      id: "users"
-                    }}
-                    iconName="person"
-                  />
+                  {currentUser.is_superuser && (
+                    <CollectionItem
+                      collection={{
+                        name: "Everyones personal collections",
+                        // Bit of a hack. The route /collection/users lists
+                        // user collections but is not itself a colllection,
+                        // but using the fake id users here works
+                        id: "users",
+                      }}
+                      iconName="person"
+                    />
                   )}
                 </Box>
-                {
-                  // HACK - temporary workaround to prevent personal collections
-                  // from being returned in the
-                  // personal collectiones are identified by having a
-                  collections.map(collection => !collection.personal_owner_id && (
-                    <Box
-                      key={collection.id}
-                      mb={1}
-                    >
-                      <CollectionItem collection={collection} />
-                    </Box>
-                  ))}
+                {// HACK - temporary workaround to prevent personal collections
+                // from being returned in the
+                // personal collectiones are identified by having a
+                collections.map(
+                  collection =>
+                    !collection.personal_owner_id && (
+                      <Box key={collection.id} mb={1}>
+                        <CollectionItem collection={collection} />
+                      </Box>
+                    ),
+                )}
               </Box>
             );
           }}
         </CollectionListLoader>
       </Box>
-    )
+    );
   }
 }
 
