@@ -6,6 +6,8 @@ import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Select, { Option } from "metabase/components/Select";
+import { Grid, GridItem } from "metabase/components/Grid";
+import Card from "metabase/components/Card";
 
 import { t } from "c-3po";
 import _ from "underscore";
@@ -19,7 +21,11 @@ type Props = {
   candidates?: ?DatabaseCandidates,
   title?: ?string,
   description?: ?string,
+  withMetabot: ?boolean,
+  gridColumns: ?number,
+  asCards: ?boolean,
 };
+
 type State = {
   schemaName: ?string,
   visibleItems: number,
@@ -36,10 +42,20 @@ export class ExplorePane extends React.Component {
   static defaultProps = {
     title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
+    withMetabot: true,
+    gridColumns: 1 / 2,
+    asCards: false,
   };
 
   render() {
-    let { candidates, title, description } = this.props;
+    let {
+      candidates,
+      title,
+      description,
+      withMetabot,
+      gridColumns,
+      asCards,
+    } = this.props;
     let { schemaName, visibleItems } = this.state;
 
     let schemaNames;
@@ -57,8 +73,8 @@ export class ExplorePane extends React.Component {
     return (
       <div className="pt4 pb2">
         {title && (
-          <div className="px4 flex align-center mb2">
-            <MetabotLogo />
+          <div className="flex align-center mb2">
+            {withMetabot && <MetabotLogo />}
             <h3 className="ml2">
               <span className="block" style={{ marginTop: 8 }}>
                 {title}
@@ -67,7 +83,7 @@ export class ExplorePane extends React.Component {
           </div>
         )}
         {description && (
-          <div className="px4 mb4 text-paragraph">
+          <div className="mb2 text-paragraph">
             <span>{description}</span>
           </div>
         )}
@@ -95,9 +111,11 @@ export class ExplorePane extends React.Component {
             </div>
           )}
         {tables && (
-          <div className="px4">
-            <ExploreList candidates={tables} />
-          </div>
+          <ExploreList
+            candidates={tables}
+            gridColumns={gridColumns}
+            asCards={asCards}
+          />
         )}
         {hasMore && (
           <div
@@ -112,15 +130,29 @@ export class ExplorePane extends React.Component {
   }
 }
 
-export const ExploreList = ({ candidates }: { candidates: Candidate[] }) => (
-  <ol className="Grid Grid--1of2 Grid--gutters">
+export const ExploreList = ({
+  candidates,
+  gridColumns,
+  asCards,
+}: {
+  candidates: Candidate[],
+  gridColumns: ?number,
+  asCards: ?boolean,
+}) => (
+  <Grid>
     {candidates &&
       candidates.map((option, index) => (
-        <li className="Grid-cell mb1" key={index}>
-          <ExploreOption option={option} />
-        </li>
+        <GridItem w={gridColumns} key={index}>
+          {asCards ? (
+            <Card hoverable p={2}>
+              <ExploreOption option={option} />
+            </Card>
+          ) : (
+            <ExploreOption option={option} />
+          )}
+        </GridItem>
       ))}
-  </ol>
+  </Grid>
 );
 
 export const ExploreOption = ({ option }: { option: Candidate }) => (

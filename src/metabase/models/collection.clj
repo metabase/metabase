@@ -29,11 +29,6 @@
 ;;; |                                         Slug & Hex Color & Validation                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- assert-unique-slug [slug]
-  (when (db/exists? Collection :slug slug)
-    (throw (ex-info (tru "Name already taken")
-             {:status-code 400, :errors {:name (tru "A collection with this name already exists")}}))))
-
 (def ^:const ^java.util.regex.Pattern hex-color-regex
   "Regex for a valid value of `:color`, a 7-character hex string including the preceding hash sign."
   #"^#[0-9A-Fa-f]{6}$")
@@ -135,12 +130,21 @@
   a schema standpoint, and from a 'do the referenced Collections exist' standpoint. Intended for use as part of
   `pre-update` and `pre-insert`."
   [{:keys [location], :as collection}]
+  ;; if setting/updating the `location` of this Collection make sure it matches the schema for valid location paths
   (when (contains? collection :location)
     (when-not (valid-location-path? location)
       (throw
        (ex-info (tru "Invalid Collection location: path is invalid.")
          {:status-code 400
           :errors      {:location (tru "Invalid Collection location: path is invalid.")}})))
+    ;; if this is a Personal Collection it's only allowed to go in the Root Collection: you can't put it anywhere else!
+    (when (contains? collection :personal_owner_id)
+      (when-not (= location "/")
+        (throw
+         (ex-info (tru "You cannot move a Personal Collection.")
+           {:status-code 400
+            :errors      {:location (tru "You cannot move a Personal Collection.")}}))))
+    ;; Also make sure that all the IDs referenced in the Location path actually correspond to real Collections
     (when-not (all-ids-in-location-path-are-valid? location)
       (throw
        (ex-info (tru "Invalid Collection location: some or all ancestors do not exist.")
@@ -236,13 +240,15 @@
 
 (defn- is-root-collection? [m]
   (boolean (::is-root? m)))
-
-(def ^:private CollectionWithLocation
+(def ^:private CollectionWithLocationAndID
+  "Schema for a Collection Instance that has a valid Location *and* ID, or the Root Collection special placeholder
+  object."
   (s/pred (fn [collection]
             (and (map? collection)
                  (or (::is-root? collection)
-                     (valid-location-path? (:location collection)))))
-          "Collection with a valid `:location` or the Root Collection"))
+                     (and (valid-location-path? (:location collection))
+                          (integer? (:id collection))))))
+          "Collection with a valid `:location` and `:id`, or the Root Collection."))
 
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
@@ -252,7 +258,7 @@
 
      ;; To get children of this collection:
      (db/select Collection :location \"/10/20/30/\")"
-  [{:keys [location], :as collection} :- CollectionWithLocation]
+  [{:keys [location], :as collection} :- CollectionWithLocationAndID]
   (if (is-root-collection? collection)
     "/"
     (str location (u/get-id collection) "/")))
@@ -276,11 +282,21 @@
 
   where each letter represents a Collection, and the arrows represent values of its respective `:children`
   set."
-  [collection :- CollectionWithLocation]
+  [collection :- CollectionWithLocationAndID]
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
   (let [location->children (group-by :location (db/select [Collection :name :id :location]
-                                                 :location [:like (str (children-location collection) "%")]))
+                                                 {:where
+                                                  [:and
+                                                   [:like :location (str (children-location collection) "%")]
+                                                   ;; Only return the Personal Collection belonging to the Current
+                                                   ;; User, regardless of whether we should actually be allowed to see
+                                                   ;; it (e.g., admins have perms for all Collections). This is done
+                                                   ;; to keep the Root Collection View for admins from getting crazily
+                                                   ;; cluttered with Personal Collections belonging to randos
+                                                   [:or
+                                                    [:= :personal_owner_id nil]
+                                                    [:= :personal_owner_id *current-user-id*]]]}))
         ;; Next, build a function to add children to a given `coll`. This function will recursively call itself to add
         ;; children to each child
         add-children       (fn add-children [coll]
@@ -291,7 +307,6 @@
         ;; since this function will be used for hydration (etc.), return only the newly produced `:children`
         ;; key
         :children)))
-
 
 (s/defn effective-children :- #{CollectionInstance}
   "Return the descendant Collections of a `collection` that should be presented to the current user as the children of
@@ -304,8 +319,8 @@
               |
               +-> F -> G
 
-   Suppose the current User can see A, B, E, F, and G, but not C, or D. The 'effective' children of A would be C and
-   E, and the current user would be presented with a hierarchy like:
+   Suppose the current User can see A, B, E, F, and G, but not C, or D. The 'effective' children of A would be B, E,
+   and F, and the current user would be presented with a hierarchy like:
 
        +-> B
        |
@@ -314,10 +329,10 @@
        +-> F -> G
 
    You can think of this process as 'collapsing' the Collection hierarchy and removing nodes that aren't visible to
-   the current User. This needs to be done so we can give a User a way to navigate to nodes that are children of
-   Collections they cannot access; in the example above, E and F are such nodes."
-  {:hydrate :effective_children}
-  [collection :- CollectionWithLocation]
+   the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
+   access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
+   {:hydrate :effective_children}
+  [collection :- CollectionWithLocationAndID]
   ;; Hydrate `:children` if it's not already done
   (-> (for [child (if (contains? collection :children)
                     (:children collection)
@@ -336,9 +351,68 @@
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(s/defn perms-for-archiving :- #{perms/ObjectPath}
+  "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
+  *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('curate')
+  permissions for the Collection itself and all its descendants, but not for its parent Collection.
+
+  For example, suppose we have a Collection hierarchy like:
+
+    A > B > C
+
+  To move or archive B, you need write permissions for both B and C, since B would be affected as well. You do *not*
+  need permissions for A, even though in some sense you are affecting to contents of A; this is allowed because we
+  want to let people archive Collections they can see (via 'effectively' pulling them up), even if they can't see the
+  parent Collection."
+  [collection :- CollectionWithLocationAndID]
+  ;; Make sure we're not trying to archive the Root Collection...
+  (when (is-root-collection? collection)
+    (throw (Exception. (str (tru "You cannot archive the Root Collection.")))))
+  ;; also make sure we're not trying to archive a PERSONAL Collection
+  (when (db/exists? Collection :id (u/get-id collection), :personal_owner_id [:not= nil])
+    (throw (Exception. (str (tru "You cannot archive a Personal Collection.")))))
+  (set
+   (for [collection-or-id (cons collection
+                                (db/select-ids Collection :location [:like (str (children-location collection) "%")]))]
+     (perms/collection-readwrite-path collection-or-id))))
+
+(s/defn perms-for-moving :- #{perms/ObjectPath}
+  "Return the set of Permissions needed to move a `collection`. Like archiving, moving is recursive, so we require
+  perms for both the Collection and its descendants; we additionally require permissions for its new parent Collection.
+
+
+  For example, suppose we have a Collection hierarchy of three Collections, A, B, and C, and a forth Collection, D,
+  and we want to move B from A to D:
+
+    A > B > C        A
+               ===>
+    D                D > B > C
+
+
+  To move or archive B, you would need write permissions for A, B, and D:
+
+  *  B, since it's the Collection we're operating on
+  *  C, since it will by definition be affected too
+  *  D, because it's the new parent Collection, and moving something into it requires write perms.
+
+  Note that, like archiving, you *do not* need any permissions for A, the original parent; you can think of this
+  operation as something done on the Collection itself, rather than 'curating' its parent."
+  [collection :- CollectionWithLocationAndID, new-parent :- CollectionWithLocationAndID]
+  ;; Make sure we're not trying to move the Root Collection...
+  (when (is-root-collection? collection)
+    (throw (Exception. (str (tru "You cannot move the Root Collection.")))))
+  ;; Needless to say, it makes no sense to move a Collection into itself or into one of its descendants. So let's make
+  ;; sure we're not doing that...
+  (when (contains? (set (location-path->ids (children-location new-parent)))
+                   (u/get-id collection))
+    (throw (Exception. (str (tru "You cannot move a Collection into itself or into one of its descendants.")))))
+  (set
+   (cons (perms/collection-readwrite-path new-parent)
+         (perms-for-archiving collection))))
+
 (s/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
-  [collection :- CollectionWithLocation, new-location :- LocationPath]
+  [collection :- CollectionWithLocationAndID, new-location :- LocationPath]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))]
     ;; first move this Collection
@@ -353,14 +427,14 @@
         :where  [:like :location (str orig-children-location "%")]}))))
 
 (s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
-  [collection :- CollectionWithLocation, & additional-conditions]
+  [collection :- CollectionWithLocationAndID, & additional-conditions]
   (apply db/select-ids Collection
          :location [:like (str (children-location collection) "%")]
          additional-conditions))
 
 (s/defn ^:private archive-collection!
   "Archive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
-  [collection :- CollectionWithLocation]
+  [collection :- CollectionWithLocationAndID]
   (let [affected-collection-ids (cons (u/get-id collection)
                                       (collection->descendant-ids collection, :archived false))]
     (db/transaction
@@ -375,7 +449,7 @@
 
 (s/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
-  [collection :- CollectionWithLocation]
+  [collection :- CollectionWithLocationAndID]
   (let [affected-collection-ids (cons (u/get-id collection)
                                       (collection->descendant-ids collection, :archived true))]
     (db/transaction
@@ -395,20 +469,44 @@
 (defn- pre-insert [{collection-name :name, color :color, :as collection}]
   (assert-valid-location collection)
   (assert-valid-hex-color color)
-  (assoc collection :slug (u/prog1 (slugify collection-name)
-                            (assert-unique-slug <>))))
+  (assoc collection :slug (slugify collection-name)))
 
-(s/defn ^:private maybe-archive-or-unarchive
+(s/defn ^:private check-changes-allowed-for-personal-collection
+  "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
+  have lots of restrictions -- you can't archive them, for example, nor can you transfer them to other Users."
+  [collection-before-updates :- CollectionWithLocationAndID, collection-updates :- su/Map]
+  ;; you're not allowed to change the `:personal_owner_id` of a Collection!
+  ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
+  (when (api/column-will-change? :personal_owner_id collection-before-updates collection-updates)
+    (throw
+     (ex-info (tru "You're not allowed to change the owner of a Personal Collection.")
+       {:status-code 400
+        :errors      {:personal_owner_id (tru "You're not allowed to change the owner of a Personal Collection.")}})))
+  ;;
+  ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving` functions also
+  ;; check to make sure you're not operating on Personal Collections. But as an extra safety net it doesn't hurt to
+  ;; check here too.
+  ;;
+  ;; You also definitely cannot *move* a Personal Collection
+  (when (api/column-will-change? :location collection-before-updates collection-updates)
+    (throw
+     (ex-info (tru "You're not allowed to move a Personal Collection.")
+       {:status-code 400
+        :errors      {:location (tru "You're not allowed to move a Personal Collection.")}})))
+  ;; You also can't archive a Personal Collection
+  (when (api/column-will-change? :archived collection-before-updates collection-updates)
+    (throw
+     (ex-info (tru "You cannot archive a Personal Collection!")
+       {:status-code 400
+        :errors      {:archived (tru "You cannot archive a Personal Collection!")}}))))
+
+(s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
-  [collection-before-updates :- CollectionWithLocation, collection-updates :- su/Map]
+  [collection-before-updates :- CollectionWithLocationAndID, collection-updates :- su/Map]
   ;; If the updates map contains a value for `:archived`, see if it's actually something different than current value
-  (when (and (contains? collection-updates :archived)
-             (not= (:archived collection-before-updates)
-                   (:archived collection-updates)))
+  (when (api/column-will-change? :archived collection-before-updates collection-updates)
     ;; check to make sure we're not trying to change location at the same time
-    (when (and (contains? collection-updates :location)
-               (not= (:location collection-updates)
-                     (:location collection-before-updates)))
+    (when (api/column-will-change? :location collection-before-updates collection-updates)
       (throw (ex-info (tru "You cannot move a Collection and archive it at the same time.")
                {:status-code 400
                 :errors      {:archived (tru "You cannot move a Collection and archive it at the same time.")}})))
@@ -418,20 +516,29 @@
        unarchive-collection!) collection-before-updates)))
 
 (defn- pre-update [{collection-name :name, id :id, color :color, :as collection-updates}]
-  (let [collection-before-updates (db/select-one Collection :id id)]
+  (let [collection-before-updates (Collection id)]
+    ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
+    ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
+    (when (:personal_owner_id collection-before-updates)
+      (check-changes-allowed-for-personal-collection collection-before-updates collection-updates))
+    ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
-    ;; make sure hex color is valid
-    (when (contains? collection-updates :color)
+    ;; (3) make sure hex color is valid
+    (when (api/column-will-change? :color collection-before-updates collection-updates)
       (assert-valid-hex-color color))
-    ;; archive or unarchive as appropriate
-    (maybe-archive-or-unarchive collection-before-updates collection-updates)
-    ;; slugify the collection name and make sure it's unique *if* we're changing collection-name
+    ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
+    ;; (1) archive or unarchive as appropriate
+    (maybe-archive-or-unarchive! collection-before-updates collection-updates)
+    ;; (2) slugify the collection name in case it's changed in the output; the results of this will get passed along
+    ;; to Toucan's `update!` impl
     (cond-> collection-updates
-      collection-name (assoc :slug (u/prog1 (slugify collection-name)
-                                     ;; if slug hasn't changed no need to check for uniqueness otherwise check to make
-                                     ;; sure the new slug is unique
-                                     (or (db/exists? Collection, :slug <>, :id id)
-                                         (assert-unique-slug <>)))))))
+      collection-name (assoc :slug (slugify collection-name)))))
+
+(def ^:dynamic *allow-deleting-personal-collections*
+  "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but in the single case of
+  deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get deleted, but rather
+  archived; thus this code is used solely by our test suite, by things such as the `with-temp` macros.)"
+  false)
 
 (defn- pre-delete [collection]
   ;; unset the collection_id for Cards/Pulses in this collection. This is mostly for the sake of tests since IRL we
@@ -440,10 +547,14 @@
     (db/update-where! model {:collection_id (u/get-id collection)}
       :collection_id nil))
   ;; Now delete all the Children of this Collection
-  (db/delete! Collection :location (children-location collection)))
+  (db/delete! Collection :location (children-location collection))
+  ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
+  (when-not *allow-deleting-personal-collections*
+    (when (:personal_owner_id collection)
+      (throw (Exception. (str (tru "You cannot delete a Personal Collection!")))))))
 
 (defn perms-objects-set
-  "Return the required set of permissions to READ-OR-WRITE COLLECTION-OR-ID."
+  "Return the required set of permissions to `read-or-write` `collection-or-id`."
   [collection-or-id read-or-write]
   ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
   ;; name) but if you have write perms you can add/remove cards
@@ -513,7 +624,7 @@
   function."
   []
   (let [group-id->perms (group-id->permissions-set)
-        collection-ids  (db/select-ids 'Collection)]
+        collection-ids  (db/select-ids 'Collection, :personal_owner_id nil)] ; exclude personal collections!
     {:revision (collection-revision/latest-id)
      :groups   (into {} (for [group-id (db/select-ids 'PermissionsGroup)]
                           {group-id (group-permissions-graph (group-id->perms group-id) collection-ids)}))}))
@@ -586,6 +697,7 @@
                                                       collection-or-id-or-nil
                                                       root-collection)))))
 
+
 (defn check-allowed-to-change-collection
   "If we're changing the `collection_id` of an object, make sure we have write permissions for both the old and new
   Collections, or throw a 403 if not. If `collection_id` isn't present in `object-updates`, or the value is the same
@@ -601,10 +713,48 @@
     (check-allowed-to-change-collection (Card 100) http-request-body)"
   [object-before-update object-updates]
   ;; if collection_id is set to change...
-  (when (contains? object-updates :collection_id)
-    (when (not= (:collection_id object-updates)
-                (:collection_id object-before-update))
-      ;; check that we're allowed to modify the old Collection
-      (check-write-perms-for-collection (:collection_id object-before-update))
-      ;; check that we're allowed to modify the new Collection
-      (check-write-perms-for-collection (:collection_id object-updates)))))
+  (when (api/column-will-change? :collection_id object-before-update object-updates)
+    ;; check that we're allowed to modify the old Collection
+    (check-write-perms-for-collection (:collection_id object-before-update))
+    ;; check that we're allowed to modify the new Collection
+    (check-write-perms-for-collection (:collection_id object-updates))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Personal Collections                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(s/defn ^:private user->personal-collection-name :- su/NonBlankString
+  "Come up with a nice name for the Personal Collection for `user-or-id`."
+  [user-or-id]
+  ;; TODO - we currently enforce a unique constraint on Collection names... what are we going to do if two Users have
+  ;; the same first & last name! This will *ruin* their lives :(
+  (let [{first-name :first_name, last-name :last_name} (db/select-one ['User :first_name :last_name]
+                                                         :id (u/get-id user-or-id))]
+    (tru "{0} {1}''s Personal Collection" first-name last-name)))
+
+(s/defn user->personal-collection :- CollectionInstance
+  "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
+  [user-or-id]
+  (or (db/select-one Collection :personal_owner_id (u/get-id user-or-id))
+      (try
+        (db/insert! Collection
+          :name              (user->personal-collection-name user-or-id)
+          :personal_owner_id (u/get-id user-or-id)
+          ;; a nice slate blue color
+          :color             "#31698A")
+        ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
+        ;; condition where some other thread created it in the meantime; try one last time to fetch it
+        (catch Throwable _
+          (db/select-one Collection :personal_owner_id (u/get-id user-or-id))))))
+
+(defn include-personal-collection-ids
+  "Efficiently hydrate the `:personal_collection_id` property of a sequence of Users. (This is, predictably, the ID of
+  their Personal Collection.)"
+  {:batched-hydrate :personal_collection_id}
+  [users]
+  (when (seq users)
+    (let [user-id->collection-id (db/select-field->id :personal_owner_id Collection
+                                   :personal_owner_id [:in (set (map u/get-id users))])]
+      (for [user users]
+        (assoc user :personal_collection_id (user-id->collection-id (u/get-id user)))))))
