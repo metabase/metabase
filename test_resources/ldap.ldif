@@ -74,3 +74,9 @@ objectClass: groupOfNames
 cn: Accounting
 member: cn=John Smith,ou=People,dc=metabase,dc=com
 member: cn=Rasta Toucan,ou=Birds,dc=metabase,dc=com
+
+dn: cn=Support,ou=Groups,dc=metabase,dc=com
+objectClass: posixGroup
+gidNumber: 1000
+cn: Support
+memberUid: sbrown20
