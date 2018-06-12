@@ -40,7 +40,6 @@ type State = {
 };
 
 
-const GRAND_TOTAL_SETTINGS = "summaryTable" + "." + "grandTotal";
 export const COLUMNS_SETTINGS = "summaryTable"  + "." + "columns";
 
 
@@ -63,31 +62,19 @@ export default class SummaryTable extends Component {
   }
 
   static settings = {
-    [GRAND_TOTAL_SETTINGS]: {
-      title: t`Grand total`,
-      widget: "toggle",
-      getHidden: ([{ card, data }]) => false,
-      getDefault: ([{ card, data }]) => true,
-        // data &&
-        // data.cols.length === 3 &&
-        // Query.isStructured(card.dataset_query) &&
-        // data.cols.filter(isMetric).length === 1 &&
-        // data.cols.filter(isDimension).length === 2,
-    },
     [COLUMNS_SETTINGS]: {
       widget: SummaryTableColumnsSetting,
-      getHidden: (x, y, z) => {console.log(z); return false;} ,
+      getHidden: () => false,
       isValid: ([{ card, data }]) =>
         settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
-      getDefault: ([{ data }, ...tmp]) => (
-      //   {
-      //
-      //   columnNameToProps:cols.reduce(
-      //     (o, col) => ({ ...o, [col.name]: {enabled: col.visibility_type !== "details-only"} }),
-      //     {},
-      //   )
-      // }
-        undefined
+      getDefault: ([{ data : {cols} }]) => (
+        {
+
+        columnNameToProps:cols.reduce(
+          (o, col) => ({ ...o, [col.name]: {enabled: col.visibility_type !== "details-only"} }),
+          {},
+        )
+      }
       ),
         // cols.map(col => ({
         //   name: col.name,
@@ -95,18 +82,15 @@ export default class SummaryTable extends Component {
         //   enabled: col.visibility_type !== "details-only",
         // })),
       getProps: ([props]) => ({
-        // columnNames: props.data.cols.reduce(
-        //   (o, col) => ({ ...o, [col.name]: getFriendlyName(col) }),
-        //   {},
-        // ),
-        tmp : props
+        columnNames: props.data.cols.reduce(
+          (o, col) => ({ ...o, [col.name]: getFriendlyName(col) }),
+          {},
+        ),
       }),},
   };
 
   constructor(props: Props) {
     super(props);
-    console.log('555');
-    console.log(props);
     this.state = {
       data: null,
       query: props.query
@@ -118,7 +102,6 @@ export default class SummaryTable extends Component {
   }
 
   componentWillReceiveProps(newProps: Props) {
-    // console.log(newProps);
     // TODO: remove use of deprecated "card" and "data" props
     if (
       newProps.data !== this.props.data ||
