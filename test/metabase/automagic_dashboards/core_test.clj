@@ -12,10 +12,7 @@
              [query :as query]
              [table :refer [Table] :as table]
              [user :as user]]
-            [metabase.query-processor.middleware
-             [expand :as ql]
-             [resolve :as resolve]
-             [source-table :as source-table]]
+            [metabase.query-processor :as qp]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
@@ -84,13 +81,8 @@
                  ((test-users/user->client :rasta) :get 200 (format "automagic-dashboards/%s"
                                                                     (subs url 16)))))))
 
-(defn- valid-card?
-  [card]
-  (->> card
-       :dataset_query
-       ql/expand
-       ((source-table/resolve-source-table-middleware identity))
-       resolve/resolve))
+(def ^:private valid-card?
+  (comp qp/expand :dataset_query))
 
 (defn- valid-dashboard?
   [dashboard]
@@ -108,12 +100,18 @@
 (expect
   (with-rasta
     (with-dashboard-cleanup
-      (->> (Table) (keep #(automagic-analysis % {})) (every? valid-dashboard?)))))
+      (->> (db/select Table :db_id (data/id))
+           (keep #(automagic-analysis % {}))
+           (every? valid-dashboard?)))))
 
 (expect
   (with-rasta
     (with-dashboard-cleanup
-      (->> (Field) (keep #(automagic-analysis % {})) (every? valid-dashboard?)))))
+      (->> (db/select Field
+             :table_id [:in (db/select-field :id Table :db_id (data/id))]
+             :visibility_type "normal")
+           (keep #(automagic-analysis % {}))
+           (every? valid-dashboard?)))))
 
 (expect
   (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
@@ -199,7 +197,7 @@
       (with-dashboard-cleanup
         (-> card-id
             Card
-            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]})
+            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id)] 2]})
             valid-dashboard?)))))
 
 
