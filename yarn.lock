@@ -4898,9 +4898,9 @@ humanize-plus@^1.8.1:
   version "1.8.2"
   resolved "https://registry.yarnpkg.com/humanize-plus/-/humanize-plus-1.8.2.tgz#a65b34459ad6367adbb3707a82a3c9f916167030"
 
-icepick@^1.1.0:
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/icepick/-/icepick-1.3.0.tgz#e4942842ed8f9ee778d7dd78f7e36627f49fdaef"
+icepick@2:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/icepick/-/icepick-2.3.0.tgz#1d1b0b28b80c1ff720a1f62359dab46392806f5c"
 
 iconv-lite@0.4.19, iconv-lite@~0.4.13:
   version "0.4.19"

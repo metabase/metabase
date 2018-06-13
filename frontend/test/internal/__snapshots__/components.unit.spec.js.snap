@@ -236,6 +236,9 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
           />
         </svg>
       </div>
+      <span
+        className="hide"
+      />
     </div>
   </div>
 </div>
@@ -268,6 +271,9 @@ exports[`EntityMenu should render "More menu" correctly 1`] = `
           />
         </svg>
       </div>
+      <span
+        className="hide"
+      />
     </div>
   </div>
 </div>
@@ -300,6 +306,9 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
           />
         </svg>
       </div>
+      <span
+        className="hide"
+      />
     </div>
     <div
       className="relative"
@@ -322,6 +331,9 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
           />
         </svg>
       </div>
+      <span
+        className="hide"
+      />
     </div>
     <div
       className="relative"
@@ -343,6 +355,9 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
           />
         </svg>
       </div>
+      <span
+        className="hide"
+      />
     </div>
   </div>
 </div>
@@ -376,8 +391,32 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
           />
         </svg>
       </div>
+      <span
+        className="hide"
+      />
     </div>
   </div>
+</div>
+`;
+
+exports[`Position should render "Absolute" correctly 1`] = `
+<div
+  className="Position-kiwZOl jyvUWC sc-bwzfXH kLwrie"
+>
+  Some content
+  <div
+    className="Position-kiwZOl dhkeTA sc-bwzfXH gZPQmB"
+  >
+    Some content positioned absolutely to its parent
+  </div>
+</div>
+`;
+
+exports[`Position should render "Relative" correctly 1`] = `
+<div
+  className="Position-kiwZOl jyvUWC sc-bwzfXH ihgQcP"
+>
+  Some content relative to its parent
 </div>
 `;
 

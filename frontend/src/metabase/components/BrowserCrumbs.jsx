@@ -4,6 +4,8 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Subhead from "metabase/components/Subhead";
 
+// TODO: merge with Breadcrumbs
+
 const BrowseHeader = ({ children }) => (
   <Box my={3}>
     <Subhead>{children}</Subhead>

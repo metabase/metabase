@@ -62,7 +62,7 @@
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
-  {:search-string       su/NonBlankString
+  {:search-string       (s/maybe su/NonBlankString)
    :archived?           s/Bool
    :collection          (s/maybe (s/cond-pre (s/eq :root) su/IntGreaterThanZero))
    :visible-collections coll/VisibleCollections})
@@ -100,7 +100,9 @@
 (s/defn ^:private merge-name-search
   "Add case-insensitive name query criteria to `query-map`"
   [query-map {:keys [search-string]} :- SearchContext]
-  (h/merge-where query-map [:like :%lower.name search-string]))
+  (if (empty? search-string)
+    query-map
+    (h/merge-where query-map [:like :%lower.name (str "%" (str/lower-case search-string) "%")])))
 
 (s/defn ^:private merge-name-and-archived-search
   "Add name and archived query criteria to `query-map`"
@@ -214,10 +216,10 @@
   (s/maybe (s/cond-pre (s/eq "root") su/IntString)))
 
 (s/defn ^:private make-search-context :- SearchContext
-  [search-string :- su/NonBlankString
+  [search-string :- (s/maybe su/NonBlankString)
    archived-string :- (s/maybe su/BooleanString)
    collection :- CollectionSearchParam]
-  {:search-string       (str "%" (str/lower-case search-string) "%")
+  {:search-string       search-string
    :archived?           (Boolean/parseBoolean archived-string)
    :collection          (cond
                           (= "root" collection)
@@ -231,7 +233,7 @@
 (defendpoint GET "/"
   "Search Cards, Dashboards, Collections and Pulses for the substring `q`."
   [q archived collection]
-  {q             su/NonBlankString
+  {q             (s/maybe su/NonBlankString)
    archived      (s/maybe su/BooleanString)
    collection    CollectionSearchParam}
   (let [{:keys [visible-collections collection] :as search-ctx} (make-search-context q archived collection)]

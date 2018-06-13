@@ -27,18 +27,32 @@ export type Props = {
 };
 
 export type RenderProps = {
+  // the loaded objecvt itself
   object: ?any,
+  // data was loaded at least once
+  fetched: boolean,
+  // data is loaded and no pending requests
+  loaded: boolean,
+  //  request is pending
   loading: boolean,
+  // error occured
   error: ?any,
   remove: () => Promise<void>,
 };
 
 @entityType()
-@connect((state, { entityDef, entityId }) => ({
-  object: entityDef.selectors.getObject(state, { entityId }),
-  loading: entityDef.selectors.getLoading(state, { entityId }),
-  error: entityDef.selectors.getError(state, { entityId }),
-}))
+@connect((state, { entityDef, entityId, ...props }) => {
+  if (typeof entityId === "function") {
+    entityId = entityId(state, props);
+  }
+  return {
+    entityId,
+    object: entityDef.selectors.getObject(state, { entityId }),
+    fetched: entityDef.selectors.getFetched(state, { entityId }),
+    loading: entityDef.selectors.getLoading(state, { entityId }),
+    error: entityDef.selectors.getError(state, { entityId }),
+  };
+})
 export default class EntitiesObjectLoader extends React.Component {
   props: Props;
 
@@ -100,10 +114,10 @@ export default class EntitiesObjectLoader extends React.Component {
   };
   render() {
     // $FlowFixMe: provided by @connect
-    const { loading, error, loadingAndErrorWrapper } = this.props;
+    const { fetched, error, loadingAndErrorWrapper } = this.props;
     return loadingAndErrorWrapper ? (
       <LoadingAndErrorWrapper
-        loading={loading}
+        loading={!fetched}
         error={error}
         children={this.renderChildren}
       />

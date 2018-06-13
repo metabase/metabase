@@ -35,10 +35,11 @@ import {
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 
-import CollectionEdit from "metabase/questions/containers/CollectionEdit.jsx";
-import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx";
+import CollectionEdit from "metabase/collections/containers/CollectionEdit.jsx";
+import CollectionCreate from "metabase/collections/containers/CollectionCreate.jsx";
 import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
+import CollectionPermissionsModal from "metabase/admin/permissions/containers/CollectionPermissionsModal";
 import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
@@ -206,6 +207,7 @@ export const getRoutes = store => (
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
           <ModalRoute path="new_collection" modal={CollectionCreate} />
           <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
+          <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
         </Route>
 
         <Route path="activity" component={HomepageApp} />

@@ -10,7 +10,7 @@ import requests from "metabase/redux/requests";
 import settings from "metabase/redux/settings";
 import undo from "metabase/redux/undo";
 // eslint-disable-next-line import/no-named-as-default
-import entities from "metabase/redux/entities";
+import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
 
 /* user */
 import { currentUser } from "metabase/redux/user";
@@ -20,7 +20,8 @@ export default {
   app,
   auth,
   currentUser,
-  requests,
+  // "entities" framework needs control over "requests" state
+  requests: enhanceRequestsReducer(requests),
   settings,
   undo,
   entities,
