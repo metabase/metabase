@@ -179,6 +179,64 @@
       (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "?archived=true"))
           remove-ids-from-collection-detail))))
 
+;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
+
+(defn- lucky-personal-collection []
+  {:description         nil
+   :archived            false
+   :slug                "lucky_pigeon_s_personal_collection"
+   :color               "#31698A"
+   :can_write           true
+   :name                "Lucky Pigeon's Personal Collection"
+   :personal_owner_id   (user->id :lucky)
+   :effective_ancestors ()
+   :effective_location  "/"
+   :id                  (u/get-id (collection/user->personal-collection (user->id :lucky)))
+   :items               ()
+   :location            "/"})
+
+(defn- api-get-lucky-personal-collection [user-kw & {:keys [expected-status-code], :or {expected-status-code 200}}]
+  ((user->client user-kw) :get expected-status-code (str "collection/" (u/get-id (collection/user->personal-collection
+                                                                                  (user->id :lucky))))))
+
+
+;; Can we use this endpoint to fetch our own Personal Collection?
+(expect
+  (lucky-personal-collection)
+  (api-get-lucky-personal-collection :lucky))
+
+;; Can and admin use this endpoint to fetch someone else's Personal Collection?
+(expect
+  (lucky-personal-collection)
+  (api-get-lucky-personal-collection :crowberto))
+
+;; Other, non-admin Users should not be allowed to fetch others' Personal Collections!
+(expect
+  "You don't have permissions to do that."
+  (api-get-lucky-personal-collection :rasta, :expected-status-code 403))
+
+
+(defn- lucky-personal-collection-with-subcollection []
+  (assoc (lucky-personal-collection)
+    :items [{:name "Lucky's Personal Sub-Collection", :description nil, :model "collection"}]))
+
+(defn- api-get-lucky-personal-collection-with-subcollection [user-kw]
+  (tt/with-temp Collection [_ {:name     "Lucky's Personal Sub-Collection"
+                               :location (collection/children-location
+                                          (collection/user->personal-collection (user->id :lucky)))}]
+    (-> (api-get-lucky-personal-collection user-kw)
+        (update :items (partial map #(dissoc % :id))))))
+
+;; If we have a sub-Collection of our Personal Collection, that should show up
+(expect
+  (lucky-personal-collection-with-subcollection)
+  (api-get-lucky-personal-collection-with-subcollection :lucky))
+
+;; sub-Collections of other's Personal Collections should show up for admins as well
+(expect
+  (lucky-personal-collection-with-subcollection)
+  (api-get-lucky-personal-collection-with-subcollection :crowberto))
+
 
 ;;; ------------------------------------ Effective Ancestors & Effective Children ------------------------------------
 
@@ -274,7 +332,7 @@
   (with-collection-hierarchy [a b e f g]
     (api-get-collection-ancestors-and-children a)))
 
-;; Let's make sure the 'archived` option works on Collections
+;; Let's make sure the 'archived` option works on Collections, nested or not
 (expect
   {:items               [{:name "B", :id true, :description nil, :model "collection"}]
    :effective_ancestors []
@@ -332,51 +390,51 @@
 
 ;; So I suppose my Personal Collection should show up when I fetch the Root Collection, shouldn't it...
 (expect
-  {:can_write           false
-   :name                "Root Collection"
-   :effective_ancestors []
-   :effective_location  nil
-   :id                  "root"
-   :items               [{:name        "Rasta Toucan's Personal Collection"
-                          :id          (u/get-id (collection/user->personal-collection (user->id :rasta)))
-                          :description nil
-                          :model       "collection"}]}
+  [{:name        "Rasta Toucan's Personal Collection"
+    :id          (u/get-id (collection/user->personal-collection (user->id :rasta)))
+    :description nil
+    :model       "collection"}]
   (do
     (collection-test/force-create-personal-collections!)
-    ((user->client :rasta) :get 200 "collection/root")))
+    (-> ((user->client :rasta) :get 200 "collection/root")
+        :items)))
 
 ;; And for admins, only return our own Personal Collection (!)
 (expect
-  {:can_write           true
-   :name                "Root Collection"
-   :effective_ancestors []
-   :effective_location  nil
-   :id                  "root"
-   :items               [{:name        "Crowberto Corv's Personal Collection"
-                          :id          (u/get-id (collection/user->personal-collection (user->id :crowberto)))
-                          :description nil
-                          :model       "collection"}]}
+  [{:name        "Crowberto Corv's Personal Collection"
+    :id          (u/get-id (collection/user->personal-collection (user->id :crowberto)))
+    :description nil
+    :model       "collection"}]
   (do
     (collection-test/force-create-personal-collections!)
-    ((user->client :crowberto) :get 200 "collection/root")))
+    (-> ((user->client :crowberto) :get 200 "collection/root")
+        :items)))
+
+;; That includes sub-collections of Personal Collections! I shouldn't see them!
+(expect
+  [{:name        "Crowberto Corv's Personal Collection"
+    :id          (u/get-id (collection/user->personal-collection (user->id :crowberto)))
+    :description nil
+    :model       "collection"}]
+  (do
+    (collection-test/force-create-personal-collections!)
+    (tt/with-temp Collection [_ {:name     "Lucky's Sub-Collection"
+                                 :location (collection/children-location
+                                            (collection/user->personal-collection (user->id :lucky)))}]
+      (-> ((user->client :crowberto) :get 200 "collection/root")
+          :items))))
 
 ;; Can we look for `archived` stuff with this endpoint?
 (expect
-  {:can_write           true
-   :name                "Root Collection"
-   :effective_ancestors []
-   :effective_location  nil
-   :id                  "root"
-   :items               [{:name                "Business Card"
-                          :description         nil
-                          :collection_position nil
-                          :favorite            false
-                          :model               "card"}]}
+  [{:name                "Business Card"
+    :description         nil
+    :collection_position nil
+    :favorite            false
+    :model               "card"}]
   (tt/with-temp Card [card {:name "Business Card", :archived true}]
     (collection-test/force-create-personal-collections!)
-    (-> ((user->client :crowberto) :get 200 "collection/root?archived=true")
-        (update :items #(for [item %]
-                          (dissoc item :id))))))
+    (for [item (:items ((user->client :crowberto) :get 200 "collection/root?archived=true"))]
+      (dissoc item :id))))
 
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
@@ -462,6 +520,7 @@
             :parent_id   (u/get-id d)})
           (update :location collection-test/location-path-ids->names)
           (update :id integer?)))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUT /api/collection/:id                                             |

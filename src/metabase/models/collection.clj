@@ -8,13 +8,14 @@
   (:require [clojure
              [data :as data]
              [string :as str]]
+            [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.api.common :as api :refer [*current-user-id* *current-user-permissions-set*]]
             [metabase.models
              [collection-revision :as collection-revision :refer [CollectionRevision]]
              [interface :as i]
-             [permissions :as perms]]
+             [permissions :as perms :refer [Permissions]]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [trs tru]]
@@ -348,6 +349,11 @@
         ;; key
         :children)))
 
+(s/defn ^:private descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
+  "Return a set of IDs of all descendant Collections of a `collection`."
+  [collection :- CollectionWithLocationAndIDOrRoot]
+  (db/select-ids Collection :location [:like (str (children-location collection) \%)]))
+
 (s/defn effective-children :- #{CollectionInstance}
   "Return the descendant Collections of a `collection` that should be presented to the current user as the children of
   this Collection. This takes into account descendants that get filtered out when the current user can't see them. For
@@ -400,7 +406,7 @@
 
     A > B > C
 
-  To move or archive B, you need write permissions for both B and C, since B would be affected as well. You do *not*
+  To move or archive B, you need write permissions for both B and C, since C would be affected as well. You do *not*
   need permissions for A, even though in some sense you are affecting to contents of A; this is allowed because we
   want to let people archive Collections they can see (via 'effectively' pulling them up), even if they can't see the
   parent Collection."
@@ -591,7 +597,12 @@
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
-      (throw (Exception. (str (tru "You cannot delete a Personal Collection!")))))))
+      (throw (Exception. (str (tru "You cannot delete a Personal Collection!"))))))
+  ;; Delete permissions records for this Collection
+  (db/execute! {:delete-from Permissions
+                :where       [:or
+                              [:= :object (perms/collection-readwrite-path collection)]
+                              [:= :object (perms/collection-read-path collection)]]}))
 
 (defn perms-objects-set
   "Return the required set of permissions to `read-or-write` `collection-or-id`."
@@ -787,6 +798,31 @@
         ;; condition where some other thread created it in the meantime; try one last time to fetch it
         (catch Throwable _
           (db/select-one Collection :personal_owner_id (u/get-id user-or-id))))))
+
+(def ^:private ^{:arglists '([user-id])} user->personal-collection-id
+  "Cached function to fetch the ID of the Personal Collection belonging to User with `user-id`. Since a Personal
+  Collection cannot be deleted, the ID will not change; thus it is safe to cache, saving a DB call. It is also
+  required to caclulate the Current User's permissions set, which is done for every API call; thus it is cached to
+  save a DB call for *every* API call."
+  (memoize/ttl
+   (s/fn user->personal-collection-id* :- su/IntGreaterThanZero
+     [user-id :- su/IntGreaterThanZero]
+     (u/get-id (user->personal-collection user-id)))
+   ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
+   ;; large
+   :ttl/threshold (* 60 60 1000)))
+
+(s/defn user->personal-collection-and-descendant-ids
+  "Somewhat-optimized function that fetches the ID of a User's Personal Collection as well as the IDs of all descendants
+  of that Collection. Exists because this needs to be known to calculate the Current User's permissions set, which is
+  done for every API call; this function is an attempt to make fetching this information as efficient as reasonably
+  possible."
+  [user-or-id]
+  (let [personal-collection-id (user->personal-collection-id (u/get-id user-or-id))]
+    (cons personal-collection-id
+          ;; `descendant-ids` wants a CollectionWithLocationAndID, and luckily we know Personal Collections always go
+          ;; in Root, so we can pass it what it needs without actually having to fetch an entire CollectionInstance
+          (descendant-ids {:location "/", :id personal-collection-id}))))
 
 (defn include-personal-collection-ids
   "Efficiently hydrate the `:personal_collection_id` property of a sequence of Users. (This is, predictably, the ID of
