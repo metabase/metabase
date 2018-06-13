@@ -211,39 +211,65 @@ class DefaultLanding extends React.Component {
                         </Box>
                       )}
                     </Flex>
-                    <Card
-                      mb={selected.length > 0 ? 5 : 2}
-                      style={{
-                        position: "relative",
-                        height: ROW_HEIGHT * other.length,
-                      }}
-                    >
-                      <VirtualizedList
-                        items={other}
-                        rowHeight={ROW_HEIGHT}
-                        renderItem={({ item, index }) => (
-                          <DraggableItem
-                            item={item}
-                            selection={selection}
-                            reload={reload}
-                          >
-                            <NormalItem
-                              key={`${item.type}:${item.id}`}
+                    {other.length > 0 ? (
+                      <Card
+                        mb={selected.length > 0 ? 5 : 2}
+                        style={{
+                          position: "relative",
+                          height: ROW_HEIGHT * other.length,
+                        }}
+                      >
+                        <VirtualizedList
+                          items={other}
+                          rowHeight={ROW_HEIGHT}
+                          renderItem={({ item, index }) => (
+                            <DraggableItem
                               item={item}
-                              collection={collection}
-                              reload={reload}
                               selection={selection}
-                              onToggleSelected={onToggleSelected}
-                              onMove={moveItems => this.setState({ moveItems })}
-                            />
-                          </DraggableItem>
-                        )}
-                      />
+                              reload={reload}
+                            >
+                              <NormalItem
+                                key={`${item.type}:${item.id}`}
+                                item={item}
+                                collection={collection}
+                                reload={reload}
+                                selection={selection}
+                                onToggleSelected={onToggleSelected}
+                                onMove={moveItems =>
+                                  this.setState({ moveItems })
+                                }
+                              />
+                            </DraggableItem>
+                          )}
+                        />
+                        <PinnedAreaDropTarget
+                          pinIndex={null}
+                          style={{ margin: -10 }}
+                        />
+                      </Card>
+                    ) : (
                       <PinnedAreaDropTarget
                         pinIndex={null}
-                        style={{ margin: -10 }}
-                      />
-                    </Card>
+                        hideUntilDrag
+                        style={{
+                          position: "relative",
+                          marginLeft: -10,
+                          marginRight: -10,
+                          marginBottom: 10,
+                        }}
+                      >
+                        {({ hovered }) => (
+                          <div
+                            className={cx(
+                              "m2 flex layout-centered",
+                              hovered ? "text-brand" : "text-grey-2",
+                            )}
+                          >
+                            {t`Drag here to un-pin`}
+                          </div>
+                        )}
+                      </PinnedAreaDropTarget>
+                    )}
                   </Box>
                 );
               }}
@@ -347,11 +373,11 @@ const DragTypes = {
         const items =
           props.selection.size > 0 ? Array.from(props.selection) : [item];
         try {
-          if (collection) {
+          if (collection !== undefined) {
             await Promise.all(
               items.map(i => i.setCollection && i.setCollection(collection)),
             );
-          } else if (pinIndex != null) {
+          } else if (pinIndex !== undefined) {
             await Promise.all(
               items.map(i => i.setPinned && i.setPinned(pinIndex)),
             );
