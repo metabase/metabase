@@ -111,9 +111,20 @@
       (merge-name-search search-ctx)
       (h/merge-where [:= :archived archived?])))
 
+(s/defn ^:private add-visible-collection-criteria
+  "Update the query to only include collections visible to the user"
+  [query-map column-kwd {:keys [visible-collections]} :- SearchContext]
+  (if (= :all visible-collections)
+    query-map
+    (do
+      ;; This is validated in the API call, just double checking here
+      (assert (seq visible-collections))
+      (h/merge-where query-map [:in column-kwd visible-collections]))))
+
 (s/defn ^:private add-collection-criteria
-  "Update the query to only include collections the user has access to"
-  [query-map column-kwd {:keys [visible-collections collection]} :- SearchContext]
+  "If searching a specific collection, include that criteria. Otherwise all of the visible collections should be
+  included"
+  [query-map column-kwd {:keys [collection] :as search-ctx} :- SearchContext]
   (cond
     ;; The root collection is the same as a nil collection id
     (= :root collection)
@@ -122,14 +133,8 @@
     (number? collection)
     (h/merge-where query-map [:= column-kwd collection])
 
-    (= :all visible-collections)
-    query-map
-
     :else
-    (do
-      ;; This is validated in the API call, just double checking here
-      (assert (seq visible-collections))
-      (h/merge-where query-map [:in column-kwd visible-collections]))))
+    (add-visible-collection-criteria query-map column-kwd search-ctx)))
 
 (defn- make-honeysql-search-query
   "Create a HoneySQL query map to search for `entity`, suitable for the UNION ALL used in search."
@@ -151,13 +156,22 @@
       (merge-name-and-archived-search search-ctx)
       (add-collection-criteria :collection_id search-ctx)))
 
+(defn- add-child-collection-criteria
+  "Adds a query clause that will include direct dedendents of `parent-coll-id`"
+  [collection-query {parent-coll-id :collection}]
+  (let [child-loc (coll/children-location (if (= :root parent-coll-id)
+                                            coll/root-collection
+                                            (Collection parent-coll-id)))]
+    (h/merge-where collection-query [:= :location child-loc])))
+
 (s/defmethod ^:private create-search-query :collection
   [_ {:keys [collection] :as search-ctx} :- SearchContext]
-  ;; If we have a collection, no need to search collections
-  (when-not collection
-    (-> (make-honeysql-search-query Collection "collection" collection-columns-without-type)
-        (merge-name-and-archived-search search-ctx)
-        (add-collection-criteria :id search-ctx))))
+  (let [coll-query (-> (make-honeysql-search-query Collection "collection" collection-columns-without-type)
+                       (merge-name-and-archived-search search-ctx)
+                       (add-visible-collection-criteria :id search-ctx))]
+    (if collection
+      (add-child-collection-criteria coll-query search-ctx)
+      coll-query)))
 
 (s/defmethod ^:private create-search-query :dashboard
   [_ search-ctx :- SearchContext]
