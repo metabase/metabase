@@ -630,18 +630,21 @@
 
 ;; make sure we can fetch the descendants of a Collection in the hierarchy we'd expect
 (expect
-  #{{:name "B", :id true, :location "/A/", :children #{}}
-    {:name     "C"
-     :id       true
-     :location "/A/"
-     :children #{{:name     "D"
-                  :id       true
-                  :location "/A/C/"
-                  :children #{{:name "E", :id true, :location "/A/C/D/", :children #{}}}}
-                 {:name     "F"
-                  :id       true
-                  :location "/A/C/"
-                  :children #{{:name "G", :id true, :location "/A/C/F/", :children #{}}}}}}}
+  #{{:name "B", :id true, :location "/A/", :children #{}, :description nil}
+    {:name        "C"
+     :id          true
+     :description nil
+     :location    "/A/"
+     :children    #{{:name        "D"
+                     :id          true
+                     :description nil
+                     :location    "/A/C/"
+                     :children    #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}}
+                    {:name        "F"
+                     :id          true
+                     :description nil
+                     :location    "/A/C/"
+                     :children    #{{:name "G", :id true, :description nil, :location "/A/C/F/", :children #{}}}}}}}
   (with-collection-hierarchy [{:keys [a]}]
     (descendants a)))
 
@@ -653,46 +656,58 @@
 
 ;; try for the other child, we should get just that subtree!
 (expect
-  #{{:name     "D"
-     :id       true
-     :location "/A/C/"
-     :children #{{:name "E", :id true, :location "/A/C/D/", :children #{}}}}
-    {:name     "F"
-     :id       true
-     :location "/A/C/"
-     :children #{{:name "G", :id true, :location "/A/C/F/", :children #{}}}}}
+  #{{:name        "D"
+     :id          true
+     :description nil
+     :location    "/A/C/"
+     :children    #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}}
+    {:name        "F"
+     :id          true
+     :description nil
+     :location    "/A/C/"
+     :children    #{{:name "G", :id true, :description nil, :location "/A/C/F/", :children #{}}}}}
   (with-collection-hierarchy [{:keys [c]}]
     (descendants c)))
 
 ;; try for a grandchild
 (expect
-  #{{:name "E", :id true, :location "/A/C/D/", :children #{}}}
+  #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}
   (with-collection-hierarchy [{:keys [d]}]
     (descendants d)))
 
 ;; For the *Root* Collection, can we get top-level Collections?
 (expect
-  #{{:name     "A"
-     :id       true
-     :location "/"
-     :children #{{:name     "C"
-                  :id       true
-                  :location "/A/"
-                  :children #{{:name     "D"
-                               :id       true
-                               :location "/A/C/"
-                               :children #{{:name     "E"
-                                            :id       true
-                                            :location "/A/C/D/"
-                                            :children #{}}}}
-                              {:name     "F"
-                               :id       true
-                               :location "/A/C/"
-                               :children #{{:name     "G"
-                                            :id       true
-                                            :location "/A/C/F/"
-                                            :children #{}}}}}}
-                 {:name "B", :id true, :location "/A/", :children #{}}}}
+  #{{:name        "A"
+     :id          true
+     :description nil
+     :location    "/"
+     :children    #{{:name        "C"
+                     :id          true
+                     :description nil
+                     :location    "/A/"
+                     :children    #{{:name        "D"
+                                     :id          true
+                                     :description nil
+                                     :location    "/A/C/"
+                                     :children    #{{:name        "E"
+                                                     :id          true
+                                                     :description nil
+                                                     :location    "/A/C/D/"
+                                                     :children    #{}}}}
+                                    {:name        "F"
+                                     :id          true
+                                     :description nil
+                                     :location    "/A/C/"
+                                     :children    #{{:name        "G"
+                                                     :id          true
+                                                     :description nil
+                                                     :location    "/A/C/F/"
+                                                     :children    #{}}}}}}
+                    {:name        "B"
+                     :id          true
+                     :description nil
+                     :location    "/A/"
+                     :children    #{}}}}
     (with-collection-hierarchy [{:keys [a b c d e f g]}]
       (descendants collection/root-collection))})
 
@@ -711,7 +726,7 @@
 
 ;; make sure that `effective-children` isn't returning children or location of children! Those should get discarded.
 (expect
-  #{:name :id}
+  #{:name :id :description}
   (with-collection-hierarchy [{:keys [a b c d e f g]}]
     (with-current-user-perms-for-collections [a b c d e f g]
       (set (keys (first (collection/effective-children a)))))))
