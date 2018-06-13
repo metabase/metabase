@@ -707,9 +707,16 @@
                      :id          true
                      :description nil
                      :location    "/A/"
-                     :children    #{}}}}
-    (with-collection-hierarchy [{:keys [a b c d e f g]}]
-      (descendants collection/root-collection))})
+                     :children    #{}}}}}
+  (with-collection-hierarchy [{:keys [a b c d e f g]}]
+    (descendants collection/root-collection)))
+
+;; double-check that descendant-ids is working right too
+(tt/expect-with-temp [Collection [a]
+                      Collection [b {:location (collection/children-location a)}]
+                      Collection [c {:location (collection/children-location b)}]]
+  #{(u/get-id b) (u/get-id c)}
+  (#'collection/descendant-ids a))
 
 
 ;;; ----------------------------------------------- Effective Children -----------------------------------------------
