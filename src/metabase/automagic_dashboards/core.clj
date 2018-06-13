@@ -161,8 +161,13 @@
 (def ^:private ^{:arglists '([card-or-question])} source-question
   (comp Card qp.util/query->source-card-id :dataset_query))
 
-(def ^:private ^{:arglists '([card])} table-like?
-  (comp empty? #(qp.util/get-in-normalized % [:dataset_query :query :aggregation])))
+(defn- table-like?
+  [card-or-question]
+  (let [[aggregation & _] (qp.util/get-in-normalized card-or-question [:dataset_query :query :aggregation])]
+    (or (nil? aggregation)
+        (and (or (string? aggregation)
+                 (keyword? aggregation))
+             (= (qp.util/normalize-token aggregation) :rows)))))
 
 (defn- source
   [card]
