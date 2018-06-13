@@ -512,15 +512,16 @@
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private CollectionWithLocationIDAndPersonalOwnerID
-  {:id                su/IntGreaterThanZero
-   :location          LocationPath
+(def ^:private CollectionWithLocationAndPersonalOwnerID
+  "Schema for a Collection instance that has a valid `:location`, and a `:personal_owner_id` key *present* (but not
+  neccesarily non-nil)."
+  {:location          LocationPath
    :personal_owner_id (s/maybe su/IntGreaterThanZero)
    s/Keyword          s/Any})
 
 (s/defn ^:private is-personal-collection-or-descendant-of-one? :- s/Bool
   "Is `collection` a Personal Collection, or a descendant of one?"
-  [collection :- CollectionWithLocationIDAndPersonalOwnerID]
+  [collection :- CollectionWithLocationAndPersonalOwnerID]
   (boolean
    (or
     ;; If collection has an owner ID we're already done here, we know it's a Personal Collection
@@ -541,26 +542,26 @@
   (assoc collection :slug (slugify collection-name)))
 
 (defn- copy-collection-permissions!
-  "Grant read permissions to a destination Collection for every Group with read permissions for a source Collection, and
-  write perms for every Group with write perms for the source Collection."
-  [source-collection-or-id dest-collection-or-id]
+  "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
+  and write perms for every Group with write perms for the source Collection."
+  [source-collection-or-id dest-collections-or-ids]
   ;; figure out who has permissions for the source Collection...
   (let [group-ids-with-read-perms  (db/select-field :group_id Permissions
                                      :object (perms/collection-read-path source-collection-or-id))
         group-ids-with-write-perms (db/select-field :group_id Permissions
-                                     :object (perms/collection-readwrite-path source-collection-or-id))
-        read-path      (perms/collection-read-path      (u/get-id dest-collection-or-id))
-        readwrite-path (perms/collection-readwrite-path (u/get-id dest-collection-or-id))]
-    (println "group-ids-with-read-perms:" group-ids-with-read-perms) ; NOCOMMIT
-    (println "group-ids-with-write-perms:" group-ids-with-write-perms) ; NOCOMMIT
-    ;; ...and insert corresponding rows for the destination Collection
+                                     :object (perms/collection-readwrite-path source-collection-or-id))]
+    ;; ...and insert corresponding rows for each destination Collection
     (db/insert-many! Permissions
       (concat
        ;; insert all the new read-perms records
-       (for [group-id group-ids-with-read-perms]
+       (for [dest     dest-collections-or-ids
+             :let     [read-path (perms/collection-read-path dest)]
+             group-id group-ids-with-read-perms]
          {:group_id group-id, :object read-path})
        ;; ...and all the new write-perms records
-       (for [group-id group-ids-with-write-perms]
+       (for [dest     dest-collections-or-ids
+             :let     [readwrite-path (perms/collection-readwrite-path dest)]
+             group-id group-ids-with-write-perms]
          {:group_id group-id, :object readwrite-path})))))
 
 (defn- copy-parent-permissions!
@@ -576,8 +577,7 @@
   [{:keys [location id], :as collection}]
   (when-not (is-personal-collection-or-descendant-of-one? collection)
     (let [parent-collection-id (location-path->parent-id location)]
-      (println "parent-collection-id:" parent-collection-id) ; NOCOMMIT
-      (copy-collection-permissions! (or parent-collection-id root-collection) id))))
+      (copy-collection-permissions! (or parent-collection-id root-collection) [id]))))
 
 (defn- post-insert [collection]
   (u/prog1 collection
@@ -630,6 +630,74 @@
        archive-collection!
        unarchive-collection!) collection-before-updates)))
 
+;; MOVING COLLECTIONS ACROSS "PERSONAL" BOUNDARIES
+;;
+;; As mentioned elsewhere, Permissions for Collections are handled in two different, incompatible, ways, depending on
+;; whether or not the Collection is a descendant of a Personal Collection:
+;;
+;; *  Personal Collections, and their descendants, DO NOT have Permissions for different Groups recorded in the
+;;    application Database. Perms are bound dynamically, so that the Current User has read/write perms for their
+;;    Personal Collection, and for any of its descendant Collections. These CANNOT be edited.
+;;
+;; *  Collections that are NOT descendants of Personal Collections are assigned permissions on a Group-by-Group basis
+;;    using Permissions entries from the application DB, and edited via the permissions graph.
+;;
+;; Thus, When a Collection moves "across the boundary" and either becomes a descendant of a Personal Collection, or
+;; ceases to be one, we need to take steps to transition it so it plays nicely with the new way Permissions will apply
+;; to it. The steps taken in each direction are explained in more detail for in the docstrings of their respective
+;; implementing functions below.
+
+(s/defn ^:private grant-perms-when-moving-out-of-personal-collection!
+  "When moving a descendant of a Personal Collection into the Root Collection, or some other Collection not descended
+  from a Personal Collection, we need to grant it Permissions, since now that it has moved across the boundary into
+  impersonal-land it *requires* Permissions to be seen or 'curated'. If we did not grant Permissions when moving, it
+  would immediately become invisible to all save admins, because no Group would have perms for it. This is obviously a
+  bad experience -- we do not want a User to move a Collection that they have read/write perms for (by definition) to
+  somewhere else and lose all access for it."
+  [collection :- CollectionInstance, new-location :- LocationPath]
+  (let [new-parent-id (location-path->parent-id new-location)
+        new-parent    (if new-parent-id
+                        (Collection new-parent-id)
+                        root-collection)]
+    (copy-collection-permissions! new-parent (cons collection (descendants collection)))))
+
+(s/defn ^:private revoke-perms-when-moving-into-personal-collection!
+  "When moving a `collection` that is *not* a descendant of a Personal Collection into a Personal Collection or one of
+  its descendants (moving across the boundary in the other direction), any previous Group Permissions entries for it
+  need to be deleted, so other users cannot access this newly-Personal Collection.
+
+  This needs to be done recursively for all descendants as well."
+  [collection :- CollectionInstance]
+  (db/execute! {:delete-from Permissions
+                :where       [:in :object (for [collection (cons collection (descendants collection))
+                                                path-fn    [perms/collection-read-path
+                                                            perms/collection-readwrite-path]]
+                                            (path-fn collection))]}))
+
+(defn- update-perms-when-moving-across-personal-boundry!
+  "If a Collection is moving 'across the boundry' and will become a descendant of a Personal Collection, or will cease
+  to be one, adjust the Permissions for it accordingly."
+  [collection-before-updates collection-updates]
+  ;; first, figure out if the collection is a descendant of a Personal Collection now, and whether it will be after
+  ;; the update
+  (let [is-descendant-of-personal?      (is-personal-collection-or-descendant-of-one? collection-before-updates)
+        will-be-descendant-of-personal? (is-personal-collection-or-descendant-of-one? (merge collection-before-updates
+                                                                                             collection-updates))]
+    ;; see if whether it is a descendant of a Personal Collection or not is set to change. If it's not going to
+    ;; change, we don't need to do anything
+    (when (not= is-descendant-of-personal? will-be-descendant-of-personal?)
+      ;; if it *is* a descendant of a Personal Collection, and is about to be moved into the 'real world', we need to
+      ;; copy the new parent's perms for it and for all of its descendants
+      (if is-descendant-of-personal?
+        (grant-perms-when-moving-out-of-personal-collection! collection-before-updates (:location collection-updates))
+        ;; otherwise, if it is *not* a descendant of a Personal Collection, but is set to become one, we need to
+        ;; delete any perms entries for it and for all of its descendants, so other randos won't be able to access
+        ;; this newly privatized Collection
+        (revoke-perms-when-moving-into-personal-collection! collection-before-updates)))))
+
+
+;; PUTTING IT ALL TOGETHER <3
+
 (defn- pre-update [{collection-name :name, id :id, color :color, :as collection-updates}]
   (let [collection-before-updates (Collection id)]
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
@@ -638,7 +706,11 @@
       (check-changes-allowed-for-personal-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
-    ;; (3) make sure hex color is valid
+    ;; (3) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
+    ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
+    (when (api/column-will-change? :location collection-before-updates collection-updates)
+      (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
+    ;; (4) make sure hex color is valid
     (when (api/column-will-change? :color collection-before-updates collection-updates)
       (assert-valid-hex-color color))
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES

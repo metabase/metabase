@@ -1392,19 +1392,19 @@
       (group->perms [parent child] group))))
 
 ;; Make sure that when creating a new Collection as child of a Personal Collection, no group permissions are created
+(defn- lucky-collection-children-location []
+  (collection/children-location (collection/user->personal-collection (test-users/user->id :lucky))))
+
 (expect
   false
-  (tt/with-temp Collection [child {:name "{child}", :location (collection/children-location
-                                                               (collection/user->personal-collection
-                                                                (test-users/user->id :lucky)))}]
+  (tt/with-temp Collection [child {:name "{child}", :location (lucky-collection-children-location)}]
     (db/exists? Permissions :object [:like (format "/collection/%d/%%" (u/get-id child))])))
 
 ;; Make sure that when creating a new Collection as grandchild of a Personal Collection, no group permissions are
 ;; created
 (expect
   false
-  (tt/with-temp* [Collection [child {:location (collection/children-location
-                                                (collection/user->personal-collection (test-users/user->id :lucky)))}]
+  (tt/with-temp* [Collection [child {:location (lucky-collection-children-location)}]
                   Collection [grandchild {:location (collection/children-location child)}]]
     (or (db/exists? Permissions :object [:like (format "/collection/%d/%%" (u/get-id child))])
         (db/exists? Permissions :object [:like (format "/collection/%d/%%" (u/get-id grandchild))]))))
@@ -1435,3 +1435,173 @@
   (tt/with-temp User [my-cool-user]
     (let [personal-collection (collection/user->personal-collection my-cool-user)]
       (db/update! Collection (u/get-id personal-collection) :personal_owner_id (test-users/user->id :crowberto)))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    Moving Collections "Across the Boundary"                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; When moving a Collection from a Personal Collection (or a descendant of one) to a non-Personal one (or a descendant
+;; of one), we need to work some magic on its (and its descendants') Permissions.
+
+;;; --------------------------------------------- Personal -> Impersonal ---------------------------------------------
+
+;; When moving a Collection from a Personal Collection to the Root Collection, we should create perms entries that
+;; match the Root Collection's entries for any groups that have Root Collection perms.
+;;
+;; Personal Collection > A          Personal Collection
+;;                           ===>
+;; Root Collection                  Root Collection > A
+(expect
+  #{"/collection/root/read/"
+    "/collection/A/read/"}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [a {:name "A", :location (lucky-collection-children-location)}]]
+    (perms/grant-collection-read-permissions! group collection/root-collection)
+    (db/update! Collection (u/get-id a) :location (collection/children-location collection/root-collection))
+    (group->perms [a] group)))
+
+;; When moving a Collection from a *descendant* of a Personal Collection to the Root Collection, we should create
+;; perms entries that match the Root Collection's entries for any groups that have Root Collection perms.
+;;
+;; Personal Collection > A > B         Personal Collection > A
+;;                              ===>
+;; Root Collection                     Root Collection > B
+(expect
+  #{"/collection/root/"
+    "/collection/B/"}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [a {:name "A", :location (lucky-collection-children-location)}]
+                  Collection       [b {:name "B", :location (collection/children-location a)}]]
+    (perms/grant-collection-readwrite-permissions! group collection/root-collection)
+    (db/update! Collection (u/get-id b) :location (collection/children-location collection/root-collection))
+    (group->perms [a b] group)))
+
+;; When moving a Collection from a Personal Collection to a non-personal Collection, we should create perms entries
+;; that match the Root Collection's entries for any groups that have Root Collection perms.
+;;
+;; Personal Collection > A         Personal Collection
+;;                           ===>
+;; Root Collection > B             Root Collection > B > A
+(expect
+  #{"/collection/A/read/"
+    "/collection/B/read/"}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [a {:name "A", :location (lucky-collection-children-location)}]
+                  Collection       [b {:name "B", :location (collection/children-location collection/root-collection)}]]
+    (perms/grant-collection-read-permissions! group b)
+    (db/update! Collection (u/get-id a) :location (collection/children-location b))
+    (group->perms [a b] group)))
+
+;; When moving a Collection from a *descendant* of a Personal Collection to a non-personal Collection, we should
+;; create perms entries that match the Root Collection's entries for any groups that have Root Collection perms.
+;;
+;; Personal Collection > A > B         Personal Collection > A
+;;                              ===>
+;; Root Collection > C                 Root Collection > C > B
+(expect
+  #{"/collection/B/"
+    "/collection/C/"}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [a {:name "A", :location (lucky-collection-children-location)}]
+                  Collection       [b {:name "B", :location (collection/children-location a)}]
+                  Collection       [c {:name "C", :location (collection/children-location collection/root-collection)}]]
+    (perms/grant-collection-readwrite-permissions! group c)
+    (db/update! Collection (u/get-id b) :location (collection/children-location c))
+    (group->perms [a b c] group)))
+
+;; Perms should apply recursively as well...
+;;
+;; Personal Collection > A > B         Personal Collection
+;;                              ===>
+;; Root Collection > C                 Root Collection > C > A > B
+(expect
+  #{"/collection/A/"
+    "/collection/B/"
+    "/collection/C/"}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [a {:name "A", :location (lucky-collection-children-location)}]
+                  Collection       [b {:name "B", :location (collection/children-location a)}]
+                  Collection       [c {:name "C", :location (collection/children-location collection/root-collection)}]]
+    (perms/grant-collection-readwrite-permissions! group c)
+    (db/update! Collection (u/get-id a) :location (collection/children-location c))
+    (group->perms [a b c] group)))
+
+
+;;; --------------------------------------------- Impersonal -> Personal ---------------------------------------------
+
+;; When moving a Collection from Root to a Personal Collection, we should *delete* perms entries for it
+;;
+;; Personal Collection        Personal Collection > A
+;;                      ===>
+;; Root Collection > A        Root Collection
+(expect
+  #{}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [a {:name "A", :location (collection/children-location collection/root-collection)}]]
+    (perms/grant-collection-readwrite-permissions! group a)
+    (db/update! Collection (u/get-id a) :location (lucky-collection-children-location))
+    (group->perms [a] group)))
+
+;; When moving a Collection from a non-Personal Collection to a Personal Collection, we should *delete* perms entries
+;; for it
+;;
+;; Personal Collection            Personal Collection > B
+;;                          ===>
+;; Root Collection > A > B        Root Collection > A
+(expect
+  #{"/collection/A/"}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [a {:name "A", :location (collection/children-location collection/root-collection)}]
+                  Collection       [b {:name "B", :location (collection/children-location a)}]]
+    (perms/grant-collection-readwrite-permissions! group a)
+    (perms/grant-collection-readwrite-permissions! group b)
+    (db/update! Collection (u/get-id b) :location (lucky-collection-children-location))
+    (group->perms [a b] group)))
+
+;; When moving a Collection from Root to a descendant of a Personal Collection, we should *delete* perms entries for it
+;;
+;; Personal Collection > A        Personal Collection > A > B
+;;                          ===>
+;; Root Collection > B            Root Collection
+(expect
+  #{}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [a {:name "A", :location (lucky-collection-children-location)}]
+                  Collection       [b {:name "B", :location (collection/children-location collection/root-collection)}]]
+    (perms/grant-collection-readwrite-permissions! group b)
+    (db/update! Collection (u/get-id b) :location (collection/children-location a))
+    (group->perms [a b] group)))
+
+;; When moving a Collection from a non-Personal Collection to a descendant of a Personal Collection, we should
+;; *delete* perms entries for it
+;;
+;; Personal Collection > A        Personal Collection > A > C
+;;                          ===>
+;; Root Collection > B > C        Root Collection > B
+(expect
+  #{"/collection/B/"}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [a {:name "A", :location (lucky-collection-children-location)}]
+                  Collection       [b {:name "B", :location (collection/children-location collection/root-collection)}]
+                  Collection       [c {:name "C", :location (collection/children-location b)}]]
+    (perms/grant-collection-readwrite-permissions! group b)
+    (perms/grant-collection-readwrite-permissions! group c)
+    (db/update! Collection (u/get-id c) :location (collection/children-location a))
+    (group->perms [a b c] group)))
+
+;; Deleting perms should apply recursively as well...
+;;
+;; Personal Collection > A        Personal Collection > A > B > C
+;;                          ===>
+;; Root Collection > B > C        Root Collection
+(expect
+  #{}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [a {:name "A", :location (lucky-collection-children-location)}]
+                  Collection       [b {:name "B", :location (collection/children-location collection/root-collection)}]
+                  Collection       [c {:name "C", :location (collection/children-location b)}]]
+    (perms/grant-collection-readwrite-permissions! group b)
+    (perms/grant-collection-readwrite-permissions! group c)
+    (db/update! Collection (u/get-id b) :location (collection/children-location a))
+    (group->perms [a b c] group)))
