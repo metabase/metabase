@@ -19,7 +19,6 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
-import Subhead from "metabase/components/Subhead";
 import Ellipsified from "metabase/components/Ellipsified";
 import VirtualizedList from "metabase/components/VirtualizedList";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
