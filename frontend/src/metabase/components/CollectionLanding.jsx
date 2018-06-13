@@ -23,7 +23,6 @@ import Subhead from "metabase/components/Subhead";
 import Ellipsified from "metabase/components/Ellipsified";
 import VirtualizedList from "metabase/components/VirtualizedList";
 
-import CollectionListLoader from "metabase/containers/CollectionListLoader";
 import CollectionLoader from "metabase/containers/CollectionLoader";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";

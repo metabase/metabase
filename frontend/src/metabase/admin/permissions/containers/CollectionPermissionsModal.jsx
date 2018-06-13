@@ -7,7 +7,6 @@ import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import PermissionsGrid from "../components/PermissionsGrid.jsx";
 import fitViewport from "metabase/hoc/FitViewPort";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { CollectionsApi } from "metabase/services";
 import Collections from "metabase/entities/collections";
@@ -19,7 +18,6 @@ import {
   getDiff,
 } from "../selectors";
 import { initialize, updatePermission, savePermissions } from "../permissions";
-import { goBack, push } from "react-router-redux";
 
 const mapStateToProps = (state, props) => {
   return {

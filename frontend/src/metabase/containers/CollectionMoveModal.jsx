@@ -11,7 +11,6 @@ import Icon from "metabase/components/Icon";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 import CollectionPicker from "metabase/containers/CollectionPicker";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 
 class CollectionMoveModal extends React.Component {
   state = {
