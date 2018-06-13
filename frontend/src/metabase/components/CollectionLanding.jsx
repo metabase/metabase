@@ -44,12 +44,8 @@ const CollectionItem = ({ collection, iconName }) => (
     hover={{ color: normal.blue }}
     color={normal.grey2}
   >
-    <Flex
-      align="center"
-      py={1}
-      key={`collection-${collection.id}`}
-    >
-      <Icon name={iconName} mx={1} color='#93B3C9' />
+    <Flex align="center" py={1} key={`collection-${collection.id}`}>
+      <Icon name={iconName} mx={1} color="#93B3C9" />
       <h4>
         <Ellipsified>{collection.name}</Ellipsified>
       </h4>
