@@ -43,7 +43,11 @@ export default createEntity({
           );
         }
         const collection = await collectionList({ id: query.collection });
-        items = collection.items;
+        items = collection.items.map(item => ({
+          // archived false becaued this endpoint never returns archived items
+          archived: false,
+          ...item,
+        }));
       } else {
         items = await searchList(query);
       }

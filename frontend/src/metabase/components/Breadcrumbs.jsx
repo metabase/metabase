@@ -9,6 +9,8 @@ import Ellipsified from "metabase/components/Ellipsified.jsx";
 
 import cx from "classnames";
 
+// TODO: merge with BrowserCrumbs
+
 export default class Breadcrumbs extends Component {
   static propTypes = {
     className: PropTypes.string,

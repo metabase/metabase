@@ -53,14 +53,14 @@
 
 (defmethod fetch-collection-children :card
   [_ collection {:keys [archived?]}]
-  (-> (db/select [Card :id :name :description :collection_position :archived]
+  (-> (db/select [Card :id :name :description :collection_position]
         :collection_id (:id collection)
         :archived      archived?)
       (hydrate :favorite)))
 
 (defmethod fetch-collection-children :dashboard
   [_ collection {:keys [archived?]}]
-  (db/select [Dashboard :id :name :description :collection_position :archived]
+  (db/select [Dashboard :id :name :description :collection_position]
     :collection_id (:id collection)
     :archived      archived?))
 

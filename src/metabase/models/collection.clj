@@ -322,7 +322,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
-  (let [location->children (group-by :location (db/select [Collection :name :id :location :description :archived]
+  (let [location->children (group-by :location (db/select [Collection :name :id :location :description]
                                                  {:where
                                                   (apply
                                                    vector

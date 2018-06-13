@@ -22,6 +22,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import Subhead from "metabase/components/Subhead";
 import Ellipsified from "metabase/components/Ellipsified";
 import VirtualizedList from "metabase/components/VirtualizedList";
+import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 
 import CollectionLoader from "metabase/containers/CollectionLoader";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
@@ -368,45 +369,51 @@ const SelectionControls = ({
   );
 
 // TODO - this should be a selector
-const mapStateToProps = (state, props) => ({
-  currentCollection:
-    Collections.selectors.getObject(state, {
-      entityId: props.params.collectionId,
-    }) || {},
-});
+const mapStateToProps = (state, props) => {
+  const collectionsById = Collections.selectors.expandedCollectionsById(
+    state,
+    props,
+  );
+  return {
+    collectionId: props.params.collectionId,
+    collectionsById,
+  };
+};
 
 @connect(mapStateToProps)
 class CollectionLanding extends React.Component {
   render() {
-    const { params: { collectionId }, currentCollection } = this.props;
+    const { collectionId, collectionsById } = this.props;
+    const currentCollection = collectionsById[collectionId];
     const isRoot = collectionId === "root";
 
     return (
       <Box mx={4}>
         <Box>
-          <Flex py={3} align="center">
-            <Subhead>
-              <Flex align="center">
-                {collectionId && (
-                  <Flex align="center">
-                    <Link
-                      to={`/collection/${collectionId}`}
-                      hover={{ color: normal.blue }}
-                    >
-                      {isRoot ? "Saved items" : currentCollection.name}
-                    </Link>
-                  </Flex>
-                )}
-              </Flex>
-            </Subhead>
+          <Flex align="center">
+            <BrowserCrumbs
+              crumbs={
+                currentCollection && currentCollection.path
+                  ? [
+                      ...currentCollection.path.map(id => ({
+                        title: collectionsById[id] && collectionsById[id].name,
+                        to: Urls.collection(id),
+                      })),
+                      { title: currentCollection.name },
+                    ]
+                  : []
+              }
+            />
 
             <Flex ml="auto">
-              {currentCollection.can_write && (
-                <Box ml={1}>
-                  <NewObjectMenu collectionId={collectionId} />
-                </Box>
-              )}
-              {currentCollection.can_write &&
+              {currentCollection &&
+                currentCollection.can_write && (
+                  <Box ml={1}>
+                    <NewObjectMenu collectionId={collectionId} />
+                  </Box>
+                )}
+              {currentCollection &&
+                currentCollection.can_write &&
                 !currentCollection.personal_owner_id && (
                   <Box ml={1}>
                     <CollectionEditMenu
