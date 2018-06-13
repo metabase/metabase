@@ -12,6 +12,10 @@
              [query :as query]
              [table :refer [Table] :as table]
              [user :as user]]
+            [metabase.query-processor.middleware
+             [expand :as ql]
+             [resolve :as resolve]
+             [source-table :as source-table]]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
@@ -80,11 +84,20 @@
                  ((test-users/user->client :rasta) :get 200 (format "automagic-dashboards/%s"
                                                                     (subs url 16)))))))
 
+(defn- valid-card?
+  [card]
+  (->> card
+       :dataset_query
+       ql/expand
+       ((source-table/resolve-source-table-middleware identity))
+       resolve/resolve))
+
 (defn- valid-dashboard?
   [dashboard]
   (assert (:name dashboard))
   (assert (-> dashboard :ordered_cards count pos?))
   (assert (valid-urls? dashboard))
+  (assert (every? valid-card? (keep :card (:ordered_cards dashboard))))
   true)
 
 (defmacro ^:private with-dashboard-cleanup
@@ -219,6 +232,16 @@
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
                                           :breakout [[:field-id (data/id :venues :category_id)]]
                                           :source_table (data/id :venues)}
+                                  :type :query
+                                  :database (data/id)})]
+        (-> q (automagic-analysis {}) valid-dashboard?)))))
+
+(expect
+  (with-rasta
+    (with-dashboard-cleanup
+      (let [q (query/adhoc-query {:query {:aggregation [[:count]]
+                                          :breakout [[:fk-> (data/id :checkins) (data/id :venues :category_id)]]
+                                          :source_table (data/id :checkins)}
                                   :type :query
                                   :database (data/id)})]
         (-> q (automagic-analysis {}) valid-dashboard?)))))
