@@ -20,11 +20,13 @@ const Dashboards = createEntity({
   },
 
   objectActions: {
-    @undo("dashboard", (o, archived) => (archived ? "archived" : "unarchived"))
     setArchived: ({ id }, archived, opts) =>
-      Dashboards.actions.update({ id }, { archived }, opts),
+      Dashboards.actions.update(
+        { id },
+        { archived },
+        undo(opts, "dashboard", archived ? "archived" : "unarchived"),
+      ),
 
-    @undo("dashboard", "moved")
     setCollection: ({ id }, collection, opts) =>
       Dashboards.actions.update(
         { id },
@@ -33,7 +35,7 @@ const Dashboards = createEntity({
           collection_id:
             !collection || collection.id === "root" ? null : collection.id,
         },
-        opts,
+        undo(opts, "dashboard", "moved"),
       ),
 
     setPinned: ({ id }, pinned, opts) =>

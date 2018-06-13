@@ -74,6 +74,7 @@ export default class EntityListLoader extends React.Component {
       // transitioned from loaded to not loaded, and isn't yet loading again
       // this typically means the list request state was cleared by a
       // create/update/delete action
+      // $FlowFixMe: provided by @connect
       nextProps.fetchList(nextProps.entityQuery);
     }
   }
