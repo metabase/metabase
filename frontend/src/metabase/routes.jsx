@@ -13,8 +13,6 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
 
-import { withBackground } from "metabase/hoc/Background";
-
 import HomepageApp from "metabase/home/containers/HomepageApp";
 
 // auth containers
@@ -42,6 +40,7 @@ import CollectionCreate from "metabase/collections/containers/CollectionCreate.j
 import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/containers/CollectionPermissionsModal";
+import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
@@ -143,9 +142,10 @@ const UserIsNotAuthenticated = UserAuthWrapper({
 const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
-const IsAdmin = withBackground("bg-white")(
-  MetabaseIsSetup(UserIsAuthenticated(UserIsAdmin(({ children }) => children))),
+const IsAdmin = MetabaseIsSetup(
+  UserIsAuthenticated(UserIsAdmin(({ children }) => children)),
 );
+
 const IsNotAuthenticated = MetabaseIsSetup(
   UserIsNotAuthenticated(({ children }) => children),
 );
@@ -198,6 +198,10 @@ export const getRoutes = store => (
 
         <Route path="search" title={t`Search`} component={SearchApp} />
         <Route path="archive" title={t`Archive`} component={ArchiveApp} />
+
+        <Route path="collection/users" component={IsAdmin}>
+          <IndexRoute component={UserCollectionList} />
+        </Route>
 
         <Route path="collection/:collectionId" component={CollectionLanding}>
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />

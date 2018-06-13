@@ -43,8 +43,9 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(defn- hydrate-favorites
+(defn hydrate-favorites
   "Efficiently add `favorite` status for a large collection of `Cards`."
+  {:batched-hydrate :favorite}
   [cards]
   (when (seq cards)
     (let [favorite-card-ids (db/select-field :card_id CardFavorite
@@ -134,8 +135,7 @@
 
 (defn- cards-for-filter-option [filter-option model-id]
   (-> ((filter-option->fn (or filter-option :all)) model-id)
-      (hydrate :creator :collection)
-      hydrate-favorites))
+      (hydrate :creator :collection :favorite)))
 
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------

@@ -43,7 +43,7 @@
   (do
     ;; Delete all the other random Users we've created so far
     (test-users/delete-temp-users!)
-    ;; Make sure personal Collections have been force-created
+    ;; Make sure personal Collections have been created
     (collection-test/force-create-personal-collections!)
     ;; Now do the request
     ((test-users/user->client :rasta) :get 200 "user")))
@@ -207,11 +207,17 @@
 ;; Check that fetching current user will return extra fields like `is_active` and will return OrgPerms
 (expect
   (merge user-defaults
-         {:email       "rasta@metabase.com"
-          :first_name  "Rasta"
-          :last_name   "Toucan"
-          :common_name "Rasta Toucan"})
-  (tu/boolean-ids-and-timestamps ((test-users/user->client :rasta) :get 200 "user/current")))
+         {:email                  "rasta@metabase.com"
+          :first_name             "Rasta"
+          :last_name              "Toucan"
+          :common_name            "Rasta Toucan"
+          :personal_collection_id true})
+  (do
+    ;; Make sure personal Collections have been created so this endpoint won't randomly return `false` for
+    ;; personal_collection_id
+    (collection-test/force-create-personal-collections!)
+    ;; now FETCH
+    (tu/boolean-ids-and-timestamps ((test-users/user->client :rasta) :get 200 "user/current"))))
 
 
 ;; ## GET /api/user/:id
