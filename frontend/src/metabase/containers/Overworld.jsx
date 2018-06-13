@@ -84,7 +84,7 @@ class Overworld extends React.Component {
             return (
               <Box>
                 <Box mt={3} mb={1}>
-                  <h4>{t`Pinned dashboards`}</h4>
+                  <h4>{t`Start here`}</h4>
                 </Box>
                 <Grid>
                   {pinnedDashboards.map(pin => {
@@ -122,7 +122,7 @@ class Overworld extends React.Component {
                           name="all"
                         />
                         <Flex align="center">
-                          <h3>See more items</h3>
+                          <h3>See everything we've saved</h3>
                           <Icon name="chevronright" size={14} ml={1} />
                         </Flex>
                       </Card>
@@ -135,20 +135,20 @@ class Overworld extends React.Component {
         </CollectionItemsLoader>
 
         <Box mb={3} mt={3}>
-          <h4>{t`Pinned items`}</h4>
+          <h4 className="mb2">{t`Start here`}</h4>
           <OverworldSectionEmptyState>
-            { jt`Click on the star ${<Icon name='pin' mx={1} color={normal.red} />}next to an item’s name to mark it as a personal favorite`}
+            { jt`If you pin ${<Icon name='pin' mx={1} color={normal.red} />}some things in the home collection, they’ll show up here for everyone`}
           </OverworldSectionEmptyState>
         </Box>
 
         <Box mb={3}>
-          <h4>{t`Favorites`}</h4>
+          <h4 className="mb2">{t`My personal favorites`}</h4>
           <OverworldSectionEmptyState>
             { jt`Click on the star ${<Icon name='star' mx={1} color={normal.yellow} />}next to an item’s name to mark it as a personal favorite`}
           </OverworldSectionEmptyState>
         </Box>
 
-        <Box mt={4}>
+        <Box my={4}>
           <h4>{t`Our data`}</h4>
           <Box mt={2}>
             <DatabaseListLoader>
