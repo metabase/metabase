@@ -8,6 +8,7 @@
 import { setIn } from "icepick";
 
 jest.mock("metabase/lib/analytics");
+jest.mock("metabase/containers/CollectionSelect");
 
 import { GroupsPermissions } from "metabase/meta/types/Permissions";
 import { normalizedMetadata } from "./selectors.unit.spec.fixtures";
