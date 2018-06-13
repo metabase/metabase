@@ -512,10 +512,79 @@
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private CollectionWithLocationIDAndPersonalOwnerID
+  {:id                su/IntGreaterThanZero
+   :location          LocationPath
+   :personal_owner_id (s/maybe su/IntGreaterThanZero)
+   s/Keyword          s/Any})
+
+(s/defn ^:private is-personal-collection-or-descendant-of-one? :- s/Bool
+  "Is `collection` a Personal Collection, or a descendant of one?"
+  [collection :- CollectionWithLocationIDAndPersonalOwnerID]
+  (boolean
+   (or
+    ;; If collection has an owner ID we're already done here, we know it's a Personal Collection
+    (:personal_owner_id collection)
+    ;; Otherwise try to get the ID of its highest-level ancestor, e.g. if `location` is `/1/2/3/` we would get `1`.
+    ;; Then see if the root-level ancestor is a Personal Collection (Personal Collections can only got in the Root
+    ;; Collection.)
+    (db/exists? Collection
+      :id                (first (location-path->ids (:location collection)))
+      :personal_owner_id [:not= nil]))))
+
+
+;;; ----------------------------------------------------- INSERT -----------------------------------------------------
+
 (defn- pre-insert [{collection-name :name, color :color, :as collection}]
   (assert-valid-location collection)
   (assert-valid-hex-color color)
   (assoc collection :slug (slugify collection-name)))
+
+(defn- copy-collection-permissions!
+  "Grant read permissions to a destination Collection for every Group with read permissions for a source Collection, and
+  write perms for every Group with write perms for the source Collection."
+  [source-collection-or-id dest-collection-or-id]
+  ;; figure out who has permissions for the source Collection...
+  (let [group-ids-with-read-perms  (db/select-field :group_id Permissions
+                                     :object (perms/collection-read-path source-collection-or-id))
+        group-ids-with-write-perms (db/select-field :group_id Permissions
+                                     :object (perms/collection-readwrite-path source-collection-or-id))
+        read-path      (perms/collection-read-path      (u/get-id dest-collection-or-id))
+        readwrite-path (perms/collection-readwrite-path (u/get-id dest-collection-or-id))]
+    (println "group-ids-with-read-perms:" group-ids-with-read-perms) ; NOCOMMIT
+    (println "group-ids-with-write-perms:" group-ids-with-write-perms) ; NOCOMMIT
+    ;; ...and insert corresponding rows for the destination Collection
+    (db/insert-many! Permissions
+      (concat
+       ;; insert all the new read-perms records
+       (for [group-id group-ids-with-read-perms]
+         {:group_id group-id, :object read-path})
+       ;; ...and all the new write-perms records
+       (for [group-id group-ids-with-write-perms]
+         {:group_id group-id, :object readwrite-path})))))
+
+(defn- copy-parent-permissions!
+  "When creating a new Collection, we shall copy the Permissions entries for its parent. That way, Groups who can see
+  its parent can see it; and Groups who can 'curate' its parent can 'curate' it, as a default state. (Of course,
+  admins can change these permissions after the fact.)
+
+  This does *not* apply to Collections that are created inside a Personal Collection or one of its descendants.
+  Descendants of Personal Collections, like Personal Collections themselves, cannot have permissions entries in the
+  application database.
+
+  For newly created Collections at the root-level, copy the existing permissions for the Root Collection."
+  [{:keys [location id], :as collection}]
+  (when-not (is-personal-collection-or-descendant-of-one? collection)
+    (let [parent-collection-id (location-path->parent-id location)]
+      (println "parent-collection-id:" parent-collection-id) ; NOCOMMIT
+      (copy-collection-permissions! (or parent-collection-id root-collection) id))))
+
+(defn- post-insert [collection]
+  (u/prog1 collection
+    (copy-parent-permissions! collection)))
+
+
+;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
 (s/defn ^:private check-changes-allowed-for-personal-collection
   "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
@@ -580,6 +649,9 @@
     (cond-> collection-updates
       collection-name (assoc :slug (slugify collection-name)))))
 
+
+;;; ----------------------------------------------------- DELETE -----------------------------------------------------
+
 (def ^:dynamic *allow-deleting-personal-collections*
   "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but in the single case of
   deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get deleted, but rather
@@ -604,6 +676,9 @@
                               [:= :object (perms/collection-readwrite-path collection)]
                               [:= :object (perms/collection-read-path collection)]]}))
 
+
+;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
+
 (defn perms-objects-set
   "Return the required set of permissions to `read-or-write` `collection-or-id`."
   [collection-or-id read-or-write]
@@ -620,6 +695,7 @@
          {:hydration-keys (constantly [:collection])
           :types          (constantly {:name :clob, :description :clob})
           :pre-insert     pre-insert
+          :post-insert    post-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
   i/IObjectPermissions

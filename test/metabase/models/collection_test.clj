@@ -7,7 +7,7 @@
              [card :refer [Card]]
              [collection :as collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
-             [permissions :as perms]
+             [permissions :refer [Permissions] :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]
              [pulse :refer [Pulse]]
              [user :refer [User]]]
@@ -1299,6 +1299,115 @@
     (db/select-one-field :archived Collection :id (u/get-id e))))
 
 ;; TODO - can you unarchive a Card that is inside an archived Collection??
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     Permissions Inheritance Upon Creation!                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- group->perms
+  "Return the perms paths for a `perms-group`, replacing the ID of any `collections` in any entries with their name."
+  [collections perms-group]
+  ;; we can reuse the `perms-path-ids->names` helper function from above, just need to stick `collection` in a map
+  ;; to simulate the output of the `with-collection-hierarchy` macro
+  (perms-path-ids->names
+   (zipmap (map :name collections)
+           collections)
+   (db/select-field :object Permissions :group_id (u/get-id perms-group))))
+
+;; Make sure that when creating a new Collection at the Root Level, we copy the group permissions for the Root
+;; Collection
+(expect
+  #{"/collection/{new}/"
+    "/collection/root/"}
+  (tt/with-temp PermissionsGroup [group]
+    (perms/grant-collection-readwrite-permissions! group collection/root-collection)
+    (tt/with-temp Collection [collection {:name "{new}"}]
+      (group->perms [collection] group))))
+
+(expect
+  #{"/collection/{new}/read/"
+    "/collection/root/read/"}
+  (tt/with-temp PermissionsGroup [group]
+    (perms/grant-collection-read-permissions! group collection/root-collection)
+    (tt/with-temp Collection [collection {:name "{new}"}]
+      (group->perms [collection] group))))
+
+;; Needless to say, no perms before hand = no perms after
+(expect
+  #{}
+  (tt/with-temp PermissionsGroup [group]
+    (tt/with-temp Collection [collection {:name "{new}"}]
+      (group->perms [collection] group))))
+
+;; ...and granting perms after shouldn't affect Collections already created
+(expect
+  #{"/collection/root/read/"}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection [collection {:name "{new}"}]]
+    (perms/grant-collection-read-permissions! group collection/root-collection)
+    (group->perms [collection] group)))
+
+;; Make sure that when creating a new Collection as a child of another, we copy the group permissions for its parent
+(expect
+  #{"/collection/{parent}/"
+    "/collection/{child}/"}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [parent {:name "{parent}"}]]
+    (perms/grant-collection-readwrite-permissions! group parent)
+    (tt/with-temp Collection [child {:name "{child}", :location (collection/children-location parent)}]
+      (group->perms [parent child] group))))
+
+(expect
+  #{"/collection/{parent}/read/"
+    "/collection/{child}/read/"}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [parent {:name "{parent}"}]]
+    (perms/grant-collection-read-permissions! group parent)
+    (tt/with-temp Collection [child {:name "{child}", :location (collection/children-location parent)}]
+      (group->perms [parent child] group))))
+
+(expect
+  #{}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [parent {:name "{parent}"}]
+                  Collection       [child {:name "{child}", :location (collection/children-location parent)}]]
+    (group->perms [parent child] group)))
+
+(expect
+  #{"/collection/{parent}/read/"}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [parent {:name "{parent}"}]
+                  Collection       [child {:name "{child}", :location (collection/children-location parent)}]]
+    (perms/grant-collection-read-permissions! group parent)
+    (group->perms [parent child] group)))
+
+;; If we have Root Collection perms they shouldn't be copied for a Child
+(expect
+  #{"/collection/root/read/"}
+  (tt/with-temp* [PermissionsGroup [group]
+                  Collection       [parent {:name "{parent}"}]]
+    (perms/grant-collection-read-permissions! group collection/root-collection)
+    (tt/with-temp Collection [child {:name "{child}", :location (collection/children-location parent)}]
+      (group->perms [parent child] group))))
+
+;; Make sure that when creating a new Collection as child of a Personal Collection, no group permissions are created
+(expect
+  false
+  (tt/with-temp Collection [child {:name "{child}", :location (collection/children-location
+                                                               (collection/user->personal-collection
+                                                                (test-users/user->id :lucky)))}]
+    (db/exists? Permissions :object [:like (format "/collection/%d/%%" (u/get-id child))])))
+
+;; Make sure that when creating a new Collection as grandchild of a Personal Collection, no group permissions are
+;; created
+(expect
+  false
+  (tt/with-temp* [Collection [child {:location (collection/children-location
+                                                (collection/user->personal-collection (test-users/user->id :lucky)))}]
+                  Collection [grandchild {:location (collection/children-location child)}]]
+    (or (db/exists? Permissions :object [:like (format "/collection/%d/%%" (u/get-id child))])
+        (db/exists? Permissions :object [:like (format "/collection/%d/%%" (u/get-id grandchild))]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
