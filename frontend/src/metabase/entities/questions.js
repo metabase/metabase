@@ -46,8 +46,8 @@ const Questions = createEntity({
         opts,
       ),
 
-    setFavorited: async ({ id }, favorited) => {
-      if (favorited) {
+    setFavorited: async ({ id }, favorite) => {
+      if (favorite) {
         await Questions.api.favorite({ id });
         return { type: FAVORITE_ACTION, payload: id };
       } else {
@@ -66,9 +66,9 @@ const Questions = createEntity({
 
   reducer: (state = {}, { type, payload, error }) => {
     if (type === FAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorited"], true);
+      return assocIn(state, [payload, "favorite"], true);
     } else if (type === UNFAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorited"], false);
+      return assocIn(state, [payload, "favorite"], false);
     }
     return state;
   },

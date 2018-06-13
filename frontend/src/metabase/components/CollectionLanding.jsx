@@ -48,54 +48,40 @@ const CollectionItem = ({ collection, iconName = "all" }) => (
 @connect(({ currentUser }) => ({ currentUser }), null)
 class CollectionList extends React.Component {
   render() {
-    const { currentUser } = this.props;
+    const { collections, currentUser, isRoot } = this.props;
     return (
       <Box mb={2}>
-        <CollectionListLoader
-          // NOTE: preferably we wouldn't need to reload each time the page is shown
-          // but until we port everything to the Collections entity it will be difficult
-          // to ensure it's up to date
-          reload
-        >
-          {({ collections }) => {
-            return (
-              <Box>
-                <Box my={2}>
-                  <CollectionItem
-                    collection={{
-                      name: t`My personal collection`,
-                      id: currentUser.personal_collection_id,
-                    }}
-                    iconName="star"
-                  />
-                  {currentUser.is_superuser && (
-                    <CollectionItem
-                      collection={{
-                        name: t`Everyone else's personal collections`,
-                        // Bit of a hack. The route /collection/users lists
-                        // user collections but is not itself a colllection,
-                        // but using the fake id users here works
-                        id: "users",
-                      }}
-                      iconName="person"
-                    />
-                  )}
-                </Box>
-                {// HACK - temporary workaround to prevent personal collections
-                // from being returned in the
-                // personal collectiones are identified by having a
-                collections.map(
-                  collection =>
-                    !collection.personal_owner_id && (
-                      <Box key={collection.id} mb={1}>
-                        <CollectionItem collection={collection} />
-                      </Box>
-                    ),
-                )}
-              </Box>
-            );
-          }}
-        </CollectionListLoader>
+        <Box my={2}>
+          {isRoot && (
+            <CollectionItem
+              collection={{
+                name: t`My personal collection`,
+                id: currentUser.personal_collection_id,
+              }}
+              iconName="star"
+            />
+          )}
+          {isRoot &&
+            currentUser.is_superuser && (
+              <CollectionItem
+                collection={{
+                  name: t`Everyone else's personal collections`,
+                  // Bit of a hack. The route /collection/users lists
+                  // user collections but is not itself a colllection,
+                  // but using the fake id users here works
+                  id: "users",
+                }}
+                iconName="person"
+              />
+            )}
+        </Box>
+        {collections
+          .filter(c => c.id !== currentUser.personal_collection_id)
+          .map(collection => (
+            <Box key={collection.id} mb={1}>
+              <CollectionItem collection={collection} />
+            </Box>
+          ))}
       </Box>
     );
   }
@@ -103,24 +89,12 @@ class CollectionList extends React.Component {
 
 const ROW_HEIGHT = 72;
 
-// TODO - this should be a selector
-const mapStateToProps = (state, props) => ({
-  entityQuery: { collection: props.collectionId },
-  currentCollection:
-    Collections.selectors.getObject(state, {
-      entityId: props.collectionId,
-    }) || {},
-});
-
-const mapDispatchToProps = {};
-
-@connect(mapStateToProps, mapDispatchToProps)
 @entityListLoader({
   entityType: "search",
+  entityQuery: (state, props) => ({ collection: props.collectionId }),
   wrapped: true,
 })
 @listSelect()
-@connect(() => ({}), mapDispatchToProps)
 class DefaultLanding extends React.Component {
   state = {
     moveItems: null,
@@ -132,25 +106,32 @@ class DefaultLanding extends React.Component {
       list,
       onToggleSelected,
       selection,
-      selected,
       onSelectNone,
       reload,
     } = this.props;
     const { moveItems } = this.state;
 
-    // Show the
-    const showCollectionList = collectionId === "root";
-
     // Call this when finishing a bulk action
     const onBulkActionSuccess = () => {
-      // reload the current list
-      reload();
-
       // Clear the selection in listSelect
       // Fixes an issue where things were staying selected when moving between
       // different collection pages
       onSelectNone();
     };
+
+    // exclude collections from selection since they can't currently be selected
+    const selected = this.props.selected.filter(
+      item => item.model !== "collection",
+    );
+
+    const [collections, items] = _.partition(
+      list,
+      item => item.entity_type === "collections",
+    );
+
+    // Show the
+    const showCollectionList =
+      collectionId === "root" || collections.length > 0;
 
     return (
       <Flex>
@@ -159,19 +140,22 @@ class DefaultLanding extends React.Component {
             <Box>
               <h4>{t`Collections`}</h4>
             </Box>
-            <CollectionList />
+            <CollectionList
+              collections={collections}
+              isRoot={collectionId === "root"}
+            />
           </Box>
         )}
         <Box w={2 / 3}>
           <Box>
-            <CollectionLoader collectionId={collectionId || "root"}>
+            <CollectionLoader collectionId={collectionId}>
               {({ object: collection }) => {
-                if (list.length === 0) {
+                if (items.length === 0) {
                   return <CollectionEmptyState />;
                 }
 
                 const [pinned, other] = _.partition(
-                  list,
+                  items,
                   i => i.collection_position != null,
                 );
 
@@ -335,9 +319,9 @@ const NormalItemContent = ({
       name={item.getName()}
       iconName={item.getIcon()}
       iconColor={item.getColor()}
-      isFavorite={item.favorited}
+      isFavorite={item.favorite}
       onFavorite={
-        item.setFavorited ? () => item.setFavorited(!item.favorited) : null
+        item.setFavorited ? () => item.setFavorited(!item.favorite) : null
       }
       onPin={
         collection.can_write && item.setPinned
@@ -384,11 +368,18 @@ const SelectionControls = ({
     <StackedCheckBox checked={false} onChange={onSelectAll} />
   );
 
+// TODO - this should be a selector
+const mapStateToProps = (state, props) => ({
+  currentCollection:
+    Collections.selectors.getObject(state, {
+      entityId: props.params.collectionId,
+    }) || {},
+});
+
 @connect(mapStateToProps)
 class CollectionLanding extends React.Component {
   render() {
-    const { params, currentCollection } = this.props;
-    const collectionId = params.collectionId;
+    const { params: { collectionId }, currentCollection } = this.props;
     const isRoot = collectionId === "root";
 
     return (
@@ -412,74 +403,22 @@ class CollectionLanding extends React.Component {
 
             <Flex ml="auto">
               {currentCollection.can_write && (
-                <Box mx={1}>
-                  <EntityMenu
-                    items={[
-                      {
-                        title: t`New dashboard`,
-                        icon: "dashboard",
-                        link: Urls.newDashboard(collectionId),
-                      },
-                      {
-                        title: t`New pulse`,
-                        icon: "pulse",
-                        link: Urls.newPulse(collectionId),
-                      },
-                      {
-                        title: t`New collection`,
-                        icon: "all",
-                        link: Urls.newCollection(collectionId),
-                      },
-                    ]}
-                    triggerIcon="add"
-                  />
+                <Box ml={1}>
+                  <NewObjectMenu collectionId={collectionId} />
                 </Box>
               )}
               {currentCollection.can_write &&
                 !currentCollection.personal_owner_id && (
-                  <Box mx={1}>
-                    <EntityMenu
-                      items={[
-                        ...(!isRoot
-                          ? [
-                              {
-                                title: t`Edit this collection`,
-                                icon: "editdocument",
-                                link: `/collections/${currentCollection.id}`,
-                              },
-                            ]
-                          : []),
-                        {
-                          title: t`Edit permissions`,
-                          icon: "lock",
-                          link: `/collection/${
-                            currentCollection.id
-                          }/permissions`,
-                        },
-                        ...(!isRoot
-                          ? [
-                              {
-                                title: t`Archive this collection`,
-                                icon: "viewArchive",
-                                link: `/collection/${collectionId}/archive`,
-                              },
-                            ]
-                          : []),
-                      ]}
-                      triggerIcon="pencil"
+                  <Box ml={1}>
+                    <CollectionEditMenu
+                      collectionId={collectionId}
+                      isRoot={isRoot}
                     />
                   </Box>
                 )}
-              <EntityMenu
-                items={[
-                  {
-                    title: t`View the archive`,
-                    icon: "viewArchive",
-                    link: `/archive`,
-                  },
-                ]}
-                triggerIcon="burger"
-              />
+              <Box ml={1}>
+                <CollectionBurgerMenu />
+              </Box>
             </Flex>
           </Flex>
         </Box>
@@ -494,5 +433,72 @@ class CollectionLanding extends React.Component {
     );
   }
 }
+
+const NewObjectMenu = ({ collectionId }) => (
+  <EntityMenu
+    items={[
+      {
+        title: t`New dashboard`,
+        icon: "dashboard",
+        link: Urls.newDashboard(collectionId),
+      },
+      {
+        title: t`New pulse`,
+        icon: "pulse",
+        link: Urls.newPulse(collectionId),
+      },
+      {
+        title: t`New collection`,
+        icon: "all",
+        link: Urls.newCollection(collectionId),
+      },
+    ]}
+    triggerIcon="add"
+  />
+);
+
+const CollectionEditMenu = ({ isRoot, collectionId }) => (
+  <EntityMenu
+    items={[
+      ...(!isRoot
+        ? [
+            {
+              title: t`Edit this collection`,
+              icon: "editdocument",
+              link: `/collections/${collectionId}`,
+            },
+          ]
+        : []),
+      {
+        title: t`Edit permissions`,
+        icon: "lock",
+        link: `/collection/${collectionId}/permissions`,
+      },
+      ...(!isRoot
+        ? [
+            {
+              title: t`Archive this collection`,
+              icon: "viewArchive",
+              link: `/collection/${collectionId}/archive`,
+            },
+          ]
+        : []),
+    ]}
+    triggerIcon="pencil"
+  />
+);
+
+const CollectionBurgerMenu = () => (
+  <EntityMenu
+    items={[
+      {
+        title: t`View the archive`,
+        icon: "viewArchive",
+        link: `/archive`,
+      },
+    ]}
+    triggerIcon="burger"
+  />
+);
 
 export default CollectionLanding;

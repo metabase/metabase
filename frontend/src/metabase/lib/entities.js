@@ -532,7 +532,6 @@ export function notify(subject, verb, undo = false) {
         },
         opts,
       );
-      console.log("opts", opts);
       return original(o, arg, opts);
     };
   };

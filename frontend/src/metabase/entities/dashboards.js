@@ -43,8 +43,8 @@ const Dashboards = createEntity({
         opts,
       ),
 
-    setFavorited: async ({ id }, favorited) => {
-      if (favorited) {
+    setFavorited: async ({ id }, favorite) => {
+      if (favorite) {
         await Dashboards.api.favorite({ id });
         return { type: FAVORITE_ACTION, payload: id };
       } else {
@@ -56,15 +56,15 @@ const Dashboards = createEntity({
 
   reducer: (state = {}, { type, payload, error }) => {
     if (type === FAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorited"], true);
+      return assocIn(state, [payload, "favorite"], true);
     } else if (type === UNFAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorited"], false);
+      return assocIn(state, [payload, "favorite"], false);
     }
     return state;
   },
 
   objectSelectors: {
-    getFavorited: dashboard => dashboard && dashboard.favorited,
+    getFavorited: dashboard => dashboard && dashboard.favorite,
     getName: dashboard => dashboard && dashboard.name,
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard.id),
     getIcon: dashboard => "dashboard",

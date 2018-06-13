@@ -140,7 +140,7 @@
 
 (defmulti ^:private create-search-query (fn [entity search-context] entity))
 
-(s/defmethod ^:private create-search-query :question
+(s/defmethod ^:private create-search-query :card
   [_ search-ctx :- SearchContext]
   (-> (make-honeysql-search-query Card "card" card-columns-without-type)
       (h/left-join [(-> (h/select :id :card_id)
@@ -206,7 +206,7 @@
            (not (contains? visible-collections collection)))
     []
     (map favorited->boolean
-         (db/query {:union-all (for [entity [:question :collection :dashboard :pulse :segment :metric]
+         (db/query {:union-all (for [entity [:card :collection :dashboard :pulse :segment :metric]
                                      :let [query-map (create-search-query entity search-ctx)]
                                      :when query-map]
                                  query-map)}))))

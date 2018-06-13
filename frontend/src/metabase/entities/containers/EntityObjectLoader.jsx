@@ -41,12 +41,18 @@ export type RenderProps = {
 };
 
 @entityType()
-@connect((state, { entityDef, entityId }) => ({
-  object: entityDef.selectors.getObject(state, { entityId }),
-  fetched: entityDef.selectors.getFetched(state, { entityId }),
-  loading: entityDef.selectors.getLoading(state, { entityId }),
-  error: entityDef.selectors.getError(state, { entityId }),
-}))
+@connect((state, { entityDef, entityId, ...props }) => {
+  if (typeof entityId === "function") {
+    entityId = entityId(state, props);
+  }
+  return {
+    entityId,
+    object: entityDef.selectors.getObject(state, { entityId }),
+    fetched: entityDef.selectors.getFetched(state, { entityId }),
+    loading: entityDef.selectors.getLoading(state, { entityId }),
+    error: entityDef.selectors.getError(state, { entityId }),
+  };
+})
 export default class EntitiesObjectLoader extends React.Component {
   props: Props;
 
