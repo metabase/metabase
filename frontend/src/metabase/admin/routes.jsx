@@ -3,6 +3,8 @@ import { Route } from "metabase/hoc/Title";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "c-3po";
 
+import { withBackground } from "metabase/hoc/Background";
+
 // Settings
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
 
@@ -27,7 +29,11 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx"
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
 const getRoutes = (store, IsAdmin) => (
-  <Route path="/admin" title={t`Admin`} component={IsAdmin}>
+  <Route
+    path="/admin"
+    title={t`Admin`}
+    component={withBackground("bg-white")(IsAdmin)}
+  >
     <IndexRedirect to="/admin/settings" />
 
     <Route path="databases" title={t`Databases`}>

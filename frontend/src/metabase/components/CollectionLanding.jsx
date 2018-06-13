@@ -38,20 +38,14 @@ const mapDispatchToProps = {
   updateDashboard: Dashboard.actions.update,
 };
 
-const CollectionItem = ({ collection }) => (
+const CollectionItem = ({ collection, iconName }) => (
   <Link
     to={`collection/${collection.id}`}
     hover={{ color: normal.blue }}
     color={normal.grey2}
   >
-    <Flex
-      align="center"
-      my={1}
-      px={1}
-      py={1}
-      key={`collection-${collection.id}`}
-    >
-      <Icon name={collection.personal_owner_id ? "star" : "all"} mx={1} />
+    <Flex align="center" py={1} key={`collection-${collection.id}`}>
+      <Icon name={iconName} mx={1} color="#93B3C9" />
       <h4>
         <Ellipsified>{collection.name}</Ellipsified>
       </h4>
@@ -59,33 +53,65 @@ const CollectionItem = ({ collection }) => (
   </Link>
 );
 
-const CollectionList = () => {
-  return (
-    <Box mb={2}>
-      <CollectionListLoader
-        // NOTE: preferably we wouldn't need to reload each time the page is shown
-        // but until we port everything to the Collections entity it will be difficult
-        // to ensure it's up to date
-        reload
-      >
-        {({ collections }) => {
-          return (
-            <Box>
-              {collections.map(collection => (
-                <Box
-                  key={collection.id}
-                  mb={collection.personal_owner_id ? 3 : 1}
-                >
-                  <CollectionItem collection={collection} />
-                </Box>
-              ))}
-            </Box>
-          );
-        }}
-      </CollectionListLoader>
-    </Box>
-  );
+CollectionItem.defaultProps = {
+  iconName: "all",
 };
+
+@connect(({ currentUser }) => ({ currentUser }), null)
+class CollectionList extends React.Component {
+  render() {
+    const { currentUser } = this.props;
+    return (
+      <Box mb={2}>
+        <CollectionListLoader
+          // NOTE: preferably we wouldn't need to reload each time the page is shown
+          // but until we port everything to the Collections entity it will be difficult
+          // to ensure it's up to date
+          reload
+        >
+          {({ collections }) => {
+            return (
+              <Box>
+                <Box my={2}>
+                  <CollectionItem
+                    collection={{
+                      name: t`My personal collection`,
+                      id: currentUser.personal_collection_id,
+                    }}
+                    iconName="star"
+                  />
+                  {currentUser.is_superuser && (
+                    <CollectionItem
+                      collection={{
+                        name: t`Everyone else's personal collections`,
+                        // Bit of a hack. The route /collection/users lists
+                        // user collections but is not itself a colllection,
+                        // but using the fake id users here works
+                        id: "users",
+                      }}
+                      iconName="person"
+                    />
+                  )}
+                </Box>
+                {// HACK - temporary workaround to prevent personal collections
+                // from being returned in the
+                // personal collectiones are identified by having a
+                collections.map(
+                  collection =>
+                    !collection.personal_owner_id && (
+                      <Box key={collection.id} mb={1}>
+                        <CollectionItem collection={collection} />
+                      </Box>
+                    ),
+                )}
+              </Box>
+            );
+          }}
+        </CollectionListLoader>
+      </Box>
+    );
+  }
+}
 
 @withRouter
 @connect(() => ({}), mapDispatchToProps)
