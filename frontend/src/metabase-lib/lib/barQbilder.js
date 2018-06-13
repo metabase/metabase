@@ -29,52 +29,34 @@ console.log(metadata);
     return [];
 
   const resultFromBase = gggggg.reduce((acc, elem) => ({...acc, [elem.name]: createFieldInfo(elem)}), {});
-  const totals = visualization_settings[COLUMNS_SETTINGS][VALUES_SOURCES].map(p => resultFromBase[p]).filter(p => p[2] === 'type/Integer')
+  const totals = visualization_settings[COLUMNS_SETTINGS][VALUES_SOURCES].map(p => resultFromBase[p]).filter(p => p[2] === 'type/Integer' || p[2] === 'type/Float')
   console.log('gglaasad')
   console.log(resultFromBase);
   console.log(totals);
 
   const tmp = visualization_settings[COLUMNS_SETTINGS][GROUPS_SOURCES].map(p => ['field-id',resultFromBase[p]]); //Q.getBreakouts(card.dataset_query.query).map(p => [p, g.includes(fun(p))]).map(toParams).filter(p => p);
-  const aggrs = totals.map(p => ["sum", ['field-id', p]]);// visualization_settings[COLUMNS_SETTINGS][VALUES_SOURCES].map()
+  const aggrs = totals.map(p => ['named', ["sum", ['field-id', p]], p[1]]);// visualization_settings[COLUMNS_SETTINGS][VALUES_SOURCES].map()
 
   // Q.a
   console.log(tmp);
   console.log('gggg');
 
-  let q1 = query;//.removeFilter(0);// query.cl Q.clearBreakouts(query);
-  // q1 = Q.clearAggregations(q1);
-  aggrs.forEach(aggr => q1 = q1.addAggregation(aggr));
-  tmp.forEach(p => q1 = q1.addBreakout(p));
-  // console.log('-------------');
-  // console.log(Q.getBreakouts(q1));
-  // const query = Q.add() .clearBreakouts(card.dataset_query.query);
+  const basedQuery = buildQuery(query, aggrs);
+  const queriesWithBreakouts = tmp.reduce(({acc, prev}, br) => {
+    const next = prev.addBreakout(br);
+    return {acc :[prev, ...acc], prev:next};
+  }, {acc:[], prev:basedQuery});
 
 
-  // const dataset_query = {...card.dataset_query, query : q1};
-  // const res = new Question(meta, card, params).setDatasetQuery(card.dataset_query);// {datasetQuery: () => dataset_query};
-  console.log('query before');
-  console.log(query);
-  console.log('query after');
-  console.log(q1);
-  console.log(card);
+  return queriesWithBreakouts.acc.map(p => new Question(metadata, {
+    dataset_query: p.datasetQuery(),
+  }).query());
+};
 
-  // console.log(res);
-  console.log('ggggggggg123')
-  // const _datasetQuery = {};//..._datasetQuery, query : query._datasetQuery.query};
-  // _datasetQuery.__proto__ = query._datasetQuery;
-  // const qq = {...query};//, _datasetQuery: _datasetQuery};//, _datasetQuery};_datasetQuery
-  // // qq.__proto__ = query;
-  //
-  // console.log(qq);
-  // console.log(query);
-
-  const datasetQuery = q1.datasetQuery();
-
-  const query1 = new Question(metadata, {
-    dataset_query: datasetQuery,
-  }).query();
-
-  return  [query1];//res
+const buildQuery = (baseQuery : StructuredQuery, aggregations) : StructuredQuery =>{
+  let res = baseQuery;
+  aggregations.forEach(aggr => res = res.addAggregation(aggr));
+  return res;
 };
 
 const isOk = (visualization_settings) : Boolean => {

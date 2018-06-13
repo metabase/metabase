@@ -26,10 +26,12 @@ import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 
 import { GroupingManager } from "../lib/GroupingManager";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import {RawSeries, SingleSeries} from "metabase/meta/types/Visualization";
 
 type Props = {
   card: Card,
   data: DatasetData,
+  rawSeries: RawSeries,
   settings: VisualizationSettings,
   isDashboard: boolean,
   query: StructuredQuery,
@@ -67,15 +69,20 @@ export default class SummaryTable extends Component {
       getHidden: () => false,
       isValid: ([{ card, data }]) =>
         settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
-      getDefault: ([{ data : {cols} }]) => (
+      getDefault: ([tmp]) =>
         {
 
-        columnNameToProps:cols.reduce(
-          (o, col) => ({ ...o, [col.name]: {enabled: col.visibility_type !== "details-only"} }),
-          {},
-        )
+
+          console.log(tmp);
+
+            return {cols : []}
+
+        // columnNameToProps:cols.reduce(
+        //   (o, col) => ({ ...o, [col.name]: {enabled: col.visibility_type !== "details-only"} }),
+        //   {},
+        // )
       }
-      ),
+      ,
         // cols.map(col => ({
         //   name: col.name,
         //   //todo: ?details-only
@@ -91,6 +98,8 @@ export default class SummaryTable extends Component {
 
   constructor(props: Props) {
     super(props);
+    console.log('props')
+    console.log(props);
     this.state = {
       data: null,
       query: props.query
@@ -124,22 +133,33 @@ export default class SummaryTable extends Component {
    console.log(this.props.rawSeries);
    // console.log(data);
    // console.log(settings);
-      const { cols, rows, columns } = data;
-      const columnIndexes = getColumnsFromSettings(settings[COLUMNS_SETTINGS])
-      //todo:
-        // .filter(f => f.enabled)
-        .map(f => _.findIndex(cols, c => c.name === f))
-        .filter(i => i >= 0 && i < cols.length);
+      const { cols,  columns } = data;
+
+      const columnIndexes = this.getColumnIndexes(settings, cols);
+
+   const rows = this.props.rawSeries.map(p => this.normalizeRows(settings, p.data))
+      const rowsMerged = [].concat(...rows);
 
       this.setState({
         data: {
           cols: columnIndexes.map(i => cols[i]),
           columns: columnIndexes.map(i => columns[i]),
-          rows: rows.map(row => columnIndexes.map(i => row[i])),
+          rows: rowsMerged,
         },
       });
     }
   }
+
+  getColumnIndexes = (settings,  cols) => getColumnsFromSettings(settings[COLUMNS_SETTINGS])
+    .map(f => _.findIndex(cols, c => c.name === f))
+    .filter(i => i < cols.length);
+
+
+
+  normalizeRows = (settings, { cols, rows }) : DatasetData => {
+    const columnIndexes = this.getColumnIndexes(settings, cols);
+    return rows.map(row => columnIndexes.map(i => row[i]));
+  };
 
 
   render() {
