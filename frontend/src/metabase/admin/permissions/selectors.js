@@ -657,7 +657,7 @@ export const getDatabasesPermissionsGrid = createSelector(
 );
 
 // "root" collection we should include in the grid even though it's not listed by the endpoints
-const ROOT_COLLECTION = { id: "root", name: "Saved Items" };
+const ROOT_COLLECTION = { id: "root", name: "Home collection" };
 
 const getCollections = state => state.admin.permissions.collections;
 const getCollectionPermission = (permissions, groupId, { collectionId }) =>

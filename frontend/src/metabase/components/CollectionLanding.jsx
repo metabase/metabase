@@ -157,7 +157,7 @@ class DefaultLanding extends React.Component {
       <Flex>
         {showCollectionList && (
           <Box w={1 / 3} mr={3}>
-            <Box>
+            <Box mb={2}>
               <h4>{t`Collections`}</h4>
             </Box>
             <CollectionList />
@@ -199,7 +199,7 @@ class DefaultLanding extends React.Component {
 
                 return (
                   <Box>
-                    <Box mb={2}>
+                    <Box mb={3}>
                       {pinned.length > 0 && (
                         <Box mb={2}>
                           <h4>{t`Pinned items`}</h4>
@@ -251,8 +251,8 @@ class DefaultLanding extends React.Component {
                     </Box>
                     <Flex align="center" mb={2}>
                       {pinned.length > 0 && (
-                        <Box>
-                          <h4>{t`Saved here`}</h4>
+                        <Box mb={1}>
+                          <h4>{t`Dashboards, saved questions, and pulses`}</h4>
                         </Box>
                       )}
                     </Flex>
@@ -310,7 +310,7 @@ class CollectionLanding extends React.Component {
                       to={`/collection/${collectionId}`}
                       hover={{ color: normal.blue }}
                     >
-                      {isRoot ? "Saved items" : currentCollection.name}
+                      {isRoot ? "Home collection" : currentCollection.name}
                     </Link>
                   </Flex>
                 )}
