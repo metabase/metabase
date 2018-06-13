@@ -13,6 +13,7 @@
             [metabase.util
              [honeysql-extensions :as hx]
              [schema :as su]]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -62,7 +63,7 @@
   [{:keys [group_id]}]
   (when (and (= group_id (:id (group/admin)))
              (not *allow-admin-permissions-changes*))
-    (throw (ex-info "You cannot create or revoke permissions for the 'Admin' group."
+    (throw (ex-info (tru "You cannot create or revoke permissions for the 'Admin' group.")
              {:status-code 400}))))
 
 (defn- assert-valid-object
@@ -72,7 +73,7 @@
              (not (valid-object-path? object))
              (or (not= object "/")
                  (not *allow-root-entries*)))
-    (throw (ex-info (format "Invalid permissions object path: '%s'." object)
+    (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
              {:status-code 400}))))
 
 (defn- assert-valid
@@ -145,17 +146,20 @@
 
 (defn set-has-full-permissions?
   "Does PERMISSIONS-SET grant *full* access to object with PATH?"
+  {:style/indent 1}
   ^Boolean [permissions-set path]
   (boolean (some (u/rpartial is-permissions-for-object? path) permissions-set)))
 
 (defn set-has-partial-permissions?
   "Does PERMISSIONS-SET grant access full access to object with PATH *or* to a descendant of it?"
+  {:style/indent 1}
   ^Boolean [permissions-set path]
   (boolean (some (u/rpartial is-partial-permissions-for-object? path) permissions-set)))
 
 
 (defn ^Boolean set-has-full-permissions-for-set?
   "Do the permissions paths in PERMISSIONS-SET grant *full* access to all the object paths in OBJECT-PATHS-SET?"
+  {:style/indent 1}
   [permissions-set object-paths-set]
   {:pre [(is-permissions-set? permissions-set) (is-permissions-set? object-paths-set)]}
   (every? (partial set-has-full-permissions? permissions-set)
@@ -164,6 +168,7 @@
 (defn ^Boolean set-has-partial-permissions-for-set?
   "Do the permissions paths in PERMISSIONS-SET grant *partial* access to all the object paths in OBJECT-PATHS-SET?
    (PERMISSIONS-SET must grant partial access to *every* object in OBJECT-PATH-SETS set)."
+  {:style/indent 1}
   [permissions-set object-paths-set]
   {:pre [(is-permissions-set? permissions-set) (is-permissions-set? object-paths-set)]}
   (every? (partial set-has-partial-permissions? permissions-set)
@@ -182,7 +187,8 @@
     (log/debug (u/format-color 'green "Granting permissions for group %d: %s" (:group_id permissions) (:object permissions)))))
 
 (defn- pre-update [_]
-  (throw (Exception. "You cannot update a permissions entry! Delete it and create a new one.")))
+  (throw (Exception. (str (tru "You cannot update a permissions entry!")
+                          (tru "Delete it and create a new one.")))))
 
 (defn- pre-delete [permissions]
   (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (:group_id permissions) (:object permissions)))
@@ -461,7 +467,8 @@
    Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ex-info "Looks like someone else edited the permissions and your data is out of date. Please fetch new data and try again."
+    (throw (ex-info (str (tru "Looks like someone else edited the permissions and your data is out of date.")
+                         (tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
 (defn- save-perms-revision!

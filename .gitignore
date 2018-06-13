@@ -3,6 +3,7 @@
 /target
 /classes
 /checkouts
+pom.xml
 pom.xml.asc
 *.jar
 *.class
@@ -52,6 +53,4 @@ coverage-summary.json
 .DS_Store
 bin/node_modules/
 *.log
-/node/
-*.iml
-testsAT/target
+*.trace.db

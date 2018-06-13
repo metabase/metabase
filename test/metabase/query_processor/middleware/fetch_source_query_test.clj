@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
-  (:require [expectations :refer [expect]]
+  (:require [clj-time.coerce :as tcoerce]
+            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [query-processor :as qp]
@@ -46,23 +47,49 @@
                                     :aggregation  [:count]
                                     :breakout     [[:field-literal :price :type/Integer]]}})))
 
+(defn- expand-and-scrub [query-map]
+  (-> query-map
+      qp/expand
+      (m/dissoc-in [:database :features])
+      (m/dissoc-in [:database :details])
+      (m/dissoc-in [:database :timezone])
+      (dissoc :driver)))
 
-;; test that the `metabase.query-processor/expand` function properly handles nested queries (this function should call `fetch-source-query`)
-(expect
+(defn default-expanded-results [query]
   {:database     {:name "test-data", :id (data/id), :engine :h2}
    :type         :query
-   :query        {:source-query {:source-table {:schema "PUBLIC", :name "VENUES", :id (data/id :venues)}
-                                 :join-tables  nil}}
-   :fk-field-ids #{}}
+   :fk-field-ids #{}
+   :query        query})
+
+;; test that the `metabase.query-processor/expand` function properly handles nested queries (this function should call
+;; `fetch-source-query`)
+(expect
+  (default-expanded-results
+   {:source-query {:source-table {:schema "PUBLIC", :name "VENUES", :id (data/id :venues)}
+                   :join-tables  nil}})
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :query
                                             :query    {:source-table (data/id :venues)}}}]
-    (-> (qp/expand {:database database/virtual-id
-                    :type     :query
-                    :query    {:source-table (str "card__" (u/get-id card))}})
-        (m/dissoc-in [:database :features])
-        (m/dissoc-in [:database :details])
-        (m/dissoc-in [:database :timezone]))))
+    (expand-and-scrub {:database database/virtual-id
+                       :type     :query
+                       :query    {:source-table (str "card__" (u/get-id card))}})))
+
+(expect
+  (default-expanded-results
+   {:source-query {:source-table {:schema "PUBLIC" :name "CHECKINS" :id (data/id :checkins)}, :join-tables nil}
+    :filter {:filter-type :between,
+             :field {:field-name "date", :base-type :type/Date},
+             :min-val {:value (tcoerce/to-timestamp (u/str->date-time "2015-01-01"))
+                       :field {:field {:field-name "date", :base-type :type/Date}, :unit :default}},
+             :max-val {:value (tcoerce/to-timestamp (u/str->date-time "2015-02-01"))
+                       :field {:field {:field-name "date", :base-type :type/Date}, :unit :default}}}})
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :query
+                                            :query    {:source-table (data/id :checkins)}}}]
+    (expand-and-scrub {:database database/virtual-id
+                       :type     :query
+                       :query    {:source-table (str "card__" (u/get-id card))
+                                  :filter ["BETWEEN" ["field-id" ["field-literal" "date" "type/Date"]] "2015-01-01" "2015-02-01"]}})))
 
 ;; make sure that nested nested queries work as expected
 (expect
@@ -83,23 +110,18 @@
                                                        :query    {:source-table (str "card__" (u/get-id card-2)), :limit 25}})))
 
 (expect
-  {:database     {:name "test-data", :id (data/id), :engine :h2}
-   :type         :query
-   :query        {:limit        25
-                  :source-query {:limit 50
-                                 :source-query {:source-table {:schema "PUBLIC", :name "VENUES", :id (data/id :venues)}
-                                                :limit        100
-                                                :join-tables  nil}}}
-   :fk-field-ids #{}}
+  (default-expanded-results
+   {:limit        25
+    :source-query {:limit 50
+                   :source-query {:source-table {:schema "PUBLIC", :name "VENUES", :id (data/id :venues)}
+                                  :limit        100
+                                  :join-tables  nil}}})
   (tt/with-temp* [Card [card-1 {:dataset_query {:database (data/id)
                                                 :type     :query
                                                 :query    {:source-table (data/id :venues), :limit 100}}}]
                   Card [card-2 {:dataset_query {:database database/virtual-id
                                                 :type     :query
                                                 :query    {:source-table (str "card__" (u/get-id card-1)), :limit 50}}}]]
-    (-> (qp/expand {:database database/virtual-id
-                    :type     :query
-                    :query    {:source-table (str "card__" (u/get-id card-2)), :limit 25}})
-        (m/dissoc-in [:database :features])
-        (m/dissoc-in [:database :details])
-        (m/dissoc-in [:database :timezone]))))
+    (expand-and-scrub {:database database/virtual-id
+                       :type     :query
+                       :query    {:source-table (str "card__" (u/get-id card-2)), :limit 25}})))

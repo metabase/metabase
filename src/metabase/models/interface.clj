@@ -7,10 +7,14 @@
              [encryption :as encryption]]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
-            [toucan.models :as models])
+            [toucan
+             [models :as models]
+             [util :as toucan-util]])
   (:import java.sql.Blob))
 
-;;; ------------------------------------------------------------ Toucan Extensions ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Toucan Extensions                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (models/set-root-namespace! 'metabase.models)
 
@@ -32,6 +36,12 @@
   :in  json-in
   :out json-out)
 
+;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
+;; permissions set
+(models/add-type! :json-set
+  :in  json-in
+  :out #(when % (set (json-out %))))
+
 (models/add-type! :clob
   :in  identity
   :out u/jdbc-clob->str)
@@ -40,7 +50,8 @@
 (def ^:private encrypted-json-out (comp json-out encryption/maybe-decrypt))
 
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
-(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000))) ; cache decrypted JSON for one hour
+;; cache the decrypted JSON for one hour
+(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
 
 (models/add-type! :encrypted-json
   :in  encrypted-json-in
@@ -69,6 +80,13 @@
   :in  validate-cron-string
   :out identity)
 
+;; Toucan ships with a Keyword type, but on columns that are marked 'TEXT' it doesn't work properly since the values
+;; might need to get de-CLOB-bered first. So replace the default Toucan `:keyword` implementation with one that
+;; handles those cases.
+(models/add-type! :keyword
+  :in  toucan-util/keyword->qualified-name
+  :out (comp keyword u/jdbc-clob->str))
+
 
 ;;; properties
 
@@ -88,14 +106,18 @@
   :update add-updated-at-timestamp)
 
 
-;;; ------------------------------------------------------------ New Permissions Stuff ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             New Permissions Stuff                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defprotocol IObjectPermissions
   "Methods for determining whether the current user has read/write permissions for a given object."
 
   (perms-objects-set [this, ^clojure.lang.Keyword read-or-write]
-    "Return a set of permissions object paths that a user must have access to in order to access this object. This should be something like #{\"/db/1/schema/public/table/20/\"}.
-     READ-OR-WRITE will be either `:read` or `:write`, depending on which permissions set we're fetching (these will be the same sets for most models; they can ignore this param).")
+    "Return a set of permissions object paths that a user must have access to in order to access this object. This
+    should be something like #{\"/db/1/schema/public/table/20/\"}. READ-OR-WRITE will be either `:read` or `:write`,
+    depending on which permissions set we're fetching (these will be the same sets for most models; they can ignore
+    this param).")
 
   (can-read? ^Boolean [instance], ^Boolean [entity, ^Integer id]
     "Return whether `*current-user*` has *read* permissions for an object. You should use one of these implmentations:
@@ -103,7 +125,8 @@
      *  `(constantly true)`
      *  `superuser?`
      *  `(partial current-user-has-full-permissions? :read)` (you must also implement `perms-objects-set` to use this)
-     *  `(partial current-user-has-partial-permissions? :read)` (you must also implement `perms-objects-set` to use this)")
+     *  `(partial current-user-has-partial-permissions? :read)` (you must also implement `perms-objects-set` to use
+        this)")
 
   (^{:hydrate :can_write} can-write? ^Boolean [instance], ^Boolean [entity, ^Integer id]
    "Return whether `*current-user*` has *write* permissions for an object. You should use one of these implmentations:
@@ -111,7 +134,8 @@
      *  `(constantly true)`
      *  `superuser?`
      *  `(partial current-user-has-full-permissions? :write)` (you must also implement `perms-objects-set` to use this)
-     *  `(partial current-user-has-partial-permissions? :write)` (you must also implement `perms-objects-set` to use this)"))
+     *  `(partial current-user-has-partial-permissions? :write)` (you must also implement `perms-objects-set` to use
+        this)"))
 
 (def IObjectPermissionsDefaults
   "Default implementations for `IObjectPermissions`."
@@ -141,14 +165,14 @@
 
 (def ^{:arglists '([read-or-write entity object-id] [read-or-write object])}
   ^Boolean current-user-has-full-permissions?
-  "Implementation of `can-read?`/`can-write?` for the new permissions system.
-   `true` if the current user has *full* permissions for the paths returned by its implementation of `perms-objects-set`.
-   (READ-OR-WRITE is either `:read` or `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
+  "Implementation of `can-read?`/`can-write?` for the new permissions system. `true` if the current user has *full*
+  permissions for the paths returned by its implementation of `perms-objects-set`. (READ-OR-WRITE is either `:read` or
+  `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (make-perms-check-fn 'metabase.models.permissions/set-has-full-permissions-for-set?))
 
 (def ^{:arglists '([read-or-write entity object-id] [read-or-write object])}
   ^Boolean current-user-has-partial-permissions?
-  "Implementation of `can-read?`/`can-write?` for the new permissions system.
-   `true` if the current user has *partial* permissions for the paths returned by its implementation of `perms-objects-set`.
-   (READ-OR-WRITE is either `:read` or `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
+  "Implementation of `can-read?`/`can-write?` for the new permissions system. `true` if the current user has *partial*
+  permissions for the paths returned by its implementation of `perms-objects-set`. (READ-OR-WRITE is either `:read` or
+  `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (make-perms-check-fn 'metabase.models.permissions/set-has-partial-permissions-for-set?))

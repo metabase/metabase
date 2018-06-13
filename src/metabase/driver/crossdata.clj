@@ -7,6 +7,9 @@
             [honeysql.core :as hsql]
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
+            [metabase.driver
+             [generic-sql :as sql]
+             [hive-like :as hive-like]]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
             [metabase.driver.generic-sql.query-processor :as qprocessor]
@@ -21,9 +24,12 @@
   (:import java.util.UUID
            (java.util Collections Date)
            (metabase.query_processor.interface DateTimeValue Value)
-           (metabase.query_processor.interface DateTimeValue)))
+           (metabase.query_processor.interface DateTimeValue)
+           metabase.query_processor.interface.Field))
 
-
+(defrecord CrossdataDriver []
+  clojure.lang.Named
+  (getName [_] "Crossdata"))
 
 
 (def ^:private ^:const column->base-type
@@ -184,6 +190,68 @@
 (defn- string-length-fn [field-key]
   (hsql/call :length (hx/cast :STRING field-key)))
 
+;;; ------------------------------------------ Custom HoneySQL Clause Impls ------------------------------------------
+
+(def ^:private source-table-alias "t1")
+
+(defn- resolve-table-alias [{:keys [schema-name table-name special-type field-name] :as field}]
+  (let [source-table (or (get-in qprocessor/*query* [:query :source-table])
+                         (get-in qprocessor/*query* [:query :source-query :source-table]))]
+    (if (and (= schema-name (:schema source-table))
+             (= table-name (:name source-table)))
+      (-> (assoc field :schema-name nil)
+          (assoc :table-name source-table-alias))
+      (if-let [matching-join-table (->> (get-in qprocessor/*query* [:query :join-tables])
+                                        (filter #(and (= schema-name (:schema %))
+                                                  (= table-name (:table-name %))))
+                                        first)]
+        (-> (assoc field :schema-name nil)
+            (assoc :table-name (:join-alias matching-join-table)))
+        field))))
+
+(defmethod  qprocessor/->honeysql [CrossdataDriver Field]
+  [driver field-before-aliasing]
+  (let [{:keys [schema-name table-name special-type field-name]} (resolve-table-alias field-before-aliasing)
+        field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
+    (cond
+      (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
+      (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp driver field :milliseconds)
+      :else                                               field)))
+
+(defn- apply-join-tables
+  [honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
+  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
+    (let [honeysql-form (h/merge-left-join honeysql-form
+                                           [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
+                                           [:= (hx/qualify-and-escape-dots source-table-alias (:field-name source-field))
+                                            (hx/qualify-and-escape-dots join-alias         (:field-name pk-field))])]
+      (if (seq more)
+        (recur honeysql-form more)
+        honeysql-form))))
+
+(defn- apply-page-using-row-number-for-offset
+  "Apply `page` clause to HONEYSQL-FROM, using row_number() for drivers that do not support offsets"
+  [honeysql-form {{:keys [items page]} :page}]
+  (let [offset (* (dec page) items)]
+    (if (zero? offset)
+      ;; if there's no offset we can simply use limit
+      (h/limit honeysql-form items)
+      ;; if we need to do an offset we have to do nesting to generate a row number and where on that
+      (let [over-clause (format "row_number() OVER (%s)"
+                                (first (hsql/format (select-keys honeysql-form [:order-by])
+                                                    :allow-dashed-names? true
+                                                    :quoting :mysql)))]
+        (-> (apply h/select (map last (:select honeysql-form)))
+            (h/from (h/merge-select honeysql-form [(hsql/raw over-clause) :__rownum__]))
+            (h/where [:> :__rownum__ offset])
+            (h/limit items))))))
+
+(defn- apply-source-table
+  [honeysql-form {{table-name :name, schema :schema} :source-table}]
+  {:pre [table-name]}
+  (h/from honeysql-form [(hx/qualify-and-escape-dots schema table-name) source-table-alias]))
+
+
 
 (defrecord CrossdataDriver []
   clojure.lang.Named
@@ -192,15 +260,17 @@
 (def CrossdataISQLDriverMixin
   "Implementations of `ISQLDriver` methods for `CrossdataDriver`."
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         (u/drop-first-arg column->base-type)
-          :column->special-type      (u/drop-first-arg column->special-type)
+         {:apply-page                (u/drop-first-arg apply-page-using-row-number-for-offset)
+          :apply-source-table        (u/drop-first-arg apply-source-table)
+          :apply-join-tables         (u/drop-first-arg apply-join-tables)
+          :column->base-type         (u/drop-first-arg hive-like/column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :date                      (u/drop-first-arg date)
-          :prepare-value             (u/drop-first-arg prepare-value)
-          :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
-          :string-length-fn          (u/drop-first-arg string-length-fn)
-          :apply-order-by             apply-order-by
-          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
+          :date                      (u/drop-first-arg hive-like/date)
+          :field->identifier         (u/drop-first-arg hive-like/field->identifier)
+          :quote-style               (constantly :mysql)
+          :current-datetime-fn       (u/drop-first-arg (constantly hive-like/now))
+          :string-length-fn          (u/drop-first-arg hive-like/string-length-fn)
+          :unix-timestamp->timestamp (u/drop-first-arg hive-like/unix-timestamp->timestamp)}))
 
 (u/strict-extend CrossdataDriver
                  driver/IDriver

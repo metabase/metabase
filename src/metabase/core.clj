@@ -1,46 +1,47 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
-    (:gen-class)
-    (:require [cheshire.core :as json]
-              [clojure.pprint :as pprint]
-              [clojure.tools.logging :as log]
-              [medley.core :as m]
-              [metabase
-               [config :as config]
-               [db :as mdb]
-               [driver :as driver]
-               [events :as events]
-               [metabot :as metabot]
-               [middleware :as mb-middleware]
-               [plugins :as plugins]
-               [routes :as routes]
-               [sample-data :as sample-data]
-               [setup :as setup]
-               [task :as task]
-               [util :as u]]
-              [metabase.core.initialization-status :as init-status]
-              [metabase.models
-               [setting :as setting]
-               [user :refer [User]]]
-              [metabase.util.i18n :refer [set-locale]]
-              [puppetlabs.i18n.core :refer [locale-negotiator]]
-              [ring.adapter.jetty :as ring-jetty]
-              [ring.middleware
-               [cookies :refer [wrap-cookies]]
-               [gzip :refer [wrap-gzip]]
-               [json :refer [wrap-json-body]]
-               [keyword-params :refer [wrap-keyword-params]]
-               [params :refer [wrap-params]]
-               [session :refer [wrap-session]]]
-              [ring.util
-               [io :as rui]
-               [response :as rr]]
-              [toucan.db :as db]
-              [metabase.public-settings :as public-settings]
-              [metabase.models.user :refer [User], :as user])
-    (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
-             [java.nio.charset Charset StandardCharsets]
-             org.eclipse.jetty.server.Server))
+  (:gen-class)
+  (:require [cheshire.core :as json]
+            [clojure.pprint :as pprint]
+            [clojure.tools.logging :as log]
+            [medley.core :as m]
+            [metabase
+             [config :as config]
+             [db :as mdb]
+             [driver :as driver]
+             [events :as events]
+             [metabot :as metabot]
+             [middleware :as mb-middleware]
+             [plugins :as plugins]
+             [routes :as routes]
+             [sample-data :as sample-data]
+             [setup :as setup]
+             [task :as task]
+             [util :as u]]
+            [metabase.core.initialization-status :as init-status]
+            [metabase.models
+             [setting :as setting]
+             [user :refer [User]]]
+            [metabase.util.i18n :refer [set-locale]]
+            [puppetlabs.i18n.core :refer [locale-negotiator]]
+            [ring.adapter.jetty :as ring-jetty]
+            [ring.middleware
+             [cookies :refer [wrap-cookies]]
+             [gzip :refer [wrap-gzip]]
+             [json :refer [wrap-json-body]]
+             [keyword-params :refer [wrap-keyword-params]]
+             [params :refer [wrap-params]]
+             [session :refer [wrap-session]]]
+            [ring.util
+             [io :as rui]
+             [response :as rr]]
+            [toucan.db :as db]
+            [metabase.public-settings :as public-settings]
+            [metabase.models.user :refer [User], :as user])
+  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
+           [java.nio.charset Charset StandardCharsets]
+           org.eclipse.jetty.server.Server
+           org.eclipse.jetty.util.thread.QueuedThreadPool))
 
 ;;; CONFIG
 
@@ -73,13 +74,26 @@
           (rr/content-type json-response "application/json; charset=utf-8"))
         response))))
 
+(def ^:private jetty-instance
+  (atom nil))
+
+(defn- jetty-stats []
+  (when-let [^Server jetty-server @jetty-instance]
+    (let [^QueuedThreadPool pool (.getThreadPool jetty-server)]
+      {:min-threads  (.getMinThreads pool)
+       :max-threads  (.getMaxThreads pool)
+       :busy-threads (.getBusyThreads pool)
+       :idle-threads (.getIdleThreads pool)
+       :queue-size   (.getQueueSize pool)})))
+
 (def ^:private app
   "The primary entry point to the Ring HTTP server."
   (-> #'routes/routes                    ; the #' is to allow tests to redefine endpoints
-      mb-middleware/log-api-call
+      (mb-middleware/log-api-call
+       jetty-stats)
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
       (wrap-json-body                    ; extracts json POST body and makes it avaliable on request
-       {:keywords? true})
+        {:keywords? true})
       wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
       wrap-keyword-params                ; converts string keys in :params to keyword keys
       wrap-params                        ; parses GET and POST params as :query-params/:form-params and both as :params
@@ -168,11 +182,11 @@
     (init-status/set-progress! 0.8)
 
     (when new-install?
-          (log/info "Looks like this is a new installation ... preparing setup wizard")
-          ;; create setup token
-          (-init-create-setup-token)
-          ;; publish install event
-          (events/publish-event! :install {}))
+      (log/info "Looks like this is a new installation ... preparing setup wizard")
+      ;; create setup token
+      (-init-create-setup-token)
+      ;; publish install event
+      (events/publish-event! :install {}))
     (init-status/set-progress! 0.9)
 
     ;; deal with our sample dataset as needed
@@ -193,41 +207,37 @@
 
 ;;; ## ---------------------------------------- Jetty (Web) Server ----------------------------------------
 
-
-(def ^:private jetty-instance
-  (atom nil))
-
 (defn start-jetty!
   "Start the embedded Jetty web server."
   []
   (when-not @jetty-instance
-            (let [jetty-ssl-config (m/filter-vals identity {:ssl-port       (config/config-int :mb-jetty-ssl-port)
-                                                            :keystore       (config/config-str :mb-jetty-ssl-keystore)
-                                                            :key-password   (config/config-str :mb-jetty-ssl-keystore-password)
-                                                            :truststore     (config/config-str :mb-jetty-ssl-truststore)
-                                                            :trust-password (config/config-str :mb-jetty-ssl-truststore-password)})
-                  jetty-config     (cond-> (m/filter-vals identity {:port          (config/config-int :mb-jetty-port)
-                                                                    :host          (config/config-str :mb-jetty-host)
-                                                                    :max-threads   (config/config-int :mb-jetty-maxthreads)
-                                                                    :min-threads   (config/config-int :mb-jetty-minthreads)
-                                                                    :max-queued    (config/config-int :mb-jetty-maxqueued)
-                                                                    :max-idle-time (config/config-int :mb-jetty-maxidletime)})
-                                           (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
-                                           (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
-                                                                                    (merge jetty-ssl-config)))]
-              (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (pprint/pprint (m/filter-keys #(not (re-matches #".*password.*" (str %)))
-                                                                                                                        jetty-config))))
-              ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
-              (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false))
-                   (reset! jetty-instance)))))
+    (let [jetty-ssl-config (m/filter-vals identity {:ssl-port       (config/config-int :mb-jetty-ssl-port)
+                                                    :keystore       (config/config-str :mb-jetty-ssl-keystore)
+                                                    :key-password   (config/config-str :mb-jetty-ssl-keystore-password)
+                                                    :truststore     (config/config-str :mb-jetty-ssl-truststore)
+                                                    :trust-password (config/config-str :mb-jetty-ssl-truststore-password)})
+          jetty-config     (cond-> (m/filter-vals identity {:port          (config/config-int :mb-jetty-port)
+                                                            :host          (config/config-str :mb-jetty-host)
+                                                            :max-threads   (config/config-int :mb-jetty-maxthreads)
+                                                            :min-threads   (config/config-int :mb-jetty-minthreads)
+                                                            :max-queued    (config/config-int :mb-jetty-maxqueued)
+                                                            :max-idle-time (config/config-int :mb-jetty-maxidletime)})
+                             (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
+                             (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
+                                                                      (merge jetty-ssl-config)))]
+      (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (pprint/pprint (m/filter-keys #(not (re-matches #".*password.*" (str %)))
+                                                                                                                jetty-config))))
+      ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
+      (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false))
+           (reset! jetty-instance)))))
 
 (defn stop-jetty!
   "Stop the embedded Jetty web server."
   []
   (when @jetty-instance
-        (log/info "Shutting Down Embedded Jetty Webserver")
-        (.stop ^Server @jetty-instance)
-        (reset! jetty-instance nil)))
+    (log/info "Shutting Down Embedded Jetty Webserver")
+    (.stop ^Server @jetty-instance)
+    (reset! jetty-instance nil)))
 
 (defn- wrap-with-asterisk [strings-to-wrap]
   ;; Adding 4 extra asterisks so that we account for the leading asterisk and space, and add two more after the end of the sentence
@@ -243,13 +253,13 @@
   (let [java-spec-version (System/getProperty "java.specification.version")]
     ;; Note for java 7, this is 1.7, but newer versions drop the 1. Java 9 just returns "9" here.
     (when (= "1.7" java-spec-version)
-          (let [java-version (System/getProperty "java.version")
-                deprecation-messages [(str "DEPRECATION WARNING: You are currently running JDK '" java-version "'. "
-                                           "Support for Java 7 has been deprecated and will be dropped from a future release.")
-                                      (str "See the operation guide for more information: https://metabase.com/docs/latest/operations-guide/start.html.")]]
-            (binding [*out* *err*]
-                     (println (wrap-with-asterisk deprecation-messages))
-                     (log/warn deprecation-messages))))))
+      (let [java-version (System/getProperty "java.version")
+            deprecation-messages [(str "DEPRECATION WARNING: You are currently running JDK '" java-version "'. "
+                                       "Support for Java 7 has been deprecated and will be dropped from a future release.")
+                                  (str "See the operation guide for more information: https://metabase.com/docs/latest/operations-guide/start.html.")]]
+        (binding [*out* *err*]
+          (println (wrap-with-asterisk deprecation-messages))
+          (log/warn deprecation-messages))))))
 
 ;;; ## ---------------------------------------- Normal Start ----------------------------------------
 
@@ -263,7 +273,7 @@
     (init!)
     ;; Ok, now block forever while Jetty does its thing
     (when (config/config-bool :mb-jetty-join)
-          (.join ^Server @jetty-instance))
+      (.join ^Server @jetty-instance))
     (catch Throwable e
       (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e))

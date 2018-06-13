@@ -20,7 +20,7 @@
             [ring.util.codec :as codec])
   (:import clojure.lang.Keyword
            [java.net InetAddress InetSocketAddress Socket]
-           [java.sql SQLException Timestamp]
+           [java.sql SQLException Time Timestamp]
            [java.text Normalizer Normalizer$Form]
            [java.util Calendar Date TimeZone]
            org.joda.time.DateTime
@@ -101,7 +101,7 @@
   (->iso-8601-datetime ^String [this timezone-id]
     "Coerce object to an ISO8601 date-time string such as \"2015-11-18T23:55:03.841Z\" with a given TIMEZONE."))
 
-(def ^:private ISO8601Formatter
+(def ^:private ^{:arglists '([timezone-id])} ISO8601Formatter
   ;; memoize this because the formatters are static. They must be distinct per timezone though.
   (memoize (fn [timezone-id]
              (if timezone-id
@@ -114,6 +114,25 @@
   java.sql.Date          (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-date this)))
   java.sql.Timestamp     (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-time this)))
   org.joda.time.DateTime (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) this)))
+
+(def ^:private ^{:arglists '([timezone-id])} time-formatter
+  ;; memoize this because the formatters are static. They must be distinct per timezone though.
+  (memoize (fn [timezone-id]
+             (if timezone-id
+               (time/with-zone (time/formatters :time) (t/time-zone-for-id timezone-id))
+               (time/formatters :time)))))
+
+(defn format-time
+  "Returns a string representation of the time found in `T`"
+  [t time-zone-id]
+  (time/unparse (time-formatter time-zone-id) (coerce/to-date-time t)))
+
+(defn is-time?
+  "Returns true if `V` is a Time object"
+  [v]
+  (and v (instance? Time v)))
+
+;;; ## Date Stuff
 
 (defn is-temporal?
   "Is VALUE an instance of a datetime class like `java.util.Date` or `org.joda.time.DateTime`?"
@@ -357,16 +376,15 @@
       [default args]))
 
 
-;; TODO - rename to `email?`
-(defn is-email?
+(defn email?
   "Is STRING a valid email address?"
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (s/lower-case s)))))
 
-;; TODO - rename to `url?`
-(defn is-url?
+
+(defn url?
   "Is STRING a valid HTTP/HTTPS URL? (This only handles `localhost` and domains like `metabase.com`; URLs containing
   IP addresses will return `false`.)"
   ^Boolean [^String s]
@@ -799,7 +817,7 @@
                   v
                   (select-nested-keys v nested-keys))})))
 
-(defn base-64-string?
+(defn base64-string?
   "Is S a Base-64 encoded string?"
   ^Boolean [s]
   (boolean (when (string? s)
@@ -852,11 +870,34 @@
                          (Math/log 10))))))
 
 (defn update-when
-  "Like clojure.core/update but does not create a new key if it does not exist."
+  "Like clojure.core/update but does not create a new key if it does not exist.
+   Useful when you don't want to create cruft."
   [m k f & args]
   (if (contains? m k)
     (apply update m k f args)
     m))
+
+(defn update-in-when
+  "Like clojure.core/update-in but does not create new keys if they do not exist.
+   Useful when you don't want to create cruft."
+  [m k f & args]
+  (if (not= ::not-found (get-in m k ::not-found))
+    (apply update-in m k f args)
+    m))
+
+(defn- str->date-time-with-formatters
+  "Attempt to parse `DATE-STR` using `FORMATTERS`. First successful
+  parse is returned, or nil"
+  ([formatters date-str]
+   (str->date-time-with-formatters formatters date-str nil))
+  ([formatters ^String date-str ^TimeZone tz]
+   (let [dtz (some-> tz .getID t/time-zone-for-id)]
+     (first
+      (for [formatter formatters
+            :let [formatter-with-tz (time/with-zone formatter dtz)
+                  parsed-date (ignore-exceptions (time/parse formatter-with-tz date-str))]
+            :when parsed-date]
+        parsed-date)))))
 
 (def ^:private date-time-with-millis-no-t
   "This primary use for this formatter is for Dates formatted by the built-in SQLite functions"
@@ -878,11 +919,37 @@
   was unable to be parsed."
   (^org.joda.time.DateTime [^String date-str]
    (str->date-time date-str nil))
-  (^org.joda.time.DateTime [^String date-str, ^TimeZone tz]
-   (let [dtz (some-> tz .getID t/time-zone-for-id)]
-     (first
-      (for [formatter ordered-date-parsers
-            :let [formatter-with-tz (time/with-zone formatter dtz)
-                  parsed-date (ignore-exceptions (time/parse formatter-with-tz date-str))]
-            :when parsed-date]
-        parsed-date)))))
+  ([^String date-str ^TimeZone tz]
+   (str->date-time-with-formatters ordered-date-parsers date-str tz)))
+
+(def ^:private ordered-time-parsers
+  (let [most-likely-default-formatters [:hour-minute :hour-minute-second :hour-minute-second-fraction]]
+    (concat (map time/formatters most-likely-default-formatters)
+            [(time/formatter "HH:mmZ") (time/formatter "HH:mm:SSZ") (time/formatter "HH:mm:SS.SSSZ")])))
+
+(defn str->time
+  "Parse `TIME-STR` and return a `java.sql.Time` instance. Returns nil
+  if `TIME-STR` can't be parsed."
+  ([^String date-str]
+   (str->time date-str nil))
+  ([^String date-str ^TimeZone tz]
+   (some-> (str->date-time-with-formatters ordered-time-parsers date-str tz)
+           coerce/to-long
+           Time.)))
+
+(defn index-of
+  "Return index of the first element in `coll` for which `pred` reutrns true."
+  [pred coll]
+  (first (keep-indexed (fn [i x]
+                         (when (pred x) i))
+                       coll)))
+
+
+(defn is-java-9-or-higher?
+  "Are we running on Java 9 or above?"
+  []
+  (when-let [java-major-version (some-> (System/getProperty "java.version")
+                                        (s/split #"\.")
+                                        first
+                                        Integer/parseInt)]
+    (>= java-major-version 9)))

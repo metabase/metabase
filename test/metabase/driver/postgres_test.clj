@@ -75,13 +75,13 @@
 
 ;;; # UUID Support
 (i/def-database-definition ^:private with-uuid
-  ["users"
-   [{:field-name "user_id", :base-type :type/UUID}]
-   [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
-    [#uuid "4652b2e7-d940-4d55-a971-7e484566663e"]
-    [#uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]
-    [#uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]
-    [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]])
+  [["users"
+     [{:field-name "user_id", :base-type :type/UUID}]
+     [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
+      [#uuid "4652b2e7-d940-4d55-a971-7e484566663e"]
+      [#uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]
+      [#uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]
+      [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]]])
 
 
 ;; Check that we can load a Postgres Database with a :type/UUID
@@ -112,11 +112,11 @@
 
 ;; Make sure that Tables / Fields with dots in their names get escaped properly
 (i/def-database-definition ^:private dots-in-names
-  ["objects.stuff"
-   [{:field-name "dotted.name", :base-type :type/Text}]
-   [["toucan_cage"]
-    ["four_loko"]
-    ["ouija_board"]]])
+  [["objects.stuff"
+     [{:field-name "dotted.name", :base-type :type/Text}]
+     [["toucan_cage"]
+      ["four_loko"]
+      ["ouija_board"]]]])
 
 (expect-with-engine :postgres
   {:columns ["id" "dotted.name"]
@@ -130,14 +130,14 @@
 
 ;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
 (i/def-database-definition ^:private duplicate-names
-  ["birds"
-   [{:field-name "name", :base-type :type/Text}]
-   [["Rasta"]
-    ["Lucky"]]]
-  ["people"
-   [{:field-name "name", :base-type :type/Text}
-    {:field-name "bird_id", :base-type :type/Integer, :fk :birds}]
-   [["Cam" 1]]])
+  [["birds"
+     [{:field-name "name", :base-type :type/Text}]
+     [["Rasta"]
+      ["Lucky"]]]
+   ["people"
+    [{:field-name "name", :base-type :type/Text}
+     {:field-name "bird_id", :base-type :type/Integer, :fk :birds}]
+    [["Cam" 1]]]])
 
 (expect-with-engine :postgres
   {:columns ["name" "name_2"]
@@ -150,10 +150,10 @@
 
 ;;; Check support for `inet` columns
 (i/def-database-definition ^:private ip-addresses
-  ["addresses"
-   [{:field-name "ip", :base-type {:native "inet"}}]
-   [[(hsql/raw "'192.168.1.1'::inet")]
-    [(hsql/raw "'10.4.4.15'::inet")]]])
+  [["addresses"
+     [{:field-name "ip", :base-type {:native "inet"}}]
+     [[(hsql/raw "'192.168.1.1'::inet")]
+      [(hsql/raw "'10.4.4.15'::inet")]]]])
 
 ;; Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` (otherwise this
 ;; wouldn't work)
@@ -282,11 +282,12 @@
   "UTC"
   (tu/db-timezone-id))
 
-
 ;; Make sure we're able to fingerprint TIME fields (#5911)
 (expect-with-engine :postgres
-  #{#metabase.models.field.FieldInstance{:name "start_time", :fingerprint {:global {:distinct-count 1}}}
-    #metabase.models.field.FieldInstance{:name "end_time",   :fingerprint {:global {:distinct-count 1}}}
+                    #{#metabase.models.field.FieldInstance{:name "start_time", :fingerprint {:global {:distinct-count 1}
+                                                                                             :type {:type/DateTime {:earliest "1970-01-01T22:00:00.000Z", :latest "1970-01-01T22:00:00.000Z"}}}}
+                      #metabase.models.field.FieldInstance{:name "end_time",   :fingerprint {:global {:distinct-count 1}
+                                                                                             :type {:type/DateTime {:earliest "1970-01-01T09:00:00.000Z", :latest "1970-01-01T09:00:00.000Z"}}}}
     #metabase.models.field.FieldInstance{:name "reason",     :fingerprint {:global {:distinct-count 1}
                                                                            :type   {:type/Text {:percent-json    0.0
                                                                                                 :percent-url     0.0

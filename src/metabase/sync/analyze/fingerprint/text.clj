@@ -34,6 +34,6 @@
   "Generate a fingerprint containing information about values that belong to a `:type/Text` Field."
   [values :- i/FieldSample]
   {:percent-json   (percent-satisfying-predicate valid-serialized-json? values)
-   :percent-url    (percent-satisfying-predicate u/is-url? values)
-   :percent-email  (percent-satisfying-predicate u/is-email? values)
+   :percent-url    (percent-satisfying-predicate u/url? values)
+   :percent-email  (percent-satisfying-predicate u/email? values)
    :average-length (average-length values)})

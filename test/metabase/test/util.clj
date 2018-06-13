@@ -16,6 +16,7 @@
              [dashboard :refer [Dashboard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [database :refer [Database]]
+             [dimension :refer [Dimension]]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [permissions-group :refer [PermissionsGroup]]
@@ -27,8 +28,11 @@
              [setting :as setting]
              [table :refer [Table]]
              [user :refer [User]]]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :refer [*driver*]]
+            [metabase.test.data
+             [datasets :refer [*driver*]]
+             [dataset-definitions :as defs]]
             [toucan.db :as db]
             [toucan.util.test :as test])
   (:import java.util.TimeZone
@@ -148,9 +152,14 @@
 (u/strict-extend (class Database)
   test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:details   {}
-                                :engine    :yeehaw ; wtf?
+                                :engine    :h2
                                 :is_sample false
                                 :name      (random-name)})})
+
+(u/strict-extend (class Dimension)
+  test/WithTempDefaults
+  {:with-temp-defaults (fn [_] {:name (random-name)
+                                :type "internal"})})
 
 (u/strict-extend (class Field)
   test/WithTempDefaults
@@ -179,7 +188,9 @@
 
 (u/strict-extend (class PulseCard)
   test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:position 0})})
+  {:with-temp-defaults (fn [_] {:position    0
+                                :include_csv false
+                                :include_xls false})})
 
 (u/strict-extend (class PulseChannel)
   test/WithTempDefaults
@@ -476,3 +487,46 @@
      (finally
        (doseq [model# ~model-seq]
          (db/delete! model#)))))
+
+(defn call-with-paused-query
+  "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads
+  needed to orchestrate a query cancellation.
+
+  This function takes `f` which is a function of 4 arguments:
+     - query-thunk - no-arg function that will invoke a query
+     - query promise - promise used to validate the query function was called
+     - cancel promise - promise used to validate a cancellation function was called
+     - pause query promise - promise used to hang the query function, allowing cancellation
+
+  This function returns a vector of booleans indicating the various statuses of the promises, useful for comparison
+  in an `expect`"
+  [f]
+  (data/with-db (data/get-or-create-database! defs/test-data)
+    (let [called-cancel?             (promise)
+          called-query?              (promise)
+          pause-query                (promise)
+          before-query-called-cancel (realized? called-cancel?)
+          before-query-called-query  (realized? called-query?)
+          query-thunk                (fn [] (data/run-query checkins
+                                              (ql/aggregation (ql/count))))
+          ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be cancelled,
+          ;; which should cause an interrupt
+          query-future               (f query-thunk called-query? called-cancel? pause-query)]
+
+      ;; Make sure that we start out with our promises not having a value
+      [before-query-called-cancel
+       before-query-called-query
+       ;; The cancelled-query? and called-cancel? timeouts are very high and are really just intended to
+       ;; prevent the test from hanging indefinitely. It shouldn't be hit unless something is really wrong
+       (deref called-query? 120000 ::query-never-called)
+       ;; At this point in time, the query is blocked, waiting for `pause-query` do be delivered
+       (realized? called-cancel?)
+       (do
+         ;; If we cancel the future, it should throw an InterruptedException, which should call the cancel
+         ;; method on the prepared statement
+         (future-cancel query-future)
+         (deref called-cancel? 120000 ::cancel-never-called))
+       (do
+         ;; This releases the fake query function so it finishes
+         (deliver pause-query true)
+         true)])))

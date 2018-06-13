@@ -1,5 +1,5 @@
 :root {
-    --table-border-radius: 6px;
+  --table-border-radius: 6px;
 }
 
 .TableInteractive {
@@ -25,14 +25,13 @@
 
 .TableInteractive-headerCellData--sorted .Icon {
   opacity: 1;
-  transition: opacity .3s linear;
+  transition: opacity 0.3s linear;
 }
 
 /* if the column is the one that is being sorted*/
 .TableInteractive-headerCellData--sorted {
   color: var(--brand-color);
 }
-
 
 .TableInteractive-header {
   box-sizing: border-box;
@@ -50,7 +49,6 @@
   border-right: 1px solid transparent;
   border-bottom: 1px solid var(--table-border-color);
 }
-
 
 .TableInteractive .TableInteractive-cellWrapper:hover {
   border-color: var(--brand-color);
@@ -77,7 +75,8 @@
 }
 
 /* pivot */
-.TableInteractive.TableInteractive--pivot .TableInteractive-cellWrapper--firstColumn {
+.TableInteractive.TableInteractive--pivot
+  .TableInteractive-cellWrapper--firstColumn {
   border-right: 1px solid rgb(205, 205, 205);
 }
 

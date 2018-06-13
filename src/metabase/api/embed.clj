@@ -83,12 +83,12 @@
        (or (not (string? v))
            (not (str/blank? v)))))
 
-(s/defn ^:private validate-params
+(s/defn ^:private validate-and-merge-params :- {s/Keyword s/Any}
   "Validate that the TOKEN-PARAMS passed in the JWT and the USER-PARAMS (passed as part of the URL) are allowed, and
   that ones that are required are specified by checking them against a Card or Dashboard's OBJECT-EMBEDDING-PARAMS
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
-  returns a merged parameters map."
-  [object-embedding-params :- su/EmbeddingParams, token-params user-params]
+  returns a *merged* parameters map."
+  [object-embedding-params :- su/EmbeddingParams, token-params :- {s/Keyword s/Any}, user-params :- {s/Keyword s/Any}]
   (validate-param-sets object-embedding-params
                        (set (keys (m/filter-vals valid-param? token-params)))
                        (set (keys (m/filter-vals valid-param? user-params))))
@@ -145,15 +145,19 @@
   [card]
   (update card :parameters concat (template-tag-parameters card)))
 
-(defn- apply-parameter-values
+(s/defn ^:private apply-parameter-values :- (s/maybe [{:slug   su/NonBlankString
+                                                       :type   su/NonBlankString
+                                                       :target s/Any
+                                                       :value  s/Any}])
   "Adds `value` to parameters with `slug` matching a key in `parameter-values` and removes parameters without a
    `value`."
   [parameters parameter-values]
-  (for [param parameters
-        :let  [value (get parameter-values (keyword (:slug param)))]
-        :when (some? value)]
-    (assoc (select-keys param [:type :target])
-      :value value)))
+  (when (seq parameters)
+    (for [param parameters
+          :let  [value (get parameter-values (keyword (:slug param)))]
+          :when (some? value)]
+      (assoc (select-keys param [:type :target :slug])
+        :value value))))
 
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
@@ -177,6 +181,14 @@
           :when         param]
       (assoc param :target (:target param-mapping)))))
 
+(s/defn ^:private normalize-query-params :- {s/Keyword s/Any}
+  "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
+  `wrap-keyword-params` middleware normally converts all query params keys to keywords, but only if they seem like
+  ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
+  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect."
+  [query-params]
+  (m/map-keys keyword query-params))
+
 
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
@@ -199,7 +211,7 @@
   {:style/indent 0}
   [& {:keys [card-id embedding-params token-params query-params options]}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
-  (let [parameter-values (validate-params embedding-params token-params query-params)
+  (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters       (apply-parameter-values (resolve-card-parameters card-id) parameter-values)]
     (apply public-api/run-query-for-card-with-id card-id parameters, :context :embedded-question, options)))
 
@@ -224,8 +236,9 @@
   [& {:keys [dashboard-id dashcard-id card-id embedding-params token-params query-params]}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
-  (let [parameter-values (validate-params embedding-params token-params query-params)
-        parameters       (apply-parameter-values (resolve-dashboard-parameters dashboard-id dashcard-id card-id) parameter-values)]
+  (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
+        parameters       (apply-parameter-values (resolve-dashboard-parameters dashboard-id dashcard-id card-id)
+                                                 parameter-values)]
     (public-api/public-dashcard-results dashboard-id card-id parameters, :context :embedded-dashboard)))
 
 
@@ -332,6 +345,76 @@
       :embedding-params (db/select-one-field :embedding_params Dashboard :id dashboard-id)
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
       :query-params     query-params)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        FieldValues, Search, Remappings                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; -------------------------------------------------- Field Values --------------------------------------------------
+
+(api/defendpoint GET "/card/:token/field/:field-id/values"
+  "Fetch FieldValues for a Field that is referenced by an embedded Card."
+  [token field-id]
+  (let [unsigned-token (eu/unsign token)
+        card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (check-embedding-enabled-for-card card-id)
+    (public-api/card-and-field-id->values card-id field-id)))
+
+(api/defendpoint GET "/dashboard/:token/field/:field-id/values"
+  "Fetch FieldValues for a Field that is used as a param in an embedded Dashboard."
+  [token field-id]
+  (let [unsigned-token (eu/unsign token)
+        dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+    (check-embedding-enabled-for-dashboard dashboard-id)
+    (public-api/dashboard-and-field-id->values dashboard-id field-id)))
+
+
+;;; --------------------------------------------------- Searching ----------------------------------------------------
+
+(api/defendpoint GET "/card/:token/field/:field-id/search/:search-field-id"
+  "Search for values of a Field that is referenced by an embedded Card."
+  [token field-id search-field-id value limit]
+  {value su/NonBlankString
+   limit (s/maybe su/IntStringGreaterThanZero)}
+  (let [unsigned-token (eu/unsign token)
+        card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (check-embedding-enabled-for-card card-id)
+    (public-api/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
+
+(api/defendpoint GET "/dashboard/:token/field/:field-id/search/:search-field-id"
+  "Search for values of a Field that is referenced by a Card in an embedded Dashboard."
+  [token field-id search-field-id value limit]
+  {value su/NonBlankString
+   limit (s/maybe su/IntStringGreaterThanZero)}
+  (let [unsigned-token (eu/unsign token)
+        dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+    (check-embedding-enabled-for-dashboard dashboard-id)
+    (public-api/search-dashboard-fields dashboard-id field-id search-field-id value (when limit
+                                                                                      (Integer/parseInt limit)))))
+
+
+;;; --------------------------------------------------- Remappings ---------------------------------------------------
+
+(api/defendpoint GET "/card/:token/field/:field-id/remapping/:remapped-id"
+  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
+  embedded Cards."
+  [token field-id remapped-id value]
+  {value su/NonBlankString}
+  (let [unsigned-token (eu/unsign token)
+        card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (check-embedding-enabled-for-card card-id)
+    (public-api/card-field-remapped-values card-id field-id remapped-id value)))
+
+(api/defendpoint GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
+  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
+  embedded Dashboards."
+  [token field-id remapped-id value]
+  {value su/NonBlankString}
+  (let [unsigned-token (eu/unsign token)
+        dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+    (check-embedding-enabled-for-dashboard dashboard-id)
+    (public-api/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 
 (api/define-routes)

@@ -10,6 +10,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
+             [db :as mdb]
              [config :as config]
              [driver :as driver]
              [public-settings :as public-settings]
@@ -338,10 +339,15 @@
 ;; missing those database ids
 (defmigration ^{:author "senior", :added "0.27.0"} populate-card-database-id
   (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
-                                  (db/select [Card :dataset_query :id] :database_id [:= nil]))
+                                  (db/select [Card :dataset_query :id :name] :database_id [:= nil]))
           :when (not= db-id virtual-id)]
-    (db/update-where! Card {:id [:in (map :id cards)]}
-      :database_id db-id)))
+    (if (and (seq cards)
+             (db/exists? Database :id db-id))
+      (db/update-where! Card {:id [:in (map :id cards)]}
+                        :database_id db-id)
+      (doseq [{id :id card-name :name} cards]
+        (log/warnf "Cleaning up orphaned Question '%s', associated to a now deleted database" card-name)
+        (db/delete! Card :id id)))))
 
 ;; Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
 ;; `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
@@ -359,4 +365,53 @@
                                               "advanced"
                                               "simple"))))
     ;; either way, delete the old value from the DB since we'll never be using it again.
-    (db/delete! Setting, :key "enable-advanced-humanization")))
+    ;; use `simple-delete!` because `Setting` doesn't have an `:id` column :(
+    (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
+
+;; for every Card in the DB, pre-calculate the read permissions required to read the Card/run its query and save them
+;; under the new `read_permissions` column. Calculating read permissions is too expensive to do on the fly for Cards,
+;; since it requires parsing their queries and expanding things like FKs or Segment/Metric macros. Simply calling
+;; `update!` on each Card will cause it to be saved with updated `read_permissions` as a side effect of Card's
+;; `pre-update` implementation.
+;;
+;; Caching these permissions will prevent 1000+ DB call API calls. See https://github.com/metabase/metabase/issues/6889
+;;
+;; NOTE: This used used to be
+;; (defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
+;;   (run!
+;;     (fn [card]
+;;      (db/update! Card (u/get-id card) {}))
+;;   (db/select-reducible Card :archived false, :read_permissions nil)))
+;; But due to bug https://github.com/metabase/metabase/issues/7189 was replaced
+(defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
+  (log/info "Not running migration `populate-card-read-permissions` as it has been replaced by a subsequent migration "))
+
+;; Migration from 0.28.2 above had a flaw in that passing in `{}` to the update results in
+;; the functions that do pre-insert permissions checking don't have the query dictionary to analyze
+;; and always short-circuit due to the missing query dictionary. Passing the card itself into the
+;; check mimicks how this works in-app, and appears to fix things.
+(defmigration ^{:author "salsakran", :added "0.28.3"} repopulate-card-read-permissions
+  (run!
+   (fn [card]
+     (try
+       (db/update! Card (u/get-id card) card)
+       (catch Throwable e
+         (log/error "Error updating Card to set its read_permissions:"
+                    (class e)
+                    (.getMessage e)
+                    (u/filtered-stacktrace e)))))
+   (db/select-reducible Card :archived false)))
+
+;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
+;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
+;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
+;; keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
+;; meaning of the Category special type.
+;;
+;; Since the meanings of things has changed we'll want to make sure we mark all Category fields as `list` as well so
+;; their behavior doesn't suddenly change.
+(defmigration ^{:author "camsaul", :added "0.29.0"} mark-category-fields-as-list
+  (db/update-where! Field {:has_field_values nil
+                           :special_type     (mdb/isa :type/Category)
+                           :active           true}
+    :has_field_values "list"))

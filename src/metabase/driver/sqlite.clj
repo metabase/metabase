@@ -1,7 +1,8 @@
 (ns metabase.driver.sqlite
-  (:require [clojure
-             [set :as set]
-             [string :as s]]
+  (:require [clj-time
+             [coerce :as tcoerce]
+             [format :as tformat]]
+            [clojure.string :as str]
             [honeysql
              [core :as hsql]
              [format :as hformat]]
@@ -11,7 +12,8 @@
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util.honeysql-extensions :as hx])
+  (:import [java.sql Time Timestamp]))
 
 (defrecord SQLiteDriver []
   clojure.lang.Named
@@ -45,12 +47,13 @@
    [#"DECIMAL"  :type/Decimal]
    [#"BOOLEAN"  :type/Boolean]
    [#"DATETIME" :type/DateTime]
-   [#"DATE"     :type/Date]])
+   [#"DATE"     :type/Date]
+   [#"TIME"     :type/Time]])
 
 ;; register the SQLite concatnation operator `||` with HoneySQL as `sqlite-concat`
 ;; (hsql/format (hsql/call :sqlite-concat :a :b)) -> "(a || b)"
 (defmethod hformat/fn-handler "sqlite-concat" [_ & args]
-  (str "(" (s/join " || " (map hformat/to-sql args)) ")"))
+  (str "(" (str/join " || " (map hformat/to-sql args)) ")"))
 
 (def ^:private ->date     (partial hsql/call :date))
 (def ^:private ->datetime (partial hsql/call :datetime))
@@ -63,7 +66,7 @@
    See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html)."
   [unit expr]
   ;; Convert Timestamps to ISO 8601 strings before passing to SQLite, otherwise they don't seem to work correctly
-  (let [v (if (instance? java.sql.Timestamp expr)
+  (let [v (if (instance? Timestamp expr)
             (hx/literal (u/date->iso-8601 expr))
             expr)]
     (case unit
@@ -153,6 +156,13 @@
   [_ bool]
   (if bool 1 0))
 
+(defmethod sqlqp/->honeysql [SQLiteDriver Time]
+  [_ time-value]
+  (->> time-value
+       tcoerce/to-date-time
+       (tformat/unparse (tformat/formatters :hour-minute-second-ms))
+       (hsql/call :time)))
+
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))
 
@@ -163,32 +173,39 @@
 
 (u/strict-extend SQLiteDriver
   driver/IDriver
-  (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval   (u/drop-first-arg date-interval)
-          :details-fields  (constantly [{:name         "db"
-                                         :display-name "Filename"
-                                         :placeholder  "/home/camsaul/toucan_sightings.sqlite 😋"
-                                         :required     true}])
-          :features        (fn [this]
-                             (set/difference (sql/features this)
-                                             ;; SQLite doesn't have a standard deviation function
-                                             #{:standard-deviation-aggregations}
-                                             ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and
-                                             ;; I don't have all day to work around this so for now we'll just skip
-                                             ;; the foreign key stuff in the tests.
-                                             (when config/is-test?
-                                               #{:foreign-keys})))
-          :current-db-time (driver/make-current-db-time-fn sqlite-db-time-query sqlite-date-formatters)})
+  (merge
+   (sql/IDriverSQLDefaultsMixin)
+   {:date-interval   (u/drop-first-arg date-interval)
+    :details-fields  (constantly [{:name         "db"
+                                   :display-name "Filename"
+                                   :placeholder  "/home/camsaul/toucan_sightings.sqlite 😋"
+                                   :required     true}])
+    :features        (fn [this]
+                       (-> (sql/features this)
+                           ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made
+                           ;; case-sensitive. So let people know we have this 'feature' so the frontend doesn't try to
+                           ;; present the option to you.
+                           (conj :no-case-sensitivity-string-filter-options)
+                           ;; SQLite doesn't have a standard deviation function
+                           (disj :standard-deviation-aggregations
+                                 ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't
+                                 ;; have all day to work around this so for now we'll just skip the foreign key stuff
+                                 ;; in the tests.
+                                 (when config/is-test?
+                                   :foreign-keys))))
+    :current-db-time (driver/make-current-db-time-fn sqlite-db-time-query sqlite-date-formatters)})
+
   sql/ISQLDriver
-  (merge (sql/ISQLDriverDefaultsMixin)
-         {:active-tables             sql/post-filtered-active-tables
-          :column->base-type         (sql/pattern-based-column->base-type pattern->type)
-          :connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :current-datetime-fn       (constantly (hsql/call :datetime (hx/literal :now)))
-          :date                      (u/drop-first-arg date)
-          :prepare-sql-param         (u/drop-first-arg prepare-sql-param)
-          :string-length-fn          (u/drop-first-arg string-length-fn)
-          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
+  (merge
+   (sql/ISQLDriverDefaultsMixin)
+   {:active-tables             sql/post-filtered-active-tables
+    :column->base-type         (sql/pattern-based-column->base-type pattern->type)
+    :connection-details->spec  (u/drop-first-arg connection-details->spec)
+    :current-datetime-fn       (constantly (hsql/call :datetime (hx/literal :now)))
+    :date                      (u/drop-first-arg date)
+    :prepare-sql-param         (u/drop-first-arg prepare-sql-param)
+    :string-length-fn          (u/drop-first-arg string-length-fn)
+    :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (defn -init-driver
   "Register the SQLite driver"

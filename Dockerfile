@@ -51,15 +51,15 @@ RUN apk add --update wget && \
   ln -s "$M2_HOME/bin/mvn" /usr/bin/mvn
 
 RUN mvn package -f /app/source/local-query-execution-factory/pom.xml
-RUN cp /app/source/local-query-execution-factory/target/local-query-execution-factory-0.2.jar /app/source/bin/lib/local-query-execution-factory-0.2.jar
+RUN mv /app/source/local-query-execution-factory/target/local-query-execution-factory-0.2.jar /app/source/bin/lib/local-query-execution-factory-0.2.jar
 RUN mvn install:install-file -Dfile=/app/source/bin/lib/local-query-execution-factory-0.2.jar -DgroupId=com.stratio.metabase -DartifactId=local-query-execution-factory -Dversion=0.2 -Dpackaging=jar
 
-# Tu generate local docker, comment mvn dependency:get and cp. Download jar in ./bin/lib/
-# http://qa.stratio.com/repository/releases/com/stratio/jdbc/stratio-crossdata-jdbc4/2.11.1/stratio-crossdata-jdbc4-2.11.1.jar
+# Tu generate local docker, comment mvn dependency:get and mv. Download jar in ./bin/lib/
+# http://qa.stratio.com/repository/releases/com/stratio/jdbc/stratio-crossdata-jdbc4/2.12.0/stratio-crossdata-jdbc4-2.12.0.jar
 #
-RUN mvn dependency:get -DgroupId=com.stratio.jdbc -DartifactId=stratio-crossdata-jdbc4 -Dversion=2.11.1 -DremoteRepositories=http://sodio.stratio.com/repository/public/ -Dtransitive=false
-RUN cp /root/.m2/repository/com/stratio/jdbc/stratio-crossdata-jdbc4/2.11.1/stratio-crossdata-jdbc4-2.11.1.jar /app/source/bin/lib/stratio-crossdata-jdbc4-2.11.1.jar
-RUN mvn install:install-file -Dfile=/app/source/bin/lib/stratio-crossdata-jdbc4-2.11.1.jar -DgroupId=com.stratio.jdbc -DartifactId=stratio-crossdata-jdbc4 -Dversion=2.11.1 -Dpackaging=jar
+RUN mvn dependency:get -DgroupId=com.stratio.jdbc -DartifactId=stratio-crossdata-jdbc4 -Dversion=2.12.0 -DremoteRepositories=http://sodio.stratio.com/repository/public/ -Dtransitive=false
+RUN mv /root/.m2/repository/com/stratio/jdbc/stratio-crossdata-jdbc4/2.12.0/stratio-crossdata-jdbc4-2.12.0.jar /app/source/bin/lib/stratio-crossdata-jdbc4-2.12.0.jar
+RUN mvn install:install-file -Dfile=/app/source/bin/lib/stratio-crossdata-jdbc4-2.12.0.jar -DgroupId=com.stratio.jdbc -DartifactId=stratio-crossdata-jdbc4 -Dversion=2.12.0 -Dpackaging=jar
 
 # build the app
 WORKDIR /app/source
@@ -68,7 +68,8 @@ RUN bin/build
 
 # remove unnecessary packages & tidy up
 RUN apk del nodejs git wget python make g++
-RUN rm -rf /root/.lein /root/.m2 /root/.node-gyp /root/.npm /root/.yarn /root/.yarn-cache /tmp/* /var/cache/apk/* /app/source/node_modules
+RUN rm -rf /root/.lein /root/.m2 /root/.node-gyp /root/.npm /root/.yarn /root/.yarn-cache /tmp/* /var/cache/apk/* /app/source/node_modules /app/source/target/uberjar/classes /usr/bin/mvn
+RUN rm -f /app/source/target/uberjar/metabase-metabase-SNAPSHOT.jar
 
 # expose our default runtime port
 EXPOSE 3000

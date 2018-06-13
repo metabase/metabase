@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    {{{embed_code}}}
+        {{{embed_code}}}
 
-    <title>Metabase</title>
+        <title>Metabase</title>
 
-    <base href={{{base_href}}} />
+        <base href={{{base_href}}} />
 
-    <script type="text/javascript">
+        <script type="text/javascript">
             (function() {
                 window.MetabaseBootstrap = {{{bootstrap_json}}};
                 window.MetabaseLocalization = {{{localization_json}}};
@@ -41,7 +41,7 @@
                 window.MetabaseRoot = actualRoot;
             })();
         </script>
-</head>
+    </head>
 
 <body>
 
@@ -124,7 +124,7 @@
 
 <div id="root"></div>
 
-<script type="text/javascript">
+        <script type="text/javascript">
             // Load scripts asyncronously after the page has finished loading
             (function () {
                 function loadScript(src, onload) {
@@ -147,7 +147,7 @@
             })();
         </script>
 
-<script type="text/javascript">
+        <script type="text/javascript">
             (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
             (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
             m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
@@ -162,5 +162,5 @@
 
             ga('create', ga_code, 'auto');
         </script>
-</body>
+    </body>
 </html>

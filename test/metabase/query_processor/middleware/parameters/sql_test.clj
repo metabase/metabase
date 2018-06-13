@@ -5,13 +5,99 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :refer [engines-that-support first-row format-rows-by]]]
+             [query-processor-test :refer [non-timeseries-engines-with-feature first-row format-rows-by]]]
             [metabase.query-processor.middleware.parameters.sql :as sql :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
              [generic-sql :as generic-sql]]
             [toucan.db :as db]))
+
+;;; ------------------------------------------ basic parser tests ------------------------------------------
+
+(defn- parse-template
+  ([sql]
+   (parse-template sql {}))
+  ([sql param-key->value]
+   (binding [metabase.query-processor.middleware.parameters.sql/*driver* (driver/engine->driver :h2)]
+     (#'sql/parse-template sql param-key->value))))
+
+(expect
+  {:query "select * from foo where bar=1"
+   :params []}
+  (parse-template "select * from foo where bar=1"))
+
+(expect
+  {:query "select * from foo where bar=?"
+   :params ["foo"]}
+  (parse-template "select * from foo where bar={{baz}}" {:baz "foo"}))
+
+(expect
+  {:query "select * from foo where bar = ?"
+   :params ["foo"]}
+  (parse-template "select * from foo [[where bar = {{baz}} ]]" {:baz "foo"}))
+
+;; Multiple optional clauses, all present
+(expect
+  {:query "select * from foo where bar1 = ? and bar2 = ? and bar3 = ? and bar4 = ?"
+   :params (repeat 4 "foo")}
+  (parse-template (str "select * from foo where bar1 = {{baz}} "
+                       "[[and bar2 = {{baz}}]] "
+                       "[[and bar3 = {{baz}}]] "
+                       "[[and bar4 = {{baz}}]]")
+                  {:baz "foo"}))
+
+;; Multiple optional clauses, none present
+(expect
+  {:query "select * from foo where bar1 = ?"
+   :params ["foo"]}
+  (parse-template (str "select * from foo where bar1 = {{baz}} "
+                       "[[and bar2 = {{none}}]] "
+                       "[[and bar3 = {{none}}]] "
+                       "[[and bar4 = {{none}}]]")
+                  {:baz "foo"}))
+
+(expect
+  {:query "select * from foobars  where foobars.id in (string_to_array(?, ',')::integer[])"
+   :params ["foo"]}
+  (parse-template "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"
+                  {:foobar_id "foo"}))
+
+(expect
+  {:query (str "SELECT [test_data.checkins.venue_id] AS [venue_id], "
+               "       [test_data.checkins.user_id] AS [user_id], "
+               "       [test_data.checkins.id] AS [checkins_id] "
+               "FROM [test_data.checkins] "
+               "LIMIT 2")
+   :params []}
+  (parse-template (str "SELECT [test_data.checkins.venue_id] AS [venue_id], "
+                       "       [test_data.checkins.user_id] AS [user_id], "
+                       "       [test_data.checkins.id] AS [checkins_id] "
+                       "FROM [test_data.checkins] "
+                       "LIMIT 2")))
+
+;; Valid syntax in PG
+(expect
+  {:query "SELECT array_dims(1 || '[0:1]={2,3}'::int[])"
+   :params []}
+  (parse-template "SELECT array_dims(1 || '[0:1]={2,3}'::int[])"))
+
+;; Testing that invalid/unterminated template params/clauses throw an exception
+(expect
+  java.lang.IllegalArgumentException
+  (parse-template "select * from foo [[where bar = {{baz}} " {:baz "foo"}))
+
+(expect
+  java.lang.IllegalArgumentException
+  (parse-template "select * from foo [[where bar = {{baz]]" {:baz "foo"}))
+
+(expect
+  java.lang.IllegalArgumentException
+  (parse-template "select * from foo {{bar}} {{baz" {:bar "foo" :baz "foo"}))
+
+(expect
+  java.lang.IllegalArgumentException
+  (parse-template "select * from foo [[clause 1 {{bar}}]] [[clause 2" {:bar "foo"}))
 
 ;;; ------------------------------------------ simple substitution -- {{x}} ------------------------------------------
 
@@ -42,7 +128,6 @@
 (expect Exception
   (substitute "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
     {:toucans_are_cool true}))
-
 
 ;;; ---------------------------------- optional substitution -- [[ ... {{x}} ... ]] ----------------------------------
 
@@ -81,6 +166,13 @@
    :params []}
   (substitute "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = 'toucan']]"
     {:toucans_are_cool true}))
+
+;; Two parameters in an optional
+(expect
+  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
+   :params ["toucan"]}
+  (substitute "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}]]"
+    {:toucans_are_cool true, :bird_type "toucan"}))
 
 (expect
   {:query  "SELECT * FROM bird_facts"
@@ -437,7 +529,7 @@
 
 ;; as with the MBQL parameters tests Redshift and Crate fail for unknown reasons; disable their tests for now
 (def ^:private ^:const sql-parameters-engines
-  (disj (engines-that-support :native-parameters) :redshift :crate))
+  (disj (non-timeseries-engines-with-feature :native-parameters) :redshift :crate))
 
 (defn- process-native {:style/indent 0} [& kvs]
   (qp/process-query

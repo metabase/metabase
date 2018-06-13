@@ -4,6 +4,7 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase
              [events :as events]
+             [query-processor :as qp]
              [util :as u]]
             [metabase.api
              [common :as api]
@@ -17,6 +18,7 @@
              [query :as query :refer [Query]]
              [revision :as revision]]
             [metabase.query-processor.util :as qp-util]
+            [metabase.related :as related]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -123,7 +125,7 @@
   [{:keys [dataset_query]}]
   (u/ignore-exceptions
     [(qp-util/query-hash dataset_query)
-     (qp-util/query-hash (assoc dataset_query :constraints dataset/default-query-constraints))]))
+     (qp-util/query-hash (assoc dataset_query :constraints qp/default-query-constraints))]))
 
 (defn- dashcard->query-hashes
   "Return a sequence of all the query hashes for this DASHCARD, including the top-level Card and any Series."
@@ -365,5 +367,18 @@
   (api/check-embedding-enabled)
   (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Dashboard api/read-check related/related))
+
+;;; --------------------------------------------------- Transient dashboards ---------------------------------------------------
+
+(api/defendpoint POST "/save"
+  "Save a denormalized description of dashboard."
+  [:as {dashboard :body}]
+  (api/check-superuser)
+  (->> (dashboard/save-transient-dashboard! dashboard)
+       (events/publish-event! :dashboard-create)))
 
 (api/define-routes)

@@ -1,10 +1,6 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
-  (:require [cheshire
-             [core :as json]
-             [generate :refer [add-encoder encode-nil encode-str]]]
-            [clojure.core.async :as async]
-            [clojure.java.io :as io]
+  (:require [cheshire.generate :refer [add-encoder encode-nil encode-str]]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
@@ -20,8 +16,7 @@
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
             monger.json
-            [ring.core.protocols :as protocols]
-            [ring.util.response :as response]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
              [models :as models]])
@@ -219,8 +214,9 @@
                 (format "%s %s; " (name k) (apply str (interpose " " vs)))))})
 
 (defsetting ssl-certificate-public-key
-  "Base-64 encoded public key for this site's SSL certificate. Specify this to enable HTTP Public Key Pinning.
-   See http://mzl.la/1EnfqBf for more information.")
+  (str (tru "Base-64 encoded public key for this site's SSL certificate.")
+       (tru "Specify this to enable HTTP Public Key Pinning.")
+       (tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 #_(defn- public-key-pins-header []
@@ -313,25 +309,36 @@
 
 ;;; ---------------------------------------------------- LOGGING -----------------------------------------------------
 
-(defn- log-response [{:keys [uri request-method]} {:keys [status body]} elapsed-time db-call-count]
-  (let [log-error #(log/error %) ; these are macros so we can't pass by value :sad:
+(def ^:private jetty-stats-coll
+  (juxt :min-threads :max-threads :busy-threads :idle-threads :queue-size))
+
+(defn- log-response [jetty-stats-fn {:keys [uri request-method]} {:keys [status body]} elapsed-time db-call-count]
+  (let [log-error #(log/error %)        ; these are macros so we can't pass by value :sad:
         log-debug #(log/debug %)
         log-warn  #(log/warn  %)
-        [error? color log-fn] (cond
-                                (>= status 500) [true  'red   log-error]
-                                (=  status 403) [true  'red   log-warn]
-                                (>= status 400) [true  'red   log-debug]
-                                :else           [false 'green log-debug])]
-    (log-fn (str (u/format-color color "%s %s %d (%s) (%d DB calls)"
-                   (.toUpperCase (name request-method)) uri status elapsed-time db-call-count)
+        ;; stats? here is to avoid incurring the cost of collecting the Jetty stats and concatenating the extra
+        ;; strings when they're just going to be ignored. This is automatically handled by the macro , but is bypassed
+        ;; once we wrap it in a function
+        [error? color log-fn stats?] (cond
+                                       (>= status 500) [true  'red   log-error false]
+                                       (=  status 403) [true  'red   log-warn false]
+                                       (>= status 400) [true  'red   log-debug false]
+                                       :else           [false 'green log-debug true])]
+    (log-fn (str (apply u/format-color color (str "%s %s %d (%s) (%d DB calls)."
+                                                  (when stats?
+                                                    " Jetty threads: %s/%s (%s busy, %s idle, %s queued)"))
+                        (.toUpperCase (name request-method)) uri status elapsed-time db-call-count
+                        (when stats?
+                          (jetty-stats-coll (jetty-stats-fn))))
                  ;; only print body on error so we don't pollute our environment by over-logging
                  (when (and error?
                             (or (string? body) (coll? body)))
                    (str "\n" (u/pprint-to-str body)))))))
 
 (defn log-api-call
-  "Middleware to log `:request` and/or `:response` by passing corresponding OPTIONS."
-  [handler & options]
+  "Takes a handler and a `jetty-stats-fn`. Logs `:request` and/or `:response` by passing corresponding
+  OPTIONS. `jetty-stats-fn` returns threadpool metadata that is included in the api request log"
+  [handler jetty-stats-fn & options]
   (fn [{:keys [uri], :as request}]
     (if (or (not (api-call? request))
             (= uri "/api/health")     ; don't log calls to /health or /util/logs because they clutter up
@@ -340,7 +347,7 @@
       (let [start-time (System/nanoTime)]
         (db/with-call-counting [call-count]
           (u/prog1 (handler request)
-            (log-response request <> (u/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
+            (log-response jetty-stats-fn request <> (u/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
 
 
 ;;; ----------------------------------------------- EXCEPTION HANDLING -----------------------------------------------
@@ -366,74 +373,3 @@
            (handler request))
          (catch Throwable e
            {:status 400, :body (.getMessage e)}))))
-
-
-;;; --------------------------------------------------- STREAMING ----------------------------------------------------
-
-(def ^:private ^:const streaming-response-keep-alive-interval-ms
-  "Interval between sending newline characters to keep Heroku from terminating requests like queries that take a long
-  time to complete."
-  (* 1 1000))
-
-;; Handle ring response maps that contain a core.async chan in the :body key:
-;;
-;; {:status 200
-;;  :body (async/chan)}
-;;
-;; and send each string sent to that queue back to the browser as it arrives
-;; this avoids output buffering in the default stream handling which was not sending
-;; any responses until ~5k characters where in the queue.
-(extend-protocol protocols/StreamableResponseBody
-  clojure.core.async.impl.channels.ManyToManyChannel
-  (write-body-to-stream [output-queue _ ^OutputStream output-stream]
-    (log/debug (u/format-color 'green "starting streaming request"))
-    (with-open [out (io/writer output-stream)]
-      (loop [chunk (async/<!! output-queue)]
-        (when-not (= chunk ::EOF)
-          (.write out (str chunk))
-          (try
-            (.flush out)
-            (catch org.eclipse.jetty.io.EofException e
-              (log/info (u/format-color 'yellow "connection closed, canceling request %s" (type e)))
-              (async/close! output-queue)
-              (throw e)))
-          (recur (async/<!! output-queue)))))))
-
-(defn streaming-json-response
-  "This midelware assumes handlers fail early or return success Run the handler in a future and send newlines to keep
-  the connection open and help detect when the browser is no longer listening for the response. Waits for one second
-  to see if the handler responds immediately, If it does then there is no need to stream the response and it is sent
-  back directly. In cases where it takes longer than a second, assume the eventual result will be a success and start
-  sending newlines to keep the connection open."
-  [handler]
-  (fn [request]
-    (let [response            (future (handler request))
-          optimistic-response (deref response streaming-response-keep-alive-interval-ms ::no-immediate-response)]
-      (if (= optimistic-response ::no-immediate-response)
-        ;; if we didn't get a normal response in the first poling interval assume it's going to be slow
-        ;; and start sending keepalive packets.
-        (let [output (async/chan 1)]
-          ;; the output channel will be closed by the adapter when the incoming connection is closed.
-          (future
-            (loop []
-              (Thread/sleep streaming-response-keep-alive-interval-ms)
-              (when-not (realized? response)
-                (log/debug (u/format-color 'blue "Response not ready, writing one byte & sleeping..."))
-                ;; a newline padding character is used because it forces output flushing in jetty.
-                ;; if sending this character fails because the connection is closed, the chan will then close.
-                ;; Newlines are no-ops when reading JSON which this depends upon.
-                (when-not (async/>!! output "\n")
-                  (log/info (u/format-color 'yellow "canceled request %s" (future-cancel response)))
-                  (future-cancel response)) ;; try our best to kill the thread running the query.
-                (recur))))
-          (future
-            (try
-              ;; This is the part where we make this assume it's a JSON response we are sending.
-              (async/>!! output (json/encode (:body @response)))
-              (finally
-                (async/>!! output ::EOF)
-                (async/close! response))))
-          ;; here we assume a successful response will be written to the output channel.
-          (assoc (response/response output)
-            :content-type "applicaton/json"))
-          optimistic-response))))

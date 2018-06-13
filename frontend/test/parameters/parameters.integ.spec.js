@@ -1,266 +1,505 @@
-// Converted from an old Selenium E2E test
-import {
-    useSharedAdminLogin,
-    logout,
-    createTestStore,
-    restorePreviousLogin,
-    waitForRequestToComplete
-} from "__support__/integrated_tests";
-import {
-    click, clickButton,
-    setInputValue
-} from "__support__/enzyme_utils"
+jest.mock("metabase/query_builder/components/NativeQueryEditor");
 
 import { mount } from "enzyme";
 
-import { LOAD_CURRENT_USER } from "metabase/redux/user";
-import { INITIALIZE_SETTINGS, UPDATE_SETTING, updateSetting } from "metabase/admin/settings/settings";
-import SettingToggle from "metabase/admin/settings/components/widgets/SettingToggle";
-import Toggle from "metabase/components/Toggle";
-import EmbeddingLegalese from "metabase/admin/settings/components/widgets/EmbeddingLegalese";
 import {
-    CREATE_PUBLIC_LINK,
-    INITIALIZE_QB,
-    NOTIFY_CARD_CREATED,
-    QUERY_COMPLETED,
-    RUN_QUERY,
-    SET_QUERY_MODE,
-    setDatasetQuery,
-    UPDATE_EMBEDDING_PARAMS,
-    UPDATE_ENABLE_EMBEDDING,
-    UPDATE_TEMPLATE_TAG
-} from "metabase/query_builder/actions";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import { delay } from "metabase/lib/promise";
-import TagEditorSidebar from "metabase/query_builder/components/template_tags/TagEditorSidebar";
-import { getQuery } from "metabase/query_builder/selectors";
-import { ADD_PARAM_VALUES, FETCH_FIELD_VALUES } from "metabase/redux/metadata";
-import RunButton from "metabase/query_builder/components/RunButton";
-import Scalar from "metabase/visualizations/visualizations/Scalar";
-import Parameters from "metabase/parameters/components/Parameters";
-import CategoryWidget from "metabase/parameters/components/widgets/CategoryWidget";
-import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
-import { LOAD_COLLECTIONS } from "metabase/questions/collections";
-import SharingPane from "metabase/public/components/widgets/SharingPane";
-import { EmbedTitle } from "metabase/public/components/widgets/EmbedModalContent";
-import PreviewPane from "metabase/public/components/widgets/PreviewPane";
-import CopyWidget from "metabase/components/CopyWidget";
+  createSavedQuestion,
+  createDashboard,
+  createTestStore,
+  useSharedAdminLogin,
+  logout,
+  waitForRequestToComplete,
+  waitForAllRequestsToComplete,
+  cleanup,
+} from "__support__/integrated_tests";
+
+import jwt from "jsonwebtoken";
+
+import { FETCH_DASHBOARD } from "metabase/dashboard/dashboard";
+import { fetchTableMetadata } from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
+
+import ParameterWidget from "metabase/parameters/components/ParameterWidget";
+import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import ParameterFieldWidget from "metabase/parameters/components/widgets/ParameterFieldWidget";
+import TokenField from "metabase/components/TokenField";
+
 import * as Urls from "metabase/lib/urls";
+import Question from "metabase-lib/lib/Question";
 
-async function updateQueryText(store, queryText) {
-    // We don't have Ace editor so we have to trigger the Redux action manually
-    const newDatasetQuery = getQuery(store.getState())
-        .updateQueryText(queryText)
-        .datasetQuery()
+import {
+  CardApi,
+  DashboardApi,
+  SettingsApi,
+  MetabaseApi,
+} from "metabase/services";
 
-    return store.dispatch(setDatasetQuery(newDatasetQuery))
-}
+const ORDER_USER_ID_FIELD_ID = 7;
+const PEOPLE_ID_FIELD_ID = 13;
+const PEOPLE_NAME_FIELD_ID = 16;
+const PEOPLE_SOURCE_FIELD_ID = 18;
 
-const getRelativeUrlWithoutHash = (url) =>
-    url.replace(/#.*$/, "").replace(/http:\/\/.*?\//, "/")
-
-const COUNT_ALL = "200";
-const COUNT_DOOHICKEY = "51";
-const COUNT_GADGET = "47";
+const METABASE_SECRET_KEY =
+  "24134bd93e081773fb178e8e1abb4e8a973822f7e19c872bd92c8d5a122ef63f";
 
 describe("parameters", () => {
-    beforeAll(async () =>
-        useSharedAdminLogin()
+  let question, dashboard;
+
+  beforeAll(async () => {
+    useSharedAdminLogin();
+
+    // enable public sharing
+    await SettingsApi.put({ key: "enable-public-sharing", value: true });
+    cleanup.fn(() =>
+      SettingsApi.put({ key: "enable-public-sharing", value: false }),
     );
 
-    describe("questions", () => {
-        let publicUrl = null;
-        let embedUrl = null;
+    await SettingsApi.put({ key: "enable-embedding", value: true });
+    cleanup.fn(() =>
+      SettingsApi.put({ key: "enable-embedding", value: false }),
+    );
 
-        it("should allow users to enable public sharing", async () => {
-            const store = await createTestStore();
-
-            // load public sharing settings
-            store.pushPath('/admin/settings/public_sharing');
-            const app = mount(store.getAppContainer())
-
-            await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
-
-            // // if enabled, disable it so we're in a known state
-            // // TODO Atte Keinänen 8/9/17: This should be done with a direct API call in afterAll instead
-            const enabledToggleContainer = app.find(SettingToggle).first();
-
-            expect(enabledToggleContainer.text()).toBe("Disabled");
-
-            // toggle it on
-            click(enabledToggleContainer.find(Toggle));
-            await store.waitForActions([UPDATE_SETTING])
-
-            // make sure it's enabled
-            expect(enabledToggleContainer.text()).toBe("Enabled");
-        })
-
-        it("should allow users to enable embedding", async () => {
-            const store = await createTestStore();
-
-            // load public sharing settings
-            store.pushPath('/admin/settings/embedding_in_other_applications');
-            const app = mount(store.getAppContainer())
-
-            await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
-
-            click(app.find(EmbeddingLegalese).find('button[children="Enable"]'));
-            await store.waitForActions([UPDATE_SETTING])
-
-            expect(app.find(EmbeddingLegalese).length).toBe(0);
-            const enabledToggleContainer = app.find(SettingToggle).first();
-            expect(enabledToggleContainer.text()).toBe("Enabled");
-        });
-
-        it("should allow users to create parameterized SQL questions", async () => {
-            // Don't render Ace editor in tests because it uses many DOM methods that aren't supported by jsdom
-            // NOTE Atte Keinänen 8/9/17: Ace provides a MockRenderer class which could be used for pseudo-rendering and
-            // testing Ace editor in tests, but it doesn't render stuff to DOM so I'm not sure how practical it would be
-            NativeQueryEditor.prototype.loadAceEditor = () => {
-            }
-
-            const store = await createTestStore();
-
-            // load public sharing settings
-            store.pushPath(Urls.plainQuestion());
-            const app = mount(store.getAppContainer())
-            await store.waitForActions([INITIALIZE_QB]);
-
-            click(app.find(".Icon-sql"));
-            await store.waitForActions([SET_QUERY_MODE]);
-
-            await updateQueryText(store, "select count(*) from products where {{category}}");
-
-            const tagEditorSidebar = app.find(TagEditorSidebar);
-
-            const fieldFilterVarType = tagEditorSidebar.find('.ColumnarSelector-row').at(3);
-            expect(fieldFilterVarType.text()).toBe("Field Filter");
-            click(fieldFilterVarType);
-
-            await store.waitForActions([UPDATE_TEMPLATE_TAG]);
-
-            await delay(500);
-
-            setInputValue(tagEditorSidebar.find(".TestPopoverBody .AdminSelect").first(), "cat")
-            const categoryRow = tagEditorSidebar.find(".TestPopoverBody .ColumnarSelector-row").first();
-            expect(categoryRow.text()).toBe("ProductsCategory");
-            click(categoryRow);
-
-            await store.waitForActions([UPDATE_TEMPLATE_TAG, FETCH_FIELD_VALUES])
-
-            // close the template variable sidebar
-            click(tagEditorSidebar.find(".Icon-close"));
-
-            // test without the parameter
-            click(app.find(RunButton));
-            await store.waitForActions([RUN_QUERY, QUERY_COMPLETED])
-            expect(app.find(Scalar).text()).toBe(COUNT_ALL);
-
-            // test the parameter
-            click(app.find(Parameters).find("a").first());
-            click(app.find(CategoryWidget).find('li h4[children="Doohickey"]'));
-            clickButton(app.find(CategoryWidget).find(".Button"));
-            click(app.find(RunButton));
-            await store.waitForActions([RUN_QUERY, QUERY_COMPLETED])
-            expect(app.find(Scalar).text()).toBe(COUNT_DOOHICKEY);
-
-            // save the question, required for public link/embedding
-            click(app.find(".Header-buttonSection a").first().find("a"))
-            await store.waitForActions([LOAD_COLLECTIONS]);
-
-            setInputValue(app.find(SaveQuestionModal).find("input[name='name']"), "sql parametrized");
-
-            clickButton(app.find(SaveQuestionModal).find("button").last());
-            await store.waitForActions([NOTIFY_CARD_CREATED]);
-
-            click(app.find('#QuestionSavedModal .Button[children="Not now"]'))
-            // wait for modal to close :'(
-            await delay(500);
-
-            // open sharing panel
-            click(app.find(".Icon-share"));
-
-            // "Embed this question in an application"
-            click(app.find(SharingPane).find("h3").last());
-
-            // make the parameter editable
-            click(app.find(".AdminSelect-content[children='Disabled']"));
-
-            click(app.find(".TestPopoverBody .Icon-pencil"))
-
-            await delay(500);
-
-            click(app.find("div[children='Publish']"));
-            await store.waitForActions([UPDATE_ENABLE_EMBEDDING, UPDATE_EMBEDDING_PARAMS])
-
-            // save the embed url for next tests
-            embedUrl = getRelativeUrlWithoutHash(app.find(PreviewPane).find("iframe").prop("src"));
-
-            // back to main share panel
-            click(app.find(EmbedTitle));
-
-            // toggle public link on
-            click(app.find(SharingPane).find(Toggle));
-            await store.waitForActions([CREATE_PUBLIC_LINK]);
-
-            // save the public url for next tests
-            publicUrl = getRelativeUrlWithoutHash(app.find(CopyWidget).find("input").first().prop("value"));
-        });
-
-        describe("as an anonymous user", () => {
-            beforeAll(() => logout());
-
-            async function runSharedQuestionTests(store, questionUrl, apiRegex) {
-                store.pushPath(questionUrl);
-                const app = mount(store.getAppContainer())
-
-                await store.waitForActions([ADD_PARAM_VALUES]);
-
-                // Loading the query results is done in PublicQuestion itself so we have to listen to API request instead of Redux action
-                await waitForRequestToComplete("GET", apiRegex)
-                // use `update()` because of setState
-                expect(app.update().find(Scalar).text()).toBe(COUNT_ALL + "sql parametrized");
-
-                // manually click parameter (sadly the query results loading happens inline again)
-                click(app.find(Parameters).find("a").first());
-                click(app.find(CategoryWidget).find('li h4[children="Doohickey"]'));
-                clickButton(app.find(CategoryWidget).find(".Button"));
-
-                await waitForRequestToComplete("GET", apiRegex)
-                expect(app.update().find(Scalar).text()).toBe(COUNT_DOOHICKEY + "sql parametrized");
-
-                // set parameter via url
-                store.pushPath("/"); // simulate a page reload by visiting other page
-                store.pushPath(questionUrl + "?category=Gadget");
-                await waitForRequestToComplete("GET", apiRegex)
-                // use `update()` because of setState
-                expect(app.update().find(Scalar).text()).toBe(COUNT_GADGET + "sql parametrized");
-            }
-
-            it("should allow seeing an embedded question", async () => {
-                if (!embedUrl) throw new Error("This test fails because previous tests didn't produce an embed url.")
-                const embedUrlTestStore = await createTestStore({ embedApp: true });
-                await runSharedQuestionTests(embedUrlTestStore, embedUrl, new RegExp("/api/embed/card/.*/query"))
-            })
-
-            it("should allow seeing a public question", async () => {
-                if (!publicUrl) throw new Error("This test fails because previous tests didn't produce a public url.")
-                const publicUrlTestStore = await createTestStore({ publicApp: true });
-                await runSharedQuestionTests(publicUrlTestStore, publicUrl, new RegExp("/api/public/card/.*/query"))
-            })
-
-            // I think it's cleanest to restore the login here so that there are no surprises if you want to add tests
-            // that expect that we're already logged in
-            afterAll(() => restorePreviousLogin())
-        })
-
-        afterAll(async () => {
-            const store = await createTestStore();
-
-            // Disable public sharing and embedding after running tests
-            await store.dispatch(updateSetting({ key: "enable-public-sharing", value: false }))
-            await store.dispatch(updateSetting({ key: "enable-embedding", value: false }))
-        })
+    await SettingsApi.put({
+      key: "embedding-secret-key",
+      value: METABASE_SECRET_KEY,
     });
 
+    await MetabaseApi.field_dimension_update({
+      fieldId: ORDER_USER_ID_FIELD_ID,
+      type: "external",
+      name: "User ID",
+      human_readable_field_id: PEOPLE_NAME_FIELD_ID,
+    });
+    cleanup.fn(() =>
+      MetabaseApi.field_dimension_delete({
+        fieldId: ORDER_USER_ID_FIELD_ID,
+      }),
+    );
+
+    // set each of these fields to have "has_field_values" = "search"
+    for (const fieldId of [
+      ORDER_USER_ID_FIELD_ID,
+      PEOPLE_ID_FIELD_ID,
+      PEOPLE_NAME_FIELD_ID,
+    ]) {
+      const field = await MetabaseApi.field_get({
+        fieldId: fieldId,
+      });
+      await MetabaseApi.field_update({
+        id: fieldId,
+        has_field_values: "search",
+      });
+      cleanup.fn(() => MetabaseApi.field_update(field));
+    }
+
+    const store = await createTestStore();
+    await store.dispatch(fetchTableMetadata(1));
+    const metadata = getMetadata(store.getState());
+
+    let unsavedQuestion = Question.create({
+      databaseId: 1,
+      metadata,
+    })
+      .setDatasetQuery({
+        type: "native",
+        database: 1,
+        native: {
+          query:
+            "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */",
+          template_tags: {
+            id: {
+              id: "1",
+              name: "id",
+              display_name: "ID",
+              type: "dimension",
+              dimension: ["field-id", PEOPLE_ID_FIELD_ID],
+              widget_type: "id",
+            },
+            name: {
+              id: "2",
+              name: "name",
+              display_name: "Name",
+              type: "dimension",
+              dimension: ["field-id", PEOPLE_NAME_FIELD_ID],
+              widget_type: "category",
+            },
+            source: {
+              id: "3",
+              name: "source",
+              display_name: "Source",
+              type: "dimension",
+              dimension: ["field-id", PEOPLE_SOURCE_FIELD_ID],
+              widget_type: "category",
+            },
+            user_id: {
+              id: "4",
+              name: "user_id",
+              display_name: "User",
+              type: "dimension",
+              dimension: ["field-id", ORDER_USER_ID_FIELD_ID],
+              widget_type: "id",
+            },
+          },
+        },
+        parameters: [],
+      })
+      .setDisplay("scalar")
+      .setDisplayName("Test Question");
+    question = await createSavedQuestion(unsavedQuestion);
+    cleanup.fn(() =>
+      CardApi.update({
+        id: question.id(),
+        archived: true,
+      }),
+    );
+
+    // create a dashboard
+    dashboard = await createDashboard({
+      name: "Test Dashboard",
+      description: null,
+      parameters: [
+        { name: "ID", slug: "id", id: "1", type: "id" },
+        { name: "Name", slug: "name", id: "2", type: "category" },
+        { name: "Source", slug: "source", id: "3", type: "category" },
+        { name: "User", slug: "user_id", id: "4", type: "id" },
+      ],
+    });
+    cleanup.fn(() =>
+      DashboardApi.update({
+        id: dashboard.id,
+        archived: true,
+      }),
+    );
+
+    const dashcard = await DashboardApi.addcard({
+      dashId: dashboard.id,
+      cardId: question.id(),
+    });
+    await DashboardApi.reposition_cards({
+      dashId: dashboard.id,
+      cards: [
+        {
+          id: dashcard.id,
+          card_id: question.id(),
+          row: 0,
+          col: 0,
+          sizeX: 4,
+          sizeY: 4,
+          series: [],
+          visualization_settings: {},
+          parameter_mappings: [
+            {
+              parameter_id: "1",
+              card_id: question.id(),
+              target: ["dimension", ["template-tag", "id"]],
+            },
+            {
+              parameter_id: "2",
+              card_id: question.id(),
+              target: ["dimension", ["template-tag", "name"]],
+            },
+            {
+              parameter_id: "3",
+              card_id: question.id(),
+              target: ["dimension", ["template-tag", "source"]],
+            },
+            {
+              parameter_id: "4",
+              card_id: question.id(),
+              target: ["dimension", ["template-tag", "user_id"]],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  describe("private questions", () => {
+    let app, store;
+    it("should be possible to view a private question", async () => {
+      useSharedAdminLogin();
+
+      store = await createTestStore();
+      store.pushPath(Urls.question(question.id()) + "?id=1");
+      app = mount(store.getAppContainer());
+
+      await waitForRequestToComplete("GET", /^\/api\/card\/\d+/);
+      expect(app.find(".Header-title-name").text()).toEqual("Test Question");
+
+      // wait for the query to load
+      await waitForRequestToComplete("POST", /^\/api\/card\/\d+\/query/);
+    });
+    sharedParametersTests(() => ({ app, store }));
+  });
+
+  describe("public questions", () => {
+    let app, store;
+    it("should be possible to view a public question", async () => {
+      useSharedAdminLogin();
+      const publicQuestion = await CardApi.createPublicLink({
+        id: question.id(),
+      });
+
+      logout();
+
+      store = await createTestStore({ publicApp: true });
+      store.pushPath(Urls.publicQuestion(publicQuestion.uuid) + "?id=1");
+      app = mount(store.getAppContainer());
+
+      await waitForRequestToComplete("GET", /^\/api\/[^\/]*\/card/);
+      expect(app.find(".EmbedFrame-header .h4").text()).toEqual(
+        "Test Question",
+      );
+
+      // wait for the query to load
+      await waitForRequestToComplete(
+        "GET",
+        /^\/api\/public\/card\/[^\/]+\/query/,
+      );
+    });
+    sharedParametersTests(() => ({ app, store }));
+  });
+
+  describe("embed questions", () => {
+    let app, store;
+    it("should be possible to view a embedded question", async () => {
+      useSharedAdminLogin();
+      await CardApi.update({
+        id: question.id(),
+        embedding_params: {
+          id: "enabled",
+          name: "enabled",
+          source: "enabled",
+          user_id: "enabled",
+        },
+        enable_embedding: true,
+      });
+
+      logout();
+
+      const token = jwt.sign(
+        {
+          resource: { question: question.id() },
+          params: {},
+        },
+        METABASE_SECRET_KEY,
+      );
+
+      store = await createTestStore({ embedApp: true });
+      store.pushPath(Urls.embedCard(token) + "?id=1");
+      app = mount(store.getAppContainer());
+
+      await waitForRequestToComplete("GET", /\/card\/[^\/]+/);
+
+      expect(app.find(".EmbedFrame-header .h4").text()).toEqual(
+        "Test Question",
+      );
+
+      // wait for the query to load
+      await waitForRequestToComplete(
+        "GET",
+        /^\/api\/embed\/card\/[^\/]+\/query/,
+      );
+    });
+    sharedParametersTests(() => ({ app, store }));
+  });
+
+  describe("private dashboards", () => {
+    let app, store;
+    it("should be possible to view a private dashboard", async () => {
+      useSharedAdminLogin();
+
+      store = await createTestStore();
+      store.pushPath(Urls.dashboard(dashboard.id) + "?id=1");
+      app = mount(store.getAppContainer());
+
+      await store.waitForActions([FETCH_DASHBOARD]);
+      expect(app.find(".DashboardHeader .Entity h2").text()).toEqual(
+        "Test Dashboard",
+      );
+
+      // wait for the query to load
+      await waitForRequestToComplete("POST", /^\/api\/card\/[^\/]+\/query/);
+
+      // wait for required field metadata to load
+      await waitForRequestToComplete("GET", /^\/api\/field\/[^\/]+/);
+    });
+    sharedParametersTests(() => ({ app, store }));
+  });
+
+  describe("public dashboards", () => {
+    let app, store;
+    it("should be possible to view a public dashboard", async () => {
+      useSharedAdminLogin();
+      const publicDash = await DashboardApi.createPublicLink({
+        id: dashboard.id,
+      });
+
+      logout();
+
+      store = await createTestStore({ publicApp: true });
+      store.pushPath(Urls.publicDashboard(publicDash.uuid) + "?id=1");
+      app = mount(store.getAppContainer());
+
+      await store.waitForActions([FETCH_DASHBOARD]);
+      expect(app.find(".EmbedFrame-header .h4").text()).toEqual(
+        "Test Dashboard",
+      );
+
+      // wait for the query to load
+      await waitForRequestToComplete(
+        "GET",
+        /^\/api\/public\/dashboard\/[^\/]+\/card\/[^\/]+/,
+      );
+    });
+    sharedParametersTests(() => ({ app, store }));
+  });
+
+  describe("embed dashboards", () => {
+    let app, store;
+    it("should be possible to view a embed dashboard", async () => {
+      useSharedAdminLogin();
+      await DashboardApi.update({
+        id: dashboard.id,
+        embedding_params: {
+          id: "enabled",
+          name: "enabled",
+          source: "enabled",
+          user_id: "enabled",
+        },
+        enable_embedding: true,
+      });
+
+      logout();
+
+      const token = jwt.sign(
+        {
+          resource: { dashboard: dashboard.id },
+          params: {},
+        },
+        METABASE_SECRET_KEY,
+      );
+
+      store = await createTestStore({ embedApp: true });
+      store.pushPath(Urls.embedDashboard(token) + "?id=1");
+      app = mount(store.getAppContainer());
+
+      await store.waitForActions([FETCH_DASHBOARD]);
+
+      expect(app.find(".EmbedFrame-header .h4").text()).toEqual(
+        "Test Dashboard",
+      );
+
+      // wait for the query to load
+      await waitForRequestToComplete(
+        "GET",
+        /^\/api\/embed\/dashboard\/[^\/]+\/dashcard\/\d+\/card\/\d+/,
+      );
+    });
+    sharedParametersTests(() => ({ app, store }));
+  });
+
+  afterAll(cleanup);
 });
+
+async function sharedParametersTests(getAppAndStore) {
+  let app;
+  beforeEach(() => {
+    const info = getAppAndStore();
+    app = info.app;
+  });
+
+  it("should have 4 ParameterFieldWidgets", async () => {
+    await waitForAllRequestsToComplete();
+
+    expect(app.find(ParameterWidget).length).toEqual(4);
+    expect(app.find(ParameterFieldWidget).length).toEqual(4);
+  });
+
+  it("open 4 FieldValuesWidgets", async () => {
+    // click each parameter to open the widget
+    app.find(ParameterFieldWidget).map(widget => widget.simulate("click"));
+
+    const widgets = app.find(FieldValuesWidget);
+    expect(widgets.length).toEqual(4);
+  });
+
+  // it("should have the correct field and searchField", () => {
+  //   const widgets = app.find(FieldValuesWidget);
+  //   expect(
+  //     widgets.map(widget => {
+  //       const { field, searchField } = widget.props();
+  //       return [field && field.id, searchField && searchField.id];
+  //     }),
+  //   ).toEqual([
+  //     [PEOPLE_ID_FIELD_ID, PEOPLE_NAME_FIELD_ID],
+  //     [PEOPLE_NAME_FIELD_ID, PEOPLE_NAME_FIELD_ID],
+  //     [PEOPLE_SOURCE_FIELD_ID, PEOPLE_SOURCE_FIELD_ID],
+  //     [ORDER_USER_ID_FIELD_ID, PEOPLE_NAME_FIELD_ID],
+  //   ]);
+  // });
+
+  it("should have the correct values", () => {
+    const widgets = app.find(FieldValuesWidget);
+    const values = widgets.map(
+      widget =>
+        widget
+          .find("ul") // first ul is options
+          .at(0)
+          .find("li")
+          .map(li => li.text())
+          .slice(0, -1), // the last item is the input, remove it
+    );
+    expect(values).toEqual([
+      ["Hudson Borer - 1"], // remapped value
+      [],
+      [],
+      [],
+    ]);
+  });
+
+  it("should have the correct placeholders", () => {
+    const widgets = app.find(FieldValuesWidget);
+    const placeholders = widgets.map(
+      widget => widget.find(TokenField).props().placeholder,
+    );
+    expect(placeholders).toEqual([
+      "Search by Name or enter an ID",
+      "Search by Name",
+      "Search the list",
+      "Search by Name or enter an ID",
+    ]);
+  });
+
+  it("should allow searching PEOPLE.ID by PEOPLE.NAME", async () => {
+    const widget = app.find(FieldValuesWidget).at(0);
+    // tests `search` endpoint
+    expect(widget.find("li").length).toEqual(1 + 1);
+    widget.find("input").simulate("change", { target: { value: "Aly" } });
+    await waitForRequestToComplete("GET", /\/field\/.*\/search/);
+    expect(widget.find("li").length).toEqual(1 + 1 + 4);
+  });
+  it("should allow searching PEOPLE.NAME by PEOPLE.NAME", async () => {
+    const widget = app.find(FieldValuesWidget).at(1);
+    // tests `search` endpoint
+    expect(widget.find("li").length).toEqual(1);
+    widget.find("input").simulate("change", { target: { value: "Aly" } });
+    await waitForRequestToComplete("GET", /\/field\/.*\/search/);
+    expect(widget.find("li").length).toEqual(1 + 4);
+  });
+  it("should show values for PEOPLE.SOURCE", async () => {
+    const widget = app.find(FieldValuesWidget).at(2);
+    // tests `values` endpoint
+    // NOTE: no need for waitForRequestToComplete because it was previously loaded?
+    // await waitForRequestToComplete("GET", /\/field\/.*\/values/);
+    expect(widget.find("li").length).toEqual(1 + 5); // 5 options + 1 for the input
+  });
+  it("should allow searching ORDER.USER_ID by PEOPLE.NAME", async () => {
+    const widget = app.find(FieldValuesWidget).at(3);
+    // tests `search` endpoint
+    expect(widget.find("li").length).toEqual(1);
+    widget.find("input").simulate("change", { target: { value: "Aly" } });
+    await waitForRequestToComplete("GET", /\/field\/.*\/search/);
+    expect(widget.find("li").length).toEqual(1 + 4);
+  });
+}

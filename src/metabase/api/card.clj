@@ -36,6 +36,7 @@
             [metabase.query-processor.middleware
              [cache :as cache]
              [results-metadata :as results-metadata]]
+            [metabase.related :as related]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]
@@ -265,11 +266,11 @@
    metadata_checksum      (s/maybe su/NonBlankString)}
   ;; check that we have permissions to run the query that we're trying to save
   (api/check-403 (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                                                          (card/query-perms-set dataset_query :write)))
+                   (card/query-perms-set dataset_query :write)))
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (when collection_id
     (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                                    (perms/collection-readwrite-path collection_id))))
+                     (perms/collection-readwrite-path collection_id))))
   ;; everything is g2g, now save the card
   (let [card (db/insert! Card
                :creator_id             api/*current-user-id*
@@ -594,7 +595,7 @@
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
   {:style/indent 1}
   [card-id & {:keys [parameters constraints context dashboard-id]
-              :or   {constraints dataset-api/default-query-constraints
+              :or   {constraints qp/default-query-constraints
                      context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (api/read-check (hydrate (Card card-id) :in_public_dashboard))
@@ -669,5 +670,14 @@
   (api/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
-(api/define-routes
-  (middleware/streaming-json-response (route-fn-name 'POST "/:card-id/query")))
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Card api/read-check related/related))
+
+(api/defendpoint POST "/related"
+  "Return related entities for an ad-hoc query."
+  [:as {query :body}]
+  (related/related (query/adhoc-query query)))
+
+(api/define-routes)

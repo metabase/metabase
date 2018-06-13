@@ -1,19 +1,23 @@
 /* provide flex utilities in lieu of float based layouts */
 
-.flex, :local(.flex) {
-    display: flex;
+.flex,
+:local(.flex) {
+  display: flex;
 }
 
-.flex-full, :local(.flex-full) {
-    flex: 1;
+.flex-full,
+:local(.flex-full) {
+  flex: 1;
 }
 
-.flex-half, :local(.flex-half) {
-    flex: 0.5;
+.flex-half,
+:local(.flex-half) {
+  flex: 0.5;
 }
 
-.flex-no-shrink, :local(.flex-no-shrink) {
-    flex-shrink: 0;
+.flex-no-shrink,
+:local(.flex-no-shrink) {
+  flex-shrink: 0;
 }
 
 /* The behavior of how `flex: <flex-grow>` sets flex-basis is inconsistent across
@@ -28,138 +32,175 @@
  *  a desired behavior that the element grows with its contents.
 */
 .flex-basis-auto {
-    flex-basis: auto;
+  flex-basis: auto;
 }
 
 .shrink-below-content-size {
-    /* W3C spec says:
+  /* W3C spec says:
      * By default, flex items won’t shrink below their minimum content size (the length of the longest word or
      * fixed-size element). To change this, set the min-width or min-height property.
      */
-    min-width: 0;
+  min-width: 0;
 }
 
-.align-center, :local(.align-center) {
-    align-items: center;
+.align-center,
+:local(.align-center) {
+  align-items: center;
 }
 
-.align-baseline, :local(.align-baseline) {
-    align-items: baseline;
+.align-baseline,
+:local(.align-baseline) {
+  align-items: baseline;
 }
 
-.justify-center, :local(.justify-center) {
-    justify-content: center;
+.justify-center,
+:local(.justify-center) {
+  justify-content: center;
 }
 
 .justify-between {
-    justify-content: space-between;
+  justify-content: space-between;
 }
 
 .justify-end {
-    justify-content: flex-end;
+  justify-content: flex-end;
 }
 
 .align-start {
-    align-items: flex-start;
+  align-items: flex-start;
 }
 
 .align-end {
-    align-items: flex-end;
+  align-items: flex-end;
 }
 
-.align-self-end, :local(.align-self-end) {
-    align-self: flex-end;
+.align-self-end,
+:local(.align-self-end) {
+  align-self: flex-end;
 }
 
-.flex-align-right, :local(.flex-align-right) {
-    margin-left: auto;
+.flex-align-right,
+:local(.flex-align-right) {
+  margin-left: auto;
 }
 
 @media screen and (--breakpoint-min-sm) {
-    .sm-flex-align-right { margin-left: auto; }
+  .sm-flex-align-right {
+    margin-left: auto;
+  }
 }
 
 @media screen and (--breakpoint-min-md) {
-    .md-flex-align-right { margin-left: auto; }
+  .md-flex-align-right {
+    margin-left: auto;
+  }
 }
 
 @media screen and (--breakpoint-min-lg) {
-    .lg-flex-align-right { margin-left: auto; }
+  .lg-flex-align-right {
+    margin-left: auto;
+  }
 }
 
-.layout-centered, :local(.layout-centered) {
+.layout-centered,
+:local(.layout-centered) {
   align-items: center;
   justify-content: center;
 }
 
 @media screen and (--breakpoint-min-sm) {
-    .sm-layout-centered {
-        align-items: center;
-        justify-content: center;
-    }
+  .sm-layout-centered {
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 @media screen and (--breakpoint-min-md) {
-    .md-layout-centered {
-        align-items: center;
-        justify-content: center;
-    }
+  .md-layout-centered {
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 @media screen and (--breakpoint-min-lg) {
-    .lg-layout-centered {
-        align-items: center;
-        justify-content: center;
-    }
+  .lg-layout-centered {
+    align-items: center;
+    justify-content: center;
+  }
 }
 
-.flex-column { flex-direction: column; }
+.flex-column {
+  flex-direction: column;
+}
 
 @media screen and (--breakpoint-min-sm) {
-    .sm-flex-column { flex-direction: column; }
+  .sm-flex-column {
+    flex-direction: column;
+  }
 }
 
 @media screen and (--breakpoint-min-md) {
-    .md-flex-column { flex-direction: column; }
+  .md-flex-column {
+    flex-direction: column;
+  }
 }
 
-.flex-row, :local(.flex-row) {
+.flex-row,
+:local(.flex-row) {
   flex-direction: row;
 }
 
-.flex-wrap {
-    flex-wrap: wrap;
+@media screen and (--breakpoint-min-sm) {
+  .sm-flex-row {
+    flex-direction: row;
+  }
 }
 
-.flex-reverse { flex-direction: row-reverse; }
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.flex-reverse {
+  flex-direction: row-reverse;
+}
 
 @media screen and (--breakpoint-min-sm) {
-    .sm-flex-reverse { flex-direction: row-reverse; }
+  .sm-flex-reverse {
+    flex-direction: row-reverse;
+  }
 }
 
 @media screen and (--breakpoint-min-md) {
-    .md-flex-reverse { flex-direction: row-reverse; }
+  .md-flex-reverse {
+    flex-direction: row-reverse;
+  }
 }
 
 @media screen and (--breakpoint-min-lg) {
-    .lg-flex-reverse { flex-direction: row-reverse; }
+  .lg-flex-reverse {
+    flex-direction: row-reverse;
+  }
 }
 
 @media screen and (--breakpoint-min-xl) {
-    .xl-flex-reverse { flex-direction: row-reverse; }
+  .xl-flex-reverse {
+    flex-direction: row-reverse;
+  }
 }
 
 .no-flex {
-    flex: 0 1 0%;
+  flex: 0 1 0%;
 }
 
 @media screen and (--breakpoint-min-md) {
-    .md-no-flex { flex: 0 !important; }
+  .md-no-flex {
+    flex: 0 !important;
+  }
 }
 
 /* Contents of elements inside flex items might not be wrapped correctly on IE11,
    set max-width manually to enforce wrapping
 */
 .ie-wrap-content-fix {
-   max-width: 100%;
+  max-width: 100%;
 }

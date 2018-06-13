@@ -91,6 +91,13 @@ Another option is custom remapping, which is currently only possible for numeric
 
 ![Remapping form](./images/remapping/custom-mapping.png)
 
+### Picking the filter UI for a field
+
+Metabase will automatically try to pick the best kind of filter interface for each field based on that field's type and the number of different values in it. Fields with only a few possible choices, like a `Gender` field, will display a dropdown list by default when filtering on them; fields with more than 100 possible selections will show a search box with autocomplete.
+
+If Metabase picked the wrong kind of filter UI for one of your fields, you can manually change it. You can choose from a drop down list, a search box, or just a plain input box:
+
+![Filter options](./images/filter-options.png)
 
 ---
 

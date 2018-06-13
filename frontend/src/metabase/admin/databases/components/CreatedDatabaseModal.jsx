@@ -1,39 +1,38 @@
+/* @flow */
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t, jt } from 'c-3po';
+import { t } from "c-3po";
+
 import ModalContent from "metabase/components/ModalContent.jsx";
 
-import * as Urls from "metabase/lib/urls";
-
+type Props = {
+  databaseId: number,
+  onClose: () => void,
+  onDone: () => void,
+};
 export default class CreatedDatabaseModal extends Component {
-    static propTypes = {
-        databaseId: PropTypes.number.isRequired,
-        onClose: PropTypes.func.isRequired,
-        onDone: PropTypes.func.isRequired
-    };
+  props: Props;
 
-    render() {
-        const { onClose, onDone, databaseId } = this.props;
-        return (
-            <ModalContent
-                title={t`Your database has been added!`}
-                onClose={onClose}
-            >
-                <div className="Form-inputs mb4">
-                    <p>
-                        {jt`We're analyzing its schema now to make some educated guesses about its
-                        metadata. ${<Link to={`/admin/datamodel/database/${databaseId}`}>View this
-                        database</Link>} in the Data Model section to see what we've found and to
-                        make edits, or ${<Link to={Urls.question(null, `?db=${databaseId}`)}>ask a question</Link>} about
-                        this database.`}
-                    </p>
-                </div>
+  render() {
+    const { onClose, onDone, databaseId } = this.props;
+    return (
+      <ModalContent title={t`Your database has been added!`} onClose={onClose}>
+        <div className="Form-inputs mb4">
+          <p>
+            {t`We took a look at your data, and we have some automated explorations that we can show you!`}
+          </p>
+        </div>
 
-                <div className="Form-actions flex layout-centered">
-                    <button className="Button Button--primary px3" onClick={onDone}>{t`Done`}</button>
-                </div>
-            </ModalContent>
-        );
-    }
+        <div className="Form-actions flex layout-centered">
+          <a className="link" onClick={onDone}>{t`I'm good thanks`}</a>
+          <Link
+            to={`/explore/${databaseId}`}
+            className="Button Button--primary ml-auto"
+          >
+            {t`Explore this data`}
+          </Link>
+        </div>
+      </ModalContent>
+    );
+  }
 }

@@ -5,90 +5,97 @@ import ReactDOM from "react-dom";
 import TooltipPopover from "./TooltipPopover.jsx";
 
 export default class Tooltip extends Component {
-    constructor(props, context) {
-        super(props, context);
+  constructor(props, context) {
+    super(props, context);
 
-        this.state = {
-            isOpen: false,
-            isHovered: false
-        };
-    }
-
-    static propTypes = {
-        tooltip: PropTypes.node,
-        children: PropTypes.element.isRequired,
-        isEnabled: PropTypes.bool,
-        verticalAttachments: PropTypes.array,
-        isOpen: PropTypes.bool
+    this.state = {
+      isOpen: false,
+      isHovered: false,
     };
+  }
 
-    static defaultProps = {
-        isEnabled: true,
-        verticalAttachments: ["top", "bottom"]
-    };
+  static propTypes = {
+    tooltip: PropTypes.node,
+    children: PropTypes.element.isRequired,
+    isEnabled: PropTypes.bool,
+    verticalAttachments: PropTypes.array,
+    isOpen: PropTypes.bool,
+  };
 
-    componentDidMount() {
-        let elem = ReactDOM.findDOMNode(this);
+  static defaultProps = {
+    isEnabled: true,
+    verticalAttachments: ["top", "bottom"],
+  };
 
-        elem.addEventListener("mouseenter", this._onMouseEnter, false);
-        elem.addEventListener("mouseleave", this._onMouseLeave, false);
+  componentDidMount() {
+    let elem = ReactDOM.findDOMNode(this);
 
-        // HACK: These two event listeners ensure that if a click on the child causes the tooltip to
-        // unmount (e.x. navigating away) then the popover is removed by the time this component
-        // unmounts. Previously we were seeing difficult to debug error messages like
-        // "Cannot read property 'componentDidUpdate' of null"
-        elem.addEventListener("mousedown", this._onMouseDown, true);
-        elem.addEventListener("mouseup", this._onMouseUp, true);
+    elem.addEventListener("mouseenter", this._onMouseEnter, false);
+    elem.addEventListener("mouseleave", this._onMouseLeave, false);
 
-        this._element = document.createElement('div');
-        this.componentDidUpdate();
+    // HACK: These two event listeners ensure that if a click on the child causes the tooltip to
+    // unmount (e.x. navigating away) then the popover is removed by the time this component
+    // unmounts. Previously we were seeing difficult to debug error messages like
+    // "Cannot read property 'componentDidUpdate' of null"
+    elem.addEventListener("mousedown", this._onMouseDown, true);
+    elem.addEventListener("mouseup", this._onMouseUp, true);
+
+    this._element = document.createElement("div");
+    this.componentDidUpdate();
+  }
+
+  componentDidUpdate() {
+    const { isEnabled, tooltip } = this.props;
+    const isOpen =
+      this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
+    if (tooltip && isEnabled && isOpen) {
+      ReactDOM.render(
+        <TooltipPopover
+          isOpen={true}
+          target={this}
+          {...this.props}
+          children={this.props.tooltip}
+        />,
+        this._element,
+      );
+    } else {
+      ReactDOM.unmountComponentAtNode(this._element);
     }
+  }
 
-    componentDidUpdate() {
-        const { isEnabled, tooltip } = this.props;
-        const isOpen = this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
-        if (tooltip && isEnabled && isOpen) {
-            ReactDOM.render(
-                <TooltipPopover isOpen={true} target={this} {...this.props} children={this.props.tooltip} />,
-                this._element
-            );
-        } else {
-            ReactDOM.unmountComponentAtNode(this._element);
-        }
-    }
+  componentWillUnmount() {
+    let elem = ReactDOM.findDOMNode(this);
+    elem.removeEventListener("mouseenter", this._onMouseEnter, false);
+    elem.removeEventListener("mouseleave", this._onMouseLeave, false);
+    elem.removeEventListener("mousedown", this._onMouseDown, true);
+    elem.removeEventListener("mouseup", this._onMouseUp, true);
+    ReactDOM.unmountComponentAtNode(this._element);
+    clearTimeout(this.timer);
+  }
 
-    componentWillUnmount() {
-        let elem = ReactDOM.findDOMNode(this);
-        elem.removeEventListener("mouseenter", this._onMouseEnter, false);
-        elem.removeEventListener("mouseleave", this._onMouseLeave, false);
-        elem.removeEventListener("mousedown", this._onMouseDown, true);
-        elem.removeEventListener("mouseup", this._onMouseUp, true);
-        ReactDOM.unmountComponentAtNode(this._element);
-        clearTimeout(this.timer);
-    }
+  _onMouseEnter = e => {
+    this.setState({ isOpen: true, isHovered: true });
+  };
 
-    _onMouseEnter = (e) => {
-        this.setState({ isOpen: true, isHovered: true });
-    }
+  _onMouseLeave = e => {
+    this.setState({ isOpen: false, isHovered: false });
+  };
 
-    _onMouseLeave = (e) => {
-        this.setState({ isOpen: false, isHovered: false });
-    }
+  _onMouseDown = e => {
+    this.setState({ isOpen: false });
+  };
 
-    _onMouseDown = (e) => {
-        this.setState({ isOpen: false });
-    }
+  _onMouseUp = e => {
+    // This is in a timeout to ensure the component has a chance to fully unmount
+    this.timer = setTimeout(
+      () => this.setState({ isOpen: this.state.isHovered }),
+      0,
+    );
+  };
 
-    _onMouseUp = (e) => {
-        // This is in a timeout to ensure the component has a chance to fully unmount
-        this.timer = setTimeout(() =>
-                this.setState({ isOpen: this.state.isHovered })
-            , 0);
-    }
-
-    render() {
-        return React.Children.only(this.props.children);
-    }
+  render() {
+    return React.Children.only(this.props.children);
+  }
 }
 
 /**
@@ -98,63 +105,78 @@ export default class Tooltip extends Component {
  * The test tooltip can only be toggled with `jestWrapper.simulate("mouseenter")` and `jestWrapper.simulate("mouseleave")`.
  */
 export class TestTooltip extends Component {
-    constructor(props, context) {
-        super(props, context);
+  constructor(props, context) {
+    super(props, context);
 
-        this.state = {
-            isOpen: false,
-            isHovered: false
-        };
-    }
-
-    static propTypes = {
-        tooltip: PropTypes.node,
-        children: PropTypes.element.isRequired,
-        isEnabled: PropTypes.bool,
-        verticalAttachments: PropTypes.array,
-        isOpen: PropTypes.bool
+    this.state = {
+      isOpen: false,
+      isHovered: false,
     };
+  }
 
-    static defaultProps = {
-        isEnabled: true,
-        verticalAttachments: ["top", "bottom"]
-    };
+  static propTypes = {
+    tooltip: PropTypes.node,
+    children: PropTypes.element.isRequired,
+    isEnabled: PropTypes.bool,
+    verticalAttachments: PropTypes.array,
+    isOpen: PropTypes.bool,
+  };
 
-    _onMouseEnter = (e) => {
-        this.setState({ isOpen: true, isHovered: true });
-    }
+  static defaultProps = {
+    isEnabled: true,
+    verticalAttachments: ["top", "bottom"],
+  };
 
-    _onMouseLeave = (e) => {
-        this.setState({ isOpen: false, isHovered: false });
-    }
+  _onMouseEnter = e => {
+    this.setState({ isOpen: true, isHovered: true });
+  };
 
-    render() {
-        const { isEnabled, tooltip } = this.props;
-        const isOpen = this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
+  _onMouseLeave = e => {
+    this.setState({ isOpen: false, isHovered: false });
+  };
 
-        return (
-            <div>
-                <TestTooltipTarget
-                    onMouseEnter={this._onMouseEnter}
-                    onMouseLeave={this._onMouseLeave}
-                >
-                    {this.props.children}
-                </TestTooltipTarget>
+  render() {
+    const { isEnabled, tooltip } = this.props;
+    const isOpen =
+      this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
 
-                { tooltip && isEnabled && isOpen &&
-                    <TestTooltipContent>
-                        <TooltipPopover isOpen={true} target={this} {...this.props} children={this.props.tooltip} />
-                        {this.props.tooltip}
-                    </TestTooltipContent>
-                }
-            </div>
-        )
-    }
+    return (
+      <div>
+        <TestTooltipTarget
+          onMouseEnter={this._onMouseEnter}
+          onMouseLeave={this._onMouseLeave}
+        >
+          {this.props.children}
+        </TestTooltipTarget>
+
+        {tooltip &&
+          isEnabled &&
+          isOpen && (
+            <TestTooltipContent>
+              <TooltipPopover
+                isOpen={true}
+                target={this}
+                {...this.props}
+                children={this.props.tooltip}
+              />
+              {this.props.tooltip}
+            </TestTooltipContent>
+          )}
+      </div>
+    );
+  }
 }
 
-export const TestTooltipTarget = ({ children, onMouseEnter, onMouseLeave }) =>
-    <div className="test-tooltip-hover-area" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-        {children}
-    </div>
+export const TestTooltipTarget = ({ children, onMouseEnter, onMouseLeave }) => (
+  <div
+    className="test-tooltip-hover-area"
+    onMouseEnter={onMouseEnter}
+    onMouseLeave={onMouseLeave}
+  >
+    {children}
+  </div>
+);
 
-export const TestTooltipContent = ({ children }) => <div className="test-tooltip-content">{children}</div>
+export const TestTooltipContent = ({ children }) => (
+  <div className="test-tooltip-content">{children}</div>
+);

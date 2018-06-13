@@ -17,11 +17,6 @@
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
-;; TODO - I don't think this is used for anything anymore
-(def ^:const ^:deprecated entity-types
-  "Valid values for `Table.entity_type` (field may also be `nil`)."
-  #{:person :event :photo :place})
-
 (def ^:const visibility-types
   "Valid values for `Table.visibility_type` (field may also be `nil`).
    (Basically any non-nil value is a reason for hiding the table.)"
@@ -67,7 +62,11 @@
 (defn fields
   "Return the `FIELDS` belonging to a single TABLE."
   [{:keys [id]}]
-  (db/select Field, :table_id id :visibility_type [:not= "retired"], {:order-by [[:position :asc] [:name :asc]]}))
+  (db/select Field
+    :table_id        id
+    :active          true
+    :visibility_type [:not= "retired"]
+    {:order-by [[:position :asc] [:name :asc]]}))
 
 (defn metrics
   "Retrieve the `Metrics` for a single TABLE."
@@ -113,7 +112,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (db/select Segment :table_id [:in table-ids], {:order-by [[:name :asc]]}))
+      (db/select Segment :table_id [:in table-ids], :is_active true, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-metrics
@@ -122,7 +121,7 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (db/select Metric :table_id [:in table-ids], {:order-by [[:name :asc]]}))
+      (db/select Metric :table_id [:in table-ids], :is_active true, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-fields
@@ -132,6 +131,7 @@
   (with-objects :fields
     (fn [table-ids]
       (db/select Field
+        :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]
         {:order-by [[:position :asc] [:name :asc]]}))

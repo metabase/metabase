@@ -12,6 +12,7 @@
 *  [Changing password complexity](#changing-metabase-password-complexity)
 *  [Handling Timezones](#handling-timezones-in-metabase)
 *  [Configuring Emoji Logging](#configuring-emoji-logging)
+*  [Configuring Logging Level](#configuring-logging-level)
 *  [How to setup monitoring via JMX](#monitoring-via-jmx)
 *  [A word on Java versions](#java-versions)
 
@@ -66,10 +67,10 @@ If you are using the Metabase macOS app, you will be notified when there is a ne
 
 ![Autoupdate Confirmation Dialog](images/AutoupdateScreenshot.png)
 
-#### [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.md#deploying-new-versions-of-metabase)
+#### [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.html#deploying-new-versions-of-metabase)
 Step-by-step instructions on how to upgrade Metabase running on Elastic Beanstalk using RDS.
 
-#### [Upgrading Heroku deployments](running-metabase-on-heroku.md#deploying-new-versions-of-metabase)
+#### [Upgrading Heroku deployments](running-metabase-on-heroku.html#deploying-new-versions-of-metabase)
 Step-by-step instructions on how to upgrade Metabase running on Heroku.
 
 # Configuring the Metabase Application Database
@@ -81,6 +82,7 @@ The application database is where Metabase stores information about users, saved
 **NOTE:** currently Metabase does not provide automated support for migrating data from one application database to another, so if you start with H2 and then want to move to Postgres you'll have to dump the data from H2 and import it into Postgres before relaunching the application.
 
 #### [H2](http://www.h2database.com/) (default)
+
 To use the H2 database for your Metabase instance you don't need to do anything at all.  When the application is first launched it will attempt to create a new H2 database in the same filesystem location the application is launched from.
 
 You can see these database files from the terminal:
@@ -98,6 +100,7 @@ If for any reason you want to use an H2 database file in a separate location fro
     export MB_DB_FILE=/the/path/to/my/h2.db
     java -jar metabase.jar
 
+Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; do not include those in you path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though this is the file that actually gets created).
 
 #### [Postgres](http://www.postgresql.org/)
 
@@ -132,13 +135,13 @@ This will tell Metabase to look for its application database using the supplied 
 
 # Migrating from using the H2 database to MySQL or Postgres
 
-If you decide to use the default application database (H2) when you initially start using Metabase, but decide later that you'd like to switch to a more production ready database such as MySQL or Postgres we make the transition easy for you.
+If you decide to use the default application database (H2) when you initially start using Metabase, but later decide that you'd like to switch to a more production-ready database such as MySQL or Postgres, we make the transition easy for you.
 
 Metabase provides a custom migration command for upgrading H2 application database files by copying their data to a new database. Here's what you'll want to do:
 
 1. Shutdown your Metabase instance so that it's not running. This ensures no accidental data gets written to the db while migrating.
 2. Make a backup copy of your H2 application database by following the instructions in [Backing up Metabase Application Data](#backing-up-metabase-application-data). Safety first!
-3. Run the Metabase data migration command using the appropriate environment variables for the target database you want to migrate to.  You can find details about specifying MySQL and Postgres databases at [Configuring the application database](#configuring-the-metabase-application-database). Here's an example of migrating to Postgres.
+3. Run the Metabase data migration command using the appropriate environment variables for the target database you want to migrate to.  You can find details about specifying MySQL and Postgres databases at [Configuring the application database](#configuring-the-metabase-application-database). Here's an example of migrating to Postgres:
 
 ```
 export MB_DB_TYPE=postgres
@@ -147,20 +150,21 @@ export MB_DB_PORT=5432
 export MB_DB_USER=<username>
 export MB_DB_PASS=<password>
 export MB_DB_HOST=localhost
-java -jar metabase.jar load-from-h2 <path-to-metabase-h2-database-file>
+java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db or .h2.db suffix
 ```
 
-It is expected that you will run the command against a brand new (empty!) database and Metabase will handle all of the work of creating the database schema and migrating the data for you.
+It is expected that you will run the command against a brand-new (empty!) database; Metabase will handle all of the work of creating the database schema and migrating the data for you.
 
 ###### Notes
 
-*  It is required that wherever you are running this migration command can connect to the target MySQL or Postgres database. So if you are attempting to move the data to a cloud database make sure you take that into consideration.
+*  It is required that you can connect to the target MySQL or Postgres database in whatever environment you are running this migration command in. So, if you are attempting to move the data to a cloud database, make sure you take that into consideration.
 *  The code that handles these migrations uses a Postgres SQL command that is only available in Postgres 9.4 or newer versions. Please make sure you Postgres database is version 9.4 or newer.
+*  H2 automatically adds a `.h2.db` or `.mv.db` extension to the database path you specify, so make sure the path to the DB file you pass to the command *does not* include it. For example, if you have a file named `/path/to/metabase.db.h2.db`, call the command with `load-from-h2 /path/to/metabase.db`.
 
 
 # Running Metabase database migrations manually
 
-When Metabase is starting up it will typically attempt to determine if any changes are required to the application database and it will execute those changes automatically.  If for some reason you wanted to see what these changes are and run them manually on your database then we let you do that.
+When Metabase is starting up, it will typically attempt to determine if any changes are required to the application database, and, if so, will execute those changes automatically.  If for some reason you wanted to see what these changes are and run them manually on your database then we let you do that.
 
 Simply set the following environment variable before launching Metabase:
 
@@ -349,6 +353,23 @@ Running on Java 8 is the easiest path to running Metabase. There are no addition
 
 ## Running on Java 9
 
-Java version 9 has introduced a new module system that places some additional restrictions on class loading. Metabase (and it's dependencies) still rely on the old behavior. Metabase runs on Java 9, but requires an additional argument to work around these changes in the module system:
+To use Metabase on Java 9 with Oracle, Vertica, SparkSQL, or other drivers that require external dependencies,
+you'll need to tweak the way you launch Metabase.
 
-    java --add-opens=java.base/java.net=ALL-UNNAMED -jar metabase.jar
+Java version 9 has introduced a new module system that places some additional restrictions on class loading. To use
+Metabase drivers that require extra external dependencies, you'll need to include them as part of the classpath at
+launch time. Run Metabase as follows:
+
+```bash
+# Unix
+java -cp metabase.jar:plugins/* metabase.core
+```
+
+On Windows, use a semicolon instead:
+
+```powershell
+# Windows
+java -cp metabase.jar;plugins/* metabase.core
+```
+
+The default Docker images use Java 8 so this step is only needed when running the JAR directly.

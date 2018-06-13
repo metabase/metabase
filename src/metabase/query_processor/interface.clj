@@ -10,7 +10,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s])
   (:import clojure.lang.Keyword
-           java.sql.Timestamp))
+           [java.sql Time Timestamp]))
 
 ;;; --------------------------------------------------- CONSTANTS ----------------------------------------------------
 
@@ -182,6 +182,15 @@
   clojure.lang.Named
   (getName [_] (name field)))
 
+;; TimeField is just a field wrapper that indicates string should be interpretted as a time
+(s/defrecord TimeField [field :- (s/cond-pre Field FieldLiteral)]
+  clojure.lang.Named
+  (getName [_] (name field)))
+
+(s/defrecord TimeValue [value       :- Time
+                        field       :- TimeField
+                        timezone-id :- (s/maybe String)])
+
 (def binning-strategies
   "Valid binning strategies for a `BinnedField`"
   #{:num-bins :bin-width :default})
@@ -295,7 +304,7 @@
                                                           FieldPlaceholder)])
 
 ;; e.g. an absolute point in time (literal)
-(s/defrecord DateTimeValue [value :- Timestamp
+(s/defrecord DateTimeValue [value :- (s/maybe Timestamp)
                             field :- DateTimeField])
 
 (def OrderableValue
@@ -413,9 +422,11 @@
                             field        :- AnyField
                             max-val      :- OrderableValueOrPlaceholder])
 
-(s/defrecord StringFilter [filter-type :- (s/enum :starts-with :contains :ends-with)
-                           field       :- AnyField
-                           value       :- (s/cond-pre s/Str StringValueOrPlaceholder)]) ; TODO - not 100% sure why this is also allowed to accept a plain string
+(s/defrecord StringFilter [filter-type     :- (s/enum :starts-with :contains :ends-with)
+                           field           :- AnyField
+                           ;; TODO - not 100% sure why this is also allowed to accept a plain string
+                           value           :- (s/cond-pre s/Str StringValueOrPlaceholder)
+                           case-sensitive? :- s/Bool])
 
 (def SimpleFilterClause
   "Schema for a non-compound, non-`not` MBQL `filter` clause."

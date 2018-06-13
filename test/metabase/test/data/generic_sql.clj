@@ -171,7 +171,8 @@
                                 (:field-definitions tabledef))]
     (for [row (:rows tabledef)]
       (zipmap fields-for-insert (for [v row]
-                                  (if (instance? java.util.Date v)
+                                  (if (and (not (instance? java.sql.Time v))
+                                           (instance? java.util.Date v))
                                     (u/->Timestamp v)
                                     v))))))
 
@@ -247,7 +248,11 @@
 (def load-data-one-at-a-time-parallel! "Insert rows one at a time, in parallel."              (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
 ;; ^ the parallel versions aren't neccesarily faster than the sequential versions for all drivers so make sure to do some profiling in order to pick the appropriate implementation
 
-(defn default-execute-sql! [driver context dbdef sql]
+(defn- jdbc-execute! [db-spec sql]
+  (jdbc/execute! db-spec [sql] {:transaction? false, :multi? true}))
+
+(defn default-execute-sql! [driver context dbdef sql & {:keys [execute!]
+                                                        :or   {execute! jdbc-execute!}}]
   (let [sql (some-> sql s/trim)]
     (when (and (seq sql)
                ;; make sure SQL isn't just semicolons
@@ -255,7 +260,7 @@
       ;; Remove excess semicolons, otherwise snippy DBs like Oracle will barf
       (let [sql (s/replace sql #";+" ";")]
         (try
-          (jdbc/execute! (database->spec driver context dbdef) [sql] {:transaction? false, :multi? true})
+          (execute! (database->spec driver context dbdef) sql)
           (catch SQLException e
             (println "Error executing SQL:" sql)
             (printf "Caught SQLException:\n%s\n"
@@ -266,7 +271,6 @@
             (printf "Caught Exception: %s %s\n%s\n" (class e) (.getMessage e)
                     (with-out-str (.printStackTrace e)))
             (throw e)))))))
-
 
 (def DefaultsMixin
   "Default implementations for methods marked *Optional* in `IGenericSQLTestExtensions`."
@@ -293,11 +297,11 @@
 
   Since there are some cases were you might want to execute compound statements without splitting, an upside-down
   ampersand (`⅋`) is understood as an \"escaped\" semicolon in the resulting SQL statement."
-  [driver context dbdef sql]
+  [driver context dbdef sql  & {:keys [execute!] :or {execute! default-execute-sql!}}]
   (when sql
     (doseq [statement (map s/trim (s/split sql #";+"))]
       (when (seq statement)
-        (default-execute-sql! driver context dbdef (s/replace statement #"⅋" ";"))))))
+        (execute! driver context dbdef (s/replace statement #"⅋" ";"))))))
 
 (defn- create-db! [driver {:keys [table-definitions], :as dbdef}]
   ;; Exec SQL for creating the DB

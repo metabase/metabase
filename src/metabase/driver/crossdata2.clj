@@ -7,7 +7,9 @@
             [honeysql.core :as hsql]
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql :as sql]
+            [metabase.driver
+             [generic-sql :as sql]
+             [hive-like :as hive-like]]
             [metabase.util :as u]
             [metabase.driver.generic-sql.query-processor :as qprocessor]
             [metabase.query-processor.util :as qputil]
@@ -17,13 +19,17 @@
                       [helpers :as h]
                       types)
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db])
   (:import java.util.UUID
            (java.util Collections Date)
            (metabase.query_processor.interface DateTimeValue Value)
-           (metabase.query_processor.interface DateTimeValue)))
+           (metabase.query_processor.interface DateTimeValue)
+           metabase.query_processor.interface.Field))
 
-
+(defrecord CrossdataDriver []
+  clojure.lang.Named
+  (getName [_] "Crossdata2"))
 
 
 (def ^:private ^:const column->base-type
@@ -39,7 +45,7 @@
    :SQL_LONGVARCHAR         :type/Text
    :SQL_CHAR                :type/Text
    :TIMESTAMP               :type/DateTime
-   :DATE                    :type/DateTime
+   :DATE                    :type/Date
    :SQL_BOOLEAN             :type/Boolean
    (keyword "bit varying")                :type/*
    (keyword "character varying")          :type/Text
@@ -68,10 +74,10 @@
   "Params to include in the JDBC connection spec to disable SSL."
   {:sslmode "disable"})
 
+
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
   [driver {:keys [database settings ], query :native, {sql :query, params :params} :native, :as outer-query}]
-
   (let [sql (str
               (if (seq params)
                 (unprepare/unprepare (cons sql params))
@@ -81,6 +87,17 @@
         (fn []
           (let [db-connection (sql/db->jdbc-connection-spec database)]
             (qprocessor/do-in-transaction db-connection (partial qprocessor/run-query-with-out-remark query))))))))
+
+(defn apply-order-by
+  "Apply `order-by` clause to HONEYSQL-FORM. Default implementation of `apply-order-by` for SQL drivers."
+  [_ honeysql-form {subclauses :order-by}]
+  (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
+    (let [honeysql-form (h/merge-order-by honeysql-form [(keyword (qprocessor/display_name field)) (case direction
+                                                                             :ascending  :asc
+                                                                             :descending :desc)])]
+      (if (seq more)
+        (recur honeysql-form more)
+        honeysql-form))))
 
 (defn- connection-details->spec [{ssl? :ssl, :as details-map}]
   (-> details-map
@@ -173,6 +190,82 @@
 (defn- string-length-fn [field-key]
   (hsql/call :length (hx/cast :STRING field-key)))
 
+;; ignore the schema when producing the identifier
+(defn qualified-name-components
+  "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`.
+   This function should be used by databases where schemas do not make much sense."
+  [{field-name :name, table-id :table_id, parent-id :parent_id}]
+  (conj (vec (if-let [parent (metabase.models.field/Field parent-id)]
+               (qualified-name-components parent)
+               (let [{table-name :name} (db/select-one ['Table :name], :id table-id)]
+                 [table-name])))
+        field-name))
+
+(defn field->identifier
+  "Returns an identifier for the given field"
+  [field]
+  (apply hsql/qualify (qualified-name-components field)))
+
+;;; ------------------------------------------ Custom HoneySQL Clause Impls ------------------------------------------
+
+(def ^:private source-table-alias "t1")
+
+(defn- resolve-table-alias [{:keys [schema-name table-name special-type field-name] :as field}]
+  (let [source-table (or (get-in qprocessor/*query* [:query :source-table])
+                         (get-in qprocessor/*query* [:query :source-query :source-table]))]
+    (if (and (= schema-name (:schema source-table))
+             (= table-name (:name source-table)))
+      (-> (assoc field :schema-name nil)
+          (assoc :table-name source-table-alias))
+      (if-let [matching-join-table (->> (get-in qprocessor/*query* [:query :join-tables])
+                                        (filter #(and (= schema-name (:schema %))
+                                                  (= table-name (:table-name %))))
+                                        first)]
+        (-> (assoc field :schema-name nil)
+            (assoc :table-name (:join-alias matching-join-table)))
+        field))))
+
+(defmethod  qprocessor/->honeysql [CrossdataDriver Field]
+  [driver field-before-aliasing]
+  (let [{:keys [table-name special-type field-name]} (resolve-table-alias field-before-aliasing)
+        field (keyword (hx/qualify-and-escape-dots table-name field-name))]
+    (cond
+      (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
+      (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp driver field :milliseconds)
+      :else                                               field)))
+
+(defn- apply-join-tables
+  [honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
+  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
+    (let [honeysql-form (h/merge-left-join honeysql-form
+                                           [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
+                                           [:= (hx/qualify-and-escape-dots source-table-alias (:field-name source-field))
+                                            (hx/qualify-and-escape-dots join-alias         (:field-name pk-field))])]
+      (if (seq more)
+        (recur honeysql-form more)
+        honeysql-form))))
+
+(defn- apply-page-using-row-number-for-offset
+  "Apply `page` clause to HONEYSQL-FROM, using row_number() for drivers that do not support offsets"
+  [honeysql-form {{:keys [items page]} :page}]
+  (let [offset (* (dec page) items)]
+    (if (zero? offset)
+      ;; if there's no offset we can simply use limit
+      (h/limit honeysql-form items)
+      ;; if we need to do an offset we have to do nesting to generate a row number and where on that
+      (let [over-clause (format "row_number() OVER (%s)"
+                                (first (hsql/format (select-keys honeysql-form [:order-by])
+                                                    :allow-dashed-names? true
+                                                    :quoting :mysql)))]
+        (-> (apply h/select (map last (:select honeysql-form)))
+            (h/from (h/merge-select honeysql-form [(hsql/raw over-clause) :__rownum__]))
+            (h/where [:> :__rownum__ offset])
+            (h/limit items))))))
+
+(defn- apply-source-table
+  [honeysql-form {{table-name :name, schema :schema} :source-table}]
+  {:pre [table-name]}
+  (h/from honeysql-form [(hx/qualify-and-escape-dots schema table-name) source-table-alias]))
 
 (defrecord CrossdataDriver []
   clojure.lang.Named
@@ -181,12 +274,14 @@
 (def CrossdataISQLDriverMixin
   "Implementations of `ISQLDriver` methods for `CrossdataDriver`."
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         (u/drop-first-arg column->base-type)
+         {:apply-source-table        (u/drop-first-arg apply-source-table)
+          :apply-join-tables         (u/drop-first-arg apply-join-tables)
+          :column->base-type         (u/drop-first-arg column->base-type)
           :column->special-type      (u/drop-first-arg column->special-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
+          :field->identifier         (u/drop-first-arg field->identifier)
           :quote-style               (constantly :mysql)
-          :prepare-value             (u/drop-first-arg prepare-value)
           :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))

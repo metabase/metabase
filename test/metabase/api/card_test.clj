@@ -213,9 +213,10 @@
             :database_id            database-id ; these should be inferred automatically
             :table_id               table-id
             :labels                 []
-            :can_write              true,
-            :dashboard_count        0,
+            :can_write              true
+            :dashboard_count        0
             :collection             nil
+            :read_permissions       [(format "/db/%d/schema//table/%d/" database-id table-id)]
             :creator                (match-$ (fetch-user :rasta)
                                       {:common_name  "Rasta Toucan"
                                        :is_superuser false
@@ -295,6 +296,7 @@
                                        :id           $})
             :updated_at             $
             :dataset_query          $
+            :read_permissions       [(format "/db/%d/schema//table/%d/" database-id table-id)]
             :id                     $
             :display                "table"
             :visualization_settings {}
@@ -554,17 +556,11 @@
      (Pulse pulse-id)]))
 
 ;; Adding an additional breakout will cause the alert to be removed
-(tt/expect-with-temp [Database
-                      [{database-id :id}]
-
-                      Table
-                      [{table-id :id} {:db_id database-id}]
-
-                      Card
+(tt/expect-with-temp [Card
                       [card {:display                :line
                              :visualization_settings {:graph.goal_value 10}
                              :dataset_query          (assoc-in
-                                                      (mbql-count-query database-id table-id)
+                                                      (mbql-count-query (data/id) (data/id :checkins))
                                                       [:query :breakout]
                                                       [["datetime-field" (data/id :checkins :date) "hour"]])}]
 
@@ -590,9 +586,9 @@
   (et/with-fake-inbox
     (et/with-expected-messages 1
       ((user->client :crowberto) :put 200 (str "card/" (u/get-id card))
-       {:dataset_query (assoc-in (mbql-count-query database-id table-id)
+       {:dataset_query (assoc-in (mbql-count-query (data/id) (data/id :checkins))
                                  [:query :breakout] [["datetime-field" (data/id :checkins :date) "hour"]
-                                                     ["datetime-field" (data/id :checkins :date) "second"]])}))
+                                                     ["datetime-field" (data/id :checkins :date) "minute"]])}))
     [(et/regex-email-bodies #"the question was edited by Crowberto Corv")
      (Pulse pulse-id)]))
 
@@ -691,10 +687,10 @@
 
 (defn- do-with-temp-native-card {:style/indent 0} [f]
   (tt/with-temp* [Database  [{database-id :id} {:details (:details (Database (id))), :engine :h2}]
-                  Table     [{table-id :id} {:db_id database-id, :name "CATEGORIES"}]
-                  Card      [card {:dataset_query {:database database-id
-                                                   :type     :native
-                                                   :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
+                  Table     [{table-id :id}    {:db_id database-id, :name "CATEGORIES"}]
+                  Card      [card              {:dataset_query {:database database-id
+                                                                :type     :native
+                                                                :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
     ;; delete all permissions for this DB
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     (f database-id card)))
@@ -1070,3 +1066,9 @@
     (tt/with-temp Card [card {:enable_embedding true}]
       (for [card ((user->client :crowberto) :get 200 "card/embeddable")]
         (m/map-vals boolean (select-keys card [:name :id]))))))
+
+;; Test related/recommended entities
+(expect
+  #{:table :metrics :segments :dashboard-mates :similar-questions :canonical-metric :dashboards :collections}
+  (tt/with-temp* [Card [{card-id :id}]]
+    (-> ((user->client :crowberto) :get 200 (format "card/%s/related" card-id)) keys set)))

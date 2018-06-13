@@ -4,6 +4,7 @@
   (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max + - / *])
   (:require [clojure.core :as core]
             [clojure.tools.logging :as log]
+            [metabase.driver :as driver]
             [metabase.query-processor
              [interface :as i]
              [util :as qputil]]
@@ -89,10 +90,12 @@
 
 (defn- datetime-unit
   "Determine the appropriate datetime unit that should be used for a field F and a value V.
-   (Sometimes the value may already have a 'default' value that should be replaced with the
-   value from the field it is being used with, e.g. in a filter clause.
-   For example when filtering by minute it is important both F and V are bucketed as minutes,
-   and thus both most have the same unit."
+
+  (Sometimes the value may already have a 'default' value that should be replaced with the value from the field it is
+  being used with, e.g. in a filter clause.)
+
+  For example when filtering by minute it is important both F and V are bucketed as minutes, and thus both most have
+  the same unit."
   [f v]
   (qputil/normalize-token (core/or (:datetime-unit f)
                                    (:unit f)
@@ -108,7 +111,10 @@
     (instance? DateTimeValue v)         v
     (instance? RelativeDatetime v)      (i/map->RelativeDateTimeValue (assoc v :unit (datetime-unit f v), :field (datetime-field f (datetime-unit f v))))
     (instance? DateTimeField f)         (i/map->DateTimeValue {:value (u/->Timestamp v), :field f})
-    (instance? FieldLiteral f)          (i/map->Value {:value v, :field f})
+    (instance? FieldLiteral f)          (if (isa? (:base-type f) :type/DateTime)
+                                          (i/map->DateTimeValue {:value (u/->Timestamp v)
+                                                                 :field (i/map->DateTimeField {:field f :unit :default})})
+                                          (i/map->Value {:value v, :field f}))
     :else                               (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
 
 (s/defn ^:private field-or-value
@@ -196,7 +202,8 @@
    (log/warn "The syntax for aggregate fields has changed in MBQL '98. Instead of `[:aggregation 0]`, please use `[:aggregate-field 0]` instead.")
    (aggregate-field index))
 
-  ;; Handle :aggregation top-level clauses. This is either a single map (single aggregation) or a vector of maps (multiple aggregations)
+  ;; Handle :aggregation top-level clauses. This is either a single map (single aggregation) or a vector of maps
+  ;; (multiple aggregations)
   ([query ag-or-ags :- (s/maybe (s/cond-pre su/Map [su/Map]))]
    (cond
      (map? ag-or-ags)  (recur query [ag-or-ags])
@@ -217,7 +224,8 @@
 ;;; ## breakout & fields
 
 (s/defn ^:ql binning-strategy :- FieldPlaceholder
-  "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and `STRATEGY-PARAM`"
+  "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and
+  `STRATEGY-PARAM`"
   ([f strategy-name & [strategy-param]]
    (let [strategy (qputil/normalize-token strategy-name)
          field (field f)]
@@ -289,12 +297,40 @@
   (and (between lat-field lat-min lat-max)
        (between lon-field lon-min lon-max)))
 
-(s/defn ^:private string-filter :- StringFilter [filter-type f s]
-  (i/map->StringFilter {:filter-type filter-type, :field (field f), :value (value f s)}))
 
-(def ^:ql ^{:arglists '([f s])} starts-with "Filter subclause. Return results where F starts with the string S."    (partial string-filter :starts-with))
-(def ^:ql ^{:arglists '([f s])} contains    "Filter subclause. Return results where F contains the string S."       (partial string-filter :contains))
-(def ^:ql ^{:arglists '([f s])} ends-with   "Filter subclause. Return results where F ends with with the string S." (partial string-filter :ends-with))
+(s/defn ^:private string-filter :- StringFilter
+  "String search filter clauses: `contains`, `starts-with`, and `ends-with`. First shipped in `0.11.0` (before initial
+  public release) but only supported case-sensitive searches. In `0.29.0` support for case-insensitive searches was
+  added. For backwards-compatibility, and to avoid possible performance implications, case-sensitive is the default
+  option if no `options-maps` is specified for all drivers except GA. Whether we should default to case-sensitive can
+  be specified by the `IDriver` method `default-to-case-sensitive?`."
+  ([filter-type f s]
+   (string-filter filter-type f s {:case-sensitive (if i/*driver*
+                                                     (driver/default-to-case-sensitive? i/*driver*)
+                                                     ;; if *driver* isn't bound then just assume `true`
+                                                     true)}))
+  ([filter-type f s options-map]
+   (i/strict-map->StringFilter
+    {:filter-type     filter-type
+     :field           (field f)
+     :value           (value f s)
+     :case-sensitive? (qputil/get-normalized options-map :case-sensitive true)})))
+
+(def ^:ql ^{:arglists '([f s] [f s options-map])} starts-with
+  "Filter subclause. Return results where F starts with the string S. By default, is case-sensitive, but you may pass an
+  `options-map` with `{:case-sensitive false}` for case-insensitive searches."
+  (partial string-filter :starts-with))
+
+(def ^:ql ^{:arglists '([f s] [f s options-map])} contains
+  "Filter subclause. Return results where F contains the string S. By default, is case-sensitive, but you may pass an
+  `options-map` with `{:case-sensitive false}` for case-insensitive searches."
+  (partial string-filter :contains))
+
+(def ^:ql ^{:arglists '([f s] [f s options-map])} ends-with
+  "Filter subclause. Return results where F ends with with the string S. By default, is case-sensitive, but you may pass
+  an `options-map` with `{:case-sensitive false}` for case-insensitive searches."
+  (partial string-filter :ends-with))
+
 
 (s/defn ^:ql not :- i/Filter
   "Filter subclause. Return results that do *not* satisfy SUBCLAUSE.

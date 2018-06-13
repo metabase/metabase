@@ -18,6 +18,7 @@
              [pulse-channel :refer [channel-types]]]
             [metabase.pulse.render :as render]
             [metabase.util.schema :as su]
+            [metabase.util.urls :as urls]
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
@@ -49,7 +50,7 @@
    channels      (su/non-empty [su/Map])
    skip_if_empty s/Bool}
   (check-card-read-permissions cards)
-  (api/check-500 (pulse/create-pulse! name api/*current-user-id* (map u/get-id cards) channels skip_if_empty)))
+  (api/check-500 (pulse/create-pulse! name api/*current-user-id* (map pulse/create-card-ref cards) channels skip_if_empty)))
 
 
 (api/defendpoint GET "/:id"
@@ -70,7 +71,7 @@
   (check-card-read-permissions cards)
   (pulse/update-pulse! {:id             id
                         :name           name
-                        :cards          (map u/get-id cards)
+                        :cards          (map pulse/create-card-ref cards)
                         :channels       channels
                         :skip-if-empty? skip_if_empty})
   (pulse/retrieve-pulse id))
@@ -130,7 +131,10 @@
     {:id              id
      :pulse_card_type card-type
      :pulse_card_html card-html
-     :row_count       (:row_count result)}))
+     :pulse_card_name (:name card)
+     :pulse_card_url  (urls/card-url (:id card))
+     :row_count       (:row_count result)
+     :col_count       (count (:cols (:data result)))}))
 
 (api/defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a `Card` with ID."

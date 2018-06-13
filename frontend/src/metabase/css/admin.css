@@ -1,221 +1,212 @@
 :root {
-    --admin-nav-bg-color: #8091AB;
-    --admin-nav-bg-color-tint: #9AA7BC;
-    --admin-nav-item-text-color: rgba(255, 255, 255, 0.63);
-    --admin-nav-item-text-active-color: #fff;
-    --page-header-padding: 2.375rem;
+  --admin-nav-bg-color: #8091ab;
+  --admin-nav-bg-color-tint: #9aa7bc;
+  --admin-nav-item-text-color: rgba(255, 255, 255, 0.63);
+  --admin-nav-item-text-active-color: #fff;
+  --page-header-padding: 2.375rem;
 }
 
 .AdminNav {
-    background: var(--admin-nav-bg-color);
-    color: #fff;
-    font-size: 0.85rem;
+  background: var(--admin-nav-bg-color);
+  color: #fff;
+  font-size: 0.85rem;
 }
 
 .AdminNav .NavItem {
-    color: var(--admin-nav-item-text-color);
+  color: var(--admin-nav-item-text-color);
 }
 
 .AdminNav .NavItem:hover,
 .AdminNav .NavItem.is--selected {
-    color: var(--admin-nav-item-text-active-color);
+  color: var(--admin-nav-item-text-active-color);
 }
 
 /* TODO: this feels itchy. should refactor .NavItem.is--selected to be less cascadey */
 .AdminNav .NavItem:hover:after,
 .AdminNav .NavItem.is--selected:after {
-    display: none;
+  display: none;
 }
-
 
 .AdminNav .NavDropdown.open .NavDropdown-button,
 .AdminNav .NavDropdown .NavDropdown-content-layer {
-    background-color: var(--admin-nav-bg-color-tint);
+  background-color: var(--admin-nav-bg-color-tint);
 }
 
 .AdminNav .Dropdown-item:hover {
-    background-color: var(--admin-nav-bg-color);
+  background-color: var(--admin-nav-bg-color);
 }
 
 /* utility to get a simple common hover state for admin items */
 .HoverItem:hover,
 .AdminHoverItem:hover {
-    background-color: #F3F8FD;
-    transition: background .2s linear;
+  background-color: #f3f8fd;
+  transition: background 0.2s linear;
 }
 
 .AdminNav .Dropdown-chevron {
-    color: #fff;
+  color: #fff;
 }
 
 .Actions {
-    background-color: rgba(243,243,243,0.46);
-    border: 1px solid #E0E0E0;
-    padding: 2em;
+  background-color: rgba(243, 243, 243, 0.46);
+  border: 1px solid #e0e0e0;
+  padding: 2em;
 }
 
 .Actions-group {
-    margin-bottom: 2em;
+  margin-bottom: 2em;
 }
 
 .Actions-group:last-child {
-    margin-bottom: 0;
+  margin-bottom: 0;
 }
 
 .Actions-groupLabel {
-    font-size: 1em;
-    margin-bottom: 1em;
+  font-size: 1em;
+  margin-bottom: 1em;
 }
 
 .ContentTable {
-    width: 100%;
-    border-collapse: collapse;
-    border-spacing: 0;
-    text-align: left;
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  text-align: left;
 }
 
 .ContentTable thead {
-    border-bottom: 1px solid #D8D8D8;
+  border-bottom: 1px solid #d8d8d8;
 }
 
 .AdminBadge {
-    background-color: #A989C5;
-    border-radius: 4px;
-    color: #fff;
-    padding: 0.25em;
+  background-color: #a989c5;
+  border-radius: 4px;
+  color: #fff;
+  padding: 0.25em;
 }
 .PageHeader {
-    padding-top: var(--page-header-padding);
-    padding-bottom: var(--page-header-padding);
+  padding-top: var(--page-header-padding);
+  padding-bottom: var(--page-header-padding);
 }
 
 .PageTitle {
-    margin: 0;
+  margin: 0;
 }
 
 .Table-actions {
-    text-align: right;
+  text-align: right;
 }
 
 .ContentTable .Table-actions {
-    opacity: 0;
+  opacity: 0;
 }
 
 .ContentTable td,
 .ContentTable th {
-    padding: 1em;
+  padding: 1em;
 }
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
-    background-color: rgba(74, 144, 226, 0.04);
+  background-color: rgba(74, 144, 226, 0.04);
 }
 
 .ContentTable tr:hover .Table-actions {
-    opacity: 1;
-    transition: opacity .2s linear;
+  opacity: 1;
+  transition: opacity 0.2s linear;
 }
 
 .AdminList {
-    background-color: #F9FBFC;
-    border: var(--border-size) var(--border-style) var(--border-color);
-    border-radius: var(--default-border-radius);
-    width: 266px;
-    box-shadow: inset -1px -1px 3px rgba(0,0,0,0.05);
-    padding-bottom: 0.75em;
+  background-color: #f9fbfc;
+  border: var(--border-size) var(--border-style) var(--border-color);
+  border-radius: var(--default-border-radius);
+  width: 266px;
+  box-shadow: inset -1px -1px 3px rgba(0, 0, 0, 0.05);
+  padding-bottom: 0.75em;
 }
 
 .AdminList-search {
-    position: relative;
+  position: relative;
 }
 
 .AdminList-search .Icon {
-    position: absolute;
-    margin-top: auto;
-    margin-bottom: auto;
-    top: 0;
-    bottom: 0;
-    margin: auto;
-    margin-left: 1em;
-    color: #C0C0C0;
+  position: absolute;
+  margin-top: auto;
+  margin-bottom: auto;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  margin-left: 1em;
+  color: #c0c0c0;
 }
 
 .AdminList-search .AdminInput {
-    padding: 0.5em;
-    padding-left: 2em;
-    font-size: 18px;
-    width: 100%;
-    border-top-left-radius: var(--default-border-radius);
-    border-top-right-radius: var(--default-border-radius);
-    border-bottom-color: var(--border-color);
+  padding: 0.5em;
+  padding-left: 2em;
+  font-size: 18px;
+  width: 100%;
+  border-top-left-radius: var(--default-border-radius);
+  border-top-right-radius: var(--default-border-radius);
+  border-bottom-color: var(--border-color);
 }
 
 .AdminList-item {
-    padding: 0.75em 1em 0.75em 1em;
-    border: var(--border-size) var(--border-style) transparent;
-    border-radius: var(--default-border-radius);
-    margin-bottom: 0.25em;
+  padding: 0.75em 1em 0.75em 1em;
+  border: var(--border-size) var(--border-style) transparent;
+  border-radius: var(--default-border-radius);
+  margin-bottom: 0.25em;
 }
 
 .AdminList-item.selected {
-    color: var(--brand-color);
+  color: var(--brand-color);
 }
 
 .AdminList-item.selected,
 .AdminList-item:hover {
-    background-color: white;
-    border-color: var(--border-color);
-    margin-left: -0.5em;
-    margin-right: -0.5em;
-    padding-left: 1.5em;
-    padding-right: 1.5em;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  background-color: white;
+  border-color: var(--border-color);
+  margin-left: -0.5em;
+  margin-right: -0.5em;
+  padding-left: 1.5em;
+  padding-right: 1.5em;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .AdminList-section {
-    margin-top: 1em;
-    padding: 0.5em 1em 0.5em 1em;
-    text-transform: uppercase;
-    color: color(var(--base-grey) shade(20%));
-    font-weight: 700;
-    font-size: smaller;
-}
-
-.AdminList-item .ProgressBar {
-    opacity: 0.2;
-}
-
-.AdminList-item.selected .ProgressBar {
-    opacity: 1.0;
+  margin-top: 1em;
+  padding: 0.5em 1em 0.5em 1em;
+  text-transform: uppercase;
+  color: color(var(--base-grey) shade(20%));
+  font-weight: 700;
+  font-size: smaller;
 }
 
 .AdminInput {
-    color: var(--default-font-color);
-    padding: var(--padding-1);
-    background-color: #FCFCFC;
-    border: 1px solid transparent;
+  color: var(--default-font-color);
+  padding: var(--padding-1);
+  background-color: #fcfcfc;
+  border: 1px solid transparent;
 }
 .AdminInput:focus {
-    border-color: var(--brand-color);
-    box-shadow: none;
-    outline: 0;
+  border-color: var(--brand-color);
+  box-shadow: none;
+  outline: 0;
 }
 
 .AdminSelect {
-    display: inline-block;
-    padding: 0.6em;
-    border: 1px solid var(--border-color);
-    border-radius: var(--default-border-radius);
-    font-size: 14px;
-    font-weight: 700;
-    min-width: 90px;
+  display: inline-block;
+  padding: 0.6em;
+  border: 1px solid var(--border-color);
+  border-radius: var(--default-border-radius);
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 90px;
 }
 
 .AdminSelectBorderless {
-    display: inline-block;
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 3px;
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 3px;
 }
 
 .AdminSelect--borderless {
@@ -228,97 +219,72 @@
   margin-left: 0;
 }
 
-
 .MetadataTable-title {
-    background-color: #FCFCFC;
+  background-color: #fcfcfc;
 }
 
 .TableEditor-table-name {
-    font-size: 24px;
+  font-size: 24px;
 }
 
 .TableEditor-field-name {
-    font-size: 16px;
+  font-size: 16px;
 }
 
 .TableEditor-table-description,
 .TableEditor-field-description {
-    font-size: 14px;
+  font-size: 14px;
 }
 
 .TableEditor-field-visibility {
-    /*color: var(--orange-color);*/
+  /*color: var(--orange-color);*/
 }
 
 .TableEditor-field-visibility .ColumnarSelector-row:hover {
-    background-color: var(--brand-color) !important;
-    color: white !important;
+  background-color: var(--brand-color) !important;
+  color: white !important;
 }
 
 .TableEditor-field-type {
-    /*color: var(--purple-color);*/
+  /*color: var(--purple-color);*/
 }
 
 .TableEditor-field-type .ColumnarSelector-row:hover {
-    background-color: var(--brand-color) !important;
-    color: white !important;
+  background-color: var(--brand-color) !important;
+  color: white !important;
 }
 
 .TableEditor-field-special-type,
 .TableEditor-field-target {
-    margin-top: 3px;
-    /*color: var(--green-color);*/
+  margin-top: 3px;
+  /*color: var(--green-color);*/
 }
 
 .TableEditor-field-special-type .ColumnarSelector-row:hover,
 .TableEditor-field-target .ColumnarSelector-row:hover {
-    background-color: var(--brand-color) !important;
-    color: white !important;
-}
-
-.ProgressBar {
-    position: relative;
-    border: 1px solid #6F7A8B;
-
-    width: 55px;
-    height: 10px;
-    border-radius: 99px;
-}
-.ProgressBar--mini {
-    width: 17px;
-    height: 8px;
-    border-radius: 2px;
-}
-.ProgressBar-progress {
-    background-color: #6F7A8B;
-    position: absolute;
-    height: 100%;
-    top: 0px;
-    left: 0px;
-    border-radius: inherit;
-    border-top-left-radius: 0px;
-    border-bottom-left-radius: 0px;
+  background-color: var(--brand-color) !important;
+  color: white !important;
 }
 
 .SaveStatus {
-    line-height: 1;
+  line-height: 1;
 }
 
 .SaveStatus:last-child {
-    border-right: none !important;
+  border-right: none !important;
 }
 
 .SettingsInput {
-    width: 400px;
+  width: 400px;
 }
 
 .SettingsPassword {
-    width: 200px;
+  width: 200px;
 }
 
 .UserActionsSelect {
-    padding-top: 1em;
-    min-width: 180px;
+  padding-top: 1em;
+  min-width: 180px;
 }
 
 .AdminTable {
@@ -332,7 +298,7 @@
 .AdminTable th {
   text-transform: uppercase;
   color: color(var(--base-grey) shade(40%));
-  padding:  var(--padding-1);
+  padding: var(--padding-1);
   font-weight: normal;
 }
 

@@ -11,6 +11,7 @@
              [dashboard :as dashboard-api]]
             [metabase.models
              [card :refer [Card]]
+             [collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
              [dashboard-card-series :refer [DashboardCardSeries]]
@@ -132,6 +133,7 @@
                                                            :display                "table"
                                                            :query_type             nil
                                                            :dataset_query          {}
+                                                           :read_permissions       nil
                                                            :visualization_settings {}
                                                            :query_average_duration nil
                                                            :in_public_dashboard    false
@@ -143,6 +145,19 @@
                   DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
     (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id)))))
 
+;; ## GET /api/dashboard/:id with a series, should fail if the user doesn't have access to the collection
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Collection          [{coll-id :id}      {:name "Collection 1"}]
+                  Dashboard           [{dashboard-id :id} {:name       "Test Dashboard"
+                                                           :creator_id (user->id :crowberto)}]
+                  Card                [{card-id :id}      {:name          "Dashboard Test Card"
+                                                           :collection_id coll-id}]
+                  Card                [{card-id2 :id}     {:name          "Dashboard Test Card 2"
+                                                           :collection_id coll-id}]
+                  DashboardCard       [{dbc_id :id}       {:dashboard_id dashboard-id, :card_id card-id}]
+                  DashboardCardSeries [_                  {:dashboardcard_id dbc_id, :card_id card-id2, :position 0}]]
+    ((user->client :rasta) :get 403 (format "dashboard/%d" dashboard-id))))
 
 ;; ## PUT /api/dashboard/:id
 (expect
@@ -605,3 +620,9 @@
     [116 69 -44 77 100 8 -40 -67 25 -4 27 -21 111 98 -45 85 83 -27 -39 8 63 -25 -88 74 32 -10 -2 35 102 -72 -104 111]            666
     [-84 -2 87 22 -4 105 68 48 -113 93 -29 52 3 102 123 -70 -123 36 31 76 -16 87 70 116 -93 109 -88 108 125 -36 -43 73]          777
     [90 127 103 -71 -76 -36 41 -107 -7 -13 -83 -87 28 86 -94 110 74 -86 110 -54 -128 124 102 -73 -127 88 77 -36 62 5 -84 -100]   888}))
+
+;; Test related/recommended entities
+(expect
+  #{:cards}
+  (tt/with-temp* [Dashboard [{dashboard-id :id}]]
+    (-> ((user->client :crowberto) :get 200 (format "dashboard/%s/related" dashboard-id)) keys set)))

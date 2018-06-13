@@ -31,7 +31,8 @@
 
 (defn- pulse-card-details [card]
   (-> (select-keys card [:id :name :description :display])
-      (update :display name)))
+      (update :display name)
+      (assoc :include_csv false :include_xls false)))
 
 (defn- pulse-channel-details [channel]
   (select-keys channel [:schedule_type :schedule_details :channel_type :updated_at :details :pulse_id :id :enabled
@@ -124,6 +125,38 @@
                                                                   :skip_if_empty false}))
         (update :channels remove-extra-channels-fields))))
 
+;; Create a pulse with a csv and xls
+(tt/expect-with-temp [Card [card1]
+                      Card [card2]]
+  {:name          "A Pulse"
+   :creator_id    (user->id :rasta)
+   :creator       (user-details (fetch-user :rasta))
+   :created_at    true
+   :updated_at    true
+   :cards         [(assoc (pulse-card-details card1) :include_csv true :include_xls true)
+                   (pulse-card-details card2)]
+   :channels      [(merge pulse-channel-defaults
+                          {:channel_type  "email"
+                           :schedule_type "daily"
+                           :schedule_hour 12
+                           :recipients    []})]
+   :skip_if_empty false}
+  (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
+                                                                :cards         [{:id          (:id card1)
+                                                                                 :include_csv true
+                                                                                 :include_xls true}
+                                                                                {:id          (:id card2)
+                                                                                 :include_csv false
+                                                                                 :include_xls false}]
+                                                                :channels      [{:enabled       true
+                                                                                 :channel_type  "email"
+                                                                                 :schedule_type "daily"
+                                                                                 :schedule_hour 12
+                                                                                 :schedule_day  nil
+                                                                                 :recipients    []}]
+                                                                :skip_if_empty false}))
+      (update :channels remove-extra-channels-fields)))
+
 
 ;; ## PUT /api/pulse
 
@@ -197,7 +230,7 @@
                   Table     [{table-id :id}    {:db_id database-id}]
                   Card      [card              {:dataset_query {:database database-id
                                                                :type     "query"
-                                                               :query    {:source-table table-id,
+                                                               :query    {:source-table table-id
                                                                           :aggregation  {:aggregation-type "count"}}}}]
                   Pulse     [pulse             {:name "Daily Sad Toucans"}]
                   PulseCard [pulse-card        {:pulse_id (u/get-id pulse), :card_id (u/get-id card)}]]

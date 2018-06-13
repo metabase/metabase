@@ -2,7 +2,8 @@
   --night-mode-color: rgba(255, 255, 255, 0.86);
 }
 .Dashboard {
-    background-color: #f9fbfc;
+  background-color: #f9fbfc;
+  min-height: 100vh;
 }
 
 .DashboardHeader {
@@ -11,24 +12,30 @@
 }
 
 .Dash-wrapper {
-    width: 100%;
+  width: 100%;
 }
 
 @media screen and (--breakpoint-min-sm) {
-   .Dash-wrapper { max-width: var(--sm-width); }
+  .Dash-wrapper {
+    max-width: var(--sm-width);
+  }
 }
 
 @media screen and (--breakpoint-min-md) {
-   .Dash-wrapper { max-width: var(--md-width); }
+  .Dash-wrapper {
+    max-width: var(--md-width);
+  }
 }
 
 @media screen and (--breakpoint-min-lg) {
-   .Dash-wrapper { max-width: var(--lg-width); }
+  .Dash-wrapper {
+    max-width: var(--lg-width);
+  }
 }
 
 /* Fullscreen mode */
 .Dashboard.Dashboard--fullscreen .Header-button {
-  color: #D2DBE4;
+  color: #d2dbe4;
 }
 
 .Dashboard.Dashboard--fullscreen .DashboardHeader {
@@ -50,7 +57,7 @@
 
 .Dashboard.Dashboard--night .Header-button,
 .Dashboard.Dashboard--night .Header-button svg {
-    color: rgba(151, 151, 151, 0.3);
+  color: rgba(151, 151, 151, 0.3);
 }
 
 .Dashboard.Dashboard--fullscreen .fullscreen-normal-text {
@@ -104,29 +111,29 @@
 }
 
 .DashCard .Card.Card--slow {
-    border-color: var(--gold-color);
+  border-color: var(--gold-color);
 }
 
 .Dash--editing .DashCard .Card {
-    pointer-events: none;
-    transition: border .3s, background-color .3s;
+  pointer-events: none;
+  transition: border 0.3s, background-color 0.3s;
 }
 .Dash--editing.Dash--editingParameter .DashCard .Card {
-    pointer-events: auto;
+  pointer-events: auto;
 }
 
 @keyframes fade-out-yellow {
-    from {
-        background-color: rgba(255, 250, 243, 1.0);
-    }
-    to {
-        background-color: rgba(255, 255, 255, 1.0);
-    }
+  from {
+    background-color: rgba(255, 250, 243, 1);
+  }
+  to {
+    background-color: rgba(255, 255, 255, 1);
+  }
 }
 
 .Dash--editing .DashCard .Card.Card--recent {
-    animation-duration: 30s;
-    animation-name: fade-out-yellow;
+  animation-duration: 30s;
+  animation-name: fade-out-yellow;
 }
 
 .Dash--editing .DashCard:hover .Card .Card-heading {
@@ -159,32 +166,32 @@
 }
 
 .Dash--editing .DashCard .Card {
-    user-select: none;
+  user-select: none;
 }
 
 .DashCard .Card {
-    box-shadow: 0px 1px 3px rgba(0,0,0,0.08);
+  box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .Dash--editing .DashCard.dragging .Card {
-    box-shadow: 3px 3px 8px rgba(0,0,0,0.1);
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.1);
 }
 
 .Dash--editing .DashCard.dragging,
 .Dash--editing .DashCard.resizing {
-    z-index: 2;
+  z-index: 2;
 }
 
 .Dash--editing .DashCard.dragging .Card,
 .Dash--editing .DashCard.resizing .Card {
-    background-color: #E5F1FB !important;
-    border: 1px solid var(--brand-color);
+  background-color: #e5f1fb !important;
+  border: 1px solid var(--brand-color);
 }
 
 .DashCard .DashCard-actions {
   pointer-events: none;
   opacity: 0;
-  transition: opacity .3s linear;
+  transition: opacity 0.3s linear;
 }
 
 .DashCard .DashCard-actions-persistent {
@@ -198,42 +205,42 @@
 }
 
 .Dash--editing .DashCard .Visualization-slow-spinner {
-    position: absolute;
-    right: -2px;
-    top: -2px;
+  position: absolute;
+  right: -2px;
+  top: -2px;
 }
 .Dash--editing .DashCard:hover .Visualization-slow-spinner {
-    opacity: 0;
-    transition: opacity .15s linear;
+  opacity: 0;
+  transition: opacity 0.15s linear;
 }
 
 .Dash--editing .DashCard.dragging .DashCard-actions,
 .Dash--editing .DashCard.resizing .DashCard-actions {
-    opacity: 0;
-    transition: opacity .3s linear;
+  opacity: 0;
+  transition: opacity 0.3s linear;
 }
 
 .Dash--editing .DashCard {
-    transition: transform .3s;
+  transition: transform 0.3s;
 }
 
 .Dash--editing .DashCard.dragging,
 .Dash--editing .DashCard.resizing {
-    transition: transform 0s;
+  transition: transform 0s;
 }
 
 .Dash--editing .DashCard {
-    cursor: move;
+  cursor: move;
 }
 
 .Dash--editing .DashCard .react-resizable-handle {
-    position: absolute;
-    width: 40px;
-    height: 40px;
-    bottom: 0;
-    right: 0;
-    cursor: nwse-resize;
-    z-index: 1; /* ensure the handle is above the card contents */
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
+  z-index: 1; /* ensure the handle is above the card contents */
 }
 
 .Dash--editing .DashCard .react-resizable-handle:after {
@@ -246,7 +253,7 @@
   border-bottom: 2px solid color(var(--base-grey) shade(20%));
   border-right: 2px solid color(var(--base-grey) shade(20%));
   border-bottom-right-radius: 2px;
-  transition: opacity .2s;
+  transition: opacity 0.2s;
   opacity: 0.01;
 }
 
@@ -264,18 +271,18 @@
 }
 
 .Dash--editing .react-grid-placeholder {
-    z-index: 0;
-    background-color: #F2F2F2;
-    transition: all 0.15s linear;
+  z-index: 0;
+  background-color: #f2f2f2;
+  transition: all 0.15s linear;
 }
 
 .Dash--editing .Card-title {
-    pointer-events: none;
+  pointer-events: none;
 }
 
 /* ensure action buttons do not respond to events when dragging */
 .Dash--editing.Dash--dragging .DashCard-actions {
-    pointer-events: none !important;
+  pointer-events: none !important;
 }
 
 .Modal.AddSeriesModal {
@@ -296,9 +303,13 @@
   accomodate for viewing distance on TVs etc
 */
 @media screen and (min-width: 1280px) {
-  .Dashboard.Dashboard--fullscreen { font-size: 1.2em; }
+  .Dashboard.Dashboard--fullscreen {
+    font-size: 1.2em;
+  }
   /* keep the dashboard header title from being overwhelmingly large */
-  .Dashboard.Dashboard--fullscreen .Header-title-name { font-size: 1em; }
+  .Dashboard.Dashboard--fullscreen .Header-title-name {
+    font-size: 1em;
+  }
 
   .Dashboard.Dashboard--fullscreen .fullscreen-text-small .LegendItem {
     font-size: 1em;
@@ -306,40 +317,43 @@
 }
 
 @media screen and (min-width: 1540px) {
-  .Dashboard.Dashboard--fullscreen { font-size: 1.4em; }
+  .Dashboard.Dashboard--fullscreen {
+    font-size: 1.4em;
+  }
 }
-
 
 /* what for to print the dashboards */
 @media print {
-    header,
-    nav {
-        display: none;
-    }
-    .DashCard .Card {
-      box-shadow: none;
-      border-color: #a1a1a1;
-    }
-    /* improve label contrast */
-    .dc-chart .axis .tick text,
-    .dc-chart .x-axis-label,
-    .dc-chart .y-axis-label {
-      fill: #222222;
-    }
+  header,
+  nav {
+    display: none;
+  }
+  .DashCard .Card {
+    box-shadow: none;
+    border-color: #a1a1a1;
+  }
+  /* improve label contrast */
+  .dc-chart .axis .tick text,
+  .dc-chart .x-axis-label,
+  .dc-chart .y-axis-label {
+    fill: #222222;
+  }
 }
 
 @media print and (orientation: portrait) {
-    html {
-        width: 8.5in;
-    }
+  html {
+    width: 8.5in;
+  }
 }
 @media print and (orientation: landscape) {
-    html {
-        width: 11in;
-    }
+  html {
+    width: 11in;
+  }
 }
 
-@page { margin: 1cm; }
+@page {
+  margin: 1cm;
+}
 
 /* when in night mode goal lines should be more visible */
 .Dashboard--night .goal .line {

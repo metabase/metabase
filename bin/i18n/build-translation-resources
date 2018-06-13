@@ -9,7 +9,12 @@ fi
 
 POT_NAME="locales/metabase.pot"
 LOCALES=$(find locales -type f -name "*.po" -exec basename {} .po \;)
-LOCALES_QUOTED=$(echo "$LOCALES" | awk '{ printf "\"%s\" ", $0 }')
+
+if [ -z "$LOCALES" ]; then
+  LOCALES_QUOTED=""
+else
+  LOCALES_QUOTED=" $(echo "$LOCALES" | awk '{ printf "\"%s\" ", $0 }')"
+fi
 
 FRONTEND_LANG_DIR="resources/frontend_client/app/locales"
 
@@ -17,7 +22,7 @@ FRONTEND_LANG_DIR="resources/frontend_client/app/locales"
 # NOTE: include "en" even though we don't have a .po file for it because it's the default?
 cat << EOF > "resources/locales.clj"
 {
-  :locales  #{"en" $LOCALES_QUOTED}
+  :locales  #{"en"$LOCALES_QUOTED}
   :packages ["metabase"]
   :bundle   "metabase.Messages"
 }

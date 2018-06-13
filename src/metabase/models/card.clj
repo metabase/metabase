@@ -18,16 +18,17 @@
              [label :refer [Label]]
              [params :as params]
              [permissions :as perms]
+             [query :as query]
              [revision :as revision]]
             [metabase.query-processor.middleware.permissions :as qp-perms]
             [metabase.query-processor.util :as qputil]
             [metabase.util.query :as q]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
              [models :as models]]))
 
 (models/defmodel Card :report_card)
-
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -70,6 +71,38 @@
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
+;; Is calculating permissions for Cards complicated? Some would say so. Refer to this handy flow chart to see how things
+;; get calculated.
+;;
+;; Note that `can-read?/can-write?` and `pre-insert/pre-update` are the two entry points into the permissions
+;; labyrinth. `pre-insert`/`pre-update` calculate permissions for the *query* (disregarding collection and publicness)
+;; and thus skip to `query-perms-set`; `can-read?`/`can-write?` want to take those into account (as well as cached
+;; read permissions, if available) and thus starts higher up.
+;;
+;;
+;; can-read?/can-write? --> perms-set-taking-collection-etc-into-account
+;;                                           |
+;;    public? <------------------------------+---------------------------> in collection?
+;;      ↓                                   else                                ↓
+;;     #{}                                   ↓                       collection/perms-objects-set
+;;                                 card-perms-set-for-query
+;;                                           |
+;;         write perms <---------------------+---------------------> read perms
+;;              |                                                        |
+;;              |            does not have cached read_permissions <-----+-----> has cached read_permissions
+;;              |                            ↓                                              ↓
+;;              +-------------------> query-perms-set <------------------+      return cached read_permssions
+;; pre-insert/                           ↑   |                           |
+;; pre-update ---------------------------+   |                           |
+;; (maybe-update                             |                           |
+;; -read-perms)          native card? <------+-----> mbql card?          |
+;;                             ↓                          ↓              |
+;;                     native-perms-path          mbql-perms-path-set    | (recursively for source card)
+;;                                                         |             |
+;;                                     no source card <----+----> has source card
+;;                                            ↓
+;;                              tables->permissions-path-set
+
 (defn- native-permissions-path
   "Return the `:read` (for running) or `:write` (for saving) native permissions path for DATABASE-OR-ID."
   [read-or-write database-or-id]
@@ -101,65 +134,132 @@
                               (:schema table)
                               (or (:id table) (:table-id table)))))))
 
+(declare query-perms-set)
+
 (defn- mbql-permissions-path-set
-  "Return the set of required permissions needed to run QUERY."
-  [read-or-write query]
+  "Return the set of required permissions needed to run QUERY.
+
+  Optionally specify `disallowed-source-card-ids`: this is a sequence of Card IDs that should not be allowed to be a
+  source Card ID in this case. For example, you would want to disallow a Card from being its own source; when
+  recursing, this is used to keep track of source Card IDs we've already seen in order to prevent circular
+  references.
+
+  Also optionally specify `throw-exceptions?` -- normally this function avoids throwing Exceptions to avoid breaking
+  things when a single Card is busted (e.g. API endpoints that filter out unreadable Cards) and instead returns 'only
+  admins can see this' permissions -- `#{\"db/0\"}` (DB 0 will never exist, thus normal users will never be able to
+  get permissions for it, but admins have root perms and will still get to see (and hopefully fix) it)."
+  [read-or-write query & [disallowed-source-card-ids throw-exceptions?]]
   {:pre [(map? query) (map? (:query query))]}
-  (try (let [{:keys [query database]} (qp/expand query)]
-         (tables->permissions-path-set read-or-write database (query->source-and-join-tables query)))
-       ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card)
-       ;; just return a set of permissions that means no one will ever get to see it
-       (catch Throwable e
-         (log/warn "Error getting permissions for card:" (.getMessage e) "\n"
-                   (u/pprint-to-str (u/filtered-stacktrace e)))
-         #{"/db/0/"})))                        ; DB 0 will never exist
+  (try
+    (or
+     ;; If `query` is based on a source Card (if `:source-table` uses a psuedo-source-table like `card__<id>`) then
+     ;; return the permissions needed to *read* that Card. Running or saving a Card that uses another Card as a source
+     ;; query simply requires read permissions for that Card; e.g. if you are allowed to view a query you can save a
+     ;; new query that uses it as a source. Thus the distinction between read and write permissions in not important
+     ;; here.
+     ;;
+     ;; See issue #6845 for further discussion.
+     (when-let [source-card-id (qputil/query->source-card-id query)]
+       ;; If this source card ID is disallowed (e.g. due to it being a circular reference) then throw an Exception.
+       ;; Bye Felicia!
+       (when ((set disallowed-source-card-ids) source-card-id)
+         (throw
+          (Exception.
+           (str (tru "Cannot calculate permissions due to circular references.")
+                (tru "This means a question is either using itself as a source or one or more questions are using each other as sources.")))))
+       ;; ok, if we've decided that this is not a loooopy situation then go ahead and recurse
+       (query-perms-set (db/select-one-field :dataset_query Card :id source-card-id)
+                        :read
+                        (conj disallowed-source-card-ids source-card-id)
+                        throw-exceptions?))
+     ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
+     (let [{:keys [query database]} (qp/expand query)]
+       (tables->permissions-path-set read-or-write database (query->source-and-join-tables query))))
+    ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
+    ;; that means no one will ever get to see it (except for superusers who get to see everything)
+    (catch Throwable e
+      (when throw-exceptions?
+        (throw e))
+      (log/warn "Error getting permissions for card:" (.getMessage e) "\n"
+                (u/pprint-to-str (u/filtered-stacktrace e)))
+      #{"/db/0/"})))                    ; DB 0 will never exist
 
-;; it takes a lot of DB calls and function calls to expand/resolve a query, and since they're pure functions we can
-;; save ourselves some a lot of DB calls by caching the results. Cache the permissions reqquired to run a given query
-;; dictionary for up to 6 hours
+;; Calculating Card read permissions is rather expensive, since we must parse and expand the Card's query in order to
+;; find the Tables it references. Since we read Cards relatively often, these permissions are cached in the
+;; `:read_permissions` column of Card. There should not be situtations where these permissions are not cached; but if
+;; for some strange reason they are we will go ahead and recalculate them.
+
 ;; TODO - what if the query uses a source query, and that query changes? Not sure if that will cause an issue or not.
-;; May need to revisit this
-(defn- query-perms-set* [{query-type :type, database :database, :as query} read-or-write]
+(defn query-perms-set
+  "Calculate the set of permissions required to `:read`/run or `:write` (update) a Card with `query`. In normal cases
+  for read permissions you should look at a Card's `:read_permissions`, which is precalculated. If you specifically
+  need to calculate permissions for a query directly, and ignore anything precomputed, use this function. Otherwise
+  you should rely on one of the optimized ones below."
+  [{query-type :type, database :database, :as query} read-or-write & [disallowed-source-card-ids throw-exceptions?]]
   (cond
-    (= query {})                     #{}
+    (empty? query)                   #{}
     (= (keyword query-type) :native) #{(native-permissions-path read-or-write database)}
-    (= (keyword query-type) :query)  (mbql-permissions-path-set read-or-write query)
-    :else                            (throw (Exception. (str "Invalid query type: " query-type)))))
+    (= (keyword query-type) :query)  (mbql-permissions-path-set read-or-write query disallowed-source-card-ids throw-exceptions?)
+    :else                            (throw (Exception. (str (tru "Invalid query type: {0}" query-type))))))
 
-(def ^{:arglists '([query read-or-write])} query-perms-set
-  "Return a set of required permissions for *running* QUERY (if READ-OR-WRITE is `:read`) or *saving* it (if
-   READ-OR-WRITE is `:write`)."
-  (memoize/ttl query-perms-set* :ttl/threshold (* 6 60 60 1000))) ; memoize for 6 hours
 
-(defn- perms-objects-set
-  "Return a set of required permissions object paths for CARD.
-   Optionally specify whether you want `:read` or `:write` permissions; default is `:read`.
-   (`:write` permissions only affects native queries)."
-  [{query :dataset_query, collection-id :collection_id, public-uuid :public_uuid, in-public-dash? :in_public_dashboard}
-   read-or-write]
+(defn- card-perms-set-for-query
+  "Return the permissions required to `read-or-write` `card` based on its query, disregarding the collection the Card is
+  in, whether it is publicly shared, etc. This will return precalculated `:read_permissions` if they are present."
+  [{read-perms :read_permissions, card-id :id, query :dataset_query} read-or-write]
   (cond
-    ;; you don't need any permissions to READ a public card, which is PUBLIC by definition :D
-    (and (public-settings/enable-public-sharing)
-         (= :read read-or-write)
-         (or public-uuid in-public-dash?))
-    #{}
+    ;; for WRITE permissions always recalculate since these will be determined relatively infrequently (hopefully)
+    ;; e.g. when updating a Card
+    (= :write read-or-write) (query-perms-set query :write [card-id])
+    ;; if the Card has *populated* `:read_permissions` and we're looking up read pems return those rather than
+    ;; calculating on-the-fly. Cast to `set` to be extra-double-sure it's a set like we'd expect when it gets
+    ;; deserialized from JSON
+    (seq read-perms) (set read-perms)
+    ;; otherwise if :read_permissions was NOT populated. This should not normally happen since the data migration
+    ;; should have pre-populated values for all the Cards. If it does it might mean something like we fetched the Card
+    ;; without its `read_permissions` column. Since that would be "doing something wrong" warn about it.
+    :else (do (log/info "Card" card-id "does not have cached read_permissions.")
+              (query-perms-set query :read [card-id]))))
 
-    collection-id
-    (collection/perms-objects-set collection-id read-or-write)
+(defn- card-perms-set-taking-collection-etc-into-account
+  "Calculate the permissions required to `read-or-write` `card`*for a user. This takes into account whether the Card is
+  publicly available, or in a collection the current user can view; it also attempts to use precalcuated
+  `read_permissions` when possible. This is the function that should be used for general permissions checking for a
+  Card.
 
-    :else
-    (query-perms-set query read-or-write)))
+  This function works the same regardless of whether called with a current user (e.g. `api/*current-user*`, etc.) or
+  not! It simply calculates the permssions a User would need to see the Card."
+  [{collection-id :collection_id, public-uuid :public_uuid, in-public-dash? :in_public_dashboard,
+    outer-query :dataset_query, card-id :id, :as card}
+   read-or-write]
+  (when-not (seq card)
+    (throw (Exception. (str (tru "`card` is nil or empty. Cannot calculate permissions.")))))
+  (let [source-card-id (qputil/query->source-card-id outer-query)]
+    (cond
+      ;; you don't need any permissions to READ a public card, which is PUBLIC by definition :D
+      (and (public-settings/enable-public-sharing)
+           (= :read read-or-write)
+           (or public-uuid in-public-dash?))
+      #{}
+
+      collection-id
+      (collection/perms-objects-set collection-id read-or-write)
+
+      :else
+      (card-perms-set-for-query card read-or-write))))
 
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
 (defn card-dependencies
-  "Calculate any dependent objects for a given `Card`."
-  [this id {:keys [dataset_query]}]
-  (when (and dataset_query
-             (= :query (keyword (:type dataset_query))))
-    {:Metric  (q/extract-metric-ids (:query dataset_query))
-     :Segment (q/extract-segment-ids (:query dataset_query))}))
+  "Calculate any dependent objects for a given `card`."
+  ([_ _ card]
+   (card-dependencies card))
+  ([{:keys [dataset_query]}]
+   (when (and dataset_query
+              (= :query (keyword (:type dataset_query))))
+     {:Metric  (q/extract-metric-ids (:query dataset_query))
+      :Segment (q/extract-segment-ids (:query dataset_query))})))
 
 
 ;;; -------------------------------------------------- Revisions --------------------------------------------------
@@ -174,42 +274,53 @@
 
 ;;; -------------------------------------------------- Lifecycle --------------------------------------------------
 
-(defn- native-query? [query-type]
-  (or (= query-type "native")
-      (= query-type :native)))
-
-(defn query->database-and-table-ids
-  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card. Handles queries that use
-   other queries as their source (ones that come in with a `:source-table` like `card__100`) recursively, as well as
-   normal queries."
-  [outer-query]
-  (let [database-id  (qputil/get-normalized outer-query :database)
-        query-type   (qputil/get-normalized outer-query :type)
-        source-table (qputil/get-in-normalized outer-query [:query :source-table])]
-    (cond
-      (native-query? query-type) {:database-id database-id, :table-id nil}
-      (integer? source-table)    {:database-id database-id, :table-id source-table}
-      (string? source-table)     (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
-                                   (db/select-one [Card [:table_id :table-id] [:database_id :database-id]]
-                                     :id (Integer/parseInt card-id))))))
-
-(defn- populate-query-fields [{{query-type :type, :as outer-query} :dataset_query, :as card}]
+(defn populate-query-fields
+  "Lift `database_id`, `table_id`, and `query_type` from query definition."
+  [{{query-type :type, :as outer-query} :dataset_query, :as card}]
   (merge (when-let [{:keys [database-id table-id]} (and query-type
-                                                        (query->database-and-table-ids outer-query))]
+                                                        (query/query->database-and-table-ids outer-query))]
            {:database_id database-id
             :table_id    table-id
             :query_type  (keyword query-type)})
          card))
 
-(defn- pre-insert [{:keys [dataset_query], :as card}]
+(defn- maybe-update-read-permissions
+  "When inserting or updating a `card`, if `:dataset_query` is going to change, calculate the updated `:read_permssions`
+  and `assoc` those to the output so they get changed as well. These cached `read_permissions` are the permissions for
+  the underlying query, disregarding whether the Card is in a collection or present in a public Dashboard or is itself
+  public. Only query permissions are expensive to calculate, so that is the only thing we cache. The other stuff is
+  caclulated every time by `card-perms-set-taking-collection-etc-into-account`.
+
+     (maybe-update-read-permssions card-to-be-saved) ;-> updated-card-to-be-saved"
+  [{query :dataset_query, card-id :id, :as card}]
+  (if-not (seq query)
+    card
+    ;; Calculate read_permissions using `query-perms-set`, which calculates perms based on the query along (ignoring
+    ;; collection perms, presence on public dashboards, etc.).
+    (assoc card :read_permissions (query-perms-set query
+                                                   :read
+                                                   ;; If this is an UPDATE operation send along the `card-id` to the
+                                                   ;; list of `disallowed-source-card-ids` because, needless to say, a
+                                                   ;; Card should not be allowed to use itself as a source, whether
+                                                   ;; directly or indirectly. See `query-perms-set` itself for further
+                                                   ;; discussion.
+                                                   (when card-id [card-id])
+                                                   ;; tell `query-perms-set` to throw Exceptions so we don't end up
+                                                   ;; saving a Card that is for some reason invalid
+                                                   :throw-exceptions))))
+
+(defn- pre-insert [{query :dataset_query, :as card}]
   ;; TODO - make sure if `collection_id` is specified that we have write permissions for that collection
-  (u/prog1 card
+  ;;
+  ;; updated Card with updated read permissions when applicable. (New Cards should never be created without a valid
+  ;; `:dataset_query` so this should always happen)
+  (u/prog1 (maybe-update-read-permissions card)
     ;; for native queries we need to make sure the user saving the card has native query permissions for the DB
     ;; because users can always see native Cards and we don't want someone getting around their lack of permissions
     ;; that way
     (when (and *current-user-id*
-               (= (keyword (:type dataset_query)) :native))
-      (let [database (db/select-one ['Database :id :name], :id (:database dataset_query))]
+               (= (keyword (:type query)) :native))
+      (let [database (db/select-one ['Database :id :name], :id (:database query))]
         (qp-perms/throw-if-cannot-run-new-native-query-referencing-db database)))))
 
 (defn- post-insert [card]
@@ -220,8 +331,9 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))))
 
-(defn- pre-update [{archived? :archived, :as card}]
-  (u/prog1 card
+(defn- pre-update [{archived? :archived, query :dataset_query, :as card}]
+  ;; save the updated Card with updated read permissions when applicable.
+  (u/prog1 (maybe-update-read-permissions card)
     ;; if the Card is archived, then remove it from any Dashboards
     (when archived?
       (db/delete! 'DashboardCard :card_id (u/get-id card)))
@@ -260,7 +372,8 @@
                                        :embedding_params       :json
                                        :query_type             :keyword
                                        :result_metadata        :json
-                                       :visualization_settings :json})
+                                       :visualization_settings :json
+                                       :read_permissions       :json-set})
           :properties     (constantly {:timestamped? true})
           :pre-update     (comp populate-query-fields pre-update)
           :pre-insert     (comp populate-query-fields pre-insert)
@@ -272,7 +385,7 @@
   (merge i/IObjectPermissionsDefaults
          {:can-read?         (partial i/current-user-has-full-permissions? :read)
           :can-write?        (partial i/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set})
+          :perms-objects-set card-perms-set-taking-collection-etc-into-account})
 
   revision/IRevisioned
   (assoc revision/IRevisionedDefaults

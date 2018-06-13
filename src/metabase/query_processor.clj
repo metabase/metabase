@@ -138,6 +138,8 @@
        expand/expand-middleware
        parameters/substitute-parameters
        expand-macros/expand-macros
+       driver-specific/process-query-in-context
+       resolve-driver/resolve-driver
        fetch-source-query/fetch-source-query))
 ;; ▲▲▲ This only does PRE-PROCESSING, so it happens from bottom to top, eventually returning the preprocessed query
 ;; instead of running it
@@ -281,3 +283,22 @@
   (run-and-save-query! (assoc query :info (assoc options
                                             :query-hash (qputil/query-hash query)
                                             :query-type (if (qputil/mbql-query? query) "MBQL" "native")))))
+
+(def ^:private ^:const max-results-bare-rows
+  "Maximum number of rows to return specifically on :rows type queries via the API."
+  2000)
+
+(def ^:private ^:const max-results
+  "General maximum number of rows to return from an API query."
+  10000)
+
+(def default-query-constraints
+  "Default map of constraints that we apply on dataset queries executed by the api."
+  {:max-results           max-results
+   :max-results-bare-rows max-results-bare-rows})
+
+(s/defn process-query-and-save-with-max!
+  "Same as `process-query-and-save-execution!` but will include the default max rows returned as a constraint"
+  {:style/indent 1}
+  [query, options :- DatasetQueryOptions]
+  (process-query-and-save-execution! (assoc query :constraints default-query-constraints) options))

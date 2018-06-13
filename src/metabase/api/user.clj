@@ -23,7 +23,9 @@
   "Fetch a list of all active `Users` for the admin People page."
   []
   (db/select [User :id :first_name :last_name :email :is_superuser :google_auth :ldap_auth :last_login]
-    :is_active true))
+    :is_active true
+    {:order-by [[:%lower.last_name :asc]
+                [:%lower.first_name :asc]]}))
 
 (defn- reactivate-user! [existing-user first-name last-name]
   (when-not (:is_active existing-user)
@@ -44,7 +46,7 @@
 
 
 (api/defendpoint POST "/"
-  "Create a new `User`, or or reäctivate an existing one."
+  "Create a new `User`, or reactivate an existing one."
   [:as {{:keys [first_name last_name email password]} :body}]
   {first_name su/NonBlankString
    last_name  su/NonBlankString

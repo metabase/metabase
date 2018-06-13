@@ -5,23 +5,23 @@
 }
 
 html {
-    height: 100%; /* ensure the entire page will fill the window */
-    width: 100%;
+  height: 100%; /* ensure the entire page will fill the window */
+  width: 100%;
 }
 
 body {
-    font-family: var(--default-font-family), sans-serif;
-    font-size: var(--default-font-size);
-    font-weight: 400;
-    font-style: normal;
-    color: var(--default-font-color);
-    margin: 0;
-    height: 100%; /* ensure the entire page will fill the window */
-    display: flex;
-    flex-direction: column;
+  font-family: var(--default-font-family), sans-serif;
+  font-size: var(--default-font-size);
+  font-weight: 400;
+  font-style: normal;
+  color: var(--default-font-color);
+  margin: 0;
+  height: 100%; /* ensure the entire page will fill the window */
+  display: flex;
+  flex-direction: column;
 
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /*
@@ -31,41 +31,44 @@ body {
 */
 ul,
 ol {
-    padding: 0;
-    margin: 0;
-    list-style-type: none;
+  padding: 0;
+  margin: 0;
+  list-style-type: none;
 }
 
 /* reset button element */
 button {
-    font-size: 100%;
-    -webkit-appearance: none;
-    border: 0;
-    padding: 0;
-    margin: 0;
-    outline: none;
+  font-size: 100%;
+  -webkit-appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  outline: none;
 }
 
 a {
-    color: inherit;
-    cursor: pointer;
+  color: inherit;
+  cursor: pointer;
 }
 
 input,
 textarea {
-    font-family: var(--default-font-family), "Helvetica Neue", Helvetica, sans-serif;
+  font-family: var(--default-font-family), "Helvetica Neue", Helvetica,
+    sans-serif;
 }
 
 .pointer-events-none {
   pointer-events: none;
 }
 
-.disabled, :local(.disabled) {
+.disabled,
+:local(.disabled) {
   pointer-events: none;
   opacity: 0.4;
 }
 
-.faded, :local(.faded) {
+.faded,
+:local(.faded) {
   opacity: 0.4;
 }
 
@@ -73,17 +76,22 @@ textarea {
   background-color: #f9fbfc;
 }
 
-.circle { border-radius: 99px; }
+.circle {
+  border-radius: 99px;
+}
 
 .undefined {
-    border: 1px solid red !important;
+  border: 1px solid red !important;
 }
 
 @keyframes spin {
-  100% { transform: rotate(360deg); }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes spin-reverse {
-  100% { transform: rotate(-360deg); }
+  100% {
+    transform: rotate(-360deg);
+  }
 }
-

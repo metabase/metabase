@@ -1,5 +1,6 @@
 (ns metabase.driver.mysql-test
-  (:require [expectations :refer :all]
+  (:require [clj-time.core :as t]
+            [expectations :refer :all]
             [metabase
              [sync :as sync]
              [util :as u]]
@@ -24,9 +25,9 @@
 ;; MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL when returning
 ;; them like we asked
 (def-database-definition ^:private ^:const all-zero-dates
-  ["exciting-moments-in-history"
-   [{:field-name "moment", :base-type :type/DateTime}]
-   [["0000-00-00"]]])
+  [["exciting-moments-in-history"
+     [{:field-name "moment", :base-type :type/DateTime}]
+     [["0000-00-00"]]]])
 
 (expect-with-engine :mysql
   [[1 nil]]
@@ -52,12 +53,12 @@
 ;; correct additional options, we should be able to change that -- see
 ;; https://github.com/metabase/metabase/issues/3506
 (def-database-definition ^:private ^:const tiny-int-ones
-  ["number-of-cans"
-   [{:field-name "thing",          :base-type :type/Text}
-    {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}}]
-   [["Six Pack"              6]
-    ["Toucan"                2]
-    ["Empty Vending Machine" 0]]])
+  [["number-of-cans"
+     [{:field-name "thing",          :base-type :type/Text}
+      {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}}]
+     [["Six Pack"              6]
+      ["Toucan"                2]
+      ["Empty Vending Machine" 0]]]])
 
 (defn- db->fields [db]
   (let [table-ids (db/select-ids 'Table :db_id (u/get-id db))]
@@ -73,7 +74,7 @@
 
 ;; if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead
 (expect-with-engine :mysql
-  #{{:name "number-of-cans", :base_type :type/Integer, :special_type :type/Category}
+  #{{:name "number-of-cans", :base_type :type/Integer, :special_type :type/Quantity}
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
   (data/with-temp-db [db tiny-int-ones]
@@ -97,9 +98,18 @@
   (with-redefs [metabase.driver/execute-query (constantly {:rows [["2018-01-08 23:00:00.008 CET"]]})]
     (tu/db-timezone-id)))
 
-(expect (#'mysql/timezone-id->offset-str "US/Pacific")          "-08:00")
-(expect (#'mysql/timezone-id->offset-str "UTC")                 "+00:00")
-(expect (#'mysql/timezone-id->offset-str "America/Los_Angeles") "-08:00")
+
+(def before-daylight-savings (u/str->date-time "2018-03-10 10:00:00"))
+(def after-daylight-savings (u/str->date-time "2018-03-12 10:00:00"))
+
+(expect (#'mysql/timezone-id->offset-str "US/Pacific" before-daylight-savings) "-08:00")
+(expect (#'mysql/timezone-id->offset-str "US/Pacific" after-daylight-savings)  "-07:00")
+
+(expect (#'mysql/timezone-id->offset-str "UTC" before-daylight-savings) "+00:00")
+(expect (#'mysql/timezone-id->offset-str "UTC" after-daylight-savings) "+00:00")
+
+(expect (#'mysql/timezone-id->offset-str "America/Los_Angeles" before-daylight-savings) "-08:00")
+(expect (#'mysql/timezone-id->offset-str "America/Los_Angeles" after-daylight-savings) "-07:00")
 
 ;; make sure DateTime types generate appropriate SQL...
 ;; ...with no report-timezone set
