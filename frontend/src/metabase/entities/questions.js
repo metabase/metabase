@@ -42,7 +42,10 @@ const Questions = createEntity({
     setPinned: ({ id }, pinned, opts) =>
       Questions.actions.update(
         { id },
-        { collection_position: pinned ? 1 : null },
+        {
+          collection_position:
+            typeof pinned === "number" ? pinned : pinned ? 1 : null,
+        },
         opts,
       ),
 
