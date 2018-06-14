@@ -536,15 +536,11 @@
                       (assoc :score         score
                              :dataset_query query))))))))
 
-(s/defn ^:private rule-specificity
-  [rule :- rules/Rule]
-  (transduce (map (comp count ancestors)) + (:applies_to rule)))
-
-(s/defn ^:private matching-rules
+(defn- matching-rules
   "Return matching rules orderd by specificity.
    Most specific is defined as entity type specification the longest ancestor
    chain."
-  [rules :- [rules/Rule], {:keys [source entity]}]
+  [rules {:keys [source entity]}]
   (let [table-type (or (:entity_type source) :entity/GenericTable)]
     (->> rules
          (filter (fn [{:keys [applies_to]}]
@@ -552,7 +548,7 @@
                      (and (isa? table-type entity-type)
                           (or (nil? field-type)
                               (field-isa? entity field-type))))))
-         (sort-by rule-specificity >))))
+         (sort-by :specificity >))))
 
 (defn- linked-tables
   "Return all tables accessable from a given table with the paths to get there.
@@ -642,11 +638,11 @@
            vals
            (apply concat)))
 
-(s/defn ^:private make-dashboard
-  ([root, rule :- rules/Rule]
+(defn- make-dashboard
+  ([root rule]
    (make-dashboard root rule {:tables [(:source root)]
                               :root   root}))
-  ([root, rule :- rules/Rule, context]
+  ([root rule context]
    (-> rule
        (select-keys [:title :description :transient_title :groups])
        (instantiate-metadata context {})
@@ -883,17 +879,17 @@
                          (into #{} (map :table_id)))
         link-table? (->> (db/query {:select   [:table_id [:%count.* :count]]
                                     :from     [:metabase_field]
-                                    :where    [:and [:in :table_id (map u/get-id tables)]
+                                    :where    [:and [:in :table_id (keys field-count)]
                                                     [:in :special_type ["type/PK" "type/FK"]]]
                                     :group-by [:table_id]})
                          (filter (fn [{:keys [table_id count]}]
                                    (= count (field-count table_id))))
                          (into #{} (map :table_id)))]
-        (for [table tables]
-          (let [table-id (u/get-id table)]
-            (assoc table :stats {:num-fields  (field-count table-id)
-                                 :list-like?  (boolean (list-like? table-id))
-                                 :link-table? (boolean (link-table? table-id))})))))
+    (for [table tables]
+      (let [table-id (u/get-id table)]
+        (assoc table :stats {:num-fields  (field-count table-id 0)
+                             :list-like?  (boolean (list-like? table-id))
+                             :link-table? (boolean (link-table? table-id))})))))
 
 (def ^:private ^:const ^Long max-candidate-tables
   "Maximal number of tables per schema shown in `candidate-tables`."
@@ -918,7 +914,7 @@
                    schema (concat [:schema schema])))
           (filter mi/can-read?)
           enhance-table-stats
-          (remove (comp (some-fn :link-table? :list-like?) :stats))
+          (remove (comp (some-fn :link-table? :list-like? (comp zero? :num-fields)) :stats))
           (map (fn [table]
                  (let [root      (->root table)
                        rule      (->> root
@@ -927,7 +923,7 @@
                        dashboard (make-dashboard root rule)]
                    {:url         (format "%stable/%s" public-endpoint (u/get-id table))
                     :title       (:full-name root)
-                    :score       (+ (math/sq (rule-specificity rule))
+                    :score       (+ (math/sq (:specificity rule))
                                     (math/log (-> table :stats :num-fields)))
                     :description (:description dashboard)
                     :table       table
