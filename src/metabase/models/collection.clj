@@ -202,6 +202,14 @@
     :id       su/IntGreaterThanZero
     s/Keyword s/Any}))
 
+(s/defn ^:private parent :- CollectionWithLocationAndIDOrRoot
+  "Fetch the parent Collection of `collection`, or the Root Collection special placeholder object if this is a
+  top-level Collection."
+  [collection :- CollectionWithLocationOrRoot]
+  (if-let [new-parent-id (location-path->parent-id (:location collection))]
+    (Collection new-parent-id)
+    root-collection))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Nested Collections: "Effective" Location Paths                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -406,10 +414,11 @@
 
     A > B > C
 
-  To move or archive B, you need write permissions for both B and C, since C would be affected as well. You do *not*
-  need permissions for A, even though in some sense you are affecting to contents of A; this is allowed because we
-  want to let people archive Collections they can see (via 'effectively' pulling them up), even if they can't see the
-  parent Collection."
+  To move or archive B, you need write permissions for A, B, and C:
+
+  *  A, because you are taking something out of it (by archiving it)
+  *  B, because you are archiving it
+  *  C, because by archiving its parent, you are archiving it as well"
   [collection :- CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to archive the Root Collection...
   (when (is-root-collection? collection)
@@ -418,8 +427,11 @@
   (when (db/exists? Collection :id (u/get-id collection), :personal_owner_id [:not= nil])
     (throw (Exception. (str (tru "You cannot archive a Personal Collection.")))))
   (set
-   (for [collection-or-id (cons collection
-                                (db/select-ids Collection :location [:like (str (children-location collection) "%")]))]
+   (for [collection-or-id (cons
+                           (parent collection)
+                           (cons
+                            collection
+                            (db/select-ids Collection :location [:like (str (children-location collection) "%")])))]
      (perms/collection-readwrite-path collection-or-id))))
 
 (s/defn perms-for-moving :- #{perms/ObjectPath}
@@ -435,14 +447,12 @@
     D                D > B > C
 
 
-  To move or archive B, you would need write permissions for A, B, and D:
+  To move or archive B, you would need write permissions for A, B, C, and D:
 
+  *  A, because we're moving something out of it
   *  B, since it's the Collection we're operating on
   *  C, since it will by definition be affected too
-  *  D, because it's the new parent Collection, and moving something into it requires write perms.
-
-  Note that, like archiving, you *do not* need any permissions for A, the original parent; you can think of this
-  operation as something done on the Collection itself, rather than 'curating' its parent."
+  *  D, because it's the new parent Collection, and moving something into it requires write perms."
   [collection :- CollectionWithLocationAndIDOrRoot, new-parent :- CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to move the Root Collection...
   (when (is-root-collection? collection)
@@ -655,11 +665,7 @@
   bad experience -- we do not want a User to move a Collection that they have read/write perms for (by definition) to
   somewhere else and lose all access for it."
   [collection :- CollectionInstance, new-location :- LocationPath]
-  (let [new-parent-id (location-path->parent-id new-location)
-        new-parent    (if new-parent-id
-                        (Collection new-parent-id)
-                        root-collection)]
-    (copy-collection-permissions! new-parent (cons collection (descendants collection)))))
+  (copy-collection-permissions! (parent {:location new-location}) (cons collection (descendants collection))))
 
 (s/defn ^:private revoke-perms-when-moving-into-personal-collection!
   "When moving a `collection` that is *not* a descendant of a Personal Collection into a Personal Collection or one of
@@ -817,13 +823,31 @@
    (for [collection-id collection-ids]
      {collection-id (perms-type-for-collection permissions-set collection-id)})))
 
+(s/defn ^:private non-personal-collection-ids :- #{su/IntGreaterThanZero}
+  "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
+  Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
+  []
+  (->> (db/query
+        (merge
+         {:select [[:id :id]]
+          :from   [Collection]}
+         (when-let [personal-collection-ids (seq (db/select-ids Collection :personal_owner_id [:not= nil]))]
+           {:where (apply
+                    vector
+                    :and
+                    [:not-in :id personal-collection-ids]
+                    (for [id personal-collection-ids]
+                      [:not [:like :location (format "/%d/%%" id)]]))})))
+       (map :id)
+       set))
+
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
   works just like the function of the same name in `metabase.models.permissions`; see also the documentation for that
   function."
   []
   (let [group-id->perms (group-id->permissions-set)
-        collection-ids  (db/select-ids 'Collection, :personal_owner_id nil)] ; exclude personal collections!
+        collection-ids  (non-personal-collection-ids)]
     {:revision (collection-revision/latest-id)
      :groups   (into {} (for [group-id (db/select-ids 'PermissionsGroup)]
                           {group-id (group-permissions-graph (group-id->perms group-id) collection-ids)}))}))
