@@ -275,7 +275,7 @@
 (expect
   {:list-like?  true
    :link-table? false
-   :num.-fields 2}
+   :num-fields 2}
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
                   Field    [{} {:table_id table-id :special_type :type/PK}]
@@ -289,7 +289,7 @@
 (expect
   {:list-like?  false
    :link-table? true
-   :num.-fields 3}
+   :num-fields 3}
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
                   Field    [{} {:table_id table-id :special_type :type/PK}]
