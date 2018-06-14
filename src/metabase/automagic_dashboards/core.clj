@@ -861,13 +861,13 @@
 
 (defn- enhance-table-stats
   [tables]
-  (let [field-count (->> (db/query {:select   [:table_id [:%count.* :count]]
+  (let [field-count (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                     :from     [:metabase_field]
                                     :where    [:in :table_id (map u/get-id tables)]
                                     :group-by [:table_id]})
                          (into {} (map (fn [{:keys [count table_id]}]
                                          [table_id count]))))
-        list-like?  (->> (db/query {:select   [:table_id [:%count.* :count]]
+        list-like?  (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                     :from     [:metabase_field]
                                     :where    [:and [:in :table_id (->> field-count
                                                                         (filter (comp #{2} val))
@@ -877,7 +877,7 @@
                                     :group-by [:table_id]
                                     :having   [:= :count 1]})
                          (into #{} (map :table_id)))
-        link-table? (->> (db/query {:select   [:table_id [:%count.* :count]]
+        link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                     :from     [:metabase_field]
                                     :where    [:and [:in :table_id (keys field-count)]
                                                     [:in :special_type ["type/PK" "type/FK"]]]
