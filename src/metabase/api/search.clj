@@ -196,7 +196,7 @@
 (s/defn ^:private make-search-context :- SearchContext
   [search-string :- (s/maybe su/NonBlankString)
    archived-string :- (s/maybe su/BooleanString)]
-  {:search-string       (str "%" (str/lower-case search-string) "%")
+  {:search-string       search-string
    :archived?           (Boolean/parseBoolean archived-string)
    :visible-collections (coll/permissions-set->visible-collection-ids @*current-user-permissions-set*)})
 
