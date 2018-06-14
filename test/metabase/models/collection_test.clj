@@ -25,6 +25,9 @@
   (doseq [username [:rasta :lucky :crowberto :trashbird]]
     (collection/user->personal-collection (test-users/user->id username))))
 
+(defn- lucky-collection-children-location []
+  (collection/children-location (collection/user->personal-collection (test-users/user->id :lucky))))
+
 ;; test that we can create a new Collection with valid inputs
 (expect
   {:name              "My Favorite Cards"
@@ -288,13 +291,10 @@
 ;; Make sure that if we try to be sneaky and edit a Personal Collection via the graph, an Exception is thrown
 (expect
   Exception
-  (do
-    (force-create-personal-collections!)
-    (let [lucky-personal-collection-id (db/select-one-id Collection
-                                         :personal_owner_id (test-users/user->id :lucky))]
-      (collection/update-graph! (assoc-in (graph :clear-revisions? true)
-                                          [:groups (u/get-id (group/all-users)) lucky-personal-collection-id]
-                                          :read)))))
+  (let [lucky-personal-collection-id (u/get-id (collection/user->personal-collection (test-users/user->id :lucky)))]
+    (collection/update-graph! (assoc-in (graph :clear-revisions? true)
+                                        [:groups (u/get-id (group/all-users)) lucky-personal-collection-id]
+                                        :read))))
 
 ;; double-check that the graph is unchanged
 (expect
@@ -303,14 +303,33 @@
               (u/get-id (group/metabot))   {:root :none}
               (u/get-id (group/admin))     {:root :write}}}
   (do
-    (force-create-personal-collections!)
     (u/ignore-exceptions
-      (let [lucky-personal-collection-id (db/select-one-id Collection
-                                           :personal_owner_id (test-users/user->id :lucky))]
+      (let [lucky-personal-collection-id (u/get-id (collection/user->personal-collection (test-users/user->id :lucky)))]
         (collection/update-graph! (assoc-in (graph :clear-revisions? true)
                                             [:groups (u/get-id (group/all-users)) lucky-personal-collection-id]
                                             :read))))
     (graph)))
+
+;; Make sure descendants of Personal Collections do not come back as part of the graph either...
+(expect
+  {:revision 0
+   :groups   {(u/get-id (group/all-users)) {:root :none}
+              (u/get-id (group/metabot))   {:root :none}
+              (u/get-id (group/admin))     {:root :write}}}
+  (tt/with-temp Collection [_ {:location (lucky-collection-children-location)}]
+    (graph)))
+
+;; ...and that you can't be sneaky and try to edit them either...
+(expect
+  Exception
+  (tt/with-temp Collection [collection {:location (lucky-collection-children-location)}]
+    (let [lucky-personal-collection-id (u/get-id (collection/user->personal-collection (test-users/user->id :lucky)))]
+      (collection/update-graph! (assoc-in (graph :clear-revisions? true)
+                                          [:groups
+                                           (u/get-id (group/all-users))
+                                           lucky-personal-collection-id
+                                           (u/get-id collection)]
+                                          :read)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1400,9 +1419,6 @@
       (group->perms [parent child] group))))
 
 ;; Make sure that when creating a new Collection as child of a Personal Collection, no group permissions are created
-(defn- lucky-collection-children-location []
-  (collection/children-location (collection/user->personal-collection (test-users/user->id :lucky))))
-
 (expect
   false
   (tt/with-temp Collection [child {:name "{child}", :location (lucky-collection-children-location)}]
