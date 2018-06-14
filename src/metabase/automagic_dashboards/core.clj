@@ -861,35 +861,38 @@
 
 (defn- enhance-table-stats
   [tables]
-  (let [field-count (->> (db/query {:select   [:table_id [:%count.* "count"]]
-                                    :from     [:metabase_field]
-                                    :where    [:in :table_id (map u/get-id tables)]
-                                    :group-by [:table_id]})
-                         (into {} (map (fn [{:keys [count table_id]}]
-                                         [table_id count]))))
-        list-like?  (->> (db/query {:select   [:table_id [:%count.* "count"]]
-                                    :from     [:metabase_field]
-                                    :where    [:and [:in :table_id (->> field-count
-                                                                        (filter (comp #{2} val))
-                                                                        (map key))]
-                                                    [:or [:not= :special_type "type/PK"]
-                                                         [:= :special_type nil]]]
-                                    :group-by [:table_id]
-                                    :having   [:= :count 1]})
-                         (into #{} (map :table_id)))
-        link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
-                                    :from     [:metabase_field]
-                                    :where    [:and [:in :table_id (keys field-count)]
-                                                    [:in :special_type ["type/PK" "type/FK"]]]
-                                    :group-by [:table_id]})
-                         (filter (fn [{:keys [table_id count]}]
-                                   (= count (field-count table_id))))
-                         (into #{} (map :table_id)))]
-    (for [table tables]
-      (let [table-id (u/get-id table)]
-        (assoc table :stats {:num-fields  (field-count table-id 0)
-                             :list-like?  (boolean (list-like? table-id))
-                             :link-table? (boolean (link-table? table-id))})))))
+  (when (not-empty tables)
+    (let [field-count (->> (db/query {:select   [:table_id [:%count.* "count"]]
+                                      :from     [:metabase_field]
+                                      :where    [:in :table_id (map u/get-id tables)]
+                                      :group-by [:table_id]})
+                           (into {} (map (fn [{:keys [count table_id]}]
+                                           [table_id count]))))
+          list-like?  (->> (when-let [candidates (->> field-count
+                                                      (filter (comp (partial >= 2) val))
+                                                      (map key)
+                                                      not-empty)]
+                             (db/query {:select   [:table_id [:%count.* "count"]]
+                                        :from     [:metabase_field]
+                                        :where    [:and [:in :table_id ]
+                                                   [:or [:not= :special_type "type/PK"]
+                                                    [:= :special_type nil]]]
+                                        :group-by [:table_id]
+                                        :having   [:= :count 1]}))
+                           (into #{} (map :table_id)))
+          link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
+                                      :from     [:metabase_field]
+                                      :where    [:and [:in :table_id (keys field-count)]
+                                                 [:in :special_type ["type/PK" "type/FK"]]]
+                                      :group-by [:table_id]})
+                           (filter (fn [{:keys [table_id count]}]
+                                     (= count (field-count table_id))))
+                           (into #{} (map :table_id)))]
+      (for [table tables]
+        (let [table-id (u/get-id table)]
+          (assoc table :stats {:num-fields  (field-count table-id 0)
+                               :list-like?  (boolean (list-like? table-id))
+                               :link-table? (boolean (link-table? table-id))}))))))
 
 (def ^:private ^:const ^Long max-candidate-tables
   "Maximal number of tables per schema shown in `candidate-tables`."
