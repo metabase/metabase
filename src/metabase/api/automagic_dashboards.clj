@@ -69,12 +69,12 @@
   query)
 
 (def ^:private ->entity
-  {"table"    (comp api/read-check Table)
-   "segment"  (comp api/read-check Segment)
-   "question" (comp api/read-check Card)
+  {"table"    (comp api/read-check Table #(Integer/parseInt %))
+   "segment"  (comp api/read-check Segment #(Integer/parseInt %))
+   "question" (comp api/read-check Card #(Integer/parseInt %))
    "adhoc"    (comp adhoc-query-read-check query/adhoc-query decode-base64-json)
-   "metric"   (comp api/read-check Metric)
-   "field"    (comp api/read-check Field)})
+   "metric"   (comp api/read-check Metric #(Integer/parseInt %))
+   "field"    (comp api/read-check Field #(Integer/parseInt %))})
 
 (def ^:private Entity
   (su/with-api-error-message
