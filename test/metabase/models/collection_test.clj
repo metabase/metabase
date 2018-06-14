@@ -9,21 +9,31 @@
              [dashboard :refer [Dashboard]]
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]
-             [pulse :refer [Pulse]]]
+             [pulse :refer [Pulse]]
+             [user :refer [User]]]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
+(defn force-create-personal-collections!
+  "Force the creation of the Personal Collections for our various test users. They are eventually going to get
+  automatically created anyway as soon as those Users' permissions get calculated in `user/permissions-set`; better to
+  do it now so the test results will be consistent."
+  []
+  (doseq [username [:rasta :lucky :crowberto :trashbird]]
+    (collection/user->personal-collection (test-users/user->id username))))
+
 ;; test that we can create a new Collection with valid inputs
 (expect
-  {:name        "My Favorite Cards"
-   :slug        "my_favorite_cards"
-   :description nil
-   :color       "#ABCDEF"
-   :archived    false
-   :location    "/"}
+  {:name              "My Favorite Cards"
+   :slug              "my_favorite_cards"
+   :description       nil
+   :color             "#ABCDEF"
+   :archived          false
+   :location          "/"
+   :personal_owner_id nil}
   (tt/with-temp Collection [collection {:name "My Favorite Cards", :color "#ABCDEF"}]
     (dissoc collection :id)))
 
@@ -40,16 +50,25 @@
   (tt/with-temp* [Collection [_]]
     :ok))
 
-;; test that duplicate names aren't allowed
+;; test that duplicate names ARE allowed
 (expect
-  Exception
+  :ok
   (tt/with-temp* [Collection [_ {:name "My Favorite Cards"}]
                   Collection [_ {:name "My Favorite Cards"}]]
     :ok))
 
-;; things with different names that would cause the same slug shouldn't be allowed either
+;; Duplicate names should result in duplicate slugs...
 (expect
-  Exception
+  ["my_favorite_cards"
+   "my_favorite_cards"]
+  (tt/with-temp* [Collection [collection-1 {:name "My Favorite Cards"}]
+                  Collection [collection-2 {:name "My Favorite Cards"}]]
+    (map :slug [collection-1 collection-2])))
+
+
+;; things with different names that would cause the same slug SHOULD be allowed
+(expect
+  :ok
   (tt/with-temp* [Collection [_ {:name "My Favorite Cards"}]
                   Collection [_ {:name "my_favorite Cards"}]]
     :ok))
@@ -254,6 +273,43 @@
     (collection/update-graph! (assoc-in (graph :clear-revisions? true)
                                         [:groups (u/get-id new-group) :root]
                                         :none))
+    (graph)))
+
+;; Make sure that personal Collections *do not* appear in the Collections graph
+(expect
+  {:revision 0
+   :groups   {(u/get-id (group/all-users)) {:root :none}
+              (u/get-id (group/metabot))   {:root :none}
+              (u/get-id (group/admin))     {:root :write}}}
+  (do
+    (force-create-personal-collections!)
+    (graph :clear-revisions? true)))
+
+;; Make sure that if we try to be sneaky and edit a Personal Collection via the graph, an Exception is thrown
+(expect
+  Exception
+  (do
+    (force-create-personal-collections!)
+    (let [lucky-personal-collection-id (db/select-one-id Collection
+                                         :personal_owner_id (test-users/user->id :lucky))]
+      (collection/update-graph! (assoc-in (graph :clear-revisions? true)
+                                          [:groups (u/get-id (group/all-users)) lucky-personal-collection-id]
+                                          :read)))))
+
+;; double-check that the graph is unchanged
+(expect
+  {:revision 0
+   :groups   {(u/get-id (group/all-users)) {:root :none}
+              (u/get-id (group/metabot))   {:root :none}
+              (u/get-id (group/admin))     {:root :write}}}
+  (do
+    (force-create-personal-collections!)
+    (u/ignore-exceptions
+      (let [lucky-personal-collection-id (db/select-one-id Collection
+                                           :personal_owner_id (test-users/user->id :lucky))]
+        (collection/update-graph! (assoc-in (graph :clear-revisions? true)
+                                            [:groups (u/get-id (group/all-users)) lucky-personal-collection-id]
+                                            :read))))
     (graph)))
 
 
@@ -742,6 +798,194 @@
     (with-current-user-perms-for-collections [b d e f g]
       (effective-children collection/root-collection))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                Nested Collections: Perms for Moving & Archiving                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; The tests in this section continue to use the Collection hierarchy above. The hierarchy doesn't get modified here,
+;; so it's the same in each test:
+;;
+;;    +-> B
+;;    |
+;; A -+-> C -+-> D -> E
+;;           |
+;;           +-> F -> G
+
+(defn- perms-path-ids->names
+  "Given a set of permissions and the `collections` map returned by the `with-collection-hierarchy` macro above, replace
+  the numeric IDs in the permissions paths with corresponding Collection names, making our tests easier to read."
+  [collections perms-set]
+  ;; first build a function that will replace any instances of numeric IDs with their respective names
+  ;; e.g. /123/ would become something like /A/
+  ;; Do this by composing together a series of functions that will handle one string replacement for each ID + name
+  ;; pair
+  (let [replace-ids-with-names (reduce comp (for [{:keys [id name]} (vals collections)]
+                                              #(str/replace % (re-pattern (format "/%d/" id)) (str "/" name "/"))))]
+    (set (for [perms-path perms-set]
+           (replace-ids-with-names perms-path)))))
+
+;;; ---------------------------------------------- Perms for Archiving -----------------------------------------------
+
+;; To Archive A, you should need *write* perms for A and all of its descendants...
+(expect
+  #{"/collection/A/"
+    "/collection/B/"
+    "/collection/C/"
+    "/collection/D/"
+    "/collection/E/"
+    "/collection/F/"
+    "/collection/G/"}
+  (with-collection-hierarchy [{:keys [a], :as collections}]
+    (->> (collection/perms-for-archiving a)
+         (perms-path-ids->names collections))))
+
+;; Now let's move down a level. To archive B, you should only need permissions for B itself, since it doesn't
+;; have any descendants
+(expect
+  #{"/collection/B/"}
+  (with-collection-hierarchy [{:keys [b], :as collections}]
+    (->> (collection/perms-for-archiving b)
+         (perms-path-ids->names collections))))
+
+;; but for C, you should need perms for C, D, E, F, and G
+(expect
+  #{"/collection/C/"
+    "/collection/D/"
+    "/collection/E/"
+    "/collection/F/"
+    "/collection/G/"}
+  (with-collection-hierarchy [{:keys [c], :as collections}]
+    (->> (collection/perms-for-archiving c)
+         (perms-path-ids->names collections))))
+
+;; For D you should need D + E
+(expect
+  #{"/collection/D/"
+    "/collection/E/"}
+  (with-collection-hierarchy [{:keys [d], :as collections}]
+    (->> (collection/perms-for-archiving d)
+         (perms-path-ids->names collections))))
+
+;; If you try to calculate permissions to archive the Root Collection, throw an Exception! Because you can't do
+;; that...
+(expect
+  Exception
+  (collection/perms-for-archiving collection/root-collection))
+
+;; Let's make sure we get an Exception when we try to archive a Personal Collection
+(expect
+  Exception
+  (collection/perms-for-archiving (collection/user->personal-collection (test-users/fetch-user :lucky))))
+
+;; also you should get an Exception if you try to pull a fast one on use and pass in some sort of invalid input...
+(expect Exception (collection/perms-for-archiving nil))
+(expect Exception (collection/perms-for-archiving {}))
+(expect Exception (collection/perms-for-archiving 1))
+
+
+;;; ------------------------------------------------ Perms for Moving ------------------------------------------------
+
+;; `*` marks the things that require permissions in charts below!
+
+;; If we want to move B into C, we should need perms for B and C. B because it is being moved; C we are moving
+;; something into it. Note that we do NOT require perms for A
+;;
+;;    +-> B                             +-> B*
+;;    |                                 |
+;; A -+-> C -+-> D -> E  ===>  A -> C* -+-> D -> E
+;;           |                          |
+;;           +-> F -> G                 +-> F -> G
+
+(expect
+  #{"/collection/B/"
+    "/collection/C/"}
+  (with-collection-hierarchy [{:keys [b c], :as collections}]
+    (->> (collection/perms-for-moving b c)
+         (perms-path-ids->names collections))))
+
+;; Ok, now let's try moving something with descendants. If we move C into B, we need perms for C and all its
+;; descendants, and B, since it's the new parent; we do not need perms for A, the old parent
+;;
+;;    +-> B
+;;    |
+;; A -+-> C -+-> D -> E  ===>  A -> B* -> C* -+-> D* -> E*
+;;           |                                |
+;;           +-> F -> G                       +-> F* -> G*
+(expect
+  #{"/collection/B/"
+    "/collection/C/"
+    "/collection/D/"
+    "/collection/E/"
+    "/collection/F/"
+    "/collection/G/"}
+  (with-collection-hierarchy [{:keys [b c], :as collections}]
+    (->> (collection/perms-for-moving c b)
+         (perms-path-ids->names collections))))
+
+;; Ok, now how about moving B into the Root Collection?
+;;
+;;    +-> B                    B* [and Root*]
+;;    |
+;; A -+-> C -+-> D -> E  ===>  A -> C -+-> D -> E
+;;           |                         |
+;;           +-> F -> G                +-> F -> G
+(expect
+  #{"/collection/root/"
+    "/collection/B/"}
+  (with-collection-hierarchy [{:keys [b], :as collections}]
+    (->> (collection/perms-for-moving b collection/root-collection)
+         (perms-path-ids->names collections))))
+
+;; How about moving C into the Root Collection?
+;;
+;;    +-> B                    A -> B
+;;    |
+;; A -+-> C -+-> D -> E  ===>  C* -+-> D* -> E* [and Root*]
+;;           |                     |
+;;           +-> F -> G            +-> F* -> G*
+(expect
+  #{"/collection/root/"
+    "/collection/C/"
+    "/collection/D/"
+    "/collection/E/"
+    "/collection/F/"
+    "/collection/G/"}
+  (with-collection-hierarchy [{:keys [c], :as collections}]
+    (->> (collection/perms-for-moving c collection/root-collection)
+         (perms-path-ids->names collections))))
+
+;; If you try to calculate permissions to move or archive the Root Collection, throw an Exception! Because you can't
+;; do that...
+(expect
+  Exception
+  (with-collection-hierarchy [{:keys [a]}]
+    (collection/perms-for-moving collection/root-collection a)))
+
+;; You should also see an Exception if you try to move a Collection into itself or into one its descendants...
+(expect
+  Exception
+  (with-collection-hierarchy [{:keys [b]}]
+    (collection/perms-for-moving b b)))
+
+(expect
+  Exception
+  (with-collection-hierarchy [{:keys [a b]}]
+    (collection/perms-for-moving a b)))
+
+;; Let's make sure we get an Exception when we try to *move* a Collection
+(expect
+  Exception
+  (with-collection-hierarchy [{:keys [a]}]
+    (collection/perms-for-moving (collection/user->personal-collection (test-users/fetch-user :lucky)) a)))
+
+;; also you should get an Exception if you try to pull a fast one on use and pass in some sort of invalid input...
+(expect Exception (collection/perms-for-moving {:location "/"} nil))
+(expect Exception (collection/perms-for-moving {:location "/"} {}))
+(expect Exception (collection/perms-for-moving {:location "/"} 1))
+(expect Exception (collection/perms-for-moving nil {:location "/"}))
+(expect Exception (collection/perms-for-moving {}  {:location "/"}))
+(expect Exception (collection/perms-for-moving 1   {:location "/"}))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Nested Collections: Moving Collections                                     |
@@ -1033,3 +1277,30 @@
     (db/select-one-field :archived Collection :id (u/get-id e))))
 
 ;; TODO - can you unarchive a Card that is inside an archived Collection??
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Personal Collections                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Make sure we're not allowed to *unarchive* a Personal Collection
+(expect
+  Exception
+  (tt/with-temp User [my-cool-user]
+    (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (db/update! Collection (u/get-id personal-collection) :archived true))))
+
+;; Make sure we're not allowed to *move* a Personal Collection
+(expect
+  Exception
+  (tt/with-temp* [User       [my-cool-user]
+                  Collection [some-other-collection]]
+    (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (db/update! Collection (u/get-id personal-collection) :location (collection/location-path some-other-collection)))))
+
+;; Make sure we're not allowed to change the owner of a Personal Collection
+(expect
+  Exception
+  (tt/with-temp User [my-cool-user]
+    (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (db/update! Collection (u/get-id personal-collection) :personal_owner_id (test-users/user->id :crowberto)))))

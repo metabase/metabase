@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex, Subhead } from "rebass";
+import { Box, Flex } from "grid-styled";
 import { t } from "c-3po";
 
 import EntityItem from "metabase/components/EntityItem";
@@ -13,6 +13,7 @@ import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
+import Subhead from "metabase/components/Subhead";
 
 export const DatabaseListLoader = props => (
   <EntityListLoader entityType="databases" {...props} />

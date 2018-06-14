@@ -57,7 +57,7 @@
           (log/warn
            (u/format-color 'red (str "We don't have a nice error message for schema: %s\n"
                                      "Consider wrapping it in `su/with-api-error-message`.")
-             schema))))))
+             (u/pprint-to-str schema)))))))
 
 (defn- param-name
   "Return the appropriate name for this PARAM-SYMB based on its SCHEMA. Usually this is just the name of the

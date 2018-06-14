@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex, Subhead, Truncate } from "rebass";
+import { Box, Flex } from "grid-styled";
 import { t } from "c-3po";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
@@ -17,6 +17,8 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
+import Subhead from "metabase/components/Subhead";
+import Ellipsified from "metabase/components/Ellipsified";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
@@ -49,9 +51,9 @@ const CollectionItem = ({ collection }) => (
       py={1}
       key={`collection-${collection.id}`}
     >
-      <Icon name="all" mx={1} />
+      <Icon name={collection.personal_owner_id ? "star" : "all"} mx={1} />
       <h4>
-        <Truncate>{collection.name}</Truncate>
+        <Ellipsified>{collection.name}</Ellipsified>
       </h4>
     </Flex>
   </Link>
@@ -70,7 +72,10 @@ const CollectionList = () => {
           return (
             <Box>
               {collections.map(collection => (
-                <Box key={collection.id} mb={1}>
+                <Box
+                  key={collection.id}
+                  mb={collection.personal_owner_id ? 3 : 1}
+                >
                   <CollectionItem collection={collection} />
                 </Box>
               ))}
@@ -337,40 +342,41 @@ class CollectionLanding extends React.Component {
                   />
                 </Box>
               )}
-              {currentCollection.can_write && (
-                <Box mx={1}>
-                  <EntityMenu
-                    items={[
-                      ...(!isRoot
-                        ? [
-                            {
-                              title: t`Edit this collection`,
-                              icon: "editdocument",
-                              link: `/collections/${currentCollection.id}`,
-                            },
-                          ]
-                        : []),
-                      {
-                        title: t`Edit permissions`,
-                        icon: "lock",
-                        link: `/collections/permissions?collectionId=${
-                          currentCollection.id
-                        }`,
-                      },
-                      ...(!isRoot
-                        ? [
-                            {
-                              title: t`Archive this collection`,
-                              icon: "viewArchive",
-                              link: `/collection/${collectionId}/archive`,
-                            },
-                          ]
-                        : []),
-                    ]}
-                    triggerIcon="pencil"
-                  />
-                </Box>
-              )}
+              {currentCollection.can_write &&
+                !currentCollection.personal_owner_id && (
+                  <Box mx={1}>
+                    <EntityMenu
+                      items={[
+                        ...(!isRoot
+                          ? [
+                              {
+                                title: t`Edit this collection`,
+                                icon: "editdocument",
+                                link: `/collections/${currentCollection.id}`,
+                              },
+                            ]
+                          : []),
+                        {
+                          title: t`Edit permissions`,
+                          icon: "lock",
+                          link: `/collections/permissions?collectionId=${
+                            currentCollection.id
+                          }`,
+                        },
+                        ...(!isRoot
+                          ? [
+                              {
+                                title: t`Archive this collection`,
+                                icon: "viewArchive",
+                                link: `/collection/${collectionId}/archive`,
+                              },
+                            ]
+                          : []),
+                      ]}
+                      triggerIcon="pencil"
+                    />
+                  </Box>
+                )}
               <EntityMenu
                 items={[
                   {

@@ -153,8 +153,7 @@
      :rules-prefix ["field"]}))
 
 (def ^:private ^{:arglists '([card-or-question])} nested-query?
-  (comp (every-pred string? #(str/starts-with? % "card__"))
-        #(qp.util/get-in-normalized % [:dataset_query :query :source_table])))
+  (comp qp.util/query->source-card-id :dataset_query))
 
 (def ^:private ^{:arglists '([card-or-question])} native-query?
   (comp #{:native} qp.util/normalize-token #(qp.util/get-in-normalized % [:dataset_query :type])))
@@ -574,19 +573,23 @@
 
 (defmethod inject-root (type Field)
   [context field]
-  (update context :dimensions
-          (fn [dimensions]
-            (->> dimensions
-                 (keep (fn [[identifier definition]]
-                         (when-let [matches (->> definition
-                                                 :matches
-                                                 (remove (comp #{(id-or-name field)} id-or-name))
-                                                 not-empty)]
-                           [identifier (assoc definition :matches matches)])))
-                 (concat [["this" {:matches [field]
-                                   :name    (:display_name field)
-                                   :score   rules/max-score}]])
-                 (into {})))))
+  (let [field (assoc field :link (->> context
+                                      :tables
+                                      (m/find-first (comp #{(:table_id field)} u/get-id))
+                                      :link))]
+    (update context :dimensions
+            (fn [dimensions]
+              (->> dimensions
+                   (keep (fn [[identifier definition]]
+                           (when-let [matches (->> definition
+                                                   :matches
+                                                   (remove (comp #{(id-or-name field)} id-or-name))
+                                                   not-empty)]
+                             [identifier (assoc definition :matches matches)])))
+                   (concat [["this" {:matches [field]
+                                     :name    (:display_name field)
+                                     :score   rules/max-score}]])
+                   (into {}))))))
 
 (defmethod inject-root (type Metric)
   [context metric]
@@ -693,13 +696,14 @@
   ([root] (related-entities max-related root))
   ([n root]
    (let [recommendations     (-> root :entity related/related)
+         fields-selector     (comp (partial remove key-col?) :fields)
          ;; Not everything `related/related` returns is relevent for us. Also note that the order
          ;; influences which entities get shown when results are trimmed.
          relevant-dimensions [:table :segments :metrics :linking-to :dashboard-mates
-                              :similar-questions :linked-from :tables :fields]]
+                              :similar-questions :linked-from :tables fields-selector]]
      (->> relevant-dimensions
           (reduce (fn [acc selector]
-                    (concat acc (-> selector recommendations rules/ensure-seq)))
+                    (concat acc (-> recommendations selector rules/ensure-seq)))
                   [])
           (take n)
           (map ->related-entity)))))

@@ -75,7 +75,9 @@ export class WindowModal extends Component {
           {getModalContent({
             ...this.props,
             fullPageModal: false,
-            formModal: !!this.props.form,
+            // if there is a form then its a form modal, or if there's a form
+            // modal prop use that
+            formModal: !!this.props.form || this.props.formModal,
           })}
         </div>
       </OnClickOutsideWrapper>

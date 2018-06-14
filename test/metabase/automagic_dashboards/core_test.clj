@@ -12,6 +12,7 @@
              [query :as query]
              [table :refer [Table] :as table]
              [user :as user]]
+            [metabase.query-processor :as qp]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
@@ -80,11 +81,15 @@
                  ((test-users/user->client :rasta) :get 200 (format "automagic-dashboards/%s"
                                                                     (subs url 16)))))))
 
+(def ^:private valid-card?
+  (comp qp/expand :dataset_query))
+
 (defn- valid-dashboard?
   [dashboard]
   (assert (:name dashboard))
   (assert (-> dashboard :ordered_cards count pos?))
   (assert (valid-urls? dashboard))
+  (assert (every? valid-card? (keep :card (:ordered_cards dashboard))))
   true)
 
 (defmacro ^:private with-dashboard-cleanup
@@ -95,12 +100,18 @@
 (expect
   (with-rasta
     (with-dashboard-cleanup
-      (->> (Table) (keep #(automagic-analysis % {})) (every? valid-dashboard?)))))
+      (->> (db/select Table :db_id (data/id))
+           (keep #(automagic-analysis % {}))
+           (every? valid-dashboard?)))))
 
 (expect
   (with-rasta
     (with-dashboard-cleanup
-      (->> (Field) (keep #(automagic-analysis % {})) (every? valid-dashboard?)))))
+      (->> (db/select Field
+             :table_id [:in (db/select-field :id Table :db_id (data/id))]
+             :visibility_type "normal")
+           (keep #(automagic-analysis % {}))
+           (every? valid-dashboard?)))))
 
 (expect
   (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
@@ -186,7 +197,7 @@
       (with-dashboard-cleanup
         (-> card-id
             Card
-            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]})
+            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id)] 2]})
             valid-dashboard?)))))
 
 
@@ -219,6 +230,16 @@
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
                                           :breakout [[:field-id (data/id :venues :category_id)]]
                                           :source_table (data/id :venues)}
+                                  :type :query
+                                  :database (data/id)})]
+        (-> q (automagic-analysis {}) valid-dashboard?)))))
+
+(expect
+  (with-rasta
+    (with-dashboard-cleanup
+      (let [q (query/adhoc-query {:query {:aggregation [[:count]]
+                                          :breakout [[:fk-> (data/id :checkins) (data/id :venues :category_id)]]
+                                          :source_table (data/id :checkins)}
                                   :type :query
                                   :database (data/id)})]
         (-> q (automagic-analysis {}) valid-dashboard?)))))

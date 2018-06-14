@@ -1,8 +1,8 @@
 import React from "react";
 import { Box } from "grid-styled";
-import { Text, Subhead } from "rebass";
 import { t } from "c-3po";
 import RetinaImage from "react-retina-image";
+import Subhead from "metabase/components/Subhead";
 
 import { normal } from "metabase/lib/colors";
 
@@ -19,9 +19,9 @@ const CollectionEmptyState = () => {
         <Subhead color={normal.grey2}>
           {t`This collection is empty, like a blank canvas`}
         </Subhead>
-        <Text color={normal.grey2}>
+        <p className="text-paragraph text-grey-2">
           {t`You can use collections to organize and group dashboards, questions and pulses for your team or yourself`}
-        </Text>
+        </p>
       </Box>
     </Box>
   );

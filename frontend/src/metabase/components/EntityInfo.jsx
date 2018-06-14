@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex, Heading } from "rebass";
+import { Box, Flex } from "grid-styled";
 import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon";
@@ -9,7 +9,7 @@ import UserAvatar from "metabase/components/UserAvatar";
 const EntityInfo = ({ entity }) => (
   <Box>
     <Box my={4}>
-      <Heading>
+      <h1>
         {entity.displayName() || "Good title"}
         {entity.query().segments().length > 0 && <span> filtered by</span>}
         {entity
@@ -33,7 +33,7 @@ const EntityInfo = ({ entity }) => (
               </Tooltip>
             </div>
           ))}
-      </Heading>
+      </h1>
       <p>{entity.card().description}</p>
 
       {entity.card().creator && (
