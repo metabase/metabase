@@ -58,6 +58,7 @@
     "react-router-redux": "^4.0.8",
     "react-sortable-hoc": "^0.6.8",
     "react-sortablejs": "1.3.6",
+    "sortablejs":"^1.6.1",
     "react-textarea-autosize": "^5.2.1",
     "react-transition-group": "1",
     "react-virtualized": "^9.7.2",
