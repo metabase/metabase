@@ -84,6 +84,7 @@ export default class RecipientPicker extends Component {
             return { email: inputValue };
           }
         }}
+        updateOnInputBlur
       />
     );
   }

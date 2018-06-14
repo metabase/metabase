@@ -62,6 +62,7 @@ type Props = {
   onBlur?: () => void,
 
   updateOnInputChange: boolean,
+  updateOnInputBlur: boolean,
   // if provided, parseFreeformValue parses the input string into a value,
   // or returns null to indicate an invalid value
   parseFreeformValue: (value: string) => ?Value,
@@ -346,6 +347,17 @@ export default class TokenField extends Component {
   };
 
   onInputBlur = () => {
+    if (this.props.updateOnInputBlur && this.props.parseFreeformValue) {
+      const input = findDOMNode(this.refs.input);
+      const value = this.props.parseFreeformValue(input.value);
+      if (
+        value != null &&
+        (this.props.multi || value !== this.props.value[0])
+      ) {
+        this.addValue(value);
+        this.clearInputValue();
+      }
+    }
     if (this.props.onBlur) {
       this.props.onBlur();
     }
