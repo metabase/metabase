@@ -1,7 +1,8 @@
 (ns metabase.models.permissions-test
   (:require [expectations :refer :all]
             [metabase.models
-             [collection :as collection]
+             [collection :as collection :refer [Collection]]
+             [collection-test :as collection-test]
              [database :refer [Database]]
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]
@@ -583,26 +584,56 @@
 (expect
   Exception
   (do
-    ((resolve 'metabase.models.collection-test/force-create-personal-collections!))
+    (collection-test/force-create-personal-collections!)
     (perms/revoke-collection-permissions!
      (group/all-users)
      (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
+
+;; (should apply to descendants as well)
+(expect
+  Exception
+  (tt/with-temp Collection [collection {:location (collection/children-location
+                                                   (collection/user->personal-collection
+                                                    (test-users/user->id :lucky)))}]
+    (perms/revoke-collection-permissions!
+     (group/all-users)
+     collection)))
 
 ;; Make sure if you try to use the helper function to grant read perms for a Personal Collection, you get an Exception
 (expect
   Exception
   (do
-    ((resolve 'metabase.models.collection-test/force-create-personal-collections!))
+    (collection-test/force-create-personal-collections!)
     (perms/grant-collection-read-permissions!
      (group/all-users)
      (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
+
+;; (should apply to descendants as well)
+(expect
+  Exception
+  (tt/with-temp Collection [collection {:location (collection/children-location
+                                                   (collection/user->personal-collection
+                                                    (test-users/user->id :lucky)))}]
+    (perms/grant-collection-read-permissions!
+     (group/all-users)
+     collection)))
 
 ;; Make sure if you try to use the helper function to grant readwrite perms for a Personal Collection, you get an
 ;; Exception
 (expect
   Exception
   (do
-    ((resolve 'metabase.models.collection-test/force-create-personal-collections!))
+    (collection-test/force-create-personal-collections!)
     (perms/grant-collection-readwrite-permissions!
      (group/all-users)
      (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
+
+;; (should apply to descendants as well)
+(expect
+  Exception
+  (tt/with-temp Collection [collection {:location (collection/children-location
+                                                   (collection/user->personal-collection
+                                                    (test-users/user->id :lucky)))}]
+    (perms/grant-collection-readwrite-permissions!
+     (group/all-users)
+     collection)))
