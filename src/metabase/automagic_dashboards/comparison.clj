@@ -3,7 +3,8 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
-             [core :refer [->root]]
+             [core :refer [->root ->field automagic-analysis]]
+             [filters :as filters]
              [populate :as populate]]
             [metabase.models.metric :refer [Metric]]
             [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses]]
@@ -133,13 +134,31 @@
           (m/dissoc-in [:visualization_settings :graph.series_labels])))
     [card]))
 
+(defn- segment-constituents
+  [segment]
+  (->> segment
+       :query-filter
+       filters/collect-field-references
+       (map filters/field-reference->id)
+       distinct
+       (map (partial ->field segment))))
+
 (defn comparison-dashboard
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
    the dataset defined by segments `left` and `right`."
   [dashboard left right]
   (let [left  (->root left)
         right (->root right)]
-    (transduce (comp (filter :display)
+    (assert (= (:source left) (:source right)))
+    (->> (concat (segment-constituents left)
+                 (segment-constituents right))
+         distinct
+         (map #(automagic-analysis % {:source       (:source left)
+                                      :rules-prefix ["comparison"]}))
+         (apply populate/merge-dashboards dashboard)
+         dashboard->cards
+         (m/distinct-by :dataset_query)
+         (transduce (comp (filter :display)
                      (mapcat unroll-multiseries))
                (fn
                  ([]
@@ -160,5 +179,4 @@
                  ([[dashboard row]] dashboard)
                  ([[dashboard row] card]
                   [(comparison-row dashboard row left right card)
-                   (+ row (:height card))]))
-               (dashboard->cards dashboard))))
+                   (+ row (:height card))]))))))

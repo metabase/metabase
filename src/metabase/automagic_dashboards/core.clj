@@ -41,7 +41,8 @@
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
 
-(defn- ->field
+(defn ->field
+  "Return `Field` instance for a given ID or name in the context of root."
   [root id-or-name]
   (if (->> root :source (instance? (type Table)))
     (Field id-or-name)
