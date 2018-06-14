@@ -163,9 +163,14 @@ class DefaultLanding extends React.Component {
                   return <CollectionEmptyState />;
                 }
 
-                const [pinned, other] = _.partition(
+                const [pinned, unpinned] = _.partition(
                   items,
                   i => i.collection_position != null,
+                );
+
+                // sort the pinned items by collection_position
+                pinned.sort(
+                  (a, b) => a.collection_position - b.collection_position,
                 );
 
                 return (
@@ -234,17 +239,17 @@ class DefaultLanding extends React.Component {
                         </Box>
                       )}
                     </Flex>
-                    {other.length > 0 ? (
+                    {unpinned.length > 0 ? (
                       <PinnedDropArea pinIndex={null} margin={8}>
                         <Card
                           mb={selected.length > 0 ? 5 : 2}
                           style={{
                             position: "relative",
-                            height: ROW_HEIGHT * other.length,
+                            height: ROW_HEIGHT * unpinned.length,
                           }}
                         >
                           <VirtualizedList
-                            items={other}
+                            items={unpinned}
                             rowHeight={ROW_HEIGHT}
                             renderItem={({ item, index }) => (
                               <DraggableItem item={item} selection={selection}>
