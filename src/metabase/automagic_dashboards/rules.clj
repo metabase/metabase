@@ -291,10 +291,11 @@
           .toUri
           slurp
           yaml/parse-string
-          (assoc :rule entity-type)
+          (assoc :rule        entity-type
+                 :specificity 0)
           (update :applies_to #(or % entity-type))
-          (as-> rule (assoc rule :specificity (specificity rule)))
-          rules-validator))
+          rules-validator
+          (as-> rule (assoc rule :specificity (specificity rule)))))
     (catch Exception e
       (log/errorf (trs "Error parsing %s:\n%s")
                   (.getFileName f)
