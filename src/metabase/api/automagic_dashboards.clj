@@ -86,108 +86,108 @@
       (s/enum "segment" "adhoc" "table")
     (tru "Invalid comparison entity type. Can only be one of \"table\", \"sement\", or \"adhoc\"")))
 
-(api/defendpoint GET "/:entity/:id"
+(api/defendpoint GET "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `ìd`."
-  [entity id show]
+  [entity entity-id-or-query show]
   {show   Show
    entity Entity}
-  (-> id ((->entity entity)) (automagic-analysis {:show (keyword show)})))
+  (-> entity-id-or-query ((->entity entity)) (automagic-analysis {:show (keyword show)})))
 
-(api/defendpoint GET "/:entity/:id/rule/:prefix/:rule"
+(api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
   "Return an automagic dashboard for entity `entity` with id `ìd` using rule `rule`."
-  [entity id prefix rule show]
+  [entity entity-id-or-query prefix rule show]
   {entity Entity
    show   Show
    prefix Prefix
    rule   Rule}
-  (-> id ((->entity entity)) (automagic-analysis {:show (keyword show)
-                                                  :rule ["table" prefix rule]})))
+  (-> entity-id-or-query ((->entity entity)) (automagic-analysis {:show (keyword show)
+                                                                  :rule ["table" prefix rule]})))
 
-(api/defendpoint GET "/:entity/:id/cell/:cell-query"
+(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query"
   "Return an automagic dashboard analyzing cell in  automagic dashboard for entity `entity`
    defined by
    query `cell-querry`."
-  [entity id cell-query show]
+  [entity entity-id-or-query cell-query show]
   {entity     Entity
    show       Show
    cell-query Base64EncodedJSON}
-  (-> id
+  (-> entity-id-or-query
       ((->entity entity))
       (automagic-analysis {:show       (keyword show)
                            :cell-query (decode-base64-json cell-query)})))
 
-(api/defendpoint GET "/:entity/:id/cell/:cell-query/rule/:prefix/:rule"
+(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry` using rule `rule`."
-  [entity id cell-query prefix rule show]
+  [entity entity-id-or-query cell-query prefix rule show]
   {entity     Entity
    show       Show
    prefix     Prefix
    rule       Rule
    cell-query Base64EncodedJSON}
-  (-> id
+  (-> entity-id-or-query
       ((->entity entity))
       (automagic-analysis {:show       (keyword show)
                            :rule       ["table" prefix rule]
                            :cell-query (decode-base64-json cell-query)})))
 
-(api/defendpoint GET "/:entity/:id/compare/:comparison-entity/:comparison-entity-id"
+(api/defendpoint GET "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id"
   "Return an automagic comparison dashboard for entity `entity` with id `ìd` compared with entity
    `comparison-entity` with id `comparison-entity-id.`"
-  [entity id show comparison-entity comparison-entity-id]
+  [entity entity-id-or-query show comparison-entity comparison-entity-id]
   {show              Show
    entity            Entity
    comparison-entity ComparisonEntity}
-  (let [left      ((->entity entity) id)
+  (let [left      ((->entity entity) entity-id-or-query)
         right     ((->entity comparison-entity) comparison-entity-id)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :query-filter nil})]
     (comparison-dashboard dashboard left right)))
 
-(api/defendpoint GET "/:entity/:id/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id"
+(api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id"
   "Return an automagic comparison dashboard for entity `entity` with id `ìd` using rule `rule`;
    compared with entity `comparison-entity` with id `comparison-entity-id.`."
-  [entity id prefix rule show comparison-entity comparison-entity-id]
+  [entity entity-id-or-query prefix rule show comparison-entity comparison-entity-id]
   {entity            Entity
    show              Show
    prefix            Prefix
    rule              Rule
    comparison-entity ComparisonEntity}
-  (let [left      ((->entity entity) id)
+  (let [left      ((->entity entity) entity-id-or-query)
         right     ((->entity comparison-entity) comparison-entity-id)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :rule         ["table" prefix rule]
                                             :query-filter nil})]
     (comparison-dashboard dashboard left right)))
 
-(api/defendpoint GET "/:entity/:id/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id"
+(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `ìd` defined by query `cell-querry`; compared with entity `comparison-entity` with id
    `comparison-entity-id.`."
-  [entity id cell-query show comparison-entity comparison-entity-id]
+  [entity entity-id-or-query cell-query show comparison-entity comparison-entity-id]
   {entity            Entity
    show              Show
    cell-query        Base64EncodedJSON
    comparison-entity ComparisonEntity}
-  (let [left      ((->entity entity) id)
+  (let [left      ((->entity entity) entity-id-or-query)
         right     ((->entity comparison-entity) comparison-entity-id)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :cell-query   (decode-base64-json cell-query)
                                             :query-filter nil})]
     (comparison-dashboard dashboard left right)))
 
-(api/defendpoint GET "/:entity/:id/cell/:cell-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id"
+(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `ìd` defined by query `cell-querry` using rule `rule`; compared with entity
    `comparison-entity` with id `comparison-entity-id.`."
-  [entity id cell-query prefix rule show comparison-entity comparison-entity-id]
+  [entity entity-id-or-query cell-query prefix rule show comparison-entity comparison-entity-id]
   {entity            Entity
    show              Show
    prefix            Prefix
    rule              Rule
    cell-query        Base64EncodedJSON
    comparison-entity ComparisonEntity}
-  (let [left      ((->entity entity) id)
+  (let [left      ((->entity entity) entity-id-or-query)
         right     ((->entity comparison-entity) comparison-entity-id)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :rule         ["table" prefix rule]
