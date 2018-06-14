@@ -9,6 +9,7 @@
              [collection :as coll :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-favorite :refer [DashboardFavorite]]
+             [interface :as mi]
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
              [segment :refer [Segment]]]
@@ -24,11 +25,11 @@
 
 (def ^:private card-columns-without-type
   (concat default-columns
-          [:collection_id :collection_position [:card_fav.id :favorited]]))
+          [:collection_id :collection_position [:card_fav.id :favorite]]))
 
 (def ^:private dashboard-columns-without-type
   (concat default-columns
-          [:collection_id :collection_position [:dashboard_fav.id :favorited]]))
+          [:collection_id :collection_position [:dashboard_fav.id :favorite]]))
 
 (def ^:private pulse-columns-without-type
   [:id :name :collection_id])
@@ -64,7 +65,6 @@
   "Map with the various allowed search parameters, used to construct the SQL query"
   {:search-string       (s/maybe su/NonBlankString)
    :archived?           s/Bool
-   :collection          (s/maybe (s/cond-pre (s/eq :root) su/IntGreaterThanZero))
    :visible-collections coll/VisibleCollections})
 
 (defn- make-canonical-columns
@@ -86,7 +86,7 @@
               ;; This entity is missing the column, project a null for that column value
               :else
               [nil search-col]))
-          [[(hx/literal entity-type) :type]]))
+          [[(hx/literal entity-type) :model]]))
 
 (defn- merge-search-select
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
@@ -113,23 +113,15 @@
 
 (s/defn ^:private add-collection-criteria
   "Update the query to only include collections the user has access to"
-  [query-map column-kwd {:keys [visible-collections collection]} :- SearchContext]
-  (cond
-    ;; The root collection is the same as a nil collection id
-    (= :root collection)
-    (h/merge-where query-map [:= column-kwd nil])
-
-    (number? collection)
-    (h/merge-where query-map [:= column-kwd collection])
-
-    (= :all visible-collections)
+  [query-map column-kwd {:keys [visible-collections]} :- SearchContext]
+  (if (= :all visible-collections)
     query-map
-
-    :else
-    (do
+    (let [in-clause [:in column-kwd visible-collections]]
       ;; This is validated in the API call, just double checking here
       (assert (seq visible-collections))
-      (h/merge-where query-map [:in column-kwd visible-collections]))))
+      (h/merge-where query-map (if (mi/can-read? coll/root-collection)
+                                 [:or [:= column-kwd nil] in-clause]
+                                 in-clause) ))))
 
 (defn- make-honeysql-search-query
   "Create a HoneySQL query map to search for `entity`, suitable for the UNION ALL used in search."
@@ -152,12 +144,10 @@
       (add-collection-criteria :collection_id search-ctx)))
 
 (s/defmethod ^:private create-search-query :collection
-  [_ {:keys [collection] :as search-ctx} :- SearchContext]
-  ;; If we have a collection, no need to search collections
-  (when-not collection
-    (-> (make-honeysql-search-query Collection "collection" collection-columns-without-type)
-        (merge-name-and-archived-search search-ctx)
-        (add-collection-criteria :id search-ctx))))
+  [_ search-ctx :- SearchContext]
+  (-> (make-honeysql-search-query Collection "collection" collection-columns-without-type)
+      (merge-name-and-archived-search search-ctx)
+      (add-collection-criteria :id search-ctx)))
 
 (s/defmethod ^:private create-search-query :dashboard
   [_ search-ctx :- SearchContext]
@@ -179,64 +169,43 @@
         (add-collection-criteria :collection_id search-ctx))))
 
 (s/defmethod ^:private create-search-query :metric
-  [_ {:keys [collection] :as search-ctx} :- SearchContext]
-  (when-not collection
-    (-> (make-honeysql-search-query Metric "metric" metric-columns-without-type)
-        (merge-name-and-archived-search search-ctx))))
+  [_ search-ctx :- SearchContext]
+  (-> (make-honeysql-search-query Metric "metric" metric-columns-without-type)
+      (merge-name-and-archived-search search-ctx)))
 
 (s/defmethod ^:private create-search-query :segment
-  [_ {:keys [collection] :as search-ctx} :- SearchContext]
-  (when-not collection
-    (-> (make-honeysql-search-query Segment "segment" segment-columns-without-type)
-        (merge-name-and-archived-search search-ctx))))
+  [_ search-ctx :- SearchContext]
+  (-> (make-honeysql-search-query Segment "segment" segment-columns-without-type)
+      (merge-name-and-archived-search search-ctx)))
 
 (defn- favorited->boolean [row]
-  (if-let [fav-value (get row :favorited)]
-    (assoc row :favorited (and (integer? fav-value)
-                               (not (zero? fav-value))))
+  (if-let [fav-value (get row :favorite)]
+    (assoc row :favorite (and (integer? fav-value)
+                              (not (zero? fav-value))))
     row))
 
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
-  [{:keys [collection visible-collections] :as search-ctx} :- SearchContext]
-  ;; If searching for a collection you don't have access to, no need to run a query
-  (if (and collection
-           (not= :root collection)
-           (not= :all visible-collections)
-           (not (contains? visible-collections collection)))
-    []
-    (map favorited->boolean
-         (db/query {:union-all (for [entity [:card :collection :dashboard :pulse :segment :metric]
-                                     :let [query-map (create-search-query entity search-ctx)]
-                                     :when query-map]
-                                 query-map)}))))
-
-(def ^:private CollectionSearchParam
-  "Search parameters that can either be a `collection_id`, but in string form, or `root`"
-  (s/maybe (s/cond-pre (s/eq "root") su/IntString)))
+  [search-ctx :- SearchContext]
+  (map favorited->boolean
+       (db/query {:union-all (for [entity [:card :collection :dashboard :pulse :segment :metric]
+                                   :let [query-map (create-search-query entity search-ctx)]
+                                   :when query-map]
+                               query-map)})))
 
 (s/defn ^:private make-search-context :- SearchContext
   [search-string :- (s/maybe su/NonBlankString)
-   archived-string :- (s/maybe su/BooleanString)
-   collection :- CollectionSearchParam]
-  {:search-string       search-string
+   archived-string :- (s/maybe su/BooleanString)]
+  {:search-string       (str "%" (str/lower-case search-string) "%")
    :archived?           (Boolean/parseBoolean archived-string)
-   :collection          (cond
-                          (= "root" collection)
-                          :root
-                          collection
-                          (Long/parseLong collection)
-                          :else
-                          collection)
    :visible-collections (coll/permissions-set->visible-collection-ids @*current-user-permissions-set*)})
 
 (defendpoint GET "/"
   "Search Cards, Dashboards, Collections and Pulses for the substring `q`."
-  [q archived collection]
+  [q archived]
   {q             (s/maybe su/NonBlankString)
-   archived      (s/maybe su/BooleanString)
-   collection    CollectionSearchParam}
-  (let [{:keys [visible-collections collection] :as search-ctx} (make-search-context q archived collection)]
+   archived      (s/maybe su/BooleanString)}
+  (let [{:keys [visible-collections] :as search-ctx} (make-search-context q archived)]
     ;; Throw if the user doesn't have access to any collections
     (check-403 (or (= :all visible-collections)
                    (seq visible-collections)))
