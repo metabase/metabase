@@ -878,7 +878,7 @@
                                                    [:or [:not= :special_type "type/PK"]
                                                     [:= :special_type nil]]]
                                         :group-by [:table_id]
-                                        :having   [:= :count 1]}))
+                                        :having   [:= :%count.* 1]}))
                            (into #{} (map :table_id)))
           link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                       :from     [:metabase_field]
