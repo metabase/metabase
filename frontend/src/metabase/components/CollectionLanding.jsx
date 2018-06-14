@@ -104,7 +104,23 @@ const ROW_HEIGHT = 72;
   entityQuery: (state, props) => ({ collection: props.collectionId }),
   wrapped: true,
 })
-@listSelect({ keyForItem: item => `${item.entity_type}:${item.id}` })
+@connect((state, props) => {
+  // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
+  const [collections, items] = _.partition(
+    props.list || [],
+    item => item.entity_type === "collections",
+  );
+  const [pinned, unpinned] = _.partition(
+    items,
+    item => item.collection_position != null,
+  );
+  return { collections, pinned, unpinned };
+})
+// only apply bulk actions to unpinned items
+@listSelect({
+  listProp: "unpinned",
+  keyForItem: item => `${item.entity_type}:${item.id}`,
+})
 class DefaultLanding extends React.Component {
   state = {
     moveItems: null,
@@ -113,9 +129,12 @@ class DefaultLanding extends React.Component {
   render() {
     const {
       collectionId,
-      list,
-      onToggleSelected,
+      collections,
+      pinned,
+      unpinned,
+      selected,
       selection,
+      onToggleSelected,
       onSelectNone,
     } = this.props;
     const { moveItems } = this.state;
@@ -127,16 +146,6 @@ class DefaultLanding extends React.Component {
       // different collection pages
       onSelectNone();
     };
-
-    // exclude collections from selection since they can't currently be selected
-    const selected = this.props.selected.filter(
-      item => item.model !== "collection",
-    );
-
-    const [collections, items] = _.partition(
-      list,
-      item => item.entity_type === "collections",
-    );
 
     // Show the
     const showCollectionList =
@@ -159,14 +168,9 @@ class DefaultLanding extends React.Component {
           <Box>
             <CollectionLoader collectionId={collectionId}>
               {({ object: collection }) => {
-                if (items.length === 0) {
+                if (pinned.length === 0 && unpinned.length === 0) {
                   return <CollectionEmptyState />;
                 }
-
-                const [pinned, unpinned] = _.partition(
-                  items,
-                  i => i.collection_position != null,
-                );
 
                 // sort the pinned items by collection_position
                 pinned.sort(
@@ -587,7 +591,6 @@ const PINNABLE_ENTITY_TYPES = new Set(["questions", "dashboards"]);
 class PinPositionDropTarget extends React.Component {
   render() {
     const {
-      index,
       left,
       right,
       connectDropTarget,
@@ -750,9 +753,11 @@ const SelectionControls = ({
   onSelectNone,
 }) =>
   deselected.length === 0 ? (
-    <StackedCheckBox checked={true} onChange={onSelectNone} />
+    <StackedCheckBox checked onChange={onSelectNone} />
+  ) : selected.length === 0 ? (
+    <StackedCheckBox onChange={onSelectAll} />
   ) : (
-    <StackedCheckBox checked={false} onChange={onSelectAll} />
+    <StackedCheckBox checked indeterminate onChange={onSelectAll} />
   );
 
 // TODO - this should be a selector
