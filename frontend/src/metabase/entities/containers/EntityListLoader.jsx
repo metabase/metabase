@@ -26,13 +26,19 @@ export type RenderProps = {
 };
 
 @entityType()
-@connect((state, { entityDef, entityQuery }) => ({
-  list: entityDef.selectors.getList(state, { entityQuery }),
-  fetched: entityDef.selectors.getFetched(state, { entityQuery }),
-  loaded: entityDef.selectors.getLoaded(state, { entityQuery }),
-  loading: entityDef.selectors.getLoading(state, { entityQuery }),
-  error: entityDef.selectors.getError(state, { entityQuery }),
-}))
+@connect((state, { entityDef, entityQuery, ...props }) => {
+  if (typeof entityQuery === "function") {
+    entityQuery = entityQuery(state, props);
+  }
+  return {
+    entityQuery,
+    list: entityDef.selectors.getList(state, { entityQuery }),
+    fetched: entityDef.selectors.getFetched(state, { entityQuery }),
+    loaded: entityDef.selectors.getLoaded(state, { entityQuery }),
+    loading: entityDef.selectors.getLoading(state, { entityQuery }),
+    error: entityDef.selectors.getError(state, { entityQuery }),
+  };
+})
 export default class EntityListLoader extends React.Component {
   props: Props;
 
@@ -68,6 +74,7 @@ export default class EntityListLoader extends React.Component {
       // transitioned from loaded to not loaded, and isn't yet loading again
       // this typically means the list request state was cleared by a
       // create/update/delete action
+      // $FlowFixMe: provided by @connect
       nextProps.fetchList(nextProps.entityQuery);
     }
   }

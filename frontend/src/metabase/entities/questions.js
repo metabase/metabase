@@ -23,11 +23,13 @@ const Questions = createEntity({
   },
 
   objectActions: {
-    @undo("question", (o, archived) => (archived ? "archived" : "unarchived"))
     setArchived: ({ id }, archived, opts) =>
-      Questions.actions.update({ id }, { archived }, opts),
+      Questions.actions.update(
+        { id },
+        { archived },
+        undo(opts, "question", archived ? "archived" : "unarchived"),
+      ),
 
-    @undo("question", "moved")
     setCollection: ({ id }, collection, opts) =>
       Questions.actions.update(
         { id },
@@ -36,7 +38,7 @@ const Questions = createEntity({
           collection_id:
             !collection || collection.id === "root" ? null : collection.id,
         },
-        opts,
+        undo(opts, "question", "moved"),
       ),
 
     setPinned: ({ id }, pinned, opts) =>
@@ -49,8 +51,8 @@ const Questions = createEntity({
         opts,
       ),
 
-    setFavorited: async ({ id }, favorited) => {
-      if (favorited) {
+    setFavorited: async ({ id }, favorite) => {
+      if (favorite) {
         await Questions.api.favorite({ id });
         return { type: FAVORITE_ACTION, payload: id };
       } else {
@@ -69,9 +71,9 @@ const Questions = createEntity({
 
   reducer: (state = {}, { type, payload, error }) => {
     if (type === FAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorited"], true);
+      return assocIn(state, [payload, "favorite"], true);
     } else if (type === UNFAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorited"], false);
+      return assocIn(state, [payload, "favorite"], false);
     }
     return state;
   },

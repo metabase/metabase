@@ -12,17 +12,18 @@ const Pulses = createEntity({
 
   objectActions: {
     // FIXME: not implemented in backend
-    // @undo("pulse", (o, archived) => archived ? "archived" : "unarchived")
     // setArchived: ({ id }, archived) => Pulses.actions.update({ id, archived }),
 
-    @undo("pulse", "moved")
-    setCollection: ({ id }, collection) =>
-      Pulses.actions.update({
-        id,
-        // TODO - would be dope to make this check in one spot instead of on every movable item type
-        collection_id:
-          collection && collection.id === "root" ? null : collection.id,
-      }),
+    setCollection: ({ id }, collection, opts) =>
+      Pulses.actions.update(
+        {
+          id,
+          // TODO - would be dope to make this check in one spot instead of on every movable item type
+          collection_id:
+            collection && collection.id === "root" ? null : collection.id,
+        },
+        undo(opts, "pulse", "moved"),
+      ),
   },
 
   objectSelectors: {

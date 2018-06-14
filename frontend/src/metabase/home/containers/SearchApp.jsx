@@ -43,7 +43,7 @@ export default class SearchApp extends React.Component {
               return (
                 <Box>
                   {_.chain(list)
-                    .groupBy("type")
+                    .groupBy("entity_type")
                     .pairs()
                     .value()
                     .map(([section, items]) => (

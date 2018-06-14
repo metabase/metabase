@@ -1,6 +1,7 @@
 (ns metabase.api.collection
   "/api/collection endpoints."
-  (:require [compojure.core :refer [GET POST PUT]]
+  (:require [clojure.string :as str]
+            [compojure.core :refer [GET POST PUT]]
             [metabase.api
              [card :as card-api]
              [common :as api]]
@@ -35,46 +36,83 @@
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
-(def ^:private model->collection-children-fn
-  "Functions for fetching the 'children' of a Collection. Each function takes `collection-id` as a param."
-  {:cards      #(db/select [Card :name :id :collection_position],      :collection_id %, :archived false)
-   :dashboards #(db/select [Dashboard :name :id :collection_position], :collection_id %, :archived false)
-   :pulses     #(db/select [Pulse :name :id :collection_position],     :collection_id %, :alert_condition nil)}) ; exclude Alerts
+(def ^:private CollectionChildrenOptions
+  {:archived? s/Bool
+   ;; when specified, only return results of this type.
+   :model     (s/maybe (s/enum :card :dashboard :pulse :collection))})
 
-(defn- collection-children
-  "Fetch a map of the 'child' objects belonging to a Collection of type `model`, or of all available types if `model` is
-  `nil`.
+(defmulti ^:private fetch-collection-children
+  "Functions for fetching the 'children' of a `collection`, for different types of objects. Possible options are listed
+  in the `CollectionChildrenOptions` schema above.
 
-      (collection-children :cards model->collection-children-fn 1)
-      ;; -> {:cards [...cards for Collection 1...]}
+  NOTES:
 
-      (collection-children nil model->collection-children-fn  1)
-      ;; -> {:cards [...], :dashboards [...], :pulses [...]}"
-  [model collection-id]
-  (into {} (for [[a-model children-fn] model->collection-children-fn
-                 ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
-                 :when (or (nil? model)
-                           (= (name model) (name a-model)))]
-             ;; return the results like {:card <results-of-card-children-fn>}
-             {a-model (children-fn collection-id)})))
+  *  `collection` will be either a CollectionInstance, or the Root Collection special placeholder object, so do not use
+     `u/get-id` on it! Use `:id`, which will return `nil` for the Root Collection, which is exactly what we want."
+  (fn [model collection options] model))
+
+(defmethod fetch-collection-children :card
+  [_ collection {:keys [archived?]}]
+  (-> (db/select [Card :id :name :description :collection_position]
+        :collection_id (:id collection)
+        :archived      archived?)
+      (hydrate :favorite)))
+
+(defmethod fetch-collection-children :dashboard
+  [_ collection {:keys [archived?]}]
+  (db/select [Dashboard :id :name :description :collection_position]
+    :collection_id (:id collection)
+    :archived      archived?))
+
+(defmethod fetch-collection-children :pulse
+  [_ collection {:keys [archived?]}]
+  ;; Pulses currently cannot be archived -- so if it's specified don't fetch Pulses for now
+  (when-not archived?
+    (db/select [Pulse :id :name :collection_position]
+      :collection_id   (:id collection)
+      ;; exclude Alerts
+      :alert_condition nil)))
+
+(defmethod fetch-collection-children :collection
+  [_ collection {:keys [archived?]}]
+  (for [child-collection (collection/effective-children collection [:= :archived archived?])]
+    (assoc child-collection :model "collection")))
+
+(s/defn ^:private collection-children
+  "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
+  [collection                                     :- collection/CollectionWithLocationAndIDOrRoot
+   {:keys [model collections-only?], :as options} :- CollectionChildrenOptions]
+  (->> (for [model-kw [:collection :card :dashboard :pulse]
+            ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
+            :when    (or (not model) (= model model-kw))
+            item     (fetch-collection-children model-kw collection options)]
+         (assoc item :model model-kw))
+       ;; sorting by name should be fine for now.
+       (sort-by (comp str/lower-case :name))))
+
+(s/defn ^:private collection-detail
+  "Add a standard set of details to `collection`, including things like `effective_location` as well as items in the
+  Collection, restricted by `children-options`. Works for either a normal Collection or the Root Collection."
+  [collection :- collection/CollectionWithLocationAndIDOrRoot, children-options :- CollectionChildrenOptions]
+  (-> collection
+      (hydrate :effective_location :effective_ancestors :can_write)
+      (assoc :items (collection-children collection children-options))))
 
 (api/defendpoint GET "/:id"
-  "Fetch a specific (non-archived) Collection, including objects of a specific `model` that belong to it. If `model` is
-  unspecified, it will return objects of all types."
-  [id model]
-  {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
-  (-> (api/read-check Collection id, :archived false)
-      (hydrate :effective_location :effective_children :effective_ancestors :can_write)
-      (merge (collection-children model id))))
+  "Fetch a specific Collection with the following options:
+
+  *  `model` - only include objects of a specific `model`. If unspecified, returns objects of all models
+  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`."
+  [id model archived]
+  {model    (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
+   archived (s/maybe su/BooleanString)}
+  (collection-detail
+    (api/read-check Collection id)
+    {:model     (keyword model)
+     :archived? (Boolean/parseBoolean archived)}))
 
 
-(defn- current-user-has-root-collection-read-perms? []
-  (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-    (perms/collection-read-path collection/root-collection)))
-
-(defn- current-user-has-root-collection-write-perms? []
-  (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-    (perms/collection-readwrite-path collection/root-collection)))
+;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
 (api/defendpoint GET "/root"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
@@ -87,23 +125,26 @@
 
   This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the
   top-level objects you're allowed to access."
-  [model]
-  {model (s/maybe (s/enum "cards" "dashboards" "pulses"))}
-  (merge
-   {:name                (tru "Root Collection")
-    :id                  "root"
-    :can_write           (current-user-has-root-collection-write-perms?)
-    :effective_location  nil
-    :effective_ancestors []
-    ;; anybody gets to see other Collections that have an Effective Location of being in the Root Collection.
-    :effective_children  (collection/effective-children collection/root-collection)}
-   ;; Only people with Root Collection Read Permissions get to see objects that have no `collection_id`.
-   (if (current-user-has-root-collection-read-perms?)
-     (collection-children model nil)
-     ;; for people who can't see the loose items in the Root Collection just return empty arrays to avoid confusion
-     {:cards      []
-      :dashboards []
-      :pulses     []})))
+  [model archived]
+  {model    (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
+   archived (s/maybe su/BooleanString)}
+  (-> (collection-detail
+       collection/root-collection
+       ;; Return collection details, including Collections that have an effective location of being in the Root
+       ;; Collection for the Current User.
+       ;;
+       ;; Only people with Root Collection Read Permissions get to see Cards/Dashboards/Pulses/etc. that have no
+       ;; `collection_id`. Thus, if we don't have Root Collection read perms, only return Collections.
+       {:model     (if (mi/can-read? collection/root-collection)
+                     (keyword model)
+                     :collection)
+        :archived? (Boolean/parseBoolean archived)})
+      ;; add in some things for the FE to display since the 'Root Collection' isn't real and wouldn't normally have
+      ;; these things
+      (assoc
+          :name (tru "Root Collection")
+          :id   "root")
+      (dissoc :metabase.models.collection/is-root?)))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------

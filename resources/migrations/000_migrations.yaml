@@ -4284,3 +4284,14 @@ databaseChangeLog:
       changes:
         - sql:
             sql: DELETE FROM permissions WHERE object LIKE '%/native/read/'
+
+# Time to finally get rid of the RawTable and RawColumn tables. Bye Felicia!
+  - changeSet:
+      id: 87
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - dropTable:
+            tableName: raw_column
+        - dropTable:
+            tableName: raw_table

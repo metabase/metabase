@@ -20,11 +20,13 @@ const Dashboards = createEntity({
   },
 
   objectActions: {
-    @undo("dashboard", (o, archived) => (archived ? "archived" : "unarchived"))
     setArchived: ({ id }, archived, opts) =>
-      Dashboards.actions.update({ id }, { archived }, opts),
+      Dashboards.actions.update(
+        { id },
+        { archived },
+        undo(opts, "dashboard", archived ? "archived" : "unarchived"),
+      ),
 
-    @undo("dashboard", "moved")
     setCollection: ({ id }, collection, opts) =>
       Dashboards.actions.update(
         { id },
@@ -33,7 +35,7 @@ const Dashboards = createEntity({
           collection_id:
             !collection || collection.id === "root" ? null : collection.id,
         },
-        opts,
+        undo(opts, "dashboard", "moved"),
       ),
 
     setPinned: ({ id }, pinned, opts) =>
@@ -46,8 +48,8 @@ const Dashboards = createEntity({
         opts,
       ),
 
-    setFavorited: async ({ id }, favorited) => {
-      if (favorited) {
+    setFavorited: async ({ id }, favorite) => {
+      if (favorite) {
         await Dashboards.api.favorite({ id });
         return { type: FAVORITE_ACTION, payload: id };
       } else {
@@ -59,15 +61,15 @@ const Dashboards = createEntity({
 
   reducer: (state = {}, { type, payload, error }) => {
     if (type === FAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorited"], true);
+      return assocIn(state, [payload, "favorite"], true);
     } else if (type === UNFAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorited"], false);
+      return assocIn(state, [payload, "favorite"], false);
     }
     return state;
   },
 
   objectSelectors: {
-    getFavorited: dashboard => dashboard && dashboard.favorited,
+    getFavorited: dashboard => dashboard && dashboard.favorite,
     getName: dashboard => dashboard && dashboard.name,
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard.id),
     getIcon: dashboard => "dashboard",

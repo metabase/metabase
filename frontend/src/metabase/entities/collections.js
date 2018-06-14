@@ -3,6 +3,7 @@
 import { createEntity, undo } from "metabase/lib/entities";
 import { normal, getRandomColor } from "metabase/lib/colors";
 import { CollectionSchema } from "metabase/schema";
+import { createSelector } from "reselect";
 
 import React from "react";
 import CollectionSelect from "metabase/containers/CollectionSelect";
@@ -15,16 +16,31 @@ const Collections = createEntity({
   schema: CollectionSchema,
 
   objectActions: {
-    @undo("collection", (o, archived) => (archived ? "archived" : "unarchived"))
-    setArchived: ({ id }, archived) =>
-      Collections.actions.update({ id, archived }),
+    setArchived: ({ id }, archived, opts) =>
+      Collections.actions.update(
+        { id },
+        { archived },
+        undo(opts, "collection", archived ? "archived" : "unarchived"),
+      ),
 
-    @undo("collection", "moved")
-    setCollection: ({ id }, collection) =>
-      Collections.actions.update({
-        id,
-        parent_id: collection && collection.id,
-      }),
+    setCollection: ({ id }, collection, opts) =>
+      Collections.actions.update(
+        { id },
+        {
+          parent_id:
+            !collection || collection.id === "root" ? null : collection.id,
+        },
+        undo(opts, "collection", "moved"),
+      ),
+  },
+
+  selectors: {
+    expandedCollectionsById: createSelector(
+      [state => state.entities.collections],
+      collections =>
+        // HACK: only works if we've loaded the collections with `location`
+        getCollectionsById(Object.values(collections).filter(c => c.location)),
+    ),
   },
 
   objectSelectors: {
@@ -72,7 +88,7 @@ export default Collections;
 
 export const ROOT_COLLECTION = {
   id: "root",
-  name: "Saved Items",
+  name: "Saved items",
   location: "",
 };
 

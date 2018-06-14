@@ -76,7 +76,8 @@
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
-  (api/check-404 @api/*current-user*))
+  (-> (api/check-404 @api/*current-user*)
+      (hydrate :personal_collection_id)))
 
 
 (api/defendpoint GET "/:id"
