@@ -140,7 +140,8 @@
    comparison-entity ComparisonEntity}
   (let [left      ((->entity entity) id)
         right     ((->entity comparison-entity) comparison-entity-id)
-        dashboard (automagic-analysis left {:show (keyword show)})]
+        dashboard (automagic-analysis left {:show         (keyword show)
+                                            :query-filter nil})]
     (comparison-dashboard dashboard left right)))
 
 (api/defendpoint GET "/:entity/:id/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id"
@@ -154,8 +155,9 @@
    comparison-entity ComparisonEntity}
   (let [left      ((->entity entity) id)
         right     ((->entity comparison-entity) comparison-entity-id)
-        dashboard (automagic-analysis left {:show (keyword show)
-                                            :rule ["table" prefix rule]})]
+        dashboard (automagic-analysis left {:show         (keyword show)
+                                            :rule         ["table" prefix rule]
+                                            :query-filter nil})]
     (comparison-dashboard dashboard left right)))
 
 (api/defendpoint GET "/:entity/:id/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id"
@@ -169,8 +171,9 @@
    comparison-entity ComparisonEntity}
   (let [left      ((->entity entity) id)
         right     ((->entity comparison-entity) comparison-entity-id)
-        dashboard (automagic-analysis left {:show       (keyword show)
-                                            :cell-query (decode-base64-json cell-query)})]
+        dashboard (automagic-analysis left {:show         (keyword show)
+                                            :cell-query   (decode-base64-json cell-query)
+                                            :query-filter nil})]
     (comparison-dashboard dashboard left right)))
 
 (api/defendpoint GET "/:entity/:id/cell/:cell-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id"
@@ -186,9 +189,10 @@
    comparison-entity ComparisonEntity}
   (let [left      ((->entity entity) id)
         right     ((->entity comparison-entity) comparison-entity-id)
-        dashboard (automagic-analysis left {:show       (keyword show)
-                                            :rule       ["table" prefix rule]
-                                            :cell-query (decode-base64-json cell-query)})]
+        dashboard (automagic-analysis left {:show         (keyword show)
+                                            :rule         ["table" prefix rule]
+                                            :cell-query   (decode-base64-json cell-query)
+                                            :query-filter nil})]
     (comparison-dashboard dashboard left right)))
 
 (api/define-routes)
