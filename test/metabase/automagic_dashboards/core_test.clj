@@ -253,8 +253,8 @@
   1
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
-                  Field    [{} {:table_id table-id}]
-                  Field    [{} {:table_id table-id}]]
+                  Field    [_ {:table_id table-id}]
+                  Field    [_ {:table_id table-id}]]
     (with-rasta
       (with-dashboard-cleanup
         (count (candidate-tables (Database db-id)))))))
@@ -263,8 +263,8 @@
   4
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
-                  Field    [{} {:table_id table-id}]
-                  Field    [{} {:table_id table-id}]]
+                  Field    [_ {:table_id table-id}]
+                  Field    [_ {:table_id table-id}]]
     (with-rasta
       (with-dashboard-cleanup
         (let [database (Database db-id)]
@@ -278,8 +278,8 @@
    :num-fields 2}
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
-                  Field    [{} {:table_id table-id :special_type :type/PK}]
-                  Field    [{} {:table_id table-id}]]
+                  Field    [_ {:table_id table-id :special_type :type/PK}]
+                  Field    [_ {:table_id table-id}]]
     (with-rasta
       (with-dashboard-cleanup
         (-> (#'magic/enhance-table-stats [(Table table-id)])
@@ -292,9 +292,9 @@
    :num-fields 3}
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
-                  Field    [{} {:table_id table-id :special_type :type/PK}]
-                  Field    [{} {:table_id table-id :special_type :type/FK}]
-                  Field    [{} {:table_id table-id :special_type :type/FK}]]
+                  Field    [_ {:table_id table-id :special_type :type/PK}]
+                  Field    [_ {:table_id table-id :special_type :type/FK}]
+                  Field    [_ {:table_id table-id :special_type :type/FK}]]
     (with-rasta
       (with-dashboard-cleanup
         (-> (#'magic/enhance-table-stats [(Table table-id)])

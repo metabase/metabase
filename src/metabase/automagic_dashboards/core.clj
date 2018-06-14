@@ -863,7 +863,7 @@
   [tables]
   (when (not-empty tables)
     (let [field-count (->> (db/query {:select   [:table_id [:%count.* "count"]]
-                                      :from     [:metabase_field]
+                                      :from     [Field]
                                       :where    [:in :table_id (map u/get-id tables)]
                                       :group-by [:table_id]})
                            (into {} (map (fn [{:keys [count table_id]}]
@@ -872,8 +872,8 @@
                                                       (filter (comp (partial >= 2) val))
                                                       (map key)
                                                       not-empty)]
-                             (db/query {:select   [:table_id [:%count.* "count"]]
-                                        :from     [:metabase_field]
+                             (db/query {:select   [:table_id]
+                                        :from     [Field]
                                         :where    [:and [:in :table_id candidates]
                                                    [:or [:not= :special_type "type/PK"]
                                                     [:= :special_type nil]]]
@@ -881,7 +881,7 @@
                                         :having   [:= :%count.* 1]}))
                            (into #{} (map :table_id)))
           link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
-                                      :from     [:metabase_field]
+                                      :from     [Field]
                                       :where    [:and [:in :table_id (keys field-count)]
                                                  [:in :special_type ["type/PK" "type/FK"]]]
                                       :group-by [:table_id]})
