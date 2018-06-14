@@ -85,7 +85,7 @@
    :creator                 (user-details (fetch-user :crowberto))
    :created_at              true
    :updated_at              true
-   :is_active               true
+   :archived                false
    :definition              {:database 21
                              :query    {:filter ["abc"]}}}
   (tt/with-temp* [Database [{database-id :id}]
@@ -138,7 +138,7 @@
    :creator                 (user-details (fetch-user :rasta))
    :created_at              true
    :updated_at              true
-   :is_active               true
+   :archived                false
    :definition              {:database 2
                              :query    {:filter ["not" "the toucans you're looking for"]}}}
   (tt/with-temp* [Database [{database-id :id}]
@@ -181,7 +181,7 @@
     :creator                 (user-details (fetch-user :rasta))
     :created_at              true
     :updated_at              true
-    :is_active               false
+    :archived                true
     :definition              {}}]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
@@ -207,7 +207,7 @@
    :creator                 (user-details (fetch-user :crowberto))
    :created_at              true
    :updated_at              true
-   :is_active               true
+   :archived                false
    :definition              {:database 123
                              :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
   (tt/with-temp* [Database [{database-id :id}]
@@ -365,7 +365,7 @@
 ;;; GET /api/segement/
 (tt/expect-with-temp [Segment [segment-1 {:name "Segment 1"}]
                       Segment [segment-2 {:name "Segment 2"}]
-                      Segment [_         {:is_active false}]] ; inactive segments shouldn't show up
+                      Segment [_         {:archived true}]] ; inactive segments shouldn't show up
   (tu/mappify (hydrate [segment-1
                         segment-2] :creator))
   ((user->client :rasta) :get 200 "segment/"))

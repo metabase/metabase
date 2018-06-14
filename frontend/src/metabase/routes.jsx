@@ -13,6 +13,8 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
 
+import HomepageApp from "metabase/home/containers/HomepageApp";
+
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
 import LoginApp from "metabase/auth/containers/LoginApp.jsx";
@@ -20,47 +22,40 @@ import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
 import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
 import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
-// main app containers
-import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
-import Dashboards from "metabase/dashboards/containers/Dashboards.jsx";
-import DashboardsArchive from "metabase/dashboards/containers/DashboardsArchive.jsx";
-import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
-import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashboardApp.jsx";
+/* Dashboards */
+import DashboardApp from "metabase/dashboard/containers/DashboardApp";
+import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashboardApp";
 
-import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
-import Archive from "metabase/questions/containers/Archive.jsx";
-import CollectionPage from "metabase/questions/containers/CollectionPage.jsx";
-import CollectionEdit from "metabase/questions/containers/CollectionEdit.jsx";
-import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx";
-import SearchResults from "metabase/questions/containers/SearchResults.jsx";
+import {
+  BrowseApp,
+  DatabaseBrowser,
+  SchemaBrowser,
+  TableBrowser,
+} from "metabase/components/BrowseApp";
+
+import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
+
+import CollectionEdit from "metabase/collections/containers/CollectionEdit.jsx";
+import CollectionCreate from "metabase/collections/containers/CollectionCreate.jsx";
 import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
-import EntityList from "metabase/questions/containers/EntityList.jsx";
+import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
+import CollectionPermissionsModal from "metabase/admin/permissions/containers/CollectionPermissionsModal";
+import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
-import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
+import PulseMoveModal from "metabase/pulse/components/PulseMoveModal";
 import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
-
+import EntityPage from "metabase/components/EntityPage.jsx";
 // new question
 import {
   NewQuestionStart,
   NewQuestionMetricSearch,
 } from "metabase/new_query/router_wrappers";
 
-// admin containers
-import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
-import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp.jsx";
-import MetadataEditorApp from "metabase/admin/datamodel/containers/MetadataEditorApp.jsx";
-import MetricApp from "metabase/admin/datamodel/containers/MetricApp.jsx";
-import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp.jsx";
-import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp.jsx";
-import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx";
-import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
-import FieldApp from "metabase/admin/datamodel/containers/FieldApp.jsx";
-import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp.jsx";
-
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
 
@@ -87,26 +82,19 @@ import TableQuestionsContainer from "metabase/reference/databases/TableQuestions
 import FieldListContainer from "metabase/reference/databases/FieldListContainer.jsx";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer.jsx";
 
-/* XRay */
-import FieldXRay from "metabase/xray/containers/FieldXray.jsx";
-import TableXRay from "metabase/xray/containers/TableXRay.jsx";
-import SegmentXRay from "metabase/xray/containers/SegmentXRay.jsx";
-import CardXRay from "metabase/xray/containers/CardXRay.jsx";
-import {
-  SharedTypeComparisonXRay,
-  TwoTypesComparisonXRay,
-} from "metabase/xray/containers/TableLikeComparison";
-
-import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
-
-import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
-import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp.jsx";
-import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx";
+import getAdminRoutes from "metabase/admin/routes";
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
 import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
 import { DashboardHistoryModal } from "metabase/dashboard/components/DashboardHistoryModal";
+import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+
+import CollectionLanding from "metabase/components/CollectionLanding";
+import Overworld from "metabase/containers/Overworld";
+
+import ArchiveApp from "metabase/home/containers/ArchiveApp.jsx";
+import SearchApp from "metabase/home/containers/SearchApp";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => !authData.hasSetupToken,
@@ -157,6 +145,7 @@ const IsAuthenticated = MetabaseIsSetup(
 const IsAdmin = MetabaseIsSetup(
   UserIsAuthenticated(UserIsAdmin(({ children }) => children)),
 );
+
 const IsNotAuthenticated = MetabaseIsSetup(
   UserIsNotAuthenticated(({ children }) => children),
 );
@@ -201,35 +190,37 @@ export const getRoutes = store => (
 
       {/* MAIN */}
       <Route component={IsAuthenticated}>
-        {/* HOME */}
-        <Route path="/" component={HomepageApp} />
+        {/* The global all hands rotues, things in here are for all the folks */}
+        <Route path="/" component={Overworld} />
+
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />
 
-        {/* DASHBOARD LIST */}
-        <Route
-          path="/dashboards"
-          title={t`Dashboards`}
-          component={Dashboards}
-        />
-        <Route
-          path="/dashboards/archive"
-          title={t`Dashboards`}
-          component={DashboardsArchive}
-        />
+        <Route path="search" title={t`Search`} component={SearchApp} />
+        <Route path="archive" title={t`Archive`} component={ArchiveApp} />
 
-        {/* INDIVIDUAL DASHBOARDS */}
+        <Route path="collection/users" component={IsAdmin}>
+          <IndexRoute component={UserCollectionList} />
+        </Route>
+
+        <Route path="collection/:collectionId" component={CollectionLanding}>
+          <ModalRoute path="archive" modal={ArchiveCollectionModal} />
+          <ModalRoute path="new_collection" modal={CollectionCreate} />
+          <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
+          <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+        </Route>
+
+        <Route path="activity" component={HomepageApp} />
+
         <Route
-          path="/dashboard/:dashboardId"
+          path="dashboard/:dashboardId"
           title={t`Dashboard`}
           component={DashboardApp}
         >
           <ModalRoute path="history" modal={DashboardHistoryModal} />
+          <ModalRoute path="move" modal={DashboardMoveModal} />
         </Route>
 
-        <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
-
-        {/* QUERY BUILDER */}
         <Route path="/question">
           <IndexRoute component={QueryBuilder} />
           {/* NEW QUESTION FLOW */}
@@ -243,223 +234,139 @@ export const getRoutes = store => (
           </Route>
         </Route>
         <Route path="/question/:cardId" component={QueryBuilder} />
+        <Route path="/question/:cardId/entity" component={EntityPage} />
 
-        {/* QUESTIONS */}
-        <Route path="/questions" title={t`Questions`}>
-          <IndexRoute component={QuestionIndex} />
-          <Route
-            path="search"
-            title={({ location: { query: { q } } }) => t`Search` + ": " + q}
-            component={SearchResults}
-          />
-          <Route path="archive" title={t`Archive`} component={Archive} />
-          <Route
-            path="collections/:collectionSlug"
-            component={CollectionPage}
-          />
+        <Route path="/ready" component={PostSetupApp} />
+
+        <Route path="browse" component={BrowseApp}>
+          <IndexRoute component={DatabaseBrowser} />
+          <Route path=":dbId" component={SchemaBrowser} />
+          <Route path=":dbId/schema/:schemaName" component={TableBrowser} />
         </Route>
 
-        <Route
-          path="/entities/:entityType"
-          component={({ location, params }) => (
-            <div className="p4">
-              <EntityList
-                entityType={params.entityType}
-                entityQuery={location.query}
-              />
-            </div>
-          )}
-        />
+        {/* INDIVIDUAL DASHBOARDS */}
 
-        <Route path="/collections">
-          <Route path="create" component={CollectionCreate} />
-          <Route path="permissions" component={CollectionPermissions} />
-          <Route path=":collectionId" component={CollectionEdit} />
-        </Route>
-
-        {/* REFERENCE */}
-        <Route path="/reference" title={`Data Reference`}>
-          <IndexRedirect to="/reference/guide" />
-          <Route
-            path="guide"
-            title={`Getting Started`}
-            component={GettingStartedGuideContainer}
-          />
-          <Route path="metrics" component={MetricListContainer} />
-          <Route path="metrics/:metricId" component={MetricDetailContainer} />
-          <Route
-            path="metrics/:metricId/questions"
-            component={MetricQuestionsContainer}
-          />
-          <Route
-            path="metrics/:metricId/revisions"
-            component={MetricRevisionsContainer}
-          />
-          <Route path="segments" component={SegmentListContainer} />
-          <Route
-            path="segments/:segmentId"
-            component={SegmentDetailContainer}
-          />
-          <Route
-            path="segments/:segmentId/fields"
-            component={SegmentFieldListContainer}
-          />
-          <Route
-            path="segments/:segmentId/fields/:fieldId"
-            component={SegmentFieldDetailContainer}
-          />
-          <Route
-            path="segments/:segmentId/questions"
-            component={SegmentQuestionsContainer}
-          />
-          <Route
-            path="segments/:segmentId/revisions"
-            component={SegmentRevisionsContainer}
-          />
-          <Route path="databases" component={DatabaseListContainer} />
-          <Route
-            path="databases/:databaseId"
-            component={DatabaseDetailContainer}
-          />
-          <Route
-            path="databases/:databaseId/tables"
-            component={TableListContainer}
-          />
-          <Route
-            path="databases/:databaseId/tables/:tableId"
-            component={TableDetailContainer}
-          />
-          <Route
-            path="databases/:databaseId/tables/:tableId/fields"
-            component={FieldListContainer}
-          />
-          <Route
-            path="databases/:databaseId/tables/:tableId/fields/:fieldId"
-            component={FieldDetailContainer}
-          />
-          <Route
-            path="databases/:databaseId/tables/:tableId/questions"
-            component={TableQuestionsContainer}
-          />
-        </Route>
-
-        {/* XRAY */}
-        <Route path="/xray" title={t`XRay`}>
-          <Route path="segment/:segmentId/:cost" component={SegmentXRay} />
-          <Route path="table/:tableId/:cost" component={TableXRay} />
-          <Route path="field/:fieldId/:cost" component={FieldXRay} />
-          <Route path="card/:cardId/:cost" component={CardXRay} />
-          <Route
-            path="compare/:modelTypePlural/:modelId1/:modelId2/:cost"
-            component={SharedTypeComparisonXRay}
-          />
-          <Route
-            path="compare/:modelType1/:modelId1/:modelType2/:modelId2/:cost"
-            component={TwoTypesComparisonXRay}
-          />
-        </Route>
-
-        {/* PULSE */}
-        <Route path="/pulse" title={t`Pulses`}>
-          <IndexRoute component={PulseListApp} />
-          <Route path="create" component={PulseEditApp} />
-          <Route path=":pulseId" component={PulseEditApp} />
-        </Route>
-
-        {/* USER */}
-        <Route path="/user/edit_current" component={UserSettingsApp} />
+        <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
       </Route>
+
+      <Route path="/collections">
+        <Route path="create" component={CollectionCreate} />
+        <Route path="permissions" component={CollectionPermissions} />
+        <Route path=":collectionId" component={CollectionEdit} />
+      </Route>
+
+      {/* REFERENCE */}
+      <Route path="/reference" title={`Data Reference`}>
+        <IndexRedirect to="/reference/guide" />
+        <Route
+          path="guide"
+          title={`Getting Started`}
+          component={GettingStartedGuideContainer}
+        />
+        <Route path="metrics" component={MetricListContainer} />
+        <Route path="metrics/:metricId" component={MetricDetailContainer} />
+        <Route
+          path="metrics/:metricId/questions"
+          component={MetricQuestionsContainer}
+        />
+        <Route
+          path="metrics/:metricId/revisions"
+          component={MetricRevisionsContainer}
+        />
+        <Route path="segments" component={SegmentListContainer} />
+        <Route path="segments/:segmentId" component={SegmentDetailContainer} />
+        <Route
+          path="segments/:segmentId/fields"
+          component={SegmentFieldListContainer}
+        />
+        <Route
+          path="segments/:segmentId/fields/:fieldId"
+          component={SegmentFieldDetailContainer}
+        />
+        <Route
+          path="segments/:segmentId/questions"
+          component={SegmentQuestionsContainer}
+        />
+        <Route
+          path="segments/:segmentId/revisions"
+          component={SegmentRevisionsContainer}
+        />
+        <Route path="databases" component={DatabaseListContainer} />
+        <Route
+          path="databases/:databaseId"
+          component={DatabaseDetailContainer}
+        />
+        <Route
+          path="databases/:databaseId/tables"
+          component={TableListContainer}
+        />
+        <Route
+          path="databases/:databaseId/tables/:tableId"
+          component={TableDetailContainer}
+        />
+        <Route
+          path="databases/:databaseId/tables/:tableId/fields"
+          component={FieldListContainer}
+        />
+        <Route
+          path="databases/:databaseId/tables/:tableId/fields/:fieldId"
+          component={FieldDetailContainer}
+        />
+        <Route
+          path="databases/:databaseId/tables/:tableId/questions"
+          component={TableQuestionsContainer}
+        />
+      </Route>
+
+      {/* PULSE */}
+      <Route path="/pulse" title={t`Pulses`}>
+        <IndexRoute component={PulseListApp} />
+        <Route path="create" component={PulseEditApp} />
+        <Route path=":pulseId">
+          <IndexRoute component={PulseEditApp} />
+          <ModalRoute path="move" modal={PulseMoveModal} />
+        </Route>
+      </Route>
+
+      {/* USER */}
+      <Route path="/user/edit_current" component={UserSettingsApp} />
 
       {/* ADMIN */}
-      <Route path="/admin" title={t`Admin`} component={IsAdmin}>
-        <IndexRedirect to="/admin/settings" />
-
-        <Route path="databases" title={t`Databases`}>
-          <IndexRoute component={DatabaseListApp} />
-          <Route path="create" component={DatabaseEditApp} />
-          <Route path=":databaseId" component={DatabaseEditApp} />
-        </Route>
-
-        <Route path="datamodel" title={t`Data Model`}>
-          <IndexRedirect to="database" />
-          <Route path="database" component={MetadataEditorApp} />
-          <Route path="database/:databaseId" component={MetadataEditorApp} />
-          <Route
-            path="database/:databaseId/:mode"
-            component={MetadataEditorApp}
-          />
-          <Route
-            path="database/:databaseId/:mode/:tableId"
-            component={MetadataEditorApp}
-          />
-          <Route
-            path="database/:databaseId/:mode/:tableId/settings"
-            component={TableSettingsApp}
-          />
-          <Route
-            path="database/:databaseId/:mode/:tableId/:fieldId"
-            component={FieldApp}
-          />
-          <Route path="metric/create" component={MetricApp} />
-          <Route path="metric/:id" component={MetricApp} />
-          <Route path="segment/create" component={SegmentApp} />
-          <Route path="segment/:id" component={SegmentApp} />
-          <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
-        </Route>
-
-        {/* PEOPLE */}
-        <Route path="people" title={t`People`} component={AdminPeopleApp}>
-          <IndexRoute component={PeopleListingApp} />
-          <Route path="groups" title={t`Groups`}>
-            <IndexRoute component={GroupsListingApp} />
-            <Route path=":groupId" component={GroupDetailApp} />
-          </Route>
-        </Route>
-
-        {/* SETTINGS */}
-        <Route path="settings" title={t`Settings`}>
-          <IndexRedirect to="/admin/settings/setup" />
-          {/* <IndexRoute component={SettingsEditorApp} /> */}
-          <Route path=":section/:authType" component={SettingsEditorApp} />
-          <Route path=":section" component={SettingsEditorApp} />
-        </Route>
-
-        {getAdminPermissionsRoutes(store)}
-      </Route>
-
-      {/* INTERNAL */}
-      <Route
-        path="/_internal"
-        getChildRoutes={(partialNextState, callback) =>
-          // $FlowFixMe: flow doesn't know about require.ensure
-          require.ensure([], require => {
-            callback(null, [require("metabase/internal/routes").default]);
-          })
-        }
-      />
-
-      {/* DEPRECATED */}
-      {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
-      <Route
-        path="/q"
-        onEnter={({ location }, replace) =>
-          replace({ pathname: "/question", hash: location.hash })
-        }
-      />
-      <Route
-        path="/card/:cardId"
-        onEnter={({ location, params }, replace) =>
-          replace({
-            pathname: `/question/${params.cardId}`,
-            hash: location.hash,
-          })
-        }
-      />
-      <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
-
-      {/* MISC */}
-      <Route path="/unauthorized" component={Unauthorized} />
-      <Route path="/*" component={NotFound} />
+      {getAdminRoutes(store, IsAdmin)}
     </Route>
+
+    {/* INTERNAL */}
+    <Route
+      path="/_internal"
+      getChildRoutes={(partialNextState, callback) =>
+        // $FlowFixMe: flow doesn't know about require.ensure
+        require.ensure([], require => {
+          callback(null, [require("metabase/internal/routes").default]);
+        })
+      }
+    />
+
+    {/* DEPRECATED */}
+    {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
+    <Route
+      path="/q"
+      onEnter={({ location }, replace) =>
+        replace({ pathname: "/question", hash: location.hash })
+      }
+    />
+    <Route
+      path="/card/:cardId"
+      onEnter={({ location, params }, replace) =>
+        replace({
+          pathname: `/question/${params.cardId}`,
+          hash: location.hash,
+        })
+      }
+    />
+    <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
+
+    {/* MISC */}
+    <Route path="/unauthorized" component={Unauthorized} />
+    <Route path="/*" component={NotFound} />
   </Route>
 );

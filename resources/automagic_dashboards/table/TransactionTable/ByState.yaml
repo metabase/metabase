@@ -1,4 +1,5 @@
-title: "[[this]] per state in the US"
+title: "[[this]] per state"
+transient_title: Here's a closer look at your [[this]] per state
 description: Which US states are bringing you the most business.
 applies_to: TransactionTable
 metrics:
@@ -12,8 +13,16 @@ metrics:
 dimensions:
 - Timestamp:
     field_type: CreationTimestamp
+    score: 100
+- Timestamp:
+    field_type: CreationDate
+    score: 100
 - Timestamp:
     field_type: DateTime
+    score: 90
+- Timestamp:
+    field_type: Date
+    score: 90
 - State:
     field_type: UserTable.State
 - Income: Income

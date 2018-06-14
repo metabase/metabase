@@ -68,7 +68,7 @@ export default class PulseCardPreview extends Component {
       cardPreview.pulse_card_type == null;
     return (
       <div
-        className="flex relative flex-full"
+        className="relative full"
         style={{
           maxWidth: 379,
         }}
@@ -110,7 +110,7 @@ export default class PulseCardPreview extends Component {
           />
         </div>
         <div
-          className="bordered rounded flex-full scroll-x"
+          className="bordered rounded bg-white scroll-x"
           style={{ display: !cardPreview && "none" }}
         >
           {/* Override backend rendering if pulse_card_type == null */}

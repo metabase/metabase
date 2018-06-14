@@ -209,16 +209,19 @@
     (throw (ex-info (tru "You''ll need an administrator to create a Metabase account before you can use Google to log in.")
              {:status-code 428}))))
 
-(defn- google-auth-create-new-user! [first-name last-name email]
+(s/defn ^:private google-auth-create-new-user!
+  [{:keys [email] :as new-user} :- user/NewUser]
   (check-autocreate-user-allowed-for-email email)
   ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to
   ;; log in without Google Auth; this lets us keep the NOT NULL constraints on password / salt without having to make
   ;; things hairy and only enforce those for non-Google Auth users
-  (user/create-new-google-auth-user! first-name last-name email))
+  (user/create-new-google-auth-user! new-user))
 
 (defn- google-auth-fetch-or-create-user! [first-name last-name email]
   (if-let [user (or (db/select-one [User :id :last_login] :email email)
-                    (google-auth-create-new-user! first-name last-name email))]
+                    (google-auth-create-new-user! {:first_name first-name
+                                                   :last_name  last-name
+                                                   :email      email}))]
     {:id (create-session! user)}))
 
 (api/defendpoint POST "/google_auth"

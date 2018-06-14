@@ -1,32 +1,34 @@
 (ns metabase.query-processor.middleware.cache
   "Middleware that returns cached results for queries when applicable.
 
-   If caching is enabled (`enable-query-caching` is `true`) cached results will be returned for Cards if possible. There's
-   a global default TTL defined by the setting `query-caching-default-ttl`, but individual Cards can override this value
-   with custom TTLs with a value for `:cache_ttl`.
+  If caching is enabled (`enable-query-caching` is `true`) cached results will be returned for Cards if possible.
+  There's a global default TTL defined by the setting `query-caching-default-ttl`, but individual Cards can override
+  this value with custom TTLs with a value for `:cache_ttl`.
 
-   For all other queries, caching is skipped.
+  For all other queries, caching is skipped.
 
-   Various caching backends are defined in `metabase.query-processor.middleware.cache-backend` namespaces.
-   The default backend is `db`, which uses the application database; this value can be changed by setting the env var
-   `MB_QP_CACHE_BACKEND`.
+  Various caching backends are defined in `metabase.query-processor.middleware.cache-backend` namespaces. The default
+  backend is `db`, which uses the application database; this value can be changed by setting the env var
+  `MB_QP_CACHE_BACKEND`.
 
-    Refer to `metabase.query-processor.middleware.cache-backend.interface` for more details about how the cache backends themselves."
+   Refer to `metabase.query-processor.middleware.cache-backend.interface` for more details about how the cache
+  backends themselves."
   (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [metabase.query-processor.util :as qputil]))
+            [metabase.query-processor.util :as qputil]
+            [metabase.util.date :as du]))
 
 (def ^:dynamic ^Boolean *ignore-cached-results*
   "Should we force the query to run, ignoring cached results even if they're available?
-   Setting this to `true` will run the query again and will still save the updated results."
+  Setting this to `true` will run the query again and will still save the updated results."
   false)
 
 
-;;; ------------------------------------------------------------ Backend ------------------------------------------------------------
+;;; ---------------------------------------------------- Backend -----------------------------------------------------
 
 (def ^:private backend-instance
   (atom nil))
@@ -48,7 +50,8 @@
        (valid-backend? @varr) @varr
        allow-reload?          (do (require backend-ns-symb :reload)
                                   (get-backend-instance-in-namespace backend-ns-symb false))
-       :else                  (throw (Exception. (format "%s/instance doesn't satisfy IQueryProcessorCacheBackend" backend-ns-symb)))))))
+       :else                  (throw (Exception. (format "%s/instance doesn't satisfy IQueryProcessorCacheBackend"
+                                                         backend-ns-symb)))))))
 
 (defn- set-backend!
   "Set the cache backend to the cache defined by the keyword BACKEND.
@@ -65,12 +68,12 @@
 
 
 
-;;; ------------------------------------------------------------ Cache Operations ------------------------------------------------------------
+;;; ------------------------------------------------ Cache Operations ------------------------------------------------
 
 (defn- cached-results [query-hash max-age-seconds]
   (when-not *ignore-cached-results*
     (when-let [results (i/cached-results @backend-instance query-hash max-age-seconds)]
-      (assert (u/is-temporal? (:updated_at results))
+      (assert (du/is-temporal? (:updated_at results))
         "cached-results should include an `:updated_at` field containing the date when the query was last ran.")
       (log/info "Returning cached results for query" (u/emoji "💾"))
       (assoc results :cached true))))
@@ -80,7 +83,7 @@
   (i/save-results! @backend-instance query-hash results))
 
 
-;;; ------------------------------------------------------------ Middleware ------------------------------------------------------------
+;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
 (defn- is-cacheable? ^Boolean [{cache-ttl :cache_ttl}]
   (boolean (and (public-settings/enable-query-caching)
@@ -126,7 +129,7 @@
 
 (defn maybe-return-cached-results
   "Middleware for caching results of a query if applicable.
-   In order for a query to be eligible for caching:
+  In order for a query to be eligible for caching:
 
      *  Caching (the `enable-query-caching` Setting) must be enabled
      *  The query must pass a `:cache_ttl` value. For Cards, this can be the value of `:cache_ttl`,

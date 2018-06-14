@@ -8,7 +8,8 @@
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.middleware.parameters.mbql :as mbql-params :refer :all]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets]
+            [metabase.util.date :as du]))
 
 (defn- expand-parameters [query]
   (expand (dissoc query :parameters) (:parameters query)))
@@ -232,10 +233,10 @@
   {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
                 "WHERE (CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date) "
                 "OR CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
-   :params [(u/->Timestamp #inst "2014-06-01")
-            (u/->Timestamp #inst "2014-06-30")
-            (u/->Timestamp #inst "2015-06-01")
-            (u/->Timestamp #inst "2015-06-30")]}
+   :params [(du/->Timestamp #inst "2014-06-01")
+            (du/->Timestamp #inst "2014-06-30")
+            (du/->Timestamp #inst "2015-06-01")
+            (du/->Timestamp #inst "2015-06-30")]}
   (let [inner-query (data/query checkins
                       (ql/aggregation (ql/count)))
         outer-query (-> (data/wrap-inner-query inner-query)

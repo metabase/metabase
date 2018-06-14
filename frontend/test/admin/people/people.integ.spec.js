@@ -60,6 +60,8 @@ describe("admin/people", () => {
       clickButton(addButton);
 
       await store.waitForActions([CREATE_USER]);
+      // unsure why a small delay is required here
+      await delay(100);
 
       // it should be a pretty safe assumption in test environment that the user that was just created has the biggest ID
       const userIds = Object.keys(getUsers(store.getState()));

@@ -5,6 +5,7 @@
              [email-test :as email-test]
              [http-client :as http]]
             [metabase.models
+             [collection :as collection :refer [Collection]]
              [permissions :as perms]
              [permissions-group :refer [PermissionsGroup]]
              [permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -24,9 +25,31 @@
 
 ;; Ok, adding a group with *no* permissions shouldn't suddenly break all the permissions sets
 ;; (This was a bug @tom found where a group with no permissions would cause the permissions set to contain `nil`).
-(expect (tt/with-temp* [PermissionsGroup           [{group-id :id}]
-                        PermissionsGroupMembership [_              {:group_id group-id, :user_id (user->id :rasta)}]]
-          (perms/is-permissions-set? (user/permissions-set (user->id :rasta)))))
+(expect
+  (tt/with-temp* [PermissionsGroup           [{group-id :id}]
+                  PermissionsGroupMembership [_              {:group_id group-id, :user_id (user->id :rasta)}]]
+    (perms/is-permissions-set? (user/permissions-set (user->id :rasta)))))
+
+;; Does permissions-set include permissions for my Personal Collection?
+(defn- remove-non-collection-perms [perms-set]
+  (set (for [perms-path perms-set
+             :when      (str/starts-with? perms-path "/collection/")]
+         perms-path)))
+(expect
+  #{(perms/collection-readwrite-path (collection/user->personal-collection (user->id :lucky)))}
+  (-> (user/permissions-set (user->id :lucky))
+      remove-non-collection-perms))
+
+;; ...and for any descendant Collections of my Personal Collection?
+(tt/expect-with-temp [Collection [child-collection {:location (collection/children-location
+                                                               (collection/user->personal-collection
+                                                                (user->id :lucky)))}]
+                      Collection [grandchild-collection {:location (collection/children-location child-collection)}]]
+  #{(perms/collection-readwrite-path (collection/user->personal-collection (user->id :lucky)))
+    (perms/collection-readwrite-path child-collection)
+    (perms/collection-readwrite-path grandchild-collection)}
+  (-> (user/permissions-set (user->id :lucky))
+      remove-non-collection-perms))
 
 
 ;;; Tests for invite-user and create-new-google-auth-user!
@@ -61,11 +84,15 @@
     (email-test/with-fake-inbox
       (let [new-user-email      (tu/random-email)
             new-user-first-name (tu/random-name)
-            new-user-last-name  (tu/random-name)]
+            new-user-last-name  (tu/random-name)
+            new-user            {:first_name new-user-first-name
+                                 :last_name  new-user-last-name
+                                 :email      new-user-email
+                                 :password   password}]
         (try
           (if google-auth?
-            (user/create-new-google-auth-user! new-user-first-name new-user-last-name new-user-email)
-            (user/invite-user!                 new-user-first-name new-user-last-name new-user-email password invitor))
+            (user/create-new-google-auth-user! (dissoc new-user :password))
+            (user/invite-user!                 new-user invitor))
           (when accept-invite?
             (maybe-accept-invite! new-user-email))
           (sent-emails new-user-email new-user-first-name new-user-last-name)
@@ -73,13 +100,15 @@
           (finally
             (db/delete! User :email new-user-email)))))))
 
+(def ^:private default-invitor
+  {:email "crowberto@metabase.com", :is_active true, :first_name "Crowberto"})
 
 ;; admin shouldn't get email saying user joined until they accept the invite (i.e., reset their password)
 (expect
   {"<New User>"             ["You're invited to join Metabase's Metabase"]}
   (do
     (test-users/delete-temp-users!)
-    (invite-user-accept-and-check-inboxes! :invitor {:email "crowberto@metabase.com", :is_active true}, :accept-invite? false)))
+    (invite-user-accept-and-check-inboxes! :invitor default-invitor, :accept-invite? false)))
 
 ;; admin should get an email when a new user joins...
 (expect
@@ -87,7 +116,7 @@
    "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
   (do
     (test-users/delete-temp-users!)
-    (invite-user-accept-and-check-inboxes! :invitor {:email "crowberto@metabase.com", :is_active true})))
+    (invite-user-accept-and-check-inboxes! :invitor default-invitor)))
 
 ;; ...including the site admin if it is set...
 (expect
@@ -96,7 +125,7 @@
    "cam@metabase.com"       ["<New User> accepted their Metabase invite"]}
   (tu/with-temporary-setting-values [admin-email "cam@metabase.com"]
     (test-users/delete-temp-users!)
-    (invite-user-accept-and-check-inboxes! :invitor {:email "crowberto@metabase.com", :is_active true})))
+    (invite-user-accept-and-check-inboxes! :invitor default-invitor)))
 
 ;; ... but if that admin is inactive they shouldn't get an email
 (expect

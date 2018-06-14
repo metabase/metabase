@@ -10,9 +10,8 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
-             [db :as mdb]
              [config :as config]
-             [driver :as driver]
+             [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.events.activity-feed :refer [activity-feed-topics]]
@@ -31,6 +30,7 @@
              [table :as table :refer [Table]]
              [user :refer [User]]]
             [metabase.query-processor.util :as qputil]
+            [metabase.util.date :as du]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -51,7 +51,7 @@
       (@migration-var)
       (db/insert! DataMigrations
         :id        migration-name
-        :timestamp (u/new-sql-timestamp)))))
+        :timestamp (du/new-sql-timestamp)))))
 
 (def ^:private data-migrations (atom []))
 
@@ -75,20 +75,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   MIGRATIONS                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; Upgrade for the `Card` model when `:database_id`, `:table_id`, and `:query_type` were added and needed populating.
-;;
-;; This reads through all saved cards, extracts the JSON from the `:dataset_query`, and tries to populate
-;; the values for `:database_id`, `:table_id`, and `:query_type` if possible.
-(defmigration ^{:author "agilliland", :added "0.12.0"} set-card-database-and-table-ids
-  ;; only execute when `:database_id` column on all cards is `nil`
-  (when (zero? (db/count Card
-                 :database_id [:not= nil]))
-    (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/select [Card :id :dataset_query])]
-      (when type
-        ;; simply resave the card with the dataset query which will automatically set the database, table, and type
-        (db/update! Card id, :dataset_query dataset-query)))))
-
 
 ;; Set the `:ssl` key in `details` to `false` for all existing MongoDB `Databases`.
 ;; UI was automatically setting `:ssl` to `true` for every database added as part of the auto-SSL detection.
@@ -367,40 +353,6 @@
     ;; either way, delete the old value from the DB since we'll never be using it again.
     ;; use `simple-delete!` because `Setting` doesn't have an `:id` column :(
     (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
-
-;; for every Card in the DB, pre-calculate the read permissions required to read the Card/run its query and save them
-;; under the new `read_permissions` column. Calculating read permissions is too expensive to do on the fly for Cards,
-;; since it requires parsing their queries and expanding things like FKs or Segment/Metric macros. Simply calling
-;; `update!` on each Card will cause it to be saved with updated `read_permissions` as a side effect of Card's
-;; `pre-update` implementation.
-;;
-;; Caching these permissions will prevent 1000+ DB call API calls. See https://github.com/metabase/metabase/issues/6889
-;;
-;; NOTE: This used used to be
-;; (defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
-;;   (run!
-;;     (fn [card]
-;;      (db/update! Card (u/get-id card) {}))
-;;   (db/select-reducible Card :archived false, :read_permissions nil)))
-;; But due to bug https://github.com/metabase/metabase/issues/7189 was replaced
-(defmigration ^{:author "camsaul", :added "0.28.2"} populate-card-read-permissions
-  (log/info "Not running migration `populate-card-read-permissions` as it has been replaced by a subsequent migration "))
-
-;; Migration from 0.28.2 above had a flaw in that passing in `{}` to the update results in
-;; the functions that do pre-insert permissions checking don't have the query dictionary to analyze
-;; and always short-circuit due to the missing query dictionary. Passing the card itself into the
-;; check mimicks how this works in-app, and appears to fix things.
-(defmigration ^{:author "salsakran", :added "0.28.3"} repopulate-card-read-permissions
-  (run!
-   (fn [card]
-     (try
-       (db/update! Card (u/get-id card) card)
-       (catch Throwable e
-         (log/error "Error updating Card to set its read_permissions:"
-                    (class e)
-                    (.getMessage e)
-                    (u/filtered-stacktrace e)))))
-   (db/select-reducible Card :archived false)))
 
 ;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
 ;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no

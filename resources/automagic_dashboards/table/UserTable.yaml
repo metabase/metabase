@@ -1,4 +1,5 @@
-title: "Here's an overview of your [[GenericTable]] table"
+title: A look at your [[this]]
+transient_title: "Here's an overview of the people in your [[this]]"
 description: An exploration of your users to get you started.
 metrics:
 - Count:
@@ -8,10 +9,19 @@ dimensions:
     field_type: JoinTimestamp
     score: 100
 - JoinDate:
+    field_type: JoinDate
+    score: 100
+- JoinDate:
     field_type: CreationTimestamp
     score: 90
 - JoinDate:
+    field_type: CreationDate
+    score: 90
+- JoinDate:
     field_type: DateTime
+    score: 30
+- JoinDate:
+    field_type: Date
     score: 30
 - Source:
     field_type: Source
@@ -44,9 +54,9 @@ groups:
 - Overview:
     title: Overview
 - Geographical:
-    title: Where your users are
+    title: Where these [[this]] are
 - General:
-    title: How your users are distributed
+    title: How these [[this]] are distributed
 dashboard_filters:
 - JoinDate
 - GenericCategoryMedium
@@ -56,29 +66,35 @@ dashboard_filters:
 cards:
 # Overview
   - Rowcount:
-      title: Total users
+      title: Total [[this]]
       visualization: scalar
       metrics: Count
       score: 100
       group: Overview
+      width: 5
+      height: 3
   - RowcountLast30Days:
-      title: New users in the last 30 days
+      title: New [[this]] in the last 30 days
       visualization: scalar
       metrics: Count
       score: 100
       filters: Last30Days
       group: Overview
+      width: 5
+      height: 3
   - NewUsersByMonth:
       visualization: line
-      title: New users per month
-      description: How many new users we've acquired each month
+      title: New [[this]] per month
+      description: The number of new [[this]] each month
       dimensions: JoinDate
       metrics: Count
       score: 100
       group: Overview
+      width: 18
+      height: 7
 # Geographical
   - CountByCountry:
-      title: Count of users per country
+      title: Number of [[this]] per country
       metrics: Count
       dimensions: Country
       score: 90
@@ -88,7 +104,7 @@ cards:
           map.region: world_countries
       group: Geographical
   - CountByState:
-      title: Users per state
+      title: "[[this]] per state"
       metrics: Count
       dimensions: State
       score: 90
@@ -99,13 +115,11 @@ cards:
           map.region: us_states
       group: Geographical
   - CountByCoords:
-      title: Users by coordinates
+      title: "[[this]] by coordinates"
       metrics: Count
       dimensions:
-        - Long:
-            aggregation: default
-        - Lat:
-            aggregation: default
+        - Long
+        - Lat
       visualization: map
       score: 80
       height: 8
@@ -121,7 +135,7 @@ cards:
       score: 90
       group: General
   - CountByCategoryMedium:
-      title: Users per [[GenericCategoryMedium]]
+      title: "[[this]] per [[GenericCategoryMedium]]"
       dimensions: GenericCategoryMedium
       metrics: Count
       visualization: row
@@ -131,7 +145,7 @@ cards:
       order_by:
         - Count: descending
   - CountByCategoryLarge:
-      title: Users per [[GenericCategoryLarge]]
+      title: "[[this]] per [[GenericCategoryLarge]]"
       dimensions: GenericCategoryLarge
       metrics: Count
       visualization: table

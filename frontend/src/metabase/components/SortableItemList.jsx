@@ -6,6 +6,8 @@ import { t } from "c-3po";
 import Icon from "metabase/components/Icon.jsx";
 import Radio from "metabase/components/Radio.jsx";
 
+import moment from "moment";
+
 export default class SortableItemList extends Component {
   constructor(props, context) {
     super(props, context);
@@ -27,7 +29,7 @@ export default class SortableItemList extends Component {
   }
 
   render() {
-    var items;
+    let items;
     if (this.state.sort === "Last Modified") {
       items = this.props.items
         .slice()
@@ -44,7 +46,7 @@ export default class SortableItemList extends Component {
       <div className="SortableItemList">
         <div className="flex align-center px2 pb3 border-bottom">
           <h5 className="text-bold text-uppercase text-grey-3 ml2 mt1 mr2">
-            Sort by
+            {t`Sort by`}
           </h5>
           <Radio
             value={this.state.sort}
@@ -85,7 +87,7 @@ export default class SortableItemList extends Component {
                       <div className="mb1">
                         Saved by {item.creator.common_name}
                       </div>
-                      <div>Modified {item.updated_at.fromNow()}</div>
+                      <div>Modified {moment(item.updated_at).fromNow()}</div>
                     </div>
                   )}
               </a>

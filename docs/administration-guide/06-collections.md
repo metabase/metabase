@@ -31,14 +31,5 @@ You can archive collections similarly to how you can archive questions. Click th
 
 To restore a collection and its contents, click the `View Archive` icon in the top-right of the main Questions screen to see the archive, then hover over an item to reveal the `Unarchive` icon on the far right of the item. Questions within archived collections are not individually listed in the archive, so if you want to unarchive a specific question from an archived collection, you have to unarchive that whole collection.
 
-### What about labels?
-Older versions of Metabase provided labels as a way to organize and filter saved questions. If you were already using labels, you'll still be able to edit and use them for now from the Labels dropdown on lists of saved questions. However, **labels will be removed from Metabase in an upcoming version.** If your instance of Metabase was not using labels previously, you won't see the label tools at all anymore.
-
-What should you do if you want to prepare for the impending removal of labels? We recommend creating collections that match your most important labels, and moving the matching labeled questions into those collections.
-
-If you don't want to remove all the labels from your questions yet, we recommend at least ensuring that none of your questions have more than a single label. That way, if in the future we provide a migration tool that converts labels to collections automatically, there won't be any ambiguity with your labels.
-
----
-
 ## Next: custom segments and metrics
 Learn how to define custom segments and commonly referenced metrics in the [next section](07-segments-and-metrics.md).

@@ -51,7 +51,7 @@ export default class Text extends Component {
   static supportsSeries = false;
   static hidden = true;
 
-  static minSize = { width: 4, height: 2 };
+  static minSize = { width: 4, height: 1 };
 
   static checkRenderable() {
     // text can always be rendered, nothing needed here
@@ -164,7 +164,7 @@ export default class Text extends Component {
                 styles["text-card-textarea"],
               )}
               name="text"
-              placeholder="Write here, and use Markdown if you'd like"
+              placeholder={t`Write here, and use Markdown if you''d like`}
               value={settings.text}
               onChange={e => this.handleTextChange(e.target.value)}
             />
@@ -178,6 +178,9 @@ export default class Text extends Component {
             className,
             styles.Text,
             styles[isSmall ? "small" : "large"],
+            /* if the card is not showing a background we should adjust the left
+             * padding to help align the titles with the wrapper */
+            { pl0: !settings["dashcard.background"] },
           )}
         >
           <ReactMarkdown

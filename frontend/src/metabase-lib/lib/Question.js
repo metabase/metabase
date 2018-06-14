@@ -22,6 +22,7 @@ import {
   pivot,
   filter,
   breakout,
+  distribution,
   toUnderlyingRecords,
   drillUnderlyingRecords,
 } from "metabase/qb/lib/actions";
@@ -300,6 +301,9 @@ export default class Question {
   }
   toUnderlyingData(): Question {
     return this.setDisplay("table");
+  }
+  distribution(column) {
+    return this.setCard(distribution(this.card(), column));
   }
 
   composeThisQuery(): ?Question {

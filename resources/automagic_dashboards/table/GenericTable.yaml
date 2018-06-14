@@ -1,5 +1,6 @@
-title: "A quick look at your [[GenericTable]] table"
-description: An overview of your [[GenericTable]] table and how it's distributed across time, place, and categories.
+title: "A look at your [[this]]"
+transient_title: "Here's a quick look at your [[this]]"
+description: An overview of your [[this]] and how it's distributed across time, place, and categories.
 metrics:
   - Count: ["count"]
   - CountDistinctFKs: [distinct, [dimension, FK]]
@@ -34,13 +35,31 @@ dimensions:
       field_type: GenericTable.Category
       max_cardinality: 1
       score: 100
+  - Date:
+      field_type: GenericTable.Date
+      score: 50
+  - Time:
+      field_type: GenericTable.Time
+      score: 50
   - Timestamp:
       field_type: DateTime
       score: 60
   - JoinDate:
-      field_type: GenericTable.JoinTimestamp
+      field_type: GenericTable.JoinDate
       score: 50
   - CreateDate:
+      field_type: CreationDate
+      score: 80
+  - JoinTime:
+      field_type: GenericTable.JoinTime
+      score: 50
+  - CreateTime:
+      field_type: CreationTime
+      score: 80
+  - JoinTimestamp:
+      field_type: GenericTable.JoinTimestamp
+      score: 50
+  - CreateTimestamp:
       field_type: CreationTimestamp
       score: 80
   - FK: FK
@@ -51,29 +70,41 @@ dimensions:
   - ZIP: ZipCode
 filters:
   - Last30Days:
-      filter: ["time-interval", [dimension, CreateDate], -30, day]
+      filter: ["time-interval", [dimension, CreateTimestamp], -30, day]
       score: 100
   - Last30Days:
-      filter: ["time-interval", [dimension, JoinDate], -30, day]
+      filter: ["time-interval", [dimension, CreateDate], -30, day]
+      score: 99
+  - Last30Days:
+      filter: ["time-interval", [dimension, JoinTimestamp], -30, day]
       score: 90
+  - Last30Days:
+      filter: ["time-interval", [dimension, JoinDate], -30, day]
+      score: 89
   - Last30Days:
       filter: ["time-interval", [dimension, Timestamp], -30, day]
       score: 80
+  - Last30Days:
+      filter: ["time-interval", [dimension, Date], -30, day]
+      score: 79
 groups:
 - Overview:
-    title: Overview
+    title: Summary
 - Singletons:
-    title: Fields with only a single value
+    title: These are the same for all your [[this]]
 - ByTime:
-    title: "[[GenericTable]] across time"
+    title: "[[this]] across time"
 - Geographical:
-    title: Where your [[GenericTable]] are
+    title: Where your [[this]] are
 - General:
-    title: How [[GenericTable]] are distributed
+    title: How [[this]] are distributed
 dashboard_filters:
 - Timestamp
+- Date
 - JoinDate
+- JoinTimestamp
 - CreateDate
+- CreateTimestamp
 - GenericCategoryMedium
 - Source
 - Country
@@ -81,13 +112,13 @@ dashboard_filters:
 cards:
 # Overview
   - Rowcount:
-      title: Total [[GenericTable]]
+      title: Total [[this]]
       visualization: scalar
       metrics: Count
       score: 100
       group: Overview
   - RowcountLast30Days:
-      title: New [[GenericTable]] in the last 30 days
+      title: New [[this]] in the last 30 days
       visualization: scalar
       metrics: Count
       score: 100
@@ -99,41 +130,9 @@ cards:
       metrics: CountDistinctFKs
       score: 100
       group: Overview
-# Geographical
-  - CountByCountry:
-      title: "[[GenericTable]] per country"
-      metrics: Count
-      dimensions: Country
-      score: 90
-      visualization:
-        map:
-          map.type: region
-          map.region: world_countries
-      group: Geographical
-  - CountByState:
-      title: "[[GenericTable]] per state"
-      metrics: Count
-      dimensions: State
-      score: 90
-      visualization:
-        map:
-          map.type: region
-          map.region: us_states
-      group: Geographical
-  - CountByCoords:
-      title: "[[GenericTable]] by coordinates"
-      metrics: Count
-      dimensions:
-        - Long:
-            aggregation: default
-        - Lat:
-            aggregation: default
-      visualization: map
-      score: 80
-      group: Geographical
 # General
   - NumberDistribution:
-      title: How [[GenericTable]] are distributed across [[GenericNumber]]
+      title: How [[this]] are distributed across [[GenericNumber]]
       dimensions:
         - GenericNumber:
             aggregation: default
@@ -142,7 +141,7 @@ cards:
       score: 90
       group: General
   - CountByCategoryMedium:
-      title: "[[GenericTable]] per [[GenericCategoryMedium]]"
+      title: "[[this]] per [[GenericCategoryMedium]]"
       dimensions: GenericCategoryMedium
       metrics: Count
       visualization: row
@@ -152,7 +151,7 @@ cards:
       order_by:
         - Count: descending
   - CountByCategoryLarge:
-      title: "[[GenericTable]] per [[GenericCategoryLarge]]"
+      title: "[[this]] per [[GenericCategoryLarge]]"
       dimensions: GenericCategoryLarge
       metrics: Count
       visualization: table
@@ -161,25 +160,79 @@ cards:
       group: General
       order_by:
         - Count: descending
+# Geographical
+  - CountByCountry:
+      title: "[[this]] per country"
+      metrics: Count
+      dimensions: Country
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      group: Geographical
+      height: 6
+  - CountByState:
+      title: "[[this]] per state"
+      metrics: Count
+      dimensions: State
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      group: Geographical
+      height: 6
+  - CountByCoords:
+      title: "[[this]] by coordinates"
+      metrics: Count
+      dimensions:
+        - Long
+        - Lat
+      visualization: map
+      score: 80
+      group: Geographical
+      height: 6
 # By Time
   - CountByJoinDate:
-      title: "[[GenericTable]] that have joined over time"
+      title: "[[this]] that have joined over time"
+      visualization: line
+      dimensions: JoinTimestamp
+      metrics: Count
+      score: 90
+      group: ByTime
+  - CountByJoinDate:
+      title: "[[this]] that have joined over time"
       visualization: line
       dimensions: JoinDate
       metrics: Count
       score: 90
       group: ByTime
   - CountByCreateDate:
-      title: New [[GenericTable]] over time
+      title: New [[this]] over time
+      visualization: line
+      dimensions: CreateTimestamp
+      metrics: Count
+      score: 90
+      group: ByTime
+  - CountByCreateDate:
+      title: New [[this]] over time
       visualization: line
       dimensions: CreateDate
       metrics: Count
       score: 90
       group: ByTime
   - CountByTimestamp:
-      title: "[[GenericTable]] by [[Timestamp]]"
+      title: "[[this]] by [[Timestamp]]"
       visualization: line
       dimensions: Timestamp
+      metrics: Count
+      score: 20
+      group: ByTime
+  - CountByTimestamp:
+      title: "[[this]] by [[Timestamp]]"
+      visualization: line
+      dimensions: Date
       metrics: Count
       score: 20
       group: ByTime
@@ -192,6 +245,24 @@ cards:
         - Avg
       score: 70
       group: ByTime
+  - NumberOverTime:
+      title: "[[GenericNumber]] over time"
+      visualization: line
+      dimensions: Date
+      metrics:
+        - Sum
+        - Avg
+      score: 70
+      group: ByTime
+  - NumberOverJoinDate:
+      title: "[[GenericNumber]] by join date"
+      visualization: line
+      dimensions: JoinTimestamp
+      metrics:
+        - Sum
+        - Avg
+      score: 80
+      group: ByTime
   - NumberOverJoinDate:
       title: "[[GenericNumber]] by join date"
       visualization: line
@@ -200,6 +271,15 @@ cards:
         - Sum
         - Avg
       score: 80
+      group: ByTime
+  - NumberOverCreateDate:
+      title: "[[GenericNumber]] over time"
+      visualization: line
+      dimensions: CreateTimestamp
+      metrics:
+        - Sum
+        - Avg
+      score: 90
       group: ByTime
   - NumberOverCreateDate:
       title: "[[GenericNumber]] over time"
@@ -220,11 +300,31 @@ cards:
       score: 60
       group: ByTime
       x_label: "[[Timestamp]]"
+  - DayOfWeekTimestamp:
+      title: "[[Timestamp]] by day of the week"
+      visualization: bar
+      dimensions:
+        - Date:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: ByTime
+      x_label: "[[Timestamp]]"
   - HourOfDayTimestamp:
       title: "[[Timestamp]] by hour of the day"
       visualization: bar
       dimensions:
       - Timestamp:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: ByTime
+      x_label: "[[Timestamp]]"
+  - HourOfDayTimestamp:
+      title: "[[Timestamp]] by hour of the day"
+      visualization: bar
+      dimensions:
+      - Time:
           aggregation: hour-of-day
       metrics: Count
       score: 50
@@ -240,6 +340,16 @@ cards:
       score: 40
       group: ByTime
       x_label: "[[Timestamp]]"
+  - MonthOfYearTimestamp:
+      title: "[[Timestamp]] by month of the year"
+      visualization: bar
+      dimensions:
+        - Date:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[Timestamp]]"
   - QuarterOfYearTimestamp:
       title: "[[Timestamp]] by quarter of the year"
       visualization: bar
@@ -250,8 +360,28 @@ cards:
       score: 40
       group: ByTime
       x_label: "[[Timestamp]]"
+  - QuarterOfYearTimestamp:
+      title: "[[Timestamp]] by quarter of the year"
+      visualization: bar
+      dimensions:
+        - Date:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[Timestamp]]"
   - DayOfWeekCreateDate:
-      title: Weekdays when new [[GenericTable]] were added
+      title: Weekdays when new [[this]] were added
+      visualization: bar
+      dimensions:
+        - CreateTimestamp:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: ByTime
+      x_label: Created At by day of the week
+  - DayOfWeekCreateDate:
+      title: Weekdays when new [[this]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -261,17 +391,37 @@ cards:
       group: ByTime
       x_label: Created At by day of the week
   - HourOfDayCreateDate:
-      title: Hours when new [[GenericTable]] were added
+      title: Hours when new [[this]] were added
       visualization: bar
       dimensions:
-      - CreateDate:
+      - CreateTimestamp:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: ByTime
+      x_label: Created At by hour of the day
+  - HourOfDayCreateDate:
+      title: Hours when new [[this]] were added
+      visualization: bar
+      dimensions:
+      - CreateTime:
           aggregation: hour-of-day
       metrics: Count
       score: 50
       group: ByTime
       x_label: Created At by hour of the day
   - DayOfMonthCreateDate:
-      title: Days when new [[GenericTable]] were added
+      title: Days when new [[this]] were added
+      visualization: bar
+      dimensions:
+        - CreateTimestamp:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Created At by day of the month
+  - DayOfMonthCreateDate:
+      title: Days when new [[this]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -281,7 +431,17 @@ cards:
       group: ByTime
       x_label: Created At by day of the month
   - MonthOfYearCreateDate:
-      title: Months when new [[GenericTable]] were added
+      title: Months when new [[this]] were added
+      visualization: bar
+      dimensions:
+        - CreateTimestamp:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Created At by month of the year
+  - MonthOfYearCreateDate:
+      title: Months when new [[this]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -291,7 +451,17 @@ cards:
       group: ByTime
       x_label: Created At by month of the year
   - QuerterOfYearCreateDate:
-      title: Quarters when new [[GenericTable]] were added
+      title: Quarters when new [[this]] were added
+      visualization: bar
+      dimensions:
+        - CreateTimestamp:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Created At by quarter of the year
+  - QuerterOfYearCreateDate:
+      title: Quarters when new [[this]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -301,7 +471,17 @@ cards:
       group: ByTime
       x_label: Created At by quarter of the year
   - DayOfWeekJoinDate:
-      title: Weekdays when [[GenericTable]] joined
+      title: Weekdays when [[this]] joined
+      visualization: bar
+      dimensions:
+        - JoinTimestamp:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: ByTime
+      x_label: Join date by day of the week
+  - DayOfWeekJoinDate:
+      title: Weekdays when [[this]] joined
       visualization: bar
       dimensions:
         - JoinDate:
@@ -311,17 +491,37 @@ cards:
       group: ByTime
       x_label: Join date by day of the week
   - HourOfDayJoinDate:
-      title: Hours when [[GenericTable]] joined
+      title: Hours when [[this]] joined
       visualization: bar
       dimensions:
-      - JoinDate:
+      - JoinTimestamp:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: ByTime
+      x_label: Join date by hour of the day
+  - HourOfDayJoinDate:
+      title: Hours when [[this]] joined
+      visualization: bar
+      dimensions:
+      - JoinTime:
           aggregation: hour-of-day
       metrics: Count
       score: 50
       group: ByTime
       x_label: Join date by hour of the day
   - DayOfMonthJoinDate:
-      title: Days of the month when [[GenericTable]] joined
+      title: Days of the month when [[this]] joined
+      visualization: bar
+      dimensions:
+        - JoinTimestamp:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Join date by day of the month
+  - DayOfMonthJoinDate:
+      title: Days of the month when [[this]] joined
       visualization: bar
       dimensions:
         - JoinDate:
@@ -331,7 +531,17 @@ cards:
       group: ByTime
       x_label: Join date by day of the month
   - MonthOfYearJoinDate:
-      title: Months when [[GenericTable]] joined
+      title: Months when [[this]] joined
+      visualization: bar
+      dimensions:
+        - JoinTimestamp:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Join date by month of the year
+  - MonthOfYearJoinDate:
+      title: Months when [[this]] joined
       visualization: bar
       dimensions:
         - JoinDate:
@@ -341,7 +551,17 @@ cards:
       group: ByTime
       x_label: Join date by month of the year
   - QuerterOfYearJoinDate:
-      title: Quarters when [[GenericTable]] joined
+      title: Quarters when [[this]] joined
+      visualization: bar
+      dimensions:
+        - JoinTimestamp:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Join date by quarter of the year
+  - QuerterOfYearJoinDate:
+      title: Quarters when [[this]] joined
       visualization: bar
       dimensions:
         - JoinDate:
@@ -353,7 +573,7 @@ cards:
 # Special
   - Singleton:
       title: "[[Singleton]]"
-      visualization: bar
+      visualization: scalar
       metrics: Count
       dimensions: Singleton
       score: 30

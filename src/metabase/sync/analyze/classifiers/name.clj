@@ -5,15 +5,12 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.models
-             [field :refer [Field]]
-             [database :refer [Database]]]
+            [metabase.models.database :refer [Database]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+            [schema.core :as s]))
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
@@ -21,12 +18,16 @@
 (def ^:private int-or-text-type #{:type/Integer :type/Text})
 (def ^:private text-type        #{:type/Text})
 (def ^:private timestamp-type   #{:type/DateTime})
+(def ^:private time-type        #{:type/Time})
+(def ^:private date-type        #{:type/Date})
 (def ^:private number-type      #{:type/Number})
 
 
 (def ^:private pattern+base-types+special-type
   "Tuples of `[name-pattern set-of-valid-base-types special-type]`.
    Fields whose name matches the pattern and one of the base types should be given the special type.
+   Be mindful that patterns are tried top to bottom when matching derived types (eg. Date should be
+   before DateTime).
 
    *  Convert field name to lowercase before matching against a pattern
    *  Consider a nil set-of-valid-base-types to mean \"match any base type\""
@@ -41,6 +42,7 @@
    [#"^active$"                    bool-or-int-type :type/Category]
    [#"^city$"                      text-type        :type/City]
    [#"^country"                    text-type        :type/Country]
+   [#"_country$"                   text-type        :type/Country]
    [#"^currency$"                  int-or-text-type :type/Category]
    [#"^first(?:_?)name$"           text-type        :type/Name]
    [#"^full(?:_?)name$"            text-type        :type/Name]
@@ -57,6 +59,7 @@
    [#"^role$"                      int-or-text-type :type/Category]
    [#"^sex$"                       int-or-text-type :type/Category]
    [#"^state$"                     text-type        :type/State]
+   [#"_state$"                     text-type        :type/State]
    [#"^status$"                    int-or-text-type :type/Category]
    [#"^type$"                      int-or-text-type :type/Category]
    [#"^url$"                       text-type        :type/URL]
@@ -70,7 +73,11 @@
    [#"count$"                      int-type         :type/Quantity]
    [#"number"                      int-type         :type/Quantity]
    [#"^num_"                       int-type         :type/Quantity]
+   [#"join"                        date-type        :type/JoinDate]
+   [#"join"                        time-type        :type/JoinTime]
    [#"join"                        timestamp-type   :type/JoinTimestamp]
+   [#"create"                      date-type        :type/CreationDate]
+   [#"create"                      time-type        :type/CreationTime]
    [#"create"                      timestamp-type   :type/CreationTimestamp]
    [#"source"                      int-or-text-type :type/Source]
    [#"channel"                     int-or-text-type :type/Source]
@@ -94,7 +101,7 @@
    [#"title"                       text-type        :type/Title]
    [#"comment"                     text-type        :type/Comment]
    [#"birthda(?:te|y)"             timestamp-type   :type/Birthdate]
-   [#"(?:te|y)(?:_?)or(?:_?)birth" timestamp-type   :type/Birthdate]])
+   [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]])
 
 ;; Check that all the pattern tuples are valid
 (when-not config/is-prod?
@@ -117,29 +124,36 @@
 (s/defn infer-special-type :- (s/maybe i/FieldInstance)
   "Classifer that infers the special type of a FIELD based on its name and base type."
   [field :- i/FieldInstance, _ :- (s/maybe i/Fingerprint)]
-  (when-let [inferred-special-type (special-type-for-name-and-base-type (:name field) (:base_type field))]
-    (log/debug (format "Based on the name of %s, we're giving it a special type of %s."
-                       (sync-util/name-for-logging field)
-                       inferred-special-type))
-    (assoc field :special_type inferred-special-type)))
+  ;; Don't overwrite keys, else we're ok with overwriting as a new more precise type might have
+  ;; been added.
+  (when (not-any? (partial isa? (:special_type field)) [:type/PK :type/FK])
+    (when-let [inferred-special-type (special-type-for-name-and-base-type (:name field) (:base_type field))]
+      (log/debug (format "Based on the name of %s, we're giving it a special type of %s."
+                         (sync-util/name-for-logging field)
+                         inferred-special-type))
+      (assoc field :special_type inferred-special-type))))
+
+(defn- prefix-or-postfix
+  [s]
+  (re-pattern (format "(?:^%s)|(?:%ss?$)" s s)))
 
 (def ^:private entity-types-patterns
-  [[#"order"        :entity/TransactionTable]
-   [#"transaction"  :entity/TransactionTable]
-   [#"sale"         :entity/TransactionTable]
-   [#"product"      :entity/ProductTable]
-   [#"user"         :entity/UserTable]
-   [#"account"      :entity/UserTable]
-   [#"people"       :entity/UserTable]
-   [#"person"       :entity/UserTable]
-   [#"employee"     :entity/UserTable]
-   [#"event"        :entity/EventTable]
-   [#"checkin"      :entity/EventTable]
-   [#"log"          :entity/EventTable]
-   [#"subscription" :entity/SubscriptionTable]
-   [#"company"      :entity/CompanyTable]
-   [#"companies"    :entity/CompanyTable]
-   [#"vendor"       :entity/CompanyTable]])
+  [[(prefix-or-postfix "order")        :entity/TransactionTable]
+   [(prefix-or-postfix "transaction")  :entity/TransactionTable]
+   [(prefix-or-postfix "sale")         :entity/TransactionTable]
+   [(prefix-or-postfix "product")      :entity/ProductTable]
+   [(prefix-or-postfix "user")         :entity/UserTable]
+   [(prefix-or-postfix "account")      :entity/UserTable]
+   [(prefix-or-postfix "people")       :entity/UserTable]
+   [(prefix-or-postfix "person")       :entity/UserTable]
+   [(prefix-or-postfix "employee")     :entity/UserTable]
+   [(prefix-or-postfix "event")        :entity/EventTable]
+   [(prefix-or-postfix "checkin")      :entity/EventTable]
+   [(prefix-or-postfix "log")          :entity/EventTable]
+   [(prefix-or-postfix "subscription") :entity/SubscriptionTable]
+   [(prefix-or-postfix "company")      :entity/CompanyTable]
+   [(prefix-or-postfix "companies")    :entity/CompanyTable]
+   [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
 (s/defn infer-entity-type :- i/TableInstance
   "Classifer that infers the special type of a TABLE based on its name."

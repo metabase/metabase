@@ -1,4 +1,5 @@
 title: "[[this]] per country"
+transient_title: Here's a closer look at your [[this]] per country
 description: A deeper look at how different countries are performing for you.
 applies_to: TransactionTable
 metrics:
@@ -12,8 +13,16 @@ metrics:
 dimensions:
 - Timestamp:
     field_type: CreationTimestamp
+    score: 100
+- Timestamp:
+    field_type: CreationDate
+    score: 100
 - Timestamp:
     field_type: DateTime
+    score: 90
+- Timestamp:
+    field_type: Date
+    score: 90
 - Country:
     field_type: UserTable.Country
 - Income: Income

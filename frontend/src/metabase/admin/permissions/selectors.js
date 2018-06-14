@@ -265,13 +265,6 @@ const OPTION_NATIVE_WRITE = {
   icon: "sql",
 };
 
-const OPTION_NATIVE_READ = {
-  ...OPTION_YELLOW,
-  value: "read",
-  title: t`View raw queries`,
-  tooltip: t`Can view raw queries`,
-};
-
 const OPTION_COLLECTION_WRITE = {
   ...OPTION_GREEN,
   value: "write",
@@ -591,7 +584,7 @@ export const getDatabasesPermissionsGrid = createSelector(
             ) {
               return [OPTION_NONE];
             } else {
-              return [OPTION_NATIVE_WRITE, OPTION_NATIVE_READ, OPTION_NONE];
+              return [OPTION_NATIVE_WRITE, OPTION_NONE];
             }
           },
           getter(groupId, entityId) {
@@ -663,7 +656,34 @@ export const getDatabasesPermissionsGrid = createSelector(
   },
 );
 
-const getCollections = state => state.admin.permissions.collections;
+import Collections, { getCollectionsById } from "metabase/entities/collections";
+
+const getCollectionId = (state, props) => props && props.collectionId;
+const getSingleCollectionPermissionsMode = (state, props) =>
+  (props && props.singleCollectionMode) || false;
+
+const getCollections = createSelector(
+  [
+    Collections.selectors.getList,
+    getCollectionId,
+    getSingleCollectionPermissionsMode,
+  ],
+  (collections, collectionId, singleMode) => {
+    if (!collections) {
+      return null;
+    }
+    const collectionsById = getCollectionsById(collections);
+    if (collectionId && collectionsById[collectionId]) {
+      if (singleMode) {
+        return [collectionsById[collectionId]];
+      } else {
+        return collectionsById[collectionId].children;
+      }
+    } else {
+      return [collectionsById["root"]];
+    }
+  },
+);
 const getCollectionPermission = (permissions, groupId, { collectionId }) =>
   getIn(permissions, [groupId, collectionId]);
 
@@ -672,7 +692,7 @@ export const getCollectionsPermissionsGrid = createSelector(
   getGroups,
   getPermissions,
   (collections, groups: Array<Group>, permissions: GroupsPermissions) => {
-    if (!groups || !permissions || !collections) {
+    if (!groups || groups.length === 0 || !permissions || !collections) {
       return null;
     }
 
@@ -728,6 +748,11 @@ export const getCollectionsPermissionsGrid = createSelector(
             collectionId: collection.id,
           },
           name: collection.name,
+          link: collection.children &&
+            collection.children.length > 0 && {
+              name: t`View collections`,
+              url: `/collections/permissions?collectionId=${collection.id}`,
+            },
         };
       }),
     };

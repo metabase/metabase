@@ -9,6 +9,8 @@ import _ from "underscore";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 
+import fitViewport from "metabase/hoc/FitViewPort";
+
 import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 
 import QueryHeader from "../components/QueryHeader.jsx";
@@ -26,7 +28,7 @@ import {
   getCard,
   getOriginalCard,
   getLastRunCard,
-  getQueryResult,
+  getFirstQueryResult,
   getQueryResults,
   getParameterValues,
   getIsDirty,
@@ -97,7 +99,7 @@ const mapStateToProps = (state, props) => {
     tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
-    result: getQueryResult(state),
+    result: getFirstQueryResult(state),
     results: getQueryResults(state),
     rawSeries: getRawSeries(state),
 
@@ -132,6 +134,7 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ card }) => (card && card.name) || t`Question`)
+@fitViewport
 export default class QueryBuilder extends Component {
   forceUpdateDebounced: () => void;
 
@@ -219,11 +222,7 @@ export default class QueryBuilder extends Component {
   };
 
   render() {
-    return (
-      <div className="flex-full flex relative">
-        <LegacyQueryBuilder {...this.props} />
-      </div>
-    );
+    return <LegacyQueryBuilder {...this.props} />;
   }
 }
 
@@ -242,7 +241,7 @@ class LegacyQueryBuilder extends Component {
     const ModeFooter = mode && mode.ModeFooter;
 
     return (
-      <div className="flex-full relative">
+      <div className={this.props.fitClassNames}>
         <div
           className={cx("QueryBuilder flex flex-column bg-white spread", {
             "QueryBuilder--showSideDrawer": showDrawer,

@@ -173,7 +173,7 @@ export default class QueryHeader extends Component {
 
   async onFetchRevisions({ entity, id }) {
     // TODO: reduxify
-    var revisions = await RevisionApi.list({ entity, id });
+    let revisions = await RevisionApi.list({ entity, id });
     this.setState({ revisions });
   }
 
@@ -203,7 +203,7 @@ export default class QueryHeader extends Component {
       id: card && card.dataset_query && card.dataset_query.database,
     });
 
-    var buttonSections = [];
+    let buttonSections = [];
 
     // A card that is either completely new or it has been derived from a saved question
     if (isNew && isDirty) {
@@ -303,7 +303,7 @@ export default class QueryHeader extends Component {
               initialCollectionId={
                 this.props.card && this.props.card.collection_id
               }
-              setCollection={(questionId, collection) => {
+              setCollection={({ id }, collection) => {
                 this.props.onSetCardAttribute("collection", collection);
                 this.props.onSetCardAttribute("collection_id", collection.id);
               }}
@@ -437,7 +437,7 @@ export default class QueryHeader extends Component {
     ]);
 
     // data reference button
-    var dataReferenceButtonClasses = cx("transition-color", {
+    let dataReferenceButtonClasses = cx("transition-color", {
       "text-brand": this.props.isShowingDataReference,
       "text-brand-hover": !this.state.isShowingDataReference,
     });
@@ -544,7 +544,7 @@ export default class QueryHeader extends Component {
           badge={
             this.props.card.collection && (
               <Link
-                to={Urls.collection(this.props.card.collection)}
+                to={Urls.collection(this.props.card.collection.id)}
                 className="text-uppercase flex align-center no-decoration"
                 style={{
                   color: this.props.card.collection.color,

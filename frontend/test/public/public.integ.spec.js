@@ -8,6 +8,7 @@ import {
   createDashboard,
   restorePreviousLogin,
   waitForRequestToComplete,
+  eventually,
 } from "__support__/integrated_tests";
 
 import _ from "underscore";
@@ -50,12 +51,13 @@ import {
   FETCH_DASHBOARD_CARD_DATA,
   FETCH_CARD_DATA,
 } from "metabase/dashboard/dashboard";
+
+import Select from "metabase/components/Select";
 import RunButton from "metabase/query_builder/components/RunButton";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import ParameterFieldWidget from "metabase/parameters/components/widgets/ParameterFieldWidget";
 import TextWidget from "metabase/parameters/components/widgets/TextWidget.jsx";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
-import { LOAD_COLLECTIONS } from "metabase/questions/collections";
 import SharingPane from "metabase/public/components/widgets/SharingPane";
 import { EmbedTitle } from "metabase/public/components/widgets/EmbedModalContent";
 import PreviewPane from "metabase/public/components/widgets/PreviewPane";
@@ -65,6 +67,7 @@ import * as Urls from "metabase/lib/urls";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
 
+import Collections from "metabase/entities/collections";
 import { CardApi, DashboardApi, SettingsApi } from "metabase/services";
 
 const PEOPLE_TABLE_ID = 2;
@@ -220,7 +223,7 @@ describe("public/embedded", () => {
           .first()
           .find("a"),
       );
-      await store.waitForActions([LOAD_COLLECTIONS]);
+      await store.waitForActions([Collections.actions.fetchList]);
 
       setInputValue(
         app.find(SaveQuestionModal).find("input[name='name']"),
@@ -251,8 +254,10 @@ describe("public/embedded", () => {
           .last(),
       );
 
+      // currently only one Select is present, but verify it's the right one
+      expect(app.find(Select).text()).toBe("Disabled");
       // make the parameter editable
-      click(app.find(".AdminSelect-content[children='Disabled']"));
+      click(app.find(Select));
 
       click(app.find(".TestPopoverBody .Icon-pencil"));
 
@@ -315,12 +320,14 @@ describe("public/embedded", () => {
         store.pushPath(questionUrl + "?category=Gadget");
         await waitForRequestToComplete("GET", apiRegex);
         // use `update()` because of setState
-        expect(
-          app
-            .update()
-            .find(Scalar)
-            .text(),
-        ).toBe(COUNT_GADGET + "sql parametrized");
+        await eventually(() =>
+          expect(
+            app
+              .update()
+              .find(Scalar)
+              .text(),
+          ).toBe(COUNT_GADGET + "sql parametrized"),
+        );
       }
 
       it("should allow seeing an embedded question", async () => {
@@ -510,16 +517,6 @@ describe("public/embedded", () => {
 
         const app = mount(store.getAppContainer());
 
-        // I think this means we *wait* for the Cards to load?
-        await store.waitForActions([
-          FETCH_DASHBOARD_CARD_DATA,
-          FETCH_CARD_DATA,
-        ]);
-
-        // We need to wait for the API requests to finish or something like that.
-        // TODO - what's the right way to do this without using a stupid DELAY?
-        await delay(1000);
-
         const getValueOfCard = index =>
           app
             .update()
@@ -537,15 +534,16 @@ describe("public/embedded", () => {
             FETCH_DASHBOARD_CARD_DATA,
             FETCH_CARD_DATA,
           ]);
-          waitForRequestToComplete("GET", /.*/);
           await delay(500);
         };
 
+        await waitForDashToReload();
+
         // check that initial value of SQL Card is 1
-        expect(getValueOfSqlCard()).toBe("1");
+        await eventually(() => expect(getValueOfSqlCard()).toBe("1"));
 
         // check that initial value of People Count MBQL Card is 2500 (or whatever people.count is supposed to be)
-        expect(getValueOfMbqlCard()).toBe("2,500");
+        await eventually(() => expect(getValueOfMbqlCard()).toBe("2,500"));
 
         // now set the SQL param to '50' & wait for Dashboard to reload. check that value of SQL Card is updated
         app
@@ -555,7 +553,7 @@ describe("public/embedded", () => {
           .props()
           .setValue("50");
         await waitForDashToReload();
-        expect(getValueOfSqlCard()).toBe("50");
+        await eventually(() => expect(getValueOfSqlCard()).toBe("50"));
 
         // now set our MBQL param' & wait for Dashboard to reload. check that value of the MBQL Card is updated
         app
@@ -565,7 +563,7 @@ describe("public/embedded", () => {
           .props()
           .setValue("40");
         await waitForDashToReload();
-        expect(getValueOfMbqlCard()).toBe("1");
+        await eventually(() => expect(getValueOfMbqlCard()).toBe("1"));
       }
 
       it("should handle parameters in public Dashboards correctly", async () => {

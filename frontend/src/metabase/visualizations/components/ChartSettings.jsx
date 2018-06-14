@@ -5,6 +5,8 @@ import _ from "underscore";
 import { t } from "c-3po";
 import Warnings from "metabase/query_builder/components/Warnings.jsx";
 
+import Button from "metabase/components/Button";
+
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { getSettingsWidgets } from "metabase/visualizations/lib/settings";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -12,31 +14,6 @@ import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
-
-const ChartSettingsTab = ({ name, active, onClick }) => (
-  <a
-    className={cx("block text-brand py1 text-centered", {
-      "bg-brand text-white": active,
-    })}
-    onClick={() => onClick(name)}
-  >
-    {name.toUpperCase()}
-  </a>
-);
-
-const ChartSettingsTabs = ({ tabs, selectTab, activeTab }) => (
-  <ul className="bordered rounded flex justify-around overflow-hidden">
-    {tabs.map((tab, index) => (
-      <li className="flex-full border-left" key={index}>
-        <ChartSettingsTab
-          name={tab}
-          active={tab === activeTab}
-          onClick={selectTab}
-        />
-      </li>
-    ))}
-  </ul>
-);
 
 const Widget = ({
   title,
@@ -67,45 +44,6 @@ class ChartSettings extends Component {
     };
   }
 
-  selectTab = tab => {
-    this.setState({ currentTab: tab });
-  };
-
-  _getSeries(series, settings) {
-    if (settings) {
-      series = assocIn(series, [0, "card", "visualization_settings"], settings);
-    }
-    const transformed = getVisualizationTransformed(extractRemappings(series));
-    return transformed.series;
-  }
-
-  onResetSettings = () => {
-    MetabaseAnalytics.trackEvent("Chart Settings", "Reset Settings");
-    this.setState({
-      settings: {},
-      series: this._getSeries(this.props.series, {}),
-    });
-  };
-
-  onChangeSettings = newSettings => {
-    for (const key of Object.keys(newSettings)) {
-      MetabaseAnalytics.trackEvent("Chart Settings", "Change Setting", key);
-    }
-    const settings = {
-      ...this.state.settings,
-      ...newSettings,
-    };
-    this.setState({
-      settings: settings,
-      series: this._getSeries(this.props.series, settings),
-    });
-  };
-
-  onDone() {
-    this.props.onChange(this.state.settings);
-    this.props.onClose();
-  }
-
   getChartTypeName() {
     let { CardVisualization } = getVisualizationTransformed(this.props.series);
     switch (CardVisualization.identifier) {
@@ -120,14 +58,57 @@ class ChartSettings extends Component {
     }
   }
 
+  _getSeries(series, settings) {
+    if (settings) {
+      series = assocIn(series, [0, "card", "visualization_settings"], settings);
+    }
+    const transformed = getVisualizationTransformed(extractRemappings(series));
+    return transformed.series;
+  }
+
+  handleSelectTab = tab => {
+    this.setState({ currentTab: tab });
+  };
+
+  handleResetSettings = () => {
+    MetabaseAnalytics.trackEvent("Chart Settings", "Reset Settings");
+    this.setState({
+      settings: {},
+      series: this._getSeries(this.props.series, {}),
+    });
+  };
+
+  handleChangeSettings = newSettings => {
+    for (const key of Object.keys(newSettings)) {
+      MetabaseAnalytics.trackEvent("Chart Settings", "Change Setting", key);
+    }
+    const settings = {
+      ...this.state.settings,
+      ...newSettings,
+    };
+    this.setState({
+      settings: settings,
+      series: this._getSeries(this.props.series, settings),
+    });
+  };
+
+  handleDone = () => {
+    this.props.onChange(this.state.settings);
+    this.props.onClose();
+  };
+
+  handleCancel = () => {
+    this.props.onClose();
+  };
+
   render() {
-    const { onClose, isDashboard } = this.props;
+    const { isDashboard } = this.props;
     const { series } = this.state;
 
     const tabs = {};
     for (const widget of getSettingsWidgets(
       series,
-      this.onChangeSettings,
+      this.handleChangeSettings,
       isDashboard,
     )) {
       tabs[widget.section] = tabs[widget.section] || [];
@@ -146,68 +127,97 @@ class ChartSettings extends Component {
     const widgets = tabs[currentTab];
 
     return (
-      <div className="flex flex-column spread p4">
-        <h2 className="my2">{t`Customize this ${this.getChartTypeName()}`}</h2>
-
+      <div className="flex flex-column spread">
         {tabNames.length > 1 && (
-          <ChartSettingsTabs
-            tabs={tabNames}
-            selectTab={this.selectTab}
-            activeTab={currentTab}
-          />
+          <div className="border-bottom flex flex-no-shrink pl4">
+            {tabNames.map(tabName => (
+              <div
+                className={cx(
+                  "h3 py2 mr2 border-bottom cursor-pointer text-brand-hover border-brand-hover",
+                  {
+                    "text-brand border-brand": currentTab === tabName,
+                    "border-transparent": currentTab !== tabName,
+                  },
+                )}
+                style={{ borderWidth: 3 }}
+                onClick={() => this.handleSelectTab(tabName)}
+              >
+                {tabName}
+              </div>
+            ))}
+          </div>
         )}
-        <div className="Grid flex-full mt3">
-          <div className="Grid-cell Cell--1of3 scroll-y p1">
-            {widgets &&
-              widgets.map(widget => <Widget key={widget.id} {...widget} />)}
-          </div>
-          <div className="Grid-cell flex flex-column">
-            <div className="flex flex-column">
-              <Warnings
-                className="mx2 align-self-end text-gold"
-                warnings={this.state.warnings}
-                size={20}
+        <div className="full-height relative">
+          <div className="Grid spread">
+            <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right p4">
+              {widgets &&
+                widgets.map(widget => (
+                  <Widget key={`${widget.id}`} {...widget} />
+                ))}
+            </div>
+            <div className="Grid-cell flex flex-column pt2">
+              <div className="mx4 flex flex-column">
+                <Warnings
+                  className="mx2 align-self-end text-gold"
+                  warnings={this.state.warnings}
+                  size={20}
+                />
+              </div>
+              <div className="mx4 flex-full relative">
+                <Visualization
+                  className="spread"
+                  rawSeries={series}
+                  isEditing
+                  showTitle
+                  isDashboard
+                  showWarnings
+                  onUpdateVisualizationSettings={this.handleChangeSettings}
+                  onUpdateWarnings={warnings => this.setState({ warnings })}
+                />
+              </div>
+              <ChartSettingsFooter
+                onDone={this.handleDone}
+                onCancel={this.handleCancel}
+                onReset={
+                  !_.isEqual(this.state.settings, {})
+                    ? this.handleResetSettings
+                    : null
+                }
               />
             </div>
-            <div className="flex-full relative">
-              <Visualization
-                className="spread"
-                rawSeries={series}
-                isEditing
-                showTitle
-                isDashboard
-                showWarnings
-                onUpdateVisualizationSettings={this.onChangeSettings}
-                onUpdateWarnings={warnings => this.setState({ warnings })}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="pt1">
-          {!_.isEqual(this.state.settings, {}) && (
-            <a
-              className="Button Button--danger float-right"
-              onClick={this.onResetSettings}
-              data-metabase-event="Chart Settings;Reset"
-            >{t`Reset to defaults`}</a>
-          )}
-
-          <div className="float-left">
-            <a
-              className="Button Button--primary ml2"
-              onClick={() => this.onDone()}
-              data-metabase-event="Chart Settings;Done"
-            >{t`Done`}</a>
-            <a
-              className="Button ml2"
-              onClick={onClose}
-              data-metabase-event="Chart Settings;Cancel"
-            >{t`Cancel`}</a>
           </div>
         </div>
       </div>
     );
   }
 }
+
+const ChartSettingsFooter = ({ className, onDone, onCancel, onReset }) => (
+  <div className={cx("py2 px4", className)}>
+    <div className="float-right">
+      <Button
+        className="ml2"
+        onClick={onCancel}
+        data-metabase-event="Chart Settings;Cancel"
+      >{t`Cancel`}</Button>
+      <Button
+        primary
+        className="ml2"
+        onClick={onDone}
+        data-metabase-event="Chart Settings;Done"
+      >{t`Done`}</Button>
+    </div>
+
+    {onReset && (
+      <Button
+        borderless
+        icon="refresh"
+        className="float-right ml2"
+        data-metabase-event="Chart Settings;Reset"
+        onClick={onReset}
+      >{t`Reset to defaults`}</Button>
+    )}
+  </div>
+);
 
 export default ChartSettings;

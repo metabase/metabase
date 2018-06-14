@@ -8,6 +8,11 @@
 .*/node_modules/react-element-to-jsx-string/.*
 .*/node_modules/resize-observer-polyfill/.*
 .*/node_modules/react-virtualized/.*
+.*/node_modules/styled-components/.*
+.*/node_modules/grid-styled/.*
+.*/node_modules/update-notifier/.*
+.*/node_modules/boxen/.*
+.*/node_modules/libnpx/.*
 
 [include]
 .*/frontend/.*

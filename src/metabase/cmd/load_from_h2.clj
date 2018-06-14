@@ -26,7 +26,6 @@
              [activity :refer [Activity]]
              [card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
-             [card-label :refer [CardLabel]]
              [collection :refer [Collection]]
              [collection-revision :refer [CollectionRevision]]
              [computation-job :refer [ComputationJob]]
@@ -40,7 +39,6 @@
              [dimension :refer [Dimension]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
-             [label :refer [Label]]
              [metric :refer [Metric]]
              [metric-important-field :refer [MetricImportantField]]
              [permissions :refer [Permissions]]
@@ -89,8 +87,6 @@
    PulseCard
    PulseChannel
    PulseChannelRecipient
-   Label
-   CardLabel
    PermissionsGroup
    PermissionsGroupMembership
    Permissions

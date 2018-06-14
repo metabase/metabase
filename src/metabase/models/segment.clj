@@ -76,7 +76,6 @@
                   :creator_id  creator-id
                   :name        segment-name
                   :description description
-                  :is_active   true
                   :definition  definition)]
     (-> (events/publish-event! :segment-create segment)
         (hydrate :creator))))
@@ -85,7 +84,7 @@
   "Does an *active* `Segment` with ID exist?"
   ^Boolean [id]
   {:pre [(integer? id)]}
-  (db/exists? Segment, :id id, :is_active true))
+  (db/exists? Segment, :id id, :archived false))
 
 (defn retrieve-segment
   "Fetch a single `Segment` by its ID value. Hydrates the Segment's `:creator`."
@@ -103,7 +102,7 @@
    {:pre [(integer? table-id) (keyword? state)]}
    (-> (if (= :all state)
          (db/select Segment, :table_id table-id, {:order-by [[:name :asc]]})
-         (db/select Segment, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))
+         (db/select Segment, :table_id table-id, :archived (= :deleted state), {:order-by [[:name :asc]]}))
        (hydrate :creator))))
 
 (defn update-segment!
@@ -135,7 +134,7 @@
          (integer? user-id)
          (string? revision-message)]}
   ;; make Segment not active
-  (db/update! Segment id, :is_active false)
+  (db/update! Segment id, :archived true)
   ;; retrieve the updated segment (now retired)
   (u/prog1 (retrieve-segment id)
     (events/publish-event! :segment-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

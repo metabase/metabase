@@ -1,4 +1,5 @@
-title: "It looks like your [[this]] table has transactions, so here's a look at them"
+title: A look at your [[this]]
+transient_title: "It looks like your [[this]] has transactions, so here's a look at them"
 description: Some metrics we found about your transactions.
 metrics:
 - AvgDiscount:
@@ -19,8 +20,16 @@ metrics:
 dimensions:
 - Timestamp:
     field_type: CreationTimestamp
+    score: 100
+- Timestamp:
+    field_type: CreationDate
+    score: 100
 - Timestamp:
     field_type: DateTime
+    score: 90
+- Timestamp:
+    field_type: Date
+    score: 90
 - State:
     field_type: GenericTable.State
 - Country: GenericTable.Country
@@ -100,6 +109,8 @@ cards:
       metrics: TotalOrders
       score: 100
       group: Overview
+      width: 5
+      height: 3
   - RowcountLast30Days:
       title: Transactions in the last 30 days
       visualization: scalar
@@ -107,6 +118,8 @@ cards:
       score: 100
       filters: Last30Days
       group: Overview
+      width: 5
+      height: 3
   - IncomeByMonth:
       visualization: line
       title: Sales per month

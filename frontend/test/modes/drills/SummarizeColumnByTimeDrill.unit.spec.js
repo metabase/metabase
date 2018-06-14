@@ -28,18 +28,13 @@ describe("SummarizeColumnByTimeDrill", () => {
       question: question,
       clicked: clickedFloatHeader,
     });
-    expect(actions).toHaveLength(2);
+    expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
       source_table: ORDERS_TABLE_ID,
       aggregation: [["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]]],
       breakout: [
-        [
-          "datetime-field",
-          ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-          "as",
-          "day",
-        ],
+        ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "day"],
       ],
     });
     expect(newCard.display).toEqual("line");
