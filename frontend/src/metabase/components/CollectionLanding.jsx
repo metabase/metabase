@@ -104,7 +104,7 @@ const ROW_HEIGHT = 72;
   entityQuery: (state, props) => ({ collection: props.collectionId }),
   wrapped: true,
 })
-@listSelect()
+@listSelect({ keyForItem: item => `${item.entity_type}:${item.id}` })
 class DefaultLanding extends React.Component {
   state = {
     moveItems: null,
