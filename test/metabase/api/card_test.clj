@@ -570,6 +570,198 @@
      {:collection_position nil})
     (db/select-one-field :collection_position Card :id (u/get-id card))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                      UPDATING THE POSITION OF A CARDS                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- name->position [{:keys [items] :as results}]
+  (zipmap (map :name items)
+          (map :collection_position items)))
+
+(defn get-name->collection-position
+  "Call the collection endpoint, looking for instances of `model-str` as `user-kwd` in `collection-id`. Will return a
+  map with the names of the items as keys and their position as the value"
+  [user-kwd model-str collection-id]
+  (name->position ((user->client user-kwd) :get 200 (str "collection/" (u/get-id collection-id)) :model model-str)))
+
+(defmacro with-ordered-models-in-collection
+  "Macro for creating many sequetial collection_position model instances, putting each in `collection`"
+  [[model-instance & model-name-syms] collection & body]
+  `(tt/with-temp* ~(vec (mapcat (fn [idx name-sym]
+                                  [model-instance [name-sym {:name (name name-sym)
+                                                             :collection_id `(u/get-id ~collection)
+                                                             :collection_position idx}]])
+                                (range 1 (inc (count model-name-syms)))
+                                model-name-syms))
+     ~@body))
+
+;; Change the position of the 4th card to 1st, all other cards should inc their position
+(expect
+  {"d" 1
+   "a" 2
+   "b" 3
+   "c" 4}
+  (tt/with-temp Collection [{coll-id :id :as collection}]
+    (with-ordered-models-in-collection [Card a b c d] collection
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "card/" (u/get-id d))
+       {:collection_position 1, :collection_id coll-id})
+      (get-name->collection-position :rasta "card" coll-id))))
+
+;; Change the position of the 1st card to the 4th, all of the other cards dec
+(expect
+  {"b" 1
+   "c" 2
+   "d" 3
+   "a" 4}
+  (tt/with-temp Collection [{coll-id :id :as collection}]
+    (with-ordered-models-in-collection [Card a b c d] collection
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "card/" (u/get-id a))
+       {:collection_position 4, :collection_id coll-id})
+      (get-name->collection-position :rasta "card" coll-id))))
+
+;; Change the position of a card from nil to 2nd, should adjust the existing cards
+(expect
+  {"a" 1
+   "b" 2
+   "c" 3
+   "d" 4}
+  (tt/with-temp* [Collection [{coll-id :id :as collection}]
+                  Card       [card-a {:name "a", :collection_id coll-id, :collection_position 1}]
+                  ;; Card b does not start with a collection_position
+                  Card       [card-b {:name "b", :collection_id coll-id}]
+                  Card       [card-c {:name "c", :collection_id coll-id, :collection_position 2}]
+                  Card       [card-d {:name "d", :collection_id coll-id, :collection_position 3}]]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "card/" (u/get-id card-b))
+     {:collection_position 2, :collection_id coll-id})
+    (get-name->collection-position :rasta "card" coll-id)))
+
+;; Update an existing card to no longer have a position, should dec cards after it's position
+(expect
+  {"a" 1
+   "b" nil
+   "c" 2
+   "d" 3}
+  (tt/with-temp Collection [{coll-id :id :as collection}]
+    (with-ordered-models-in-collection [Card a b c d] collection
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "card/" (u/get-id b))
+       {:collection_position nil, :collection_id coll-id})
+      (get-name->collection-position :rasta "card" coll-id))))
+
+;; Change the collection the card is in, leave the position, should cause old and new collection to have their
+;; positions updated
+(expect
+  [{"a" 1
+    "f" 2
+    "b" 3
+    "c" 4
+    "d" 5}
+   {"e" 1
+    "g" 2
+    "h" 3}]
+  (tt/with-temp* [Collection [{coll-id-1 :id :as collection-1}]
+                  Collection [{coll-id-2 :id :as collection-2}]]
+    (with-ordered-models-in-collection [Card a b c d] collection-1
+      (with-ordered-models-in-collection [Card e f g h] collection-2
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
+        ((user->client :rasta) :put 200 (str "card/" (u/get-id f))
+         {:collection_id coll-id-1})
+        [(get-name->collection-position :rasta "card" coll-id-1)
+         (get-name->collection-position :rasta "card" coll-id-2)]))))
+
+;; Change the collection and the position, causing both collections and the updated card to have their order changed
+(expect
+  [{"h" 1
+    "a" 2
+    "b" 3
+    "c" 4
+    "d" 5}
+   {"e" 1
+    "f" 2
+    "g" 3}]
+  (tt/with-temp* [Collection [{coll-id-1 :id :as collection-1}]
+                  Collection [{coll-id-2 :id :as collection-2}]]
+    (with-ordered-models-in-collection [Card a b c d] collection-1
+      (with-ordered-models-in-collection [Card e f g h] collection-2
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
+        ((user->client :rasta) :put 200 (str "card/" (u/get-id h))
+         {:collection_position 1, :collection_id coll-id-1})
+        [(get-name->collection-position :rasta "card" coll-id-1)
+         (get-name->collection-position :rasta "card" coll-id-2)]))))
+
+;; Add a new card to an existing collection at position 1, will cause all existing positions to increment by 1
+(expect
+  ;; Original collection, before adding the new card
+  [{"b" 1
+    "c" 2
+    "d" 3}
+   ;; Add new card at index 1
+   {"a" 1
+    "b" 2
+    "c" 3
+    "d" 4}]
+  (tt/with-temp Collection [{coll-id :id :as collection}]
+    (tu/with-model-cleanup [Card]
+      (with-ordered-models-in-collection [Card b c d] collection
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        [(get-name->collection-position :rasta "card" coll-id)
+         (do
+           ((user->client :rasta) :post 200 "card"
+            (merge (card-with-name-and-query "a")
+                   {:collection_id (u/get-id collection)
+                    :collection_position 1}))
+           (get-name->collection-position :rasta "card" coll-id))]))))
+
+;; Add a new card to the end of an existing collection
+(expect
+  ;; Original collection, before adding the new card
+  [{"a" 1
+    "b" 2
+    "c" 3}
+   ;; Add new card at index 4
+   {"a" 1
+    "b" 2
+    "c" 3
+    "d" 4}]
+  (tt/with-temp Collection [{coll-id :id :as collection}]
+    (tu/with-model-cleanup [Card]
+      (with-ordered-models-in-collection [Card a b c] collection
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        [(get-name->collection-position :rasta "card" coll-id)
+         (do
+           ((user->client :rasta) :post 200 "card"
+            (merge (card-with-name-and-query "d")
+                   {:collection_id (u/get-id collection)
+                    :collection_position 4}))
+           (get-name->collection-position :rasta "card" coll-id))]))))
+
+;; When adding a new card to a collection that does not have a position, it should not change existing positions
+(expect
+  ;; Original collection, before adding the new card
+  [{"a" 1
+    "b" 2
+    "c" 3}
+   ;; Add new card without a position
+   {"a" 1
+    "b" 2
+    "c" 3
+    "d" nil}]
+  (tt/with-temp Collection [{coll-id :id :as collection}]
+    (tu/with-model-cleanup [Card]
+      (with-ordered-models-in-collection [Card a b c] collection
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        [(get-name->collection-position :rasta "card" coll-id)
+         (do
+           ((user->client :rasta) :post 200 "card"
+            (merge (card-with-name-and-query "d")
+                   {:collection_id (u/get-id collection)
+                    :collection_position nil}))
+           (get-name->collection-position :rasta "card" coll-id))]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Card updates that impact alerts                                         |
@@ -1035,6 +1227,46 @@
     (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
     (POST-card-collections! :rasta 403 collection [card-1 card-2])))
 
+;; Test that we can bulk move some Cards from one collection to another, while updating the collection position of the
+;; old collection and the new collection
+(expect
+  [{:response    {:status "ok"}
+    :collections ["New Collection" "New Collection"]}
+   {"a" 4 ;-> Moved to the new collection, gets the first slot available
+    "b" 5
+    "c" 1 ;-> With a and b no longer in the collection, c is first
+    "d" 1 ;-> Existing cards in new collection are untouched and position unchanged
+    "e" 2
+    "f" 3}]
+  (tt/with-temp* [Collection [{coll-id-1 :id}      {:name "Old Collection"}]
+                  Collection [{coll-id-2 :id
+                               :as new-collection} {:name "New Collection"}]
+                  Card       [card-a               {:name "a", :collection_id coll-id-1, :collection_position 1}]
+                  Card       [card-b               {:name "b", :collection_id coll-id-1, :collection_position 2}]
+                  Card       [card-c               {:name "c", :collection_id coll-id-1, :collection_position 3}]
+                  Card       [card-d               {:name "d", :collection_id coll-id-2, :collection_position 1}]
+                  Card       [card-e               {:name "e", :collection_id coll-id-2, :collection_position 2}]
+                  Card       [card-f               {:name "f", :collection_id coll-id-2, :collection_position 3}]]
+    [(POST-card-collections! :crowberto 200 new-collection [card-a card-b])
+     (merge (name->position ((user->client :crowberto) :get 200 (str "collection/" coll-id-1)  :model "card" :archived "false"))
+            (name->position ((user->client :crowberto) :get 200 (str "collection/" coll-id-2)  :model "card" :archived "false")))]))
+
+;; Moving a card without a collection_position keeps the collection_position nil
+(expect
+  [{:response    {:status "ok"}
+    :collections ["New Collection" "New Collection"]}
+   {"a" nil
+    "b" 1
+    "c" 2}]
+  (tt/with-temp* [Collection [{coll-id-1 :id}      {:name "Old Collection"}]
+                  Collection [{coll-id-2 :id
+                               :as new-collection} {:name "New Collection"}]
+                  Card       [card-a               {:name "a", :collection_id coll-id-1}]
+                  Card       [card-b               {:name "b", :collection_id coll-id-2, :collection_position 1}]
+                  Card       [card-c               {:name "c", :collection_id coll-id-2, :collection_position 2}]]
+    [(POST-card-collections! :crowberto 200 new-collection [card-a card-b])
+     (merge (name->position ((user->client :crowberto) :get 200 (str "collection/" coll-id-1)  :model "card" :archived "false"))
+            (name->position ((user->client :crowberto) :get 200 (str "collection/" coll-id-2)  :model "card" :archived "false")))]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
