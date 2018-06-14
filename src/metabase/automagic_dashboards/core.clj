@@ -863,13 +863,37 @@
   [field opts]
   (automagic-dashboard (merge (->root field) opts)))
 
-(defn- enhanced-table-stats
-  [table]
-  (let [field-types (->> (db/select [Field :special_type] :table_id (u/get-id table))
-                         (map :special_type))]
-    (assoc table :stats {:num-fields  (count field-types)
-                         :list-like?  (= (count (remove #{:type/PK} field-types)) 1)
-                         :link-table? (every? #{:type/FK :type/PK} field-types)})))
+(defn- enhance-table-stats
+  [tables]
+  (let [field-count (->> (db/query {:select   [:table_id [:%count.* :count]]
+                                    :from     [:metabase_field]
+                                    :where    [:in :table_id (map u/get-id tables)]
+                                    :group-by [:table_id]})
+                         (into {} (map (fn [{:keys [count table_id]}]
+                                         [table_id count]))))
+        list-like?  (->> (db/query {:select   [:table_id [:%count.* :count]]
+                                    :from     [:metabase_field]
+                                    :where    [:and [:in :table_id (->> field-count
+                                                                        (filter (comp #{2} val))
+                                                                        (map key))]
+                                                    [:or [:not= :special_type "type/PK"]
+                                                         [:= :special_type nil]]]
+                                    :group-by [:table_id]
+                                    :having   [:= :count 1]})
+                         (into #{} (map :table_id)))
+        link-table? (->> (db/query {:select   [:table_id [:%count.* :count]]
+                                    :from     [:metabase_field]
+                                    :where    [:and [:in :table_id (map u/get-id tables)]
+                                                    [:in :special_type ["type/PK" "type/FK"]]]
+                                    :group-by [:table_id]})
+                         (filter (fn [{:keys [table_id count]}]
+                                   (= count (field-count table_id))))
+                         (into #{} (map :table_id)))]
+        (for [table tables]
+          (let [table-id (u/get-id table)]
+            (assoc table :stats {:num-fields  (field-count table-id)
+                                 :list-like?  (boolean (list-like? table-id))
+                                 :link-table? (boolean (link-table? table-id))})))))
 
 (def ^:private ^:const ^Long max-candidate-tables
   "Maximal number of tables per schema shown in `candidate-tables`."
@@ -893,7 +917,7 @@
                           :visibility_type nil]
                    schema (concat [:schema schema])))
           (filter mi/can-read?)
-          (map enhanced-table-stats)
+          enhance-table-stats
           (remove (comp (some-fn :link-table? :list-like?) :stats))
           (map (fn [table]
                  (let [root      (->root table)
