@@ -217,3 +217,13 @@
                     Metric     [_ (archived {:name "metric test metric"})]
                     Segment    [_ (archived {:name "segment test segment"})]]
       (search-request :crowberto :q "test", :archived "true"))))
+
+;; Search should not return alerts
+(expect
+  []
+  (with-search-items-in-root-collection "test"
+    (tt/with-temp* [Pulse [pulse {:alert_condition  "rows"
+                                  :alert_first_only false
+                                  :alert_above_goal nil
+                                  :name             nil}]]
+      (filter #(= (u/get-id pulse) (:id %)) ((user->client :crowberto) :get 200 "search")))))
