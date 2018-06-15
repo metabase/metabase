@@ -7,3 +7,8 @@
 :local(.cursor-default) {
   cursor: default;
 }
+
+.cursor-move,
+:local(.cursor-move) {
+  cursor: move;
+}

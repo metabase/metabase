@@ -8,6 +8,7 @@ import {
 
 import uniqueId from 'lodash/uniqueId';
 import CheckBox from "metabase/components/CheckBox.jsx";
+import styles from './SummaryTableColumnsSettings.css';
 import Icon from "metabase/components/Icon.jsx";
 import ReactSortable from "react-sortablejs";
 import PropTypes from 'prop-types';
@@ -46,8 +47,7 @@ type Props = {
 type ColumnMetadata = {
   enabled: Boolean,
   showTotals: Boolean,
-  //todo:
-  sortOrder: any,
+  isAscSortOrder: Boolean,
 };
 
 type RowBuilder = (rowKey: String, displayName: String, clickAction: Function) => Component;
@@ -84,6 +84,24 @@ const buildState = (stateSerialized: StateSerialized, columnNames) => {
   }
 };
 
+
+function createRowHeader(displayName: String, onRemove) {
+  return <div className={cx("p1 border-bottom relative bg-grey-0", !onRemove && "cursor-move")}>
+    <div className="px1 flex align-center relative">
+      <span className="h4 flex-full text-dark">{displayName}</span>
+      {onRemove &&
+        <Icon
+          name="close"
+          className="cursor-pointer text-grey-2 text-grey-4-hover"
+          onClick={e => {
+            e.stopPropagation();
+            onRemove();
+          }}
+        />
+      }
+    </div>
+  </div>;
+}
 
 export default class SummaryTableColumnsSetting extends Component<Props, State> {
 
@@ -134,35 +152,34 @@ export default class SummaryTableColumnsSetting extends Component<Props, State> 
   createFatRow = (rowKey: String, displayName: String, onRemove): Component => {
     const columnMetadata = this.getColumnMetadata(rowKey);
     const onChange = (value) => this.updateColumnMetadata(rowKey, {showTotals:value});
+    const changeOrder = (value) => this.updateColumnMetadata(rowKey, {isAscSortOrder:value})
 
     console.log('metadata');
     console.log(columnMetadata);
 
     const content =
-      <div className="my2 bordered shadowed cursor-pointer overflow-hidden bg-white">
-        <div className="p1 border-bottom relative bg-grey-0">
-          <div className="px1 flex align-center relative">
-            <span className="h4 flex-full text-dark">{displayName}</span>
-            <Icon
-              name="close"
-              className="cursor-pointer text-grey-2 text-grey-4-hover"
-              onClick={e => {
-                e.stopPropagation();
-                onRemove();
-              }}
-            />
-          </div>
-        </div>
-        <div className="p2 border-grey-1">
+      <div className="my2 bordered shadowed overflow-hidden cursor-pointer bg-white">
+        {createRowHeader(displayName, onRemove)}
+        <div className="py1 px2 border-grey-1">
           <div className="flex align-center justify-between flex-no-shrink">
-            <div>{t`Show totals`}</div>
+            <div className={cx(styles.DescriptionText)}>{t`Show totals`}</div>
             <Toggle value={columnMetadata.showTotals} onChange={onChange}/>
           </div>
-          <div className="flex align-center justify-between flex-no-shrink">
-            <div>{t`Sort order`}</div>
+          <div className="my1 flex align-center justify-between flex-no-shrink">
+            <div className={cx(styles.DescriptionText)}>{t`Sort order`}</div>
             <div>
-              <Button borderless>{t`Ascending`}</Button>
-              <Button borderless>{t`Descending`}</Button>
+              <div className={cx(styles.SortOrder,
+                {
+                  "text-brand": columnMetadata.isAscSortOrder
+                },
+              )}
+                   onClick={() => changeOrder(true)}>{t`Ascending`}</div>
+              <div className={cx(styles.SortOrder, "pr0",
+                {
+                  "text-brand": !columnMetadata.isAscSortOrder
+                },
+              )}
+                   onClick={() => changeOrder(false)}>{t`Descending`}</div>
             </div>
           </div>
         </div>
@@ -224,18 +241,19 @@ const removeColumn = (self: SummaryTableColumnsSetting, statePropertyName: strin
 //   {/*/>*/}
 // );}
 
-const createValueSourceRow = (rowKey: String, displayName: String, clickAction): Component => {
-  const content = <div style={{display: 'flex'}}><span
-    className="ml1 h4">{displayName}</span>{createCloseButton(clickAction)}
-  </div>;
-  return createSortableRow(rowKey, content)
+const createValueSourceRow = (rowKey: String, displayName: String, onRemove): Component => {
+  const content =
+    <div className="my2 bordered shadowed cursor-pointer overflow-hidden bg-white">
+      {createRowHeader(displayName, onRemove)}
+    </div>;
+  return createSortableRow(rowKey, content);
 };
 
-const createCloseButton = (clickAction) => <Button style={{'margin-left': 'auto'}} icon='close' onlyIcon='true'
-                                                   onClick={clickAction}/>;
-
 const createUnusedSourceRow = (rowKey: String, displayName: String): Component => {
-  const content = <span className="ml1 h4">{displayName}</span>;
+  const content =
+    <div className="my2 bordered shadowed cursor-pointer overflow-hidden bg-white">
+      {createRowHeader(displayName)}
+    </div>;
   return createSortableRow(rowKey, content)
 };
 

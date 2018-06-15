@@ -1,0 +1,20 @@
+:local .SortOrder {
+  display: inline-block;
+  box-sizing: border-box;
+  text-decoration: none;
+  padding: 0.5rem 0.75rem 0.5rem 0;
+  font-weight: bold;
+  font-family: var(--default-font-family), sans-serif;
+  border: none;
+  background: transparent;
+  color: color(var(--base-grey) shade(40%));
+}
+
+:local .SortOrder:hover {
+  color: color(var(--brand-color));
+}
+
+:local .DescriptionText {
+  color: var(--slate-color);
+  font-weight: bold;
+}
