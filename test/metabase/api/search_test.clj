@@ -1,5 +1,6 @@
 (ns metabase.api.search-test
-  (:require [clojure.string :as str]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [expectations :refer :all]
             [metabase.models
              [card :refer [Card]]
@@ -84,6 +85,14 @@
   default-search-results
   (with-search-items-in-root-collection "test"
     (search-request :crowberto :q "test")))
+
+;; Search with no search string. Note this search everything in the DB, including any stale data left behind from
+;; previous tests. Instead of an = comparison here, just ensure our default results are included
+(expect
+  (set/subset?
+   default-search-results
+   (with-search-items-in-root-collection "test"
+     (search-request :crowberto))))
 
 ;; Ensure that users without perms for the root collection don't get results
 ;; NOTE: Metrics and segments don't have collections, so they'll be returned
