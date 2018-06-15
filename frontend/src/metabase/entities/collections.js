@@ -26,20 +26,15 @@ const Collections = createEntity({
     setCollection: ({ id }, collection, opts) =>
       Collections.actions.update(
         { id },
-        {
-          parent_id:
-            !collection || collection.id === "root" ? null : collection.id,
-        },
+        { parent_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "collection", "moved"),
       ),
   },
 
   selectors: {
-    expandedCollectionsById: createSelector(
+    getExpandedCollectionsById: createSelector(
       [state => state.entities.collections],
-      collections =>
-        // HACK: only works if we've loaded the collections with `location`
-        getCollectionsById(Object.values(collections).filter(c => c.location)),
+      collections => getExpandedCollectionsById(Object.values(collections)),
     ),
   },
 
@@ -86,38 +81,58 @@ const Collections = createEntity({
 
 export default Collections;
 
+// API requires items in "root" collection be persisted with a "null" collection ID
+// Also ensure it's parsed as a number
+export const canonicalCollectionId = collectionId =>
+  collectionId == null || collectionId === "root"
+    ? null
+    : parseInt(collectionId, 10);
+
 export const ROOT_COLLECTION = {
   id: "root",
   name: "Saved items",
   location: "",
+  path: [],
 };
 
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
-export function getCollectionsById(collections) {
+export function getExpandedCollectionsById(collections) {
   const collectionsById = {};
-  for (const c of collections.concat([ROOT_COLLECTION])) {
+  for (const c of collections) {
     collectionsById[c.id] = {
       ...c,
       path:
         c.id === "root"
           ? []
-          : ["root", ...c.location.split("/").filter(l => l)],
+          : c.location != null
+            ? ["root", ...c.location.split("/").filter(l => l)]
+            : null,
       children: [],
     };
   }
+
+  // make sure we have the root collection with all relevant info
+  collectionsById[ROOT_COLLECTION.id] = {
+    children: [],
+    ...ROOT_COLLECTION,
+    ...(collectionsById[ROOT_COLLECTION.id] || {}),
+  };
+
   // iterate over original collections so we don't include ROOT_COLLECTION as
   // a child of itself
   for (const { id } of collections) {
     const c = collectionsById[id];
-    const parent = c.path[c.path.length - 1] || "root";
-    c.parent = collectionsById[parent];
-    // need to ensure the parent collection exists, it may have been filtered
-    // because we're selecting a collection's parent collection and it can't
-    // contain itself
-    if (collectionsById[parent]) {
-      collectionsById[parent].children.push(c);
+    if (c.path) {
+      const parent = c.path[c.path.length - 1] || "root";
+      c.parent = collectionsById[parent];
+      // need to ensure the parent collection exists, it may have been filtered
+      // because we're selecting a collection's parent collection and it can't
+      // contain itself
+      if (collectionsById[parent]) {
+        collectionsById[parent].children.push(c);
+      }
     }
   }
   return collectionsById;

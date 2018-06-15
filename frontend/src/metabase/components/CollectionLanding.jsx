@@ -24,11 +24,10 @@ import Ellipsified from "metabase/components/Ellipsified";
 import VirtualizedList from "metabase/components/VirtualizedList";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 
-import CollectionLoader from "metabase/containers/CollectionLoader";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 
-import Collections from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 
 const CollectionItem = ({ collection, color, iconName = "all" }) => (
   <Link
@@ -99,6 +98,8 @@ class CollectionList extends React.Component {
 
 const ROW_HEIGHT = 72;
 
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+
 @entityListLoader({
   entityType: "search",
   entityQuery: (state, props) => ({ collection: props.collectionId }),
@@ -107,19 +108,21 @@ const ROW_HEIGHT = 72;
 @connect((state, props) => {
   // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
   const [collections, items] = _.partition(
-    props.list || [],
-    item => item.entity_type === "collections",
+    props.list,
+    item => item.model === "collection",
   );
   const [pinned, unpinned] = _.partition(
     items,
     item => item.collection_position != null,
   );
+  // sort the pinned items by collection_position
+  pinned.sort((a, b) => a.collection_position - b.collection_position);
   return { collections, pinned, unpinned };
 })
 // only apply bulk actions to unpinned items
 @listSelect({
   listProp: "unpinned",
-  keyForItem: item => `${item.entity_type}:${item.id}`,
+  keyForItem: item => `${item.model}:${item.id}`,
 })
 class DefaultLanding extends React.Component {
   state = {
@@ -128,10 +131,13 @@ class DefaultLanding extends React.Component {
 
   render() {
     const {
+      collection,
       collectionId,
+
       collections,
       pinned,
       unpinned,
+
       selected,
       selection,
       onToggleSelected,
@@ -166,130 +172,112 @@ class DefaultLanding extends React.Component {
         )}
         <Box w={2 / 3}>
           <Box>
-            <CollectionLoader collectionId={collectionId}>
-              {({ object: collection }) => {
-                if (pinned.length === 0 && unpinned.length === 0) {
-                  return <CollectionEmptyState />;
-                }
-
-                // sort the pinned items by collection_position
-                pinned.sort(
-                  (a, b) => a.collection_position - b.collection_position,
-                );
-
-                return (
-                  <Box>
-                    {pinned.length > 0 ? (
-                      <Box mb={2}>
-                        <Box mb={2}>
-                          <h4>{t`Pinned items`}</h4>
-                        </Box>
-                        <PinnedDropArea
-                          pinIndex={1}
-                          marginLeft={8}
-                          marginRight={8}
-                          noBorder
-                        >
-                          <Grid>
-                            {pinned.map((item, index) => (
-                              <GridItem w={1 / 2} className="relative">
-                                <DraggableItem item={item}>
-                                  <PinnedItem
-                                    key={`${item.type}:${item.id}`}
-                                    index={index}
-                                    item={item}
-                                    collection={collection}
-                                  />
-                                  <PinPositionDropTarget
-                                    pinIndex={index}
-                                    left
-                                  />
-                                  <PinPositionDropTarget
-                                    pinIndex={index + 1}
-                                    right
-                                  />
-                                </DraggableItem>
-                              </GridItem>
-                            ))}
-                            {pinned.length % 2 === 1 ? (
-                              <GridItem w={1 / 2} className="relative">
-                                <PinPositionDropTarget
-                                  pinIndex={pinned.length}
-                                />
-                              </GridItem>
-                            ) : null}
-                          </Grid>
-                        </PinnedDropArea>
-                      </Box>
-                    ) : (
-                      <PinnedDropArea pinIndex={1} hideUntilDrag>
-                        {({ hovered }) => (
-                          <div
-                            className={cx(
-                              "p2 flex layout-centered",
-                              hovered ? "text-brand" : "text-grey-2",
-                            )}
-                          >
-                            <Icon name="pin" mr={1} />
-                            {t`Drag something here to pin it to the top`}
-                          </div>
-                        )}
-                      </PinnedDropArea>
-                    )}
-                    <Flex align="center" mb={2}>
-                      {pinned.length > 0 && (
-                        <Box>
-                          <h4>{t`Saved here`}</h4>
-                        </Box>
-                      )}
-                    </Flex>
-                    {unpinned.length > 0 ? (
-                      <PinnedDropArea pinIndex={null} margin={8}>
-                        <Card
-                          mb={selected.length > 0 ? 5 : 2}
-                          style={{
-                            position: "relative",
-                            height: ROW_HEIGHT * unpinned.length,
-                          }}
-                        >
-                          <VirtualizedList
-                            items={unpinned}
-                            rowHeight={ROW_HEIGHT}
-                            renderItem={({ item, index }) => (
-                              <DraggableItem item={item} selection={selection}>
-                                <NormalItem
-                                  key={`${item.type}:${item.id}`}
-                                  item={item}
-                                  collection={collection}
-                                  selection={selection}
-                                  onToggleSelected={onToggleSelected}
-                                  onMove={moveItems =>
-                                    this.setState({ moveItems })
-                                  }
-                                />
-                              </DraggableItem>
-                            )}
-                          />
-                        </Card>
-                      </PinnedDropArea>
-                    ) : (
-                      <PinnedDropArea pinIndex={null} hideUntilDrag margin={10}>
-                        {({ hovered }) => (
-                          <div
-                            className={cx(
-                              "m2 flex layout-centered",
-                              hovered ? "text-brand" : "text-grey-2",
-                            )}
-                          >
-                            {t`Drag here to un-pin`}
-                          </div>
-                        )}
-                      </PinnedDropArea>
-                    )}
+            {pinned.length === 0 && unpinned.length === 0 ? (
+              <CollectionEmptyState />
+            ) : (
+              <Box>
+                {pinned.length > 0 ? (
+                  <Box mb={2}>
+                    <Box mb={2}>
+                      <h4>{t`Pinned items`}</h4>
+                    </Box>
+                    <PinnedDropArea
+                      pinIndex={1}
+                      marginLeft={8}
+                      marginRight={8}
+                      noBorder
+                    >
+                      <Grid>
+                        {pinned.map((item, index) => (
+                          <GridItem w={1 / 2} className="relative">
+                            <DraggableItem item={item}>
+                              <PinnedItem
+                                key={`${item.type}:${item.id}`}
+                                index={index}
+                                item={item}
+                                collection={collection}
+                              />
+                              <PinPositionDropTarget pinIndex={index} left />
+                              <PinPositionDropTarget
+                                pinIndex={index + 1}
+                                right
+                              />
+                            </DraggableItem>
+                          </GridItem>
+                        ))}
+                        {pinned.length % 2 === 1 ? (
+                          <GridItem w={1 / 2} className="relative">
+                            <PinPositionDropTarget pinIndex={pinned.length} />
+                          </GridItem>
+                        ) : null}
+                      </Grid>
+                    </PinnedDropArea>
                   </Box>
-                );
-              }}
-            </CollectionLoader>
+                ) : (
+                  <PinnedDropArea pinIndex={1} hideUntilDrag>
+                    {({ hovered }) => (
+                      <div
+                        className={cx(
+                          "p2 flex layout-centered",
+                          hovered ? "text-brand" : "text-grey-2",
+                        )}
+                      >
+                        <Icon name="pin" mr={1} />
+                        {t`Drag something here to pin it to the top`}
+                      </div>
+                    )}
+                  </PinnedDropArea>
+                )}
+                <Flex align="center" mb={2}>
+                  {pinned.length > 0 && (
+                    <Box>
+                      <h4>{t`Saved here`}</h4>
+                    </Box>
+                  )}
+                </Flex>
+                {unpinned.length > 0 ? (
+                  <PinnedDropArea pinIndex={null} margin={8}>
+                    <Card
+                      mb={selected.length > 0 ? 5 : 2}
+                      style={{
+                        position: "relative",
+                        height: ROW_HEIGHT * unpinned.length,
+                      }}
+                    >
+                      <VirtualizedList
+                        items={unpinned}
+                        rowHeight={ROW_HEIGHT}
+                        renderItem={({ item, index }) => (
+                          <DraggableItem item={item} selection={selection}>
+                            <NormalItem
+                              key={`${item.type}:${item.id}`}
+                              item={item}
+                              collection={collection}
+                              selection={selection}
+                              onToggleSelected={onToggleSelected}
+                              onMove={moveItems => this.setState({ moveItems })}
+                            />
+                          </DraggableItem>
+                        )}
+                      />
+                    </Card>
+                  </PinnedDropArea>
+                ) : (
+                  <PinnedDropArea pinIndex={null} hideUntilDrag margin={10}>
+                    {({ hovered }) => (
+                      <div
+                        className={cx(
+                          "m2 flex layout-centered",
+                          hovered ? "text-brand" : "text-grey-2",
+                        )}
+                      >
+                        {t`Drag here to un-pin`}
+                      </div>
+                    )}
+                  </PinnedDropArea>
+                )}
+              </Box>
+            )}
             <BulkActionBar showing={selected.length > 0}>
               <Flex align="center" w="100%">
                 {showCollectionList && (
@@ -556,9 +544,7 @@ const CollectionDropArea = DropTarget(
     },
     canDrop(props, monitor) {
       const { item } = monitor.getItem();
-      return (
-        item.entity_type !== "collections" || item.id !== props.collection.id
-      );
+      return item.model !== "collection" || item.id !== props.collection.id;
     },
   },
   (connect, monitor) => ({
@@ -569,7 +555,7 @@ const CollectionDropArea = DropTarget(
 )(DropArea);
 
 const PIN_DROP_TARGET_INDICATOR_WIDTH = 3;
-const PINNABLE_ENTITY_TYPES = new Set(["questions", "dashboards"]);
+const PINNABLE_MODELS = new Set(["card", "dashboard"]);
 
 @DropTarget(
   DragTypes.ITEM,
@@ -579,7 +565,7 @@ const PINNABLE_ENTITY_TYPES = new Set(["questions", "dashboards"]);
     },
     canDrop(props, monitor) {
       const { item } = monitor.getItem();
-      return PINNABLE_ENTITY_TYPES.has(item.entity_type);
+      return PINNABLE_MODELS.has(item.model);
     },
   },
   (connect, monitor) => ({
@@ -637,7 +623,7 @@ const PinnedDropArea = DropTarget(
     canDrop(props, monitor) {
       const { item } = monitor.getItem();
       return (
-        PINNABLE_ENTITY_TYPES.has(item.entity_type) &&
+        PINNABLE_MODELS.has(item.model) &&
         props.pinIndex != item.collection_position
       );
     },
@@ -760,45 +746,37 @@ const SelectionControls = ({
     <StackedCheckBox checked indeterminate onChange={onSelectAll} />
   );
 
-// TODO - this should be a selector
-const mapStateToProps = (state, props) => {
-  const collectionsById = Collections.selectors.expandedCollectionsById(
-    state,
-    props,
-  );
-  return {
-    collectionId: props.params.collectionId,
-    collectionsById,
-  };
-};
-
-@connect(mapStateToProps)
+@entityObjectLoader({
+  entityType: "collections",
+  entityId: (state, props) => props.params.collectionId,
+})
 class CollectionLanding extends React.Component {
   render() {
-    const { collectionId, collectionsById } = this.props;
-    const currentCollection = collectionsById[collectionId];
+    const { object: currentCollection, params: { collectionId } } = this.props;
     const isRoot = collectionId === "root";
+
+    // effective_ancestors doesn't include root collection so add it (unless this is the root collection, of course)
+    const ancestors =
+      !isRoot && currentCollection && currentCollection.effective_ancestors
+        ? [ROOT_COLLECTION, ...currentCollection.effective_ancestors]
+        : [];
 
     return (
       <Box mx={4}>
         <Box>
           <Flex align="center">
             <BrowserCrumbs
-              crumbs={
-                currentCollection && currentCollection.path
-                  ? [
-                      ...currentCollection.path.map(id => ({
-                        title: (
-                          <CollectionDropArea collection={{ id }} margin={8}>
-                            {collectionsById[id] && collectionsById[id].name}
-                          </CollectionDropArea>
-                        ),
-                        to: Urls.collection(id),
-                      })),
-                      { title: currentCollection.name },
-                    ]
-                  : []
-              }
+              crumbs={[
+                ...ancestors.map(({ id, name }) => ({
+                  title: (
+                    <CollectionDropArea collection={{ id }} margin={8}>
+                      {name}
+                    </CollectionDropArea>
+                  ),
+                  to: Urls.collection(id),
+                })),
+                { title: currentCollection.name },
+              ]}
             />
 
             <Flex ml="auto">
@@ -825,7 +803,10 @@ class CollectionLanding extends React.Component {
           </Flex>
         </Box>
         <Box>
-          <DefaultLanding collectionId={collectionId} />
+          <DefaultLanding
+            collection={currentCollection}
+            collectionId={collectionId}
+          />
           {
             // Need to have this here so the child modals will show up
             this.props.children

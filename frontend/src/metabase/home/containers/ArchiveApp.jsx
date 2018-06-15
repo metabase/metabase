@@ -29,7 +29,7 @@ const ROW_HEIGHT = 68;
   reload: true,
   wrapped: true,
 })
-@listSelect({ keyForItem: item => `${item.entity_type}:${item.id}` })
+@listSelect({ keyForItem: item => `${item.model}:${item.id}` })
 @connect(mapStateToProps, null)
 export default class ArchiveApp extends Component {
   render() {

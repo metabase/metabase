@@ -350,7 +350,7 @@
 
 ;; Make sure you can see everything for Users that can see everything
 (expect
-  {:name      "Root Collection"
+  {:name      "Saved items"
    :id        "root"
    :items     [{:name "Birthday Card", :description nil, :collection_position nil, :favorite false, :model "card"}
                {:name "Crowberto Corv's Personal Collection", :description nil, :model "collection"}
@@ -363,7 +363,7 @@
 
 ;; ...but we don't let you see stuff you wouldn't otherwise be allowed to see
 (expect
-  {:name      "Root Collection"
+  {:name      "Saved items"
    :id        "root"
    :items     [{:name "Rasta Toucan's Personal Collection", :description nil, :model "collection"}]
    :can_write false}
@@ -374,7 +374,7 @@
 
 ;; ...but if they have read perms for the Root Collection they should get to see them
 (expect
-  {:name       "Root Collection"
+  {:name       "Saved items"
    :id         "root"
    :items      [{:name "Birthday Card", :collection_position nil, :description nil, :favorite false, :model "card"}
                 {:name "Dine & Dashboard", :collection_position nil, :description nil, :model "dashboard"}

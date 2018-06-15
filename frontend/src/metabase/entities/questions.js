@@ -7,6 +7,7 @@ import * as Urls from "metabase/lib/urls";
 import { assocIn } from "icepick";
 
 import CollectionSelect from "metabase/containers/CollectionSelect";
+import { canonicalCollectionId } from "metabase/entities/collections";
 
 import { POST, DELETE } from "metabase/lib/api";
 
@@ -33,11 +34,7 @@ const Questions = createEntity({
     setCollection: ({ id }, collection, opts) =>
       Questions.actions.update(
         { id },
-        // TODO - would be dope to make this check in one spot instead of on every movable item type
-        {
-          collection_id:
-            !collection || collection.id === "root" ? null : collection.id,
-        },
+        { collection_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "question", "moved"),
       ),
 

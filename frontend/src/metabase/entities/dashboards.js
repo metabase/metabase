@@ -6,6 +6,7 @@ import { normal } from "metabase/lib/colors";
 import { assocIn } from "icepick";
 
 import { POST, DELETE } from "metabase/lib/api";
+import { canonicalCollectionId } from "metabase/entities/collections";
 
 const FAVORITE_ACTION = `metabase/entities/dashboards/FAVORITE`;
 const UNFAVORITE_ACTION = `metabase/entities/dashboards/UNFAVORITE`;
@@ -30,11 +31,7 @@ const Dashboards = createEntity({
     setCollection: ({ id }, collection, opts) =>
       Dashboards.actions.update(
         { id },
-        // TODO - would be dope to make this check in one spot instead of on every movable item type
-        {
-          collection_id:
-            !collection || collection.id === "root" ? null : collection.id,
-        },
+        { collection_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "dashboard", "moved"),
       ),
 
