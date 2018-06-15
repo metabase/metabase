@@ -911,7 +911,7 @@
   ([database] (candidate-tables database nil))
   ([database schema]
    (let [rules (rules/get-rules ["table"])]
-     (->> (apply db/select Table
+     (->> (apply db/select [Table :id :schema :display_name :entity_type :db_id]
                  (cond-> [:db_id           (u/get-id database)
                           :visibility_type nil]
                    schema (concat [:schema schema])))
