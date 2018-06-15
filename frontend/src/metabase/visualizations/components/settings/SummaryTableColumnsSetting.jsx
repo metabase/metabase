@@ -14,6 +14,7 @@ import PropTypes from 'prop-types';
 
 import cx from "classnames";
 import Button from "metabase/components/Button";
+import Toggle from "metabase/components/Toggle";
 
 
 export const GROUPS_SOURCES = 'groupsSources';
@@ -92,7 +93,7 @@ export default class SummaryTableColumnsSetting extends Component<Props, State> 
   updateState = newState => {
     this.setState(newState);
     // if(!newState.isUpdating)
-      this.props.onChange(this.state);
+    this.props.onChange(this.state);
   };
 
 
@@ -147,59 +148,91 @@ export default class SummaryTableColumnsSetting extends Component<Props, State> 
   // };
 
 
-
   render = () =>
-      <div>
-        {createSortableSection(this, t`Fields to use for the table rows`, GROUPS_SOURCES, createFatRow)}
-        {createSortableSection(this, t`Field to use for the table columns`, COLUMNS_SOURCE, createFatRow)}
-        {createSortableSection(this, t`Fields to use for the table values`, VALUES_SOURCES, createValueSourceRow)}
-        {createSortableSection(this, t`Unused fields`, UNUSED_COLUMNS, createUnusedSourceRow)}
-      </div>;
+    <div>
+      {createSortableSection(this, t`Fields to use for the table rows`, GROUPS_SOURCES, createFatRow)}
+      {createSortableSection(this, t`Field to use for the table columns`, COLUMNS_SOURCE, createFatRow)}
+      {createSortableSection(this, t`Fields to use for the table values`, VALUES_SOURCES, createValueSourceRow)}
+      {createSortableSection(this, t`Unused fields`, UNUSED_COLUMNS, createUnusedSourceRow)}
+    </div>;
 
 }
 
-const createSortableSection = (self: SummaryTableColumnsSetting ,title: String, columnsPropertyName: String, rowBuilder : RowBuilder): Component => {
+const createSortableSection = (self: SummaryTableColumnsSetting, title: String, columnsPropertyName: String, rowBuilder: RowBuilder): Component => {
   const {columnNames} = self.props;
   const rowsSource = self.state[columnsPropertyName];
 
-  const removeRowForSource =  removeColumn(self, columnsPropertyName);
+  const removeRowForSource = removeColumn(self, columnsPropertyName);
 
   return (
-  <div>
-    <h4 className="mb1">{title}</h4>
-    <ReactSortable
-      options={{
-        animation: 150,
-        group: {
-          name: 'shared',
-          pull: true,
-          put: true
-        },
-      }}
-      onChange={items => self.updateState({[columnsPropertyName]: items, isUpdating: !self.state.isUpdating})}
+    <div>
+      <h4 className="mb1">{title}</h4>
+      <ReactSortable
+        options={{
+          animation: 150,
+          group: {
+            name: 'shared',
+            pull: true,
+            put: true
+          },
+        }}
+        onChange={items => self.updateState({[columnsPropertyName]: items, isUpdating: !self.state.isUpdating})}
 
-      style={{minHeight: 20}}
-    >
-      {rowsSource.map(name => rowBuilder(name, columnNames[name], removeRowForSource(name)))}
-    </ReactSortable>
-  </div>);
+        style={{minHeight: 20}}
+      >
+        {rowsSource.map(name => rowBuilder(name, columnNames[name], removeRowForSource(name)))}
+      </ReactSortable>
+    </div>);
 };
 
 
-const removeColumn = (self: SummaryTableColumnsSetting, statePropertyName :string) => (name: string) => () =>{
+const removeColumn = (self: SummaryTableColumnsSetting, statePropertyName: string) => (name: string) => () => {
   const rowsSource = self.state[statePropertyName];
   const unusedColumns = self.state[UNUSED_COLUMNS];
-  const newState ={[statePropertyName]:rowsSource.filter(p => p !== name), [UNUSED_COLUMNS] : [name,...unusedColumns]};
+  const newState = {
+    [statePropertyName]: rowsSource.filter(p => p !== name),
+    [UNUSED_COLUMNS]: [name, ...unusedColumns]
+  };
   self.updateState(newState);
 };
 
 
-
-const createFatRow = (rowKey: String, displayName: String, clickAction): Component => {
-  const content = <div style={{display: 'flex'}}><span className="ml1 h4">{displayName}</span>
-    {createCloseButton(clickAction)}
-  </div>;
-  return createSortableRow(rowKey, content)
+const createFatRow = (rowKey: String, displayName: String, onRemove): Component => {
+  //TODO: add onChange and value from props(?) - now it's temporary
+  let value = true;
+  const onChange = (value) => {
+    value = !value;
+  };
+  const content =
+    <div className="my2 bordered shadowed cursor-pointer overflow-hidden bg-white">
+      <div className="p1 border-bottom relative bg-grey-0">
+        <div className="px1 flex align-center relative">
+          <span className="h4 flex-full text-dark">{displayName}</span>
+          <Icon
+            name="close"
+            className="cursor-pointer text-grey-2 text-grey-4-hover"
+            onClick={e => {
+              e.stopPropagation();
+              onRemove();
+            }}
+          />
+        </div>
+      </div>
+      <div className="p2 border-grey-1">
+        <div className="flex align-center justify-between flex-no-shrink">
+          <div>{t`Show totals`}</div>
+          <Toggle value={value} onChange={onChange}/>
+        </div>
+        <div className="flex align-center justify-between flex-no-shrink">
+          <div>{t`Sort order`}</div>
+          <div>
+            <Button borderless>{t`Ascending`}</Button>
+            <Button borderless>{t`Descending`}</Button>
+          </div>
+        </div>
+      </div>
+    </div>;
+  return createSortableRow(rowKey, content);
 };
 //   {/*<CheckBox*/}
 //   {/*checked={item.enabled}*/}
@@ -214,13 +247,15 @@ const createFatRow = (rowKey: String, displayName: String, clickAction): Compone
 //   {/*/>*/}
 // );}
 
-const createValueSourceRow = (rowKey: String, displayName: String,clickAction): Component => {
-  const content = <div style={{display: 'flex'}}><span className="ml1 h4">{displayName}</span>{createCloseButton(clickAction)}
+const createValueSourceRow = (rowKey: String, displayName: String, clickAction): Component => {
+  const content = <div style={{display: 'flex'}}><span
+    className="ml1 h4">{displayName}</span>{createCloseButton(clickAction)}
   </div>;
   return createSortableRow(rowKey, content)
 };
 
-const createCloseButton = (clickAction) => <Button style={{'margin-left': 'auto'}} icon='close' onlyIcon='true' onClick={clickAction}/>;
+const createCloseButton = (clickAction) => <Button style={{'margin-left': 'auto'}} icon='close' onlyIcon='true'
+                                                   onClick={clickAction}/>;
 
 const createUnusedSourceRow = (rowKey: String, displayName: String): Component => {
   const content = <span className="ml1 h4">{displayName}</span>;
