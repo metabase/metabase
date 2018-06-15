@@ -89,7 +89,7 @@ class AutomaticDashboardApp extends React.Component {
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
     const more = dashboard && dashboard.more;
     const related = dashboard && dashboard.related;
-    const hasSidebar = _.any(related || {}, list => list.length > 0);
+    const hasSidebar = related && related.length > 0;
 
     return (
       <div className="relative">
@@ -240,9 +240,7 @@ const SuggestionsSidebar = ({ related }) => (
     <div className="py2 text-centered my3">
       <h3 className="text-grey-3">More X-rays</h3>
     </div>
-    {Object.entries(related).map(([section, suggestions]) => (
-      <SuggestionsList section={section} suggestions={suggestions} />
-    ))}
+     <SuggestionsList section="related" suggestions={related} />
   </div>
 );
 

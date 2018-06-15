@@ -689,20 +689,12 @@
      :description (:description dashboard)}))
 
 (defn- related-entities
-  ([root] (related-entities max-related root))
-  ([n root]
-   (let [recommendations     (-> root :entity related/related)
-         fields-selector     (comp (partial remove key-col?) :fields)
-         ;; Not everything `related/related` returns is relevent for us. Also note that the order
-         ;; influences which entities get shown when results are trimmed.
-         relevant-dimensions [:table :segments :metrics :linking-to :dashboard-mates
-                              :similar-questions :linked-from :tables fields-selector]]
-     (->> relevant-dimensions
-          (reduce (fn [acc selector]
-                    (concat acc (-> recommendations selector rules/ensure-seq)))
-                  [])
-          (take n)
-          (map ->related-entity)))))
+  [root]
+  (-> root
+      :entity
+      related/related
+      (update :fields (partial remove key-col?))
+      (->> (m/map-vals (comp (partial map ->related-entity) rules/ensure-seq)))))
 
 (s/defn ^:private indepth
   [root, rule :- (s/maybe rules/Rule)]
@@ -712,7 +704,7 @@
                  {:title       ((some-fn :short-title :title) dashboard)
                   :description (:description dashboard)
                   :url         (format "%s/rule/%s/%s" (:url root) (:rule rule) (:rule indepth))})))
-       (take max-related)))
+       (hash-map :indepth)))
 
 (defn- drilldown-fields
   [dashboard]
@@ -722,20 +714,100 @@
        vals
        (mapcat :matches)
        filters/interesting-fields
-       (map ->related-entity)))
+       (map ->related-entity)
+       (hash-map :drilldown-fields)))
+
+(defn- fill-related
+  "We fill available slots round-robin style. Each selector is a list of fns that are tried against
+   `related` in sequence until one matches. Matching items are stored in a map so we can later
+    reconstruct ordering and group items by selector."
+  [available-slots selectors related]
+  (let [pop-first (fn [m ks]
+                    (loop [[k & ks] ks]
+                      (let [item (-> k m first)]
+                        (cond
+                          item        [item (update m k rest)]
+                          (empty? ks) [nil m]
+                          :else       (recur ks)))))]
+    (loop [[selector & remaining-selectors] selectors
+           related                          related
+           selected                         {}]
+      (let [[next related] (pop-first related selector)
+            num-selected   (transduce (map (comp count val)) + selected)]
+        (cond
+          (= num-selected available-slots)
+          selected
+
+          next
+          (recur remaining-selectors related (update selected selector concat [next]))
+
+          (and (empty? remaining-selectors)
+               (zero? num-selected))
+          {}
+
+          (empty? remaining-selectors)
+          (merge-with concat
+            selected
+            (fill-related (- available-slots (count selected)) selectors related))
+
+          :else
+          (recur remaining-selectors related selected))))))
+
+(defmulti
+  ^{:private true
+    :arglists '([root])}
+  related-selectors (comp type :entity))
+
+(defmethod related-selectors (type Table)
+  [_]
+  (let [down     [:indepth :segments :metrics :drilldown-fields]
+        sideways [:linking-to :linked-from :tables]]
+    [down down down down sideways sideways]))
+
+(defmethod related-selectors (type Segment)
+  [_]
+  (let [down     [:indepth :segments :metrics :drilldown-fields]
+        sideways [:linking-to :linked-from :tables]
+        up       [:table]]
+    [down down down sideways sideways up]))
+
+(defmethod related-selectors (type Metric)
+  [_]
+  (let [down     [:drilldown-fields]
+        sideways [:metrics :segments]
+        up       [:table]]
+    [sideways sideways sideways down down up]))
+
+(defmethod related-selectors (type Field)
+  [_]
+  (let [sideways [:fields]
+        up       [:table :metrics :segments]]
+    [sideways sideways up]))
+
+(defmethod related-selectors (type Card)
+  [_]
+  (let [down     [:drilldown-fields]
+        sideways [:metrics :similar-questions :dashboard-mates]
+        up       [:table]]
+    [sideways sideways sideways down down up]))
+
+(defmethod related-selectors (type Query)
+  [_]
+  (let [down     [:drilldown-fields]
+        sideways [:metrics :similar-questions]
+        up       [:table]]
+    [sideways sideways sideways down down up]))
 
 (s/defn ^:private related
+  "Build a balancee list of related X-rays. General composition of the list is determined for each
+   root type individually via `related-selectors`. That recepie is then filled round-robin style."
   [dashboard, rule :- (s/maybe rules/Rule)]
-  (let [root    (-> dashboard :context :root)
-        indepth (indepth root rule)]
-    (if (not-empty indepth)
-      {:indepth indepth
-       :related (related-entities (- max-related (count indepth)) root)}
-      (let [drilldown-fields   (drilldown-fields dashboard)
-            n-related-entities (max (math/floor (* (/ 2 3) max-related))
-                                    (- max-related (count drilldown-fields)))]
-        {:related          (related-entities n-related-entities root)
-         :drilldown-fields (take (- max-related n-related-entities) drilldown-fields)}))))
+  (let [root       (-> dashboard :context :root)
+        candidates (merge (indepth root rule)
+                          (drilldown-fields dashboard)
+                          (related-entities root))
+        selectors  (related-selectors root)]
+    (mapcat (fill-related max-related selectors candidates) (distinct path))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
