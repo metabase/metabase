@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import Query from "./queries/Query";
-import {getFoo} from "./barQbilder";
+import {getAdditionalQueries} from "./SummaryTableQueryBuilder";
 
 import Metadata from "./metadata/Metadata";
 import Table from "./metadata/Table";
@@ -190,7 +190,7 @@ export default class Question {
    */
   atomicQueries(): AtomicQuery[] {
     const query = this.query();
-    if (query instanceof AtomicQuery) return [query, ...getFoo(this.visualizationSettings())(this.card(), this.metadata(), this)(query)];
+    if (query instanceof AtomicQuery) return [query, ...getAdditionalQueries(this.visualizationSettings())(this.card(), this.metadata())(query)];
     return [];
   }
 
