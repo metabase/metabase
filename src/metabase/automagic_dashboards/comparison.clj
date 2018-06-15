@@ -31,9 +31,12 @@
              :collection_id nil
              :id            (gensym))))
 
+(def ^:private ^{:arglists '([card])} display-type
+  (comp qp.util/normalize-token :display))
+
 (defn- overlay-comparison?
   [card]
-  (and (-> card :display qp.util/normalize-token (#{:bar :line}))
+  (and (-> card display-type (#{:bar :line}))
        (-> card :series empty?)))
 
 (defn- inject-filter
@@ -71,7 +74,10 @@
                                                :card                   card
                                                :card_id                (:id card)
                                                :series                 series
-                                               :visualization_settings {}
+                                               :visualization_settings
+                                               (cond-> {}
+                                                 (-> card-left display-type (= :bar))
+                                                 (assoc :graph.y_axis.auto_split false))
                                                :id                     (gensym)}))
       (let [width        (/ populate/grid-width 2)
             series-left  (map clone-card (:series card-left))
