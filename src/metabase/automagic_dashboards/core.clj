@@ -807,7 +807,7 @@
                           (drilldown-fields dashboard)
                           (related-entities root))
         selectors  (related-selectors root)]
-    (mapcat (fill-related max-related selectors candidates) (distinct path))))
+    (mapcat (fill-related max-related selectors candidates) (distinct selectors))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
