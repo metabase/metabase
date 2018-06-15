@@ -13,7 +13,6 @@ import Icon from "metabase/components/Icon";
 
 import cxs from "cxs";
 import { t } from "c-3po";
-import _ from "underscore";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
@@ -240,7 +239,7 @@ const SuggestionsSidebar = ({ related }) => (
     <div className="py2 text-centered my3">
       <h3 className="text-grey-3">More X-rays</h3>
     </div>
-     <SuggestionsList section="related" suggestions={related} />
+    <SuggestionsList section="related" suggestions={related} />
   </div>
 );
 
