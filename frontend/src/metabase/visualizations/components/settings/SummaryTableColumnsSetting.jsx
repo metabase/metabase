@@ -26,7 +26,7 @@ type StateSerialized = {
   [GROUPS_SOURCES]: string[],
   [COLUMNS_SOURCE]: string[],
   [VALUES_SOURCES]: string[],
-  columnNameToProps: { [key: string]: ColumnProps },
+  columnNameToMetadata: { [key: string]: ColumnMetadata },
 }
 
 
@@ -34,7 +34,7 @@ type State = {
   [GROUPS_SOURCES]: string[],
   [COLUMNS_SOURCE]: string[],
   [VALUES_SOURCES]: string[],
-  columnNameToProps: { [key: string]: ColumnProps },
+  columnNameToMetadata: { [key: string]: ColumnMetadata },
   [UNUSED_COLUMNS]: string[],
 };
 
@@ -43,7 +43,7 @@ type Props = {
   columnNames: { [key: String]: String }
 }
 
-type ColumnProps = {
+type ColumnMetadata = {
   enabled: Boolean,
   showTotals: Boolean,
   //todo:
@@ -71,10 +71,12 @@ const emptyStateSerialized: StateSerialized = ({
   groupsSources: [],
   columnsSource: [],
   valuesSources: [],
-  columnNameToProps: {}
+  columnNameToMetadata: {}
 });
 
 const buildState = (stateSerialized: StateSerialized, columnNames) => {
+  console.log('kkk')
+  console.log(stateSerialized);
   const fatStateSerialized = {...emptyStateSerialized, ...stateSerialized};
   return {
     ...fatStateSerialized,
@@ -90,10 +92,10 @@ export default class SummaryTableColumnsSetting extends Component<Props, State> 
     this.state = buildState(this.props.value, this.props.columnNames)
   }
 
-  updateState = newState => {
-    this.setState(newState);
-    // if(!newState.isUpdating)
+  updateState = async newState => {
+    await this.setState(newState);
     this.props.onChange(this.state);
+
   };
 
 
@@ -109,53 +111,64 @@ export default class SummaryTableColumnsSetting extends Component<Props, State> 
   //   // this.setState({ data: { items: [...nextProps.value] } });
   // }
 
-  // shouldUpdate = (newState: UnboxedState) => {
-  //   // if(newState.columnsSource.)
-  // }
+  updateColumnMetadata = (columnName: string, newMetadata : ColumnMetadata) =>{
+    const oldMetadata = this.getColumnMetadata(columnName);
+    const mergedMetadata = {...oldMetadata, ...newMetadata};
+    let newColumnsMetadata = {...this.getColumnsMetadata(), [columnName] : mergedMetadata};
+    this.updateState({columnNameToMetadata:newColumnsMetadata});
+  };
 
+  getColumnMetadata = (columnName : string) : ColumnMetadata => this.getColumnsMetadata()[columnName] || {};
 
-  // setEnabled = (index, checked) => {
-  //   const items = [...this.state.data.items];
-  //   items[index] = { ...items[index], enabled: checked };
-  //   this.setState({ data: { items } });
-  //   this.props.onChange([...items]);
-  // };
-
-  // isAnySelected = () => {
-  //   let selected = false;
-  //   for (const item of [...this.state.data.items]) {
-  //     if (item.enabled) {
-  //       selected = true;
-  //       break;
-  //     }
-  //   }
-  //   return selected;
-  // };
-
-  // toggleAll = anySelected => {
-  //   const items = [...this.state.data.items].map(item => ({
-  //     ...item,
-  //     enabled: !anySelected,
-  //   }));
-  //   this.setState({ data: { items } });
-  //   this.props.onChange([...items]);
-  // };
-
-  // updateState = (sta) =>{
-  //   console.log(sta);
-  //   this.setState(sta);
-  //   console.log(this.state);
-  // };
-
+  getColumnsMetadata = () => this.state.columnNameToMetadata || {};
 
   render = () =>
     <div>
-      {createSortableSection(this, t`Fields to use for the table rows`, GROUPS_SOURCES, createFatRow)}
-      {createSortableSection(this, t`Field to use for the table columns`, COLUMNS_SOURCE, createFatRow)}
+      {createSortableSection(this, t`Fields to use for the table rows`, GROUPS_SOURCES, this.createFatRow)}
+      {createSortableSection(this, t`Field to use for the table columns`, COLUMNS_SOURCE, this.createFatRow)}
       {createSortableSection(this, t`Fields to use for the table values`, VALUES_SOURCES, createValueSourceRow)}
       {createSortableSection(this, t`Unused fields`, UNUSED_COLUMNS, createUnusedSourceRow)}
     </div>;
 
+
+  createFatRow = (rowKey: String, displayName: String, onRemove): Component => {
+    const columnMetadata = this.getColumnMetadata(rowKey);
+    const onChange = (value) => this.updateColumnMetadata(rowKey, {showTotals:value});
+
+    console.log('metadata');
+    console.log(columnMetadata);
+
+    const content =
+      <div className="my2 bordered shadowed cursor-pointer overflow-hidden bg-white">
+        <div className="p1 border-bottom relative bg-grey-0">
+          <div className="px1 flex align-center relative">
+            <span className="h4 flex-full text-dark">{displayName}</span>
+            <Icon
+              name="close"
+              className="cursor-pointer text-grey-2 text-grey-4-hover"
+              onClick={e => {
+                e.stopPropagation();
+                onRemove();
+              }}
+            />
+          </div>
+        </div>
+        <div className="p2 border-grey-1">
+          <div className="flex align-center justify-between flex-no-shrink">
+            <div>{t`Show totals`}</div>
+            <Toggle value={columnMetadata.showTotals} onChange={onChange}/>
+          </div>
+          <div className="flex align-center justify-between flex-no-shrink">
+            <div>{t`Sort order`}</div>
+            <div>
+              <Button borderless>{t`Ascending`}</Button>
+              <Button borderless>{t`Descending`}</Button>
+            </div>
+          </div>
+        </div>
+      </div>;
+    return createSortableRow(rowKey, content);
+  };
 }
 
 const createSortableSection = (self: SummaryTableColumnsSetting, title: String, columnsPropertyName: String, rowBuilder: RowBuilder): Component => {
@@ -197,43 +210,7 @@ const removeColumn = (self: SummaryTableColumnsSetting, statePropertyName: strin
 };
 
 
-const createFatRow = (rowKey: String, displayName: String, onRemove): Component => {
-  //TODO: add onChange and value from props(?) - now it's temporary
-  let value = true;
-  const onChange = (value) => {
-    value = !value;
-  };
-  const content =
-    <div className="my2 bordered shadowed cursor-pointer overflow-hidden bg-white">
-      <div className="p1 border-bottom relative bg-grey-0">
-        <div className="px1 flex align-center relative">
-          <span className="h4 flex-full text-dark">{displayName}</span>
-          <Icon
-            name="close"
-            className="cursor-pointer text-grey-2 text-grey-4-hover"
-            onClick={e => {
-              e.stopPropagation();
-              onRemove();
-            }}
-          />
-        </div>
-      </div>
-      <div className="p2 border-grey-1">
-        <div className="flex align-center justify-between flex-no-shrink">
-          <div>{t`Show totals`}</div>
-          <Toggle value={value} onChange={onChange}/>
-        </div>
-        <div className="flex align-center justify-between flex-no-shrink">
-          <div>{t`Sort order`}</div>
-          <div>
-            <Button borderless>{t`Ascending`}</Button>
-            <Button borderless>{t`Descending`}</Button>
-          </div>
-        </div>
-      </div>
-    </div>;
-  return createSortableRow(rowKey, content);
-};
+
 //   {/*<CheckBox*/}
 //   {/*checked={item.enabled}*/}
 //   {/*onChange={e => this.setEnabled(i, e.target.checked)}*/}

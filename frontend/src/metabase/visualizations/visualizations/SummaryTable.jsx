@@ -77,7 +77,7 @@ export default class SummaryTable extends Component {
 
             return {cols : []}
 
-        // columnNameToProps:cols.reduce(
+        // columnNameToMetadata:cols.reduce(
         //   (o, col) => ({ ...o, [col.name]: {enabled: col.visibility_type !== "details-only"} }),
         //   {},
         // )
