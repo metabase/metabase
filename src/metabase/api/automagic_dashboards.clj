@@ -68,13 +68,19 @@
                    (query-perms/perms-set (:dataset_query query) :throw-exceptions)))
   query)
 
+(defn- ensure-int
+  [x]
+  (if (string? x)
+    (Integer/parseInt x)
+    x))
+
 (def ^:private ->entity
-  {"table"    (comp api/read-check Table #(Integer/parseInt %))
-   "segment"  (comp api/read-check Segment #(Integer/parseInt %))
-   "question" (comp api/read-check Card #(Integer/parseInt %))
+  {"table"    (comp api/read-check Table ensure-int)
+   "segment"  (comp api/read-check Segment ensure-int)
+   "question" (comp api/read-check Card ensure-int)
    "adhoc"    (comp adhoc-query-read-check query/adhoc-query decode-base64-json)
-   "metric"   (comp api/read-check Metric #(Integer/parseInt %))
-   "field"    (comp api/read-check Field #(Integer/parseInt %))})
+   "metric"   (comp api/read-check Metric ensure-int)
+   "field"    (comp api/read-check Field ensure-int)})
 
 (def ^:private Entity
   (su/with-api-error-message
