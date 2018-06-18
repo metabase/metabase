@@ -62,7 +62,7 @@ type Props = {
   onBlur?: () => void,
 
   updateOnInputChange: boolean,
-  updateOnInputBlur: boolean,
+  updateOnInputBlur?: boolean,
   // if provided, parseFreeformValue parses the input string into a value,
   // or returns null to indicate an invalid value
   parseFreeformValue: (value: string) => ?Value,
