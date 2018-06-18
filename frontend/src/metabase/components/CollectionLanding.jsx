@@ -29,6 +29,13 @@ import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoa
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
+// drag-and-drop components
+import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
+import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
+import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget";
+import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
+import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
+
 const CollectionItem = ({ collection, color, iconName = "all" }) => (
   <Link
     to={`collection/${collection.id}`}
@@ -53,7 +60,7 @@ class CollectionList extends React.Component {
         <Box my={2}>
           {isRoot && (
             <Box className="relative">
-              <CollectionDropArea
+              <CollectionDropTarget
                 collection={{ id: currentUser.personal_collection_id }}
               >
                 <CollectionItem
@@ -63,7 +70,7 @@ class CollectionList extends React.Component {
                   }}
                   iconName="star"
                 />
-              </CollectionDropArea>
+              </CollectionDropTarget>
             </Box>
           )}
           {isRoot &&
@@ -84,11 +91,11 @@ class CollectionList extends React.Component {
           .filter(c => c.id !== currentUser.personal_collection_id)
           .map(collection => (
             <Box key={collection.id} mb={1} className="relative">
-              <CollectionDropArea collection={collection}>
-                <DraggableItem item={collection}>
+              <CollectionDropTarget collection={collection}>
+                <ItemDragSource item={collection}>
                   <CollectionItem collection={collection} />
-                </DraggableItem>
-              </CollectionDropArea>
+                </ItemDragSource>
+              </CollectionDropTarget>
             </Box>
           ))}
       </Box>
@@ -181,7 +188,7 @@ class DefaultLanding extends React.Component {
                     <Box mb={2}>
                       <h4>{t`Pinned items`}</h4>
                     </Box>
-                    <PinnedDropArea
+                    <PinDropTarget
                       pinIndex={1}
                       marginLeft={8}
                       marginRight={8}
@@ -190,7 +197,7 @@ class DefaultLanding extends React.Component {
                       <Grid>
                         {pinned.map((item, index) => (
                           <GridItem w={1 / 2} className="relative">
-                            <DraggableItem item={item}>
+                            <ItemDragSource item={item}>
                               <PinnedItem
                                 key={`${item.type}:${item.id}`}
                                 index={index}
@@ -202,7 +209,7 @@ class DefaultLanding extends React.Component {
                                 pinIndex={index + 1}
                                 right
                               />
-                            </DraggableItem>
+                            </ItemDragSource>
                           </GridItem>
                         ))}
                         {pinned.length % 2 === 1 ? (
@@ -211,10 +218,10 @@ class DefaultLanding extends React.Component {
                           </GridItem>
                         ) : null}
                       </Grid>
-                    </PinnedDropArea>
+                    </PinDropTarget>
                   </Box>
                 ) : (
-                  <PinnedDropArea pinIndex={1} hideUntilDrag>
+                  <PinDropTarget pinIndex={1} hideUntilDrag>
                     {({ hovered }) => (
                       <div
                         className={cx(
@@ -226,7 +233,7 @@ class DefaultLanding extends React.Component {
                         {t`Drag something here to pin it to the top`}
                       </div>
                     )}
-                  </PinnedDropArea>
+                  </PinDropTarget>
                 )}
                 <Flex align="center" mb={2}>
                   {pinned.length > 0 && (
@@ -236,7 +243,7 @@ class DefaultLanding extends React.Component {
                   )}
                 </Flex>
                 {unpinned.length > 0 ? (
-                  <PinnedDropArea pinIndex={null} margin={8}>
+                  <PinDropTarget pinIndex={null} margin={8}>
                     <Card
                       mb={selected.length > 0 ? 5 : 2}
                       style={{
@@ -248,7 +255,7 @@ class DefaultLanding extends React.Component {
                         items={unpinned}
                         rowHeight={ROW_HEIGHT}
                         renderItem={({ item, index }) => (
-                          <DraggableItem item={item} selection={selection}>
+                          <ItemDragSource item={item} selection={selection}>
                             <NormalItem
                               key={`${item.type}:${item.id}`}
                               item={item}
@@ -257,13 +264,13 @@ class DefaultLanding extends React.Component {
                               onToggleSelected={onToggleSelected}
                               onMove={moveItems => this.setState({ moveItems })}
                             />
-                          </DraggableItem>
+                          </ItemDragSource>
                         )}
                       />
                     </Card>
-                  </PinnedDropArea>
+                  </PinDropTarget>
                 ) : (
-                  <PinnedDropArea pinIndex={null} hideUntilDrag margin={10}>
+                  <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
                     {({ hovered }) => (
                       <div
                         className={cx(
@@ -274,7 +281,7 @@ class DefaultLanding extends React.Component {
                         {t`Drag here to un-pin`}
                       </div>
                     )}
-                  </PinnedDropArea>
+                  </PinDropTarget>
                 )}
               </Box>
             )}
@@ -340,94 +347,13 @@ class DefaultLanding extends React.Component {
               />
             </Modal>
           )}
-        <CustomDragLayer selected={selected} />
+        <ItemsDragLayer selected={selected} />
       </Flex>
     );
   }
 }
 
-import { DragSource, DropTarget, DragLayer } from "react-dnd";
-import { getEmptyImage } from "react-dnd-html5-backend";
-
-const DragTypes = {
-  ITEM: "ITEM",
-};
-
-@DragSource(
-  DragTypes.ITEM,
-  {
-    canDrag(props, monitor) {
-      // if items are selected only allow dragging selected items
-      if (
-        props.selection &&
-        props.selection.size > 0 &&
-        !props.selection.has(props.item)
-      ) {
-        return false;
-      } else {
-        return true;
-      }
-    },
-    beginDrag(props, monitor, component) {
-      return { item: props.item };
-    },
-    async endDrag(props, monitor, component) {
-      if (!monitor.didDrop()) {
-        return;
-      }
-      const { item } = monitor.getItem();
-      const { collection, pinIndex } = monitor.getDropResult();
-      if (item) {
-        const items =
-          props.selection && props.selection.size > 0
-            ? Array.from(props.selection)
-            : [item];
-        try {
-          if (collection !== undefined) {
-            await Promise.all(
-              items.map(i => i.setCollection && i.setCollection(collection)),
-            );
-          } else if (pinIndex !== undefined) {
-            await Promise.all(
-              items.map(i => i.setPinned && i.setPinned(pinIndex)),
-            );
-          }
-        } catch (e) {
-          alert("There was a problem moving these items: " + e);
-        }
-      }
-    },
-  },
-  (connect, monitor) => ({
-    connectDragSource: connect.dragSource(),
-    connectDragPreview: connect.dragPreview(),
-    isDragging: monitor.isDragging(),
-  }),
-)
-class DraggableItem extends React.Component {
-  componentDidMount() {
-    // Use empty image as a drag preview so browsers don't draw it
-    // and we can draw whatever we want on the custom drag layer instead.
-    if (this.props.connectDragPreview) {
-      this.props.connectDragPreview(getEmptyImage(), {
-        // IE fallback: specify that we'd rather screenshot the node
-        // when it already knows it's being dragged so we can hide it with CSS.
-        captureDraggingState: true,
-      });
-    }
-  }
-  render() {
-    const { connectDragSource, children, ...props } = this.props;
-    return connectDragSource(
-      // must be a native DOM element or use innerRef which appears to be broken
-      // https://github.com/react-dnd/react-dnd/issues/1021
-      // https://github.com/jxnblk/styled-system/pull/188
-      <div>{typeof children === "function" ? children(props) : children}</div>,
-    );
-  }
-}
-
-const NormalItem = ({
+export const NormalItem = ({
   item,
   collection = {},
   selection = new Set(),
@@ -468,173 +394,6 @@ const NormalItem = ({
   </Link>
 );
 
-const DropTargetBackgroundAndBorder = ({
-  highlighted,
-  hovered,
-  noBorder = false,
-  margin = 0,
-  marginLeft = margin,
-  marginRight = margin,
-  marginTop = margin,
-  marginBottom = margin,
-}) => (
-  <div
-    className={cx("absolute rounded", {
-      "pointer-events-none": !highlighted,
-      "bg-slate-almost-extra-light": highlighted,
-    })}
-    style={{
-      top: -marginTop,
-      left: -marginLeft,
-      bottom: -marginBottom,
-      right: -marginRight,
-      zIndex: -1,
-      boxSizing: "border-box",
-      border: "2px solid transparent",
-      borderColor: hovered & !noBorder ? normal.blue : "transparent",
-    }}
-  />
-);
-
-class DropArea extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      show: this._shouldShow(props),
-    };
-  }
-
-  componentWillReceiveProps(nextProps) {
-    // need to delay showing/hiding due to Chrome bug where "dragend" is triggered
-    // immediately if the content shifts during "dragstart"
-    // https://github.com/react-dnd/react-dnd/issues/477
-    if (this._shouldShow(this.props) !== this._shouldShow(nextProps)) {
-      setTimeout(() => this.setState({ show: this._shouldShow(nextProps) }), 0);
-    }
-  }
-
-  _shouldShow(props) {
-    return !props.hideUntilDrag || props.highlighted;
-  }
-
-  render() {
-    const {
-      connectDropTarget,
-      children,
-      className,
-      style,
-      ...props
-    } = this.props;
-    return this.state.show
-      ? connectDropTarget(
-          <div className={cx("relative", className)} style={style}>
-            {typeof children === "function" ? children(props) : children}
-            <DropTargetBackgroundAndBorder {...props} />
-          </div>,
-        )
-      : null;
-  }
-}
-
-const CollectionDropArea = DropTarget(
-  [DragTypes.ITEM],
-  {
-    drop(props, monitor, component) {
-      return { collection: props.collection };
-    },
-    canDrop(props, monitor) {
-      const { item } = monitor.getItem();
-      return item.model !== "collection" || item.id !== props.collection.id;
-    },
-  },
-  (connect, monitor) => ({
-    highlighted: monitor.canDrop(),
-    hovered: monitor.isOver() && monitor.canDrop(),
-    connectDropTarget: connect.dropTarget(),
-  }),
-)(DropArea);
-
-const PIN_DROP_TARGET_INDICATOR_WIDTH = 3;
-const PINNABLE_MODELS = new Set(["card", "dashboard"]);
-
-@DropTarget(
-  DragTypes.ITEM,
-  {
-    drop(props, monitor, component) {
-      return { pinIndex: props.pinIndex };
-    },
-    canDrop(props, monitor) {
-      const { item } = monitor.getItem();
-      return PINNABLE_MODELS.has(item.model);
-    },
-  },
-  (connect, monitor) => ({
-    highlighted: monitor.canDrop(),
-    hovered: monitor.isOver() && monitor.canDrop(),
-    connectDropTarget: connect.dropTarget(),
-  }),
-)
-class PinPositionDropTarget extends React.Component {
-  render() {
-    const {
-      left,
-      right,
-      connectDropTarget,
-      hovered,
-      highlighted,
-      offset = 0,
-    } = this.props;
-    return connectDropTarget(
-      <div
-        className={cx("absolute top bottom", {
-          "pointer-events-none": !highlighted,
-        })}
-        style={{
-          width: left | right ? "50%" : undefined,
-          left: !right ? 0 : undefined,
-          right: !left ? 0 : undefined,
-        }}
-      >
-        <div
-          className={cx("absolute", { "bg-brand": hovered })}
-          style={{
-            top: 10,
-            bottom: 10,
-            width: PIN_DROP_TARGET_INDICATOR_WIDTH,
-            left: !right
-              ? -PIN_DROP_TARGET_INDICATOR_WIDTH / 2 - offset
-              : undefined,
-            right: right
-              ? -PIN_DROP_TARGET_INDICATOR_WIDTH / 2 - offset
-              : undefined,
-          }}
-        />
-      </div>,
-    );
-  }
-}
-
-const PinnedDropArea = DropTarget(
-  [DragTypes.ITEM],
-  {
-    drop(props, monitor, component) {
-      return { pinIndex: props.pinIndex };
-    },
-    canDrop(props, monitor) {
-      const { item } = monitor.getItem();
-      return (
-        PINNABLE_MODELS.has(item.model) &&
-        props.pinIndex != item.collection_position
-      );
-    },
-  },
-  (connect, monitor) => ({
-    highlighted: monitor.canDrop(),
-    hovered: monitor.isOver() && monitor.canDrop(),
-    connectDropTarget: connect.dropTarget(),
-  }),
-)(DropArea);
-
 const PinnedItem = ({ item, index, collection }) => (
   <Link
     to={item.getUrl()}
@@ -662,63 +421,6 @@ const PinnedItem = ({ item, index, collection }) => (
     </Card>
   </Link>
 );
-
-import BodyComponent from "metabase/components/BodyComponent";
-
-@DragLayer((monitor, props) => ({
-  item: monitor.getItem(),
-  // itemType: monitor.getItemType(),
-  initialOffset: monitor.getInitialSourceClientOffset(),
-  currentOffset: monitor.getSourceClientOffset(),
-  isDragging: monitor.isDragging(),
-}))
-@BodyComponent
-class CustomDragLayer extends React.Component {
-  render() {
-    const { isDragging, currentOffset, selected, item } = this.props;
-    if (!isDragging || !currentOffset) {
-      return null;
-    }
-    const items = selected.length > 0 ? selected : [item.item];
-    return (
-      <div
-        style={{
-          position: "absolute",
-          top: 0, //currentOffset.y,
-          left: 0, //currentOffset.x,
-          transform: `translate(${currentOffset.x}px, ${currentOffset.y}px)`,
-          pointerEvents: "none",
-        }}
-      >
-        <DraggedItems items={items} draggedItem={item.item} />
-      </div>
-    );
-  }
-}
-
-class DraggedItems extends React.Component {
-  shouldComponentUpdate(nextProps) {
-    // necessary for decent drag performance
-    return (
-      nextProps.items.length !== this.props.items.length ||
-      nextProps.draggedItem !== this.props.draggedItem
-    );
-  }
-  render() {
-    const { items, draggedItem } = this.props;
-    const index = _.findIndex(items, draggedItem);
-    return (
-      <div
-        style={{
-          position: "absolute",
-          transform: index > 0 ? `translate(0px, ${-index * 72}px)` : null,
-        }}
-      >
-        {items.map(item => <NormalItem item={item} />)}
-      </div>
-    );
-  }
-}
 
 const BulkActionControls = ({ onArchive, onMove }) => (
   <Box ml={1}>
@@ -769,9 +471,9 @@ class CollectionLanding extends React.Component {
               crumbs={[
                 ...ancestors.map(({ id, name }) => ({
                   title: (
-                    <CollectionDropArea collection={{ id }} margin={8}>
+                    <CollectionDropTarget collection={{ id }} margin={8}>
                       {name}
-                    </CollectionDropArea>
+                    </CollectionDropTarget>
                   ),
                   to: Urls.collection(id),
                 })),

@@ -96,25 +96,25 @@ var config = module.exports = {
     resolve: {
         extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".css"],
         alias: {
-            'metabase':             SRC_PATH,
-            'metabase-lib':         LIB_SRC_PATH,
-            '__support__':          TEST_SUPPORT_PATH,
-            'style':                SRC_PATH + '/css/core/index',
-            'ace':                  __dirname + '/node_modules/ace-builds/src-min-noconflict',
+            'metabase': SRC_PATH,
+            'metabase-lib': LIB_SRC_PATH,
+            '__support__': TEST_SUPPORT_PATH,
+            'style': SRC_PATH + '/css/core/index',
+            'ace': __dirname + '/node_modules/ace-builds/src-min-noconflict',
         }
     },
 
     plugins: [
         new webpack.optimize.CommonsChunkPlugin({
             name: 'vendor',
-            minChunks (module) {
+            minChunks(module) {
                 return module.context && module.context.indexOf('node_modules') >= 0
             }
         }),
         new UnusedFilesWebpackPlugin({
             globOptions: {
                 ignore: [
-                   "**/types.js",
+                    "**/types.js",
                     "**/types/*.js",
                     "**/*.spec.*",
                     "**/__support__/*.js",
@@ -185,7 +185,8 @@ if (NODE_ENV === "hot") {
 
     config.module.rules.unshift({
         test: /\.jsx$/,
-        exclude: /node_modules/,
+        // NOTE: our verison of react-hot-loader doesn't play nice with react-dnd's DragLayer, so we exclude files named `*DragLayer.jsx`
+        exclude: /node_modules|DragLayer\.jsx$/,
         use: [
             // NOTE Atte Keinänen 10/19/17: We are currently sticking to an old version of react-hot-loader
             // because newer versions would require us to upgrade to react-router v4 and possibly deal with
@@ -250,7 +251,7 @@ if (NODE_ENV !== "production") {
             mangle: {
                 // this is required to ensure we don't minify Chevrotain token identifiers
                 // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
-                except: allTokens.map(function(currTok) {
+                except: allTokens.map(function (currTok) {
                     return chevrotain.tokenName(currTok);
                 })
             }
