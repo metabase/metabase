@@ -222,7 +222,7 @@ export const getRawSeries = createSelector(
     // BUT the last executed "dataset_query" (to ensure data matches the query)
     return (
       results &&
-      question.atomicQueries().map((metricQuery, index) => ({
+      question.atomicQueries().slice(0, results.length).map((metricQuery, index) => ({
         card: {
           ...question.card(),
           display: isObjectDetail ? "object" : question.card().display,

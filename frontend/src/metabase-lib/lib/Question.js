@@ -188,13 +188,13 @@ export default class Question {
   /**
    * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
    */
-  atomicQueries(): AtomicQuery[] {
+  atomicQueries(fields): AtomicQuery[] {
     const query = this.query();
-    if (query instanceof AtomicQuery) return [query, ...getAdditionalQueries(this.visualizationSettings())(this.card(), this.metadata())(query)];
+    if (query instanceof AtomicQuery) {
+      return [query, ...getAdditionalQueries(this.visualizationSettings())(this.card(), fields || this.metadata().fields)(query)];
+    }
     return [];
   }
-
-
 
   /**
    * The visualization type of the question
@@ -425,7 +425,7 @@ export default class Question {
    * If we have a saved and clean single-query question, we use `CardApi.query` instead of a ad-hoc dataset query.
    * This way we benefit from caching and query optimizations done by Metabase backend.
    */
-  async apiGetResults({
+  apiGetResults({
     cancelDeferred,
     isDirty = false,
     ignoreCache = false,
@@ -440,7 +440,7 @@ export default class Question {
       // only the superset of parameters object that API expects
       .map(param => _.pick(param, "type", "target", "value"));
 
-    const datasetQueries = this.atomicQueries().map(query => query.datasetQuery());
+
 
     const getDatasetQueryResult = datasetQuery => {
       const datasetQueryWithParameters = {
@@ -454,6 +454,11 @@ export default class Question {
       );
     };
 
+
+    let datasetQueries = this.atomicQueries().map(query => query.datasetQuery());
+
+    let mainQueryPromise : Promise;
+
     if (canUseCardApiEndpoint) {
       const queryParams = {
         cardId: this.id(),
@@ -461,14 +466,18 @@ export default class Question {
         parameters,
       };
 
-      return Promise.all([
-          CardApi.query(queryParams, {
-          cancelled: cancelDeferred.promise,
-        }),...datasetQueries.slice(1).map(getDatasetQueryResult)]
-      );
-    } else {
-      return Promise.all(datasetQueries.map(getDatasetQueryResult));
-    }
+      mainQueryPromise = CardApi.query(queryParams, {
+        cancelled: cancelDeferred.promise,
+      });
+    } else
+      mainQueryPromise = getDatasetQueryResult(datasetQueries[0]);
+
+    return mainQueryPromise.then(res => {
+      const {data : {cols}} = res;
+      const queries = this.atomicQueries(cols).map(query => query.datasetQuery());
+      return Promise.all([mainQueryPromise, ...queries.slice(1).map(getDatasetQueryResult)]);
+      }
+    )
   }
 
   async apiCreate() {

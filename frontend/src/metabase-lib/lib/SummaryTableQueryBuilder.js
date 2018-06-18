@@ -10,7 +10,7 @@ import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 
-export const getAdditionalQueries = (visualizationSettings) => (card:Card, metadata) => (
+export const getAdditionalQueries = (visualizationSettings) => (card:Card, fields) => (
                            query: StructuredQuery,
                         ) : Card[] => {
 
@@ -19,7 +19,7 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, metad
   if(card.display !== SummaryTable.identifier || !isOk(settings)  || !(query instanceof StructuredQuery))
     return [];
 
-  const nameToTypeMap = getNameToTypeMap(metadata);
+  const nameToTypeMap = getNameToTypeMap(fields);
 
   if(!settings[GROUPS_SOURCES].every(p => nameToTypeMap[p])
     || !settings[VALUES_SOURCES].every(p => nameToTypeMap[p])
@@ -41,14 +41,13 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, metad
   }, {acc:[], prev:basedQuery});
 
 
-  return queriesWithBreakouts.acc.map(p => new Question(metadata, {
+  return queriesWithBreakouts.acc.map(p => new Question({}, {
     dataset_query: p.datasetQuery(),
   }).query());
 };
 
-const getNameToTypeMap = (metadata) => {
-  const fields = (metadata || {}).fields || {};
-  return Object.keys(fields).reduce((acc, value) => ({...acc, [fields[value].name]: fields[value].base_type}), {});
+const getNameToTypeMap = (fields) => {
+  return Object.keys(fields || {}).reduce((acc, value) => ({...acc, [fields[value].name]: fields[value].base_type}), {});
 };
 
 const buildQuery = (baseQuery : StructuredQuery, aggregations) : StructuredQuery =>{
