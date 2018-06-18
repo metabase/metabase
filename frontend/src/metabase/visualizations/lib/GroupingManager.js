@@ -20,7 +20,6 @@ export class GroupingManager {
     const res2 = res.reduce(({resArr, prevElem}, elem) =>{const r = new Set([...prevElem, ...elem]); resArr.push(r); return {resArr, prevElem : r} },{ resArr: [], prevElem : new Set()}).resArr;
     const res3 = res2.map((v, i) => [columnsIndexesForGrouping[i], v]);
     this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
-
   }
 
 
@@ -114,8 +113,8 @@ const getFirstRowInGroupIndex = (firstInGroup, rowIndex: Number) : Number => {
 };
 
 const getStartGroupIndexToEndGroupIndex = (startIndexes : Set) : {} =>{
-  const sortedIndexes = Array.from(startIndexes).sort((p,q) => p >= q);
-  const [_, ...tail] = sortedIndexes;
+  const sortedIndexes = _.sortBy(Array.from(startIndexes));
+  const [x, ...tail] = sortedIndexes;
   return tail.reduce((acc, currentValue, index) => {acc[sortedIndexes[index]] = currentValue - 1; return acc}, {});
 };
 

@@ -529,8 +529,7 @@ export default class TableInteractiveSummary extends Component {
                   const r = a.indexOf(p.key) === -1;
                   if(r)
                     a.push(p.key);
-                  else
-                    console.log(r);
+
                   return r;
                 });
               }}
