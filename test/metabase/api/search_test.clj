@@ -226,4 +226,7 @@
                                   :alert_first_only false
                                   :alert_above_goal nil
                                   :name             nil}]]
-      (filter #(= (u/get-id pulse) (:id %)) ((user->client :crowberto) :get 200 "search")))))
+      (filter (fn [{:keys [model id]}]
+                (and (= id (u/get-id pulse))
+                     (= "pulse" model)))
+              ((user->client :crowberto) :get 200 "search")))))
