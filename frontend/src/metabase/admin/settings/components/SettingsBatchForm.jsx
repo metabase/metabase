@@ -290,7 +290,7 @@ export default class SettingsBatchForm extends Component {
 
 const StandardSection = ({ title, children }) => (
   <div>
-    {title && <h2 className="mx2">{t`Server Settings`}</h2>}
+    {title && <h2 className="mx2">{title}</h2>}
     <ul>{children}</ul>
   </div>
 );

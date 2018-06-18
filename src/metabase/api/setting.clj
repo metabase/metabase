@@ -11,6 +11,12 @@
   (api/check-superuser)
   (setting/all))
 
+(api/defendpoint PUT "/"
+  "Update multiple `Settings` values.  You must be a superuser to do this."
+  [:as {settings :body}]
+  (api/check-superuser)
+  (setting/set-many! settings))
+
 (api/defendpoint GET "/:key"
   "Fetch a single `Setting`. You must be a superuser to do this."
   [key]
