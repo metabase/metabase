@@ -132,7 +132,7 @@
       (assoc
           :name (tru "Saved items")
           :id   "root")
-      (dissoc :metabase.models.collection/is-root?)))
+      (dissoc ::collection/is-root?)))
 
 (api/defendpoint GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
