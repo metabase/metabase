@@ -3,6 +3,10 @@ import PropTypes from "prop-types";
 
 import _ from "underscore";
 
+/**
+ * A small wrapper around <input>, primarily should be used for the
+ * `onBlurChange` feature, otherwise you should use <input> directly
+ */
 export default class Input extends Component {
   constructor(props, context) {
     super(props, context);
