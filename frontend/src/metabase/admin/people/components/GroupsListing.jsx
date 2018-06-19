@@ -11,7 +11,7 @@ import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 import { PermissionsApi } from "metabase/services";
 import { t } from "c-3po";
 import Icon from "metabase/components/Icon.jsx";
-import Input from "metabase/components/Input.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Alert from "metabase/components/Alert.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
@@ -109,7 +109,7 @@ function EditingGroupRow({
   return (
     <tr className="bordered border-brand rounded">
       <td>
-        <Input
+        <InputBlurChange
           className="AdminInput h3"
           type="text"
           autoFocus={true}

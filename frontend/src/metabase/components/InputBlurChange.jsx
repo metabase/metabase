@@ -7,7 +7,7 @@ import _ from "underscore";
  * A small wrapper around <input>, primarily should be used for the
  * `onBlurChange` feature, otherwise you should use <input> directly
  */
-export default class Input extends Component {
+export default class InputBlurChange extends Component {
   constructor(props, context) {
     super(props, context);
     this.onBlur = this.onBlur.bind(this);
