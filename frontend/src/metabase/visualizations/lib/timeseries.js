@@ -1,7 +1,8 @@
 /* @flow weak */
 
 import d3 from "d3";
-import moment from "moment";
+import moment from "moment-timezone";
+import chronological from "chronological";
 import _ from "underscore";
 
 import { isDate } from "metabase/lib/schema_metadata";
@@ -300,3 +301,43 @@ export function computeTimeseriesTicksInterval(xDomain, xInterval, chartWidth) {
     maxTicksForChartWidth(chartWidth),
   );
 }
+
+// moment-timezone based d3 scale
+// adapted from https://github.com/metocean/chronological
+export const timeseriesScale = (
+  tickInterval,
+  tz,
+  linear = d3.scale.linear(),
+) => {
+  const m = chronological(moment);
+  const ms = d => (m.isMoment(d) ? d.valueOf() : m.isDate(d) ? d.getTime() : d);
+
+  const s = x => linear(ms(x));
+  s.domain = x => {
+    if (x === undefined) {
+      return linear.domain().map(t => moment(t).tz(tz));
+    }
+    linear.domain(x.map(ms));
+    return s;
+  };
+  s.ticks = (...args) => {
+    const domain = s.domain();
+    const unit = tickInterval.interval;
+    const anchor = moment()
+      .tz(tz)
+      .startOf("s")
+      .startOf(unit);
+    const diff = tickInterval.count;
+    const every = anchor.every(diff, unit);
+    const startindex = Math.ceil(every.count(domain[0]));
+    const endindex = Math.floor(every.count(domain[1]));
+    if (startindex > endindex) {
+      return [];
+    }
+    const ticks = _.range(startindex, endindex + 1).map(every.nth);
+    return ticks;
+  };
+  s.copy = () => timeseriesScale(tickInterval, tz, linear.copy());
+  d3.rebind(s, linear, "range", "rangeRound", "interpolate", "clamp", "invert");
+  return s;
+};

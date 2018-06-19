@@ -4,12 +4,11 @@ import _ from "underscore";
 import d3 from "d3";
 import dc from "dc";
 import moment from "moment-timezone";
-import chronological from "chronological";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 
-import { computeTimeseriesTicksInterval } from "./timeseries";
+import { computeTimeseriesTicksInterval, timeseriesScale } from "./timeseries";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
 
@@ -175,45 +174,7 @@ export function applyChartTimeseriesXAxis(
   );
 
   // set the x scale
-
-  // moment-timezone based d3 scale
-  // adapted from https://github.com/metocean/chronological
-  const scale = (tz, linear = d3.scale.linear()) => {
-    const m = chronological(moment);
-    const ms = d =>
-      m.isMoment(d) ? d.valueOf() : m.isDate(d) ? d.getTime() : d;
-
-    const s = x => linear(ms(x));
-    s.domain = x => {
-      if (x === undefined) {
-        return linear.domain().map(t => moment(t).tz(tz));
-      }
-      linear.domain(x.map(ms));
-      return s;
-    };
-    s.ticks = (...args) => {
-      const domain = s.domain();
-      const unit = tickInterval.interval;
-      const anchor = moment()
-        .tz(tz)
-        .startOf("s")
-        .startOf(unit);
-      const diff = tickInterval.count;
-      const every = anchor.every(diff, unit);
-      const startindex = Math.ceil(every.count(domain[0]));
-      const endindex = Math.floor(every.count(domain[1]));
-      if (startindex > endindex) {
-        return [];
-      }
-      const ticks = _.range(startindex, endindex + 1).map(every.nth);
-      return ticks;
-    };
-    s.copy = () => scale(tz, linear.copy());
-    d3.rebind(s, linear, "range", "rangeRound", "interpolate", "clamp");
-    return s;
-  };
-
-  chart.x(scale(timezone).domain(xDomain));
+  chart.x(timeseriesScale(tickInterval, timezone).domain(xDomain));
   // chart.x(d3.time.scale.utc().domain(xDomain)); //.nice(d3.time[dataInterval.interval]));
 
   // set the x units (used to compute bar size)
