@@ -738,10 +738,15 @@
 
 (s/defn ^:private comparisons
   [root, rule :- (s/maybe rules/Rule)]
-  (for [segment (->> root :entity related/related :segments (map ->root))]
-    {:url         (str (:url root) "/compare/segment/" (-> segment :entity u/get-id))
-     :title       (tru "Compare with {0}" (:full-name segment))
-     :description ""}))
+  (concat
+   (for [segment (->> root :entity related/related :segments (map ->root))]
+     {:url         (str (:url root) "/compare/segment/" (-> segment :entity u/get-id))
+      :title       (tru "Compare with {0}" (:full-name segment))
+      :description ""})
+   (when (->> root :entity (instance? (type Segment)))
+     [{:url         (str (:url root) "/compare/table/" (-> root :source u/get-id))
+       :title       (tru "Compare with entire dataset")
+       :description ""}])))
 
 (s/defn ^:private related
   [dashboard, rule :- (s/maybe rules/Rule)]
