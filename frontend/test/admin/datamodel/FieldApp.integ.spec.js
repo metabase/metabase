@@ -35,7 +35,7 @@ import FieldApp, {
   RemappingNamingTip,
   ValueRemappings,
 } from "metabase/admin/datamodel/containers/FieldApp";
-import Input from "metabase/components/Input";
+import InputBlurChange from "metabase/components/InputBlurChange";
 import {
   FieldVisibilityPicker,
   SpecialTypeAndTargetPicker,
@@ -88,11 +88,11 @@ describe("FieldApp", () => {
       const header = fieldApp.find(FieldHeader);
       expect(header.length).toBe(1);
 
-      const nameInput = header.find(Input).at(0);
+      const nameInput = header.find(InputBlurChange).at(0);
       expect(nameInput.props().value).toBe(
         staticFixtureMetadata.fields["1"].display_name,
       );
-      const descriptionInput = header.find(Input).at(1);
+      const descriptionInput = header.find(InputBlurChange).at(1);
       expect(descriptionInput.props().value).toBe(
         staticFixtureMetadata.fields["1"].description,
       );
@@ -109,8 +109,8 @@ describe("FieldApp", () => {
 
       const header = fieldApp.find(FieldHeader);
       expect(header.length).toBe(1);
-      const nameInput = header.find(Input).at(0);
-      const descriptionInput = header.find(Input).at(1);
+      const nameInput = header.find(InputBlurChange).at(0);
+      const descriptionInput = header.find(InputBlurChange).at(1);
 
       expect(nameInput.props().value).toBe(newTitle);
       expect(descriptionInput.props().value).toBe(newDescription);
@@ -437,13 +437,16 @@ describe("FieldApp", () => {
 
       const firstMapping = fieldValueMappings.at(0);
       expect(firstMapping.find("h3").text()).toBe("1");
-      expect(firstMapping.find(Input).props().value).toBe("1");
-      setInputValue(firstMapping.find(Input), "Terrible");
+      expect(firstMapping.find(InputBlurChange).props().value).toBe("1");
+      setInputValue(firstMapping.find(InputBlurChange), "Terrible");
 
       const lastMapping = fieldValueMappings.last();
       expect(lastMapping.find("h3").text()).toBe("5");
-      expect(lastMapping.find(Input).props().value).toBe("5");
-      setInputValue(lastMapping.find(Input), "Extraordinarily awesome");
+      expect(lastMapping.find(InputBlurChange).props().value).toBe("5");
+      setInputValue(
+        lastMapping.find(InputBlurChange),
+        "Extraordinarily awesome",
+      );
 
       const saveButton = valueRemappingsSection.find(ButtonWithStatus);
       clickButton(saveButton);
@@ -464,13 +467,13 @@ describe("FieldApp", () => {
       expect(
         fieldValueMappings
           .first()
-          .find(Input)
+          .find(InputBlurChange)
           .props().value,
       ).toBe("Terrible");
       expect(
         fieldValueMappings
           .last()
-          .find(Input)
+          .find(InputBlurChange)
           .props().value,
       ).toBe("Extraordinarily awesome");
     });

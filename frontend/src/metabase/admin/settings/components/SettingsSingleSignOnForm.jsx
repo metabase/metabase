@@ -5,7 +5,7 @@ import _ from "underscore";
 import { t, jt } from "c-3po";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import Input from "metabase/components/Input.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 
 export default class SettingsSingleSignOnForm extends Component {
   constructor(props, context) {
@@ -126,7 +126,7 @@ export default class SettingsSingleSignOnForm extends Component {
               </a>
             )}`}
           </p>
-          <Input
+          <InputBlurChange
             className="SettingsInput AdminInput bordered rounded h3"
             type="text"
             value={this.state.clientIDValue}
@@ -139,7 +139,7 @@ export default class SettingsSingleSignOnForm extends Component {
             </div>
             <div className="mt1 bordered rounded inline-block">
               <div className="inline-block px2 h2">@</div>
-              <Input
+              <InputBlurChange
                 className="SettingsInput inline-block AdminInput h3 border-left"
                 type="text"
                 value={this.state.domainValue}
