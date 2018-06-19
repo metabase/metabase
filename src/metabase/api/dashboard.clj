@@ -76,7 +76,7 @@
     (db/transaction
       ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
       ;; position, check that and fix up if needed
-      (api/maybe-reconcile-collection-position! Dashboard dashboard-data)
+      (api/maybe-reconcile-collection-position! dashboard-data)
       ;; Ok, now save the Dashboard
       (->> (db/insert! Dashboard dashboard-data)
            ;; publish an event and return the newly created Dashboard
@@ -242,7 +242,7 @@
 
        ;;If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
        ;;adjust the collection position of other dashboards in the collection
-       (api/maybe-reconcile-collection-position! Dashboard dash-before-update dash-updates)
+       (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
 
        (db/update! Dashboard id
          ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be

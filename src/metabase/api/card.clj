@@ -237,7 +237,7 @@
         card      (db/transaction
                     ;; Adding a new card at `collection_position` could cause other cards in this
                     ;; collection to change position, check that and fix it if needed
-                    (api/maybe-reconcile-collection-position! Card card-data)
+                    (api/maybe-reconcile-collection-position! card-data)
                     (db/insert! Card card-data))]
     (events/publish-event! :card-create card)
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has
@@ -410,7 +410,7 @@
 
       ;; Setting up a transaction here so that we don't get a partially reconciled/updated card.
       (db/transaction
-        (api/maybe-reconcile-collection-position! Card card-before-update card-updates)
+        (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
         ;; ok, now save the Card
         (db/update! Card id
@@ -483,7 +483,7 @@
      (map (fn [idx {:keys [collection_id collection_position] :as card}]
             ;; We are removing this card from `collection_id` so we need to reconcile any
             ;; `collection_position` entries left behind by this move
-            (api/reconcile-position-for-collection! Card collection_id collection_position nil)
+            (api/reconcile-position-for-collection! collection_id collection_position nil)
             ;; Now we can update the card with the new collection and a new calculated position
             ;; that appended to the end
             (db/update! Card (u/get-id card)

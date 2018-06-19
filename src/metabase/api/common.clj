@@ -515,17 +515,20 @@
 
 ;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
 
+(defn- update-models-with-new-position [plus-or-minus position-update-clause]
+)
+
 (s/defn reconcile-position-for-collection!
   "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
   for fixing card/dashboard/pulse changes that impact other instances in the collection"
-  [model
-   collection-id :- (s/maybe su/IntGreaterThanZero)
+  [collection-id :- (s/maybe su/IntGreaterThanZero)
    old-position :- (s/maybe su/IntGreaterThanZero)
    new-position :- (s/maybe su/IntGreaterThanZero)]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
-                     (db/update-where! model {:collection_id       collection-id
-                                              :collection_position position-update-clause}
-                       :collection_position (htypes/call plus-or-minus :collection_position 1)))]
+                     (doseq [model '[Card Dashboard Pulse]]
+                       (db/update-where! model {:collection_id       collection-id
+                                                :collection_position position-update-clause}
+                         :collection_position (htypes/call plus-or-minus :collection_position 1))))]
     (when (not= new-position old-position)
       (cond
         (and (nil? new-position)
@@ -559,10 +562,9 @@
   impact to the collection position of that model instance. If so, executes updates to fix the collection position
   that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
   updating an existing instance, but creating a new one)."
-  ([model, new-model-data :- ModelWithPosition]
-   (maybe-reconcile-collection-position! model nil new-model-data))
-  ([model
-    {old-collection-id :collection_id, old-position :collection_position, :as before-update} :- (s/maybe ModelWithPosition)
+  ([new-model-data :- ModelWithPosition]
+   (maybe-reconcile-collection-position! nil new-model-data))
+  ([{old-collection-id :collection_id, old-position :collection_position, :as before-update} :- (s/maybe ModelWithPosition)
     {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]
    (let [updated-collection? (and (contains? model-updates :collection_id)
                                   (not= old-collection-id new-collection-id))
@@ -571,19 +573,19 @@
      (cond
        ;; If the collection hasn't changed, but we have a new collection position, we might need to reconcile
        (and (not updated-collection?) updated-position?)
-       (reconcile-position-for-collection! model old-collection-id old-position new-position)
+       (reconcile-position-for-collection! old-collection-id old-position new-position)
 
        ;; If we have a new collection id, but no new position, reconcile the old collection, then update the new
        ;; collection with the existing position
        (and updated-collection? (not updated-position?))
        (do
-         (reconcile-position-for-collection! model old-collection-id old-position nil)
-         (reconcile-position-for-collection! model new-collection-id nil old-position))
+         (reconcile-position-for-collection! old-collection-id old-position nil)
+         (reconcile-position-for-collection! new-collection-id nil old-position))
 
        ;; We have a new collection id AND and new collection position
        ;; Update the old collection using the old position
        ;; Update the new collection using the new position
        (and updated-collection? updated-position?)
        (do
-         (reconcile-position-for-collection! model old-collection-id old-position nil)
-         (reconcile-position-for-collection! model new-collection-id nil new-position))))))
+         (reconcile-position-for-collection! old-collection-id old-position nil)
+         (reconcile-position-for-collection! new-collection-id nil new-position))))))

@@ -14,6 +14,7 @@
              [card-favorite :refer [CardFavorite]]
              [collection :refer [Collection]]
              [database :refer [Database]]
+             [dashboard :refer [Dashboard]]
              [permissions :as perms]
              [permissions-group :as perms-group]
              [pulse :as pulse :refer [Pulse]]
@@ -574,15 +575,15 @@
 ;;; |                                      UPDATING THE POSITION OF A CARDS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- name->position [{:keys [items] :as results}]
-  (zipmap (map :name items)
-          (map :collection_position items)))
+(defn- name->position [results]
+  (zipmap (map :name results)
+          (map :collection_position results)))
 
 (defn get-name->collection-position
   "Call the collection endpoint, looking for instances of `model-str` as `user-kwd` in `collection-id`. Will return a
   map with the names of the items as keys and their position as the value"
   [user-kwd model-str collection-id]
-  (name->position ((user->client user-kwd) :get 200 (str "collection/" (u/get-id collection-id)) :model model-str)))
+  (name->position ((user->client user-kwd) :get 200 (format "collection/%s/items" (u/get-id collection-id)) :model model-str)))
 
 (defmacro with-ordered-models-in-collection
   "Macro for creating many sequetial collection_position model instances, putting each in `collection`"
@@ -762,6 +763,25 @@
                    {:collection_id (u/get-id collection)
                     :collection_position nil}))
            (get-name->collection-position :rasta "card" coll-id))]))))
+
+(expect
+  {"d" 1
+   "a" 2
+   "b" 3
+   "c" 4
+   "e" 5
+   "f" 6}
+  (tt/with-temp* [Collection [{coll-id :id :as collection}]
+                  Dashboard  [_ {:name "a", :collection_id coll-id, :collection_position 1}]
+                  Dashboard  [_ {:name "b", :collection_id coll-id, :collection_position 2}]
+                  Card       [_ {:name "c", :collection_id coll-id, :collection_position 3}]
+                  Card       [d {:name "d", :collection_id coll-id, :collection_position 4}]
+                  Pulse      [_ {:name "e", :collection_id coll-id, :collection_position 5}]
+                  Pulse      [_ {:name "f", :collection_id coll-id, :collection_position 6}]]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "card/" (u/get-id d))
+     {:collection_position 1, :collection_id coll-id})
+    (name->position ((user->client :rasta) :get 200 (format "collection/%s/items" coll-id)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Card updates that impact alerts                                         |
@@ -1248,8 +1268,8 @@
                   Card       [card-e               {:name "e", :collection_id coll-id-2, :collection_position 2}]
                   Card       [card-f               {:name "f", :collection_id coll-id-2, :collection_position 3}]]
     [(POST-card-collections! :crowberto 200 new-collection [card-a card-b])
-     (merge (name->position ((user->client :crowberto) :get 200 (str "collection/" coll-id-1)  :model "card" :archived "false"))
-            (name->position ((user->client :crowberto) :get 200 (str "collection/" coll-id-2)  :model "card" :archived "false")))]))
+     (merge (name->position ((user->client :crowberto) :get 200 (format "collection/%s/items" coll-id-1)  :model "card" :archived "false"))
+            (name->position ((user->client :crowberto) :get 200 (format "collection/%s/items" coll-id-2)  :model "card" :archived "false")))]))
 
 ;; Moving a card without a collection_position keeps the collection_position nil
 (expect
@@ -1265,8 +1285,8 @@
                   Card       [card-b               {:name "b", :collection_id coll-id-2, :collection_position 1}]
                   Card       [card-c               {:name "c", :collection_id coll-id-2, :collection_position 2}]]
     [(POST-card-collections! :crowberto 200 new-collection [card-a card-b])
-     (merge (name->position ((user->client :crowberto) :get 200 (str "collection/" coll-id-1)  :model "card" :archived "false"))
-            (name->position ((user->client :crowberto) :get 200 (str "collection/" coll-id-2)  :model "card" :archived "false")))]))
+     (merge (name->position ((user->client :crowberto) :get 200 (format "collection/%s/items" coll-id-1)  :model "card" :archived "false"))
+            (name->position ((user->client :crowberto) :get 200 (format "collection/%s/items" coll-id-2)  :model "card" :archived "false")))]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
