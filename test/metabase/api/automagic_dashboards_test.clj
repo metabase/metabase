@@ -1,6 +1,5 @@
 (ns metabase.api.automagic-dashboards-test
   (:require [expectations :refer :all]
-            [metabase.api.common :as api]
             [metabase.api.card-test :refer [with-cards-in-readable-collection]]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models
@@ -9,27 +8,11 @@
              [metric :refer [Metric]]
              [permissions :as perms]
              [permissions-group :as perms-group]
-             [segment :refer [Segment]]
-             [user :as user]]
+             [segment :refer [Segment]]]
+            [metabase.test.automagic-dashboards :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
             [toucan.util.test :as tt]))
-
-(defmacro with-rasta
-  "Execute body with rasta as the current user."
-  [& body]
-  `(binding [api/*current-user-id*              (test-users/user->id :rasta)
-             api/*current-user-permissions-set* (-> :rasta
-                                                    test-users/user->id
-                                                    user/permissions-set
-                                                    atom)]
-     ~@body))
-
-(defmacro ^:private with-dashboard-cleanup
-  [& body]
-  `(tu/with-model-cleanup ['~'Card '~'Dashboard '~'Collection '~'DashboardCard]
-     ~@body))
 
 (defn- api-call
   ([template args] (api-call template args (constantly true)))

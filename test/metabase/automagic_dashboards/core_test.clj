@@ -1,6 +1,5 @@
 (ns metabase.automagic-dashboards.core-test
   (:require [expectations :refer :all]
-            [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [core :refer :all :as magic]
              [rules :as rules]]
@@ -10,25 +9,11 @@
              [field :as field :refer [Field]]
              [metric :refer [Metric]]
              [query :as query]
-             [table :refer [Table] :as table]
-             [user :as user]]
-            [metabase.query-processor :as qp]
+             [table :refer [Table] :as table]]
             [metabase.test.data :as data]
-            [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
+            [metabase.test.automagic-dashboards :refer :all]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
-
-(defmacro with-rasta
-  "Execute body with rasta as the current user."
-  [& body]
-  `(binding [api/*current-user-id*              (test-users/user->id :rasta)
-             api/*current-user-permissions-set* (-> :rasta
-                                                    test-users/user->id
-                                                    user/permissions-set
-                                                    atom)]
-     ~@body))
-
 
 (expect
   [:field-id 1]
@@ -64,38 +49,6 @@
        (#'magic/matching-rules (rules/get-rules ["table"]))
        (map (comp first :applies_to))))
 
-
-(defn- collect-urls
-  [dashboard]
-  (->> dashboard
-       (tree-seq (some-fn sequential? map?) identity)
-       (keep (fn [form]
-               (when (map? form)
-                 (:url form))))))
-
-(defn- valid-urls?
-  [dashboard]
-  (->> dashboard
-       collect-urls
-       (every? (fn [url]
-                 ((test-users/user->client :rasta) :get 200 (format "automagic-dashboards/%s"
-                                                                    (subs url 16)))))))
-
-(def ^:private valid-card?
-  (comp qp/expand :dataset_query))
-
-(defn- valid-dashboard?
-  [dashboard]
-  (assert (:name dashboard))
-  (assert (-> dashboard :ordered_cards count pos?))
-  (assert (valid-urls? dashboard))
-  (assert (every? valid-card? (keep :card (:ordered_cards dashboard))))
-  true)
-
-(defmacro ^:private with-dashboard-cleanup
-  [& body]
-  `(tu/with-model-cleanup ['~'Card '~'Dashboard '~'Collection '~'DashboardCard]
-     ~@body))
 
 (expect
   (with-rasta
