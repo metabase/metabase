@@ -9,7 +9,6 @@ import Icon from "metabase/components/Icon.jsx";
 
 import RetinaImage from "react-retina-image";
 
-import cx from "classnames";
 import _ from "underscore";
 import { t, jt } from "c-3po";
 

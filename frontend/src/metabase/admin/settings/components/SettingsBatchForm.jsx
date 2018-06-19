@@ -2,7 +2,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import _ from "underscore";
-import cx from "classnames";
 
 import Collapse from "react-collapse";
 import { t } from "c-3po";

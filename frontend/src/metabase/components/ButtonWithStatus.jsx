@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import cx from "classnames";
 import { t } from "c-3po";
 
 import Button from "metabase/components/Button";
