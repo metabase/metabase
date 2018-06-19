@@ -682,13 +682,7 @@
       [(assoc dashboard
          :filters  filters
          :cards    cards
-         :context  context
-         :fieldset (->> context
-                        :tables
-                        (mapcat :fields)
-                        (map (fn [field]
-                               [(id-or-name field) field]))
-                        (into {})))
+         :context  context)
        rule])))
 
 (def ^:private ^:const ^Long max-related 6)

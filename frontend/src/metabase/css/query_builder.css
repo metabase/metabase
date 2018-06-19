@@ -415,7 +415,6 @@
 }
 .Filter-section-operator .QueryOption {
   color: var(--purple-color);
-  text-transform: lowercase;
 }
 .Filter-section-value .QueryOption {
   color: white;
