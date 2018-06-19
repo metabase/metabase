@@ -189,6 +189,7 @@
   (constrained-all
    {(s/required-key :title)             s/Str
     (s/required-key :rule)              s/Str
+    (s/required-key :specificity)       s/Int
     (s/optional-key :cards)             [Card]
     (s/optional-key :dimensions)        [Dimension]
     (s/optional-key :applies_to)        AppliesTo
@@ -278,6 +279,10 @@
 (def ^:private ^{:arglists '([f])} file->entity-type
   (comp (partial re-find #".+(?=\.yaml$)") str (memfn ^Path getFileName)))
 
+(defn- specificity
+  [rule]
+  (transduce (map (comp count ancestors)) + (:applies_to rule)))
+
 (defn- load-rule
   [^Path f]
   (try
@@ -286,9 +291,11 @@
           .toUri
           slurp
           yaml/parse-string
-          (assoc :rule entity-type)
+          (assoc :rule        entity-type
+                 :specificity 0)
           (update :applies_to #(or % entity-type))
-          rules-validator))
+          rules-validator
+          (as-> rule (assoc rule :specificity (specificity rule)))))
     (catch Exception e
       (log/errorf (trs "Error parsing %s:\n%s")
                   (.getFileName f)

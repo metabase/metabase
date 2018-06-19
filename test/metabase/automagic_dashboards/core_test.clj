@@ -15,6 +15,8 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
+;;; ------------------- `->reference` -------------------
+
 (expect
   [:field-id 1]
   (->> (assoc (field/->FieldInstance) :id 1)
@@ -30,6 +32,8 @@
   (->> 42
        (#'magic/->reference :mbql)))
 
+
+;;; ------------------- Rule matching  -------------------
 
 (expect
   [:entity/UserTable :entity/GenericTable :entity/*]
@@ -49,6 +53,8 @@
        (#'magic/matching-rules (rules/get-rules ["table"]))
        (map (comp first :applies_to))))
 
+
+;;; ------------------- `automagic-anaysis` -------------------
 
 (expect
   (with-rasta
@@ -209,6 +215,8 @@
             valid-dashboard?)))))
 
 
+;;; ------------------- /candidates -------------------
+
 (expect
   3
   (with-rasta
@@ -219,12 +227,56 @@
   1
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
-                  Field    [{} {:table_id table-id}]
-                  Field    [{} {:table_id table-id}]]
+                  Field    [_ {:table_id table-id}]
+                  Field    [_ {:table_id table-id}]]
     (with-rasta
       (with-dashboard-cleanup
         (count (candidate-tables (Database db-id)))))))
 
+(expect
+  4
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [{table-id :id} {:db_id db-id}]
+                  Field    [_ {:table_id table-id}]
+                  Field    [_ {:table_id table-id}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (let [database (Database db-id)]
+          (db/with-call-counting [call-count]
+            (candidate-tables database)
+            (call-count)))))))
+
+(expect
+  {:list-like?  true
+   :link-table? false
+   :num-fields 2}
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [{table-id :id} {:db_id db-id}]
+                  Field    [_ {:table_id table-id :special_type :type/PK}]
+                  Field    [_ {:table_id table-id}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> (#'magic/enhance-table-stats [(Table table-id)])
+            first
+            :stats)))))
+
+(expect
+  {:list-like?  false
+   :link-table? true
+   :num-fields 3}
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [{table-id :id} {:db_id db-id}]
+                  Field    [_ {:table_id table-id :special_type :type/PK}]
+                  Field    [_ {:table_id table-id :special_type :type/FK}]
+                  Field    [_ {:table_id table-id :special_type :type/FK}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> (#'magic/enhance-table-stats [(Table table-id)])
+            first
+            :stats)))))
+
+
+;;; ------------------- Definition overloading -------------------
 
 ;; Identity
 (expect
@@ -277,6 +329,8 @@
       first
       key))
 
+
+;;; ------------------- Datetime resolution inference -------------------
 
 (expect
   :month

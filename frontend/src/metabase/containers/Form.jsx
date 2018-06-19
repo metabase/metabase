@@ -88,9 +88,9 @@ export default class Form_ extends React.Component {
       const mapStateToProps = (state, ownProps) => {
         const values = getValues(state.form[this._formName]);
         if (values) {
-          return { fields: form.fieldNames(values) };
+          return { ...formConfig, fields: form.fieldNames(values) };
         } else {
-          return {};
+          return formConfig;
         }
       };
       this._FormComponent = reduxForm(formConfig, mapStateToProps)(

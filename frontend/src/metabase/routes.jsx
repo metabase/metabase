@@ -13,8 +13,6 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
 
-import { withBackground } from "metabase/hoc/Background";
-
 import HomepageApp from "metabase/home/containers/HomepageApp";
 
 // auth containers
@@ -37,10 +35,12 @@ import {
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 
-import CollectionEdit from "metabase/questions/containers/CollectionEdit.jsx";
-import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx";
+import CollectionEdit from "metabase/collections/containers/CollectionEdit.jsx";
+import CollectionCreate from "metabase/collections/containers/CollectionCreate.jsx";
 import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
+import CollectionPermissionsModal from "metabase/admin/permissions/containers/CollectionPermissionsModal";
+import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
@@ -142,9 +142,10 @@ const UserIsNotAuthenticated = UserAuthWrapper({
 const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
-const IsAdmin = withBackground("bg-white")(
-  MetabaseIsSetup(UserIsAuthenticated(UserIsAdmin(({ children }) => children))),
+const IsAdmin = MetabaseIsSetup(
+  UserIsAuthenticated(UserIsAdmin(({ children }) => children)),
 );
+
 const IsNotAuthenticated = MetabaseIsSetup(
   UserIsNotAuthenticated(({ children }) => children),
 );
@@ -198,10 +199,15 @@ export const getRoutes = store => (
         <Route path="search" title={t`Search`} component={SearchApp} />
         <Route path="archive" title={t`Archive`} component={ArchiveApp} />
 
+        <Route path="collection/users" component={IsAdmin}>
+          <IndexRoute component={UserCollectionList} />
+        </Route>
+
         <Route path="collection/:collectionId" component={CollectionLanding}>
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
           <ModalRoute path="new_collection" modal={CollectionCreate} />
           <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
+          <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
         </Route>
 
         <Route path="activity" component={HomepageApp} />

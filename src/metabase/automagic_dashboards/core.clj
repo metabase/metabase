@@ -20,6 +20,7 @@
              [rules :as rules]]
             [metabase.models
              [card :as card :refer [Card]]
+             [database :refer [Database]]
              [field :refer [Field] :as field]
              [interface :as mi]
              [metric :refer [Metric] :as metric]
@@ -161,8 +162,13 @@
 (def ^:private ^{:arglists '([card-or-question])} source-question
   (comp Card qp.util/query->source-card-id :dataset_query))
 
-(def ^:private ^{:arglists '([card])} table-like?
-  (comp empty? #(qp.util/get-in-normalized % [:dataset_query :query :aggregation])))
+(defn- table-like?
+  [card-or-question]
+  (let [[aggregation & _] (qp.util/get-in-normalized card-or-question [:dataset_query :query :aggregation])]
+    (or (nil? aggregation)
+        (and (or (string? aggregation)
+                 (keyword? aggregation))
+             (= (qp.util/normalize-token aggregation) :rows)))))
 
 (defn- source
   [card]
@@ -494,6 +500,11 @@
        x)
       (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
 
+(defn- valid-breakout-dimension?
+  [{:keys [base_type engine] :as f}]
+  (not (and (isa? base_type :type/Number)
+            (= engine :druid))))
+
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
@@ -517,6 +528,10 @@
          (map (some-fn #(get-in (:dimensions context) [% :matches])
                        (comp #(filter-tables % (:tables context)) rules/->entity)))
          (apply combo/cartesian-product)
+         (filter (fn [instantiations]
+                   (->> dimensions
+                        (map (comp (zipmap used-dimensions instantiations) second))
+                        (every? valid-breakout-dimension?))))
          (map (fn [instantiations]
                 (let [bindings (zipmap used-dimensions instantiations)
                       query    (if query
@@ -536,15 +551,11 @@
                       (assoc :score         score
                              :dataset_query query))))))))
 
-(s/defn ^:private rule-specificity
-  [rule :- rules/Rule]
-  (transduce (map (comp count ancestors)) + (:applies_to rule)))
-
-(s/defn ^:private matching-rules
+(defn- matching-rules
   "Return matching rules orderd by specificity.
    Most specific is defined as entity type specification the longest ancestor
    chain."
-  [rules :- [rules/Rule], {:keys [source entity]}]
+  [rules {:keys [source entity]}]
   (let [table-type (or (:entity_type source) :entity/GenericTable)]
     (->> rules
          (filter (fn [{:keys [applies_to]}]
@@ -552,7 +563,7 @@
                      (and (isa? table-type entity-type)
                           (or (nil? field-type)
                               (field-isa? entity field-type))))))
-         (sort-by rule-specificity >))))
+         (sort-by :specificity >))))
 
 (defn- linked-tables
   "Return all tables accessable from a given table with the paths to get there.
@@ -607,11 +618,13 @@
   (let [source        (:source root)
         tables        (concat [source] (when (instance? (type Table) source)
                                          (linked-tables source)))
+        engine        (-> source ((some-fn :db_id :database_id)) Database :engine)
         table->fields (if (instance? (type Table) source)
                         (comp (->> (db/select Field
                                               :table_id        [:in (map u/get-id tables)]
                                               :visibility_type "normal")
                                    field/with-targets
+                                   (map #(assoc % :engine engine))
                                    (group-by :table_id))
                               u/get-id)
                         (->> source
@@ -621,7 +634,8 @@
                                         (update :base_type keyword)
                                         (update :special_type keyword)
                                         field/map->FieldInstance
-                                        (classify/run-classifiers {}))))
+                                        (classify/run-classifiers {})
+                                        (map #(assoc % :engine engine)))))
                              constantly))]
     (as-> {:source       (assoc source :fields (table->fields source))
            :root         root
@@ -646,11 +660,11 @@
            vals
            (apply concat)))
 
-(s/defn ^:private make-dashboard
-  ([root, rule :- rules/Rule]
+(defn- make-dashboard
+  ([root rule]
    (make-dashboard root rule {:tables [(:source root)]
                               :root   root}))
-  ([root, rule :- rules/Rule, context]
+  ([root rule context]
    (-> rule
        (select-keys [:title :description :transient_title :groups])
        (instantiate-metadata context {})
@@ -669,13 +683,7 @@
       [(assoc dashboard
          :filters  filters
          :cards    cards
-         :context  context
-         :fieldset (->> context
-                        :tables
-                        (mapcat :fields)
-                        (map (fn [field]
-                               [(id-or-name field) field]))
-                        (into {})))
+         :context  context)
        rule])))
 
 (def ^:private ^:const ^Long max-related 6)
@@ -876,13 +884,40 @@
   [field opts]
   (automagic-dashboard (merge (->root field) opts)))
 
-(defn- enhanced-table-stats
-  [table]
-  (let [field-types (->> (db/select [Field :special_type] :table_id (u/get-id table))
-                         (map :special_type))]
-    (assoc table :stats {:num-fields  (count field-types)
-                         :list-like?  (= (count (remove #{:type/PK} field-types)) 1)
-                         :link-table? (every? #{:type/FK :type/PK} field-types)})))
+(defn- enhance-table-stats
+  [tables]
+  (when (not-empty tables)
+    (let [field-count (->> (db/query {:select   [:table_id [:%count.* "count"]]
+                                      :from     [Field]
+                                      :where    [:in :table_id (map u/get-id tables)]
+                                      :group-by [:table_id]})
+                           (into {} (map (fn [{:keys [count table_id]}]
+                                           [table_id count]))))
+          list-like?  (->> (when-let [candidates (->> field-count
+                                                      (filter (comp (partial >= 2) val))
+                                                      (map key)
+                                                      not-empty)]
+                             (db/query {:select   [:table_id]
+                                        :from     [Field]
+                                        :where    [:and [:in :table_id candidates]
+                                                   [:or [:not= :special_type "type/PK"]
+                                                    [:= :special_type nil]]]
+                                        :group-by [:table_id]
+                                        :having   [:= :%count.* 1]}))
+                           (into #{} (map :table_id)))
+          link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
+                                      :from     [Field]
+                                      :where    [:and [:in :table_id (keys field-count)]
+                                                 [:in :special_type ["type/PK" "type/FK"]]]
+                                      :group-by [:table_id]})
+                           (filter (fn [{:keys [table_id count]}]
+                                     (= count (field-count table_id))))
+                           (into #{} (map :table_id)))]
+      (for [table tables]
+        (let [table-id (u/get-id table)]
+          (assoc table :stats {:num-fields  (field-count table-id 0)
+                               :list-like?  (boolean (list-like? table-id))
+                               :link-table? (boolean (link-table? table-id))}))))))
 
 (def ^:private ^:const ^Long max-candidate-tables
   "Maximal number of tables per schema shown in `candidate-tables`."
@@ -901,13 +936,13 @@
   ([database] (candidate-tables database nil))
   ([database schema]
    (let [rules (rules/get-rules ["table"])]
-     (->> (apply db/select Table
+     (->> (apply db/select [Table :id :schema :display_name :entity_type :db_id]
                  (cond-> [:db_id           (u/get-id database)
                           :visibility_type nil]
                    schema (concat [:schema schema])))
           (filter mi/can-read?)
-          (map enhanced-table-stats)
-          (remove (comp (some-fn :link-table? :list-like?) :stats))
+          enhance-table-stats
+          (remove (comp (some-fn :link-table? :list-like? (comp zero? :num-fields)) :stats))
           (map (fn [table]
                  (let [root      (->root table)
                        rule      (->> root
@@ -916,7 +951,7 @@
                        dashboard (make-dashboard root rule)]
                    {:url         (format "%stable/%s" public-endpoint (u/get-id table))
                     :title       (:full-name root)
-                    :score       (+ (math/sq (rule-specificity rule))
+                    :score       (+ (math/sq (:specificity rule))
                                     (math/log (-> table :stats :num-fields)))
                     :description (:description dashboard)
                     :table       table

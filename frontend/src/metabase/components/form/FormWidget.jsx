@@ -15,7 +15,8 @@ const WIDGETS = {
 };
 
 const FormWidget = ({ type, ...props }) => {
-  const Widget = WIDGETS[type] || FormInputWidget;
+  const Widget =
+    (typeof type === "string" ? WIDGETS[type] : type) || FormInputWidget;
   return <Widget {...props} />;
 };
 

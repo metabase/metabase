@@ -3,7 +3,6 @@ import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 declare var ace: any;
 
-import React from "react";
 import { createAction } from "redux-actions";
 import _ from "underscore";
 import { assocIn } from "icepick";
@@ -29,7 +28,7 @@ import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
-import { addUndo, createUndo } from "metabase/redux/undo";
+import { addUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
@@ -1418,6 +1417,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
   },
 );
 
+// DEPRECATED: use metabase/entities/questions
 export const ARCHIVE_QUESTION = "metabase/qb/ARCHIVE_QUESTION";
 export const archiveQuestion = createThunkAction(
   ARCHIVE_QUESTION,
@@ -1428,17 +1428,12 @@ export const archiveQuestion = createThunkAction(
     };
     let response = await CardApi.update(card);
 
-    const type = archived ? "archived" : "unarchived";
-
     dispatch(
-      addUndo(
-        createUndo({
-          type,
-          // eslint-disable-next-line react/display-name
-          message: () => <div> {"Question  was " + type + "."} </div>,
-          action: archiveQuestion(card.id, !archived),
-        }),
-      ),
+      addUndo({
+        verb: archived ? "archived" : "unarchived",
+        subject: "question",
+        action: archiveQuestion(card.id, !archived),
+      }),
     );
 
     dispatch(push(Urls.collection(card.collection_id)));

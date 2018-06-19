@@ -12,7 +12,7 @@ import {
 } from "metabase/lib/redux";
 import { normalize, schema } from "normalizr";
 
-import { saveDashboard } from "metabase/dashboards/dashboards";
+import Dashboards from "metabase/entities/dashboards";
 
 import {
   createParameter,
@@ -292,7 +292,9 @@ export const saveDashboardAndCards = createThunkAction(
       // update the dashboard itself
       if (dashboard.isDirty) {
         let { id, name, description, parameters } = dashboard;
-        await dispatch(saveDashboard({ id, name, description, parameters }));
+        await dispatch(
+          Dashboards.actions.update({ id }, { name, description, parameters }),
+        );
       }
 
       // reposition the cards
@@ -341,7 +343,7 @@ export const saveDashboardAndCards = createThunkAction(
         }
       }
 
-      await dispatch(saveDashboard(dashboard));
+      await dispatch(Dashboards.actions.update(dashboard));
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       dispatch(fetchDashboard(dashboard.id, null, true)); // disable using query parameters when saving

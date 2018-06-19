@@ -6,6 +6,7 @@ import PermissionsApp from "./PermissionsApp.jsx";
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import { CollectionsApi } from "metabase/services";
+import Collections from "metabase/entities/collections";
 
 import {
   getCollectionsPermissionsGrid,
@@ -13,11 +14,7 @@ import {
   getSaveError,
   getDiff,
 } from "../selectors";
-import {
-  updatePermission,
-  savePermissions,
-  loadCollections,
-} from "../permissions";
+import { updatePermission, savePermissions } from "../permissions";
 import { goBack, push } from "react-router-redux";
 
 const mapStateToProps = (state, props) => {
@@ -37,7 +34,9 @@ const mapDispatchToProps = {
 
 const Editor = connect(mapStateToProps, mapDispatchToProps)(PermissionsEditor);
 
-@connect(null, { loadCollections })
+@connect(null, {
+  loadCollections: Collections.actions.fetchList,
+})
 @fitViewport
 export default class CollectionsPermissionsApp extends Component {
   componentWillMount() {
@@ -51,7 +50,12 @@ export default class CollectionsPermissionsApp extends Component {
         save={CollectionsApi.updateGraph}
         fitClassNames={this.props.fitClassNames}
       >
-        <Editor {...this.props} admin={false} confirmCancel={false} />
+        <Editor
+          {...this.props}
+          collectionId={this.props.location.query.collectionId}
+          admin={false}
+          confirmCancel={false}
+        />
       </PermissionsApp>
     );
   }
