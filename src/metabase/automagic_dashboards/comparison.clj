@@ -3,12 +3,16 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
-             [core :refer [->root ->field automagic-analysis]]
+             [core :refer [->root ->field automagic-analysis ->related-entity]]
              [filters :as filters]
              [populate :as populate]]
-            [metabase.models.metric :refer [Metric]]
+            [metabase.models
+             [metric :refer [Metric]]
+             [table :refer [Table]]]
             [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses]]
             [metabase.query-processor.util :as qp.util]
+            [metabase.related :as related]
+            [metabase.util :as u]
             [puppetlabs.i18n.core :as i18n :refer [tru]]))
 
 (defn- dashboard->cards
@@ -166,6 +170,31 @@
        distinct
        (map (partial ->field segment))))
 
+(defn- related
+  [& entities]
+  (cond-> {:x-rays      (map (comp ->related-entity :entity) entities)
+           :comparisons (let [id              (comp (juxt type u/get-id) :entity)
+                              new-comparison? (comp (complement (into #{} (map id) entities)) id)]
+                          (for [root    entities
+                                segment (->> root :entity related/related :segments (map ->root))
+                                :when (new-comparison? segment)]
+                            {:url         (format "%s/compare/segment/%s"
+                                                  (:url root)
+                                                  (-> segment :entity u/get-id))
+                             :title       (tru "Compare {0} with {1}"
+                                               (:full-name root)
+                                               (:full-name segment))
+                             :description ""}))}
+    (not-any? (comp (partial instance? (type Table)) :entity) entities)
+    (merge {:source         [(-> entities first :source ->related-entity)]
+            :entire-dataset (for [root entities]
+                              {:url         (format "%s/compare/table/%s"
+                                                    (:url root)
+                                                    (-> root :source u/get-id))
+                               :title       (tru "Compare {0} with the entire dataset"
+                                                 (:full-name root))
+                               :description ""})})))
+
 (defn comparison-dashboard
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
    the dataset defined by segments `left` and `right`."
@@ -198,7 +227,7 @@
                                                  (:full-name right))
                          :creator_id        api/*current-user-id*
                          :parameters        []
-                         :related           (:related dashboard)}
+                         :related           (related left right)}
                         (add-title-row left right))))
                  ([[dashboard row]] dashboard)
                  ([[dashboard row] card]
