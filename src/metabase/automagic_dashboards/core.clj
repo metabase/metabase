@@ -20,6 +20,7 @@
              [rules :as rules]]
             [metabase.models
              [card :as card :refer [Card]]
+             [database :refer [Database]]
              [field :refer [Field] :as field]
              [interface :as mi]
              [metric :refer [Metric] :as metric]
@@ -494,6 +495,11 @@
        x)
       (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
 
+(defn- valid-breakout-dimension?
+  [{:keys [base_type engine] :as f}]
+  (not (and (isa? base_type :type/Number)
+            (= engine :druid))))
+
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
@@ -517,6 +523,10 @@
          (map (some-fn #(get-in (:dimensions context) [% :matches])
                        (comp #(filter-tables % (:tables context)) rules/->entity)))
          (apply combo/cartesian-product)
+         (filter (fn [instantiations]
+                   (->> dimensions
+                        (map (comp (zipmap used-dimensions instantiations) second))
+                        (every? valid-breakout-dimension?))))
          (map (fn [instantiations]
                 (let [bindings (zipmap used-dimensions instantiations)
                       query    (if query
@@ -599,11 +609,13 @@
   (let [source        (:source root)
         tables        (concat [source] (when (instance? (type Table) source)
                                          (linked-tables source)))
+        engine        (-> source ((some-fn :db_id :database_id)) Database :engine)
         table->fields (if (instance? (type Table) source)
                         (comp (->> (db/select Field
                                               :table_id        [:in (map u/get-id tables)]
                                               :visibility_type "normal")
                                    field/with-targets
+                                   (map #(assoc % :engine engine))
                                    (group-by :table_id))
                               u/get-id)
                         (->> source
@@ -613,7 +625,8 @@
                                         (update :base_type keyword)
                                         (update :special_type keyword)
                                         field/map->FieldInstance
-                                        (classify/run-classifiers {}))))
+                                        (classify/run-classifiers {})
+                                        (map #(assoc % :engine engine)))))
                              constantly))]
     (as-> {:source       (assoc source :fields (table->fields source))
            :root         root
