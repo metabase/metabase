@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import _ from "underscore";
 
-const DEFAULT_KEY_FOR_ITEM = item => `${item.type}:${item.id}`;
+const DEFAULT_KEY_FOR_ITEM = item => item.id;
 
 // Higher order component for managing selection of a list.
 //

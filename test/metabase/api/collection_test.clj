@@ -119,7 +119,8 @@
       :effective_location  "/"
       :can_write           true))
   (tu/obj->json->obj
-    ((user->client :crowberto) :get 200 (str "collection/" (u/get-id collection)))))
+    (-> ((user->client :crowberto) :get 200 (str "collection/" (u/get-id collection)))
+        (assoc :items ((user->client :crowberto) :get 200 (str "collection/" (u/get-id collection) "/items"))))))
 
 
 (defn- remove-ids-from-collection-detail [results & {:keys [keep-collection-id?]
@@ -154,6 +155,7 @@
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
       (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection)))
+          (assoc :items ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "/items")))
           remove-ids-from-collection-detail))))
 
 ;; ...and that you can also filter so that you only see the children you want to see
@@ -164,7 +166,8 @@
   (tt/with-temp Collection [collection {:name "Art Collection"}]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
-      (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "?model=dashboard"))
+      (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection)))
+          (assoc :items ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "/items?model=dashboard")))
           remove-ids-from-collection-detail))))
 
 ;; Let's make sure the `archived` option works.
@@ -176,7 +179,8 @@
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
       (db/update-where! Dashboard {:collection_id (u/get-id collection)} :archived true)
-      (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "?archived=true"))
+      (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection)))
+          (assoc :items ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "/items?archived=true")))
           remove-ids-from-collection-detail))))
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
@@ -192,13 +196,17 @@
    :effective_ancestors ()
    :effective_location  "/"
    :id                  (u/get-id (collection/user->personal-collection (user->id :lucky)))
-   :items               ()
    :location            "/"})
 
-(defn- api-get-lucky-personal-collection [user-kw & {:keys [expected-status-code], :or {expected-status-code 200}}]
-  ((user->client user-kw) :get expected-status-code (str "collection/" (u/get-id (collection/user->personal-collection
-                                                                                  (user->id :lucky))))))
+(defn- lucky-personal-collection-id
+  []
+  (u/get-id (collection/user->personal-collection (user->id :lucky))))
 
+(defn- api-get-lucky-personal-collection [user-kw & {:keys [expected-status-code], :or {expected-status-code 200}}]
+  ((user->client user-kw) :get expected-status-code (str "collection/" (lucky-personal-collection-id))))
+
+(defn- api-get-lucky-personal-collection-items [user-kw & {:keys [expected-status-code], :or {expected-status-code 200}}]
+  ((user->client user-kw) :get expected-status-code (str "collection/" (lucky-personal-collection-id) "/items")))
 
 ;; Can we use this endpoint to fetch our own Personal Collection?
 (expect
@@ -225,6 +233,7 @@
                                :location (collection/children-location
                                           (collection/user->personal-collection (user->id :lucky)))}]
     (-> (api-get-lucky-personal-collection user-kw)
+        (assoc :items (api-get-lucky-personal-collection-items user-kw))
         (update :items (partial map #(dissoc % :id))))))
 
 ;; If we have a sub-Collection of our Personal Collection, that should show up
@@ -265,8 +274,9 @@
   "Call the API with Rasta to fetch `collection-or-id` and put the `:effective_` results in a nice format for the tests
   below."
   [collection-or-id & additional-get-params]
-  (-> (apply (user->client :rasta) :get 200 (str "collection/" (u/get-id collection-or-id))
-             additional-get-params)
+  (-> ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection-or-id)))
+      (assoc :items (apply (user->client :rasta) :get 200 (str "collection/" (u/get-id collection-or-id) "/items")
+                           additional-get-params))
       format-ancestors-and-children))
 
 ;; does a top-level Collection like A have the correct Children?
@@ -350,7 +360,7 @@
 
 ;; Make sure you can see everything for Users that can see everything
 (expect
-  {:name      "Root Collection"
+  {:name      "Saved items"
    :id        "root"
    :items     [{:name "Birthday Card", :description nil, :collection_position nil, :favorite false, :model "card"}
                {:name "Crowberto Corv's Personal Collection", :description nil, :model "collection"}
@@ -359,22 +369,24 @@
    :can_write true}
   (with-some-children-of-collection nil
     (-> ((user->client :crowberto) :get 200 "collection/root")
+        (assoc :items ((user->client :crowberto) :get 200 "collection/root/items"))
         (remove-ids-from-collection-detail :keep-collection-id? true))))
 
 ;; ...but we don't let you see stuff you wouldn't otherwise be allowed to see
 (expect
-  {:name      "Root Collection"
+  {:name      "Saved items"
    :id        "root"
    :items     [{:name "Rasta Toucan's Personal Collection", :description nil, :model "collection"}]
    :can_write false}
   ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no collection_id
   (with-some-children-of-collection nil
     (-> ((user->client :rasta) :get 200 "collection/root")
+        (assoc :items ((user->client :rasta) :get 200 "collection/root/items"))
         (remove-ids-from-collection-detail :keep-collection-id? true))))
 
 ;; ...but if they have read perms for the Root Collection they should get to see them
 (expect
-  {:name       "Root Collection"
+  {:name       "Saved items"
    :id         "root"
    :items      [{:name "Birthday Card", :collection_position nil, :description nil, :favorite false, :model "card"}
                 {:name "Dine & Dashboard", :collection_position nil, :description nil, :model "dashboard"}
@@ -386,6 +398,7 @@
                     PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
       (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
       (-> ((user->client :rasta) :get 200 "collection/root")
+          (assoc :items ((user->client :rasta) :get 200 "collection/root/items"))
           (remove-ids-from-collection-detail :keep-collection-id? true)))))
 
 ;; So I suppose my Personal Collection should show up when I fetch the Root Collection, shouldn't it...
@@ -396,8 +409,7 @@
     :model       "collection"}]
   (do
     (collection-test/force-create-personal-collections!)
-    (-> ((user->client :rasta) :get 200 "collection/root")
-        :items)))
+    ((user->client :rasta) :get 200 "collection/root/items")))
 
 ;; And for admins, only return our own Personal Collection (!)
 (expect
@@ -407,8 +419,7 @@
     :model       "collection"}]
   (do
     (collection-test/force-create-personal-collections!)
-    (-> ((user->client :crowberto) :get 200 "collection/root")
-        :items)))
+    ((user->client :crowberto) :get 200 "collection/root/items")))
 
 ;; That includes sub-collections of Personal Collections! I shouldn't see them!
 (expect
@@ -421,8 +432,7 @@
     (tt/with-temp Collection [_ {:name     "Lucky's Sub-Collection"
                                  :location (collection/children-location
                                             (collection/user->personal-collection (user->id :lucky)))}]
-      (-> ((user->client :crowberto) :get 200 "collection/root")
-          :items))))
+      ((user->client :crowberto) :get 200 "collection/root/items"))))
 
 ;; Can we look for `archived` stuff with this endpoint?
 (expect
@@ -433,7 +443,7 @@
     :model               "card"}]
   (tt/with-temp Card [card {:name "Business Card", :archived true}]
     (collection-test/force-create-personal-collections!)
-    (for [item (:items ((user->client :crowberto) :get 200 "collection/root?archived=true"))]
+    (for [item ((user->client :crowberto) :get 200 "collection/root/items?archived=true")]
       (dissoc item :id))))
 
 
@@ -444,7 +454,8 @@
   tests below."
   [& additional-get-params]
   (collection-test/force-create-personal-collections!)
-  (-> (apply (user->client :rasta) :get 200 "collection/root" additional-get-params)
+  (-> ((user->client :rasta) :get 200 "collection/root")
+      (assoc :items (apply (user->client :rasta) :get 200 "collection/root/items" additional-get-params))
       format-ancestors-and-children))
 
 ;; Do top-level collections show up as children of the Root Collection?
