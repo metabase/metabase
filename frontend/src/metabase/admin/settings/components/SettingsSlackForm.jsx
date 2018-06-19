@@ -4,6 +4,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting.jsx";
 
+import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon.jsx";
 
 import RetinaImage from "react-retina-image";
@@ -262,17 +263,15 @@ export default class SettingsSlackForm extends Component {
         <ul>
           {settings}
           <li className="m2 mb4">
-            <button
-              className={cx(
-                "Button mr2",
-                { "Button--primary": !disabled },
-                { "Button--success-new": submitting === "success" },
-              )}
+            <Button
+              mr={2}
+              primary={!disabled}
+              success={submitting === "success"}
               disabled={disabled}
               onClick={this.updateSlackSettings.bind(this)}
             >
               {saveButtonText}
-            </button>
+            </Button>
             {formErrors && formErrors.message ? (
               <span className="pl2 text-error text-bold">
                 {formErrors.message}
