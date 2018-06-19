@@ -124,6 +124,7 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
   );
   // sort the pinned items by collection_position
   pinned.sort((a, b) => a.collection_position - b.collection_position);
+  console.log("collection_positions:", pinned.map(p => p.collection_position));
   return { collections, pinned, unpinned };
 })
 // only apply bulk actions to unpinned items
@@ -189,7 +190,9 @@ class DefaultLanding extends React.Component {
                       <h4>{t`Pinned items`}</h4>
                     </Box>
                     <PinDropTarget
-                      pinIndex={1}
+                      pinIndex={
+                        pinned[pinned.length - 1].collection_position + 1
+                      }
                       marginLeft={8}
                       marginRight={8}
                       noBorder
@@ -204,9 +207,12 @@ class DefaultLanding extends React.Component {
                                 item={item}
                                 collection={collection}
                               />
-                              <PinPositionDropTarget pinIndex={index} left />
                               <PinPositionDropTarget
-                                pinIndex={index + 1}
+                                pinIndex={item.collection_position}
+                                left
+                              />
+                              <PinPositionDropTarget
+                                pinIndex={item.collection_position + 1}
                                 right
                               />
                             </ItemDragSource>
@@ -214,7 +220,12 @@ class DefaultLanding extends React.Component {
                         ))}
                         {pinned.length % 2 === 1 ? (
                           <GridItem w={1 / 2} className="relative">
-                            <PinPositionDropTarget pinIndex={pinned.length} />
+                            <PinPositionDropTarget
+                              pinIndex={
+                                pinned[pinned.length - 1].collection_position +
+                                1
+                              }
+                            />
                           </GridItem>
                         ) : null}
                       </Grid>
