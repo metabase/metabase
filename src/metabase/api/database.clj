@@ -23,6 +23,7 @@
              [table :refer [Table]]]
             [metabase.query-processor.util :as qputil]
             [metabase.sync
+             [analyze :as analyze]
              [field-values :as sync-field-values]
              [sync-metadata :as sync-metadata]]
             [metabase.util
@@ -50,18 +51,21 @@
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
-(defn- add-native-perms-info
+(s/defn ^:private add-native-perms-info :- [{:native_permissions (s/enum :write :none), s/Keyword s/Any}]
   "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running
-   native (e.g. SQL) queries. Will be one of `:write`, `:read`, or `:none`."
-  [dbs]
+  native (e.g. SQL) queries. Will be either `:write` or `:none`. `:write` means you can run ad-hoc native queries,
+  and save new Cards with native queries; `:none` means you can do neither.
+
+  For the curious: the use of `:write` and `:none` is mainly for legacy purposes, when we had data-access-based
+  permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
+  native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
+  Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
+  [dbs :- [su/Map]]
   (for [db dbs]
-    (let [user-has-perms? (fn [path-fn]
-                            (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                                             (path-fn (u/get-id db))))]
-      (assoc db :native_permissions (cond
-                                      (user-has-perms? perms/native-readwrite-path) :write
-                                      (user-has-perms? perms/native-read-path)      :read
-                                      :else                                         :none)))))
+    (assoc db :native_permissions (if (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                        (perms/adhoc-native-query-path (u/get-id db)))
+                                    :write
+                                    :none))))
 
 (defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as card}]
   (when database-id
@@ -105,8 +109,7 @@
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   []
-  (as-> (db/select [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata
-                    :read_permissions]
+  (as-> (db/select [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
           :result_metadata [:not= nil] :archived false
           {:order-by [[:%lower.name :asc]]}) <>
     (filter card-database-supports-nested-queries? <>)
@@ -507,7 +510,8 @@
   ;; just wrap this in a future so it happens async
   (api/let-404 [db (Database id)]
     (future
-      (sync-metadata/sync-db-metadata! db)))
+      (sync-metadata/sync-db-metadata! db)
+      (analyze/analyze-db! db)))
   {:status :ok})
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
@@ -546,5 +550,21 @@
   (delete-all-field-values-for-database! id)
   {:status :ok})
 
+;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
+
+(api/defendpoint GET "/:id/schemas"
+  "Returns a list of all the schemas found for the database `id`"
+  [id]
+  (let [db (api/read-check Database id)]
+    (sort (db/select-field :schema Table :db_id id))))
+
+;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
+
+(api/defendpoint GET "/:id/schema/:schema"
+  "Returns a list of tables for the given database `id` and `schema`"
+  [id schema]
+  (let [db (api/read-check Database id)]
+    (api/let-404 [tables (seq (db/select Table :db_id id :schema schema {:order-by [[:name :asc]]}))]
+      tables)))
 
 (api/define-routes)

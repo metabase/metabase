@@ -1,36 +1,29 @@
 (ns metabase.models.card-test
-  (:require [expectations :refer :all]
-            [metabase.api.common :refer [*current-user-permissions-set*]]
+  (:require [cheshire.core :as json]
+            [expectations :refer :all]
             [metabase.models
-             [card :refer :all]
+             [card :as card :refer :all]
              [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [database :as database]
-             [interface :as mi]
-             [permissions :as perms]]
-            [metabase.query-processor.middleware.expand :as ql]
+             [dashboard-card :refer [DashboardCard]]]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.users :refer :all]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
-(defn- create-dash! [dash-name]
-  ((user->client :rasta) :post 200 "dashboard" {:name dash-name}))
-
 ;; Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in
 (expect
   [0 1 2]
-  (tt/with-temp Card [{card-id :id}]
-    (let [get-dashboard-count (fn [] (dashboard-count (Card card-id)))]
+  (tt/with-temp* [Card      [{card-id :id}]
+                  Dashboard [dash-1]
+                  Dashboard [dash-2]]
+    (let [add-card-to-dash!   (fn [dash] (db/insert! DashboardCard :card_id card-id, :dashboard_id (u/get-id dash)))
+          get-dashboard-count (fn [] (dashboard-count (Card card-id)))]
 
       [(get-dashboard-count)
-       (do (db/insert! DashboardCard :card_id card-id, :dashboard_id (:id (create-dash! (tu/random-name))), :parameter_mappings [])
-           (get-dashboard-count))
-       (do (db/insert! DashboardCard :card_id card-id, :dashboard_id (:id (create-dash! (tu/random-name))), :parameter_mappings [])
-           (get-dashboard-count))])))
+       (do (add-card-to-dash! dash-1) (get-dashboard-count))
+       (do (add-card-to-dash! dash-2) (get-dashboard-count))])))
 
 
 ;; card-dependencies
@@ -58,124 +51,6 @@
    {:dataset_query {:type :query
                     :query {:aggregation nil
                             :filter      nil}}}))
-
-
-;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
-
-(expect
-  false
-  (tt/with-temp Card [card {:dataset_query {:database (data/id), :type "native"}}]
-    (binding [*current-user-permissions-set* (delay #{})]
-      (mi/can-read? card))))
-
-(expect
-  (tt/with-temp Card [card {:dataset_query {:database (data/id), :type "native"}}]
-    (binding [*current-user-permissions-set* (delay #{(perms/native-read-path (data/id))})]
-      (mi/can-read? card))))
-
-;; in order to *write* a native card user should need native readwrite access
-(expect
-  false
-  (tt/with-temp Card [card {:dataset_query {:database (data/id), :type "native"}}]
-    (binding [*current-user-permissions-set* (delay #{(perms/native-read-path (data/id))})]
-      (mi/can-write? card))))
-
-(expect
-  (tt/with-temp Card [card {:dataset_query {:database (data/id), :type "native"}}]
-    (binding [*current-user-permissions-set* (delay #{(perms/native-readwrite-path (data/id))})]
-      (mi/can-write? card))))
-
-
-;;; check permissions sets for queries
-;; native read
-(defn- native [query]
-  {:database 1
-   :type     :native
-   :native   {:query query}})
-
-(expect
-  #{"/db/1/native/read/"}
-  (query-perms-set (native "SELECT count(*) FROM toucan_sightings;") :read))
-
-;; native write
-(expect
-  #{"/db/1/native/"}
-  (query-perms-set (native "SELECT count(*) FROM toucan_sightings;") :write))
-
-
-(defn- mbql [query]
-  {:database (data/id)
-   :type     :query
-   :query    query})
-
-;; MBQL w/o JOIN
-(expect
-  #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
-  (query-perms-set (mbql (ql/query
-                           (ql/source-table (data/id :venues))))
-                   :read))
-
-;; MBQL w/ JOIN
-(expect
-  #{(perms/object-path (data/id) "PUBLIC" (data/id :checkins))
-    (perms/object-path (data/id) "PUBLIC" (data/id :venues))}
-  (query-perms-set (mbql (ql/query
-                           (ql/source-table (data/id :checkins))
-                           (ql/order-by (ql/asc (ql/fk-> (data/id :checkins :venue_id) (data/id :venues :name))))))
-                   :read))
-
-;; MBQL w/ nested MBQL query
-(defn- query-with-source-card [card]
-  {:database database/virtual-id, :type "query", :query {:source_table (str "card__" (u/get-id card))}})
-
-(expect
-  #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
-  (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                            :type     :query
-                                            :query    {:source-table (data/id :venues)}}}]
-    (query-perms-set (query-with-source-card card) :read)))
-
-;; MBQL w/ nested MBQL query including a JOIN
-(expect
-  #{(perms/object-path (data/id) "PUBLIC" (data/id :checkins))
-    (perms/object-path (data/id) "PUBLIC" (data/id :users))}
-  (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                            :type     :query
-                                            :query    {:source-table (data/id :checkins)
-                                                       :order-by     [[:asc [:fk-> (data/id :checkins :user_id) (data/id :users :id)]]]}}}]
-    (query-perms-set (query-with-source-card card) :read)))
-
-;; MBQL w/ nested NATIVE query
-(expect
-  #{(perms/native-read-path (data/id))}
-  (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                            :type     :native
-                                            :native   {:query "SELECT * FROM CHECKINS"}}}]
-    (query-perms-set (query-with-source-card card) :read)))
-
-;; You should still only need native READ permissions if you want to save a Card based on another Card you can already
-;; READ.
-(expect
-  #{(perms/native-read-path (data/id))}
-  (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                            :type     :native
-                                            :native   {:query "SELECT * FROM CHECKINS"}}}]
-    (query-perms-set (query-with-source-card card) :write)))
-
-;; However if you just pass in the same query directly as a `:source-query` you will still require READWRITE
-;; permissions to save the query since we can't verify that it belongs to a Card that you can view.
-(expect
-  #{(perms/native-readwrite-path (data/id))}
-  (query-perms-set {:database (data/id)
-                    :type     :query
-                    :query    {:source-query {:native "SELECT * FROM CHECKINS"}}}
-                   :write))
-
-;; invalid/legacy card should return perms for something that doesn't exist so no one gets to see it
-(expect
-  #{"/db/0/"}
-  (query-perms-set (mbql {:filter [:WOW 100 200]})
-                   :read))
 
 
 ;; Test that when somebody archives a Card, it is removed from any Dashboards it belongs to
@@ -217,3 +92,51 @@
        (db/update! Card id {:name          "another name"
                             :dataset_query (dummy-dataset-query (data/id))})
        (into {} (db/select-one [Card :name :database_id] :id id)))]))
+
+
+
+;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
+
+(defn- card-with-source-table
+  "Generate values for a Card with `source-table` for use with `with-temp`."
+  {:style/indent 1}
+  [source-table & {:as kvs}]
+  (merge {:dataset_query {:database (data/id)
+                          :type     :query
+                          :query    {:source-table source-table}}}
+         kvs))
+
+(defn- force-update-card-to-reference-source-table!
+  "Skip normal pre-update stuff so we can force a Card to get into an invalid state."
+  [card source-table]
+  (db/update! Card {:where [:= :id (u/get-id card)]
+                    :set   (-> (card-with-source-table source-table)
+                               ;; we have to manually JSON-encode since we're skipping normal pre-update stuff
+                               (update :dataset_query json/generate-string))}))
+
+;; If a Card uses itself as a source, perms calculations should fallback to the 'only admins can see it' perms of
+;; #{"/db/0"} (DB 0 will never exist, so regular users will never get to see it, but because admins have root perms,
+;; they will still get to see it and perhaps fix it.)
+(expect
+  Exception
+  (tt/with-temp Card [card (card-with-source-table (data/id :venues))]
+    ;; now try to make the Card reference itself. Should throw Exception
+    (db/update! Card (u/get-id card)
+      (card-with-source-table (str "card__" (u/get-id card))))))
+
+;; Do the same stuff with circular reference between two Cards... (A -> B -> A)
+(expect
+  Exception
+  (tt/with-temp* [Card [card-a (card-with-source-table (data/id :venues))]
+                  Card [card-b (card-with-source-table (str "card__" (u/get-id card-a)))]]
+    (db/update! Card (u/get-id card-a)
+      (card-with-source-table (str "card__" (u/get-id card-b))))))
+
+;; ok now try it with A -> C -> B -> A
+(expect
+  Exception
+  (tt/with-temp* [Card [card-a (card-with-source-table (data/id :venues))]
+                  Card [card-b (card-with-source-table (str "card__" (u/get-id card-a)))]
+                  Card [card-c (card-with-source-table (str "card__" (u/get-id card-b)))]]
+    (db/update! Card (u/get-id card-a)
+      (card-with-source-table (str "card__" (u/get-id card-c))))))

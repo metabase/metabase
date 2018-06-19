@@ -36,6 +36,7 @@ export default class Popover extends Component {
     id: PropTypes.string,
     isOpen: PropTypes.bool,
     hasArrow: PropTypes.bool,
+    hasBackground: PropTypes.bool,
     // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
     tetherOptions: PropTypes.object,
     // used to prevent popovers from being taller than the screen
@@ -46,13 +47,26 @@ export default class Popover extends Component {
     // noMaxWidth allows that to be overridden in cases where popovers should
     // expand  alongside their contents contents
     autoWidth: PropTypes.bool,
+    // prioritized vertical attachments points on the popover
+    verticalAttachments: PropTypes.array,
+    // prioritized horizontal attachment points on the popover
+    horizontalAttachments: PropTypes.array,
+    // by default we align the top edge of the target to the bottom edge of the
+    // popover or vice versa. This causes the same edges to be aligned
+    alignVerticalEdge: PropTypes.bool,
+    // by default we align the popover to the center of the target. This
+    // causes the edges to be aligned
+    alignHorizontalEdge: PropTypes.bool,
   };
 
   static defaultProps = {
     isOpen: true,
     hasArrow: true,
+    hasBackground: true,
     verticalAttachments: ["top", "bottom"],
     horizontalAttachments: ["center", "left", "right"],
+    alignVerticalEdge: false,
+    alignHorizontalEdge: false,
     targetOffsetX: 24,
     targetOffsetY: 5,
     sizeToFit: false,
@@ -121,7 +135,9 @@ export default class Popover extends Component {
           className={cx(
             "PopoverBody",
             {
-              "PopoverBody--withArrow": this.props.hasArrow,
+              "PopoverBody--withBackground": this.props.hasBackground,
+              "PopoverBody--withArrow":
+                this.props.hasArrow && this.props.hasBackground,
               "PopoverBody--autoWidth": this.props.autoWidth,
             },
             // TODO kdoh 10/16/2017 we should eventually remove this
@@ -274,7 +290,7 @@ export default class Popover extends Component {
     );
 
     if (isOpen) {
-      var tetherOptions = {
+      let tetherOptions = {
         element: popoverElement,
         target: this._getTarget(),
       };
@@ -304,7 +320,9 @@ export default class Popover extends Component {
             (best, attachmentX) => ({
               ...best,
               attachmentX: attachmentX,
-              targetAttachmentX: "center",
+              targetAttachmentX: this.props.alignHorizontalEdge
+                ? attachmentX
+                : "center",
               offsetX: {
                 center: 0,
                 left: -this.props.targetOffsetX,
@@ -322,7 +340,11 @@ export default class Popover extends Component {
             (best, attachmentY) => ({
               ...best,
               attachmentY: attachmentY,
-              targetAttachmentY: attachmentY === "top" ? "bottom" : "top",
+              targetAttachmentY: (this.props.alignVerticalEdge
+              ? attachmentY === "bottom"
+              : attachmentY === "top")
+                ? "bottom"
+                : "top",
               offsetY: {
                 top: this.props.targetOffsetY,
                 bottom: -this.props.targetOffsetY,

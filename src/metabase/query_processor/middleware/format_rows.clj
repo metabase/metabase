@@ -2,7 +2,8 @@
   "Middleware that formats the results of a query.
    Currently, the only thing this does is convert datetime types to ISO-8601 strings in the appropriate timezone."
   (:require [metabase.query-processor.util :as qputil]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.date :as du]))
 
 (defn- format-rows* [query rows]
   (let [timezone (qputil/query-timezone query)]
@@ -12,11 +13,11 @@
         ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
         ;;       GH issues: #2282, #2035
         (cond
-          (u/is-time? v)
-          (u/format-time v timezone)
+          (du/is-time? v)
+          (du/format-time v timezone)
 
-          (u/is-temporal? v)
-          (u/->iso-8601-datetime v timezone)
+          (du/is-temporal? v)
+          (du/->iso-8601-datetime v timezone)
 
           :else v)))))
 

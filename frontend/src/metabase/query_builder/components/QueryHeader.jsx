@@ -15,7 +15,7 @@ import Modal from "metabase/components/Modal.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
-import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
+import CollectionMoveModal from "metabase/containers/CollectionMoveModal.jsx";
 import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal.jsx";
@@ -173,7 +173,7 @@ export default class QueryHeader extends Component {
 
   async onFetchRevisions({ entity, id }) {
     // TODO: reduxify
-    var revisions = await RevisionApi.list({ entity, id });
+    let revisions = await RevisionApi.list({ entity, id });
     this.setState({ revisions });
   }
 
@@ -203,7 +203,7 @@ export default class QueryHeader extends Component {
       id: card && card.dataset_query && card.dataset_query.database,
     });
 
-    var buttonSections = [];
+    let buttonSections = [];
 
     // A card that is either completely new or it has been derived from a saved question
     if (isNew && isDirty) {
@@ -213,7 +213,7 @@ export default class QueryHeader extends Component {
           key="save"
           ref="saveModal"
           triggerClasses="h4 text-grey-4 text-brand-hover text-uppercase"
-          triggerElement="Save"
+          triggerElement={t`Save`}
         >
           <SaveQuestionModal
             card={this.props.card}
@@ -222,7 +222,7 @@ export default class QueryHeader extends Component {
             // if saving modified question, don't show "add to dashboard" modal
             saveFn={card => this.onSave(card, false)}
             createFn={this.onCreate}
-            onClose={() => this.refs.saveModal.toggle()}
+            onClose={() => this.refs.saveModal && this.refs.saveModal.toggle()}
           />
         </ModalWithTrigger>,
       ]);
@@ -289,25 +289,30 @@ export default class QueryHeader extends Component {
 
         buttonSections.push([
           <ModalWithTrigger
-            ref="move"
             key="move"
-            full
             triggerElement={
               <Tooltip tooltip={t`Move question`}>
                 <Icon name="move" />
               </Tooltip>
             }
           >
-            <MoveToCollection
-              questionId={this.props.card.id}
-              initialCollectionId={
-                this.props.card && this.props.card.collection_id
-              }
-              setCollection={(questionId, collection) => {
-                this.props.onSetCardAttribute("collection", collection);
-                this.props.onSetCardAttribute("collection_id", collection.id);
-              }}
-            />
+            {({ onClose }) => (
+              <CollectionMoveModal
+                title={t`Which collection should this be in?`}
+                initialCollectionId={
+                  this.props.card && this.props.card.collection_id
+                }
+                onClose={onClose}
+                onMove={collection => {
+                  this.props.onSetCardAttribute("collection", collection);
+                  this.props.onSetCardAttribute(
+                    "collection_id",
+                    collection && collection.id,
+                  );
+                  onClose();
+                }}
+              />
+            )}
           </ModalWithTrigger>,
         ]);
       }
@@ -437,7 +442,7 @@ export default class QueryHeader extends Component {
     ]);
 
     // data reference button
-    var dataReferenceButtonClasses = cx("transition-color", {
+    let dataReferenceButtonClasses = cx("transition-color", {
       "text-brand": this.props.isShowingDataReference,
       "text-brand-hover": !this.state.isShowingDataReference,
     });
@@ -544,7 +549,7 @@ export default class QueryHeader extends Component {
           badge={
             this.props.card.collection && (
               <Link
-                to={Urls.collection(this.props.card.collection)}
+                to={Urls.collection(this.props.card.collection.id)}
                 className="text-uppercase flex align-center no-decoration"
                 style={{
                   color: this.props.card.collection.color,

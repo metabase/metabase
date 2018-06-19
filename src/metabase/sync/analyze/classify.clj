@@ -48,9 +48,10 @@
   [original-model :- FieldOrTableInstance, updated-model :- FieldOrTableInstance]
   (assert (= (type original-model) (type updated-model)))
   (let [[_ values-to-set] (data/diff original-model updated-model)]
-    (log/debug (format "Based on classification, updating these values of %s: %s"
-                       (sync-util/name-for-logging original-model)
-                       values-to-set))
+    (when (seq values-to-set)
+      (log/debug (format "Based on classification, updating these values of %s: %s"
+                         (sync-util/name-for-logging original-model)
+                         values-to-set)))
     ;; Check that we're not trying to set anything that we're not allowed to
     (doseq [k (keys values-to-set)]
       (when-not (contains? values-that-can-be-set k)
@@ -61,7 +62,8 @@
                     Field
                     Table)
           (u/get-id original-model)
-        values-to-set))))
+        values-to-set)
+      true)))
 
 (def ^:private classifiers
   "Various classifier functions available. These should all take two args, a `FieldInstance` and a possibly `nil`
@@ -72,7 +74,7 @@
    no-preview-display/infer-no-preview-display
    text-fingerprint/infer-special-type])
 
-(s/defn ^:private run-classifiers :- i/FieldInstance
+(s/defn run-classifiers :- i/FieldInstance
   "Run all the available `classifiers` against FIELD and FINGERPRINT, and return the resulting FIELD with changes
   decided upon by the classifiers."
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
@@ -116,11 +118,43 @@
   like inferring (and setting) the special types and preview display status for Fields belonging to TABLE."
   [table :- i/TableInstance]
   (when-let [fields (fields-to-classify table)]
-    (doseq [field fields]
-      (classify! field))))
+    {:fields-classified (count fields)
+     :fields-failed     (sync-util/sum-numbers (fn [field]
+                                                 (let [result (classify! field)]
+                                                   (if (instance? Exception result)
+                                                     1
+                                                     0)))
+                                               fields)}))
 
 (s/defn ^:always-validate classify-table!
   "Run various classifiers on the TABLE. These do things like inferring (and
    setting) entitiy type of TABLE."
   [table :- i/TableInstance]
   (save-model-updates! table (name/infer-entity-type table)))
+
+(s/defn classify-tables-for-db!
+  "Classify all tables found in a given database"
+  [database :- i/DatabaseInstance
+   tables :- [i/TableInstance]
+   log-progress-fn]
+  {:total-tables      (count tables)
+   :tables-classified (sync-util/sum-numbers (fn [table]
+                                               (let [result (classify-table! table)]
+                                                 (log-progress-fn "classify-tables" table)
+                                                 (if result
+                                                   1
+                                                   0)))
+                                             tables)})
+
+(s/defn classify-fields-for-db!
+  "Classify all fields found in a given database"
+  [database :- i/DatabaseInstance
+   tables :- [i/TableInstance]
+   log-progress-fn]
+  (apply merge-with +
+         {:fields-classified 0, :fields-failed 0}
+         (map (fn [table]
+                (let [result (classify-fields! table)]
+                  (log-progress-fn "classify-fields" table)
+                  result))
+              tables)))

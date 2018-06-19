@@ -9,18 +9,19 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 import SortableItemList from "metabase/components/SortableItemList.jsx";
 import * as Urls from "metabase/lib/urls";
 
-import * as dashboardsActions from "metabase/dashboards/dashboards";
-import { getDashboardListing } from "metabase/dashboards/selectors";
+import Dashboards from "metabase/entities/dashboards";
+
 import { t } from "c-3po";
-import type { Dashboard } from "metabase/meta/types/Dashboard";
+import type { Dashboard, DashboardId } from "metabase/meta/types/Dashboard";
 import type { Card } from "metabase/meta/types/Card";
+
 const mapStateToProps = state => ({
-  dashboards: getDashboardListing(state),
+  dashboards: Dashboards.selectors.getList(state),
 });
 
 const mapDispatchToProps = {
-  fetchDashboards: dashboardsActions.fetchDashboards,
-  createDashboard: dashboardsActions.createDashboard,
+  fetchDashboards: Dashboards.actions.fetchList,
+  createDashboard: Dashboards.actions.create,
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -43,17 +44,17 @@ export default class AddToDashSelectDashModal extends Component {
     this.props.fetchDashboards();
   }
 
-  addToDashboard = (dashboard: Dashboard) => {
+  addToDashboard = (dashboardId: DashboardId) => {
     // we send the user over to the chosen dashboard in edit mode with the current card added
     this.props.onChangeLocation(
-      Urls.dashboard(dashboard.id, { addCardWithId: this.props.card.id }),
+      Urls.dashboard(dashboardId, { addCardWithId: this.props.card.id }),
     );
   };
 
   createDashboard = async (newDashboard: Dashboard) => {
     try {
-      const action = await this.props.createDashboard(newDashboard, {});
-      this.addToDashboard(action.payload);
+      const action = await this.props.createDashboard(newDashboard);
+      this.addToDashboard(action.payload.result);
     } catch (e) {
       console.log("createDashboard failed", e);
     }
@@ -68,7 +69,7 @@ export default class AddToDashSelectDashModal extends Component {
     ) {
       return (
         <CreateDashboardModal
-          createDashboardFn={this.createDashboard}
+          createDashboard={this.createDashboard}
           onClose={this.props.onClose}
         />
       );
@@ -94,7 +95,7 @@ export default class AddToDashSelectDashModal extends Component {
             </div>
             <SortableItemList
               items={this.props.dashboards}
-              onClickItemFn={this.addToDashboard}
+              onClickItemFn={dashboard => this.addToDashboard(dashboard.id)}
             />
           </div>
         </ModalContent>

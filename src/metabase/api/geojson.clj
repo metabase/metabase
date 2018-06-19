@@ -6,15 +6,23 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [puppetlabs.i18n.core :refer [tru]]
+            [ring.util.response :as rr]
+            [schema.core :as s])
+  (:import org.apache.commons.io.input.ReaderInputStream))
+
+(def ^:private ^:const ^Integer geojson-fetch-timeout-ms
+  "Number of milliseconds we have to fetch (and parse, if applicable) a GeoJSON file before we consider the request to
+  have timed out."
+  (int (* 60 1000)))
 
 (defn- valid-json?
   "Does this URL-OR-RESOURCE point to valid JSON?
   URL-OR-RESOURCE should be something that can be passed to `slurp`, like an HTTP URL or a `java.net.URL` (which is
   what `io/resource` returns below)."
   [url-or-resource]
-  (u/with-timeout 5000
-    (json/parse-string (slurp url-or-resource)))
+  (u/with-timeout geojson-fetch-timeout-ms
+    (dorun (json/parse-stream (io/reader url-or-resource))))
   true)
 
 (defn- valid-json-resource?
@@ -38,7 +46,7 @@
   (memoize (fn [url-or-resource-path]
              (or (valid-json-url? url-or-resource-path)
                  (valid-json-resource? url-or-resource-path)
-                 (throw (Exception. (str "Invalid JSON URL or resource: " url-or-resource-path)))))))
+                 (throw (Exception. (str (tru "Invalid JSON URL or resource: {0}" url-or-resource-path))))))))
 
 (def ^:private CustomGeoJSON
   {s/Keyword {:name                     s/Str
@@ -63,8 +71,7 @@
                      :builtin     true}})
 
 (defsetting custom-geojson
-  "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US
-  State or World GeoJSON."
+  (tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.")
   :type    :json
   :default {}
   :getter  (fn [] (merge (setting/get-json :custom-geojson) builtin-geojson))
@@ -80,12 +87,11 @@
   [key]
   {key su/NonBlankString}
   (let [url (or (get-in (custom-geojson) [(keyword key) :url])
-                (throw (ex-info (str "Invalid custom GeoJSON key: " key)
+                (throw (ex-info (tru "Invalid custom GeoJSON key: {0}" key)
                          {:status-code 400})))]
-    {:status  200
-     :headers {"Content-Type" "application/json"}
-     :body    (u/with-timeout 5000
-                (slurp url))}))
+    ;; TODO - it would be nice if we could also avoid returning our usual cache-busting headers with the response here
+    (-> (rr/response (ReaderInputStream. (io/reader url)))
+        (rr/content-type "application/json"))))
 
 
 (define-routes)

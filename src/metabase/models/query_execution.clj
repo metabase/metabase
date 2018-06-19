@@ -1,5 +1,6 @@
 (ns metabase.models.query-execution
   (:require [metabase.util :as u]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan.models :as models]))
 
@@ -41,5 +42,5 @@
   (merge models/IModelDefaults
          {:types       (constantly {:json_query :json, :status :keyword, :context :keyword, :error :clob})
           :pre-insert  pre-insert
-          :pre-update  (fn [& _] (throw (Exception. "You cannot update a QueryExecution!")))
+          :pre-update  (fn [& _] (throw (Exception. (str (tru "You cannot update a QueryExecution!")))))
           :post-select post-select}))

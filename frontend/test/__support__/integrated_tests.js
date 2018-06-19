@@ -10,13 +10,15 @@ import "./mocks";
 
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
-import { defer } from "metabase/lib/promise";
+import { defer, delay } from "metabase/lib/promise";
 import {
   DashboardApi,
   SessionApi,
   CardApi,
   MetricApi,
   SegmentApi,
+  CollectionsApi,
+  PermissionsApi,
 } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from "metabase/reducers-main";
@@ -28,8 +30,13 @@ import { Provider } from "react-redux";
 import { createMemoryHistory } from "history";
 import { getStore } from "metabase/store";
 import { createRoutes, Router, useRouterHistory } from "react-router";
+
 import _ from "underscore";
 import chalk from "chalk";
+import moment from "moment";
+
+import EventEmitter from "events";
+const events = new EventEmitter();
 
 // Importing isomorphic-fetch sets the global `fetch` and `Headers` objects that are used here
 import fetch from "isomorphic-fetch";
@@ -39,8 +46,6 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 import { getRoutes as getNormalRoutes } from "metabase/routes";
 import { getRoutes as getPublicRoutes } from "metabase/routes-public";
 import { getRoutes as getEmbedRoutes } from "metabase/routes-embed";
-
-import moment from "moment";
 
 let hasStartedCreatingStore = false;
 let hasFinishedCreatingStore = false;
@@ -93,11 +98,15 @@ export function useSharedNormalLogin() {
     id: process.env.TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID,
   };
 }
-export const forBothAdminsAndNormalUsers = async tests => {
-  useSharedAdminLogin();
-  await tests();
-  useSharedNormalLogin();
-  await tests();
+export const forBothAdminsAndNormalUsers = tests => {
+  describe("for admins", () => {
+    beforeEach(useSharedAdminLogin);
+    tests();
+  });
+  describe("for normal users", () => {
+    beforeEach(useSharedNormalLogin);
+    tests();
+  });
 };
 
 export function logout() {
@@ -120,16 +129,12 @@ export function restorePreviousLogin() {
  * Calls the provided function while simulating that the browser is offline
  */
 export async function whenOffline(callWhenOffline) {
-  simulateOfflineMode = true;
-  return callWhenOffline()
-    .then(result => {
-      simulateOfflineMode = false;
-      return result;
-    })
-    .catch(e => {
-      simulateOfflineMode = false;
-      throw e;
-    });
+  try {
+    simulateOfflineMode = true;
+    return await callWhenOffline();
+  } finally {
+    simulateOfflineMode = false;
+  }
 }
 
 export function switchToPlainDatabase() {
@@ -209,6 +214,8 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
        * Redux dispatch method middleware that records all dispatched actions
        */
       dispatch: action => {
+        events.emit("action", action);
+
         const result = store._originalDispatch(action);
 
         const actionWithTimestamp = [
@@ -244,6 +251,17 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
         }
 
         actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes];
+
+        if (_.any(actionTypes, type => !type)) {
+          return Promise.reject(
+            new Error(
+              `You tried to wait for a null or undefined action type (${actionTypes})`,
+            ),
+          );
+        }
+
+        // supports redux-action style action creator that when cast to a string returns the action name
+        actionTypes = actionTypes.map(actionType => String(actionType));
 
         // Returns all actions that are triggered after the last action which belongs to `actionTypes
         const getRemainingActions = () => {
@@ -412,6 +430,22 @@ export const createDashboard = async details => {
   return savedDashboard;
 };
 
+// useful for tests where multiple users need access to the same questions
+export async function createAllUsersWritableCollection() {
+  const group = _.findWhere(await PermissionsApi.groups(), {
+    name: "All Users",
+  });
+  const collection = await CollectionsApi.create({
+    name: "test" + Math.random(),
+    description: "description",
+    color: "#F1B556",
+  });
+  const graph = await CollectionsApi.graph();
+  graph.groups[group.id][collection.id] = "write";
+  await CollectionsApi.updateGraph(graph);
+  return collection;
+}
+
 /**
  * Waits for a API request with a given method (GET/POST/PUT...) and a url which matches the given regural expression.
  * Useful in those relatively rare situations where React components do API requests inline instead of using Redux actions.
@@ -492,6 +526,52 @@ export async function withApiMocks(mocks, test) {
     });
   }
 }
+
+// async function that tries running an assertion multiple times until it succeeds
+// useful for reducing race conditions in tests
+// TODO: log API calls and Redux actions that occurred in the meantime
+export const eventually = async (assertion, timeout = 5000, period = 250) => {
+  const start = Date.now();
+
+  const errors = [];
+  const actions = [];
+  const requests = [];
+  const addAction = a => actions.push(a);
+  const addRequest = r => requests.push(r);
+  events.addListener("action", addAction);
+  events.addListener("request", addRequest);
+  const cleanup = () => {
+    events.removeListener("action", addAction);
+    events.removeListener("request", addRequest);
+  };
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      await assertion();
+      if (errors.length > 0) {
+        console.warn(
+          "eventually asserted after " + (Date.now() - start) + " ms",
+          "\n + error:\n",
+          errors[errors.length - 1],
+          "\n + actions:\n    ",
+          actions.map(a => a && a.type).join("\n     "),
+          "\n + requests:\n    ",
+          requests.map(r => r && r.url).join("\n     "),
+        );
+      }
+      cleanup();
+      return;
+    } catch (e) {
+      if (Date.now() - start >= timeout) {
+        cleanup();
+        throw e;
+      }
+      errors.push(e);
+    }
+    await delay(period);
+  }
+};
 
 // to help tests cleanup after themselves, since integration tests don't use
 // isolated environments, e.x.
@@ -576,6 +656,8 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
 
     apiRequestCompletedCallback &&
       setTimeout(() => apiRequestCompletedCallback(method, url), 0);
+
+    events.emit("request", { method, url });
 
     if (result.status >= 200 && result.status <= 299) {
       if (options.transformResponse) {

@@ -175,6 +175,16 @@ export default class StructuredQuery extends AtomicQuery {
     return this._structuredDatasetQuery.query;
   }
 
+  setQuery(query: StructuredQueryObject): StructuredQuery {
+    return this._updateQuery(() => query, []);
+  }
+
+  updateQuery(
+    fn: (q: StructuredQueryObject) => StructuredQueryObject,
+  ): StructuredQuery {
+    return this._updateQuery(fn, []);
+  }
+
   /**
    * @returns a new query with the provided Database set.
    */
@@ -474,10 +484,11 @@ export default class StructuredQuery extends AtomicQuery {
 
   /**
    * @returns @type {Segment}s that can be used as filters.
-   * TODO: exclude used segments
    */
   filterSegmentOptions(): Segment[] {
-    return this.table().segments.filter(sgmt => sgmt.is_active === true);
+    return this.table().segments.filter(
+      sgmt => sgmt.archived === false && !this.segments().includes(sgmt),
+    );
   }
 
   /**

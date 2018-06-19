@@ -188,3 +188,8 @@
 (expect
   {:query {:aggregation [[:metric :gaid:users]]}}
   (#'expand-macros/expand-metrics-and-segments {:query {:aggregation [[:metric :gaid:users]]}}))
+
+;; make sure expansion works with multiple GA "metrics" (#7399)
+(expect
+  {:query {:aggregation [[:METRIC :ga:users] [:METRIC :ga:1dayUsers]]}}
+  (#'expand-macros/expand-metrics-and-segments {:query {:aggregation [[:METRIC :ga:users] [:METRIC :ga:1dayUsers]]}}))

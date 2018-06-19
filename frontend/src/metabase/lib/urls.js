@@ -4,7 +4,19 @@ import Question from "metabase-lib/lib/Question";
 
 // provides functions for building urls to things we care about
 
+export const activity = "/activity";
+
 export const newQuestion = () => "/question/new";
+
+export const newDashboard = collectionId =>
+  `collection/${collectionId}/new_dashboard`;
+
+export const newPulse = collectionId =>
+  `/pulse/create?collectionId=${collectionId}`;
+
+export const newCollection = collectionId =>
+  `collection/${collectionId}/new_collection`;
+
 export function question(cardId, hash = "", query = "") {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
@@ -61,6 +73,10 @@ export function pulse(pulseId) {
   return `/pulse/#${pulseId}`;
 }
 
+export function pulseEdit(pulseId) {
+  return `/pulse/${pulseId}`;
+}
+
 export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
   let query = `?db=${databaseId}&table=${tableId}`;
 
@@ -75,8 +91,8 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
   return question(null, query);
 }
 
-export function collection(collection) {
-  return `/questions/collections/${collection.slug}`;
+export function collection(collectionId) {
+  return `/collection/${collectionId || "root"}`;
 }
 
 export function label(label) {
@@ -99,4 +115,8 @@ export function embedCard(token, type = null) {
 
 export function embedDashboard(token) {
   return `/embed/dashboard/${token}`;
+}
+
+export function userCollection(userCollectionId) {
+  return `/collection/${userCollectionId}/`;
 }

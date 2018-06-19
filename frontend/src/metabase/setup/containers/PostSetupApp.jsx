@@ -1,19 +1,26 @@
 /* @flow */
 
 import React, { Component } from "react";
-
 import { Link } from "react-router";
-import ExplorePane from "metabase/components/ExplorePane";
-import MetabotLogo from "metabase/components/MetabotLogo";
-import Quotes from "metabase/components/Quotes";
-
-import { MetabaseApi, AutoApi } from "metabase/services";
-import _ from "underscore";
 import cx from "classnames";
 import { t } from "c-3po";
 
-const CANDIDATES_POLL_INTERVAL = 2000;
-const CANDIDATES_TIMEOUT = 10000;
+import fitViewport from "metabase/hoc/FitViewPort";
+
+import CandidateListLoader from "metabase/containers/CandidateListLoader";
+
+import Card from "metabase/components/Card";
+import ExplorePane from "metabase/components/ExplorePane";
+import MetabotLogo from "metabase/components/MetabotLogo";
+import ProgressBar from "metabase/components/ProgressBar";
+import Quotes from "metabase/components/Quotes";
+
+type Props = {
+  params: {
+    databaseId?: number,
+  },
+  fitClassNames: string,
+};
 
 const QUOTES = [
   t`Metabot is admiring your integers…`,
@@ -21,137 +28,74 @@ const QUOTES = [
   t`Metabot is doing science…`,
   t`Metabot is checking out your metrics…`,
   t`Metabot is looking for trends and outliers…`,
+  t`Metabot is consulting the quantum abacus…`,
+  t`Metabot is feeling pretty good about all this…`,
 ];
 
-import type { Candidate } from "metabase/meta/types/Auto";
-
-type Props = {};
-type State = {
-  databaseId: ?number,
-  isSample: ?boolean,
-  candidates: ?(Candidate[]),
-  sampleCandidates: ?(Candidate[]),
-};
-
+@fitViewport
 export default class PostSetupApp extends Component {
   props: Props;
-  state: State = {
-    databaseId: null,
-    isSample: null,
-    candidates: null,
-    sampleCandidates: null,
-  };
-
-  _sampleTimeout: ?number;
-  _pollTimer: ?number;
-
-  // $FlowFixMe: doesn't expect componentWillMount to return Promise<void>
-  async componentWillMount() {
-    const [sampleDbs, otherDbs] = _.partition(
-      await MetabaseApi.db_list(),
-      db => db.is_sample,
-    );
-    if (otherDbs.length > 0) {
-      this.setState({ databaseId: otherDbs[0].id, isSample: false }, () => {
-        this._loadCandidates();
-      });
-      // After timeout load candidates for sample dataset
-      this._sampleTimeout = setTimeout(async () => {
-        this._sampleTimeout = null;
-        this.setState({
-          sampleCandidates: await AutoApi.db_candidates({
-            id: sampleDbs[0].id,
-          }),
-        });
-      }, CANDIDATES_TIMEOUT);
-    } else {
-      this.setState({ databaseId: sampleDbs[0].id, isSample: true }, () => {
-        this._loadCandidates();
-      });
-    }
-    this._pollTimer = setInterval(
-      this._loadCandidates,
-      CANDIDATES_POLL_INTERVAL,
-    );
-  }
-  componentWillUnmount() {
-    this._clearTimers();
-  }
-  _clearTimers() {
-    if (this._pollTimer != null) {
-      clearInterval(this._pollTimer);
-      this._pollTimer = null;
-    }
-    if (this._sampleTimeout != null) {
-      clearInterval(this._sampleTimeout);
-      this._sampleTimeout = null;
-    }
-  }
-  _loadCandidates = async () => {
-    try {
-      const { databaseId } = this.state;
-      if (databaseId != null) {
-        const candidates = await AutoApi.db_candidates({
-          id: databaseId,
-        });
-        if (candidates && candidates.length > 0) {
-          this._clearTimers();
-          this.setState({ candidates });
-        }
-      }
-    } catch (e) {
-      console.log(e);
-    }
-  };
   render() {
-    let { candidates, sampleCandidates, isSample } = this.state;
-
     return (
-      <div className="bg-slate-extra-light full-height flex layout-centered">
-        <div style={{ maxWidth: 587 }}>
-          {!candidates ? (
-            <div>
-              <h2 className="text-centered mx4 px4">
-                We’ll show you some interesting explorations of your data in
-                just a minute.
-              </h2>
-              <BorderedPanel className="my4 flex">
-                <MetabotLogo className="mr4" />
-                <div className="flex-full">
-                  <div className="mb1">
-                    <Quotes quotes={QUOTES} period={2000} />
+      <div className={cx(this.props.fitClassNames, "align-center")}>
+        <div
+          style={{ maxWidth: 587 }}
+          className="ml-auto mr-auto mt-auto mb-auto py2"
+        >
+          <CandidateListLoader
+            databaseId={this.props.params.databaseId}
+            children={({ candidates, sampleCandidates, isSample }) => {
+              if (!candidates) {
+                return (
+                  <div>
+                    <h2 className="text-centered mx4 px4">
+                      {t`We’ll show you some interesting explorations of your data in
+                      just a few minutes.`}
+                    </h2>
+                    <Card p={4} my={4} className="flex">
+                      <div className="mt1">
+                        <MetabotLogo />
+                      </div>
+                      <div className="flex-full ml3 mt1">
+                        <div className="mb1">
+                          <Quotes quotes={QUOTES} period={2000} />
+                        </div>
+                        {/*The percentage is hardcoded so we can animate this*/}
+                        <ProgressBar percentage={1} animated />
+                      </div>
+                    </Card>
+                    {sampleCandidates && (
+                      <Card>
+                        <ExplorePane
+                          candidates={sampleCandidates}
+                          title={null}
+                          description={t`This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Metabase can do for you.`}
+                        />
+                      </Card>
+                    )}
                   </div>
-                  <ThinProgressBar />
-                </div>
-              </BorderedPanel>
-              {sampleCandidates && (
-                <BorderedPanel>
+                );
+              }
+              return (
+                <Card px={3} py={1}>
                   <ExplorePane
-                    options={sampleCandidates}
-                    title={null}
-                    description={t`This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Metabase can do for you.`}
+                    candidates={candidates}
+                    description={
+                      isSample
+                        ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
+                        : t`I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!`
+                    }
                   />
-                </BorderedPanel>
-              )}
-            </div>
-          ) : (
-            <BorderedPanel>
-              <ExplorePane
-                options={candidates}
-                description={
-                  isSample
-                    ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                    : t`I took a look at the data you just connected, and I put together some explorations of interesting metrics I found. Hope you like them!`
-                }
-              />
-            </BorderedPanel>
-          )}
+                </Card>
+              );
+            }}
+          />
           <div className="m4 text-centered">
             <Link
               to="/"
               className="no-decoration text-bold text-grey-3 text-grey-4-hover"
             >
-              {t`No thanks, I’ll set things up on my own`}
+              {t`I'm done exploring for now`}
             </Link>
           </div>
         </div>
@@ -159,25 +103,3 @@ export default class PostSetupApp extends Component {
     );
   }
 }
-
-const BorderedPanel = ({ className, style, children }) => (
-  <div
-    className={cx("bordered rounded shadowed bg-white p4", className)}
-    style={style}
-  >
-    {children}
-  </div>
-);
-
-const ThinProgressBar = () => (
-  <div className="bg-brand" style={{ height: 6, borderRadius: 99 }}>
-    <div
-      style={{
-        backgroundColor: "black",
-        opacity: 0.15,
-        height: 6,
-        width: 52,
-      }}
-    />
-  </div>
-);

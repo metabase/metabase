@@ -5,11 +5,9 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            metabase.types
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
-
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
@@ -157,7 +155,8 @@
 (def fingerprint-version->types-that-should-be-re-fingerprinted
   "Map of fingerprint version to the set of Field base types that need to be upgraded to this version the next
    time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
-  {1 #{:type/*}})
+  {1 #{:type/*}
+   2 #{:type/DateTime}})
 
 (def latest-fingerprint-version
   "The newest (highest-numbered) version of our Field fingerprints."

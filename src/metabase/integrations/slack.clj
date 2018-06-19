@@ -3,10 +3,11 @@
             [clj-http.client :as http]
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
+            [puppetlabs.i18n.core :refer [tru]]
             [metabase.util :as u]))
 
 ;; Define a setting which captures our Slack api token
-(defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication")
+(defsetting slack-token (tru "Slack API bearer token obtained from https://api.slack.com/web#authentication"))
 
 (def ^:private ^:const ^String slack-api-base-url "https://slack.com/api")
 (def ^:private ^:const ^String files-channel-name "metabase_files")

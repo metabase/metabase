@@ -1,4 +1,5 @@
 import {
+  createAction,
   createThunkAction,
   handleActions,
   combineReducers,
@@ -41,6 +42,21 @@ export const updateSetting = createThunkAction(UPDATE_SETTING, function(
   };
 });
 
+export const UPDATE_SETTINGS = "metabase/admin/settings/UPDATE_SETTINGS";
+export const updateSettings = createThunkAction(UPDATE_SETTINGS, function(
+  settings,
+) {
+  return async function(dispatch, getState) {
+    try {
+      await SettingsApi.putAll(settings);
+      await dispatch(refreshSiteSettings());
+    } catch (error) {
+      console.log("error updating settings", settings, error);
+      throw error;
+    }
+  };
+});
+
 export const UPDATE_EMAIL_SETTINGS =
   "metabase/admin/settings/UPDATE_EMAIL_SETTINGS";
 export const updateEmailSettings = createThunkAction(
@@ -70,6 +86,13 @@ export const sendTestEmail = createThunkAction(SEND_TEST_EMAIL, function() {
     }
   };
 });
+
+export const CLEAR_EMAIL_SETTINGS =
+  "metabase/admin/settings/CLEAR_EMAIL_SETTINGS";
+
+export const clearEmailSettings = createAction(CLEAR_EMAIL_SETTINGS, () =>
+  EmailApi.clear(),
+);
 
 export const UPDATE_SLACK_SETTINGS =
   "metabase/admin/settings/UPDATE_SLACK_SETTINGS";

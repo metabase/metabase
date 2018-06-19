@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.add-row-count-and-status
   "Middleware for adding `:row_count` and `:status` info to QP results."
-  (:require (metabase.query-processor [interface :as i]
-                                      [util :as qputil])))
+  (:require [metabase.query-processor
+             [interface :as i]
+             [util :as qputil]]))
 
 (defn add-row-count-and-status
   "Wrap the results of a successfully processed query in the format expected by the frontend (add `row_count` and `status`)."

@@ -24,7 +24,6 @@ import { isObscured } from "metabase/lib/dom";
 
 const inputBoxClasses = cxs({
   maxHeight: 130,
-  overflow: "scroll",
 });
 
 type Value = any;
@@ -63,6 +62,7 @@ type Props = {
   onBlur?: () => void,
 
   updateOnInputChange: boolean,
+  updateOnInputBlur?: boolean,
   // if provided, parseFreeformValue parses the input string into a value,
   // or returns null to indicate an invalid value
   parseFreeformValue: (value: string) => ?Value,
@@ -146,7 +146,6 @@ export default class TokenField extends Component {
   static defaultProps = {
     removeSelected: true,
 
-    // $FlowFixMe
     valueKey: "value",
     labelKey: "label",
 
@@ -348,6 +347,17 @@ export default class TokenField extends Component {
   };
 
   onInputBlur = () => {
+    if (this.props.updateOnInputBlur && this.props.parseFreeformValue) {
+      const input = findDOMNode(this.refs.input);
+      const value = this.props.parseFreeformValue(input.value);
+      if (
+        value != null &&
+        (this.props.multi || value !== this.props.value[0])
+      ) {
+        this.addValue(value);
+        this.clearInputValue();
+      }
+    }
     if (this.props.onBlur) {
       this.props.onBlur();
     }
@@ -536,18 +546,15 @@ export default class TokenField extends Component {
     const valuesList = (
       <ul
         className={cx(
-          "m1 p0 pb1 bordered rounded flex flex-wrap bg-white scroll-x scroll-y",
+          "border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y",
           inputBoxClasses,
-          {
-            [`border-grey-2`]: this.state.isFocused,
-          },
         )}
         style={this.props.style}
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {value.map((v, index) => (
           <li
-            key={v}
+            key={index}
             className={cx(
               `mt1 ml1 py1 pl2 rounded bg-grey-05`,
               multi ? "pr1" : "pr2",
@@ -590,13 +597,13 @@ export default class TokenField extends Component {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className="ml1 scroll-y scroll-show"
+          className="pl1 py1 scroll-y scroll-show border-bottom"
           style={{ maxHeight: 300 }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
         >
           {filteredOptions.map(option => (
-            <li key={this._value(option)}>
+            <li className="mr1" key={this._value(option)}>
               <div
                 ref={
                   this._valueIsEqual(selectedOptionValue, this._value(option))

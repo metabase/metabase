@@ -4057,3 +4057,241 @@ databaseChangeLog:
               name: read_permissions
               type: text
               remarks: 'Permissions required to view this Card and run its query.'
+  - changeSet:
+      id: 76
+      author: senior
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              name: fields_hash
+              type: text
+              remarks: 'Computed hash of all of the fields associated to this table'
+  - changeSet:
+      id: 77
+      author: senior
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              name: login_attributes
+              type: text
+              remarks: 'JSON serialized map with attributes used for row level permissions'
+  - changeSet:
+      id: 79
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              name: collection_id
+              type: int
+              remarks: 'Optional ID of Collection this Dashboard belongs to.'
+              constraints:
+                references: collection(id)
+                foreignKeyName: fk_dashboard_collection_id
+              # TODO - if someone deletes a collection, what should happen to the Dashboards that are in it? Should they
+              # get deleted as well? Or should collection_id be cleared, effectively putting them in the so-called
+              # "root" collection?
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_dashboard_collection_id
+            columns:
+              - column:
+                  name: collection_id
+        - addColumn:
+            tableName: pulse
+            columns:
+              name: collection_id
+              type: int
+              remarks: 'Options ID of Collection this Pulse belongs to.'
+              constraints:
+                references: collection(id)
+                foreignKeyName: fk_pulse_collection_id
+        - createIndex:
+            tableName: pulse
+            indexName: idx_pulse_collection_id
+            columns:
+              - column:
+                  name: collection_id
+  - changeSet:
+      id: 80
+      author: camsaul
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              name: location
+              type: varchar(254)
+              remarks: 'Directory-structure path of ancestor Collections. e.g. "/1/2/" means our Parent is Collection 2, and their parent is Collection 1.'
+              constraints:
+                nullable: false
+              defaultValue: "/"
+        - createIndex:
+            tableName: collection
+            indexName: idx_collection_location
+            columns:
+              - column:
+                  name: location
+  - changeSet:
+      id: 81
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              name: collection_position
+              type: smallint
+              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+        - addColumn:
+            tableName: report_card
+            columns:
+              name: collection_position
+              type: smallint
+              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+        - addColumn:
+            tableName: pulse
+            columns:
+              name: collection_position
+              type: smallint
+              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+  - changeSet:
+      id: 82
+      author: senior
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              name: updated_at
+              type: datetime
+              remarks: 'When was this User last updated?'
+        - sql:
+            sql: update core_user set updated_at=date_joined
+# Switch the logic for metric/segment archiving to be more consistent with other entities in the model.
+# Similarly, add the archived flag to pulses which doesn't have one.
+  - changeSet:
+      id: 84
+      author: senior
+      comment: 'Added 0.30.0'
+      changes:
+        - renameColumn:
+            tableName: metric
+            columnDataType: boolean
+            newColumnName: archived
+            oldColumnName: is_active
+        - addDefaultValue:
+            tableName: metric
+            columnDataType: boolean
+            columnName: archived
+            defaultValueBoolean: false
+        - renameColumn:
+            tableName: segment
+            columnDataType: boolean
+            newColumnName: archived
+            oldColumnName: is_active
+        - addDefaultValue:
+            tableName: segment
+            columnDataType: boolean
+            columnName: archived
+            defaultValueBoolean: false
+        - addColumn:
+            tableName: pulse
+            columns:
+              name: archived
+              type: boolean
+              remarks: 'Has this pulse been archived?'
+              defaultValueBoolean: false
+        # Before this change, metrics/segments had opposite logic, rather than marking something as archived
+        # it was marked as active. Since the column is now an archived column, flip the boolean value
+        - sql:
+            sql: update metric set archived = not(archived)
+            sql: update segment set archived = not(archived)
+  # Personal Collections, and removing Collection's unique constraint and index on slug
+  - changeSet:
+      id: 85
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              name: personal_owner_id
+              type: int
+              remarks: 'If set, this Collection is a personal Collection, for exclusive use of the User with this ID.'
+              constraints:
+                references: core_user(id)
+                foreignKeyName: fk_collection_personal_owner_id
+                unique: true
+                uniqueConstraintName: unique_collection_personal_owner_id
+                deleteCascade: true
+        # Needed so we can efficiently look up the Collection belonging to a User, and so we can efficiently enforce the
+        # unique constraint
+        - createIndex:
+            tableName: collection
+            indexName: idx_collection_personal_owner_id
+            columns:
+              - column:
+                  name: personal_owner_id
+        # We're no longer enforcing unique constraints on Collection slugs or using them directly in the URLs, so let's
+        # go ahead and remove stuff related to that...
+        #
+        # It's easier to just copy the value of slug to a new column and drop the old one than to try to deduce what the
+        # unique constraint is named locally across all of our different DBMSes
+        # (For example see https://stackoverflow.com/questions/10008476/dropping-unique-constraint-for-column-in-h2)
+        #
+        # Here's the plan: add new column _slug; copy values of slug into _slug; remove slug; rename _slug to slug
+        - addColumn:
+            tableName: collection
+            columns:
+              name: _slug
+              type: varchar(254)
+              remarks: 'Sluggified version of the Collection name. Used only for display purposes in URL; not unique or indexed.'
+        # I don't know of an easy way to copy existing values of slug to _slug with Liquibase as we create the column so
+        # just have to do it this way instead
+        - sql:
+            sql: UPDATE collection SET _slug = slug
+        - addNotNullConstraint:
+            tableName: collection
+            columnName: _slug
+            columnDataType: varchar(254)
+        - dropColumn:
+            tableName: collection
+            columnName: slug
+        - renameColumn:
+            tableName: collection
+            oldColumnName: _slug
+            newColumnName: slug
+            columnDataType: varchar(254)
+        # Let's try to make sure the comments on the name column of Collection actually reflect reality
+        - sql:
+            dbms: postgresql,h2
+            sql: "COMMENT ON COLUMN collection.name IS 'The user-facing name of this Collection.'"
+        - sql:
+            dbms: mysql
+            sql: "ALTER TABLE `collection` CHANGE `name` `name` TEXT NOT NULL COMMENT 'The user-facing name of this Collection.'"
+
+# In 0.30.0 we finally removed the long-deprecated native read permissions. Since they're no longer considered valid by
+# our permissions code, remove any entries for them so they don't cause problems.
+  - changeSet:
+      id: 86
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - sql:
+            sql: DELETE FROM permissions WHERE object LIKE '%/native/read/'
+
+# Time to finally get rid of the RawTable and RawColumn tables. Bye Felicia!
+  - changeSet:
+      id: 87
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - dropTable:
+            tableName: raw_column
+        - dropTable:
+            tableName: raw_table

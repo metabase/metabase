@@ -12,6 +12,7 @@
              [util :as u]]
             [metabase.pulse.render :as render]
             [metabase.util
+             [date :as du]
              [export :as export]
              [quotation :as quotation]
              [urls :as url]]
@@ -62,7 +63,7 @@
                                :invitorEmail (:email invitor)
                                :company      company
                                :joinUrl      join-url
-                               :today        (u/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy")
+                               :today        (du/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy")
                                :logoHeader   true}
                               (random-quote-context)))]
     (email/send-message!
@@ -97,7 +98,7 @@
                               :joinedUserName    (:first_name new-user)
                               :joinedViaSSO      google-auth?
                               :joinedUserEmail   (:email new-user)
-                              :joinedDate        (u/format-date "EEEE, MMMM d") ; e.g. "Wednesday, July 13". TODO - is this what we want?
+                              :joinedDate        (du/format-date "EEEE, MMMM d") ; e.g. "Wednesday, July 13". TODO - is this what we want?
                               :adminEmail        (first recipients)
                               :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}
                              (random-quote-context))))))
@@ -188,7 +189,7 @@
 (defn- pulse-context [pulse]
   (merge {:emailType    "pulse"
           :pulseName    (:name pulse)
-          :sectionStyle (render/style render/section-style)
+          :sectionStyle (render/style (render/section-style))
           :colorGrey4   render/color-gray-4
           :logoFooter   true}
          (random-quote-context)))
@@ -217,7 +218,7 @@
                       (export/export-to-csv-writer temp-file result)
                       (create-result-attachment-map "csv" card-name temp-file))
 
-                    (when-let [temp-file (and (render/include-xls-attachment? card result-data)
+                    (when-let [temp-file (and (:include_xls card)
                                               (create-temp-file "xlsx"))]
                       (export/export-to-xlsx-file temp-file result)
                       (create-result-attachment-map "xlsx" card-name temp-file))]))))
@@ -266,7 +267,7 @@
      (merge {:questionURL (url/card-url card-id)
              :questionName card-name
              :emailType    "alert"
-             :sectionStyle render/section-style
+             :sectionStyle (render/section-style)
              :colorGrey4   render/color-gray-4
              :logoFooter   true}
             (random-quote-context)
@@ -319,7 +320,7 @@
 (defn send-new-alert-email!
   "Send out the initial 'new alert' email to the `CREATOR` of the alert"
   [{:keys [creator] :as alert}]
-  (send-email! creator "You setup an alert" new-alert-template
+  (send-email! creator "You set up an alert" new-alert-template
                (default-alert-context alert alert-condition-text)))
 
 (defn send-you-unsubscribed-alert-email!

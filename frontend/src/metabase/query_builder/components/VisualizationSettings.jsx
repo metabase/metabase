@@ -36,7 +36,7 @@ export default class VisualizationSettings extends React.Component {
       { card, data: result.data },
     ]);
 
-    var triggerElement = (
+    let triggerElement = (
       <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
         <Icon className="mr1" name={CardVisualization.iconName} size={12} />
         {CardVisualization.uiName}

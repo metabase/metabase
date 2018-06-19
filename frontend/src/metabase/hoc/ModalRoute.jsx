@@ -21,8 +21,8 @@ const ModalWithRoute = ComposedModal =>
 
       render() {
         return (
-          <Modal isOpen={true}>
-            <ComposedModal onClose={this.onClose} />
+          <Modal onClose={this.onClose}>
+            <ComposedModal {...this.props} onClose={this.onClose} />
           </Modal>
         );
       }

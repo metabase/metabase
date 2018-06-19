@@ -1,20 +1,23 @@
 (ns metabase.api.getting-started
+  "/api/getting_started routes."
   (:require [compojure.core :refer [GET]]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.models
              [interface :as mi]
              [setting :refer [defsetting]]]
+            [metabase.util :as u]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db]))
 
 (defsetting getting-started-things-to-know
-  "'Some things to know' text field for the Getting Started guide.")
+  (tru "''Some things to know'' text field for the Getting Started guide."))
 
 (defsetting getting-started-contact-name
-  "Name of somebody users can contact for help in the Getting Started guide.")
+  (tru "Name of somebody users can contact for help in the Getting Started guide."))
 
 (defsetting getting-started-contact-email
-  "Email of somebody users can contact for help in the Getting Started guide.")
+  (tru "Email of somebody users can contact for help in the Getting Started guide."))
 
 
 (api/defendpoint GET "/"
@@ -26,9 +29,10 @@
     {:things_to_know           (getting-started-things-to-know)
      :contact                  {:name  (getting-started-contact-name)
                                 :email (getting-started-contact-email)}
-     :most_important_dashboard (when-let [dashboard (db/select-one ['Dashboard :id] :show_in_getting_started true)]
+     :most_important_dashboard (when-let [dashboard (db/select-one ['Dashboard :id :collection_id]
+                                                      :show_in_getting_started true)]
                                  (when (mi/can-read? dashboard)
-                                   (:id dashboard)))
+                                   (u/get-id dashboard)))
      :important_metrics        metric-ids
      :important_tables         table-ids
      :important_segments       segment-ids

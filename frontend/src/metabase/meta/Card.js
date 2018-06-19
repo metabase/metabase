@@ -85,20 +85,30 @@ export function canRun(card: Card): boolean {
   }
 }
 
+export function cardVisualizationIsEquivalent(
+  cardA: Card,
+  cardB: Card,
+): boolean {
+  return _.isEqual(
+    _.pick(cardA, "display", "visualization_settings"),
+    _.pick(cardB, "display", "visualization_settings"),
+  );
+}
+
+export function cardQueryIsEquivalent(cardA: Card, cardB: Card): boolean {
+  cardA = updateIn(cardA, ["dataset_query", "parameters"], p => p || []);
+  cardB = updateIn(cardB, ["dataset_query", "parameters"], p => p || []);
+  return _.isEqual(
+    _.pick(cardA, "dataset_query"),
+    _.pick(cardB, "dataset_query"),
+  );
+}
+
 export function cardIsEquivalent(cardA: Card, cardB: Card): boolean {
-  cardA = updateIn(
-    cardA,
-    ["dataset_query", "parameters"],
-    parameters => parameters || [],
+  return (
+    cardQueryIsEquivalent(cardA, cardB) &&
+    cardVisualizationIsEquivalent(cardA, cardB)
   );
-  cardB = updateIn(
-    cardB,
-    ["dataset_query", "parameters"],
-    parameters => parameters || [],
-  );
-  cardA = _.pick(cardA, "dataset_query", "display", "visualization_settings");
-  cardB = _.pick(cardB, "dataset_query", "display", "visualization_settings");
-  return _.isEqual(cardA, cardB);
 }
 
 export function getQuery(card: Card): ?StructuredQuery {
@@ -214,6 +224,10 @@ export function applyParameters(
   return datasetQuery;
 }
 
+export function isTransientId(id: ?any) {
+  return id != null && typeof id === "string" && isNaN(parseInt(id));
+}
+
 /** returns a question URL with parameters added to query string or MBQL filters */
 export function questionUrlWithParameters(
   card: Card,
@@ -240,6 +254,7 @@ export function questionUrlWithParameters(
   // If we have a clean question without parameters applied, don't add the dataset query hash
   if (
     !cardIsDirty &&
+    !isTransientId(card.id) &&
     datasetQuery.parameters &&
     datasetQuery.parameters.length === 0
   ) {
@@ -268,5 +283,13 @@ export function questionUrlWithParameters(
       console.warn("UNHANDLED PARAMETER", datasetParameter);
     }
   }
+
+  if (isTransientId(card.id)) {
+    card = assoc(card, "id", null);
+  }
+  if (isTransientId(card.original_card_id)) {
+    card = assoc(card, "original_card_id", null);
+  }
+
   return Urls.question(null, card.dataset_query ? card : undefined, query);
 }

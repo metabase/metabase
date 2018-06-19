@@ -14,7 +14,7 @@ export const FETCH_RECENT_VIEWS = "FETCH_RECENT_VIEWS";
 export const fetchActivity = createThunkAction(FETCH_ACTIVITY, function() {
   return async function(dispatch, getState) {
     let activity = await ActivityApi.list();
-    for (var ai of activity) {
+    for (let ai of activity) {
       ai.timestamp = moment(ai.timestamp);
       ai.hasLinkableModel = function() {
         return _.contains(["card", "dashboard"], this.model);
@@ -29,7 +29,7 @@ export const fetchRecentViews = createThunkAction(
   function() {
     return async function(dispatch, getState) {
       let recentViews = await ActivityApi.recent_views();
-      for (var v of recentViews) {
+      for (let v of recentViews) {
         v.timestamp = moment(v.timestamp);
       }
       return recentViews;
