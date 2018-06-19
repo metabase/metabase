@@ -443,7 +443,10 @@ describe("FieldApp", () => {
       const lastMapping = fieldValueMappings.last();
       expect(lastMapping.find("h3").text()).toBe("5");
       expect(lastMapping.find(InputBlurChange).props().value).toBe("5");
-      setInputValue(lastMapping.find(InputBlurChange), "Extraordinarily awesome");
+      setInputValue(
+        lastMapping.find(InputBlurChange),
+        "Extraordinarily awesome",
+      );
 
       const saveButton = valueRemappingsSection.find(ButtonWithStatus);
       clickButton(saveButton);
