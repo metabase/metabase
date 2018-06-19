@@ -193,9 +193,9 @@ class DefaultLanding extends React.Component {
                       pinIndex={
                         pinned[pinned.length - 1].collection_position + 1
                       }
+                      noDrop
                       marginLeft={8}
                       marginRight={8}
-                      noBorder
                     >
                       <Grid>
                         {pinned.map((item, index) => (
