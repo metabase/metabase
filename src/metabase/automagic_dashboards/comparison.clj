@@ -212,24 +212,24 @@
          dashboard->cards
          (m/distinct-by :dataset_query)
          (transduce (comp (filter :display)
-                     (mapcat unroll-multiseries))
-               (fn
-                 ([]
-                  (let [title (tru "Comparison of {0} and {1}"
-                                   (:full-name left)
-                                   (:full-name right))]
-                    (-> {:name              title
-                         :transient_name    title
-                         :transient_filters nil
-                         :param_fields      nil
-                         :description       (tru "Automatically generated comparison dashboard comparing {0} and {1}"
-                                                 (:full-name left)
-                                                 (:full-name right))
-                         :creator_id        api/*current-user-id*
-                         :parameters        []
-                         :related           (related left right)}
-                        (add-title-row left right))))
-                 ([[dashboard row]] dashboard)
-                 ([[dashboard row] card]
-                  [(comparison-row dashboard row left right card)
-                   (+ row (:height card))]))))))
+                          (mapcat unroll-multiseries))
+                    (fn
+                      ([]
+                       (let [title (tru "Comparison of {0} and {1}"
+                                        (:full-name left)
+                                        (:full-name right))]
+                         (-> {:name              title
+                              :transient_name    title
+                              :transient_filters nil
+                              :param_fields      nil
+                              :description       (tru "Automatically generated comparison dashboard comparing {0} and {1}"
+                                                      (:full-name left)
+                                                      (:full-name right))
+                              :creator_id        api/*current-user-id*
+                              :parameters        []
+                              :related           (related left right)}
+                             (add-title-row left right))))
+                      ([[dashboard row]] dashboard)
+                      ([[dashboard row] card]
+                       [(comparison-row dashboard row left right card)
+                        (+ row (:height card))]))))))
