@@ -56,7 +56,6 @@ export default class SettingsLdapForm extends Component {
   };
 
   render() {
-    const { settingValues } = this.props;
     const { sendingEmail } = this.state;
     return (
       <SettingsBatchForm
