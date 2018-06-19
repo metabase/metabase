@@ -52,7 +52,9 @@ export class GroupingManager {
 
       const visibleEndIndex = Math.min(endIndex, visibleRowIndices.stop);
       const rowSpan = visibleEndIndex - rowIndex + 1;
-        const res = {...cellStyle, height: (this.defaultRowHeight * rowSpan), 'flex-direction': 'column'};
+      console.log("before change:", cellStyle);
+        const res = {...cellStyle, height: (this.defaultRowHeight * rowSpan), 'display': 'block', 'padding-top' : '.25em'};
+      console.log("after change:", res);
         return res;
 
       }
