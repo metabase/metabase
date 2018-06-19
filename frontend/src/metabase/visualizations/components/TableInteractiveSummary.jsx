@@ -276,7 +276,7 @@ export default class TableInteractiveSummary extends Component {
     const mappedStyle = groupingManager.mapStyle(rowIndex, columnIndex, visibleRowIndices, style);
 
     if(groupingManager.isGrouped(columnIndex))
-      key = (columnIndex + '-' + [...Array(columnIndex+1).keys()].map(i => row[i]).join('-'));
+      key = (columnIndex + '-' + [...Array(columnIndex+1).keys()].map(i => row[i]).join('-')) + (row.isTotal || '');
 
     const clicked = getTableCellClickedObject(
       data,

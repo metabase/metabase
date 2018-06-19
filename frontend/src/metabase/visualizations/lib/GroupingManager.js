@@ -51,7 +51,6 @@ export class GroupingManager {
       const endIndex = tmp[ri];
 
       const visibleEndIndex = Math.min(endIndex, visibleRowIndices.stop);
-
       const rowSpan = visibleEndIndex - rowIndex + 1;
         const res = {...cellStyle, height: (this.defaultRowHeight * rowSpan), 'flex-direction': 'column'};
         return res;
@@ -92,7 +91,7 @@ const isFirstInGroup = (columns: Number[], rows : Row[]) => (rowIndex: Number): 
 };
 
 const updateFirstInGroup = (hasTheSameValue) => ({prevRow, firstInGroupIndexes}: ColumnAcc, currentRow, index: Number) => {
-  if(!hasTheSameValue(prevRow, currentRow))
+  if(!hasTheSameValue(prevRow, currentRow) || currentRow.isTotal)
     firstInGroupIndexes.add(index);
 
   return {prevRow : currentRow, firstInGroupIndexes};

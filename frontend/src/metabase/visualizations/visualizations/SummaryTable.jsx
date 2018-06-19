@@ -98,8 +98,6 @@ export default class SummaryTable extends Component {
 
   constructor(props: Props) {
     super(props);
-    console.log('props')
-    console.log(props);
     this.state = {
       data: null,
       query: props.query
@@ -131,13 +129,12 @@ export default class SummaryTable extends Component {
 
    console.log('props.rawSeries');
    console.log(this.props.rawSeries);
-   // console.log(data);
-   // console.log(settings);
       const { cols,  columns } = data;
 
       const columnIndexes = this.getColumnIndexes(settings, cols);
 
-   const rows = this.props.rawSeries.map(p => this.normalizeRows(settings, p.data))
+   const rows = this.props.rawSeries.map((p, index) => this.normalizeRows(settings, p.data, 0 < index));
+
       const rowsMerged = [].concat(...rows);
 
       this.setState({
@@ -156,9 +153,10 @@ export default class SummaryTable extends Component {
 
 
 
-  normalizeRows = (settings, { cols, rows }) : DatasetData => {
+  normalizeRows = (settings, { cols, rows }, isTotal) : DatasetData => {
     const columnIndexes = this.getColumnIndexes(settings, cols);
-    return rows.map(row => columnIndexes.map(i => row[i]));
+    const res = rows.map(row => columnIndexes.map(i => row[i])).map(p => ({isTotal : isTotal, __proto__ : p}));
+    return res;
   };
 
 
