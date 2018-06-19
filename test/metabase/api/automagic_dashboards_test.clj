@@ -30,6 +30,9 @@
                 (finally
                   (perms/grant-permissions! (perms-group/all-users) (perms/object-path (data/id)))))))))))
 
+
+;;; ------------------- X-ray  -------------------
+
 (expect (api-call "table/%s" [(data/id :venues)]))
 (expect (api-call "table/%s/rule/example/indepth" [(data/id :venues)]))
 
@@ -119,3 +122,31 @@
                         (#'magic/encode-base64-json))
                    (->> [:> [:field-id (data/id :venues :price)] 5]
                         (#'magic/encode-base64-json))]))
+
+
+;;; ------------------- Comparisons -------------------
+
+(def ^:private segment {:table_id (data/id :venues)
+                        :definition {:filter [:> [:field-id-id (data/id :venues :price)] 10]}})
+
+(expect
+  (tt/with-temp* [Segment [{segment-id :id} segment]]
+    (api-call "table/%s/compare/segment/%s"
+              [(data/id :venues) segment-id])))
+
+(expect
+  (tt/with-temp* [Segment [{segment-id :id} segment]]
+    (api-call "table/%s/rule/example/indepth/compare/segment/%s"
+              [(data/id :venues) segment-id])))
+
+(expect
+  (tt/with-temp* [Segment [{segment-id :id} segment]]
+    (api-call "adhoc/%s/cell/%s/compare/segment/%s"
+              [(->> {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
+                             :source_table (data/id :venues)}
+                     :type :query
+                     :database (data/id)}
+                    (#'magic/encode-base64-json))
+               (->> [:> [:field-id (data/id :venues :price)] 5]
+                    (#'magic/encode-base64-json))
+               segment-id])))
