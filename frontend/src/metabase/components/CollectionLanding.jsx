@@ -124,7 +124,6 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
   );
   // sort the pinned items by collection_position
   pinned.sort((a, b) => a.collection_position - b.collection_position);
-  console.log("collection_positions:", pinned.map(p => p.collection_position));
   return { collections, pinned, unpinned };
 })
 // only apply bulk actions to unpinned items
