@@ -112,15 +112,29 @@
 
 (defn- add-col-title
   [dashboard title description col]
-  (populate/add-text-card dashboard
-                          {:text                   (if description
-                                                     (format "# %s\n\n%s" title description)
-                                                     (format "# %s" title))
-                           :width                  (/ populate/grid-width 2)
-                           :height                 title-height
-                           :visualization-settings {:dashcard.background false
-                                                    :text.align_vertical :bottom}}
-                          [0 col]))
+  (let [height (cond-> title-height
+                 description inc)]
+    [(populate/add-text-card dashboard
+                             {:text                   (if description
+                                                        (format "# %s\n\n%s" title description)
+                                                        (format "# %s" title))
+                              :width                  (/ populate/grid-width 2)
+                              :height                 height
+                              :visualization-settings {:dashcard.background false
+                                                       :text.align_vertical :bottom}}
+                             [0 col])
+     height]))
+
+(defn- add-title-row
+  [dashboard left right]
+  (let [[dashboard height-left]  (add-col-title dashboard
+                                                (:full-name left)
+                                                (-> left :entity :description) 0)
+        [dashboard height-right] (add-col-title dashboard
+                                                (:full-name right)
+                                                (-> right :entity :description)
+                                                (/ populate/grid-width 2))]
+    [dashboard (max height-left height-right)]))
 
 (defn- series-labels
   [card]
@@ -172,22 +186,20 @@
                      (mapcat unroll-multiseries))
                (fn
                  ([]
-                  [(let [title (tru "Comparison of {0} and {1}"
-                                    (:full-name left)
-                                    (:full-name right))]
-                     (-> {:name              title
-                          :transient_name    title
-                          :transient_filters nil
-                          :description       (tru "Automatically generated comparison dashboard comparing {0} and {1}"
-                                                  (:full-name left)
-                                                  (:full-name right))
-                          :creator_id        api/*current-user-id*
-                          :parameters        []}
-                         (add-col-title (:full-name left) (-> left :entity :description) 0)
-                         (add-col-title (:full-name right)
-                                        (-> right :entity :description)
-                                        (/ populate/grid-width 2))))
-                   title-height])
+                  (let [title (tru "Comparison of {0} and {1}"
+                                   (:full-name left)
+                                   (:full-name right))]
+                    (-> {:name              title
+                         :transient_name    title
+                         :transient_filters nil
+                         :param_fields      nil
+                         :description       (tru "Automatically generated comparison dashboard comparing {0} and {1}"
+                                                 (:full-name left)
+                                                 (:full-name right))
+                         :creator_id        api/*current-user-id*
+                         :parameters        []
+                         :related           (:related dashboard)}
+                        (add-title-row left right))))
                  ([[dashboard row]] dashboard)
                  ([[dashboard row] card]
                   [(comparison-row dashboard row left right card)
