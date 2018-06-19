@@ -8,6 +8,7 @@ import {
 } from "__support__/integrated_tests";
 
 import React from "react";
+import { Provider } from "react-redux";
 import { mount } from "enzyme";
 
 import FieldList from "../../../src/metabase/query_builder/components/FieldList";
@@ -27,7 +28,7 @@ import {
   fetchTableMetadata,
 } from "metabase/redux/metadata";
 import { TestTooltip, TestTooltipContent } from "metabase/components/Tooltip";
-import FilterWidget from "metabase/query_builder/components/filters/FilterWidget";
+import Filter from "metabase/query_builder/components/Filter";
 
 const getFieldList = (query, fieldOptions, segmentOptions) => (
   <FieldList
@@ -89,11 +90,13 @@ describe("FieldList", () => {
       metadata,
     }).query();
     const component = mount(
-      getFieldList(
-        query,
-        query.filterFieldOptions(),
-        query.filterSegmentOptions(),
-      ),
+      <Provider store={store}>
+        {getFieldList(
+          query,
+          query.filterFieldOptions(),
+          query.filterSegmentOptions(),
+        )}
+      </Provider>,
     );
 
     // TODO: This is pretty awkward – each list item could have its own React component for easier traversal
@@ -114,10 +117,10 @@ describe("FieldList", () => {
 
     expect(
       tooltipContent
-        .find(FilterWidget)
+        .find(Filter)
         .last()
         .text(),
       // eslint-disable-next-line no-irregular-whitespace
-    ).toMatch(/Created At -300day/);
+    ).toMatch(/Created AtPast 300 Days/);
   });
 });

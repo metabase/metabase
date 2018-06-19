@@ -6,7 +6,7 @@ import { Flex, Box } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 
-import { getCollectionsById } from "metabase/entities/collections";
+import { getExpandedCollectionsById } from "metabase/entities/collections";
 
 const COLLECTION_ICON_COLOR = "#DCE1E4";
 
@@ -55,7 +55,7 @@ export default class CollectionPicker extends React.Component {
     const { value, onChange, collections, style, className } = this.props;
     const { parentId } = this.state;
 
-    const collectionsById = getCollectionsById(collections);
+    const collectionsById = getExpandedCollectionsById(collections);
     const collection = collectionsById[parentId];
     const crumbs = this._getCrumbs(collection, collectionsById);
 

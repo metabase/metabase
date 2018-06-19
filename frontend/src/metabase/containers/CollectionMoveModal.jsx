@@ -13,25 +13,33 @@ import CollectionListLoader from "metabase/containers/CollectionListLoader";
 import CollectionPicker from "metabase/containers/CollectionPicker";
 
 class CollectionMoveModal extends React.Component {
-  state = {
-    // will eventually be the collection object representing the selected collection
-    // we store the whole object instead of just the ID so that we can use its
-    // name in the action button, and other properties
-    //
-    //  undefined = no selection
-    //  null = root collection
-    //  number = non-root collection id
-    selectedCollection: undefined,
-    // whether the move action has started
-    // TODO: use this loading and error state in the UI
-    moving: false,
-    error: null,
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      // will eventually be the collection object representing the selected collection
+      // we store the whole object instead of just the ID so that we can use its
+      // name in the action button, and other properties
+      //
+      //  undefined = no selection
+      //  null = root collection
+      //  number = non-root collection id
+      //
+      selectedCollection:
+        props.initialCollectionId === undefined
+          ? undefined
+          : { id: props.initialCollectionId },
+      // whether the move action has started
+      // TODO: use this loading and error state in the UI
+      moving: false,
+      error: null,
+    };
+  }
 
   static propTypes = {
     title: PropTypes.string.isRequired,
     onClose: PropTypes.func.isRequired,
     onMove: PropTypes.func.isRequired,
+    initialCollectionId: PropTypes.number,
   };
 
   render() {

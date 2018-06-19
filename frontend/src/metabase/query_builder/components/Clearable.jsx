@@ -4,7 +4,7 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon.jsx";
 
 const Clearable = ({ onClear, children, className }) => (
-  <div className={cx("flex align-center", className)}>
+  <span className={cx("flex align-center", className)}>
     {children}
     {onClear && (
       <a
@@ -14,7 +14,7 @@ const Clearable = ({ onClear, children, className }) => (
         <Icon name="close" size={14} />
       </a>
     )}
-  </div>
+  </span>
 );
 
 export default Clearable;

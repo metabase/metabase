@@ -45,6 +45,8 @@
     "react-ansi-style": "^1.0.0",
     "react-collapse": "^4.0.3",
     "react-copy-to-clipboard": "^5.0.1",
+    "react-dnd": "3",
+    "react-dnd-html5-backend": "3",
     "react-dom": "15",
     "react-draggable": "^2.2.3",
     "react-element-to-jsx-string": "^13.1.0",

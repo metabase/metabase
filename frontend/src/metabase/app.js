@@ -34,9 +34,14 @@ import { getStore } from "./store";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 
+// router
 import { Router, useRouterHistory } from "react-router";
 import { createHistory } from "history";
 import { syncHistoryWithStore } from "react-router-redux";
+
+// drag and drop
+import HTML5Backend from "react-dnd-html5-backend";
+import { DragDropContextProvider } from "react-dnd";
 
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
@@ -58,9 +63,11 @@ function _init(reducers, getRoutes, callback) {
 
   ReactDOM.render(
     <Provider store={store}>
-      <ThemeProvider theme={theme}>
-        <Router history={history}>{routes}</Router>
-      </ThemeProvider>
+      <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
+        <ThemeProvider theme={theme}>
+          <Router history={history}>{routes}</Router>
+        </ThemeProvider>
+      </DragDropContextProvider>
     </Provider>,
     document.getElementById("root"),
   );

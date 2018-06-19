@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import FilterList from "./filters/FilterList.jsx";
+import FilterList from "./FilterList.jsx";
 import AggregationWidget from "./AggregationWidget.jsx";
 import FieldSet from "metabase/components/FieldSet.jsx";
 
@@ -37,7 +37,6 @@ export default class QueryDefinitionTooltip extends Component {
                 ))}
                 <FilterList
                   filters={Query.getFilters(object.definition)}
-                  tableMetadata={tableMetadata}
                   maxDisplayValues={Infinity}
                 />
               </div>

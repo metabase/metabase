@@ -1,33 +1,19 @@
 import { createEntity } from "metabase/lib/entities";
 
-import { schema } from "normalizr";
 import { GET } from "metabase/lib/api";
 
 import {
-  QuestionSchema,
-  DashboardSchema,
-  PulseSchema,
-  CollectionSchema,
-  SegmentSchema,
-  MetricSchema,
+  ObjectUnionSchema,
+  ENTITIES_SCHEMA_MAP,
+  entityTypeForObject,
 } from "metabase/schema";
 
-const SEARCH_ENTITIES_SCHEMA_MAP = {
-  questions: QuestionSchema,
-  dashboards: DashboardSchema,
-  pulses: PulseSchema,
-  collections: CollectionSchema,
-  segments: SegmentSchema,
-  metrics: MetricSchema,
-};
-const SEARCH_ENTITIES_TYPES = Object.keys(SEARCH_ENTITIES_SCHEMA_MAP);
+import { canonicalCollectionId } from "metabase/entities/collections";
 
-// backend returns model = "card" instead of "question"
-const backendModelToEntityType = model =>
-  model === "card" ? "questions" : `${model}s`;
+const ENTITIES_TYPES = Object.keys(ENTITIES_SCHEMA_MAP);
 
 const searchList = GET("/api/search");
-const collectionList = GET("/api/collection/:id");
+const collectionList = GET("/api/collection/:collection/items");
 
 export default createEntity({
   name: "search",
@@ -35,51 +21,45 @@ export default createEntity({
 
   api: {
     list: async (query = {}) => {
-      let items;
       if (query.collection) {
-        if (Object.keys(query).length !== 1) {
+        const { collection, archived, model, ...unsupported } = query;
+        if (Object.keys(unsupported).length > 0) {
           throw new Error(
-            "search does not support other filters with `collection`",
+            "search with `collection` filter does not support these filters: " +
+              Object.keys(unsupported).join(", "),
           );
         }
-        const collection = await collectionList({ id: query.collection });
-        items = collection.items.map(item => ({
-          // archived false becaued this endpoint never returns archived items
-          archived: false,
-          ...item,
-        }));
+        return (await collectionList({ collection, archived, model })).map(
+          item => ({
+            collection_id: canonicalCollectionId(collection),
+            archived: archived || false,
+            ...item,
+          }),
+        );
       } else {
-        items = await searchList(query);
+        return searchList(query);
       }
-      // normalize
-      return items.map(item => ({
-        // remove this once search endpoint is migrated to use `favorite`
-        favorite: item.favorited,
-        // remove this once search endpoint is migrated to use `model`
-        model: item.type,
-        // add "entity_type" that matches the frontend's entity type
-        entity_type: backendModelToEntityType(item.model || item.type),
-        ...item,
-      }));
     },
   },
 
-  schema: new schema.Union(
-    SEARCH_ENTITIES_SCHEMA_MAP,
-    (object, parent, key) => object.entity_type,
-  ),
+  schema: ObjectUnionSchema,
 
   // delegate to the actual object's entity wrapEntity
   wrapEntity(object, dispatch = null) {
     const entities = require("metabase/entities");
-    const entity = entities[object.entity_type];
-    return entity.wrapEntity(object, dispatch);
+    const entity = entities[entityTypeForObject(object)];
+    if (entity) {
+      return entity.wrapEntity(object, dispatch);
+    } else {
+      console.warn("Couldn't find entity for object", object);
+      return object;
+    }
   },
 
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {
     const entities = require("metabase/entities");
-    for (const type of SEARCH_ENTITIES_TYPES) {
+    for (const type of ENTITIES_TYPES) {
       if (entities[type].actionShouldInvalidateLists(action)) {
         return true;
       }

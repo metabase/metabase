@@ -20,6 +20,7 @@
              [rules :as rules]]
             [metabase.models
              [card :as card :refer [Card]]
+             [database :refer [Database]]
              [field :refer [Field] :as field]
              [interface :as mi]
              [metric :refer [Metric] :as metric]
@@ -152,8 +153,7 @@
      :rules-prefix ["field"]}))
 
 (def ^:private ^{:arglists '([card-or-question])} nested-query?
-  (comp (every-pred string? #(str/starts-with? % "card__"))
-        #(qp.util/get-in-normalized % [:dataset_query :query :source_table])))
+  (comp qp.util/query->source-card-id :dataset_query))
 
 (def ^:private ^{:arglists '([card-or-question])} native-query?
   (comp #{:native} qp.util/normalize-token #(qp.util/get-in-normalized % [:dataset_query :type])))
@@ -161,8 +161,13 @@
 (def ^:private ^{:arglists '([card-or-question])} source-question
   (comp Card qp.util/query->source-card-id :dataset_query))
 
-(def ^:private ^{:arglists '([card])} table-like?
-  (comp empty? #(qp.util/get-in-normalized % [:dataset_query :query :aggregation])))
+(defn- table-like?
+  [card-or-question]
+  (let [[aggregation & _] (qp.util/get-in-normalized card-or-question [:dataset_query :query :aggregation])]
+    (or (nil? aggregation)
+        (and (or (string? aggregation)
+                 (keyword? aggregation))
+             (= (qp.util/normalize-token aggregation) :rows)))))
 
 (defn- source
   [card]
@@ -494,6 +499,11 @@
        x)
       (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
 
+(defn- valid-breakout-dimension?
+  [{:keys [base_type engine] :as f}]
+  (not (and (isa? base_type :type/Number)
+            (= engine :druid))))
+
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
@@ -517,6 +527,10 @@
          (map (some-fn #(get-in (:dimensions context) [% :matches])
                        (comp #(filter-tables % (:tables context)) rules/->entity)))
          (apply combo/cartesian-product)
+         (filter (fn [instantiations]
+                   (->> dimensions
+                        (map (comp (zipmap used-dimensions instantiations) second))
+                        (every? valid-breakout-dimension?))))
          (map (fn [instantiations]
                 (let [bindings (zipmap used-dimensions instantiations)
                       query    (if query
@@ -569,19 +583,23 @@
 
 (defmethod inject-root (type Field)
   [context field]
-  (update context :dimensions
-          (fn [dimensions]
-            (->> dimensions
-                 (keep (fn [[identifier definition]]
-                         (when-let [matches (->> definition
-                                                 :matches
-                                                 (remove (comp #{(id-or-name field)} id-or-name))
-                                                 not-empty)]
-                           [identifier (assoc definition :matches matches)])))
-                 (concat [["this" {:matches [field]
-                                   :name    (:display_name field)
-                                   :score   rules/max-score}]])
-                 (into {})))))
+  (let [field (assoc field :link (->> context
+                                      :tables
+                                      (m/find-first (comp #{(:table_id field)} u/get-id))
+                                      :link))]
+    (update context :dimensions
+            (fn [dimensions]
+              (->> dimensions
+                   (keep (fn [[identifier definition]]
+                           (when-let [matches (->> definition
+                                                   :matches
+                                                   (remove (comp #{(id-or-name field)} id-or-name))
+                                                   not-empty)]
+                             [identifier (assoc definition :matches matches)])))
+                   (concat [["this" {:matches [field]
+                                     :name    (:display_name field)
+                                     :score   rules/max-score}]])
+                   (into {}))))))
 
 (defmethod inject-root (type Metric)
   [context metric]
@@ -599,11 +617,13 @@
   (let [source        (:source root)
         tables        (concat [source] (when (instance? (type Table) source)
                                          (linked-tables source)))
+        engine        (-> source ((some-fn :db_id :database_id)) Database :engine)
         table->fields (if (instance? (type Table) source)
                         (comp (->> (db/select Field
                                               :table_id        [:in (map u/get-id tables)]
                                               :visibility_type "normal")
                                    field/with-targets
+                                   (map #(assoc % :engine engine))
                                    (group-by :table_id))
                               u/get-id)
                         (->> source
@@ -613,7 +633,8 @@
                                         (update :base_type keyword)
                                         (update :special_type keyword)
                                         field/map->FieldInstance
-                                        (classify/run-classifiers {}))))
+                                        (classify/run-classifiers {})
+                                        (map #(assoc % :engine engine)))))
                              constantly))]
     (as-> {:source       (assoc source :fields (table->fields source))
            :root         root
@@ -661,13 +682,7 @@
       [(assoc dashboard
          :filters  filters
          :cards    cards
-         :context  context
-         :fieldset (->> context
-                        :tables
-                        (mapcat :fields)
-                        (map (fn [field]
-                               [(id-or-name field) field]))
-                        (into {})))
+         :context  context)
        rule])))
 
 (def ^:private ^:const ^Long max-related 6)

@@ -2,8 +2,10 @@ import React from "react";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-
 import { normal } from "metabase/lib/colors";
+
+import { canonicalCollectionId } from "metabase/entities/collections";
+
 import CollectionSelect from "metabase/containers/CollectionSelect";
 
 const Pulses = createEntity({
@@ -16,12 +18,8 @@ const Pulses = createEntity({
 
     setCollection: ({ id }, collection, opts) =>
       Pulses.actions.update(
-        {
-          id,
-          // TODO - would be dope to make this check in one spot instead of on every movable item type
-          collection_id:
-            collection && collection.id === "root" ? null : collection.id,
-        },
+        { id },
+        { collection_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "pulse", "moved"),
       ),
   },
