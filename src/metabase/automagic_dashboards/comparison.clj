@@ -173,7 +173,7 @@
 (defn- related
   [& entities]
   (cond-> {:x-rays      (map (comp ->related-entity :entity) entities)
-           :comparisons (let [id              (comp (juxt type u/get-id) :entity)
+           :comparisons (let [id              (comp (juxt type :id) :entity)
                               new-comparison? (comp (complement (into #{} (map id) entities)) id)]
                           (for [root    entities
                                 segment (->> root :entity related/related :segments (map ->root))
