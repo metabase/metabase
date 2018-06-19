@@ -8,7 +8,6 @@ import chronological from "chronological";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
-// import { guessTimezone } from "metabase/lib/time";
 
 import { computeTimeseriesTicksInterval } from "./timeseries";
 import { getFriendlyName } from "./utils";
@@ -106,7 +105,6 @@ export function applyChartTimeseriesXAxis(
   }
 
   // get the data's timezone
-  // let timezone = guessTimezone(xValues);
   const timezone = timezones[0];
 
   // compute the data interval
