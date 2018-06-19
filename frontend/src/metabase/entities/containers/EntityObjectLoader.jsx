@@ -53,7 +53,7 @@ export type RenderProps = {
     error: entityDef.selectors.getError(state, { entityId }),
   };
 })
-export default class EntitiesObjectLoader extends React.Component {
+export default class EntityObjectLoader extends React.Component {
   props: Props;
 
   static defaultProps = {
@@ -139,3 +139,13 @@ export default class EntitiesObjectLoader extends React.Component {
     return this.props.delete(this.props.object);
   };
 }
+
+export const entityObjectLoader = (eolProps: Props) =>
+  // eslint-disable-line react/display-name
+  (ComposedComponent: any) =>
+    // eslint-disable-next-line react/display-name
+    (props: Props) => (
+      <EntityObjectLoader {...props} {...eolProps}>
+        {childProps => <ComposedComponent {...props} {...childProps} />}
+      </EntityObjectLoader>
+    );

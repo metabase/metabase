@@ -12,6 +12,8 @@ import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import Subhead from "metabase/components/Subhead";
 
+import { entityTypeForModel } from "metabase/schema";
+
 export default class SearchApp extends React.Component {
   render() {
     return (
@@ -43,13 +45,13 @@ export default class SearchApp extends React.Component {
               return (
                 <Box>
                   {_.chain(list)
-                    .groupBy("entity_type")
+                    .groupBy("model")
                     .pairs()
                     .value()
-                    .map(([section, items]) => (
+                    .map(([model, items]) => (
                       <Box mt={2} mb={3}>
                         <div className="text-uppercase text-grey-4 text-small text-bold my1">
-                          {section}
+                          {entityTypeForModel(model)}
                         </div>
                         <Card>
                           {items.map(item => (

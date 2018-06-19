@@ -656,7 +656,7 @@ export const getDatabasesPermissionsGrid = createSelector(
   },
 );
 
-import Collections, { getCollectionsById } from "metabase/entities/collections";
+import Collections from "metabase/entities/collections";
 
 const getCollectionId = (state, props) => props && props.collectionId;
 const getSingleCollectionPermissionsMode = (state, props) =>
@@ -664,23 +664,21 @@ const getSingleCollectionPermissionsMode = (state, props) =>
 
 const getCollections = createSelector(
   [
-    Collections.selectors.getList,
+    Collections.selectors.getExpandedCollectionsById,
     getCollectionId,
     getSingleCollectionPermissionsMode,
   ],
-  (collections, collectionId, singleMode) => {
-    if (!collections) {
-      return null;
-    }
-    const collectionsById = getCollectionsById(collections);
+  (collectionsById, collectionId, singleMode) => {
     if (collectionId && collectionsById[collectionId]) {
       if (singleMode) {
         return [collectionsById[collectionId]];
       } else {
         return collectionsById[collectionId].children;
       }
-    } else {
+    } else if (collectionsById["root"]) {
       return [collectionsById["root"]];
+    } else {
+      return null;
     }
   },
 );

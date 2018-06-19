@@ -122,6 +122,7 @@ export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
+export const isLocation = isFieldType.bind(null, LOCATION);
 
 export const isDimension = col => col && col.source !== "aggregation";
 export const isMetric = col =>

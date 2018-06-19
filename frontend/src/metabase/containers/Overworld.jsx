@@ -42,7 +42,7 @@ class Overworld extends React.Component {
         <CollectionItemsLoader collectionId="root">
           {({ items }) => {
             let pinnedDashboards = items.filter(
-              d => d.entity_type === "dashboards" && d.collection_position,
+              d => d.model === "dashboard" && d.collection_position != null,
             );
 
             if (!pinnedDashboards.length > 0) {

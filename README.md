@@ -6,6 +6,7 @@ Metabase is the easy, open source way for everyone in your company to ask questi
 [![Latest Release](https://img.shields.io/github/release/metabase/metabase.svg?label=latest%20release)](https://github.com/metabase/metabase/releases)
 [![GitHub license](https://img.shields.io/badge/license-AGPL-05B8CC.svg)](https://raw.githubusercontent.com/metabase/metabase/master/LICENSE.txt)
 [![Circle CI](https://circleci.com/gh/metabase/metabase.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase)
+[![Gitter chat](https://badges.gitter.im/metabase/metabase.png)](https://gitter.im/metabase/metabase)
 
 # Features
 - 5 minute [setup](http://metabase.com/docs/latest/setting-up-metabase.html) (We're not kidding)
@@ -94,6 +95,8 @@ Security is very important to us. If discover any issue regarding security, plea
 To get started with a development installation of the Metabase, follow the instructions at our [Developers Guide](docs/developers-guide.md).
 
 Then take a look at our [Contribution Guide](docs/contributing.md) for information about our process and where you can fit in!
+
+Talk to other contributors [in our Gitter room](https://gitter.im/metabase/metabase). 
 
 # Extending and Deep Integrations
 

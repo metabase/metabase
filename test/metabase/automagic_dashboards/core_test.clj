@@ -12,6 +12,7 @@
              [query :as query]
              [table :refer [Table] :as table]
              [user :as user]]
+            [metabase.query-processor :as qp]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
@@ -28,6 +29,13 @@
                                                     atom)]
      ~@body))
 
+(defmacro ^:private with-dashboard-cleanup
+  [& body]
+  `(tu/with-model-cleanup ['~'Card '~'Dashboard '~'Collection '~'DashboardCard]
+     ~@body))
+
+
+;;; ------------------- `->reference` -------------------
 
 (expect
   [:field-id 1]
@@ -44,6 +52,8 @@
   (->> 42
        (#'magic/->reference :mbql)))
 
+
+;;; ------------------- Rule matching  -------------------
 
 (expect
   [:entity/UserTable :entity/GenericTable :entity/*]
@@ -64,6 +74,8 @@
        (map (comp first :applies_to))))
 
 
+;;; ------------------- `automagic-anaysis` -------------------
+
 (defn- collect-urls
   [dashboard]
   (->> dashboard
@@ -80,27 +92,32 @@
                  ((test-users/user->client :rasta) :get 200 (format "automagic-dashboards/%s"
                                                                     (subs url 16)))))))
 
+(def ^:private valid-card?
+  (comp qp/expand :dataset_query))
+
 (defn- valid-dashboard?
   [dashboard]
   (assert (:name dashboard))
   (assert (-> dashboard :ordered_cards count pos?))
   (assert (valid-urls? dashboard))
+  (assert (every? valid-card? (keep :card (:ordered_cards dashboard))))
   true)
 
-(defmacro ^:private with-dashboard-cleanup
-  [& body]
-  `(tu/with-model-cleanup ['~'Card '~'Dashboard '~'Collection '~'DashboardCard]
-     ~@body))
+(expect
+  (with-rasta
+    (with-dashboard-cleanup
+      (->> (db/select Table :db_id (data/id))
+           (keep #(automagic-analysis % {}))
+           (every? valid-dashboard?)))))
 
 (expect
   (with-rasta
     (with-dashboard-cleanup
-      (->> (Table) (keep #(automagic-analysis % {})) (every? valid-dashboard?)))))
-
-(expect
-  (with-rasta
-    (with-dashboard-cleanup
-      (->> (Field) (keep #(automagic-analysis % {})) (every? valid-dashboard?)))))
+      (->> (db/select Field
+             :table_id [:in (db/select-field :id Table :db_id (data/id))]
+             :visibility_type "normal")
+           (keep #(automagic-analysis % {}))
+           (every? valid-dashboard?)))))
 
 (expect
   (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
@@ -186,7 +203,7 @@
       (with-dashboard-cleanup
         (-> card-id
             Card
-            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id) 2]]})
+            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id)] 2]})
             valid-dashboard?)))))
 
 
@@ -226,6 +243,16 @@
 (expect
   (with-rasta
     (with-dashboard-cleanup
+      (let [q (query/adhoc-query {:query {:aggregation [[:count]]
+                                          :breakout [[:fk-> (data/id :checkins) (data/id :venues :category_id)]]
+                                          :source_table (data/id :checkins)}
+                                  :type :query
+                                  :database (data/id)})]
+        (-> q (automagic-analysis {}) valid-dashboard?)))))
+
+(expect
+  (with-rasta
+    (with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                                           :source_table (data/id :venues)}
                                   :type :query
@@ -234,6 +261,8 @@
             (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id)] 2]})
             valid-dashboard?)))))
 
+
+;;; ------------------- /candidates -------------------
 
 (expect
   3
@@ -245,12 +274,56 @@
   1
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
-                  Field    [{} {:table_id table-id}]
-                  Field    [{} {:table_id table-id}]]
+                  Field    [_ {:table_id table-id}]
+                  Field    [_ {:table_id table-id}]]
     (with-rasta
       (with-dashboard-cleanup
         (count (candidate-tables (Database db-id)))))))
 
+(expect
+  4
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [{table-id :id} {:db_id db-id}]
+                  Field    [_ {:table_id table-id}]
+                  Field    [_ {:table_id table-id}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (let [database (Database db-id)]
+          (db/with-call-counting [call-count]
+            (candidate-tables database)
+            (call-count)))))))
+
+(expect
+  {:list-like?  true
+   :link-table? false
+   :num-fields 2}
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [{table-id :id} {:db_id db-id}]
+                  Field    [_ {:table_id table-id :special_type :type/PK}]
+                  Field    [_ {:table_id table-id}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> (#'magic/enhance-table-stats [(Table table-id)])
+            first
+            :stats)))))
+
+(expect
+  {:list-like?  false
+   :link-table? true
+   :num-fields 3}
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [{table-id :id} {:db_id db-id}]
+                  Field    [_ {:table_id table-id :special_type :type/PK}]
+                  Field    [_ {:table_id table-id :special_type :type/FK}]
+                  Field    [_ {:table_id table-id :special_type :type/FK}]]
+    (with-rasta
+      (with-dashboard-cleanup
+        (-> (#'magic/enhance-table-stats [(Table table-id)])
+            first
+            :stats)))))
+
+
+;;; ------------------- Definition overloading -------------------
 
 ;; Identity
 (expect
@@ -303,6 +376,8 @@
       first
       key))
 
+
+;;; ------------------- Datetime resolution inference -------------------
 
 (expect
   :month
