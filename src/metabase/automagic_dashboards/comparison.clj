@@ -111,12 +111,15 @@
 (def ^:private ^Long ^:const title-height 2)
 
 (defn- add-col-title
-  [dashboard title col]
-  (populate/add-text-card dashboard {:text                   (format "# %s" title)
-                                     :width                  (/ populate/grid-width 2)
-                                     :height                 title-height
-                                     :visualization-settings {:dashcard.background false
-                                                              :text.align_vertical :bottom}}
+  [dashboard title description col]
+  (populate/add-text-card dashboard
+                          {:text                   (if description
+                                                     (format "# %s\n\n%s" title description)
+                                                     (format "# %s" title))
+                           :width                  (/ populate/grid-width 2)
+                           :height                 title-height
+                           :visualization-settings {:dashcard.background false
+                                                    :text.align_vertical :bottom}}
                           [0 col]))
 
 (defn- series-labels
@@ -153,15 +156,16 @@
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
    the dataset defined by segments `left` and `right`."
   [dashboard left right]
-  (let [left  (->root left)
-        right (->root right)]
+  (let [left               (->root left)
+        right              (->root right)
+        segment-dashboards (->> (concat (segment-constituents left)
+                                        (segment-constituents right))
+                                distinct
+                                (map #(automagic-analysis % {:source       (:source left)
+                                                             :rules-prefix ["comparison"]})))]
     (assert (= (:source left) (:source right)))
-    (->> (concat (segment-constituents left)
-                 (segment-constituents right))
-         distinct
-         (map #(automagic-analysis % {:source       (:source left)
-                                      :rules-prefix ["comparison"]}))
-         (apply populate/merge-dashboards dashboard)
+    (->> (concat segment-dashboards [dashboard])
+         (apply populate/merge-dashboards)
          dashboard->cards
          (m/distinct-by :dataset_query)
          (transduce (comp (filter :display)
@@ -179,8 +183,10 @@
                                                   (:full-name right))
                           :creator_id        api/*current-user-id*
                           :parameters        []}
-                         (add-col-title (:full-name left) 0)
-                         (add-col-title (:full-name right) (/ populate/grid-width 2))))
+                         (add-col-title (:full-name left) (-> left :entity :description) 0)
+                         (add-col-title (:full-name right)
+                                        (-> right :entity :description)
+                                        (/ populate/grid-width 2))))
                    title-height])
                  ([[dashboard row]] dashboard)
                  ([[dashboard row] card]
