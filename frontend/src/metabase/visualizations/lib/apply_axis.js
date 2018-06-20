@@ -203,13 +203,20 @@ export function applyChartQuantitativeXAxis(
     );
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    chart.xAxis().tickFormat(d =>
-      formatValue(d, {
-        column: dimensionColumn,
-        type: "axis",
-        compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
-      }),
+    const moduloMultiplier = Math.max(
+      1,
+      Math.pow(10, Math.ceil(Math.log10(1 / xInterval))),
     );
+    chart.xAxis().tickFormat(d => {
+      // don't show ticks that aren't (approximately) multiples of xInterval
+      if ((d * moduloMultiplier) % (xInterval * moduloMultiplier) === 0) {
+        return formatValue(d, {
+          column: dimensionColumn,
+          type: "axis",
+          compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
+        });
+      }
+    });
   } else {
     chart.xAxis().ticks(0);
     chart.xAxis().tickFormat("");
