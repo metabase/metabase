@@ -238,7 +238,11 @@ export function applyChartQuantitativeXAxis(
   chart.x(scale.domain(xDomain)).xUnits(dc.units.fp.precision(xInterval));
 }
 
-export function applyChartOrdinalXAxis(chart, series, { xValues }) {
+export function applyChartOrdinalXAxis(
+  chart,
+  series,
+  { xValues, isHistogramBar },
+) {
   // find the first nonempty single series
   // $FlowFixMe
   const firstSeries: SingleSeries = _.find(
@@ -267,6 +271,7 @@ export function applyChartOrdinalXAxis(chart, series, { xValues }) {
         column: dimensionColumn,
         type: "axis",
         compact: chart.settings["graph.x_axis.labels_enabled"] === "compact",
+        noRange: isHistogramBar,
       }),
     );
   } else {
