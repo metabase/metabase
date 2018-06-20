@@ -3,6 +3,7 @@
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [core :refer :all :as magic]
+             [populate :as populate]
              [rules :as rules]]
             [metabase.models
              [card :refer [Card]]
@@ -92,8 +93,10 @@
                  ((test-users/user->client :rasta) :get 200 (format "automagic-dashboards/%s"
                                                                     (subs url 16)))))))
 
-(def ^:private valid-card?
-  (comp qp/expand :dataset_query))
+(defn- valid-card?
+  [card]
+  (and (qp/expand (:dataset_query card))
+       (some-> card :collection_id (= (:id (#'populate/automagic-dashboards-collection))))))
 
 (defn- valid-dashboard?
   [dashboard]
