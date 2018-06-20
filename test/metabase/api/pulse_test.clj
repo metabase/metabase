@@ -10,6 +10,7 @@
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
+             [dashboard :refer [Dashboard]]
              [database :refer [Database]]
              [permissions :as perms]
              [permissions-group :as perms-group]
@@ -422,6 +423,22 @@
 ;;; |                                   UPDATING PULSE COLLECTION POSITIONS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; Check that we can update a pulse's position in a collection only pulses
+(expect
+  {"d" 1
+   "a" 2
+   "b" 3
+   "c" 4}
+  (tt/with-temp Collection [{coll-id :id :as collection}]
+    (card-api-test/with-ordered-items collection [Pulse a
+                                                  Pulse b
+                                                  Pulse c
+                                                  Pulse d]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "pulse/" (u/get-id d))
+       {:collection_position 1})
+      (card-api-test/get-name->collection-position :rasta coll-id))))
+
 ;; Change the position of b to 4, will dec c and d
 (expect
   {"a" 1
@@ -429,11 +446,14 @@
    "d" 3
    "b" 4}
   (tt/with-temp Collection [{coll-id :id :as collection}]
-    (card-api-test/with-ordered-models-in-collection [Pulse a b c d] collection
+    (card-api-test/with-ordered-items collection [Card      a
+                                                  Pulse     b
+                                                  Card      c
+                                                  Dashboard d]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       ((user->client :rasta) :put 200 (str "pulse/" (u/get-id b))
        {:collection_position 4})
-      (card-api-test/get-name->collection-position :rasta "pulse" coll-id))))
+      (card-api-test/get-name->collection-position :rasta coll-id))))
 
 ;; Change the position of d to the 2, should inc b and c
 (expect
@@ -442,37 +462,46 @@
    "b" 3
    "c" 4}
   (tt/with-temp Collection [{coll-id :id :as collection}]
-    (card-api-test/with-ordered-models-in-collection [Pulse a b c d] collection
+    (card-api-test/with-ordered-items collection [Card      a
+                                                  Card      b
+                                                  Dashboard c
+                                                  Pulse     d]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       ((user->client :rasta) :put 200 (str "pulse/" (u/get-id d))
        {:collection_position 2})
-      (card-api-test/get-name->collection-position :rasta "pulse" coll-id))))
+      (card-api-test/get-name->collection-position :rasta coll-id))))
 
-;; Change the position of the a to the 4th, will decrement all existing pulses
+;; Change the position of a to the 4th, will decrement all existing items
 (expect
   {"b" 1
    "c" 2
    "d" 3
    "a" 4}
   (tt/with-temp Collection [{coll-id :id :as collection}]
-    (card-api-test/with-ordered-models-in-collection [Pulse a b c d] collection
+    (card-api-test/with-ordered-items collection [Pulse     a
+                                                  Dashboard b
+                                                  Card      c
+                                                  Pulse     d]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       ((user->client :rasta) :put 200 (str "pulse/" (u/get-id a))
        {:collection_position 4})
-      (card-api-test/get-name->collection-position :rasta "pulse" coll-id))))
+      (card-api-test/get-name->collection-position :rasta coll-id))))
 
-;; Change the position of the d to the 1st, will increment all existing pulses
+;; Change the position of the d to the 1st, will increment all existing items
 (expect
   {"d" 1
    "a" 2
    "b" 3
    "c" 4}
   (tt/with-temp Collection [{coll-id :id :as collection}]
-    (card-api-test/with-ordered-models-in-collection [Pulse a b c d] collection
+    (card-api-test/with-ordered-items collection [Dashboard a
+                                                  Dashboard b
+                                                  Card      c
+                                                  Pulse     d]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       ((user->client :rasta) :put 200 (str "pulse/" (u/get-id d))
        {:collection_position 1})
-      (card-api-test/get-name->collection-position :rasta "pulse" coll-id))))
+      (card-api-test/get-name->collection-position :rasta coll-id))))
 
 ;; Check that no position change, but changing collections still triggers a fixup of both collections
 ;; Moving `c` from collection-1 to collection-2, `c` is now at position 3 in collection 2
@@ -487,14 +516,20 @@
     "h" 5}]
   (tt/with-temp* [Collection [collection-1]
                   Collection [collection-2]]
-    (card-api-test/with-ordered-models-in-collection [Pulse a b c d] collection-1
-      (card-api-test/with-ordered-models-in-collection [Pulse e f g h] collection-2
+    (card-api-test/with-ordered-items collection-1 [Pulse     a
+                                                    Card      b
+                                                    Pulse     c
+                                                    Dashboard d]
+      (card-api-test/with-ordered-items collection-2 [Card      e
+                                                      Card      f
+                                                      Dashboard g
+                                                      Dashboard h]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
         ((user->client :rasta) :put 200 (str "pulse/" (u/get-id c))
          {:collection_id (u/get-id collection-2)})
-        [(card-api-test/get-name->collection-position :rasta "pulse" (u/get-id collection-1))
-         (card-api-test/get-name->collection-position :rasta "pulse" (u/get-id collection-2))]))))
+        [(card-api-test/get-name->collection-position :rasta (u/get-id collection-1))
+         (card-api-test/get-name->collection-position :rasta (u/get-id collection-2))]))))
 
 ;; Check that moving a pulse to another collection, with a changed position will fixup both collections
 ;; Moving `b` to collection 2, giving it a position of 1
@@ -509,14 +544,20 @@
     "h" 5}]
   (tt/with-temp* [Collection [collection-1]
                   Collection [collection-2]]
-    (card-api-test/with-ordered-models-in-collection [Pulse a b c d] collection-1
-      (card-api-test/with-ordered-models-in-collection [Pulse e f g h] collection-2
+    (card-api-test/with-ordered-items collection-1 [Pulse     a
+                                                    Pulse     b
+                                                    Dashboard c
+                                                    Card      d]
+      (card-api-test/with-ordered-items collection-2 [Card      e
+                                                      Card      f
+                                                      Pulse     g
+                                                      Dashboard h]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
         ((user->client :rasta) :put 200 (str "pulse/" (u/get-id b))
          {:collection_id (u/get-id collection-2), :collection_position 1})
-        [(card-api-test/get-name->collection-position :rasta "pulse" (u/get-id collection-1))
-         (card-api-test/get-name->collection-position :rasta "pulse" (u/get-id collection-2))]))))
+        [(card-api-test/get-name->collection-position :rasta (u/get-id collection-1))
+         (card-api-test/get-name->collection-position :rasta (u/get-id collection-2))]))))
 
 ;; Add a new pulse at position 2, causing existing pulses to be incremented
 (expect
@@ -530,10 +571,12 @@
   (tt/with-temp* [Collection [{coll-id :id :as collection}]
                   Card       [card-1]]
     (card-api-test/with-cards-in-readable-collection [card-1]
-      (card-api-test/with-ordered-models-in-collection [Pulse a c d] collection
+      (card-api-test/with-ordered-items  collection [Card      a
+                                                     Dashboard c
+                                                     Pulse     d]
         (tu/with-model-cleanup [Pulse]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-          [(card-api-test/get-name->collection-position :rasta "pulse" coll-id)
+          [(card-api-test/get-name->collection-position :rasta coll-id)
            (do ((user->client :rasta) :post 200 "pulse" {:name                "b"
                                                          :collection_id       (u/get-id collection)
                                                          :cards               [{:id          (u/get-id card-1)
@@ -542,7 +585,7 @@
                                                          :channels            [daily-email-channel]
                                                          :skip_if_empty       false
                                                          :collection_position 2})
-               (card-api-test/get-name->collection-position :rasta "pulse" coll-id))])))))
+               (card-api-test/get-name->collection-position :rasta coll-id))])))))
 
 ;; Add a new pulse without a position, should leave existing positions unchanged
 (expect
@@ -556,10 +599,12 @@
   (tt/with-temp* [Collection [{coll-id :id :as collection}]
                   Card       [card-1]]
     (card-api-test/with-cards-in-readable-collection [card-1]
-      (card-api-test/with-ordered-models-in-collection [Pulse a c d] collection
+      (card-api-test/with-ordered-items collection [Pulse     a
+                                                    Card      c
+                                                    Dashboard d]
         (tu/with-model-cleanup [Pulse]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-          [(card-api-test/get-name->collection-position :rasta "pulse" coll-id)
+          [(card-api-test/get-name->collection-position :rasta coll-id)
            (do ((user->client :rasta) :post 200 "pulse" {:name                "b"
                                                          :collection_id       (u/get-id collection)
                                                          :cards               [{:id          (u/get-id card-1)
@@ -567,7 +612,7 @@
                                                                                 :include_xls false}]
                                                          :channels            [daily-email-channel]
                                                          :skip_if_empty       false})
-               (card-api-test/get-name->collection-position :rasta "pulse" coll-id))])))))
+               (card-api-test/get-name->collection-position :rasta coll-id))])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             DELETE /api/pulse/:id                                              |

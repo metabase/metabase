@@ -580,21 +580,37 @@
           (map :collection_position results)))
 
 (defn get-name->collection-position
-  "Call the collection endpoint, looking for instances of `model-str` as `user-kwd` in `collection-id`. Will return a
-  map with the names of the items as keys and their position as the value"
-  [user-kwd model-str collection-id]
-  (name->position ((user->client user-kwd) :get 200 (format "collection/%s/items" (u/get-id collection-id)) :model model-str)))
+  "Call the collection endpoint for `collection-id` as `user-kwd`. Will return a map with the names of the items as
+  keys and their position as the value"
+  [user-kwd collection-or-collection-id]
+  (name->position ((user->client user-kwd) :get 200 (format "collection/%s/items" (u/get-id collection-or-collection-id)))))
 
-(defmacro with-ordered-models-in-collection
+(defmacro with-ordered-items
   "Macro for creating many sequetial collection_position model instances, putting each in `collection`"
-  [[model-instance & model-name-syms] collection & body]
-  `(tt/with-temp* ~(vec (mapcat (fn [idx name-sym]
+  [collection model-and-name-syms & body]
+  `(tt/with-temp* ~(vec (mapcat (fn [idx [model-instance name-sym]]
                                   [model-instance [name-sym {:name (name name-sym)
                                                              :collection_id `(u/get-id ~collection)
                                                              :collection_position idx}]])
-                                (range 1 (inc (count model-name-syms)))
-                                model-name-syms))
+                                (iterate inc 1)
+                                (partition-all 2 model-and-name-syms)))
      ~@body))
+
+;; Check to make sure we can move a card in a collection of just cards
+(expect
+  {"c" 1
+   "a" 2
+   "b" 3
+   "d" 4}
+  (tt/with-temp Collection [collection]
+    (with-ordered-items collection [Card a
+                                    Card b
+                                    Card c
+                                    Card d]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "card/" (u/get-id c))
+       {:collection_position 1})
+      (get-name->collection-position :rasta collection))))
 
 ;; Change the position of the 4th card to 1st, all other cards should inc their position
 (expect
@@ -602,55 +618,64 @@
    "a" 2
    "b" 3
    "c" 4}
-  (tt/with-temp Collection [{coll-id :id :as collection}]
-    (with-ordered-models-in-collection [Card a b c d] collection
+  (tt/with-temp Collection [collection]
+    (with-ordered-items collection [Dashboard a
+                                    Dashboard b
+                                    Pulse     c
+                                    Card      d]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       ((user->client :rasta) :put 200 (str "card/" (u/get-id d))
-       {:collection_position 1, :collection_id coll-id})
-      (get-name->collection-position :rasta "card" coll-id))))
+       {:collection_position 1})
+      (get-name->collection-position :rasta collection))))
 
-;; Change the position of the 1st card to the 4th, all of the other cards dec
+;; Change the position of the 1st card to the 4th, all of the other items dec
 (expect
   {"b" 1
    "c" 2
    "d" 3
    "a" 4}
-  (tt/with-temp Collection [{coll-id :id :as collection}]
-    (with-ordered-models-in-collection [Card a b c d] collection
+  (tt/with-temp Collection [collection]
+    (with-ordered-items collection [Card      a
+                                    Dashboard b
+                                    Pulse     c
+                                    Dashboard d]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       ((user->client :rasta) :put 200 (str "card/" (u/get-id a))
-       {:collection_position 4, :collection_id coll-id})
-      (get-name->collection-position :rasta "card" coll-id))))
+       {:collection_position 4})
+      (get-name->collection-position :rasta collection))))
 
-;; Change the position of a card from nil to 2nd, should adjust the existing cards
+;; Change the position of a card from nil to 2nd, should adjust the existing items
 (expect
   {"a" 1
    "b" 2
    "c" 3
    "d" 4}
   (tt/with-temp* [Collection [{coll-id :id :as collection}]
-                  Card       [card-a {:name "a", :collection_id coll-id, :collection_position 1}]
+                  Card       [_ {:name "a", :collection_id coll-id, :collection_position 1}]
                   ;; Card b does not start with a collection_position
-                  Card       [card-b {:name "b", :collection_id coll-id}]
-                  Card       [card-c {:name "c", :collection_id coll-id, :collection_position 2}]
-                  Card       [card-d {:name "d", :collection_id coll-id, :collection_position 3}]]
+                  Card       [b {:name "b", :collection_id coll-id}]
+                  Dashboard  [_ {:name "c", :collection_id coll-id, :collection_position 2}]
+                  Card       [_ {:name "d", :collection_id coll-id, :collection_position 3}]]
     (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-    ((user->client :rasta) :put 200 (str "card/" (u/get-id card-b))
-     {:collection_position 2, :collection_id coll-id})
-    (get-name->collection-position :rasta "card" coll-id)))
+    ((user->client :rasta) :put 200 (str "card/" (u/get-id b))
+     {:collection_position 2})
+    (get-name->collection-position :rasta coll-id)))
 
-;; Update an existing card to no longer have a position, should dec cards after it's position
+;; Update an existing card to no longer have a position, should dec items after it's position
 (expect
   {"a" 1
    "b" nil
    "c" 2
    "d" 3}
-  (tt/with-temp Collection [{coll-id :id :as collection}]
-    (with-ordered-models-in-collection [Card a b c d] collection
+  (tt/with-temp Collection [collection]
+    (with-ordered-items collection [Card      a
+                                    Card      b
+                                    Dashboard c
+                                    Pulse     d]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       ((user->client :rasta) :put 200 (str "card/" (u/get-id b))
-       {:collection_position nil, :collection_id coll-id})
-      (get-name->collection-position :rasta "card" coll-id))))
+       {:collection_position nil})
+      (get-name->collection-position :rasta collection))))
 
 ;; Change the collection the card is in, leave the position, should cause old and new collection to have their
 ;; positions updated
@@ -663,16 +688,22 @@
    {"e" 1
     "g" 2
     "h" 3}]
-  (tt/with-temp* [Collection [{coll-id-1 :id :as collection-1}]
-                  Collection [{coll-id-2 :id :as collection-2}]]
-    (with-ordered-models-in-collection [Card a b c d] collection-1
-      (with-ordered-models-in-collection [Card e f g h] collection-2
+  (tt/with-temp* [Collection [collection-1]
+                  Collection [collection-2]]
+    (with-ordered-items collection-1 [Dashboard a
+                                      Card      b
+                                      Pulse     c
+                                      Dashboard d]
+      (with-ordered-items collection-2 [Pulse     e
+                                        Card      f
+                                        Card      g
+                                        Dashboard h]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
         ((user->client :rasta) :put 200 (str "card/" (u/get-id f))
-         {:collection_id coll-id-1})
-        [(get-name->collection-position :rasta "card" coll-id-1)
-         (get-name->collection-position :rasta "card" coll-id-2)]))))
+         {:collection_id (u/get-id collection-1)})
+        [(get-name->collection-position :rasta collection-1)
+         (get-name->collection-position :rasta collection-2)]))))
 
 ;; Change the collection and the position, causing both collections and the updated card to have their order changed
 (expect
@@ -684,16 +715,22 @@
    {"e" 1
     "f" 2
     "g" 3}]
-  (tt/with-temp* [Collection [{coll-id-1 :id :as collection-1}]
-                  Collection [{coll-id-2 :id :as collection-2}]]
-    (with-ordered-models-in-collection [Card a b c d] collection-1
-      (with-ordered-models-in-collection [Card e f g h] collection-2
+  (tt/with-temp* [Collection [collection-1]
+                  Collection [collection-2]]
+    (with-ordered-items collection-1 [Pulse     a
+                                      Pulse     b
+                                      Dashboard c
+                                      Dashboard d]
+      (with-ordered-items collection-2 [Dashboard e
+                                        Dashboard f
+                                        Pulse     g
+                                        Card      h]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
         ((user->client :rasta) :put 200 (str "card/" (u/get-id h))
-         {:collection_position 1, :collection_id coll-id-1})
-        [(get-name->collection-position :rasta "card" coll-id-1)
-         (get-name->collection-position :rasta "card" coll-id-2)]))))
+         {:collection_position 1, :collection_id (u/get-id collection-1)})
+        [(get-name->collection-position :rasta collection-1)
+         (get-name->collection-position :rasta collection-2)]))))
 
 ;; Add a new card to an existing collection at position 1, will cause all existing positions to increment by 1
 (expect
@@ -706,17 +743,19 @@
     "b" 2
     "c" 3
     "d" 4}]
-  (tt/with-temp Collection [{coll-id :id :as collection}]
+  (tt/with-temp Collection [collection]
     (tu/with-model-cleanup [Card]
-      (with-ordered-models-in-collection [Card b c d] collection
+      (with-ordered-items collection [Dashboard b
+                                      Pulse     c
+                                      Card      d]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        [(get-name->collection-position :rasta "card" coll-id)
+        [(get-name->collection-position :rasta collection)
          (do
            ((user->client :rasta) :post 200 "card"
             (merge (card-with-name-and-query "a")
-                   {:collection_id (u/get-id collection)
+                   {:collection_id       (u/get-id collection)
                     :collection_position 1}))
-           (get-name->collection-position :rasta "card" coll-id))]))))
+           (get-name->collection-position :rasta collection))]))))
 
 ;; Add a new card to the end of an existing collection
 (expect
@@ -729,17 +768,19 @@
     "b" 2
     "c" 3
     "d" 4}]
-  (tt/with-temp Collection [{coll-id :id :as collection}]
+  (tt/with-temp Collection [collection]
     (tu/with-model-cleanup [Card]
-      (with-ordered-models-in-collection [Card a b c] collection
+      (with-ordered-items collection [Card      a
+                                      Dashboard b
+                                      Pulse     c]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        [(get-name->collection-position :rasta "card" coll-id)
+        [(get-name->collection-position :rasta collection)
          (do
            ((user->client :rasta) :post 200 "card"
             (merge (card-with-name-and-query "d")
                    {:collection_id (u/get-id collection)
                     :collection_position 4}))
-           (get-name->collection-position :rasta "card" coll-id))]))))
+           (get-name->collection-position :rasta collection))]))))
 
 ;; When adding a new card to a collection that does not have a position, it should not change existing positions
 (expect
@@ -752,17 +793,19 @@
     "b" 2
     "c" 3
     "d" nil}]
-  (tt/with-temp Collection [{coll-id :id :as collection}]
+  (tt/with-temp Collection [collection]
     (tu/with-model-cleanup [Card]
-      (with-ordered-models-in-collection [Card a b c] collection
+      (with-ordered-items collection [Pulse     a
+                                      Card      b
+                                      Dashboard c]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        [(get-name->collection-position :rasta "card" coll-id)
+        [(get-name->collection-position :rasta collection)
          (do
            ((user->client :rasta) :post 200 "card"
             (merge (card-with-name-and-query "d")
-                   {:collection_id (u/get-id collection)
+                   {:collection_id       (u/get-id collection)
                     :collection_position nil}))
-           (get-name->collection-position :rasta "card" coll-id))]))))
+           (get-name->collection-position :rasta collection))]))))
 
 (expect
   {"d" 1
@@ -771,17 +814,17 @@
    "c" 4
    "e" 5
    "f" 6}
-  (tt/with-temp* [Collection [{coll-id :id :as collection}]
-                  Dashboard  [_ {:name "a", :collection_id coll-id, :collection_position 1}]
-                  Dashboard  [_ {:name "b", :collection_id coll-id, :collection_position 2}]
-                  Card       [_ {:name "c", :collection_id coll-id, :collection_position 3}]
-                  Card       [d {:name "d", :collection_id coll-id, :collection_position 4}]
-                  Pulse      [_ {:name "e", :collection_id coll-id, :collection_position 5}]
-                  Pulse      [_ {:name "f", :collection_id coll-id, :collection_position 6}]]
-    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-    ((user->client :rasta) :put 200 (str "card/" (u/get-id d))
-     {:collection_position 1, :collection_id coll-id})
-    (name->position ((user->client :rasta) :get 200 (format "collection/%s/items" coll-id)))))
+  (tt/with-temp Collection [collection]
+    (with-ordered-items collection [Dashboard a
+                                    Dashboard b
+                                    Card      c
+                                    Card      d
+                                    Pulse     e
+                                    Pulse     f]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "card/" (u/get-id d))
+       {:collection_position 1, :collection_id (u/get-id collection)})
+      (name->position ((user->client :rasta) :get 200 (format "collection/%s/items" (u/get-id collection)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Card updates that impact alerts                                         |
