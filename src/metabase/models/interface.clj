@@ -22,7 +22,9 @@
 
 ;;; types
 
-(defn- json-in [obj]
+(defn json-in
+  "Serializes clojure object `obj` to a JSON string"
+  [obj]
   (if (string? obj)
     obj
     (json/generate-string obj)))
@@ -33,7 +35,9 @@
       (json/parse-string s keywordize-keys?)
       obj)))
 
-(defn- json-out-with-keywordization [obj]
+(defn json-out-with-keywordization
+  "Deserialize JSON string `obj` to a clojure object"
+  [obj]
   (json-out obj true))
 
 (defn- json-out-without-keywordization [obj]
