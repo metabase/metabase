@@ -131,7 +131,9 @@ export default class ExtendedOptions extends Component {
 
   renderExpressionWidget() {
     // if we aren't editing any expression then there is nothing to do
-    if (!this.state.editExpression || !this.props.tableMetadata) return null;
+    if (!this.state.editExpression || !this.props.tableMetadata) {
+      return null;
+    }
 
     const { query } = this.props;
 
@@ -158,7 +160,9 @@ export default class ExtendedOptions extends Component {
   }
 
   renderPopover() {
-    if (!this.state.isOpen) return null;
+    if (!this.state.isOpen) {
+      return null;
+    }
 
     const { features, query } = this.props;
 
@@ -197,7 +201,9 @@ export default class ExtendedOptions extends Component {
 
   render() {
     const { features } = this.props;
-    if (!features.sort && !features.limit) return null;
+    if (!features.sort && !features.limit) {
+      return null;
+    }
 
     const onClick = this.props.tableMetadata
       ? () => this.setState({ isOpen: true })

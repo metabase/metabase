@@ -67,7 +67,9 @@ const MetabaseSettings = {
     let versionInfo = _.findWhere(settings, { key: "version-info" }),
       currentVersion = MetabaseSettings.get("version").tag;
 
-    if (versionInfo) versionInfo = versionInfo.value;
+    if (versionInfo) {
+      versionInfo = versionInfo.value;
+    }
 
     return (
       versionInfo &&

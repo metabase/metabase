@@ -40,7 +40,9 @@ export default class SettingsSingleSignOnForm extends Component {
   }
 
   updateClientID(newValue) {
-    if (newValue === this.state.clientIDValue) return;
+    if (newValue === this.state.clientIDValue) {
+      return;
+    }
 
     this.setState({
       clientIDValue: newValue && newValue.length ? newValue : null,
@@ -49,7 +51,9 @@ export default class SettingsSingleSignOnForm extends Component {
   }
 
   updateDomain(newValue) {
-    if (newValue === this.state.domain.value) return;
+    if (newValue === this.state.domain.value) {
+      return;
+    }
 
     this.setState({
       domainValue: newValue && newValue.length ? newValue : null,

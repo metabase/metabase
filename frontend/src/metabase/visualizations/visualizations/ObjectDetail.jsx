@@ -69,7 +69,9 @@ export class ObjectDetail extends Component {
   }
 
   getIdValue() {
-    if (!this.props.data) return null;
+    if (!this.props.data) {
+      return null;
+    }
 
     const { data: { cols, rows } } = this.props;
     const columnIndex = _.findIndex(cols, col => isPK(col));
