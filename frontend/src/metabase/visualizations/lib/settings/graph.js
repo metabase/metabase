@@ -20,6 +20,16 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
 import _ from "underscore";
 
+// NOTE: only include granularities that are formatted as medium to high
+// cardinality numbers, e.x minute of hour, but not day of week or month of year
+const HISTOGRAM_DATE_EXTRACTS = new Set([
+  "minute-of-hour",
+  "hour-of-day",
+  "day-of-month",
+  "day-of-year",
+  "week-of-year",
+]);
+
 function getSeriesDefaultTitles(series, vizSettings) {
   return series.map(s => s.card.name);
 }
@@ -265,7 +275,7 @@ export const GRAPH_AXIS_SETTINGS = {
   "graph.x_axis._is_histogram": {
     getDefault: ([{ data: { cols } }], vizSettings) =>
       // matches binned numeric columns, and date extracts like day-of-week, etc
-      cols[0].binning_info != null || /^\w+-of-\w+$/.test(cols[0].unit),
+      cols[0].binning_info != null || HISTOGRAM_DATE_EXTRACTS.has(cols[0].unit),
   },
   "graph.x_axis.scale": {
     section: "Axes",
