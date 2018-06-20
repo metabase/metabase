@@ -58,7 +58,9 @@ export class AlertListPopoverContent extends Component {
   onEndAdding = (closeMenu = false) => {
     this.props.setMenuFreeze(false);
     this.setState({ adding: false });
-    if (closeMenu) this.props.closeMenu();
+    if (closeMenu) {
+      this.props.closeMenu();
+    }
   };
 
   isCreatedByCurrentUser = alert => {
@@ -167,7 +169,9 @@ export class AlertListItem extends Component {
   onEndEditing = (shouldCloseMenu = false) => {
     this.props.setMenuFreeze(false);
     this.setState({ editing: false });
-    if (shouldCloseMenu) this.props.closeMenu();
+    if (shouldCloseMenu) {
+      this.props.closeMenu();
+    }
   };
 
   render() {

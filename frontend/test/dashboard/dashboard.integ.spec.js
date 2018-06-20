@@ -152,10 +152,11 @@ describe("Dashboard", () => {
     });
 
     it("lets you add a filter", async () => {
-      if (!dashboardId)
+      if (!dashboardId) {
         throw new Error(
           "Test fails because previous tests failed to create a dashboard",
         );
+      }
 
       const store = await createTestStore();
       store.pushPath(Urls.dashboard(dashboardId));
@@ -197,10 +198,11 @@ describe("Dashboard", () => {
     });
 
     it("lets you open and close the revisions screen", async () => {
-      if (!dashboardId)
+      if (!dashboardId) {
         throw new Error(
           "Test fails because previous tests failed to create a dashboard",
         );
+      }
 
       const store = await createTestStore();
       const dashboardUrl = Urls.dashboard(dashboardId);

@@ -120,7 +120,9 @@ export default class GuiQueryEditor extends Component {
   renderFilters() {
     const { query, features, setDatasetQuery } = this.props;
 
-    if (!features.filter) return;
+    if (!features.filter) {
+      return;
+    }
 
     let enabled;
     let filterList;

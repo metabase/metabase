@@ -270,7 +270,9 @@ export default class Navbar extends Component {
   render() {
     const { context, user } = this.props;
 
-    if (!user) return null;
+    if (!user) {
+      return null;
+    }
 
     switch (context) {
       case "admin":

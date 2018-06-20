@@ -11,7 +11,9 @@ export default function ChartSettingInputGroup({ value: values, onChange }) {
       value={str}
       onBlurChange={e => {
         const newStr = e.target.value.trim();
-        if (!newStr || !newStr.length) return;
+        if (!newStr || !newStr.length) {
+          return;
+        }
         // clone the original values array. It's read-only so we can't just replace the one value we want
         const newValues = values.slice();
         newValues[i] = newStr;
