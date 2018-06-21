@@ -96,5 +96,5 @@ Feature: Install Discovery for Discovery
 
   @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT||DISC_VERSION=0.29.0-d524010)
   Scenario: [Basic Installation Discovery][06] Check Discovery installation
-    And I run 'dcos marathon task list ${DISCOVERY_SERVICE_NAME:-discovery}/${DISCOVERY_SERVICE_NAME:-discovery} | awk '{print $5}' | grep ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection and save the value in environment variable 'discoveryTaskId'
+    And I run 'dcos marathon task list ${DISCOVERY_SERVICE_FOLDER:-discovery}/${DISCOVERY_SERVICE_NAME:-discovery} | awk '{print $5}' | grep ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection and save the value in environment variable 'discoveryTaskId'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{discoveryTaskId} | grep TASK_RUNNING | wc -l' contains '1'

@@ -8,6 +8,12 @@ Feature: Uninstall Discovery _
     And I open a ssh connection to '${DCOS_CLI_HOST:-dcos-cli.demo.stratio.com}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
     And I securely send requests to '${DCOS_IP}:443'
 
+  @runOnEnv(DISC_VERSION=0.28.9)
   Scenario: [Uninstallation Discovery][01] Uninstall Discovery
     Given I run 'dcos marathon app remove ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection
+    Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos task | grep ${DISCOVERY_SERVICE_NAME:-discovery} | wc -l' contains '0'
+
+  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT||DISC_VERSION=0.29.0-d524010)
+  Scenario: [Uninstallation Discovery][01] Uninstall Discovery
+    Given I run 'dcos marathon app remove /${DISCOVERY_SERVICE_FOLDER:-discovery}/${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos task | grep ${DISCOVERY_SERVICE_NAME:-discovery} | wc -l' contains '0'
