@@ -28,7 +28,6 @@ import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
-import { addUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
@@ -65,6 +64,8 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { getPersistableDefaultSettings } from "metabase/visualizations/lib/settings";
 import { clearRequestState } from "metabase/redux/requests";
+
+import Questions from "metabase/entities/questions";
 
 type UiControls = {
   isEditing?: boolean,
@@ -775,7 +776,7 @@ export const apiCreateQuestion = question => {
     const createdQuestion = await questionWithVizSettings
       .setQuery(question.query().clean())
       .setResultsMetadata(resultsMetadata)
-      .apiCreate();
+      .reduxCreate(dispatch);
 
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
@@ -808,7 +809,7 @@ export const apiUpdateQuestion = question => {
     const updatedQuestion = await questionWithVizSettings
       .setQuery(question.query().clean())
       .setResultsMetadata(resultsMetadata)
-      .apiUpdate();
+      .reduxUpdate(dispatch);
 
     // reload the question alerts for the current question
     // (some of the old alerts might be removed during update)
@@ -1429,22 +1430,11 @@ export const ARCHIVE_QUESTION = "metabase/qb/ARCHIVE_QUESTION";
 export const archiveQuestion = createThunkAction(
   ARCHIVE_QUESTION,
   (questionId, archived = true) => async (dispatch, getState) => {
-    let card = {
-      ...getState().qb.card, // grab the current card
-      archived,
-    };
-    let response = await CardApi.update(card);
+    let card = getState().qb.card;
 
-    dispatch(
-      addUndo({
-        verb: archived ? "archived" : "unarchived",
-        subject: "question",
-        action: archiveQuestion(card.id, !archived),
-      }),
-    );
+    await dispatch(Questions.actions.setArchived({ id: card.id }, archived));
 
     dispatch(push(Urls.collection(card.collection_id)));
-    return response;
   },
 );
 
