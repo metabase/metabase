@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.30.0 (upcoming)
+## 0.31.0 (upcoming)
+
+* Pending changelog
+
+## 0.30.0-393d412 (Built: June 21, 2018 | Pre-release)
 
 * [DGPB-1119] Upgrade to metabase 0.29.4
 
