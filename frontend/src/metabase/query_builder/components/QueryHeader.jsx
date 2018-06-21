@@ -22,9 +22,8 @@ import SaveQuestionModal from "metabase/containers/SaveQuestionModal.jsx";
 
 import { clearRequestState } from "metabase/redux/requests";
 
-import { CardApi, RevisionApi } from "metabase/services";
+import { RevisionApi } from "metabase/services";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
 import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
@@ -62,21 +61,6 @@ export default class QueryHeader extends Component {
       modal: null,
       revisions: null,
     };
-
-    _.bindAll(
-      this,
-      "resetStateOnTimeout",
-      "onCreate",
-      "onSave",
-      "onBeginEditing",
-      "onCancel",
-      "onDelete",
-      "onFollowBreadcrumb",
-      "onToggleDataReference",
-      "onFetchRevisions",
-      "onRevertToRevision",
-      "onRevertedRevision",
-    );
   }
 
   static propTypes = {
@@ -98,14 +82,14 @@ export default class QueryHeader extends Component {
     clearTimeout(this.timeout);
   }
 
-  resetStateOnTimeout() {
+  resetStateOnTimeout = () => {
     // clear any previously set timeouts then start a new one
     clearTimeout(this.timeout);
     this.timeout = setTimeout(
       () => this.setState({ recentlySaved: null }),
       5000,
     );
-  }
+  };
 
   onCreate = async (card, showSavedModal = true) => {
     const { question, apiCreateQuestion } = this.props;
@@ -140,52 +124,45 @@ export default class QueryHeader extends Component {
     );
   };
 
-  onBeginEditing() {
+  onBeginEditing = () => {
     this.props.onBeginEditing();
-  }
+  };
 
-  async onCancel() {
+  onCancel = async () => {
     if (this.props.fromUrl) {
       this.onGoBack();
     } else {
       this.props.onCancelEditing();
     }
-  }
+  };
 
-  async onDelete() {
-    // TODO: reduxify
-    await CardApi.delete({ cardId: this.props.card.id });
-    this.onGoBack();
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Delete");
-  }
-
-  onFollowBreadcrumb() {
+  onFollowBreadcrumb = () => {
     this.props.onRestoreOriginalQuery();
-  }
+  };
 
-  onToggleDataReference() {
+  onToggleDataReference = () => {
     this.props.toggleDataReferenceFn();
-  }
+  };
 
-  onGoBack() {
+  onGoBack = () => {
     this.props.onChangeLocation(this.props.fromUrl || "/");
-  }
+  };
 
-  async onFetchRevisions({ entity, id }) {
+  onFetchRevisions = async ({ entity, id }) => {
     // TODO: reduxify
     let revisions = await RevisionApi.list({ entity, id });
     this.setState({ revisions });
-  }
+  };
 
-  onRevertToRevision({ entity, id, revision_id }) {
+  onRevertToRevision = ({ entity, id, revision_id }) => {
     // TODO: reduxify
     return RevisionApi.revert({ entity, id, revision_id });
-  }
+  };
 
-  onRevertedRevision() {
+  onRevertedRevision = () => {
     this.props.reloadCardFn();
     this.refs.cardHistory.toggle();
-  }
+  };
 
   getHeaderButtons() {
     const {
