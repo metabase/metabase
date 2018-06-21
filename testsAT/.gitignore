@@ -8,3 +8,7 @@ selenium-server-standalone*
 # Compilation files
 target
 compose/dummy_data/db_dump
+
+# idea
+.idea
+*.iml

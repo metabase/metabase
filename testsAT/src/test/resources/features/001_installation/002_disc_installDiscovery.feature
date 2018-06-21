@@ -16,7 +16,7 @@ Feature: Install Discovery for Discovery
     And I save element in position '0' in '$.status[?(@.role == "master")].ports[0]' in environment variable 'postgresMD5_Port'
     And I wait '5' seconds
 
-  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT||DISC_VERSION=0.29.0-d524010)
   Scenario: [Basic Installation Discovery][01] Obtain postgreSQL ip and port
     Given I send a 'GET' request to '/service/${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls}/v1/service/status'
     Then the service response status must be '200'
@@ -24,7 +24,7 @@ Feature: Install Discovery for Discovery
     And I save element in position '0' in '$.status[?(@.role == "master")].ports[0]' in environment variable 'postgresTLS_Port'
     And I wait '5' seconds
 
-  @runOnEnv(DISC_VERSION=0.28.9||DISC_VERSION=0.29.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.28.9||DISC_VERSION=0.29.0-SNAPSHOT||DISC_VERSION=0.29.0-d524010)
   Scenario: [Basic Installation Discovery][03] Create config file
     Given I create file 'config_discovery_${DISC_VERSION}.json' based on 'schemas/config_discovery_0.28.9.json' as 'json' with:
       | $.Service.cpus                        | REPLACE | ${DISCOVERY_SERVICE_CPUS:-1}                                             | number  |
@@ -56,9 +56,10 @@ Feature: Install Discovery for Discovery
       | $.Datastore.host                      | UPDATE  | !{postgresMD5_IP}                                                        | n/a     |
       | $.Datastore.port                      | REPLACE | !{postgresMD5_Port}                                                      | number  |
 
-  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT||DISC_VERSION=0.29.0-d524010)
   Scenario: [Basic Installation Discovery][04] Modify info to connect to postgrestls
     Given I create file 'config_discovery_0.29.0-SNAPSHOT.json' based on 'config_discovery_0.29.0-SNAPSHOT.json' as 'json' with:
+      | $.Service.folder                                             | ADD     | ${DISCOVERY_SERVICE_FOLDER:-discovery}                                 | string  |
       | $.Security.dynamic_authentication                            | ADD     | {}                                                                     | object  |
       | $.Security.dynamic_authentication.use_dynamic_authentication | ADD     | ${DISCOVERY_SEC_DYNAMIC_AUTH:-true}                                    | boolean |
       | $.Security.dynamic_authentication.instance_app_role          | ADD     | ${DISCOVERY_SEC_INSTANCE_APP_ROLE:-open}                               | string  |
@@ -87,5 +88,13 @@ Feature: Install Discovery for Discovery
     Then the command output contains 'Installing Marathon app for package [${DISC_PACKAGE:-discovery}] version [${DISC_VERSION}]'
     Then the command output contains 'Discovery stack has been installed.'
     Then I run 'rm -rf /tmp/config_discovery_${DISC_VERSION}.json' in the ssh connection
-    And I run 'dcos marathon task list discovery | awk '{print $5}' | grep discovery' in the ssh connection and save the value in environment variable 'discoveryTaskId'
+
+  @runOnEnv(DISC_VERSION=0.28.9)
+  Scenario: [Basic Installation Discovery][06] Check Discovery installation
+    And I run 'dcos marathon task list ${DISCOVERY_SERVICE_NAME:-discovery} | awk '{print $5}' | grep ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection and save the value in environment variable 'discoveryTaskId'
+    Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{discoveryTaskId} | grep TASK_RUNNING | wc -l' contains '1'
+
+  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT||DISC_VERSION=0.29.0-d524010)
+  Scenario: [Basic Installation Discovery][06] Check Discovery installation
+    And I run 'dcos marathon task list ${DISCOVERY_SERVICE_NAME:-discovery}/${DISCOVERY_SERVICE_NAME:-discovery} | awk '{print $5}' | grep ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection and save the value in environment variable 'discoveryTaskId'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{discoveryTaskId} | grep TASK_RUNNING | wc -l' contains '1'

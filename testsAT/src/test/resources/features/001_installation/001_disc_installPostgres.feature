@@ -23,7 +23,7 @@ Feature: Install Postgres for Discovery
     And in less than '600' seconds, checking each '20' seconds, I send a 'GET' request to '/service/${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc}/v1/service/status' so that the response contains '"pg-0002","role":"sync_slave","status":"RUNNING"'
     And in less than '600' seconds, checking each '20' seconds, I send a 'GET' request to '/service/${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc}/v1/service/status' so that the response contains '"pg-0003","role":"async_slave","status":"RUNNING"'
 
-  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT||DISC_VERSION=0.29.0-d524010)
   Scenario: [Basic Installation Postgres Dependencies][01] Check PostgresTLS
     Given I open a ssh connection to '${DCOS_CLI_HOST:-dcos-cli.demo.stratio.com}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
     Then in less than '600' seconds, checking each '20' seconds, the command output 'dcos task | grep ${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls} | grep R | wc -l' contains '1'
@@ -46,7 +46,7 @@ Feature: Install Postgres for Discovery
     And I save element in position '0' in '$.status[?(@.role == "master")].ports[0]' in environment variable 'postgresMD5_Port'
     And I wait '5' seconds
 
-  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT||DISC_VERSION=0.29.0-d524010)
   Scenario: [Basic Installation Postgres Dependencies][02] Create database for Discovery on Postgrestls
     Given I securely send requests to '${BOOTSTRAP_IP}:443'
     When in less than '300' seconds, checking each '20' seconds, I send a 'GET' request to '/exhibitor/exhibitor/v1/explorer/node-data?key=%2Fdatastore%2Fcommunity%2F${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls}%2Fplan-v2-json&_=' so that the response contains 'str'
@@ -72,4 +72,3 @@ Feature: Install Postgres for Discovery
     Given I connect with JDBC to database '${POSTGRES_FRAMEWORK_DEFAULT_DB:-postgres}' on host '!{postgresMD5_IP}' and port '!{postgresMD5_Port}' with user '${POSTGRES_FRAMEWORK_USER:-postgres}' and password '${POSTGRES_FRAMEWORK_PASSWORD:-stratio}'
     When I execute query 'CREATE DATABASE ${DISCOVERY_DATASTORE_DB:-discovery};'
     Then I close database connection
-
