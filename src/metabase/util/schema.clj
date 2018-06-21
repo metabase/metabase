@@ -50,6 +50,13 @@
     (instance? java.util.regex.Pattern existing-schema) (tru "value must be a string that matches the regex `{0}`."
                                                              existing-schema)))
 
+(declare api-error-message)
+
+(defn- create-cond-schema-message [child-schemas]
+  (str (tru "value must satisfy one of the following requirements: ")
+       (str/join " " (for [[i child-schema] (m/indexed child-schemas)]
+                       (format "%d) %s" (inc i) (api-error-message child-schema))))))
+
 (defn api-error-message
   "Extract the API error messages attached to a schema, if any.
    This functionality is fairly sophisticated:
@@ -74,13 +81,16 @@
       ;; 1) value must be a boolean.
       ;; 2) value must be a valid boolean string ('true' or 'false').
       (when (instance? schema.core.CondPre schema)
-        (str (tru "value must satisfy one of the following requirements: ")
-             (str/join " " (for [[i child-schema] (m/indexed (:schemas schema))]
-                             (format "%d) %s" (inc i) (api-error-message child-schema))))))
+        (create-cond-schema-message (:schemas schema)))
+
+      ;; For conditional schemas we'll generate a string similar to `cond-pre` above
+      (when (instance? schema.core.ConditionalSchema schema)
+        (create-cond-schema-message (map second (:preds-and-schemas schema))))
+
       ;; do the same for sequences of a schema
       (when (vector? schema)
         (str (tru "value must be an array.") (when (= (count schema) 1)
-                                               (when-let [message (:api-error-message (first schema))]
+                                               (when-let [message (api-error-message (first schema))]
                                                  (str " " (tru "Each {0}" message))))))))
 
 
