@@ -859,10 +859,12 @@
                  (-> dashboard :context :metrics u/pprint-to-str)
                  (-> dashboard :context :filters u/pprint-to-str))
       (-> (cond-> dashboard
-            (or query-filter cell-query)
+            cell-query
             (assoc :title           (tru "A closer look at {0}"
                                          (cell-title (:context dashboard) cell-query))
-                   :transient_title nil))
+                   :transient_title nil)
+            query-filter
+            (assoc :title (tru "A closer look at {0}" (:full-name root))))
           (populate/create-dashboard (or show max-cards))
           (assoc :related (related dashboard rule)
                  :more    (when (and (-> dashboard :cards count (> max-cards))
