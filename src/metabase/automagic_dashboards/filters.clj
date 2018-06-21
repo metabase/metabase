@@ -44,12 +44,14 @@
        (tree-seq (some-fn sequential? map?) identity)
        (filter field-reference?)))
 
-(def ^:private ^{:arglists '([field])} periodic-datetime?
+(def ^{:arglists '([field])} periodic-datetime?
+  "Is `field` a periodic datetime (eg. day of month)?"
   (comp #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year
           :month-of-year :quarter-of-year}
         :unit))
 
-(defn- datetime?
+(defn datetime?
+  "Is `field` a datetime?"
   [field]
   (and (not (periodic-datetime? field))
        (or (isa? (:base_type field) :type/DateTime)

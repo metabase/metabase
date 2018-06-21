@@ -97,7 +97,7 @@ groups:
 - Geographical:
     title: Where your [[this]] are
 - General:
-    title: How [[this]] are distributed
+    title: How [[this]] is distributed
 dashboard_filters:
 - Timestamp
 - Date

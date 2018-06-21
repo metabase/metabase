@@ -80,17 +80,17 @@
 
 (defn- visualization-settings
   [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]
-  (let [metric-name (some-fn :name (comp str/capitalize name first :metric))
-        [display visualization-settings] visualization]
+  (let [[display visualization-settings] visualization]
     {:display display
-     :visualization_settings
-     (-> visualization-settings
-         (merge (colorize card))
-         (cond->
-           (some :name metrics) (assoc :graph.series_labels (map metric-name metrics))
-           series_labels        (assoc :graph.series_labels series_labels)
-           x_label              (assoc :graph.x_axis.title_text x_label)
-           y_label              (assoc :graph.y_axis.title_text y_label)))}))
+     :visualization_settings (-> visualization-settings
+                                 (assoc :graph.series_labels metrics)
+                                 (merge (colorize card))
+                                 (cond->
+                                     series_labels (assoc :graph.series_labels series_labels)
+
+                                     x_label       (assoc :graph.x_axis.title_text x_label)
+
+                                     y_label       (assoc :graph.y_axis.title_text y_label)))}))
 
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
@@ -236,7 +236,7 @@
 (defn create-dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard :all))
-  ([{:keys [title transient_title description groups filters cards refinements fieldset]} n]
+  ([{:keys [title transient_title description groups filters cards refinements]} n]
    (let [n             (cond
                          (= n :all)   (count cards)
                          (keyword? n) (Integer/parseInt (name n))

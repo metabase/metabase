@@ -56,16 +56,32 @@
           field/map->FieldInstance
           (classify/run-classifiers {})))))
 
+(def ^:private op->name
+  {:sum       (tru "sum")
+   :avg       (tru "average")
+   :min       (tru "minumum")
+   :max       (tru "maximum")
+   :count     (tru "count")
+   :distinct  (tru "distinct count")
+   :stddev    (tru "standard deviation")
+   :cum-count (tru "cumulative count")
+   :cum-sum   (tru "cumulative sum")})
+
+(defn- metric-name
+  [[op arg]]
+  (let [op (qp.util/normalize-token op)]
+    (if (= op :metric)
+      (-> arg Metric :name)
+      (op->name op))))
+
 (defn- metric->description
   [root metric]
-  (let [aggregation-clause (-> metric :definition :aggregation first)
-        field              (some->> aggregation-clause
-                                    second
-                                    filters/field-reference->id
-                                    (->field root))]
-    (if field
-      (tru "{0} of {1}" (-> aggregation-clause first name str/capitalize) (:display_name field))
-      (-> aggregation-clause first name str/capitalize))))
+  (tru "{0} of {1}" (metric-name metric) (or (some->> metric
+                                                      second
+                                                      filters/field-reference->id
+                                                      (->field root)
+                                                      :display_name)
+                                               (-> root :source :name))))
 
 (defn- join-enumeration
   [[x & xs]]
@@ -76,19 +92,7 @@
 (defn- question-description
   [root question]
   (let [aggregations (->> (qp.util/get-in-normalized question [:dataset_query :query :aggregation])
-                          (map (fn [[op arg]]
-                                 (cond
-                                   (-> op qp.util/normalize-token (= :metric))
-                                   (-> arg Metric :name)
-
-                                   arg
-                                   (tru "{0} of {1}" (name op) (->> arg
-                                                                    filters/field-reference->id
-                                                                    (->field root)
-                                                                    :display_name))
-
-                                   :else
-                                   (name op))))
+                          (map (partial metric->description root))
                           join-enumeration)
         dimensions   (->> (qp.util/get-in-normalized question [:dataset_query :query :breakout])
                           (mapcat filters/collect-field-references)
@@ -121,7 +125,7 @@
   [segment]
   (let [table (-> segment :table_id Table)]
     {:entity       segment
-     :full-name    (tru "{0} segment" (:name segment))
+     :full-name    (tru "{0} in {1} segment" (:display_name table) (:name segment))
      :source       table
      :database     (:db_id table)
      :query-filter (-> segment :definition :filter)
@@ -184,7 +188,7 @@
    :source       (source card)
    :database     (:database_id card)
    :query-filter (qp.util/get-in-normalized card [:dataset_query :query :filter])
-   :full-name    (tru "{0} question" (:name card))
+   :full-name    (tru "\"{0}\" question" (:name card))
    :url          (format "%squestion/%s" public-endpoint (u/get-id card))
    :rules-prefix [(if (table-like? card)
                     "table"
@@ -489,18 +493,25 @@
            (u/update-when :graph.metrics metric->name)
            (u/update-when :graph.dimensions dimension->name))]))
 
+(defn- capitalize-first
+  [s]
+  (str (str/upper-case (subs s 0 1)) (subs s 1)))
+
 (defn- instantiate-metadata
   [x context bindings]
   (-> (walk/postwalk
        (fn [form]
          (if (string? form)
-           (fill-templates :string context bindings form)
+           (let [new-form (fill-templates :string context bindings form)]
+             (if (not= new-form form)
+               (capitalize-first new-form)
+               new-form))
            form))
        x)
       (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
 
 (defn- valid-breakout-dimension?
-  [{:keys [base_type engine] :as f}]
+  [{:keys [base_type engine]}]
   (not (and (isa? base_type :type/Number)
             (= engine :druid))))
 
@@ -542,13 +553,13 @@
                                               limit
                                               order_by))]
                   (-> card
-                      (assoc :metrics metrics)
                       (instantiate-metadata context (->> metrics
                                                          (map :name)
                                                          (zipmap (:metrics card))
                                                          (merge bindings)))
-                      (assoc :score         score
-                             :dataset_query query))))))))
+                      (assoc :dataset_query query
+                             :metrics       (map (some-fn :name (comp metric-name :metric)) metrics)
+                             :score         score))))))))
 
 (defn- matching-rules
   "Return matching rules orderd by specificity.
@@ -748,6 +759,83 @@
         {:related          (related-entities n-related-entities root)
          :drilldown-fields (take (- max-related n-related-entities) drilldown-fields)}))))
 
+(def ^:private date-formatter (t.format/formatter "MMMM d, YYYY"))
+(def ^:private datetime-formatter (t.format/formatter "EEEE, MMMM d, YYYY h:mm a"))
+
+(defn- humanize-datetime
+  [dt]
+  (t.format/unparse (if (str/index-of dt "T")
+                      datetime-formatter
+                      date-formatter)
+                    (t.format/parse dt)))
+
+(defn- field-reference->field
+  [fieldset field-reference]
+  (cond-> (-> field-reference
+              filters/collect-field-references
+              first
+              filters/field-reference->id
+              fieldset)
+    (-> field-reference first qp.util/normalize-token (= :datetime-field))
+    (assoc :unit (-> field-reference last qp.util/normalize-token))))
+
+(defmulti
+  ^{:private true
+    :arglists '([fieldset [op & args]])}
+  humanize-filter-value (fn [_ [op & args]]
+                          (qp.util/normalize-token op)))
+
+(def ^:private unit-name (comp {:minute-of-hour  "minute of hour"
+                                :hour-of-day     "hour of day"
+                                :day-of-week     "day of week"
+                                :day-of-month    "day of month"
+                                :week-of-year    "week of year"
+                                :month-of-year   "month of year"
+                                :quarter-of-year "quarter of year"}
+                               qp.util/normalize-token))
+
+(defn- field-name
+  ([fieldset field-reference]
+   (->> field-reference (field-reference->field fieldset) field-name))
+  ([{:keys [display_name unit] :as field}]
+   (cond->> display_name
+     (and (filters/periodic-datetime? field) unit) (format "%s of %s" (unit-name unit)))))
+
+(defmethod humanize-filter-value :=
+  [fieldset [_ field-reference value]]
+  (let [field      (field-reference->field fieldset field-reference)
+        field-name (field-name field)]
+    (cond
+      (#{:type/State :type/Country} (:special_type field))
+      (tru "in {0}" value)
+
+      (filters/datetime? field)
+      (tru "where {0} is on {1}" field-name (humanize-datetime value))
+
+      :else
+      (tru "where {0} is {1}" field-name value))))
+
+(defmethod humanize-filter-value :between
+  [fieldset [_ field-reference min-value max-value]]
+  (tru "where {0} is between {1} and {2}" (field-name fieldset field-reference) min-value max-value))
+
+(defmethod humanize-filter-value :inside
+  [fieldset [_ lat-reference lon-reference lat-max lon-min lat-min lon-max]]
+  (tru "where {0} is between {1} and {2}; and {3} is between {4} and {5}"
+       (field-name fieldset lon-reference) lon-min lon-max
+       (field-name fieldset lat-reference) lat-min lat-max))
+
+(defn- cell-title
+  [context cell-query]
+  (let [source-name (-> context :root :source ((some-fn :display_name :name)))
+        fieldset    (->> context
+                        :tables
+                        (mapcat :fields)
+                        (map (fn [field]
+                               [((some-fn :id :name) field) field]))
+                        (into {}))]
+    (str/join " " [source-name (humanize-filter-value fieldset cell-query)])))
+
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
   [{:keys [rule show rules-prefix query-filter cell-query full-name] :as root}]
@@ -772,12 +860,14 @@
                  (-> dashboard :context :filters u/pprint-to-str))
       (-> (cond-> dashboard
             (or query-filter cell-query)
-            (assoc :title (tru "A closer look at {0}" full-name)))
+            (assoc :title           (tru "A closer look at {0}"
+                                         (cell-title (:context dashboard) cell-query))
+                   :transient_title nil))
           (populate/create-dashboard (or show max-cards))
-          (assoc :related (related dashboard rule))
-          (assoc :more (when (and (-> dashboard :cards count (> max-cards))
-                                (not= show :all))
-                         (format "%s#show=all" (:url root))))))
+          (assoc :related (related dashboard rule)
+                 :more    (when (and (-> dashboard :cards count (> max-cards))
+                                     (not= show :all))
+                            (format "%s#show=all" (:url root))))))
     (throw (ex-info (trs "Can''t create dashboard for {0}" full-name)
              {:root            root
               :available-rules (map :rule (or (some-> rule rules/get-rule vector)
@@ -813,7 +903,7 @@
                          {:definition {:aggregation  [aggregation-clause]
                                        :source_table (:table_id question)}
                           :table_id   (:table_id question)})]
-             (assoc metric :name (metric->description root metric)))))
+             (assoc metric :name (metric->description root aggregation-clause)))))
        (qp.util/get-in-normalized question [:dataset_query :query :aggregation])))
 
 (defn- collect-breakout-fields
@@ -843,6 +933,10 @@
                                                          (u/get-id card)
                                                          (encode-base64-json cell-query))
                                    :entity       (:source root)
+                                   :full-name    (->> root
+                                                      :source
+                                                      ((some-fn :display_name :name))
+                                                      (tru "such {0}"))
                                    :rules-prefix ["table"]}))
               opts))
       (let [opts (assoc opts :show :all)]
@@ -861,6 +955,10 @@
                                                          (encode-base64-json (:dataset_query query))
                                                          (encode-base64-json cell-query))
                                    :entity       (:source root)
+                                   :full-name    (->> root
+                                                      :source
+                                                      ((some-fn :display_name :name))
+                                                      (tru "such {0}"))
                                    :rules-prefix ["table"]}))
               (update opts :cell-query
                       (partial filters/inject-refinement
