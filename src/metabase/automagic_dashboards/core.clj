@@ -116,6 +116,7 @@
    :full-name    (if (isa? (:entity_type table) :entity/GoogleAnalyticsTable)
                    (:display_name table)
                    (tru "{0} table" (:display_name table)))
+   :short-name   (:display_name table)
    :source       table
    :database     (:db_id table)
    :url          (format "%stable/%s" public-endpoint (u/get-id table))
@@ -126,6 +127,7 @@
   (let [table (-> segment :table_id Table)]
     {:entity       segment
      :full-name    (tru "{0} in {1} segment" (:display_name table) (:name segment))
+     :short-name   (tru "such {0}" (:display_name table))
      :source       table
      :database     (:db_id table)
      :query-filter (-> segment :definition :filter)
@@ -137,6 +139,7 @@
   (let [table (-> metric :table_id Table)]
     {:entity       metric
      :full-name    (tru "{0} metric" (:name metric))
+     :short-name   (:name metric)
      :source       table
      :database     (:db_id table)
      ;; We use :id here as it might not be a concrete field but rather one from a nested query which
@@ -149,6 +152,7 @@
   (let [table (field/table field)]
     {:entity       field
      :full-name    (tru "{0} field" (:display_name field))
+     :short-name   (:display_name field)
      :source       table
      :database     (:db_id table)
      ;; We use :id here as it might not be a concrete metric but rather one from a nested query
@@ -353,8 +357,11 @@
                                  bindings)
                           (comp first #(filter-tables % tables) rules/->entity)
                           identity)]
-    (str/replace s #"\[\[(\w+)\]\]" (fn [[_ identifier]]
-                                     (->reference template-type (bindings identifier))))))
+    (str/replace s #"\[\[(\w+)(?:\.([\w\-]+))?\]\]"
+                 (fn [[_ identifier attribute]]
+                   (let [entity (bindings identifier)]
+                     (or (some-> attribute qp.util/normalize-token root)
+                         (->reference template-type entity)))))))
 
 (defn- field-candidates
   [context {:keys [field_type links_to named max_cardinality] :as constraints}]
@@ -860,9 +867,10 @@
                  (-> dashboard :context :filters u/pprint-to-str))
       (-> (cond-> dashboard
             cell-query
-            (assoc :title           (tru "A closer look at {0}"
-                                         (cell-title (:context dashboard) cell-query))
-                   :transient_title nil)
+            (assoc :transient_title nil
+                   :title           (tru "A closer look at {0}" (cell-title (:context dashboard)
+                                                                            cell-query)))
+
             query-filter
             (assoc :title (tru "A closer look at {0}" (:full-name root))))
           (populate/create-dashboard (or show max-cards))
@@ -935,7 +943,7 @@
                                                          (u/get-id card)
                                                          (encode-base64-json cell-query))
                                    :entity       (:source root)
-                                   :full-name    (->> root
+                                   :short-name   (->> root
                                                       :source
                                                       ((some-fn :display_name :name))
                                                       (tru "such {0}"))
@@ -957,7 +965,7 @@
                                                          (encode-base64-json (:dataset_query query))
                                                          (encode-base64-json cell-query))
                                    :entity       (:source root)
-                                   :full-name    (->> root
+                                   :short-name   (->> root
                                                       :source
                                                       ((some-fn :display_name :name))
                                                       (tru "such {0}"))

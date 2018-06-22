@@ -54,9 +54,9 @@ groups:
 - Overview:
     title: Overview
 - Geographical:
-    title: Where these [[this]] are
+    title: Where these [[this.short-title]] are
 - General:
-    title: How these [[this]] are distributed
+    title: How these [[this.short-title]] are distributed
 dashboard_filters:
 - JoinDate
 - GenericCategoryMedium
@@ -66,7 +66,7 @@ dashboard_filters:
 cards:
 # Overview
   - Rowcount:
-      title: Total [[this]]
+      title: Total [[this.short-title]]
       visualization: scalar
       metrics: Count
       score: 100
@@ -74,7 +74,7 @@ cards:
       width: 5
       height: 3
   - RowcountLast30Days:
-      title: New [[this]] in the last 30 days
+      title: New [[this.short-title]] in the last 30 days
       visualization: scalar
       metrics: Count
       score: 100
@@ -84,8 +84,8 @@ cards:
       height: 3
   - NewUsersByMonth:
       visualization: line
-      title: New [[this]] per month
-      description: The number of new [[this]] each month
+      title: New [[this.short-tiltle]] per month
+      description: The number of new [[this.short-title]] each month
       dimensions: JoinDate
       metrics: Count
       score: 100
@@ -94,7 +94,7 @@ cards:
       height: 7
 # Geographical
   - CountByCountry:
-      title: Number of [[this]] per country
+      title: Number of [[this.short-title]] per country
       metrics: Count
       dimensions: Country
       score: 90
@@ -104,7 +104,7 @@ cards:
           map.region: world_countries
       group: Geographical
   - CountByState:
-      title: "[[this]] per state"
+      title: "[[this.short-title]] per state"
       metrics: Count
       dimensions: State
       score: 90
@@ -115,7 +115,7 @@ cards:
           map.region: us_states
       group: Geographical
   - CountByCoords:
-      title: "[[this]] by coordinates"
+      title: "[[this.short-title]] by coordinates"
       metrics: Count
       dimensions:
         - Long
@@ -135,7 +135,7 @@ cards:
       score: 90
       group: General
   - CountByCategoryMedium:
-      title: "[[this]] per [[GenericCategoryMedium]]"
+      title: "[[this.short-title]] per [[GenericCategoryMedium]]"
       dimensions: GenericCategoryMedium
       metrics: Count
       visualization: row
@@ -145,7 +145,7 @@ cards:
       order_by:
         - Count: descending
   - CountByCategoryLarge:
-      title: "[[this]] per [[GenericCategoryLarge]]"
+      title: "[[this.short-title]] per [[GenericCategoryLarge]]"
       dimensions: GenericCategoryLarge
       metrics: Count
       visualization: table
