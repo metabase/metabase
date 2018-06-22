@@ -43,20 +43,19 @@ export class GroupingManager {
 
   mapStyle = (rowIndex: Number, columnIndex: Number, visibleRowIndices: Range, cellStyle: {}): {} => {
 
-    if(columnIndex in this.columnIndexToFirstInGroupIndexes)
-    {
-    if ("height" in cellStyle) {
-      const tmp = this.columnIndexToFirstInGroupIndexes[columnIndex];
-      const ri = getFirstRowInGroupIndex(tmp, rowIndex);
-      const endIndex = tmp[ri];
-
-      const visibleEndIndex = Math.min(endIndex, visibleRowIndices.stop);
-      const rowSpan = visibleEndIndex - rowIndex + 1;
-      const res = {...cellStyle, height: (this.defaultRowHeight * rowSpan), 'display': 'block', 'padding-top' : '.25em'};
-      return res;
+    if(columnIndex in this.columnIndexToFirstInGroupIndexes) {
+      if ("height" in cellStyle) {
+        const tmp = this.columnIndexToFirstInGroupIndexes[columnIndex];
+        const ri = getFirstRowInGroupIndex(tmp, rowIndex);
+        const endIndex = tmp[ri];
+        // const visibleEndIndex = Math.min(endIndex, visibleRowIndices.stop);
+        const rowSpan = endIndex - ri + 1;
+        const top  = cellStyle.top - this.defaultRowHeight * (rowIndex  - ri);
+        const height = this.defaultRowHeight * rowSpan;
+        const res = {...cellStyle, top: top, height: height, 'display': 'block', 'padding-top' : '.25em'};
+        return res;
       }
     }
-    // }
     return cellStyle;
   };
 
@@ -115,7 +114,5 @@ const getStartGroupIndexToEndGroupIndex = (startIndexes : Set) : {} =>{
   const [x, ...tail] = sortedIndexes;
   return tail.reduce((acc, currentValue, index) => {acc[sortedIndexes[index]] = currentValue - 1; return acc}, {});
 };
-
-
 
 
