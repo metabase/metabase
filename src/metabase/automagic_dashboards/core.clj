@@ -359,8 +359,10 @@
                           identity)]
     (str/replace s #"\[\[(\w+)(?:\.([\w\-]+))?\]\]"
                  (fn [[_ identifier attribute]]
-                   (let [entity (bindings identifier)]
-                     (or (some-> attribute qp.util/normalize-token root)
+                   (let [entity    (bindings identifier)
+                         attribute (some-> attribute qp.util/normalize-token)]
+                     (or (entity attribute)
+                         (root attribute)
                          (->reference template-type entity)))))))
 
 (defn- field-candidates
