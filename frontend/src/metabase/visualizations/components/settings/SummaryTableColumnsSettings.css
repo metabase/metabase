@@ -18,3 +18,20 @@
   color: var(--slate-color);
   font-weight: bold;
 }
+:local .charthr {
+  margin-top: 0px;
+  margin-top: var(--margin-2);
+
+  margin-bottom: 0px;
+  margin-bottom: var(--margin-2);
+
+  margin-left: -32px;
+  margin-left: calc(-1 * var(--margin-4));
+
+  margin-right: -32px;
+  margin-right: calc(-1 * var(--margin-4));
+
+  height: 0;
+  border: 0;
+  border-top: 1px solid #f0f0f0;
+}

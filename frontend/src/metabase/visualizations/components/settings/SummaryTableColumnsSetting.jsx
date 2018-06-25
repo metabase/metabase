@@ -142,9 +142,14 @@ export default class SummaryTableColumnsSetting extends Component<Props, State> 
 
   render = () =>
     <div>
+      <div style={{fontSize: '1rem'}}><h2 className="text-bold text-paragraph mb2">{t`Customize this table`}</h2></div>
+      <hr className={styles.charthr}/>
       {createSortableSection(this, t`Fields to use for the table rows`, GROUPS_SOURCES, this.createFatRow)}
+      <hr className={styles.charthr}/>
       {createSortableSection(this, t`Field to use for the table columns`, COLUMNS_SOURCE, this.createFatRow)}
+      <hr className={styles.charthr}/>
       {createSortableSection(this, t`Fields to use for the table values`, VALUES_SOURCES, createValueSourceRow)}
+      <hr className={styles.charthr}/>
       {createSortableSection(this, t`Unused fields`, UNUSED_COLUMNS, createUnusedSourceRow)}
     </div>;
 
@@ -193,11 +198,10 @@ const createSortableSection = (self: SummaryTableColumnsSetting, title: String, 
   const rowsSource = self.state[columnsPropertyName];
 
   const removeRowForSource = removeColumn(self, columnsPropertyName);
-
   return (
     <div>
       <h4 className="mb1">{title}</h4>
-      <ReactSortable
+      {rowsSource && rowsSource.length > 0 &&  <ReactSortable
         options={{
           animation: 150,
           group: {
@@ -211,7 +215,7 @@ const createSortableSection = (self: SummaryTableColumnsSetting, title: String, 
         style={{minHeight: 20}}
       >
         {rowsSource.map(name => rowBuilder(name, columnNames[name], removeRowForSource(name)))}
-      </ReactSortable>
+      </ReactSortable>}
     </div>);
 };
 
