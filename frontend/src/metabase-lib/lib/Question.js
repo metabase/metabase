@@ -491,7 +491,9 @@ export default class Question {
   }
 
   async reduxUpdate(dispatch) {
-    const { payload } = await dispatch(Questions.actions.update(this.card()));
+    const { payload } = await dispatch(
+      Questions.actions.update({ id: this.id() }, this.card()),
+    );
     return this.setCard(payload.entities.questions[payload.result]);
   }
 

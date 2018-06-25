@@ -12,27 +12,20 @@ import CollectionSelect from "metabase/containers/CollectionSelect.jsx";
 
 import Dashboards from "metabase/entities/dashboards";
 
-const mapDispatchToProps = {
-  createDashboard: Dashboards.actions.create,
-};
-
-@connect(null, mapDispatchToProps)
-@withRouter
-export default class CreateDashboardModal extends Component {
+export class CreateDashboardModal extends Component {
   constructor(props, context) {
     super(props, context);
-    this.createNewDash = this.createNewDash.bind(this);
-    this.setDescription = this.setDescription.bind(this);
-    this.setName = this.setName.bind(this);
-
-    console.log(props.params);
     this.state = {
       name: null,
       description: null,
       errors: null,
-      // collectionId in the url starts off as a string, but the select will
-      // compare it to the integer ID on colleciton objects
-      collection_id: parseInt(props.params.collectionId),
+      collection_id:
+        props.collectionId != null
+          ? props.collectionId
+          : props.params.collectionId != null &&
+            props.params.collectionId !== "root"
+            ? parseInt(props.params.collectionId)
+            : null,
     };
   }
 
@@ -41,15 +34,15 @@ export default class CreateDashboardModal extends Component {
     onClose: PropTypes.func,
   };
 
-  setName(event) {
+  setName = event => {
     this.setState({ name: event.target.value });
-  }
+  };
 
-  setDescription(event) {
+  setDescription = event => {
     this.setState({ description: event.target.value });
-  }
+  };
 
-  createNewDash(event) {
+  createNewDash = event => {
     event.preventDefault();
 
     let name = this.state.name && this.state.name.trim();
@@ -64,7 +57,7 @@ export default class CreateDashboardModal extends Component {
 
     this.props.createDashboard(newDash, { redirect: true });
     this.props.onClose();
-  }
+  };
 
   render() {
     let formError;
@@ -147,3 +140,11 @@ export default class CreateDashboardModal extends Component {
     );
   }
 }
+
+const mapDispatchToProps = {
+  createDashboard: Dashboards.actions.create,
+};
+
+export default connect(null, mapDispatchToProps)(
+  withRouter(CreateDashboardModal),
+);

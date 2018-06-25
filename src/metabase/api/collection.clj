@@ -95,7 +95,7 @@
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
-      (hydrate :effective_location :effective_ancestors :can_write)))
+      (hydrate :parent_id :effective_location :effective_ancestors :can_write)))
 
 (s/defn ^:private collection-items
   "Return items in the Collection, restricted by `children-options`.

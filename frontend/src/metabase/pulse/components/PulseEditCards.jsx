@@ -4,8 +4,9 @@ import PropTypes from "prop-types";
 import { t } from "c-3po";
 import cx from "classnames";
 
-import CardPicker from "./CardPicker.jsx";
 import PulseCardPreview from "./PulseCardPreview.jsx";
+
+import QuestionSelect from "metabase/containers/QuestionSelect";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -190,10 +191,11 @@ export default class PulseEditCards extends Component {
                         trackPulseEvent={this.trackPulseEvent}
                       />
                     ) : (
-                      <CardPicker
-                        cardList={cardList}
-                        onChange={this.addCard.bind(this, index)}
-                        attachmentsEnabled={this.props.attachmentsEnabled}
+                      <QuestionSelect
+                        onChange={questionId => this.addCard(index, questionId)}
+                        className="flex-full"
+                        // TODO: reimplement CardPicker's warnings for unsuitable cards
+                        // attachmentsEnabled={this.props.attachmentsEnabled}
                       />
                     )}
                   </div>

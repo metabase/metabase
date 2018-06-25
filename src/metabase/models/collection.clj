@@ -296,6 +296,12 @@
     []
     (filter i/can-read? (ancestors collection))))
 
+(s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
+  "Get the immediate parent `collection` id, if set."
+  {:hydrate :parent_id}
+  [{:keys [location]} :- CollectionWithLocationOrRoot]
+  (if location (location-path->parent-id location)))
+
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
   Collection.

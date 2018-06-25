@@ -169,6 +169,11 @@ export function createEntity(def: EntityDefinition): Entity {
   const getListStatePath = entityQuery =>
     ["entities", entity.name + "_list"].concat(getIdForQuery(entityQuery));
 
+  const getWritableProperties = object =>
+    entity.writableProperties
+      ? _.pick(object, "id", ...entity.writableProperties)
+      : object;
+
   // ACTION TYPES
   const CREATE_ACTION = `metabase/entities/${entity.name}/CREATE`;
   const FETCH_ACTION = `metabase/entities/${entity.name}/FETCH`;
@@ -193,7 +198,7 @@ export function createEntity(def: EntityDefinition): Entity {
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
-            await entity.api.create(entityObject),
+            await entity.api.create(getWritableProperties(entityObject)),
             entity.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));
@@ -248,7 +253,7 @@ export function createEntity(def: EntityDefinition): Entity {
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
-            await entity.api.update(entityObject),
+            await entity.api.update(getWritableProperties(entityObject)),
             entity.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));

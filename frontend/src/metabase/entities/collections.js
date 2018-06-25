@@ -5,9 +5,6 @@ import { normal, getRandomColor } from "metabase/lib/colors";
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
-import React from "react";
-import CollectionSelect from "metabase/containers/CollectionSelect";
-
 import { t } from "c-3po";
 
 const Collections = createEntity({
@@ -70,10 +67,7 @@ const Collections = createEntity({
       {
         name: "parent_id",
         title: "Parent collection",
-        // eslint-disable-next-line react/display-name
-        type: ({ field }) => (
-          <CollectionSelect {...field} collectionId={values.id} />
-        ),
+        type: "collection",
       },
     ],
   },

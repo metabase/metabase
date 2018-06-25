@@ -281,7 +281,6 @@ export default class QueryHeader extends Component {
                 }
                 onClose={onClose}
                 onMove={collection => {
-                  this.props.onSetCardAttribute("collection", collection);
                   this.props.onSetCardAttribute(
                     "collection_id",
                     collection && collection.id,

@@ -19,9 +19,9 @@ const StandardForm = ({
   handleSubmit,
   resetForm,
 
-  form,
+  formDef: form,
   className,
-  resetButton = true,
+  resetButton = false,
   newForm = true,
 
   ...props

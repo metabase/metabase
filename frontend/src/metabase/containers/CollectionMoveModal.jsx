@@ -24,10 +24,7 @@ class CollectionMoveModal extends React.Component {
       //  null = root collection
       //  number = non-root collection id
       //
-      selectedCollection:
-        props.initialCollectionId === undefined
-          ? undefined
-          : { id: props.initialCollectionId },
+      selectedCollectionId: props.initialCollectionId,
       // whether the move action has started
       // TODO: use this loading and error state in the UI
       moving: false,
@@ -43,7 +40,7 @@ class CollectionMoveModal extends React.Component {
   };
 
   render() {
-    const { selectedCollection } = this.state;
+    const { selectedCollectionId } = this.state;
 
     return (
       <Box p={3}>
@@ -55,29 +52,24 @@ class CollectionMoveModal extends React.Component {
             onClick={() => this.props.onClose()}
           />
         </Flex>
-        <CollectionListLoader>
-          {({ collections, loading, error }) => (
-            <CollectionPicker
-              value={selectedCollection && selectedCollection.id}
-              onChange={id =>
-                this.setState({
-                  selectedCollection:
-                    id == null ? null : _.find(collections, { id }),
-                })
-              }
-              collections={collections}
-            />
-          )}
-        </CollectionListLoader>
+        <CollectionPicker
+          value={selectedCollectionId}
+          onChange={selectedCollectionId =>
+            this.setState({ selectedCollectionId })
+          }
+        />
         <Flex mt={2}>
           <Button
             primary
             className="ml-auto"
-            disabled={selectedCollection === undefined}
+            disabled={
+              selectedCollectionId === undefined ||
+              selectedCollectionId === this.props.initialCollectionId
+            }
             onClick={() => {
               try {
                 this.setState({ moving: true });
-                this.props.onMove(selectedCollection);
+                this.props.onMove({ id: selectedCollectionId });
               } catch (e) {
                 this.setState({ error: e });
               } finally {

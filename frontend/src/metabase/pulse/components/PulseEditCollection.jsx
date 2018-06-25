@@ -6,6 +6,7 @@ import CollectionSelect from "metabase/containers/CollectionSelect";
 
 export default class PulseEditCollection extends React.Component {
   render() {
+    const { pulse, setPulse, initialCollectionId } = this.props;
     return (
       <Box>
         <h2>{t`Which collection should this pulse live in?`}</h2>
@@ -13,12 +14,13 @@ export default class PulseEditCollection extends React.Component {
         <Box my={2} width={400}>
           <CollectionSelect
             value={
-              this.props.pulse.collection_id ||
-              parseInt(this.props.initialCollectionId)
+              pulse.collection_id !== undefined
+                ? pulse.collection_id
+                : initialCollectionId
             }
             onChange={collection_id =>
-              this.props.setPulse({
-                ...this.props.pulse,
+              setPulse({
+                ...pulse,
                 collection_id,
               })
             }
