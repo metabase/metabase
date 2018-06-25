@@ -361,7 +361,7 @@
                  (fn [[_ identifier attribute]]
                    (let [entity    (bindings identifier)
                          attribute (some-> attribute qp.util/normalize-token)]
-                     (or (entity attribute)
+                     (or (and (ifn? entity) (entity attribute))
                          (root attribute)
                          (->reference template-type entity)))))))
 
@@ -967,14 +967,13 @@
                                                          (encode-base64-json (:dataset_query query))
                                                          (encode-base64-json cell-query))
                                    :entity       (:source root)
+                                   :query-filter (qp.util/get-in-normalized query [:dataset_query :query :filter])
                                    :short-name   (->> root
                                                       :source
                                                       ((some-fn :display_name :name))
                                                       (tru "such {0}"))
                                    :rules-prefix ["table"]}))
-              (update opts :cell-query
-                      (partial filters/inject-refinement
-                               (qp.util/get-in-normalized query [:dataset_query :query :filter])))))
+              opts))
       (let [opts (assoc opts :show :all)]
         (->> (decompose-question root query opts)
              (apply populate/merge-dashboards (automagic-dashboard root))

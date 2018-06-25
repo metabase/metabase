@@ -217,7 +217,7 @@
       (with-dashboard-cleanup
         (-> card-id
             Card
-            (automagic-analysis {:cell-query [:!= [:field-id (data/id :venues :category_id)] 2]})
+            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id)] 2]})
             valid-dashboard?)))))
 
 
