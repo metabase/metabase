@@ -752,50 +752,29 @@
           :else
           (recur remaining-selectors related selected))))))
 
-(defmulti
-  ^{:private true
-    :arglists '([root])}
-  related-selectors (comp type :entity))
-
-(defmethod related-selectors (type Table)
-  [_]
-  (let [down     [[:indepth] [:segments :metrics] [:drilldown-fields]]
-        sideways [[:linking-to :linked-from] [:tables]]]
-    [down down down down sideways sideways]))
-
-(defmethod related-selectors (type Segment)
-  [_]
-  (let [down     [[:indepth] [:segments :metrics] [:drilldown-fields]]
-        sideways [[:linking-to] [:tables]]
-        up       [[:table]]]
-    [down down down sideways sideways up]))
-
-(defmethod related-selectors (type Metric)
-  [_]
-  (let [down     [[:drilldown-fields]]
-        sideways [[:metrics :segments]]
-        up       [[:table]]]
-    [sideways sideways sideways down down up]))
-
-(defmethod related-selectors (type Field)
-  [_]
-  (let [sideways [[:fields]]
-        up       [[:table] [:metrics :segments]]]
-    [sideways sideways up]))
-
-(defmethod related-selectors (type Card)
-  [_]
-  (let [down     [[:drilldown-fields]]
-        sideways [[:metrics] [:similar-questions :dashboard-mates]]
-        up       [[:table]]]
-    [sideways sideways sideways down down up]))
-
-(defmethod related-selectors (type Query)
-  [_]
-  (let [down     [[:drilldown-fields]]
-        sideways [[:metrics] [:similar-questions]]
-        up       [[:table]]]
-    [sideways sideways sideways down down up]))
+(def ^:private related-selectors
+  {(type Table)   (let [down     [[:indepth] [:segments :metrics] [:drilldown-fields]]
+                        sideways [[:linking-to :linked-from] [:tables]]]
+                    [down down down down sideways sideways])
+   (type Segment) (let [down     [[:indepth] [:segments :metrics] [:drilldown-fields]]
+                        sideways [[:linking-to] [:tables]]
+                        up       [[:table]]]
+                    [down down down sideways sideways up])
+   (type Metric)  (let [down     [[:drilldown-fields]]
+                        sideways [[:metrics :segments]]
+                        up       [[:table]]]
+                    [sideways sideways sideways down down up])
+   (type Field)   (let [sideways [[:fields]]
+                        up       [[:table] [:metrics :segments]]]
+                    [sideways sideways up])
+   (type Card)    (let [down     [[:drilldown-fields]]
+                        sideways [[:metrics] [:similar-questions :dashboard-mates]]
+                        up       [[:table]]]
+                    [sideways sideways sideways down down up])
+   (type Query)   (let [down     [[:drilldown-fields]]
+                        sideways [[:metrics] [:similar-questions]]
+                        up       [[:table]]]
+                    [sideways sideways sideways down down up])})
 
 (s/defn ^:private related
   "Build a balancee list of related X-rays. General composition of the list is determined for each
@@ -805,7 +784,7 @@
     (->> (merge (indepth root rule)
                 (drilldown-fields dashboard)
                 (related-entities root))
-         (fill-related max-related (related-selectors root))
+         (fill-related max-related (related-selectors (-> root :entity type)))
          (group-by :selector)
          (m/map-vals (partial map :entity)))))
 
