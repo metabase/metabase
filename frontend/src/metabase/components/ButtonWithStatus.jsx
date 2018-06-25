@@ -1,6 +1,7 @@
 import React, { Component } from "react";
-import cx from "classnames";
 import { t } from "c-3po";
+
+import Button from "metabase/components/Button";
 
 let defaultTitleForState = {
   default: t`Save`,
@@ -8,9 +9,6 @@ let defaultTitleForState = {
   completed: t`Saved!`,
   failed: t`Saving failed.`,
 };
-
-// TODO Atte Keinänen 7/14/17: This could use Button component underneath and pass parameters to it
-// (Didn't want to generalize too much for the first version of this component
 
 // TODO: Tom Robinson 4/16/2018: Is this the same functionality as ActionButton?
 
@@ -56,18 +54,15 @@ export default class ButtonWithStatus extends Component {
     const disabled = this.props.disabled || progressState !== "default";
 
     return (
-      <button
-        className={cx(
-          "Button",
-          { "Button--primary": !disabled },
-          { "Button--success-new": progressState === "completed" },
-          this.props.className,
-        )}
+      <Button
+        className={this.props.className}
+        primary={!disabled}
+        success={progressState === "completed"}
         disabled={disabled}
         onClick={this.onClick}
       >
         {title}
-      </button>
+      </Button>
     );
   }
 }

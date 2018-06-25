@@ -49,7 +49,9 @@ export default class UserStep extends Component {
 
     // required: first_name, last_name, email, password
     Object.keys(fieldValues).forEach(fieldName => {
-      if (MetabaseUtils.isEmpty(fieldValues[fieldName])) isValid = false;
+      if (MetabaseUtils.isEmpty(fieldValues[fieldName])) {
+        isValid = false;
+      }
     });
 
     if (!validPassword) {

@@ -261,7 +261,8 @@
 }
 
 .bg-white,
-:local(.bg-white) {
+:local(.bg-white),
+.bg-white-hover:hover {
   background-color: #fff;
 }
 

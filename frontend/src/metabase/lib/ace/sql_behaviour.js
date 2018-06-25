@@ -55,10 +55,13 @@ ace.require(
       let id = -1;
       if (editor.multiSelect) {
         id = editor.selection.index;
-        if (contextCache.rangeCount != editor.multiSelect.rangeCount)
+        if (contextCache.rangeCount != editor.multiSelect.rangeCount) {
           contextCache = { rangeCount: editor.multiSelect.rangeCount };
+        }
       }
-      if (contextCache[id]) return (context = contextCache[id]);
+      if (contextCache[id]) {
+        return (context = contextCache[id]);
+      }
       context = contextCache[id] = {
         autoInsertedBrackets: 0,
         autoInsertedRow: -1,
@@ -167,8 +170,9 @@ ace.require(
           if (
             this.lineCommentStart &&
             this.lineCommentStart.indexOf(text) != -1
-          )
+          ) {
             return;
+          }
           initContext(editor);
           let quote = text;
           let selection = editor.getSelectionRange();
@@ -189,8 +193,9 @@ ace.require(
             let token = session.getTokenAt(cursor.row, cursor.column);
             let rightToken = session.getTokenAt(cursor.row, cursor.column + 1);
             // We're escaped.
-            if (leftChar == "\\" && token && /escape/.test(token.type))
+            if (leftChar == "\\" && token && /escape/.test(token.type)) {
               return null;
+            }
 
             let stringBefore = token && /string|escape/.test(token.type);
             let stringAfter =
@@ -199,17 +204,27 @@ ace.require(
             let pair;
             if (rightChar == quote) {
               pair = stringBefore !== stringAfter;
-              if (pair && /string\.end/.test(rightToken.type)) pair = false;
+              if (pair && /string\.end/.test(rightToken.type)) {
+                pair = false;
+              }
             } else {
-              if (stringBefore && !stringAfter) return null; // wrap string with different quote
-              if (stringBefore && stringAfter) return null; // do not pair quotes inside strings
+              if (stringBefore && !stringAfter) {
+                return null;
+              } // wrap string with different quote
+              if (stringBefore && stringAfter) {
+                return null;
+              } // do not pair quotes inside strings
               let wordRe = session.$mode.tokenRe;
               wordRe.lastIndex = 0;
               let isWordBefore = wordRe.test(leftChar);
               wordRe.lastIndex = 0;
               let isWordAfter = wordRe.test(leftChar);
-              if (isWordBefore || isWordAfter) return null; // before or after alphanumeric
-              if (rightChar && !/[\s;,.})\]\\]/.test(rightChar)) return null; // there is rightChar and it isn't closing
+              if (isWordBefore || isWordAfter) {
+                return null;
+              } // before or after alphanumeric
+              if (rightChar && !/[\s;,.})\]\\]/.test(rightChar)) {
+                return null;
+              } // there is rightChar and it isn't closing
               pair = true;
             }
             return {
@@ -265,8 +280,9 @@ ace.require(
             iterator2.getCurrentToken() || "text",
             SAFE_INSERT_IN_TOKENS,
           )
-        )
+        ) {
           return false;
+        }
       }
 
       // Only insert in front of whitespace/comments
@@ -294,8 +310,9 @@ ace.require(
           line,
           context.autoInsertedLineEnd[0],
         )
-      )
+      ) {
         context.autoInsertedBrackets = 0;
+      }
       context.autoInsertedRow = cursor.row;
       context.autoInsertedLineEnd = bracket + line.substr(cursor.column);
       context.autoInsertedBrackets++;
@@ -304,8 +321,9 @@ ace.require(
     SQLBehaviour.recordMaybeInsert = function(editor, session, bracket) {
       let cursor = editor.getCursorPosition();
       let line = session.doc.getLine(cursor.row);
-      if (!this.isMaybeInsertedClosing(cursor, line))
+      if (!this.isMaybeInsertedClosing(cursor, line)) {
         context.maybeInsertedBrackets = 0;
+      }
       context.maybeInsertedRow = cursor.row;
       context.maybeInsertedLineStart = line.substr(0, cursor.column) + bracket;
       context.maybeInsertedLineEnd = line.substr(cursor.column);

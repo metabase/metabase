@@ -41,7 +41,9 @@ export default class SettingsUpdatesForm extends Component {
     let versionInfo = _.findWhere(this.props.settings, { key: "version-info" }),
       currentVersion = MetabaseSettings.get("version").tag;
 
-    if (versionInfo) versionInfo = versionInfo.value;
+    if (versionInfo) {
+      versionInfo = versionInfo.value;
+    }
 
     /*
             We expect the versionInfo to take on the JSON structure detailed below.

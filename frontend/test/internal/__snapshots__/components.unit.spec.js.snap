@@ -236,6 +236,9 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
           />
         </svg>
       </div>
+      <span
+        className="hide"
+      />
     </div>
   </div>
 </div>
@@ -268,6 +271,9 @@ exports[`EntityMenu should render "More menu" correctly 1`] = `
           />
         </svg>
       </div>
+      <span
+        className="hide"
+      />
     </div>
   </div>
 </div>
@@ -300,6 +306,9 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
           />
         </svg>
       </div>
+      <span
+        className="hide"
+      />
     </div>
     <div
       className="relative"
@@ -322,6 +331,9 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
           />
         </svg>
       </div>
+      <span
+        className="hide"
+      />
     </div>
     <div
       className="relative"
@@ -343,6 +355,9 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
           />
         </svg>
       </div>
+      <span
+        className="hide"
+      />
     </div>
   </div>
 </div>
@@ -376,8 +391,32 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
           />
         </svg>
       </div>
+      <span
+        className="hide"
+      />
     </div>
   </div>
+</div>
+`;
+
+exports[`Position should render "Absolute" correctly 1`] = `
+<div
+  className="Position-kiwZOl jyvUWC sc-bwzfXH kLwrie"
+>
+  Some content
+  <div
+    className="Position-kiwZOl dhkeTA sc-bwzfXH gZPQmB"
+  >
+    Some content positioned absolutely to its parent
+  </div>
+</div>
+`;
+
+exports[`Position should render "Relative" correctly 1`] = `
+<div
+  className="Position-kiwZOl jyvUWC sc-bwzfXH ihgQcP"
+>
+  Some content relative to its parent
 </div>
 `;
 
@@ -636,26 +675,7 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
             "width": 16,
           }
         }
-      >
-        <svg
-          className="Icon Icon-check Icon-cxuQhR kTAgZA"
-          fill="currentcolor"
-          height={12}
-          name="check"
-          size={12}
-          style={
-            Object {
-              "color": "white",
-            }
-          }
-          viewBox="0 0 32 32"
-          width={12}
-        >
-          <path
-            d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
-          />
-        </svg>
-      </div>
+      />
     </div>
   </span>
   <div
@@ -724,26 +744,7 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
             "width": 16,
           }
         }
-      >
-        <svg
-          className="Icon Icon-check Icon-cxuQhR kTAgZA"
-          fill="currentcolor"
-          height={12}
-          name="check"
-          size={12}
-          style={
-            Object {
-              "color": "white",
-            }
-          }
-          viewBox="0 0 32 32"
-          width={12}
-        >
-          <path
-            d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
-          />
-        </svg>
-      </div>
+      />
     </div>
   </span>
   <div

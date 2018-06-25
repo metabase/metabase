@@ -44,7 +44,9 @@ let MetabaseUtils = {
   },
 
   isEmpty: function(str) {
-    if (str != null) str = String(str); // make sure 'str' is actually a string
+    if (str != null) {
+      str = String(str);
+    } // make sure 'str' is actually a string
     return str == null || 0 === str.length || str.match(/^\s+$/) != null;
   },
 

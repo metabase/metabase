@@ -3,7 +3,6 @@ import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 declare var ace: any;
 
-import React from "react";
 import { createAction } from "redux-actions";
 import _ from "underscore";
 import { assocIn } from "icepick";
@@ -29,7 +28,7 @@ import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
-import { addUndo, createUndo } from "metabase/redux/undo";
+import { addUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
@@ -447,7 +446,9 @@ export const loadMetadataForCard = createThunkAction(
   card => {
     return async (dispatch, getState) => {
       // Short-circuit if we're in a weird state where the card isn't completely loaded
-      if (!card && !card.dataset_query) return;
+      if (!card && !card.dataset_query) {
+        return;
+      }
 
       const query = card && new Question(getMetadata(getState()), card).query();
 
@@ -532,8 +533,9 @@ function updateVisualizationSettings(card, isEditing, display, vizSettings) {
   if (
     card.display === display &&
     _.isEqual(card.visualization_settings, vizSettings)
-  )
+  ) {
     return card;
+  }
 
   let updatedCard = Utils.copy(card);
 
@@ -984,7 +986,9 @@ export const setQueryDatabase = createThunkAction(
           let database = databases[databaseId],
             tables = database ? database.tables : [],
             table = tables.length > 0 ? tables[0] : null;
-          if (table) updatedCard.dataset_query.native.collection = table.name;
+          if (table) {
+            updatedCard.dataset_query.native.collection = table.name;
+          }
         }
 
         dispatch(loadMetadataForCard(updatedCard));
@@ -1325,7 +1329,9 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     const { qb: { card } } = getState();
     const queryResult = getFirstQueryResult(getState());
 
-    if (!queryResult || !fk) return false;
+    if (!queryResult || !fk) {
+      return false;
+    }
 
     // extract the value we will use to filter our new query
     let originValue;
@@ -1418,6 +1424,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
   },
 );
 
+// DEPRECATED: use metabase/entities/questions
 export const ARCHIVE_QUESTION = "metabase/qb/ARCHIVE_QUESTION";
 export const archiveQuestion = createThunkAction(
   ARCHIVE_QUESTION,
@@ -1428,17 +1435,12 @@ export const archiveQuestion = createThunkAction(
     };
     let response = await CardApi.update(card);
 
-    const type = archived ? "archived" : "unarchived";
-
     dispatch(
-      addUndo(
-        createUndo({
-          type,
-          // eslint-disable-next-line react/display-name
-          message: () => <div> {"Question  was " + type + "."} </div>,
-          action: archiveQuestion(card.id, !archived),
-        }),
-      ),
+      addUndo({
+        verb: archived ? "archived" : "unarchived",
+        subject: "question",
+        action: archiveQuestion(card.id, !archived),
+      }),
     );
 
     dispatch(push(Urls.collection(card.collection_id)));

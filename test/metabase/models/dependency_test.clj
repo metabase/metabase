@@ -9,7 +9,7 @@
              [models :as models]]
             [toucan.util.test :as tt]))
 
-(models/defmodel Mock :mock)
+(models/defmodel ^:private Mock :mock)
 
 (extend (class Mock)
   IDependent

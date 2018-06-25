@@ -1,80 +1,69 @@
 import { createEntity } from "metabase/lib/entities";
 
-import { schema } from "normalizr";
+import { GET } from "metabase/lib/api";
 
 import {
-  QuestionSchema,
-  DashboardSchema,
-  PulseSchema,
-  CollectionSchema,
+  ObjectUnionSchema,
+  ENTITIES_SCHEMA_MAP,
+  entityTypeForObject,
 } from "metabase/schema";
-import {
-  CardApi,
-  DashboardApi,
-  PulseApi,
-  CollectionsApi,
-} from "metabase/services";
 
-function createPropertyFilter(property, text) {
-  text = String(text || "").toLowerCase();
-  if (text) {
-    return objects =>
-      objects.filter(
-        o =>
-          String(o[property] || "")
-            .toLowerCase()
-            .indexOf(text) >= 0,
-      );
-  }
-}
+import { canonicalCollectionId } from "metabase/entities/collections";
 
-function translateParams(params) {
-  params = { ...params };
-  if (params.archived) {
-    delete params.archived;
-    params.f = "archived";
-  }
-  return params;
-}
+const ENTITIES_TYPES = Object.keys(ENTITIES_SCHEMA_MAP);
+
+const searchList = GET("/api/search");
+const collectionList = GET("/api/collection/:collection/items");
 
 export default createEntity({
   name: "search",
+  path: "/api/search",
+
   api: {
-    list: params => {
-      return Promise.all([
-        CardApi.list(translateParams(params)),
-        DashboardApi.list(translateParams(params)).then(
-          createPropertyFilter("name", params.q),
-        ),
-        PulseApi.list(params).then(createPropertyFilter("name", params.q)),
-        CollectionsApi.list(params).then(
-          createPropertyFilter("name", params.q),
-        ),
-      ]).then(([questions, dashboards, pulses, collections]) => {
-        return [
-          ...questions.map(o => ({ ...o, type: "question" })),
-          ...dashboards.map(o => ({ ...o, type: "dashboard" })),
-          ...pulses.map(o => ({ ...o, type: "pulse" })),
-          ...collections.map(o => ({ ...o, type: "collection" })),
-        ];
-      });
+    list: async (query = {}) => {
+      if (query.collection) {
+        const { collection, archived, model, ...unsupported } = query;
+        if (Object.keys(unsupported).length > 0) {
+          throw new Error(
+            "search with `collection` filter does not support these filters: " +
+              Object.keys(unsupported).join(", "),
+          );
+        }
+        return (await collectionList({ collection, archived, model })).map(
+          item => ({
+            collection_id: canonicalCollectionId(collection),
+            archived: archived || false,
+            ...item,
+          }),
+        );
+      } else {
+        return searchList(query);
+      }
     },
   },
 
-  schema: new schema.Union(
-    {
-      questions: QuestionSchema,
-      dashboards: DashboardSchema,
-      pulses: PulseSchema,
-      collections: CollectionSchema,
-    },
-    (object, parent, key) => `${object.type}s`,
-  ),
+  schema: ObjectUnionSchema,
 
   // delegate to the actual object's entity wrapEntity
-  wrapEntity(object, dispatch) {
+  wrapEntity(object, dispatch = null) {
     const entities = require("metabase/entities");
-    const entity = entities[`${object.type}s`];
-    return entity.wrapEntity(object, dispatch);
+    const entity = entities[entityTypeForObject(object)];
+    if (entity) {
+      return entity.wrapEntity(object, dispatch);
+    } else {
+      console.warn("Couldn't find entity for object", object);
+      return object;
+    }
+  },
+
+  // delegate to each entity's actionShouldInvalidateLists
+  actionShouldInvalidateLists(action) {
+    const entities = require("metabase/entities");
+    for (const type of ENTITIES_TYPES) {
+      if (entities[type].actionShouldInvalidateLists(action)) {
+        return true;
+      }
+    }
+    return false;
   },
 });

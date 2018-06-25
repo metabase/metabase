@@ -166,6 +166,7 @@ export default class SettingsEditorApp extends Component {
                 _.findWhere(this.props.sections, { slug: "ldap" }).settings
               }
               updateLdapSettings={this.props.updateLdapSettings}
+              settingValues={settingValues}
             />
           );
         } else if (this.props.params.authType === "google") {

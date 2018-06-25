@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { goBack, push } from "react-router-redux";
 
-import CollectionEditorForm from "./CollectionEditorForm.jsx";
+import CollectionForm from "metabase/containers/CollectionForm.jsx";
 import CollectionLoader from "metabase/containers/CollectionLoader.jsx";
 
 const mapDispatchToProps = {
@@ -17,11 +17,10 @@ export default class CollectionEdit extends Component {
     return (
       <CollectionLoader collectionId={this.props.params.collectionId}>
         {({ object, update }) => (
-          <CollectionEditorForm
-            initialValues={object}
-            onSubmit={async values => {
-              await update(values);
-              this.props.push(`/collection/${object.id}`);
+          <CollectionForm
+            collection={object}
+            onSaved={({ id }) => {
+              this.props.push(`/collection/${id}`);
             }}
             onClose={this.props.goBack}
           />

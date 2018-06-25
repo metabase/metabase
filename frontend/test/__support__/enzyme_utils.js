@@ -67,7 +67,9 @@ export const setInputValue = (inputWrapper, value, { blur = true } = {}) => {
   }
 
   inputWrapper.simulate("change", { target: { value: value } });
-  if (blur) inputWrapper.simulate("blur");
+  if (blur) {
+    inputWrapper.simulate("blur");
+  }
 };
 
 export const chooseSelectOption = optionWrapper => {

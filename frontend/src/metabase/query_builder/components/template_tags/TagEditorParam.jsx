@@ -4,7 +4,7 @@ import _ from "underscore";
 import { connect } from "react-redux";
 
 import Toggle from "metabase/components/Toggle.jsx";
-import Input from "metabase/components/Input.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
 
@@ -122,7 +122,7 @@ export default class TagEditorParam extends Component {
 
         <div className="pb1">
           <h5 className="pb1 text-normal">{t`Filter label`}</h5>
-          <Input
+          <InputBlurChange
             type="text"
             value={tag.display_name}
             className="AdminSelect p1 text-bold text-grey-4 bordered border-med rounded full"

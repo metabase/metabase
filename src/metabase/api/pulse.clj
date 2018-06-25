@@ -55,14 +55,18 @@
   (check-card-read-permissions cards)
   ;; if we're trying to create this Pulse inside a Collection, make sure we have write permissions for that collection
   (collection/check-write-perms-for-collection collection_id)
-  ;; ok, now create the Pulse
-  (api/check-500
-   (pulse/create-pulse! (map pulse/card->ref cards) channels
-     {:name                name
-      :creator_id          api/*current-user-id*
-      :skip_if_empty       skip_if_empty
-      :collection_id       collection_id
-      :collection_position collection_position})))
+  (let [pulse-data {:name                name
+                    :creator_id          api/*current-user-id*
+                    :skip_if_empty       skip_if_empty
+                    :collection_id       collection_id
+                    :collection_position collection_position}]
+    (db/transaction
+      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
+      ;; check that and fix it if needed
+      (api/maybe-reconcile-collection-position! pulse-data)
+      ;; ok, now create the Pulse
+      (api/check-500
+       (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
 
 (api/defendpoint GET "/:id"
@@ -82,11 +86,16 @@
   ;; do various perms checks
   (let [pulse-before-update (api/write-check Pulse id)]
     (check-card-read-permissions cards)
-    (collection/check-allowed-to-change-collection pulse-before-update pulse-updates))
-  ;; ok, now update the Pulse
-  (pulse/update-pulse!
-   (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position])
-     :id id))
+    (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
+
+    (db/transaction
+      ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
+      ;; depending on what changed.
+      (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
+      ;; ok, now update the Pulse
+      (pulse/update-pulse!
+       (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position])
+         :id id))))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 

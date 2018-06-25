@@ -4,8 +4,11 @@ import { caseInsensitiveSearch } from "metabase/lib/string";
 import _ from "underscore";
 
 // Higher order component for filtering a list
+//
 // Injects searchText and onSetSearchText props, and filters down a list prop
 // ("list" by default)
+//
+// Composes with EntityListLoader, ListSelect, etc
 const listSearch = ({
   listProp = "list",
   properties = ["name"],

@@ -19,17 +19,26 @@ export type Props = {
 
 export type RenderProps = {
   list: ?(any[]),
+  fetched: boolean,
   loading: boolean,
   error: ?any,
   reload: () => void,
 };
 
 @entityType()
-@connect((state, { entityDef, entityQuery }) => ({
-  list: entityDef.selectors.getList(state, { entityQuery }),
-  loading: entityDef.selectors.getLoading(state, { entityQuery }),
-  error: entityDef.selectors.getError(state, { entityQuery }),
-}))
+@connect((state, { entityDef, entityQuery, ...props }) => {
+  if (typeof entityQuery === "function") {
+    entityQuery = entityQuery(state, props);
+  }
+  return {
+    entityQuery,
+    list: entityDef.selectors.getList(state, { entityQuery }),
+    fetched: entityDef.selectors.getFetched(state, { entityQuery }),
+    loaded: entityDef.selectors.getLoaded(state, { entityQuery }),
+    loading: entityDef.selectors.getLoading(state, { entityQuery }),
+    error: entityDef.selectors.getError(state, { entityQuery }),
+  };
+})
 export default class EntityListLoader extends React.Component {
   props: Props;
 
@@ -58,8 +67,15 @@ export default class EntityListLoader extends React.Component {
 
   componentWillReceiveProps(nextProps: Props) {
     if (!_.isEqual(nextProps.entityQuery, this.props.entityQuery)) {
+      // entityQuery changed, reload
       // $FlowFixMe: provided by @connect
       nextProps.fetchList(nextProps.entityQuery, { reload: nextProps.reload });
+    } else if (this.props.loaded && !nextProps.loaded && !nextProps.loading) {
+      // transitioned from loaded to not loaded, and isn't yet loading again
+      // this typically means the list request state was cleared by a
+      // create/update/delete action
+      // $FlowFixMe: provided by @connect
+      nextProps.fetchList(nextProps.entityQuery);
     }
   }
 
@@ -84,10 +100,10 @@ export default class EntityListLoader extends React.Component {
 
   render() {
     // $FlowFixMe: provided by @connect
-    const { loading, error, loadingAndErrorWrapper } = this.props;
+    const { fetched, error, loadingAndErrorWrapper } = this.props;
     return loadingAndErrorWrapper ? (
       <LoadingAndErrorWrapper
-        loading={loading}
+        loading={!fetched}
         error={error}
         children={this.renderChildren}
       />
@@ -107,7 +123,7 @@ export const entityListLoader = (ellProps: Props) =>
   (ComposedComponent: any) =>
     // eslint-disable-next-line react/display-name
     (props: Props) => (
-      <EntityListLoader {...ellProps}>
+      <EntityListLoader {...props} {...ellProps}>
         {childProps => <ComposedComponent {...props} {...childProps} />}
       </EntityListLoader>
     );

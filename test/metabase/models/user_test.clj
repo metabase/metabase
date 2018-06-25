@@ -5,6 +5,7 @@
              [email-test :as email-test]
              [http-client :as http]]
             [metabase.models
+             [collection :as collection :refer [Collection]]
              [permissions :as perms]
              [permissions-group :refer [PermissionsGroup]]
              [permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -24,9 +25,31 @@
 
 ;; Ok, adding a group with *no* permissions shouldn't suddenly break all the permissions sets
 ;; (This was a bug @tom found where a group with no permissions would cause the permissions set to contain `nil`).
-(expect (tt/with-temp* [PermissionsGroup           [{group-id :id}]
-                        PermissionsGroupMembership [_              {:group_id group-id, :user_id (user->id :rasta)}]]
-          (perms/is-permissions-set? (user/permissions-set (user->id :rasta)))))
+(expect
+  (tt/with-temp* [PermissionsGroup           [{group-id :id}]
+                  PermissionsGroupMembership [_              {:group_id group-id, :user_id (user->id :rasta)}]]
+    (perms/is-permissions-set? (user/permissions-set (user->id :rasta)))))
+
+;; Does permissions-set include permissions for my Personal Collection?
+(defn- remove-non-collection-perms [perms-set]
+  (set (for [perms-path perms-set
+             :when      (str/starts-with? perms-path "/collection/")]
+         perms-path)))
+(expect
+  #{(perms/collection-readwrite-path (collection/user->personal-collection (user->id :lucky)))}
+  (-> (user/permissions-set (user->id :lucky))
+      remove-non-collection-perms))
+
+;; ...and for any descendant Collections of my Personal Collection?
+(tt/expect-with-temp [Collection [child-collection {:location (collection/children-location
+                                                               (collection/user->personal-collection
+                                                                (user->id :lucky)))}]
+                      Collection [grandchild-collection {:location (collection/children-location child-collection)}]]
+  #{(perms/collection-readwrite-path (collection/user->personal-collection (user->id :lucky)))
+    (perms/collection-readwrite-path child-collection)
+    (perms/collection-readwrite-path grandchild-collection)}
+  (-> (user/permissions-set (user->id :lucky))
+      remove-non-collection-perms))
 
 
 ;;; Tests for invite-user and create-new-google-auth-user!
