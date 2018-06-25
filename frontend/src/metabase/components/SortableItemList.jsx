@@ -6,6 +6,8 @@ import { t } from "c-3po";
 import Icon from "metabase/components/Icon.jsx";
 import Radio from "metabase/components/Radio.jsx";
 
+import moment from "moment";
+
 export default class SortableItemList extends Component {
   constructor(props, context) {
     super(props, context);
@@ -85,7 +87,7 @@ export default class SortableItemList extends Component {
                       <div className="mb1">
                         Saved by {item.creator.common_name}
                       </div>
-                      <div>Modified {item.updated_at.fromNow()}</div>
+                      <div>Modified {moment(item.updated_at).fromNow()}</div>
                     </div>
                   )}
               </a>

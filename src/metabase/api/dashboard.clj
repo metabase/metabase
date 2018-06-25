@@ -5,12 +5,12 @@
             [metabase
              [events :as events]
              [query-processor :as qp]
+             [related :as related]
              [util :as u]]
-            [metabase.api
-             [common :as api]
-             [dataset :as dataset]]
+            [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
+             [collection :as collection]
              [dashboard :as dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard delete-dashboard-card!]]
              [dashboard-favorite :refer [DashboardFavorite]]
@@ -18,7 +18,6 @@
              [query :as query :refer [Query]]
              [revision :as revision]]
             [metabase.query-processor.util :as qp-util]
-            [metabase.related :as related]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -60,16 +59,28 @@
 
 (api/defendpoint POST "/"
   "Create a new `Dashboard`."
-  [:as {{:keys [name description parameters], :as dashboard} :body}]
-  {name        su/NonBlankString
-   parameters  [su/Map]
-   description (s/maybe s/Str)}
-  (->> (db/insert! Dashboard
-         :name        name
-         :description description
-         :parameters  (or parameters [])
-         :creator_id  api/*current-user-id*)
-       (events/publish-event! :dashboard-create)))
+  [:as {{:keys [name description parameters collection_id collection_position], :as dashboard} :body}]
+  {name                su/NonBlankString
+   parameters          [su/Map]
+   description         (s/maybe s/Str)
+   collection_id       (s/maybe su/IntGreaterThanZero)
+   collection_position (s/maybe su/IntGreaterThanZero)}
+  ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
+  (collection/check-write-perms-for-collection collection_id)
+  (let [dashboard-data {:name                name
+                        :description         description
+                        :parameters          (or parameters [])
+                        :creator_id          api/*current-user-id*
+                        :collection_id       collection_id
+                        :collection_position collection_position}]
+    (db/transaction
+      ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
+      ;; position, check that and fix up if needed
+      (api/maybe-reconcile-collection-position! dashboard-data)
+      ;; Ok, now save the Dashboard
+      (->> (db/insert! Dashboard dashboard-data)
+           ;; publish an event and return the newly created Dashboard
+           (events/publish-event! :dashboard-create)))))
 
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
@@ -184,13 +195,22 @@
   [id]
   (u/prog1 (-> (Dashboard id)
                api/check-404
-               (hydrate [:ordered_cards [:card :in_public_dashboard] :series])
+               (hydrate [:ordered_cards :card :series])
                api/read-check
                api/check-not-archived
                hide-unreadable-cards
                add-query-average-durations)
     (events/publish-event! :dashboard-read (assoc <> :actor_id api/*current-user-id*))))
 
+
+(defn- check-allowed-to-change-embedding
+  "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
+  enabled."
+  [dash-before-update dash-updates]
+  (when (or (api/column-will-change? :enable_embedding dash-before-update dash-updates)
+            (api/column-will-change? :embedding_params dash-before-update dash-updates))
+    (api/check-embedding-enabled)
+    (api/check-superuser)))
 
 (api/defendpoint PUT "/:id"
   "Update a `Dashboard`.
@@ -199,7 +219,8 @@
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived], :as dashboard} :body}]
+                   embedding_params position archived collection_id collection_position]
+            :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
    caveats                 (s/maybe s/Str)
@@ -209,23 +230,27 @@
    embedding_params        (s/maybe su/EmbeddingParams)
    parameters              (s/maybe [su/Map])
    position                (s/maybe su/IntGreaterThanZero)
-   archived                (s/maybe s/Bool)}
-  (let [dash (api/write-check Dashboard id)]
-    ;; you must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
-    ;; enabled
-    (when (or (and (some? enable_embedding)
-                   (not= enable_embedding (:enable_embedding dash)))
-              (and embedding_params
-                   (not= embedding_params (:embedding_params dash))))
-      (api/check-embedding-enabled)
-      (api/check-superuser)))
-  (api/check-500
-   (db/update! Dashboard id
-     ;; description, position are allowed to be `nil`. Everything else must be non-nil
-     (u/select-keys-when dashboard
-       :present #{:description :position}
-       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                  :embedding_params :archived})))
+   archived                (s/maybe s/Bool)
+   collection_id           (s/maybe su/IntGreaterThanZero)
+   collection_position     (s/maybe su/IntGreaterThanZero)}
+  (let [dash-before-update (api/write-check Dashboard id)]
+    ;; Do various permissions checks as needed
+    (collection/check-allowed-to-change-collection dash-before-update dash-updates)
+    (check-allowed-to-change-embedding dash-before-update dash-updates)
+    (api/check-500
+     (db/transaction
+
+       ;;If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
+       ;;adjust the collection position of other dashboards in the collection
+       (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
+
+       (db/update! Dashboard id
+         ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
+         ;; non-nil
+         (u/select-keys-when dash-updates
+           :present #{:description :position :collection_id :collection_position}
+           :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                      :embedding_params :archived})))))
   ;; now publish an event and return the updated Dashboard
   (u/prog1 (Dashboard id)
     (events/publish-event! :dashboard-update (assoc <> :actor_id api/*current-user-id*))))
@@ -372,7 +397,7 @@
   [id]
   (-> id Dashboard api/read-check related/related))
 
-;;; --------------------------------------------------- Transient dashboards ---------------------------------------------------
+;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
 (api/defendpoint POST "/save"
   "Save a denormalized description of dashboard."
@@ -380,5 +405,6 @@
   (api/check-superuser)
   (->> (dashboard/save-transient-dashboard! dashboard)
        (events/publish-event! :dashboard-create)))
+
 
 (api/define-routes)

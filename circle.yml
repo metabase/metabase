@@ -3,7 +3,7 @@ machine:
     America/Los_Angeles
   java:
     version:
-      openjdk7
+      openjdk8
   node:
     version: 8.9.0
   services:

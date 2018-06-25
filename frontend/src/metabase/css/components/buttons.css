@@ -217,12 +217,6 @@
   color: #fff;
 }
 
-.Button--success-new {
-  border-color: var(--success-button-color);
-  color: var(--success-button-color);
-  font-weight: bold;
-}
-
 /* toggle button */
 .Button-toggle {
   color: var(--grey-text-color);

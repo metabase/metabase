@@ -1,35 +1,26 @@
-/* @flow */
 import React from "react";
 import cx from "classnames";
-import { connect } from "react-redux";
+import { Box, Flex } from "grid-styled";
 import CopyToClipboard from "react-copy-to-clipboard";
+import Subhead from "metabase/components/Subhead";
 
-import { addUndo, createUndo } from "metabase/redux/undo";
 import { normal, saturated, harmony } from "metabase/lib/colors";
+
+import withToast from "metabase/hoc/Toast";
 
 const SWATCH_SIZE = 150;
 
-const mapDispatchToProps = {
-  addUndo,
-  createUndo,
-};
-
-@connect(() => ({}), mapDispatchToProps)
+@withToast
 class ColorSwatch extends React.Component {
-  _onCopy(colorValue) {
-    const { addUndo, createUndo } = this.props;
-    addUndo(
-      createUndo({
-        type: "copy-color",
-        message: <div>Copied {colorValue} to clipboard</div>,
-      }),
-    );
-  }
   render() {
-    const { color, name } = this.props;
+    const { color, name, triggerToast } = this.props;
     return (
-      <CopyToClipboard value={color} onCopy={() => this._onCopy(color)}>
-        <div
+      <CopyToClipboard
+        text={color}
+        onCopy={() => triggerToast(`${color} copied to clipboard`)}
+      >
+        <Box
+          w={SWATCH_SIZE}
           style={{
             backgroundColor: color,
             height: SWATCH_SIZE,
@@ -41,7 +32,7 @@ class ColorSwatch extends React.Component {
         >
           {name}
           <h2>{color}</h2>
-        </div>
+        </Box>
       </CopyToClipboard>
     );
   }
@@ -52,36 +43,35 @@ let colorStyles = require("!style-loader!css-loader?modules!postcss-loader!metab
 
 const ColorsApp = () => (
   <div className="wrapper">
-    <div className="my2">
-      <h2 className="my3">Normal</h2>
-      <div className="flex flex-wrap">
+    <Box my={2}>
+      <Subhead my={3}>Normal</Subhead>
+      <Flex wrap>
         {Object.entries(normal).map(([name, value]) => (
-          <ColorSwatch color={value} name={name} key={`noraml-${name}`} />
+          <ColorSwatch color={value} name={name} />
         ))}
-      </div>
-    </div>
-    <div className="my2">
-      <h2 className="my3">Saturated</h2>
-      <div className="flex flex-wrap">
+      </Flex>
+    </Box>
+    <Box my={2}>
+      <Subhead my={3}>Saturated</Subhead>
+      <Flex wrap>
         {Object.entries(saturated).map(([name, value]) => (
-          <ColorSwatch color={value} name={name} key={`saturated-${name}`} />
+          <ColorSwatch color={value} name={name} />
         ))}
-      </div>
-    </div>
-    <div className="my2">
-      <h2 className="my3">Chart colors</h2>
-      <div className="flex flex-wrap">
+      </Flex>
+    </Box>
+    <Box my={2}>
+      <Subhead my={3}>Chart colors</Subhead>
+      <Flex wrap>
         {harmony.map((color, index) => (
-          <ColorSwatch color={color} name={`Series ${index + 1}`} key={index} />
+          <ColorSwatch color={color} name={`Series ${index + 1}`} />
         ))}
-      </div>
-    </div>
-    <div className="my2">
-      <h2 className="my3">CSS colors</h2>
+      </Flex>
+    </Box>
+    <Box my={2}>
+      <Subhead>CSS Colors</Subhead>
       {Object.entries(colorStyles).map(([name, className]) => (
         <div
           className={cx(className, "rounded px1")}
-          key={className}
           style={{
             paddingTop: "0.25em",
             paddingBottom: "0.25em",
@@ -91,7 +81,7 @@ const ColorsApp = () => (
           {name}
         </div>
       ))}
-    </div>
+    </Box>
   </div>
 );
 

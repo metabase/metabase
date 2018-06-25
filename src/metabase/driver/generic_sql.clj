@@ -19,11 +19,13 @@
             metabase.query-processor.interface
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [schema.core :as s])
   (:import [clojure.lang Keyword PersistentVector]
            com.mchange.v2.c3p0.ComboPooledDataSource
+           honeysql.types.SqlCall
            [java.sql DatabaseMetaData ResultSet]
-           java.util.Map
+           [java.util Date Map]
            metabase.models.field.FieldInstance
            [metabase.query_processor.interface Field Value]))
 
@@ -89,20 +91,6 @@
      calls `name`, which returns the *unqualified* name of `Field`.
 
      Return `nil` to prevent FIELD from being aliased.")
-
-  (prepare-sql-param [this obj]
-    "*OPTIONAL*. Do any neccesary type conversions, etc. to an object being passed as a prepared statment argument in
-     a parameterized raw SQL query. For example, a raw SQL query with a date param, `x`, e.g. `WHERE date > {{x}}`, is
-     converted to SQL like `WHERE date > ?`, and the value of `x` is passed as a `java.sql.Timestamp`. Some databases,
-     notably SQLite, don't work with `Timestamps`, and dates must be passed as string literals instead; the SQLite
-     driver overrides this method to convert dates as needed.
-
-  The default implementation is `identity`.
-
-  NOTE - This method is only used for parameters in raw SQL queries. It's not needed for MBQL queries because
-  the multimethod `metabase.driver.generic-sql.query-processor/->honeysql` provides an opportunity for drivers to do
-  type conversions as needed. In the future we may simplify a bit and combine them into a single method used in both
-  places.")
 
   (quote-style ^clojure.lang.Keyword [this]
     "*OPTIONAL*. Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when
@@ -292,11 +280,24 @@
      (let [~binding (.getMetaData conn#)]
        ~@body)))
 
+(defmacro ^:private with-resultset-open
+  "This is like `with-open` but with JDBC ResultSet objects. Will execute `body` with a `jdbc/result-set-seq` bound
+  the the symbols provided in the binding form. The binding form is just like `let` or `with-open`, but yield a
+  `ResultSet`. That `ResultSet` will be closed upon exit of `body`."
+  [bindings & body]
+  (let [binding-pairs (partition 2 bindings)
+        rs-syms (repeatedly (count binding-pairs) gensym)]
+    `(with-open ~(vec (interleave rs-syms (map second binding-pairs)))
+       (let ~(vec (interleave (map first binding-pairs) (map #(list `~jdbc/result-set-seq %) rs-syms)))
+         ~@body))))
+
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
   ^ResultSet [^DatabaseMetaData metadata, ^String schema-or-nil]
-  (jdbc/result-set-seq (.getTables metadata nil schema-or-nil "%" ; tablePattern "%" = match all tables
-                                   (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))))
+  (with-resultset-open [rs-seq (.getTables metadata nil schema-or-nil "%" ; tablePattern "%" = match all tables
+                                           (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))]
+    ;; Ensure we read all rows before exiting
+    (doall rs-seq)))
 
 (defn fast-active-tables
   "Default, fast implementation of `ISQLDriver/active-tables` best suited for DBs with lots of system tables (like
@@ -306,12 +307,13 @@
    This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4
    seconds vs 60)."
   [driver, ^DatabaseMetaData metadata]
-  (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas metadata))))
-        schemas     (set/difference all-schemas (excluded-schemas driver))]
-    (set (for [schema     schemas
-               table-name (mapv :table_name (get-tables metadata schema))]
-           {:name   table-name
-            :schema schema}))))
+  (with-resultset-open [rs-seq (.getSchemas metadata)]
+    (let [all-schemas (set (map :table_schem rs-seq))
+          schemas     (set/difference all-schemas (excluded-schemas driver))]
+      (set (for [schema     schemas
+                 table-name (mapv :table_name (get-tables metadata schema))]
+             {:name   table-name
+              :schema schema})))))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `ISQLDriver/active-tables` best suited for DBs with little or no support for schemas.
@@ -339,24 +341,23 @@
     special-type))
 
 (defn- describe-table-fields [^DatabaseMetaData metadata, driver, {schema :schema, table-name :name}]
-  (set (for [{database-type :type_name, column-name :column_name} (jdbc/result-set-seq (.getColumns metadata nil schema table-name nil))]
-         (merge {:name          column-name
-                 :database-type database-type
-                 :base-type     (database-type->base-type driver database-type)}
-                (when-let [special-type (calculated-special-type driver column-name database-type)]
-                  {:special-type special-type})))))
+  (with-resultset-open [rs-seq (.getColumns metadata nil schema table-name nil)]
+    (set (for [{database-type :type_name, column-name :column_name} rs-seq]
+           (merge {:name          column-name
+                   :database-type database-type
+                   :base-type     (database-type->base-type driver database-type)}
+                  (when-let [special-type (calculated-special-type driver column-name database-type)]
+                    {:special-type special-type}))))))
 
 (defn- add-table-pks
   [^DatabaseMetaData metadata, table]
-  (let [pks (->> (.getPrimaryKeys metadata nil nil (:name table))
-                 jdbc/result-set-seq
-                 (mapv :column_name)
-                 set)]
-    (update table :fields (fn [fields]
-                            (set (for [field fields]
-                                   (if-not (contains? pks (:name field))
-                                     field
-                                     (assoc field :pk? true))))))))
+  (with-resultset-open [rs-seq (.getPrimaryKeys metadata nil nil (:name table))]
+    (let [pks (set (map :column_name rs-seq))]
+      (update table :fields (fn [fields]
+                              (set (for [field fields]
+                                     (if-not (contains? pks (:name field))
+                                       field
+                                       (assoc field :pk? true)))))))))
 
 (defn describe-database
   "Default implementation of `describe-database` for JDBC-based drivers. Uses various `ISQLDriver` methods and JDBC
@@ -376,12 +377,69 @@
 
 (defn- describe-table-fks [driver database table]
   (with-metadata [metadata driver database]
-    (set (for [result (jdbc/result-set-seq (.getImportedKeys metadata nil (:schema table) (:name table)))]
-           {:fk-column-name   (:fkcolumn_name result)
-            :dest-table       {:name   (:pktable_name result)
-                               :schema (:pktable_schem result)}
-            :dest-column-name (:pkcolumn_name result)}))))
+    (with-resultset-open [rs-seq (.getImportedKeys metadata nil (:schema table) (:name table))]
+      (set (for [result rs-seq]
+             {:fk-column-name   (:fkcolumn_name result)
+              :dest-table       {:name   (:pktable_name result)
+                                 :schema (:pktable_schem result)}
+              :dest-column-name (:pkcolumn_name result)})))))
 
+;;; ## Native SQL parameter functions
+
+(def PreparedStatementSubstitution
+  "Represents the SQL string replace value (usually ?) and the typed parameter value"
+  {:sql-string   s/Str
+   :param-values [s/Any]})
+
+(s/defn make-stmt-subs :- PreparedStatementSubstitution
+  "Create a `PreparedStatementSubstitution` map for `sql-string` and the `param-seq`"
+  [sql-string param-seq]
+  {:sql-string   sql-string
+   :param-values param-seq})
+
+(defmulti ^{:doc          (str "Returns a `PreparedStatementSubstitution` for `x` and the given driver. "
+                               "This allows driver specific parameters and SQL replacement text (usually just ?). "
+                               "The param value is already prepared and ready for inlcusion in the query, such as "
+                               "what's needed for SQLite and timestamps.")
+            :arglists     '([driver x])
+            :style/indent 1}
+  ->prepared-substitution
+  (fn [driver x]
+    [(class driver) (class x)]))
+
+(s/defn ^:private honeysql->prepared-stmt-subs
+  "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
+  [driver x]
+  (let [[snippet & args] (hsql/format x, :quoting (quote-style driver))]
+    (make-stmt-subs snippet args)))
+
+(s/defmethod ->prepared-substitution [Object nil] :- PreparedStatementSubstitution
+  [driver _]
+  (honeysql->prepared-stmt-subs driver nil))
+
+(s/defmethod ->prepared-substitution [Object Object] :- PreparedStatementSubstitution
+  [driver obj]
+  (honeysql->prepared-stmt-subs driver (str obj)))
+
+(s/defmethod ->prepared-substitution [Object Number] :- PreparedStatementSubstitution
+  [driver num]
+  (honeysql->prepared-stmt-subs driver num))
+
+(s/defmethod ->prepared-substitution [Object Boolean] :- PreparedStatementSubstitution
+  [driver b]
+  (honeysql->prepared-stmt-subs driver b))
+
+(s/defmethod ->prepared-substitution [Object Keyword] :- PreparedStatementSubstitution
+  [driver kwd]
+  (honeysql->prepared-stmt-subs driver kwd))
+
+(s/defmethod ->prepared-substitution [Object SqlCall] :- PreparedStatementSubstitution
+  [driver sql-call]
+  (honeysql->prepared-stmt-subs driver sql-call))
+
+(s/defmethod ->prepared-substitution [Object Date] :- PreparedStatementSubstitution
+  [driver date]
+  (make-stmt-subs "?" [date]))
 
 (defn ISQLDriverDefaultsMixin
   "Default implementations for methods in `ISQLDriver`."
@@ -404,7 +462,6 @@
    :excluded-schemas     (constantly nil)
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
    :field->alias         (u/drop-first-arg name)
-   :prepare-sql-param    (u/drop-first-arg identity)
    :quote-style          (constantly :ansi)
    :set-timezone-sql     (constantly nil)
    :stddev-fn            (constantly :STDDEV)})

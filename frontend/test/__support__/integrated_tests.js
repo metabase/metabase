@@ -17,6 +17,8 @@ import {
   CardApi,
   MetricApi,
   SegmentApi,
+  CollectionsApi,
+  PermissionsApi,
 } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from "metabase/reducers-main";
@@ -96,11 +98,15 @@ export function useSharedNormalLogin() {
     id: process.env.TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID,
   };
 }
-export const forBothAdminsAndNormalUsers = async tests => {
-  useSharedAdminLogin();
-  await tests();
-  useSharedNormalLogin();
-  await tests();
+export const forBothAdminsAndNormalUsers = tests => {
+  describe("for admins", () => {
+    beforeEach(useSharedAdminLogin);
+    tests();
+  });
+  describe("for normal users", () => {
+    beforeEach(useSharedNormalLogin);
+    tests();
+  });
 };
 
 export function logout() {
@@ -225,7 +231,9 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
           actionWithTimestamp,
         );
 
-        if (store._onActionDispatched) store._onActionDispatched();
+        if (store._onActionDispatched) {
+          store._onActionDispatched();
+        }
         return result;
       },
 
@@ -245,6 +253,17 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
         }
 
         actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes];
+
+        if (_.any(actionTypes, type => !type)) {
+          return Promise.reject(
+            new Error(
+              `You tried to wait for a null or undefined action type (${actionTypes})`,
+            ),
+          );
+        }
+
+        // supports redux-action style action creator that when cast to a string returns the action name
+        actionTypes = actionTypes.map(actionType => String(actionType));
 
         // Returns all actions that are triggered after the last action which belongs to `actionTypes
         const getRemainingActions = () => {
@@ -412,6 +431,22 @@ export const createDashboard = async details => {
   let savedDashboard = await DashboardApi.create(details);
   return savedDashboard;
 };
+
+// useful for tests where multiple users need access to the same questions
+export async function createAllUsersWritableCollection() {
+  const group = _.findWhere(await PermissionsApi.groups(), {
+    name: "All Users",
+  });
+  const collection = await CollectionsApi.create({
+    name: "test" + Math.random(),
+    description: "description",
+    color: "#F1B556",
+  });
+  const graph = await CollectionsApi.graph();
+  graph.groups[group.id][collection.id] = "write";
+  await CollectionsApi.updateGraph(graph);
+  return collection;
+}
 
 /**
  * Waits for a API request with a given method (GET/POST/PUT...) and a url which matches the given regural expression.
@@ -644,7 +679,9 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
         );
         console.log(error, { depth: null });
         console.log(`The original request: ${method} ${url}`);
-        if (requestBody) console.log(`Original payload: ${requestBody}`);
+        if (requestBody) {
+          console.log(`Original payload: ${requestBody}`);
+        }
       }
 
       throw error;

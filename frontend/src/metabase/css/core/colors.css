@@ -30,6 +30,14 @@
   --slate-extra-light-color: #f9fbfc;
 
   --error-color: #e35050;
+
+  /* type colors */
+  --metric-color: #9cc177;
+  --segment-color: #7172ad;
+  --pulse-color: #f9d45c;
+  --dashboard-color: #509ee3;
+  --data-color: "#9cc177";
+  --question-color: #93b3c9;
 }
 
 .text-default,
@@ -253,7 +261,8 @@
 }
 
 .bg-white,
-:local(.bg-white) {
+:local(.bg-white),
+.bg-white-hover:hover {
   background-color: #fff;
 }
 
@@ -275,4 +284,48 @@
 
 .bg-transparent {
   background-color: transparent;
+}
+
+/* entity colors */
+
+.bg-metric {
+  background-color: var(--metric-color);
+}
+.text-metric {
+  color: var(--metric-color);
+}
+
+.bg-data {
+  background-color: var(--data-color);
+}
+.text-data {
+  color: var(--data-color);
+}
+
+.bg-segment {
+  background-color: var(--segment-color);
+}
+.text-segment {
+  color: var(--segment-color);
+}
+
+.bg-dashboard {
+  background-color: var(--dashboard-color);
+}
+.text-dashboard {
+  color: var(--dashboard-color);
+}
+
+.bg-pulse {
+  background-color: var(--pulse-color);
+}
+.text-pulse {
+  color: var(--pulse-color);
+}
+
+.bg-question {
+  background-color: var(--question-color);
+}
+.text-question {
+  color: var(--question-color);
 }

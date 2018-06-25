@@ -7,11 +7,10 @@
              [email :as email]
              [events :as events]
              [util :as u]]
-            [metabase.api
-             [common :as api]
-             [pulse :as pulse-api]]
+            [metabase.api.common :as api]
             [metabase.email.messages :as messages]
             [metabase.models
+             [card :refer [Card]]
              [interface :as mi]
              [pulse :as pulse :refer [Pulse]]]
             [metabase.util.schema :as su]
@@ -35,14 +34,12 @@
   "Fetch all questions for the given question (`Card`) id"
   [id]
   (add-read-only-flag (if api/*is-superuser?*
-                        (pulse/retrieve-alerts-for-card id)
+                        (pulse/retrieve-alerts-for-cards id)
                         (pulse/retrieve-user-alerts-for-card id api/*current-user-id*))))
 
-(def ^:private AlertConditions
-  (s/enum "rows" "goal"))
-
 (defn- only-alert-keys [request]
-  (select-keys request [:alert_condition :alert_first_only :alert_above_goal]))
+  (u/select-keys-when request
+    :present [:alert_condition :alert_first_only :alert_above_goal]))
 
 (defn- email-channel [alert]
   (m/find-first #(= :email (:channel_type %)) (:channels alert)))
@@ -113,60 +110,59 @@
     card))
 
 (api/defendpoint POST "/"
-  "Create a new alert (`Pulse`)"
-  [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal] :as req} :body}]
-  {alert_condition   AlertConditions
-   alert_first_only  s/Bool
-   alert_above_goal  (s/maybe s/Bool)
-   card              su/Map
-   channels          (su/non-empty [su/Map])}
-  (pulse-api/check-card-read-permissions [card])
-  (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/create-card-ref)
-        new-alert (api/check-500
-                   (-> req
-                       only-alert-keys
-                       (pulse/create-alert! api/*current-user-id* alert-card channels)))]
-
+  "Create a new Alert."
+  [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal]
+         :as new-alert-request-body} :body}]
+  {alert_condition     pulse/AlertConditions
+   alert_first_only    s/Bool
+   alert_above_goal    (s/maybe s/Bool)
+   card                pulse/CardRef
+   channels            (su/non-empty [su/Map])}
+  ;; do various perms checks as needed. Perms for an Alert == perms for its Card. So to create an Alert you need write
+  ;; perms for its Card
+  (api/write-check Card (u/get-id card))
+  ;; ok, now create the Alert
+  (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/card->ref)
+        new-alert  (api/check-500
+                    (-> new-alert-request-body
+                        only-alert-keys
+                        (pulse/create-alert! api/*current-user-id* alert-card channels)))]
     (notify-new-alert-created! new-alert)
-
+    ;; return our new Alert
     new-alert))
 
-(defn- recipient-ids [{:keys [channels] :as alert}]
-  (reduce (fn [acc {:keys [channel_type recipients]}]
-            (if (= :email channel_type)
-              (into acc (map :id recipients))
-              acc))
-          #{} channels))
-
-(defn- check-alert-update-permissions
-  "Admin users can update all alerts. Non-admin users can update alerts that they created as long as they are still a
-  recipient of that alert"
-  [alert]
-  (when-not api/*is-superuser?*
-    (api/write-check alert)
-    (api/check-403 (and (= api/*current-user-id* (:creator_id alert))
-                        (contains? (recipient-ids alert) api/*current-user-id*)))))
 
 (api/defendpoint PUT "/:id"
   "Update a `Alert` with ID."
-  [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels] :as req} :body}]
-  {alert_condition  AlertConditions
-   alert_first_only s/Bool
-   alert_above_goal (s/maybe s/Bool)
-   card             su/Map
-   channels         (su/non-empty [su/Map])}
-  (let [old-alert     (pulse/retrieve-alert id)
-        _             (check-alert-update-permissions old-alert)
-        updated-alert (-> req
-                          only-alert-keys
-                          (assoc :id id :card (pulse/create-card-ref card) :channels channels)
-                          pulse/update-alert!)]
-
-    ;; Only admins can update recipients
-    (when (and api/*is-superuser?* (email/email-configured?))
-      (notify-recipient-changes! old-alert updated-alert))
-
-    updated-alert))
+  [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels]
+            :as alert-updates} :body}]
+  {alert_condition     (s/maybe pulse/AlertConditions)
+   alert_first_only    (s/maybe s/Bool)
+   alert_above_goal    (s/maybe s/Bool)
+   card                (s/maybe pulse/CardRef)
+   channels            (s/maybe (su/non-empty [su/Map]))}
+  ;; fethc the existing Alert in the DB
+  (let [alert-before-update (api/check-404 (pulse/retrieve-alert id))]
+    ;; check permissions as needed.
+    ;; Check permissions to update existing Card
+    (api/write-check Card (u/get-id (:card alert-before-update)))
+    ;; if trying to change the card, check perms for that as well
+    (when card
+      (api/write-check Card (u/get-id card)))
+    ;; now update the Alert
+    (let [updated-alert (pulse/update-alert!
+                         (merge
+                          (assoc (only-alert-keys alert-updates)
+                            :id id)
+                          (when card
+                            {:card (pulse/card->ref card)})
+                          (when (contains? alert-updates :channels)
+                            {:channels channels})))]
+      ;; Only admins can update recipients
+      (when (and api/*is-superuser?* (email/email-configured?))
+        (notify-recipient-changes! alert-before-update updated-alert))
+      ;; Finally, return the updated Alert
+      updated-alert)))
 
 (defn- should-unsubscribe-delete?
   "An alert should be deleted instead of unsubscribing if
@@ -180,12 +176,13 @@
          (= unsubscribing-user-id (:id (first recipients)))
          (nil? (slack-channel alert)))))
 
+;; TODO - why is this a *PUT* endpoint???
 (api/defendpoint PUT "/:id/unsubscribe"
   "Unsubscribes a user from the given alert"
   [id]
   ;; Admins are not allowed to unsubscribe from alerts, they should edit the alert
   (api/check (not api/*is-superuser?*)
-    [400 "Admin user are not allowed to unsubscribe from alerts"])
+    [400 "Admin users are not allowed to unsubscribe from alerts"])
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)
 
@@ -193,11 +190,11 @@
       ;; No need to unsubscribe if we're just going to delete the Pulse
       (db/delete! Pulse :id id)
       ;; There are other receipieints, remove current user only
-      (pulse/unsubscribe-from-alert id api/*current-user-id*))
-
+      (pulse/unsubscribe-from-alert! id api/*current-user-id*))
+    ;; Send emails letting people know they have been unsubscribe
     (when (email/email-configured?)
       (messages/send-you-unsubscribed-alert-email! alert @api/*current-user*))
-
+    ;; finally, return a 204 No Content
     api/generic-204-no-content))
 
 (defn- notify-on-delete-if-needed!

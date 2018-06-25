@@ -5,11 +5,12 @@ import React from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 
-import { withBackground } from "metabase/hoc/Background";
 import title from "metabase/hoc/Title";
+import withToast from "metabase/hoc/Toast";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
+import Filter from "metabase/query_builder/components/Filter";
 
 import cxs from "cxs";
 import { t } from "c-3po";
@@ -19,8 +20,6 @@ import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import Parameters from "metabase/parameters/components/Parameters";
 
-import { addUndo, createUndo } from "metabase/redux/undo";
-
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
@@ -28,7 +27,8 @@ import { DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import { getParameterIconName } from "metabase/meta/Parameter";
+import * as Q from "metabase/lib/query/query";
+import Dimension from "metabase-lib/lib/Dimension";
 
 import { dissoc } from "icepick";
 
@@ -41,8 +41,9 @@ const mapStateToProps = (state, props) => ({
   dashboardId: getDashboardId(state, props),
 });
 
-@connect(mapStateToProps, { addUndo, createUndo })
+@connect(mapStateToProps)
 @DashboardData
+@withToast
 @title(({ dashboard }) => dashboard && dashboard.name)
 class AutomaticDashboardApp extends React.Component {
   state = {
@@ -57,27 +58,22 @@ class AutomaticDashboardApp extends React.Component {
   }
 
   save = async () => {
-    const { dashboard, addUndo, createUndo } = this.props;
+    const { dashboard, triggerToast } = this.props;
     // remove the transient id before trying to save
     const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
-    addUndo(
-      createUndo({
-        type: "metabase/automatic-dashboards/link-to-created-object",
-        message: () => (
-          <div className="flex align-center">
-            <Icon name="dashboard" size={22} className="mr2" color="#93A1AB" />
-            {t`Your dashboard was saved`}
-            <Link
-              className="link text-bold ml1"
-              to={Urls.dashboard(newDashboard.id)}
-            >
-              {t`See it`}
-            </Link>
-          </div>
-        ),
-        action: null,
-      }),
+    triggerToast(
+      <div className="flex align-center">
+        <Icon name="dashboard" size={22} className="mr2" color="#93A1AB" />
+        {t`Your dashboard was saved`}
+        <Link
+          className="link text-bold ml1"
+          to={Urls.dashboard(newDashboard.id)}
+        >
+          {t`See it`}
+        </Link>
+      </div>,
     );
+
     this.setState({ savedDashboardId: newDashboard.id });
     MetabaseAnalytics.trackEvent("AutoDashboard", "Save");
   };
@@ -93,8 +89,8 @@ class AutomaticDashboardApp extends React.Component {
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
-    const more = dashboard && dashboard.related && dashboard.related["more"];
-    const related = dashboard && _.omit(dashboard.related, "more");
+    const more = dashboard && dashboard.more;
+    const related = dashboard && dashboard.related;
     const hasSidebar = _.any(related || {}, list => list.length > 0);
 
     return (
@@ -106,9 +102,11 @@ class AutomaticDashboardApp extends React.Component {
               <div>
                 <h2>{dashboard && <TransientTitle dashboard={dashboard} />}</h2>
                 {dashboard &&
-                  dashboard.transient_filters &&
-                  dashboard.transient_filters.length > 0 && (
-                    <TransientFilters filters={dashboard.transient_filters} />
+                  dashboard.transient_filters && (
+                    <TransientFilters
+                      filter={dashboard.transient_filters}
+                      metadata={this.props.metadata}
+                    />
                   )}
               </div>
               {savedDashboardId != null ? (
@@ -146,17 +144,15 @@ class AutomaticDashboardApp extends React.Component {
           </div>
           {more && (
             <div className="flex justify-end px4 pb4">
-              {more.map(item => (
-                <Link
-                  to={item.url}
-                  className="ml2"
-                  onClick={() =>
-                    MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
-                  }
-                >
-                  <Button iconRight="chevronright">{item.title}</Button>
-                </Link>
-              ))}
+              <Link
+                to={more}
+                className="ml2"
+                onClick={() =>
+                  MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
+                }
+              >
+                <Button iconRight="chevronright">{t`Show more about this`}</Button>
+              </Link>
             </div>
           )}
         </div>
@@ -177,31 +173,32 @@ const TransientTitle = ({ dashboard }) =>
     <span>{dashboard.name}</span>
   ) : null;
 
-const TransientFilters = ({ filters }) => (
+const TransientFilters = ({ filter, metadata }) => (
   <div className="mt1 flex align-center text-grey-4 text-bold">
-    {filters.map((filter, index) => (
-      <TransientFilter key={index} filter={filter} />
+    {/* $FlowFixMe */}
+    {Q.getFilters({ filter }).map((f, index) => (
+      <TransientFilter key={index} filter={f} metadata={metadata} />
     ))}
   </div>
 );
 
-const TransientFilter = ({ filter }) => (
+const TransientFilter = ({ filter, metadata }) => (
   <div className="mr3">
-    <Icon name={getParameterIconName(filter.type)} size={12} className="mr1" />
-    {filter.field.map((str, index) => [
-      <span key={"name" + index}>{str}</span>,
-      index !== filter.field.length - 1 ? (
-        <Icon
-          key={"icon" + index}
-          size={10}
-          style={{ marginLeft: 3, marginRight: 3 }}
-          name="connections"
-        />
-      ) : null,
-    ])}
-    <span> {filter.value}</span>
+    <Icon size={12} name={getIconForFilter(filter, metadata)} className="mr1" />
+    <Filter filter={filter} metadata={metadata} />
   </div>
 );
+
+const getIconForFilter = (filter, metadata) => {
+  const field = Dimension.parseMBQL(filter[1], metadata).field();
+  if (field.isDate()) {
+    return "calendar";
+  } else if (field.isLocation()) {
+    return "location";
+  } else {
+    return "label";
+  }
+};
 
 const suggestionClasses = cxs({
   ":hover h3": {
@@ -254,4 +251,4 @@ const SuggestionsSidebar = ({ related }) => (
   </div>
 );
 
-export default withBackground("bg-slate-extra-light")(AutomaticDashboardApp);
+export default AutomaticDashboardApp;

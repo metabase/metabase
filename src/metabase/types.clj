@@ -5,13 +5,15 @@
    like `:type/CaseInsensitiveText`; we can add this type as a derivative of `:type/Text` and everywhere else can
    continue to treat it as such until further notice.")
 
+;; NOTE: be sure to update frontend/test/metabase-bootstrap.js when updating this
+
 (derive :type/Collection :type/*)
 
 (derive :type/Dictionary :type/Collection)
 (derive :type/Array :type/Collection)
 
 
-;;; Table (entitiy) Types
+;;; Table (entity) Types
 
 (derive :entity/GenericTable :entity/*)
 (derive :entity/UserTable :entity/GenericTable)
@@ -29,7 +31,6 @@
 
 (derive :type/Integer :type/Number)
 (derive :type/BigInteger :type/Integer)
-(derive :type/ZipCode :type/Integer)
 (derive :type/Quantity :type/Integer)
 
 (derive :type/Float :type/Number)
@@ -82,6 +83,7 @@
 
 (derive :type/Time :type/DateTime)
 (derive :type/Date :type/DateTime)
+(derive :type/DateTimeWithTZ :type/DateTime)
 
 (derive :type/UNIXTimestamp :type/DateTime)
 (derive :type/UNIXTimestamp :type/Integer)
@@ -89,7 +91,17 @@
 (derive :type/UNIXTimestampMilliseconds :type/UNIXTimestamp)
 
 (derive :type/CreationTimestamp :type/DateTime)
+(derive :type/CreationTime :type/Time)
+(derive :type/CreationTime :type/CreationTimestamp)
+(derive :type/CreationDate :type/Date)
+(derive :type/CreationDate :type/CreationTimestamp)
+
 (derive :type/JoinTimestamp :type/DateTime)
+(derive :type/JoinTime :type/Date)
+(derive :type/JoinTime :type/CreationTimestamp)
+(derive :type/JoinDate :type/Date)
+(derive :type/JoinDate :type/CreationTimestamp)
+
 (derive :type/Birthdate :type/Date)
 
 

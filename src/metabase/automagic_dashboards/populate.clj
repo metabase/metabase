@@ -3,18 +3,23 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.api.common :as api]
-            [metabase.automagic-dashboards.filters :as magic.filters]
-            [metabase.models.card :as card]
+            [metabase.automagic-dashboards.filters :as filters]
+            [metabase.models
+             [card :as card]
+             [field :refer [Field]]]
             [metabase.query-processor.util :as qp.util]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]
             [toucan.db :as db]))
 
-(def ^Long ^:const grid-width
+(def ^Long grid-width
   "Total grid width."
   18)
-(def ^Long ^:const default-card-width
+
+(def ^Long default-card-width
   "Default card width."
   6)
-(def ^Long ^:const default-card-height
+
+(def ^Long default-card-height
   "Default card height"
   4)
 
@@ -66,8 +71,8 @@
                                          qp.util/normalize-token
                                          (= :count)))
                          (->> breakout
-                              magic.filters/collect-field-references
-                              (map magic.filters/field-reference->id))
+                              filters/collect-field-references
+                              (map filters/field-reference->id))
                          aggregation)]
         {:graph.colors (->> color-keys
                             (map (comp colors #(mod % (count colors)) hash))
@@ -238,7 +243,8 @@
                          :else        n)
          dashboard     {:name              title
                         :transient_name    (or transient_title title)
-                        :transient_filters (magic.filters/applied-filters fieldset refinements)
+                        :transient_filters refinements
+                        :param_fields      (filters/filter-referenced-fields refinements)
                         :description       description
                         :creator_id        api/*current-user-id*
                         :parameters        []}
@@ -252,32 +258,50 @@
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))]
-     (log/info (format "Adding %s cards to dashboard %s:\n%s"
-                       (count cards)
-                       title
-                       (str/join "; " (map :title cards))))
+     (log/infof (trs "Adding %s cards to dashboard %s:\n%s")
+                (count cards)
+                title
+                (str/join "; " (map :title cards)))
      (cond-> dashboard
-       (not-empty filters) (magic.filters/add-filters filters max-filters)))))
+       (not-empty filters) (filters/add-filters filters max-filters)))))
 
 (defn merge-dashboards
   "Merge dashboards `ds` into dashboard `d`."
   [d & ds]
-  (reduce (fn [target dashboard]
-            (let [offset (->> dashboard
-                              :ordered_cards
-                              (map #(+ (:row %) (:sizeY %)))
-                              (apply max -2) ; -2 so it neturalizes +2 for spacing if
-                                             ; the target dashboard is empty.
-                              (+ 2))]
-              (-> target
-                  (add-text-card {:width  default-card-width
-                                  :height group-heading-height
-                                  :text   (:name dashboard)}
-                                 [offset 0])
-                  (update :ordered_cards concat
-                          (->> dashboard
-                               :ordered_cards
-                               (map #(update :row + offset group-heading-height))))
-                  (update :parameters concat (:parameters dashboard)))))
-          d
-          ds))
+  (let [filter-targets (when (->> ds
+                                  (mapcat :ordered_cards)
+                                  (keep (comp :table_id :card))
+                                  distinct
+                                  count
+                                  (= 1))
+                         (->> ds
+                              (mapcat :ordered_cards)
+                              (mapcat :parameter_mappings)
+                              (mapcat (comp filters/collect-field-references :target))
+                              (map filters/field-reference->id)
+                              distinct
+                              (map Field)))]
+    (cond-> (reduce
+             (fn [target dashboard]
+               (let [offset (->> target
+                                 :ordered_cards
+                                 (map #(+ (:row %) (:sizeY %)))
+                                 (apply max -1) ; -1 so it neturalizes +1 for spacing if
+                                                ; the target dashboard is empty.
+                                 inc)]
+                 (-> target
+                     (add-text-card {:width                  grid-width
+                                     :height                 group-heading-height
+                                     :text                   (format "# %s" (:name dashboard))
+                                     :visualization-settings {:dashcard.background false
+                                                              :text.align_vertical :bottom}}
+                                    [offset 0])
+                     (update :ordered_cards concat
+                             (->> dashboard
+                                  :ordered_cards
+                                  (map #(-> %
+                                            (update :row + offset group-heading-height)
+                                            (dissoc :parameter_mappings))))))))
+             d
+             ds)
+      (not-empty filter-targets) (filters/add-filters filter-targets max-filters))))

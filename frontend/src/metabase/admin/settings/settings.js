@@ -42,6 +42,21 @@ export const updateSetting = createThunkAction(UPDATE_SETTING, function(
   };
 });
 
+export const UPDATE_SETTINGS = "metabase/admin/settings/UPDATE_SETTINGS";
+export const updateSettings = createThunkAction(UPDATE_SETTINGS, function(
+  settings,
+) {
+  return async function(dispatch, getState) {
+    try {
+      await SettingsApi.putAll(settings);
+      await dispatch(refreshSiteSettings());
+    } catch (error) {
+      console.log("error updating settings", settings, error);
+      throw error;
+    }
+  };
+});
+
 export const UPDATE_EMAIL_SETTINGS =
   "metabase/admin/settings/UPDATE_EMAIL_SETTINGS";
 export const updateEmailSettings = createThunkAction(

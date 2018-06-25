@@ -18,7 +18,7 @@
 (expect saturday-the-31st (->Timestamp (->Calendar saturday-the-31st)))
 (expect saturday-the-31st (->Timestamp (->Calendar (.getTime saturday-the-31st))))
 (expect saturday-the-31st (->Timestamp (.getTime saturday-the-31st)))
-(expect saturday-the-31st (->Timestamp "2005-12-31T19:05:55+00:00"))
+(expect saturday-the-31st (->Timestamp "2005-12-31T19:05:55+00:00" utc))
 
 (expect nil (->iso-8601-datetime nil nil))
 (expect "2005-12-31T19:05:55.000Z" (->iso-8601-datetime saturday-the-31st nil))

@@ -51,12 +51,13 @@ import {
   FETCH_DASHBOARD_CARD_DATA,
   FETCH_CARD_DATA,
 } from "metabase/dashboard/dashboard";
+
+import Select from "metabase/components/Select";
 import RunButton from "metabase/query_builder/components/RunButton";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import ParameterFieldWidget from "metabase/parameters/components/widgets/ParameterFieldWidget";
 import TextWidget from "metabase/parameters/components/widgets/TextWidget.jsx";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
-import { LOAD_COLLECTIONS } from "metabase/questions/collections";
 import SharingPane from "metabase/public/components/widgets/SharingPane";
 import { EmbedTitle } from "metabase/public/components/widgets/EmbedModalContent";
 import PreviewPane from "metabase/public/components/widgets/PreviewPane";
@@ -66,6 +67,7 @@ import * as Urls from "metabase/lib/urls";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
 
+import Collections from "metabase/entities/collections";
 import { CardApi, DashboardApi, SettingsApi } from "metabase/services";
 
 const PEOPLE_TABLE_ID = 2;
@@ -221,7 +223,7 @@ describe("public/embedded", () => {
           .first()
           .find("a"),
       );
-      await store.waitForActions([LOAD_COLLECTIONS]);
+      await store.waitForActions([Collections.actions.fetchList]);
 
       setInputValue(
         app.find(SaveQuestionModal).find("input[name='name']"),
@@ -252,8 +254,10 @@ describe("public/embedded", () => {
           .last(),
       );
 
+      // currently only one Select is present, but verify it's the right one
+      expect(app.find(Select).text()).toBe("Disabled");
       // make the parameter editable
-      click(app.find(".AdminSelect-content[children='Disabled']"));
+      click(app.find(Select));
 
       click(app.find(".TestPopoverBody .Icon-pencil"));
 
@@ -327,10 +331,11 @@ describe("public/embedded", () => {
       }
 
       it("should allow seeing an embedded question", async () => {
-        if (!embedUrl)
+        if (!embedUrl) {
           throw new Error(
             "This test fails because previous tests didn't produce an embed url.",
           );
+        }
         const embedUrlTestStore = await createTestStore({ embedApp: true });
         await runSharedQuestionTests(
           embedUrlTestStore,
@@ -340,10 +345,11 @@ describe("public/embedded", () => {
       });
 
       it("should allow seeing a public question", async () => {
-        if (!publicUrl)
+        if (!publicUrl) {
           throw new Error(
             "This test fails because previous tests didn't produce a public url.",
           );
+        }
         const publicUrlTestStore = await createTestStore({ publicApp: true });
         await runSharedQuestionTests(
           publicUrlTestStore,
@@ -563,20 +569,22 @@ describe("public/embedded", () => {
       }
 
       it("should handle parameters in public Dashboards correctly", async () => {
-        if (!publicDashUrl)
+        if (!publicDashUrl) {
           throw new Error(
             "This test fails because test setup code didn't produce a public Dashboard URL.",
           );
+        }
 
         const publicUrlTestStore = await createTestStore({ publicApp: true });
         await runSharedDashboardTests(publicUrlTestStore, publicDashUrl);
       });
 
       it("should handle parameters in embedded Dashboards correctly", async () => {
-        if (!embedDashUrl)
+        if (!embedDashUrl) {
           throw new Error(
             "This test fails because test setup code didn't produce a embedded Dashboard URL.",
           );
+        }
 
         const embedUrlTestStore = await createTestStore({ embedApp: true });
         await runSharedDashboardTests(embedUrlTestStore, embedDashUrl);

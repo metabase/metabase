@@ -56,7 +56,9 @@ export default class ActionsWidget extends Component {
 
   handleMouseMoved = () => {
     // Don't auto-show or auto-hide the icon if popover is open
-    if (this.state.popoverIsOpen) return;
+    if (this.state.popoverIsOpen) {
+      return;
+    }
 
     if (!this.state.iconIsVisible) {
       this.setState({ iconIsVisible: true });
@@ -82,7 +84,9 @@ export default class ActionsWidget extends Component {
   };
 
   toggle = () => {
-    if (this.state.isClosing) return;
+    if (this.state.isClosing) {
+      return;
+    }
 
     if (!this.state.popoverIsOpen) {
       MetabaseAnalytics.trackEvent("Actions", "Opened Action Menu");

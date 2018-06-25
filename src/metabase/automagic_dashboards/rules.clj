@@ -4,22 +4,21 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.automagic-dashboards.populate :as populate]
-            [metabase.types]
             [metabase.util :as u]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]
             [schema
              [coerce :as sc]
              [core :as s]]
             [yaml.core :as yaml])
-  (:import java.nio.file.Path java.nio.file.FileSystems java.nio.file.FileSystem
-           java.nio.file.Files ))
+  (:import [java.nio.file Files FileSystem FileSystems Path]))
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
   100)
 
 (def ^:private Score (s/constrained s/Int #(<= 0 % max-score)
-                                    (str "0 <= score <= " max-score)))
+                                    (trs "0 <= score <= {0}" max-score)))
 
 (def ^:private MBQL [s/Any])
 
@@ -80,8 +79,7 @@
 (def ^:private Visualization [(s/one s/Str "visualization") su/Map])
 
 (def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
-                                     (format "1 <= width <= %s"
-                                             populate/grid-width)))
+                                     (trs "1 <= width <= {0}" populate/grid-width)))
 (def ^:private Height (s/constrained s/Int pos?))
 
 (def ^:private CardDimension {Identifier {(s/optional-key :aggregation) s/Str}})
@@ -186,12 +184,14 @@
           schema
           (partition 2 constraints)))
 
-(def ^:private Rules
+(def Rule
+  "Rules defining an automagic dashboard."
   (constrained-all
    {(s/required-key :title)             s/Str
-    (s/required-key :dimensions)        [Dimension]
-    (s/required-key :cards)             [Card]
     (s/required-key :rule)              s/Str
+    (s/required-key :specificity)       s/Int
+    (s/optional-key :cards)             [Card]
+    (s/optional-key :dimensions)        [Dimension]
     (s/optional-key :applies_to)        AppliesTo
     (s/optional-key :transient_title)   s/Str
     (s/optional-key :short_title)       s/Str
@@ -201,13 +201,13 @@
     (s/optional-key :groups)            Groups
     (s/optional-key :indepth)           [s/Any]
     (s/optional-key :dashboard_filters) [s/Str]}
-   valid-metrics-references?            "Valid metrics references"
-   valid-filters-references?            "Valid filters references"
-   valid-group-references?              "Valid group references"
-   valid-order-by-references?           "Valid order_by references"
-   valid-dashboard-filters-references?  "Valid dashboard filters references"
-   valid-dimension-references?          "Valid dimension references"
-   valid-breakout-dimension-references? "Valid card dimension references"))
+   valid-metrics-references?            (trs "Valid metrics references")
+   valid-filters-references?            (trs "Valid filters references")
+   valid-group-references?              (trs "Valid group references")
+   valid-order-by-references?           (trs "Valid order_by references")
+   valid-dashboard-filters-references?  (trs "Valid dashboard filters references")
+   valid-dimension-references?          (trs "Valid dimension references")
+   valid-breakout-dimension-references? (trs "Valid card dimension references")))
 
 (defn- with-defaults
   [defaults]
@@ -234,7 +234,7 @@
 
 (def ^:private rules-validator
   (sc/coercer!
-   Rules
+   Rule
    {[s/Str]         ensure-seq
     [OrderByPair]   ensure-seq
     OrderByPair     (fn [x]
@@ -276,79 +276,85 @@
 
 (def ^:private rules-dir "automagic_dashboards/")
 
-(def ^:private ^{:arglists '([f])} file->table-type
-  (comp (partial re-find #".+(?=\.yaml)") str (memfn ^Path getFileName)))
+(def ^:private ^{:arglists '([f])} file->entity-type
+  (comp (partial re-find #".+(?=\.yaml$)") str (memfn ^Path getFileName)))
 
-(def ^:private ^{:arglists '([f])} file->parent-dir
-  (comp last #(str/split % #"/") str (memfn ^Path getParent)))
+(defn- specificity
+  [rule]
+  (transduce (map (comp count ancestors)) + (:applies_to rule)))
 
-(defmacro ^:private with-resources
-  [identifier & body]
-  `(let [uri# (-> rules-dir io/resource .toURI)]
-     (let [[fs# path#] (-> uri# .toString (str/split #"!" 2))]
-       (if path#
-         (with-open [^FileSystem ~identifier
-                     (-> fs#
-                         java.net.URI/create
-                         (FileSystems/newFileSystem (java.util.HashMap.)))]
-           ~@body)
-         (let [~identifier (FileSystems/getDefault)]
-           ~@body)))))
+(defn- load-rule
+  [^Path f]
+  (try
+    (let [entity-type (file->entity-type f)]
+      (-> f
+          .toUri
+          slurp
+          yaml/parse-string
+          (assoc :rule        entity-type
+                 :specificity 0)
+          (update :applies_to #(or % entity-type))
+          rules-validator
+          (as-> rule (assoc rule :specificity (specificity rule)))))
+    (catch Exception e
+      (log/errorf (trs "Error parsing %s:\n%s")
+                  (.getFileName f)
+                  (or (some-> e
+                              ex-data
+                              (select-keys [:error :value])
+                              u/pprint-to-str)
+                      e))
+      nil)))
 
-(defn- resource-path
-  [^FileSystem fs path]
-  (when-let [path (some->> path (str rules-dir) io/resource)]
-    (let [path (if (-> path str (str/starts-with? "jar"))
-                 (-> path str (str/split #"!" 2) second)
-                 (.getPath path))]
-      (.getPath fs path (into-array String [])))))
+(defn- trim-trailing-slash
+  [s]
+  (if (str/ends-with? s "/")
+    (subs s 0 (-> s count dec))
+    s))
 
-(declare load-rules)
+(defn- load-rule-dir
+  ([dir] (load-rule-dir dir [] {}))
+  ([dir path rules]
+   (with-open [ds (Files/newDirectoryStream dir)]
+     (reduce (fn [rules ^Path f]
+               (cond
+                 (Files/isDirectory f (into-array java.nio.file.LinkOption []))
+                 (load-rule-dir f (->> f (.getFileName) str trim-trailing-slash (conj path)) rules)
 
-(defn load-rule
-  "Load and validate rule from file `f`."
-  ([f]
-   (with-resources fs
-     (some->> f (resource-path fs) (load-rule fs))))
-  ([fs ^Path f]
-   (try
-     (-> f
-         .toUri
-         slurp
-         yaml/parse-string
-         (assoc :rule (file->table-type f))
-         (update :applies_to #(or % (file->table-type f)))
-         rules-validator
-         (assoc :indepth (load-rules fs (format "%s/%s"
-                                                (file->parent-dir f)
-                                                (file->table-type f)))))
-     (catch Exception e
-       (log/error (format "Error parsing %s:\n%s"
-                          (.getFileName f)
-                          (or (some-> e
-                                      ex-data
-                                      (select-keys [:error :value])
-                                      u/pprint-to-str)
-                              e)))
-       nil))))
+                 (file->entity-type f)
+                 (assoc-in rules (concat path [(file->entity-type f) ::leaf]) (load-rule f))
 
-(defn load-rules
-  "Load and validate all rules in dir."
-  ([dir]
-   (with-resources fs
-     (load-rules fs dir)))
-  ([fs dir]
-   (when-let [dir (resource-path fs dir)]
-     (with-open [ds (Files/newDirectoryStream dir)]
-       (->> ds
-            (filter #(str/ends-with? (.toString ^Path %) ".yaml"))
-            (keep (partial load-rule fs))
-            doall)))))
+                 :else
+                 rules))
+             rules
+             ds))))
 
-(defn -main
-  "Entry point for lein task `validate-automagic-dashboards`"
-  [& _]
-  (dorun (load-rules "tables"))
-  (dorun (load-rules "metrics"))
-  (dorun (load-rules "fields"))
-  (System/exit 0))
+(defmacro ^:private with-resource
+  [[identifier path] & body]
+  `(let [[jar# path#] (-> ~path .toString (str/split #"!" 2))]
+     (if path#
+       (with-open [^FileSystem fs# (-> jar#
+                                       java.net.URI/create
+                                       (FileSystems/newFileSystem (java.util.HashMap.)))]
+         (let [~identifier (.getPath fs# path# (into-array String []))]
+           ~@body))
+       (let [~identifier (.getPath (FileSystems/getDefault) (.getPath ~path) (into-array String []))]
+         ~@body))))
+
+(def ^:private rules (delay
+                      (with-resource [path (-> rules-dir io/resource .toURI)]
+                        (into {} (load-rule-dir path)))))
+
+(defn get-rules
+  "Get all rules with prefix `prefix`.
+   prefix is greedy, so [\"table\"] will match table/TransactionTable.yaml, but not
+   table/TransactionTable/ByCountry.yaml"
+  [prefix]
+  (->> prefix
+       (get-in @rules)
+       (keep (comp ::leaf val))))
+
+(defn get-rule
+  "Get rule at path `path`."
+  [path]
+  (get-in @rules (concat path [::leaf])))

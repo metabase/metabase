@@ -1,93 +1,36 @@
-import React, { Component } from "react";
+import React from "react";
+import { Flex } from "grid-styled";
 import { Link } from "react-router";
-import cx from "classnames";
 import { t } from "c-3po";
+
 import Icon from "metabase/components/Icon";
-import ArchiveCollectionWidget from "../containers/ArchiveCollectionWidget";
 
-const COLLECTION_ICON_SIZE = 64;
-
-const COLLECTION_BOX_CLASSES =
-  "relative block p4 hover-parent hover--visibility cursor-pointer text-centered transition-background";
+const COLLECTION_ICON_SIZE = 18;
 
 const CollectionButtons = ({ collections, isAdmin, push }) => (
-  <ol className="Grid Grid--gutters Grid--fit small-Grid--1of3 md-Grid--1of4 large-Grid--guttersLg">
+  <ol>
     {collections
       .map(collection => (
-        <CollectionButton {...collection} push={push} isAdmin={isAdmin} />
+        <CollectionLink {...collection} push={push} isAdmin={isAdmin} />
       ))
       .concat(isAdmin ? [<NewCollectionButton push={push} />] : [])
-      .map((element, index) => (
-        <li key={index} className="Grid-cell">
-          {element}
-        </li>
-      ))}
+      .map((element, index) => <li key={index}>{element}</li>)}
   </ol>
 );
 
-class CollectionButton extends Component {
-  constructor() {
-    super();
-    this.state = { hovered: false };
-  }
-
-  render() {
-    const { id, name, color, slug, isAdmin } = this.props;
-    return (
-      <Link
-        to={`/questions/collections/${slug}`}
-        className="no-decoration"
-        onMouseEnter={() => this.setState({ hovered: true })}
-        onMouseLeave={() => this.setState({ hovered: false })}
-      >
-        <div
-          className={cx(COLLECTION_BOX_CLASSES, "text-white-hover")}
-          style={{
-            borderRadius: 10,
-            backgroundColor: this.state.hovered ? color : "#fafafa",
-          }}
-        >
-          {isAdmin && (
-            <div className="absolute top right mt2 mr2 hover-child">
-              <Link
-                to={"/collections/permissions?collectionId=" + id}
-                className="mr1"
-              >
-                <Icon
-                  name="lockoutline"
-                  tooltip={t`Set collection permissions`}
-                />
-              </Link>
-              <ArchiveCollectionWidget collectionId={id} />
-            </div>
-          )}
-          <Icon
-            className="mb2 mt2"
-            name="collection"
-            size={COLLECTION_ICON_SIZE}
-            style={{ color: this.state.hovered ? "#fff" : color }}
-          />
-          <h3>{name}</h3>
-        </div>
-      </Link>
-    );
-  }
-}
+const CollectionLink = ({ name, slug }) => {
+  return (
+    <Link to={`/questions/collections/${slug}`}>
+      <Flex align="center">
+        <Icon name="collection" size={COLLECTION_ICON_SIZE} />
+        <h3>{name}</h3>
+      </Flex>
+    </Link>
+  );
+};
 
 const NewCollectionButton = ({ push }) => (
-  <div
-    className={cx(
-      COLLECTION_BOX_CLASSES,
-      "bg-brand-hover",
-      "text-brand",
-      "text-white-hover",
-      "bg-grey-0",
-    )}
-    style={{
-      borderRadius: 10,
-    }}
-    onClick={() => push(`/collections/create`)}
-  >
+  <div onClick={() => push(`/collections/create`)}>
     <div>
       <div
         className="flex align-center justify-center ml-auto mr-auto mb2 mt2"

@@ -251,7 +251,15 @@ const SECTIONS = [
         key: "ldap-user-filter",
         display_name: t`User filter`,
         type: "string",
-        validations: [["ldap_filter", t`Check your parentheses`]],
+        validations: [
+          [
+            value =>
+              (value.match(/\(/g) || []).length !==
+              (value.match(/\)/g) || []).length
+                ? t`Check your parentheses`
+                : null,
+          ],
+        ],
       },
       {
         key: "ldap-attribute-email",
@@ -410,23 +418,6 @@ const SECTIONS = [
         display_name: t`Max Cache Entry Size`,
         type: "number",
         getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-    ],
-  },
-  {
-    name: t`X-Rays`,
-    slug: "x_rays",
-    settings: [
-      {
-        key: "enable-xrays",
-        display_name: t`Enable X-Rays`,
-        type: "boolean",
-        allowValueCollection: true,
-      },
-      {
-        key: "xray-max-cost",
-        type: "string",
         allowValueCollection: true,
       },
     ],

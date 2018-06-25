@@ -5,15 +5,12 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.models
-             [field :refer [Field]]
-             [database :refer [Database]]]
+            [metabase.models.database :refer [Database]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+            [schema.core :as s]))
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
@@ -21,12 +18,16 @@
 (def ^:private int-or-text-type #{:type/Integer :type/Text})
 (def ^:private text-type        #{:type/Text})
 (def ^:private timestamp-type   #{:type/DateTime})
+(def ^:private time-type        #{:type/Time})
+(def ^:private date-type        #{:type/Date})
 (def ^:private number-type      #{:type/Number})
 
 
 (def ^:private pattern+base-types+special-type
   "Tuples of `[name-pattern set-of-valid-base-types special-type]`.
    Fields whose name matches the pattern and one of the base types should be given the special type.
+   Be mindful that patterns are tried top to bottom when matching derived types (eg. Date should be
+   before DateTime).
 
    *  Convert field name to lowercase before matching against a pattern
    *  Consider a nil set-of-valid-base-types to mean \"match any base type\""
@@ -72,7 +73,11 @@
    [#"count$"                      int-type         :type/Quantity]
    [#"number"                      int-type         :type/Quantity]
    [#"^num_"                       int-type         :type/Quantity]
+   [#"join"                        date-type        :type/JoinDate]
+   [#"join"                        time-type        :type/JoinTime]
    [#"join"                        timestamp-type   :type/JoinTimestamp]
+   [#"create"                      date-type        :type/CreationDate]
+   [#"create"                      time-type        :type/CreationTime]
    [#"create"                      timestamp-type   :type/CreationTimestamp]
    [#"source"                      int-or-text-type :type/Source]
    [#"channel"                     int-or-text-type :type/Source]
@@ -96,7 +101,7 @@
    [#"title"                       text-type        :type/Title]
    [#"comment"                     text-type        :type/Comment]
    [#"birthda(?:te|y)"             timestamp-type   :type/Birthdate]
-   [#"(?:te|y)(?:_?)or(?:_?)birth" timestamp-type   :type/Birthdate]])
+   [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]])
 
 ;; Check that all the pattern tuples are valid
 (when-not config/is-prod?

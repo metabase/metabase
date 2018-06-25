@@ -9,10 +9,19 @@ dimensions:
     field_type: JoinTimestamp
     score: 100
 - JoinDate:
+    field_type: JoinDate
+    score: 100
+- JoinDate:
     field_type: CreationTimestamp
     score: 90
 - JoinDate:
+    field_type: CreationDate
+    score: 90
+- JoinDate:
     field_type: DateTime
+    score: 30
+- JoinDate:
+    field_type: Date
     score: 30
 - Source:
     field_type: Source

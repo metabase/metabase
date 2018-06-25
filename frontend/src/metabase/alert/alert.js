@@ -2,7 +2,7 @@ import React from "react";
 import _ from "underscore";
 import { handleActions } from "redux-actions";
 import { combineReducers } from "redux";
-import { addUndo, createUndo } from "metabase/redux/undo";
+import { addUndo } from "metabase/redux/undo";
 import { t } from "c-3po";
 import { AlertApi } from "metabase/services";
 import { RestfulRequest } from "metabase/lib/request";
@@ -52,28 +52,35 @@ export const createAlert = alert => {
     await dispatch(createAlertRequest.trigger(alert));
 
     dispatch(
-      addUndo(
-        createUndo({
-          type: "create-alert",
-          // eslint-disable-next-line react/display-name
-          message: () => (
-            <div className="flex align-center text-bold">
-              <Icon
-                name="alertConfirm"
-                size="19"
-                className="mr2 text-success"
-              />
-              {t`Your alert is all set up.`}
-            </div>
-          ),
-          action: null, // alert creation is not undoable
-        }),
-      ),
+      addUndo({
+        // eslint-disable-next-line react/display-name
+        message: () => (
+          <div className="flex align-center text-bold">
+            <Icon name="alertConfirm" size="19" className="mr2 text-success" />
+            {t`Your alert is all set up.`}
+          </div>
+        ),
+      }),
     );
 
     dispatch.action(CREATE_ALERT);
   };
 };
+
+// NOTE: backend is a little picky about the properties present on the alert
+function cleanAlert(alert) {
+  alert = {
+    ...alert,
+    card: _.pick(alert.card, "id", "include_csv", "include_xls"),
+  };
+  if (alert.collection_id == null) {
+    delete alert.collection_id;
+  }
+  if (alert.alert_above_goal == null) {
+    delete alert.alert_above_goal;
+  }
+  return alert;
+}
 
 export const UPDATE_ALERT = "metabase/alerts/UPDATE_ALERT";
 const updateAlertRequest = new RestfulRequest({
@@ -83,26 +90,18 @@ const updateAlertRequest = new RestfulRequest({
 });
 export const updateAlert = alert => {
   return async (dispatch, getState) => {
-    await dispatch(updateAlertRequest.trigger(alert));
+    await dispatch(updateAlertRequest.trigger(cleanAlert(alert)));
 
     dispatch(
-      addUndo(
-        createUndo({
-          type: "update-alert",
-          // eslint-disable-next-line react/display-name
-          message: () => (
-            <div className="flex align-center text-bold">
-              <Icon
-                name="alertConfirm"
-                size="19"
-                className="mr2 text-success"
-              />
-              {t`Your alert was updated.`}
-            </div>
-          ),
-          action: null, // alert updating is not undoable
-        }),
-      ),
+      addUndo({
+        // eslint-disable-next-line react/display-name
+        message: () => (
+          <div className="flex align-center text-bold">
+            <Icon name="alertConfirm" size="19" className="mr2 text-success" />
+            {t`Your alert was updated.`}
+          </div>
+        ),
+      }),
     );
 
     dispatch.action(UPDATE_ALERT);
@@ -142,23 +141,15 @@ export const deleteAlert = alertId => {
     await dispatch(deleteAlertRequest.trigger({ id: alertId }));
 
     dispatch(
-      addUndo(
-        createUndo({
-          type: "delete-alert",
-          // eslint-disable-next-line react/display-name
-          message: () => (
-            <div className="flex align-center text-bold">
-              <Icon
-                name="alertConfirm"
-                size="19"
-                className="mr2 text-success"
-              />
-              {t`The alert was successfully deleted.`}
-            </div>
-          ),
-          action: null, // alert deletion is not undoable
-        }),
-      ),
+      addUndo({
+        // eslint-disable-next-line react/display-name
+        message: () => (
+          <div className="flex align-center text-bold">
+            <Icon name="alertConfirm" size="19" className="mr2 text-success" />
+            {t`The alert was successfully deleted.`}
+          </div>
+        ),
+      }),
     );
     dispatch.action(DELETE_ALERT, alertId);
   };

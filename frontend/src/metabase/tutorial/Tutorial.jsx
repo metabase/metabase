@@ -89,7 +89,9 @@ export default class Tutorial extends Component {
           }
           return;
         }
-      } catch (e) {}
+      } catch (e) {
+        // intentionally do nothing
+      }
     }
 
     if (e.type === "click" && this.refs.pageflag) {
@@ -171,7 +173,9 @@ export default class Tutorial extends Component {
     if (step.getPageFlagTarget) {
       try {
         pageFlagTarget = step.getPageFlagTarget();
-      } catch (e) {}
+      } catch (e) {
+        // intentionally do nothing
+      }
       if (pageFlagTarget == undefined) {
         missingTarget = missingTarget || true;
       }
@@ -181,7 +185,9 @@ export default class Tutorial extends Component {
     if (step.getPortalTarget) {
       try {
         portalTarget = step.getPortalTarget();
-      } catch (e) {}
+      } catch (e) {
+        // intentionally do nothing
+      }
       if (portalTarget == undefined) {
         missingTarget = missingTarget || true;
       }
@@ -191,7 +197,9 @@ export default class Tutorial extends Component {
     if (step.getModalTarget) {
       try {
         modalTarget = step.getModalTarget();
-      } catch (e) {}
+      } catch (e) {
+        // intentionally do nothing
+      }
       if (modalTarget == undefined) {
         missingTarget = missingTarget || true;
       }

@@ -6,23 +6,21 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [compojure.core :refer [defroutes]]
+            [compojure.core :as compojure]
+            [honeysql.types :as htypes]
             [medley.core :as m]
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
+            [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [trs tru]]
-            [ring.util
-             [io :as rui]
-             [response :as rr]]
             [ring.core.protocols :as protocols]
             [ring.util.response :as response]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
-           [java.nio.charset Charset StandardCharsets]))
+  (:import java.io.OutputStream))
 
 (declare check-403 check-404)
 
@@ -231,6 +229,11 @@
   [& body]
   `(api-let ~generic-403 ~@body))
 
+(defn throw-403
+  "Throw a generic 403 (no permissions) error response."
+  []
+  (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
+
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
 (def ^:private generic-500
@@ -255,6 +258,7 @@
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
+;; e.g. `auto-parse`
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
@@ -286,25 +290,50 @@
                       :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
                       :is-endpoint? true)
        (~method ~route ~args
-        (catch-api-exceptions
-          (auto-parse ~args
-            ~@validate-param-calls
-            (wrap-response-if-needed (do ~@body))))))))
+        (auto-parse ~args
+          ~@validate-param-calls
+          (wrap-response-if-needed (do ~@body)))))))
 
+(defn- namespace->api-route-fns
+  "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
+  [nmspace]
+  (for [[symb varr] (ns-publics nmspace)
+        :when       (:is-endpoint? (meta varr))]
+    symb))
+
+(defn- api-routes-docstring [nmspace route-fns middleware]
+  (str
+   (format "Ring routes for %s:\n%s"
+           (-> (ns-name nmspace)
+               (str/replace #"^metabase\." "")
+               (str/replace #"\." "/"))
+           (u/pprint-to-str route-fns))
+   (when (seq middleware)
+     (str "\nMiddleware applied to all endpoints in this namespace:\n"
+          (u/pprint-to-str middleware)))))
 
 (defmacro define-routes
-  "Create a `(defroutes routes ...)` form that automatically includes all functions created with
-   `defendpoint` in the current namespace."
-  [& additional-routes]
-  (let [api-routes (for [[symb varr] (ns-publics *ns*)
-                         :when       (:is-endpoint? (meta varr))]
-                     symb)]
-    `(defroutes ~(vary-meta 'routes assoc :doc (format "Ring routes for %s:\n%s"
-                                                       (-> (ns-name *ns*)
-                                                           (str/replace #"^metabase\." "")
-                                                           (str/replace #"\." "/"))
-                                                       (u/pprint-to-str (concat api-routes additional-routes))))
-       ~@additional-routes ~@api-routes)))
+  "Create a `(defroutes routes ...)` form that automatically includes all functions created with `defendpoint` in the
+  current namespace. Optionally specify middleware that will apply to all of the endpoints in the current namespace.
+
+     (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
+  {:style/indent 0}
+  [& middleware]
+  (let [api-route-fns (namespace->api-route-fns *ns*)
+        routes        `(compojure/routes ~@api-route-fns)]
+    `(def ~(vary-meta 'routes assoc :doc (api-routes-docstring *ns* api-route-fns middleware))
+       ~(if (seq middleware)
+          `(-> ~routes ~@middleware)
+          routes))))
+
+(defn +check-superuser
+  "Wrap a Ring handler to make sure the current user is a superuser before handling any requests.
+
+     (api/+check-superuser routes)"
+  [handler]
+  (fn [request]
+    (check-superuser)
+    (handler request)))
 
 
 ;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------
@@ -445,6 +474,7 @@
       (assoc (response/response output-channel)
         :content-type "applicaton/json"))))
 
+
 ;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
 
 (defn check-public-sharing-enabled
@@ -466,3 +496,93 @@
     (check-404 object)
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
+
+(s/defn column-will-change? :- s/Bool
+  "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the
+  endpoint) is applied.
+
+    ;; assuming we have a Collection 10, that is not currently archived...
+    (api/column-will-change? :archived (Collection 10) {:archived true}) ; -> true, because value will change
+
+    (api/column-will-change? :archived (Collection 10) {:archived false}) ; -> false, because value did not change
+
+    (api/column-will-change? :archived (Collection 10) {}) ; -> false; value not specified in updates (request body)"
+  [k :- s/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
+  (boolean
+   (and (contains? object-updates k)
+        (not= (get object-before-updates k)
+              (get object-updates k)))))
+
+;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
+
+(s/defn reconcile-position-for-collection!
+  "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
+  for fixing card/dashboard/pulse changes that impact other instances in the collection"
+  [collection-id :- (s/maybe su/IntGreaterThanZero)
+   old-position :- (s/maybe su/IntGreaterThanZero)
+   new-position :- (s/maybe su/IntGreaterThanZero)]
+  (let [update-fn! (fn [plus-or-minus position-update-clause]
+                     (doseq [model '[Card Dashboard Pulse]]
+                       (db/update-where! model {:collection_id       collection-id
+                                                :collection_position position-update-clause}
+                         :collection_position (htypes/call plus-or-minus :collection_position 1))))]
+    (when (not= new-position old-position)
+      (cond
+        (and (nil? new-position)
+             old-position)
+        (update-fn! :-  [:> old-position])
+
+        (and new-position (nil? old-position))
+        (update-fn! :+ [:>= new-position])
+
+        (> new-position old-position)
+        (update-fn! :- [:between old-position new-position])
+
+        (< new-position old-position)
+        (update-fn! :+ [:between new-position old-position])))))
+
+(def ^:private ModelWithPosition
+  "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
+  {:collection_id       (s/maybe su/IntGreaterThanZero)
+   :collection_position (s/maybe su/IntGreaterThanZero)
+   s/Any                s/Any})
+
+(def ^:private ModelWithOptionalPosition
+  "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
+  present, they didn't change. If they are present, they might have changed and we need to compare."
+  {(s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZero)
+   (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)
+   s/Any                                 s/Any})
+
+(s/defn maybe-reconcile-collection-position!
+  "Generic function for working on cards/dashboards/pulses. Checks the before and after changes to see if there is any
+  impact to the collection position of that model instance. If so, executes updates to fix the collection position
+  that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
+  updating an existing instance, but creating a new one)."
+  ([new-model-data :- ModelWithPosition]
+   (maybe-reconcile-collection-position! nil new-model-data))
+  ([{old-collection-id :collection_id, old-position :collection_position, :as before-update} :- (s/maybe ModelWithPosition)
+    {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]
+   (let [updated-collection? (and (contains? model-updates :collection_id)
+                                  (not= old-collection-id new-collection-id))
+         updated-position?   (and (contains? model-updates :collection_position)
+                                  (not= old-position new-position))]
+     (cond
+       ;; If the collection hasn't changed, but we have a new collection position, we might need to reconcile
+       (and (not updated-collection?) updated-position?)
+       (reconcile-position-for-collection! old-collection-id old-position new-position)
+
+       ;; If we have a new collection id, but no new position, reconcile the old collection, then update the new
+       ;; collection with the existing position
+       (and updated-collection? (not updated-position?))
+       (do
+         (reconcile-position-for-collection! old-collection-id old-position nil)
+         (reconcile-position-for-collection! new-collection-id nil old-position))
+
+       ;; We have a new collection id AND and new collection position
+       ;; Update the old collection using the old position
+       ;; Update the new collection using the new position
+       (and updated-collection? updated-position?)
+       (do
+         (reconcile-position-for-collection! old-collection-id old-position nil)
+         (reconcile-position-for-collection! new-collection-id nil new-position))))))

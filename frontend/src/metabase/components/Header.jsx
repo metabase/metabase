@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-import Input from "metabase/components/Input.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import HeaderModal from "metabase/components/HeaderModal.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
 import EditBar from "metabase/components/EditBar.jsx";
@@ -37,7 +37,9 @@ export default class Header extends Component {
   }
 
   updateHeaderHeight() {
-    if (!this.refs.header) return;
+    if (!this.refs.header) {
+      return;
+    }
 
     const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
     const headerHeight = rect.top + getScrollY();
@@ -79,13 +81,13 @@ export default class Header extends Component {
     if (this.props.isEditingInfo) {
       titleAndDescription = (
         <div className="Header-title flex flex-column flex-full bordered rounded my1">
-          <Input
+          <InputBlurChange
             className="AdminInput text-bold border-bottom rounded-top h3"
             type="text"
             value={this.props.item.name || ""}
             onChange={this.setItemAttribute.bind(this, "name")}
           />
-          <Input
+          <InputBlurChange
             className="AdminInput rounded-bottom h4"
             type="text"
             value={this.props.item.description || ""}
