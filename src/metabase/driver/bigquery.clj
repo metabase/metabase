@@ -163,7 +163,6 @@
 ;;; |                                       Running Queries & Parsing Results                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
 (def ^:private ^:const ^Integer query-timeout-seconds 60)
 
 (defn- ^QueryResponse execute-bigquery
@@ -304,22 +303,18 @@
     ;; constructing raw SQL here, and would like to avoid potential SQL injection vectors (even though this is not
     ;; direct user input, but instead would require someone to go in and purposely corrupt their Table names/Field names
     ;; to do so)
-    {:pre [(or (not dataset-name)
-               (valid-bigquery-identifier? dataset-name))
-           (valid-bigquery-identifier? table-name)
-           (or (not field-name)
-               (valid-bigquery-identifier? field-name))]}
+    (when dataset-name
+      (assert (valid-bigquery-identifier? dataset-name)
+        (tru "Invalid BigQuery identifier: ''{0}''" dataset-name)))
+    (assert (valid-bigquery-identifier? table-name)
+      (tru "Invalid BigQuery identifier: ''{0}''" table-name))
+    (when (seq field-name)
+      (assert (valid-bigquery-identifier? field-name)
+        (tru "Invalid BigQuery identifier: ''{0}''" field-name)))
     ;; BigQuery identifiers should look like `dataset.table` or `dataset.table`.`field` (SAD!)
-    (str \`
-         (or dataset-name (dataset-name-for-current-query))
-         \.
-         table-name
-         \`
+    (str (format "`%s.%s`" (or dataset-name (dataset-name-for-current-query)) table-name)
          (when (seq field-name)
-           (str
-            ".`"
-            field-name
-            \`)))))
+           (format ".`%s`" field-name)))))
 
 (defn- honeysql-form->sql ^String [honeysql-form]
   {:pre [(map? honeysql-form)]}

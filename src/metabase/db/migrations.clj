@@ -367,3 +367,27 @@
                            :special_type     (mdb/isa :type/Category)
                            :active           true}
     :has_field_values "list"))
+
+
+;; In v0.30.0 we switiched to making standard SQL the default for BigQuery; up until that point we had been using
+;; BigQuery legacy SQL. For a while, we've supported standard SQL if you specified the case-insensitive `#standardSQL`
+;; directive at the beginning of your query, and similarly allowed you to specify legacy SQL with the `#legacySQL`
+;; directive (although this was already the default). Since we're now defaulting to standard SQL, we'll need to go in
+;; and add a `#legacySQL` directive to all existing BigQuery SQL queries that don't have a directive, so they'll
+;; continue to run as legacy SQL.
+(defmigration ^{:author "camsaul", :added "0.30.0"} add-legacy-sql-directive-to-bigquery-sql-cards
+  ;; For each BigQuery database...
+  (doseq [database-id (db/select-ids Database :engine "bigquery")]
+    ;; For each Card belonging to that BigQuery database...
+    (doseq [{query :dataset_query, card-id :id} (db/select [Card :id :dataset_query] :database_id database-id)]
+      ;; If the Card isn't native, ignore it
+      (when (= (:type query) "native")
+        (let [sql (get-in query [:native :query])]
+          ;; if the Card already contains a #standardSQL or #legacySQL (both are case-insenstive) directive, ignore it
+          (when-not (re-find #"(?i)#(standard|legacy)sql" sql)
+            ;; if it doesn't have a directive it would have (under old behavior) defaulted to legacy SQL, so give it a
+            ;; #legacySQL directive...
+            (let [updated-sql (str "#legacySQL\n" sql)]
+              ;; and save the updated dataset_query map
+              (db/update! Card (u/get-id card-id)
+                :dataset_query (assoc-in query [:native :query] updated-sql)))))))))
