@@ -902,32 +902,32 @@
   [root [_ field-reference value]]
   (let [field      (field-reference->field root field-reference)
         field-name (field-name field)]
-    (cond
-      (#{:type/State :type/Country} (:special_type field))
-      (tru "in {0}" value)
-
-      (filters/datetime? field)
-      (tru "where {0} is on {1}" field-name (humanize-datetime value))
-
-      :else
-      (tru "where {0} is {1}" field-name value))))
+    (if (filters/datetime? field)
+      (tru "{0} is on {1}" field-name (humanize-datetime value))
+      (tru "{0} is {1}" field-name value))))
 
 (defmethod humanize-filter-value :between
   [root [_ field-reference min-value max-value]]
-  (tru "where {0} is between {1} and {2}" (field-name root field-reference) min-value max-value))
+  (tru "{0} is between {1} and {2}" (field-name root field-reference) min-value max-value))
 
 (defmethod humanize-filter-value :inside
   [root [_ lat-reference lon-reference lat-max lon-min lat-min lon-max]]
-  (tru "where {0} is between {1} and {2}; and {3} is between {4} and {5}"
+  (tru "{0} is between {1} and {2}; and {3} is between {4} and {5}"
        (field-name root lon-reference) lon-min lon-max
        (field-name root lat-reference) lat-min lat-max))
+
+(defmethod humanize-filter-value :and
+  [root [_ & clauses]]
+  (->> clauses
+       (map (partial humanize-filter-value root))
+       join-enumeration))
 
 (defn- cell-title
   [root cell-query]
   (str/join " " [(->> (qp.util/get-in-normalized (-> root :entity) [:dataset_query :query :aggregation])
                       (map (partial metric->description root))
                       join-enumeration)
-                 (humanize-filter-value root cell-query)]))
+                 (tru "where {0}" (humanize-filter-value root cell-query))]))
 
 (defmethod automagic-analysis (type Card)
   [card {:keys [cell-query] :as opts}]
