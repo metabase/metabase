@@ -91,7 +91,9 @@
   [{:base_type    "type/Text"
     :display_name "Date"
     :name         "DATE"
-    :unit         nil}
+    :unit         nil
+    :fingerprint  {:global {:distinct-count 618}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
+                                                                         :latest "2015-12-29T00:00:00.000Z"}}}}
    {:base_type    "type/Integer"
     :display_name "count"
     :name         "count"

@@ -667,3 +667,29 @@
 (expect
   #{:metrics :segments :linked-from :linking-to :tables}
   (-> ((user->client :crowberto) :get 200 (format "table/%s/related" (data/id :venues))) keys set))
+
+;; Nested queries with a fingerprint should have dimension options for binning
+(datasets/expect-with-engines (qpt/non-timeseries-engines-with-feature :binning)
+  (repeat 2 (var-get #'table-api/coordinate-dimension-indexes))
+  (tt/with-temp Card [card {:database_id   (data/id)
+                            :dataset_query {:database (data/id)
+                                            :type    :query
+                                            :query    {:source-query {:source-table (data/id :venues)}}}}]
+    ;; run the Card which will populate its result_metadata column
+    ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+    (let [response ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]
+      (map #(dimension-options-for-field response %)
+           ["latitude" "longitude"]))))
+
+;; Nested queries missing a fingerprint should not show binning-options
+(datasets/expect-with-engines (qpt/non-timeseries-engines-with-feature :binning)
+  [nil nil]
+  (tt/with-temp Card [card {:database_id   (data/id)
+                            :dataset_query {:database (data/id)
+                                            :type    :query
+                                            :query    {:source-query {:source-table (data/id :venues)}}}}]
+    ;; By default result_metadata will be nil (and no fingerprint). Just asking for query_metadata after the card was
+    ;; created but before it was ran should not allow binning
+    (let [response ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]
+      (map #(dimension-options-for-field response %)
+           ["latitude" "longitude"]))))
