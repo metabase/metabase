@@ -23,14 +23,11 @@ dimensions:
 - JoinDate:
     field_type: Date
     score: 30
-- Source:
-    field_type: Source
 - GenericNumber:
     field_type: GenericTable.Number
     score: 80
 - Source:
     field_type: GenericTable.Source
-    score: 100
 - GenericCategoryMedium:
     field_type: GenericTable.Category
     score: 75
@@ -85,7 +82,6 @@ cards:
   - NewUsersByMonth:
       visualization: line
       title: New [[this.short-name]] per month
-      description: The number of new [[this.short-name]] each month
       dimensions: JoinDate
       metrics: Count
       score: 100
@@ -94,7 +90,7 @@ cards:
       height: 7
 # Geographical
   - CountByCountry:
-      title: Number of [[this.short-name]] per country
+      title: Per country
       metrics: Count
       dimensions: Country
       score: 90
@@ -104,7 +100,7 @@ cards:
           map.region: world_countries
       group: Geographical
   - CountByState:
-      title: "[[this.short-name]] per state"
+      title: "Per state"
       metrics: Count
       dimensions: State
       score: 90
@@ -115,7 +111,7 @@ cards:
           map.region: us_states
       group: Geographical
   - CountByCoords:
-      title: "[[this.short-name]] by coordinates"
+      title: "By coordinates"
       metrics: Count
       dimensions:
         - Long
@@ -135,7 +131,7 @@ cards:
       score: 90
       group: General
   - CountByCategoryMedium:
-      title: "[[this.short-name]] per [[GenericCategoryMedium]]"
+      title: "Per [[GenericCategoryMedium]]"
       dimensions: GenericCategoryMedium
       metrics: Count
       visualization: row
@@ -144,8 +140,18 @@ cards:
       group: General
       order_by:
         - Count: descending
+  - CountBySource:
+      title: "Per [[Source]]"
+      dimensions: Source
+      metrics: Count
+      visualization: row
+      score: 80
+      height: 8
+      group: General
+      order_by:
+        - Count: descending
   - CountByCategoryLarge:
-      title: "[[this.short-name]] per [[GenericCategoryLarge]]"
+      title: "Per [[GenericCategoryLarge]]"
       dimensions: GenericCategoryLarge
       metrics: Count
       visualization: table

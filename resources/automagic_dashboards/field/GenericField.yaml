@@ -68,12 +68,13 @@ cards:
       width: 12
   - ByNumber:
       title: "[[GenericNumber]] by [[this]]"
-      visualization: line
+      visualization: bar
       metrics:
       - Sum
       - Avg
       dimensions: this
       group: Breakdowns
+      height: 8
   - Crosstab:
       title: "[[this]] by [[GenericCategoryMedium]]"
       visualization: table

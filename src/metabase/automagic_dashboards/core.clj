@@ -56,6 +56,9 @@
           field/map->FieldInstance
           (classify/run-classifiers {})))))
 
+(def ^:private ^{:arglists '([root])} source-name
+  (comp (some-fn :display_name :name) :source))
+
 (def ^:private op->name
   {:sum       (tru "sum")
    :avg       (tru "average")
@@ -81,7 +84,7 @@
                                                       filters/field-reference->id
                                                       (->field root)
                                                       :display_name)
-                                               (-> root :source :name))))
+                                             (source-name root))))
 
 (defn- join-enumeration
   [[x & xs]]
@@ -127,7 +130,7 @@
   (let [table (-> segment :table_id Table)]
     {:entity       segment
      :full-name    (tru "{0} in {1} segment" (:display_name table) (:name segment))
-     :short-name   (tru "these {0}" (:display_name table))
+     :short-name   (:display_name table)
      :source       table
      :database     (:db_id table)
      :query-filter (-> segment :definition :filter)
@@ -188,26 +191,30 @@
 
 (defmethod ->root (type Card)
   [card]
-  {:entity       card
-   :source       (source card)
-   :database     (:database_id card)
-   :query-filter (qp.util/get-in-normalized card [:dataset_query :query :filter])
-   :full-name    (tru "\"{0}\" question" (:name card))
-   :url          (format "%squestion/%s" public-endpoint (u/get-id card))
-   :rules-prefix [(if (table-like? card)
-                    "table"
-                    "question")]})
+  (let [source (source card)]
+    {:entity       card
+     :source       source
+     :database     (:database_id card)
+     :query-filter (qp.util/get-in-normalized card [:dataset_query :query :filter])
+     :full-name    (tru "\"{0}\" question" (:name card))
+     :short-name   (source-name {:source source})
+     :url          (format "%squestion/%s" public-endpoint (u/get-id card))
+     :rules-prefix [(if (table-like? card)
+                      "table"
+                      "question")]}))
 
 (defmethod ->root (type Query)
   [query]
-  (let [source   (source query)]
+  (let [source (source query)]
     {:entity       query
      :source       source
      :database     (:database-id query)
+     :query-filter (qp.util/get-in-normalized query [:dataset_query :query :filter])
      :full-name    (cond
                      (native-query? query) (tru "Native query")
                      (table-like? query)   (-> source ->root :full-name)
                      :else                 (question-description {:source source} query))
+     :short-name   (source-name {:source source})
      :url          (format "%sadhoc/%s" public-endpoint (encode-base64-json query))
      :rules-prefix [(if (table-like? query)
                       "table"
@@ -687,7 +694,7 @@
    (-> rule
        (select-keys [:title :description :transient_title :groups])
        (instantiate-metadata context {})
-       (assoc :refinements (:cell-query root)))))
+       (assoc :refinements (filters/inject-refinement (:query-filter root) (:cell-query root))))))
 
 (s/defn ^:private apply-rule
   [root, rule :- rules/Rule]
@@ -701,9 +708,9 @@
               (-> rule :cards nil?))
       [(assoc dashboard
          :filters  filters
-         :cards    cards
-         :context  context)
-       rule])))
+         :cards    cards)
+       rule
+       context])))
 
 (def ^:private ^:const ^Long max-related 6)
 (def ^:private ^:const ^Long max-cards 15)
@@ -739,16 +746,15 @@
   [root, rule :- (s/maybe rules/Rule)]
   (->> (rules/get-rules (concat (:rules-prefix root) [(:rule rule)]))
        (keep (fn [indepth]
-               (when-let [[dashboard _] (apply-rule root indepth)]
+               (when-let [[dashboard _ _] (apply-rule root indepth)]
                  {:title       ((some-fn :short-title :title) dashboard)
                   :description (:description dashboard)
                   :url         (format "%s/rule/%s/%s" (:url root) (:rule rule) (:rule indepth))})))
        (take max-related)))
 
 (defn- drilldown-fields
-  [dashboard]
-  (->> dashboard
-       :context
+  [context]
+  (->> context
        :dimensions
        vals
        (mapcat :matches)
@@ -756,127 +762,43 @@
        (map ->related-entity)))
 
 (s/defn ^:private related
-  [dashboard, rule :- (s/maybe rules/Rule)]
-  (let [root    (-> dashboard :context :root)
+  [context, rule :- (s/maybe rules/Rule)]
+  (let [root    (:root context)
         indepth (indepth root rule)]
     (if (not-empty indepth)
       {:indepth indepth
        :related (related-entities (- max-related (count indepth)) root)}
-      (let [drilldown-fields   (drilldown-fields dashboard)
+      (let [drilldown-fields   (drilldown-fields context)
             n-related-entities (max (math/floor (* (/ 2 3) max-related))
                                     (- max-related (count drilldown-fields)))]
         {:related          (related-entities n-related-entities root)
          :drilldown-fields (take (- max-related n-related-entities) drilldown-fields)}))))
 
-(def ^:private date-formatter (t.format/formatter "MMMM d, YYYY"))
-(def ^:private datetime-formatter (t.format/formatter "EEEE, MMMM d, YYYY h:mm a"))
-
-(defn- humanize-datetime
-  [dt]
-  (t.format/unparse (if (str/index-of dt "T")
-                      datetime-formatter
-                      date-formatter)
-                    (t.format/parse dt)))
-
-(defn- field-reference->field
-  [fieldset field-reference]
-  (cond-> (-> field-reference
-              filters/collect-field-references
-              first
-              filters/field-reference->id
-              fieldset)
-    (-> field-reference first qp.util/normalize-token (= :datetime-field))
-    (assoc :unit (-> field-reference last qp.util/normalize-token))))
-
-(defmulti
-  ^{:private true
-    :arglists '([fieldset [op & args]])}
-  humanize-filter-value (fn [_ [op & args]]
-                          (qp.util/normalize-token op)))
-
-(def ^:private unit-name (comp {:minute-of-hour  "minute of hour"
-                                :hour-of-day     "hour of day"
-                                :day-of-week     "day of week"
-                                :day-of-month    "day of month"
-                                :week-of-year    "week of year"
-                                :month-of-year   "month of year"
-                                :quarter-of-year "quarter of year"}
-                               qp.util/normalize-token))
-
-(defn- field-name
-  ([fieldset field-reference]
-   (->> field-reference (field-reference->field fieldset) field-name))
-  ([{:keys [display_name unit] :as field}]
-   (cond->> display_name
-     (and (filters/periodic-datetime? field) unit) (format "%s of %s" (unit-name unit)))))
-
-(defmethod humanize-filter-value :=
-  [fieldset [_ field-reference value]]
-  (let [field      (field-reference->field fieldset field-reference)
-        field-name (field-name field)]
-    (cond
-      (#{:type/State :type/Country} (:special_type field))
-      (tru "in {0}" value)
-
-      (filters/datetime? field)
-      (tru "where {0} is on {1}" field-name (humanize-datetime value))
-
-      :else
-      (tru "where {0} is {1}" field-name value))))
-
-(defmethod humanize-filter-value :between
-  [fieldset [_ field-reference min-value max-value]]
-  (tru "where {0} is between {1} and {2}" (field-name fieldset field-reference) min-value max-value))
-
-(defmethod humanize-filter-value :inside
-  [fieldset [_ lat-reference lon-reference lat-max lon-min lat-min lon-max]]
-  (tru "where {0} is between {1} and {2}; and {3} is between {4} and {5}"
-       (field-name fieldset lon-reference) lon-min lon-max
-       (field-name fieldset lat-reference) lat-min lat-max))
-
-(defn- cell-title
-  [context cell-query]
-  (let [source-name (-> context :root :source ((some-fn :display_name :name)))
-        fieldset    (->> context
-                        :tables
-                        (mapcat :fields)
-                        (map (fn [field]
-                               [((some-fn :id :name) field) field]))
-                        (into {}))]
-    (str/join " " [source-name (humanize-filter-value fieldset cell-query)])))
-
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [rule show rules-prefix query-filter cell-query full-name] :as root}]
-  (if-let [[dashboard rule] (if rule
-                              (apply-rule root (rules/get-rule rule))
-                              (->> root
-                                   (matching-rules (rules/get-rules rules-prefix))
-                                   (keep (partial apply-rule root))
-                                   ;; `matching-rules` returns an `ArraySeq` (via `sort-by`) so
-                                   ;; `first` realises one element at a time (no chunking).
-                                   first))]
+  [{:keys [rule show rules-prefix full-name] :as root}]
+  (if-let [[dashboard rule context] (if rule
+                                      (apply-rule root (rules/get-rule rule))
+                                      (->> root
+                                           (matching-rules (rules/get-rules rules-prefix))
+                                           (keep (partial apply-rule root))
+                                           ;; `matching-rules` returns an `ArraySeq` (via `sort-by`)
+                                           ;; so `first` realises one element at a time
+                                           ;; (no chunking).
+                                           first))]
     (do
       (log/infof (trs "Applying heuristic %s to %s.") (:rule rule) full-name)
       (log/infof (trs "Dimensions bindings:\n%s")
-                 (->> dashboard
-                      :context
+                 (->> context
                       :dimensions
                       (m/map-vals #(update % :matches (partial map :name)))
                       u/pprint-to-str))
       (log/infof (trs "Using definitions:\nMetrics:\n%s\nFilters:\n%s")
-                 (-> dashboard :context :metrics u/pprint-to-str)
-                 (-> dashboard :context :filters u/pprint-to-str))
-      (-> (cond-> dashboard
-            cell-query
-            (assoc :transient_title nil
-                   :title           (tru "A closer look at {0}" (cell-title (:context dashboard)
-                                                                            cell-query)))
-
-            query-filter
-            (assoc :title (tru "A closer look at {0}" (:full-name root))))
+                 (-> context :metrics u/pprint-to-str)
+                 (-> context :filters u/pprint-to-str))
+      (-> dashboard
           (populate/create-dashboard (or show max-cards))
-          (assoc :related (related dashboard rule)
+          (assoc :related (related context rule)
                  :more    (when (and (-> dashboard :cards count (> max-cards))
                                      (not= show :all))
                             (format "%s#show=all" (:url root))))))
@@ -934,50 +856,125 @@
        (concat (collect-metrics root question)
                (collect-breakout-fields root question))))
 
+(def ^:private date-formatter (t.format/formatter "MMMM d, YYYY"))
+(def ^:private datetime-formatter (t.format/formatter "EEEE, MMMM d, YYYY h:mm a"))
+
+(defn- humanize-datetime
+  [dt]
+  (t.format/unparse (if (str/index-of dt "T")
+                      datetime-formatter
+                      date-formatter)
+                    (t.format/parse dt)))
+
+(defn- field-reference->field
+  [root field-reference]
+  (cond-> (->> field-reference
+               filters/collect-field-references
+               first
+               filters/field-reference->id
+               (->field root))
+    (-> field-reference first qp.util/normalize-token (= :datetime-field))
+    (assoc :unit (-> field-reference last qp.util/normalize-token))))
+
+(defmulti
+  ^{:private true
+    :arglists '([fieldset [op & args]])}
+  humanize-filter-value (fn [_ [op & args]]
+                          (qp.util/normalize-token op)))
+
+(def ^:private unit-name (comp {:minute-of-hour  "minute of hour"
+                                :hour-of-day     "hour of day"
+                                :day-of-week     "day of week"
+                                :day-of-month    "day of month"
+                                :week-of-year    "week of year"
+                                :month-of-year   "month of year"
+                                :quarter-of-year "quarter of year"}
+                               qp.util/normalize-token))
+
+(defn- field-name
+  ([root field-reference]
+   (->> field-reference (field-reference->field root) field-name))
+  ([{:keys [display_name unit] :as field}]
+   (cond->> display_name
+     (and (filters/periodic-datetime? field) unit) (format "%s of %s" (unit-name unit)))))
+
+(defmethod humanize-filter-value :=
+  [root [_ field-reference value]]
+  (let [field      (field-reference->field root field-reference)
+        field-name (field-name field)]
+    (cond
+      (#{:type/State :type/Country} (:special_type field))
+      (tru "in {0}" value)
+
+      (filters/datetime? field)
+      (tru "where {0} is on {1}" field-name (humanize-datetime value))
+
+      :else
+      (tru "where {0} is {1}" field-name value))))
+
+(defmethod humanize-filter-value :between
+  [root [_ field-reference min-value max-value]]
+  (tru "where {0} is between {1} and {2}" (field-name root field-reference) min-value max-value))
+
+(defmethod humanize-filter-value :inside
+  [root [_ lat-reference lon-reference lat-max lon-min lat-min lon-max]]
+  (tru "where {0} is between {1} and {2}; and {3} is between {4} and {5}"
+       (field-name root lon-reference) lon-min lon-max
+       (field-name root lat-reference) lat-min lat-max))
+
+(defn- cell-title
+  [root cell-query]
+  (str/join " " [(->> (qp.util/get-in-normalized (-> root :entity) [:dataset_query :query :aggregation])
+                      (map (partial metric->description root))
+                      join-enumeration)
+                 (humanize-filter-value root cell-query)]))
+
 (defmethod automagic-analysis (type Card)
   [card {:keys [cell-query] :as opts}]
-  (let [root (->root card)]
-    (if (or (table-like? card)
-            cell-query)
+  (let [root     (->root card)
+        cell-url (format "%squestion/%s/cell/%s" public-endpoint
+                         (u/get-id card)
+                         (encode-base64-json cell-query))]
+    (if (table-like? card)
       (automagic-dashboard
        (merge (cond-> root
-                cell-query (merge {:url          (format "%squestion/%s/cell/%s" public-endpoint
-                                                         (u/get-id card)
-                                                         (encode-base64-json cell-query))
+                cell-query (merge {:url          cell-url
                                    :entity       (:source root)
-                                   :short-name   (->> root
-                                                      :source
-                                                      ((some-fn :display_name :name))
-                                                      (tru "these {0}"))
                                    :rules-prefix ["table"]}))
               opts))
       (let [opts (assoc opts :show :all)]
-        (->> (decompose-question root card opts)
-             (apply populate/merge-dashboards (automagic-dashboard root))
-             (merge {:related (related {:context {:root {:entity card}}} nil)}))))))
+        (cond-> (apply populate/merge-dashboards
+                       (automagic-dashboard (merge (cond-> root
+                                                     cell-query (assoc :url cell-url))
+                                                   opts))
+                       (decompose-question root card opts))
+          cell-query (merge (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
+                              {:transient_name  title
+                               :name            title})))))))
 
 (defmethod automagic-analysis (type Query)
   [query {:keys [cell-query] :as opts}]
-  (let [root (->root query)]
-    (if (or (table-like? query)
-            (:cell-query opts))
+  (let [root     (->root query)
+        cell-url (format "%sadhoc/%s/cell/%s" public-endpoint
+                         (encode-base64-json (:dataset_query query))
+                         (encode-base64-json cell-query))]
+    (if (table-like? query)
       (automagic-dashboard
        (merge (cond-> root
-                cell-query (merge {:url          (format "%sadhoc/%s/cell/%s" public-endpoint
-                                                         (encode-base64-json (:dataset_query query))
-                                                         (encode-base64-json cell-query))
+                cell-query (merge {:url          cell-url
                                    :entity       (:source root)
                                    :query-filter (qp.util/get-in-normalized query [:dataset_query :query :filter])
-                                   :short-name   (->> root
-                                                      :source
-                                                      ((some-fn :display_name :name))
-                                                      (tru "these {0}"))
                                    :rules-prefix ["table"]}))
               opts))
       (let [opts (assoc opts :show :all)]
-        (->> (decompose-question root query opts)
-             (apply populate/merge-dashboards (automagic-dashboard root))
-             (merge {:related (related {:context {:root {:entity query}}} nil)}))))))
+        (cond-> (apply populate/merge-dashboards
+                       (automagic-dashboard (merge (cond-> root
+                                                     cell-query (assoc :url cell-url))
+                                                   opts))
+                       (decompose-question root query opts))
+          cell-query (merge (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
+                              {:transient_name  title
+                               :name            title})))))))
 
 (defmethod automagic-analysis (type Field)
   [field opts]
@@ -990,8 +987,7 @@
                                       :from     [Field]
                                       :where    [:in :table_id (map u/get-id tables)]
                                       :group-by [:table_id]})
-                           (into {} (map (fn [{:keys [count table_id]}]
-                                           [table_id count]))))
+                           (into {} (map (juxt :table_id count))))
           list-like?  (->> (when-let [candidates (->> field-count
                                                       (filter (comp (partial >= 2) val))
                                                       (map key)
