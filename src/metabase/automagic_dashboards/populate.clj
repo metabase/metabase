@@ -8,6 +8,7 @@
              [card :as card]
              [field :refer [Field]]]
             [metabase.query-processor.util :as qp.util]
+            [metabase.util :as u]
             [puppetlabs.i18n.core :as i18n :refer [trs]]
             [toucan.db :as db]))
 
@@ -265,6 +266,16 @@
      (cond-> dashboard
        (not-empty filters) (filters/add-filters filters max-filters)))))
 
+(defn- downsize-titles
+  [markdown]
+  (->> markdown
+       str/split-lines
+       (map (fn [line]
+              (if (str/starts-with? line "#")
+                (str "#" line)
+                line)))
+       str/join))
+
 (defn merge-dashboards
   "Merge dashboards `ds` into dashboard `d`."
   [d & ds]
@@ -288,7 +299,14 @@
                                  (map #(+ (:row %) (:sizeY %)))
                                  (apply max -1) ; -1 so it neturalizes +1 for spacing if
                                                 ; the target dashboard is empty.
-                                 inc)]
+                                 inc)
+                     cards  (->> dashboard
+                                 :ordered_cards
+                                 (map #(-> %
+                                           (update :row + offset group-heading-height)
+                                           (u/update-in-when [:visualization_settings :text]
+                                                             downsize-titles)
+                                           (dissoc :parameter_mappings))))]
                  (-> target
                      (add-text-card {:width                  grid-width
                                      :height                 group-heading-height
@@ -296,12 +314,7 @@
                                      :visualization-settings {:dashcard.background false
                                                               :text.align_vertical :bottom}}
                                     [offset 0])
-                     (update :ordered_cards concat
-                             (->> dashboard
-                                  :ordered_cards
-                                  (map #(-> %
-                                            (update :row + offset group-heading-height)
-                                            (dissoc :parameter_mappings))))))))
+                     (update :ordered_cards concat cards))))
              d
              ds)
       (not-empty filter-targets) (filters/add-filters filter-targets max-filters))))
