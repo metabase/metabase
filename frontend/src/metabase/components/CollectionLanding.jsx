@@ -196,7 +196,7 @@ class DefaultLanding extends React.Component {
                     >
                       <Grid>
                         {pinned.map((item, index) => (
-                          <GridItem w={1 / 2} className="relative">
+                          <GridItem w={1 / 3} className="relative">
                             <ItemDragSource item={item}>
                               <PinnedItem
                                 key={`${item.type}:${item.id}`}
@@ -216,7 +216,7 @@ class DefaultLanding extends React.Component {
                           </GridItem>
                         ))}
                         {pinned.length % 2 === 1 ? (
-                          <GridItem w={1 / 2} className="relative">
+                          <GridItem w={1 / 3} className="relative">
                             <PinPositionDropTarget
                               pinIndex={
                                 pinned[pinned.length - 1].collection_position +
