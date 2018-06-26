@@ -401,12 +401,12 @@
 
     :else (str schema-name \. table-name \. field-name)))
 
-;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is
-;; currently only used for SQL params so it's not a huge deal at this point
-(defn- field->identifier [{table-id :table_id, :as field}]
+;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is currently only used for SQL params so it's not a huge deal at this point
+(defn- field->identifier
+  [{table-id :table_id, :as field}]
   (let [db-id   (db/select-one-field :db_id 'Table :id table-id)
         dataset (:dataset-id (db/select-one-field :details Database, :id db-id))]
-    (hsql/raw (apply format "[%s.%s.%s]" dataset (field/qualified-name-components field)))))
+    (hsql/raw (last (field/qualified-name-components field)))))
 
 (defn- field->breakout-identifier [driver field]
   (hsql/raw (str \[ (field->alias driver field) \])))

@@ -669,6 +669,15 @@
                          :template_tags {:id {:name "id", :display_name "ID", :type "text"}}}
             :parameters [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]}))
 
+;; test that bigquery uses standardSql compatible syntax
+(expect
+   {:query "SELECT * FROM ORDERS WHERE CAST(date(DATE) AS timestamp) BETWEEN ? AND ?",
+    :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" 3]}},
+    :params [#inst "2015-04-01T00:00:00.000000000-00:00" #inst "2015-05-01T00:00:00.000000000-00:00"]}
+  (:native (expand {:driver     (driver/engine->driver :bigquery)
+                    :native     {:query         "SELECT * FROM ORDERS WHERE {{checkin_date}}"
+                                 :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
+                    :parameters [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}]})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            RELATIVE DATES & DEFAULTS IN "DIMENSION" PARAMS (#6059)                             |
