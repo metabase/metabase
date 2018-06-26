@@ -270,7 +270,10 @@ export default class TableInteractiveSummary extends Component {
 
     const column = cols[columnIndex];
     const row = rows[rowIndex];
-    const value = row[columnIndex];
+    let value = row[columnIndex];
+
+    if (row.isTotalColumnIndex === 0 && columnIndex === 0)
+      value = 'Grand totals';
 
     const mappedStyle = groupingManager.mapStyle(rowIndex, columnIndex, visibleRowIndices, style);
 
@@ -313,6 +316,7 @@ export default class TableInteractiveSummary extends Component {
             type: "cell",
             jsx: true,
             rich: true,
+            isTotal : row.isTotalColumnIndex === columnIndex + 1
           })}
         </div>
       </div>
