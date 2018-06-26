@@ -42,12 +42,14 @@ const CollectionItem = ({ collection, color, iconName = "all" }) => (
     hover={{ color: normal.blue }}
     color={color || normal.grey2}
   >
-    <Flex align="center" py={1} key={`collection-${collection.id}`}>
-      <Icon name={iconName} mx={1} color="#93B3C9" />
-      <h4>
-        <Ellipsified>{collection.name}</Ellipsified>
-      </h4>
-    </Flex>
+    <Card p={1}>
+      <Flex align="center" py={1} key={`collection-${collection.id}`}>
+        <Icon name={iconName} mx={1} color="#93B3C9" />
+        <h4>
+          <Ellipsified>{collection.name}</Ellipsified>
+        </h4>
+      </Flex>
+    </Card>
   </Link>
 );
 
@@ -57,9 +59,9 @@ class CollectionList extends React.Component {
     const { collections, currentUser, isRoot } = this.props;
     return (
       <Box mb={2}>
-        <Box my={2}>
+        <Grid>
           {isRoot && (
-            <Box className="relative">
+            <GridItem w={1 / 4} className="relative">
               <CollectionDropTarget
                 collection={{ id: currentUser.personal_collection_id }}
               >
@@ -71,33 +73,40 @@ class CollectionList extends React.Component {
                   iconName="star"
                 />
               </CollectionDropTarget>
-            </Box>
+            </GridItem>
           )}
           {isRoot &&
             currentUser.is_superuser && (
-              <CollectionItem
-                collection={{
-                  name: t`Everyone else's personal collections`,
-                  // Bit of a hack. The route /collection/users lists
-                  // user collections but is not itself a colllection,
-                  // but using the fake id users here works
-                  id: "users",
-                }}
-                iconName="person"
-              />
+              <GridItem w={1 / 4}>
+                <CollectionItem
+                  collection={{
+                    name: t`Everyone else's personal collections`,
+                    // Bit of a hack. The route /collection/users lists
+                    // user collections but is not itself a colllection,
+                    // but using the fake id users here works
+                    id: "users",
+                  }}
+                  iconName="person"
+                />
+              </GridItem>
             )}
-        </Box>
-        {collections
-          .filter(c => c.id !== currentUser.personal_collection_id)
-          .map(collection => (
-            <Box key={collection.id} mb={1} className="relative">
-              <CollectionDropTarget collection={collection}>
-                <ItemDragSource item={collection}>
-                  <CollectionItem collection={collection} />
-                </ItemDragSource>
-              </CollectionDropTarget>
-            </Box>
-          ))}
+          {collections
+            .filter(c => c.id !== currentUser.personal_collection_id)
+            .map(collection => (
+              <GridItem
+                w={1 / 4}
+                key={collection.id}
+                mb={1}
+                className="relative"
+              >
+                <CollectionDropTarget collection={collection}>
+                  <ItemDragSource item={collection}>
+                    <CollectionItem collection={collection} />
+                  </ItemDragSource>
+                </CollectionDropTarget>
+              </GridItem>
+            ))}
+        </Grid>
       </Box>
     );
   }
@@ -236,7 +245,7 @@ class DefaultLanding extends React.Component {
                 )}
                 {showCollectionList && (
                   <Box>
-                    <Box>
+                    <Box mb={1}>
                       <h4>{t`Collections`}</h4>
                     </Box>
                     <CollectionList
@@ -246,7 +255,7 @@ class DefaultLanding extends React.Component {
                   </Box>
                 )}
                 <Flex align="center" mb={2}>
-                  {pinned.length > 0 && (
+                  {unpinned.length > 0 && (
                     <Box>
                       <h4>{t`Saved here`}</h4>
                     </Box>
@@ -254,30 +263,34 @@ class DefaultLanding extends React.Component {
                 </Flex>
                 {unpinned.length > 0 ? (
                   <PinDropTarget pinIndex={null} margin={8}>
-                    <Card
-                      mb={selected.length > 0 ? 5 : 2}
-                      style={{
-                        position: "relative",
-                        height: ROW_HEIGHT * unpinned.length,
-                      }}
-                    >
-                      <VirtualizedList
-                        items={unpinned}
-                        rowHeight={ROW_HEIGHT}
-                        renderItem={({ item, index }) => (
-                          <ItemDragSource item={item} selection={selection}>
-                            <NormalItem
-                              key={`${item.type}:${item.id}`}
-                              item={item}
-                              collection={collection}
-                              selection={selection}
-                              onToggleSelected={onToggleSelected}
-                              onMove={moveItems => this.setState({ moveItems })}
-                            />
-                          </ItemDragSource>
-                        )}
-                      />
-                    </Card>
+                    <Box w={2 / 3}>
+                      <Card
+                        mb={selected.length > 0 ? 5 : 2}
+                        style={{
+                          position: "relative",
+                          height: ROW_HEIGHT * unpinned.length,
+                        }}
+                      >
+                        <VirtualizedList
+                          items={unpinned}
+                          rowHeight={ROW_HEIGHT}
+                          renderItem={({ item, index }) => (
+                            <ItemDragSource item={item} selection={selection}>
+                              <NormalItem
+                                key={`${item.type}:${item.id}`}
+                                item={item}
+                                collection={collection}
+                                selection={selection}
+                                onToggleSelected={onToggleSelected}
+                                onMove={moveItems =>
+                                  this.setState({ moveItems })
+                                }
+                              />
+                            </ItemDragSource>
+                          )}
+                        />
+                      </Card>
+                    </Box>
                   </PinDropTarget>
                 ) : (
                   <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
