@@ -1,0 +1,114 @@
+#!./node_modules/.bin/babel-node
+
+const glob = require("glob");
+const fs = require("fs");
+const path = require("path");
+const Color = require("color");
+
+// these are a bit liberal regexes but that's probably ok
+const COLOR_REGEX = /(#[a-fA-F0-9]{3}([a-fA-F0-9]{3})?|(rgb|hsl)a?\(\s*\d+\s*(,\s*\d+(\.\d+)?%?\s*){2,3}\))/g;
+const COLOR_REGEX_WITH_LINE = /(#[a-fA-F0-9]{3}([a-fA-F0-9]{3})?|(rgb|hsl)a?\(\s*\d+\s*(,\s*\d+(\.\d+)?%?\s*){2,3}\)).*/g;
+
+const FILE_GLOB = "frontend/**/*.{css,js,jsx}";
+const FILE_GLOB_IGNORE = ["**/metabase/lib/colors.js"];
+
+const candidates = {};
+
+function addCandidate(colorName, baseColor, tints = [1]) {
+  for (const tint of tints) {
+    if (tint === 1) {
+      candidates[colorName] = baseColor.rgb();
+    } else {
+      candidates[`${colorName}-${tint * 100}`] = Color("white")
+        .mix(baseColor, tint)
+        .rgb();
+    }
+  }
+}
+
+// add candidate colors, currently various tints of normal, saturated, and desaturated
+const colors = require("../frontend/src/metabase/lib/colors");
+const tints = [1, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02];
+
+for (const [colorName, color] of Object.entries(colors.normal)) {
+  addCandidate(colorName, Color(color), tints);
+}
+for (const [colorName, color] of Object.entries(colors.saturated)) {
+  addCandidate(colorName + "-saturated", Color(color), tints);
+}
+for (const [colorName, color] of Object.entries(colors.desaturated)) {
+  addCandidate(colorName + "-desaturated", Color(color), tints);
+}
+
+// maybe this should weight the difference in hue more heavily?
+function colorDifference(colorA, colorB) {
+  return Math.sqrt(
+    Math.pow(colorA.red() - colorB.red(), 2) +
+      Math.pow(colorA.green() - colorB.green(), 2) +
+      Math.pow(colorA.blue() - colorB.blue(), 2),
+  );
+}
+
+function getBestCandidate(color) {
+  let bestName;
+  let bestDistance = Infinity;
+  for (const [candidateName, candidate] of Object.entries(candidates)) {
+    const distance = colorDifference(color, candidate);
+    if (distance < bestDistance) {
+      bestName = candidateName;
+      bestDistance = distance;
+    }
+  }
+  let bestColor = candidates[bestName];
+  if (color.alpha() < 1) {
+    bestColor = bestColor.alpha(color.alpha());
+  }
+  // console.log(color.string(), "=>", bestName, bestColor.string(), bestDistance);
+  return [bestName, bestColor];
+}
+
+function processFiles(files) {
+  const allMatches = [];
+  const uniqueMatches = new Set();
+
+  for (const file of files) {
+    const content = fs.readFileSync(file, "utf-8");
+    const modifiedContent = content.replace(COLOR_REGEX_WITH_LINE, line => {
+      const names = [];
+      let modifiedLine = line.replace(COLOR_REGEX, color => {
+        uniqueMatches.add(color);
+        allMatches.push(color);
+
+        const [newColorName, newColor] = getBestCandidate(Color(color));
+        if (color === newColor.string()) {
+          console.log(color, `(unchanged: ${newColorName})`);
+        } else {
+          console.log(color, "=>", newColor.string(), `(${newColorName})`);
+        }
+
+        names.push(newColorName);
+        return newColor.string();
+      });
+      // add a comment with the color name. currently disabled due to nested comments breaking some files
+      // modifiedLine += /\.css/.test(file)
+      //   ? " /* " + names.join(", ") + " */"
+      //   : " // " + names.join(", ");
+      return modifiedLine;
+    });
+    fs.writeFileSync(file, modifiedContent);
+  }
+  console.log("total", allMatches.length);
+  console.log("unique", uniqueMatches.size);
+}
+
+glob(
+  path.join(__dirname, "..", FILE_GLOB),
+  { ignore: FILE_GLOB_IGNORE },
+  (err, files) => {
+    if (err) {
+      console.error(err);
+    } else {
+      processFiles(files);
+    }
+  },
+);
