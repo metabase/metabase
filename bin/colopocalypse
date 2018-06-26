@@ -10,7 +10,9 @@ const COLOR_REGEX = /(#[a-fA-F0-9]{3}([a-fA-F0-9]{3})?|(rgb|hsl)a?\(\s*\d+\s*(,\
 const COLOR_REGEX_WITH_LINE = /(#[a-fA-F0-9]{3}([a-fA-F0-9]{3})?|(rgb|hsl)a?\(\s*\d+\s*(,\s*\d+(\.\d+)?%?\s*){2,3}\)).*/g;
 
 const FILE_GLOB = "frontend/**/*.{css,js,jsx}";
-const FILE_GLOB_IGNORE = ["**/metabase/lib/colors.js"];
+const FILE_GLOB_IGNORE = [
+  // "**/metabase/lib/colors.js"
+];
 
 const candidates = {};
 
@@ -27,18 +29,43 @@ function addCandidate(colorName, baseColor, tints = [1]) {
 }
 
 // add candidate colors, currently various tints of normal, saturated, and desaturated
-const colors = require("../frontend/src/metabase/lib/colors");
-const tints = [1, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02];
+// const colors = require("../frontend/src/metabase/lib/colors");
+// const tints = [1, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02];
+//
+// for (const [colorName, color] of Object.entries(colors.normal)) {
+//   addCandidate(colorName, Color(color), tints);
+// }
+// for (const [colorName, color] of Object.entries(colors.saturated)) {
+//   addCandidate(colorName + "-saturated", Color(color), tints);
+// }
+// for (const [colorName, color] of Object.entries(colors.desaturated)) {
+//   addCandidate(colorName + "-desaturated", Color(color), tints);
+// }
 
-for (const [colorName, color] of Object.entries(colors.normal)) {
-  addCandidate(colorName, Color(color), tints);
-}
-for (const [colorName, color] of Object.entries(colors.saturated)) {
-  addCandidate(colorName + "-saturated", Color(color), tints);
-}
-for (const [colorName, color] of Object.entries(colors.desaturated)) {
-  addCandidate(colorName + "-desaturated", Color(color), tints);
-}
+addCandidate("brand", Color("#509EE3"));
+addCandidate("accent1", Color("#9CC177"));
+addCandidate("accent2", Color("#A989C5"));
+addCandidate("accent3", Color("#EF8C8C"));
+addCandidate("accent4", Color("#F9D45C"));
+// addCandidate("accent5", Color("#F1B556"));
+// addCandidate("accent6", Color("#A6E7F3"));
+// addCandidate("accent7", Color("#7172AD"));
+
+addCandidate("white", Color("#FFFFFF"));
+
+addCandidate("text-dark", Color("#2E353B"));
+addCandidate("text-medium", Color("#93A1AB"));
+addCandidate("text-light", Color("#DCE1E4"));
+
+addCandidate("bg-dark", Color("#EDF2F5"));
+addCandidate("bg-light", Color("#F9FBFC"));
+
+addCandidate("shadow", Color("#F4F5F6"));
+addCandidate("border", Color("#D7DBDE"));
+
+addCandidate("success", Color("#84BB4C"));
+addCandidate("error", Color("#ED6E6E"));
+addCandidate("warning", Color("#F9CF48"));
 
 // maybe this should weight the difference in hue more heavily?
 function colorDifference(colorA, colorB) {
