@@ -88,15 +88,15 @@ const isFirstInGroup = (columns: Number[], rows : Row[]) => (rowIndex: Number): 
   return columns.reduce(false, (acc, columnIndex) => acc || !hasTheSameValueByColumn(columnIndex)(prevRow, currentRow)) ;
 };
 
-const updateFirstInGroup = (hasTheSameValue) => ({prevRow, firstInGroupIndexes}: ColumnAcc, currentRow, index: Number) => {
-  if(!hasTheSameValue(prevRow, currentRow) || currentRow.isTotal)
+const updateFirstInGroup = (hasTheSameValue, columnIndex) => ({prevRow, firstInGroupIndexes}: ColumnAcc, currentRow, index: Number) => {
+  if(!hasTheSameValue(prevRow, currentRow) || currentRow.isTotalColumnIndex === columnIndex + 1)
     firstInGroupIndexes.add(index);
 
   return {prevRow : currentRow, firstInGroupIndexes};
 };
 
 const getFirstInGroupMap = (rows:Row) => (columnIndex :  Number) => {
-  return rows.reduce(updateFirstInGroup(hasTheSameValueByColumn(columnIndex)), {
+  return rows.reduce(updateFirstInGroup(hasTheSameValueByColumn(columnIndex), columnIndex), {
     prevRow: [],
     firstInGroupIndexes: new Set().add(0).add((rows.length))
   });

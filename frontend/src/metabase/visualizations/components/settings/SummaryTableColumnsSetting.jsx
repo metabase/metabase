@@ -201,7 +201,7 @@ const createSortableSection = (self: SummaryTableColumnsSetting, title: String, 
   return (
     <div>
       <h4 className="mb1">{title}</h4>
-      {rowsSource && rowsSource.length > 0 &&  <ReactSortable
+      {rowsSource &&  <ReactSortable
         options={{
           animation: 150,
           group: {

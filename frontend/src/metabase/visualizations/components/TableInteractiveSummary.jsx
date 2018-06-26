@@ -258,9 +258,8 @@ export default class TableInteractiveSummary extends Component {
     const groupingManager = this.props.groupingManager;
 
     if(!groupingManager.isVisible(rowIndex, columnIndex, visibleRowIndices)) {
-      return null;
+        return null;
     }
-
     const {
       data,
       isPivoted,
@@ -276,7 +275,7 @@ export default class TableInteractiveSummary extends Component {
     const mappedStyle = groupingManager.mapStyle(rowIndex, columnIndex, visibleRowIndices, style);
 
     if(groupingManager.isGrouped(columnIndex))
-      key = (columnIndex + '-' + [...Array(columnIndex+1).keys()].map(i => row[i]).join('-')) + (row.isTotal || '');
+      key = (columnIndex + '-' + [...Array(columnIndex+1).keys()].map(i => row[i] || 'dd').join('-')) + (row.isTotalColumnIndex || '');
 
     const clicked = getTableCellClickedObject(
       data,
