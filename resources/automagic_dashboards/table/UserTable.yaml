@@ -84,7 +84,7 @@ cards:
       height: 3
   - NewUsersByMonth:
       visualization: line
-      title: New [[this.short-tiltle]] per month
+      title: New [[this.short-title]] per month
       description: The number of new [[this.short-title]] each month
       dimensions: JoinDate
       metrics: Count

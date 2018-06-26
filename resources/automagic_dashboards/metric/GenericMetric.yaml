@@ -35,15 +35,15 @@ dimensions:
       field_type: GenericTable.ZipCode
 groups:
   - Periodicity:
-      title: "[[this]] over time"
+      title: The [[this]] over time
   - Geographical:
-      title: "[[this]] by location"
+      title: The [[this]] by location
   - Categories:
       title: How the [[this]] is distributed across different categories
   - Numbers:
       title: How the [[this]] is distributed across different numbers
   - LargeCategories:
-      title: Top and bottom [[this]]
+      title: The top and bottom for the [[this]]
 dashboard_filters:
   - Timestamp
   - State

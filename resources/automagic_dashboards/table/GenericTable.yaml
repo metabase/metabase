@@ -112,13 +112,13 @@ dashboard_filters:
 cards:
 # Overview
   - Rowcount:
-      title: Total [[this.short-name]]
+      title: The number of [[this.short-name]]
       visualization: scalar
       metrics: Count
       score: 100
       group: Overview
   - RowcountLast30Days:
-      title: New [[this.short-name]] in the last 30 days
+      title: "[[this.short-name]] added in the last 30 days"
       visualization: scalar
       metrics: Count
       score: 100
@@ -371,7 +371,7 @@ cards:
       group: ByTime
       x_label: "[[Timestamp]]"
   - DayOfWeekCreateDate:
-      title: Weekdays when new [[this.short-name]] were added
+      title: Weekdays when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateTimestamp:
@@ -381,7 +381,7 @@ cards:
       group: ByTime
       x_label: Created At by day of the week
   - DayOfWeekCreateDate:
-      title: Weekdays when new [[this.short-name]] were added
+      title: Weekdays when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -391,7 +391,7 @@ cards:
       group: ByTime
       x_label: Created At by day of the week
   - HourOfDayCreateDate:
-      title: Hours when new [[this.short-name]] were added
+      title: Hours when [[this.short-name]] were added
       visualization: bar
       dimensions:
       - CreateTimestamp:
@@ -401,7 +401,7 @@ cards:
       group: ByTime
       x_label: Created At by hour of the day
   - HourOfDayCreateDate:
-      title: Hours when new [[this.short-name]] were added
+      title: Hours when [[this.short-name]] were added
       visualization: bar
       dimensions:
       - CreateTime:
@@ -411,7 +411,7 @@ cards:
       group: ByTime
       x_label: Created At by hour of the day
   - DayOfMonthCreateDate:
-      title: Days when new [[this.short-name]] were added
+      title: Days when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateTimestamp:
@@ -421,7 +421,7 @@ cards:
       group: ByTime
       x_label: Created At by day of the month
   - DayOfMonthCreateDate:
-      title: Days when new [[this.short-name]] were added
+      title: Days when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -431,7 +431,7 @@ cards:
       group: ByTime
       x_label: Created At by day of the month
   - MonthOfYearCreateDate:
-      title: Months when new [[this.short-name]] were added
+      title: Months when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateTimestamp:
@@ -441,7 +441,7 @@ cards:
       group: ByTime
       x_label: Created At by month of the year
   - MonthOfYearCreateDate:
-      title: Months when new [[this.short-name]] were added
+      title: Months when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -451,7 +451,7 @@ cards:
       group: ByTime
       x_label: Created At by month of the year
   - QuerterOfYearCreateDate:
-      title: Quarters when new [[this.short-name]] were added
+      title: Quarters when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateTimestamp:
@@ -461,7 +461,7 @@ cards:
       group: ByTime
       x_label: Created At by quarter of the year
   - QuerterOfYearCreateDate:
-      title: Quarters when new [[this.short-name]] were added
+      title: Quarters when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateDate:

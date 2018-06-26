@@ -127,7 +127,7 @@
   (let [table (-> segment :table_id Table)]
     {:entity       segment
      :full-name    (tru "{0} in {1} segment" (:display_name table) (:name segment))
-     :short-name   (tru "such {0}" (:display_name table))
+     :short-name   (tru "these {0}" (:display_name table))
      :source       table
      :database     (:db_id table)
      :query-filter (-> segment :definition :filter)
@@ -948,7 +948,7 @@
                                    :short-name   (->> root
                                                       :source
                                                       ((some-fn :display_name :name))
-                                                      (tru "such {0}"))
+                                                      (tru "these {0}"))
                                    :rules-prefix ["table"]}))
               opts))
       (let [opts (assoc opts :show :all)]
@@ -971,7 +971,7 @@
                                    :short-name   (->> root
                                                       :source
                                                       ((some-fn :display_name :name))
-                                                      (tru "such {0}"))
+                                                      (tru "these {0}"))
                                    :rules-prefix ["table"]}))
               opts))
       (let [opts (assoc opts :show :all)]
