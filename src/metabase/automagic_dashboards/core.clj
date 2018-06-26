@@ -87,10 +87,10 @@
                                              (source-name root))))
 
 (defn- join-enumeration
-  [[x & xs]]
-  (if xs
+  [xs]
+  (if (next xs)
     (tru "{0} and {1}" (str/join ", " (butlast xs)) (last xs))
-    x))
+    (first xs)))
 
 (defn- question-description
   [root question]
