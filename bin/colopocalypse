@@ -6,11 +6,20 @@ const path = require("path");
 const Color = require("color");
 const colorDiff = require("color-diff");
 
+const POSTCSS_CONFIG = require("../postcss.config.js");
+const cssVariables =
+  POSTCSS_CONFIG.plugins["postcss-cssnext"].features.customProperties.variables;
+console.log(cssVariables);
+
 // these are a bit liberal regexes but that's probably ok
 const COLOR_REGEX = /(#[a-fA-F0-9]{3}([a-fA-F0-9]{3})?|(rgb|hsl)a?\(\s*\d+\s*(,\s*\d+(\.\d+)?%?\s*){2,3}\))/g;
 const COLOR_REGEX_WITH_LINE = /(#[a-fA-F0-9]{3}([a-fA-F0-9]{3})?|(rgb|hsl)a?\(\s*\d+\s*(,\s*\d+(\.\d+)?%?\s*){2,3}\)).*/g;
 
-const FILE_GLOB = "frontend/**/*.{css,js,jsx}";
+const CSS_SIMPLE_VAR_REGEX = /^var\(([^)]+)\)$/;
+const CSS_COLOR_VAR_REGEX = /^color\(var\(([^)]+)\) shade\(([^)]+)\)\)$/;
+const CSS_VAR_REGEX = /var\([^)]+\)|color\(var\([^)]+\) shade\([^)]+\)\)/g;
+
+const FILE_GLOB = process.argv[2] || "frontend/**/*.{css,js,jsx}";
 const FILE_GLOB_IGNORE = [
   // "**/metabase/lib/colors.js"
 ];
@@ -116,38 +125,71 @@ function getBestCandidate(color) {
   return [bestName, bestColor];
 }
 
-function processFiles(files) {
-  const allMatches = [];
-  const uniqueMatches = new Set();
+function replaceSimpleColorValues(content, isCSS) {
+  return content.replace(COLOR_REGEX, color => {
+    const [newColorName, newColor] = getBestCandidate(Color(color));
+    if (color === newColor.string()) {
+      console.log(color, `(unchanged: ${newColorName})`);
+    } else {
+      console.log(color, "=>", newColor.string(), `(${newColorName})`);
+    }
+    return newColor.string();
+  });
+}
 
-  for (const file of files) {
-    const content = fs.readFileSync(file, "utf-8");
-    const modifiedContent = content.replace(COLOR_REGEX_WITH_LINE, line => {
-      const names = [];
-      let modifiedLine = line.replace(COLOR_REGEX, color => {
-        uniqueMatches.add(color);
-        allMatches.push(color);
-
-        const [newColorName, newColor] = getBestCandidate(Color(color));
-        if (color === newColor.string()) {
-          console.log(color, `(unchanged: ${newColorName})`);
-        } else {
-          console.log(color, "=>", newColor.string(), `(${newColorName})`);
+function resolveCSSVariableColor(value) {
+  try {
+    if (value) {
+      if (COLOR_REGEX.test(value)) {
+        return Color(value);
+      }
+      const colorVarMatch = value.match(CSS_COLOR_VAR_REGEX);
+      if (colorVarMatch) {
+        const color = resolveCSSVariableColor(cssVariables[colorVarMatch[1]]);
+        if (color) {
+          const shade = parseFloat(colorVarMatch[2]) / 100;
+          return Color(color).mix(Color("black"), shade);
         }
-
-        names.push(newColorName);
-        return newColor.string();
-      });
-      // add a comment with the color name. currently disabled due to nested comments breaking some files
-      // modifiedLine += /\.css/.test(file)
-      //   ? " /* " + names.join(", ") + " */"
-      //   : " // " + names.join(", ");
-      return modifiedLine;
-    });
-    fs.writeFileSync(file, modifiedContent);
+      }
+      const varMatch = value.match(CSS_SIMPLE_VAR_REGEX);
+      if (varMatch) {
+        const color = resolveCSSVariableColor(cssVariables[varMatch[1]]);
+        if (color) {
+          return color;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn(e);
   }
-  console.log("total", allMatches.length);
-  console.log("unique", uniqueMatches.size);
+  return null;
+}
+
+function replaceCSSVariables(content, isCSS) {
+  if (!isCSS) {
+    return content;
+  }
+  return content.replace(CSS_VAR_REGEX, variable => {
+    const color = resolveCSSVariableColor(variable);
+    if (color) {
+      const [newColorName, newColor] = getBestCandidate(color);
+      console.log(variable, "=>", newColor.string(), `(${newColorName})`);
+      return newColor.string();
+    } else {
+      return variable;
+    }
+  });
+}
+
+function processFiles(files) {
+  for (const file of files) {
+    const isCSS = /\.css/.test(file);
+
+    let content = fs.readFileSync(file, "utf-8");
+    content = replaceSimpleColorValues(content, isCSS);
+    content = replaceCSSVariables(content, isCSS);
+    fs.writeFileSync(file, content);
+  }
 }
 
 glob(
