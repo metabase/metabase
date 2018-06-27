@@ -2198,6 +2198,10 @@ color-convert@^1.9.1:
   dependencies:
     color-name "^1.1.1"
 
+color-diff@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/color-diff/-/color-diff-1.1.0.tgz#983ae7f936679e94e365dfe44a16aa153bdae88e"
+
 color-name@^1.0.0, color-name@^1.1.1:
   version "1.1.3"
   resolved "https://registry.yarnpkg.com/color-name/-/color-name-1.1.3.tgz#a7d0558bd89c42f795dd42328f740831ca53bc25"

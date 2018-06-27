@@ -4,6 +4,7 @@ const glob = require("glob");
 const fs = require("fs");
 const path = require("path");
 const Color = require("color");
+const colorDiff = require("color-diff");
 
 // these are a bit liberal regexes but that's probably ok
 const COLOR_REGEX = /(#[a-fA-F0-9]{3}([a-fA-F0-9]{3})?|(rgb|hsl)a?\(\s*\d+\s*(,\s*\d+(\.\d+)?%?\s*){2,3}\))/g;
@@ -47,9 +48,9 @@ addCandidate("accent1", Color("#9CC177"));
 addCandidate("accent2", Color("#A989C5"));
 addCandidate("accent3", Color("#EF8C8C"));
 addCandidate("accent4", Color("#F9D45C"));
-// addCandidate("accent5", Color("#F1B556"));
-// addCandidate("accent6", Color("#A6E7F3"));
-// addCandidate("accent7", Color("#7172AD"));
+addCandidate("accent5", Color("#F1B556"));
+addCandidate("accent6", Color("#A6E7F3"));
+addCandidate("accent7", Color("#7172AD"));
 
 addCandidate("white", Color("#FFFFFF"));
 
@@ -68,29 +69,50 @@ addCandidate("error", Color("#ED6E6E"));
 addCandidate("warning", Color("#F9CF48"));
 
 // maybe this should weight the difference in hue more heavily?
-function colorDifference(colorA, colorB) {
-  return Math.sqrt(
-    Math.pow(colorA.red() - colorB.red(), 2) +
-      Math.pow(colorA.green() - colorB.green(), 2) +
-      Math.pow(colorA.blue() - colorB.blue(), 2),
-  );
-}
+// function colorDifference(colorA, colorB) {
+//   return Math.sqrt(
+//     Math.pow(colorA.red() - colorB.red(), 2) +
+//       Math.pow(colorA.green() - colorB.green(), 2) +
+//       Math.pow(colorA.blue() - colorB.blue(), 2),
+//   );
+// }
+
+// function getBestCandidate(color) {
+//   let bestName;
+//   let bestDistance = Infinity;
+//   for (const [candidateName, candidate] of Object.entries(candidates)) {
+//     const distance = colorDifference(color, candidate);
+//     if (distance < bestDistance) {
+//       bestName = candidateName;
+//       bestDistance = distance;
+//     }
+//   }
+//   let bestColor = candidates[bestName];
+//   if (color.alpha() < 1) {
+//     bestColor = bestColor.alpha(color.alpha());
+//   }
+//   // console.log(color.string(), "=>", bestName, bestColor.string(), bestDistance);
+//   return [bestName, bestColor];
+// }
+
+const palette = Object.entries(candidates).map(([name, color]) => ({
+  name,
+  color,
+  R: color.red(),
+  G: color.green(),
+  B: color.blue(),
+}));
 
 function getBestCandidate(color) {
-  let bestName;
-  let bestDistance = Infinity;
-  for (const [candidateName, candidate] of Object.entries(candidates)) {
-    const distance = colorDifference(color, candidate);
-    if (distance < bestDistance) {
-      bestName = candidateName;
-      bestDistance = distance;
-    }
-  }
-  let bestColor = candidates[bestName];
+  const closest = colorDiff.closest(
+    { R: color.red(), G: color.green(), B: color.blue() },
+    palette,
+  );
+  let bestName = closest.name;
+  let bestColor = closest.color;
   if (color.alpha() < 1) {
     bestColor = bestColor.alpha(color.alpha());
   }
-  // console.log(color.string(), "=>", bestName, bestColor.string(), bestDistance);
   return [bestName, bestColor];
 }
 

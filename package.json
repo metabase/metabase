@@ -100,6 +100,7 @@
     "babel-preset-stage-0": "^6.5.0",
     "babel-register": "^6.11.6",
     "banner-webpack-plugin": "^0.2.3",
+    "color-diff": "^1.1.0",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
     "documentation": "^4.0.0-rc.1",
