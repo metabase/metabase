@@ -987,7 +987,7 @@
                                       :from     [Field]
                                       :where    [:in :table_id (map u/get-id tables)]
                                       :group-by [:table_id]})
-                           (into {} (map (juxt :table_id count))))
+                           (into {} (map (juxt :table_id :count))))
           list-like?  (->> (when-let [candidates (->> field-count
                                                       (filter (comp (partial >= 2) val))
                                                       (map key)
