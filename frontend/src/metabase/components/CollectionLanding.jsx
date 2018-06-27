@@ -107,7 +107,7 @@ class DefaultLanding extends React.Component {
             ) : (
               <Box>
                 {pinned.length > 0 ? (
-                  <Box mb={4}>
+                  <Box mx={4} mt={2} mb={4}>
                     <CollectionSectionHeading>
                       {t`Pins`}
                     </CollectionSectionHeading>
@@ -168,22 +168,30 @@ class DefaultLanding extends React.Component {
                     )}
                   </PinDropTarget>
                 )}
-                <Flex mt={2}>
-                  {showCollectionList && (
-                    <Box w={1 / 3}>
-                      <Box mb={1}>
-                        <CollectionSectionHeading>
-                          {t`Collections`}
-                        </CollectionSectionHeading>
-                      </Box>
-                      <CollectionList
-                        collections={collections}
-                        isRoot={collectionId === "root"}
-                      />
+                <Box pt={2} px={4} bg="white">
+                  <Box py={2}>
+                    <CollectionSectionHeading>
+                      {t`Collections`}
+                    </CollectionSectionHeading>
+                  </Box>
+                  {collections.length === 0 && (
+                    <Box>
+                      <Link
+                        to={`${Urls.collection(collection.id)}/new_collection`}
+                      >
+                        Create a collection
+                      </Link>
                     </Box>
                   )}
-                  <Box w={2 / 3} ml={2}>
-                    <Flex align="center" mb={1}>
+
+                  {showCollectionList && (
+                    <CollectionList
+                      collections={collections}
+                      isRoot={collectionId === "root"}
+                    />
+                  )}
+                  <Box>
+                    <Flex align="center" mb={1} mt={3}>
                       {unpinned.length > 0 && (
                         <CollectionSectionHeading>
                           {t`Dashboards questions and pulses`}
@@ -193,7 +201,7 @@ class DefaultLanding extends React.Component {
                     {unpinned.length > 0 ? (
                       <PinDropTarget pinIndex={null} margin={8}>
                         <Box>
-                          <Card
+                          <Box
                             mb={selected.length > 0 ? 5 : 2}
                             style={{
                               position: "relative",
@@ -221,7 +229,7 @@ class DefaultLanding extends React.Component {
                                 </ItemDragSource>
                               )}
                             />
-                          </Card>
+                          </Box>
                         </Box>
                       </PinDropTarget>
                     ) : (
@@ -239,7 +247,7 @@ class DefaultLanding extends React.Component {
                       </PinDropTarget>
                     )}
                   </Box>
-                </Flex>
+                </Box>
               </Box>
             )}
             <BulkActionBar showing={selected.length > 0}>
@@ -421,9 +429,9 @@ class CollectionLanding extends React.Component {
         : [];
 
     return (
-      <Box mx={4}>
+      <Box>
         <Box>
-          <Flex align="center" mt={2} mb={3}>
+          <Flex align="center" mt={2} mb={3} mx={4}>
             <Box>
               <Box mb={1}>
                 <BrowserCrumbs

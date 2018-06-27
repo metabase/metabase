@@ -11,7 +11,10 @@ const BrowseHeader = ({ children }) => (
 );
 
 const Crumb = ({ children }) => (
-  <h5 className="text-uppercase" style={{ color: "#93A1AB", fontWeight: 900 }}>
+  <h5
+    className="text-uppercase text-brand-hover"
+    style={{ color: "#93A1AB", fontWeight: 900 }}
+  >
     {children}
   </h5>
 );
