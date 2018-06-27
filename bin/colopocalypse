@@ -24,87 +24,38 @@ const FILE_GLOB_IGNORE = [
   // "**/metabase/lib/colors.js"
 ];
 
-const candidates = {};
+const COLORS_CSS_PATH = "frontend/src/metabase/css/core/colors.css";
 
-function addCandidate(colorName, baseColor, tints = [1]) {
-  for (const tint of tints) {
-    if (tint === 1) {
-      candidates[colorName] = baseColor.rgb();
-    } else {
-      candidates[`${colorName}-${tint * 100}`] = Color("white")
-        .mix(baseColor, tint)
-        .rgb();
-    }
-  }
-}
+const varForName = name => `--color-${name}`;
 
-// add candidate colors, currently various tints of normal, saturated, and desaturated
-// const colors = require("../frontend/src/metabase/lib/colors");
-// const tints = [1, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02];
-//
-// for (const [colorName, color] of Object.entries(colors.normal)) {
-//   addCandidate(colorName, Color(color), tints);
-// }
-// for (const [colorName, color] of Object.entries(colors.saturated)) {
-//   addCandidate(colorName + "-saturated", Color(color), tints);
-// }
-// for (const [colorName, color] of Object.entries(colors.desaturated)) {
-//   addCandidate(colorName + "-desaturated", Color(color), tints);
-// }
+const colors = {
+  brand: Color("#509EE3"),
+  accent1: Color("#9CC177"),
+  accent2: Color("#A989C5"),
+  accent3: Color("#EF8C8C"),
+  accent4: Color("#F9D45C"),
+  accent5: Color("#F1B556"),
+  accent6: Color("#A6E7F3"),
+  accent7: Color("#7172AD"),
 
-addCandidate("brand", Color("#509EE3"));
-addCandidate("accent1", Color("#9CC177"));
-addCandidate("accent2", Color("#A989C5"));
-addCandidate("accent3", Color("#EF8C8C"));
-addCandidate("accent4", Color("#F9D45C"));
-addCandidate("accent5", Color("#F1B556"));
-addCandidate("accent6", Color("#A6E7F3"));
-addCandidate("accent7", Color("#7172AD"));
+  white: Color("#FFFFFF"),
 
-addCandidate("white", Color("#FFFFFF"));
+  "text-dark": Color("#2E353B"),
+  "text-medium": Color("#93A1AB"),
+  "text-light": Color("#DCE1E4"),
 
-addCandidate("text-dark", Color("#2E353B"));
-addCandidate("text-medium", Color("#93A1AB"));
-addCandidate("text-light", Color("#DCE1E4"));
+  "bg-dark": Color("#EDF2F5"),
+  "bg-light": Color("#F9FBFC"),
 
-addCandidate("bg-dark", Color("#EDF2F5"));
-addCandidate("bg-light", Color("#F9FBFC"));
+  shadow: Color("#F4F5F6"),
+  border: Color("#D7DBDE"),
 
-addCandidate("shadow", Color("#F4F5F6"));
-addCandidate("border", Color("#D7DBDE"));
+  success: Color("#84BB4C"),
+  error: Color("#ED6E6E"),
+  warning: Color("#F9CF48"),
+};
 
-addCandidate("success", Color("#84BB4C"));
-addCandidate("error", Color("#ED6E6E"));
-addCandidate("warning", Color("#F9CF48"));
-
-// maybe this should weight the difference in hue more heavily?
-// function colorDifference(colorA, colorB) {
-//   return Math.sqrt(
-//     Math.pow(colorA.red() - colorB.red(), 2) +
-//       Math.pow(colorA.green() - colorB.green(), 2) +
-//       Math.pow(colorA.blue() - colorB.blue(), 2),
-//   );
-// }
-
-// function getBestCandidate(color) {
-//   let bestName;
-//   let bestDistance = Infinity;
-//   for (const [candidateName, candidate] of Object.entries(candidates)) {
-//     const distance = colorDifference(color, candidate);
-//     if (distance < bestDistance) {
-//       bestName = candidateName;
-//       bestDistance = distance;
-//     }
-//   }
-//   let bestColor = candidates[bestName];
-//   if (color.alpha() < 1) {
-//     bestColor = bestColor.alpha(color.alpha());
-//   }
-//   // console.log(color.string(), "=>", bestName, bestColor.string(), bestDistance);
-//   return [bestName, bestColor];
-// }
-
-const palette = Object.entries(candidates).map(([name, color]) => ({
+const palette = Object.entries(colors).map(([name, color]) => ({
   name,
   color,
   R: color.red(),
@@ -133,7 +84,35 @@ function replaceSimpleColorValues(content, isCSS) {
     } else {
       console.log(color, "=>", newColor.string(), `(${newColorName})`);
     }
-    return newColor.string();
+    if (newColor.alpha < 1) {
+      return newColor.string();
+    } else if (!isCSS) {
+      return newColor.hex();
+    } else {
+      return `var(${varForName(newColorName)})`;
+    }
+  });
+}
+
+function replaceCSSVariables(content, isCSS) {
+  if (!isCSS) {
+    return content;
+  }
+  return content.replace(CSS_VAR_REGEX, variable => {
+    const color = resolveCSSVariableColor(variable);
+    if (color) {
+      const [newColorName, newColor] = getBestCandidate(color);
+      console.log(variable, "=>", newColor.string(), `(${newColorName})`);
+
+      if (newColor.alpha() < 1) {
+        // TODO: color(var(...) alpha(...))
+        return newColor.string();
+      } else {
+        return `var(${varForName(newColorName)})`;
+      }
+    } else {
+      return variable;
+    }
   });
 }
 
@@ -165,22 +144,6 @@ function resolveCSSVariableColor(value) {
   return null;
 }
 
-function replaceCSSVariables(content, isCSS) {
-  if (!isCSS) {
-    return content;
-  }
-  return content.replace(CSS_VAR_REGEX, variable => {
-    const color = resolveCSSVariableColor(variable);
-    if (color) {
-      const [newColorName, newColor] = getBestCandidate(color);
-      console.log(variable, "=>", newColor.string(), `(${newColorName})`);
-      return newColor.string();
-    } else {
-      return variable;
-    }
-  });
-}
-
 function processFiles(files) {
   for (const file of files) {
     const isCSS = /\.css/.test(file);
@@ -190,6 +153,22 @@ function processFiles(files) {
     content = replaceCSSVariables(content, isCSS);
     fs.writeFileSync(file, content);
   }
+
+  // do this last so we don't replace them
+  prependColorVarsBlock();
+}
+
+function prependColorVarsBlock() {
+  const colorsVarsBlock =
+    `:root {\n` +
+    Object.entries(colors)
+      .map(([name, color]) => `  ${varForName(name)}: ${color.hex()};`)
+      .join("\n") +
+    `\n}\n\n`;
+  fs.writeFileSync(
+    COLORS_CSS_PATH,
+    colorsVarsBlock + fs.readFileSync(COLORS_CSS_PATH, "utf-8"),
+  );
 }
 
 glob(
