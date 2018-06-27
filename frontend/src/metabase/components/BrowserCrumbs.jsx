@@ -6,12 +6,14 @@ import Subhead from "metabase/components/Subhead";
 
 // TODO: merge with Breadcrumbs
 
-const BrowseHeader = ({ children }) => <Subhead>{children}</Subhead>;
+const BrowseHeader = ({ children }) => (
+  <h2 style={{ fontWeight: 900 }}>{children}</h2>
+);
 
 const BrowserCrumbs = ({ crumbs }) => (
   <Box>
     {crumbs.filter(c => c).map((crumb, index, crumbs) => [
-      crumb.to ? (
+      crumb.to && (
         <Flex align="center">
           <Link key={"title" + index} to={crumb.to}>
             {crumb.title}
@@ -20,10 +22,6 @@ const BrowserCrumbs = ({ crumbs }) => (
             <Icon key={"divider" + index} name="chevronright" mx={1} />
           ) : null}
         </Flex>
-      ) : (
-        <Box>
-          <BrowseHeader>{crumb.title}</BrowseHeader>
-        </Box>
       ),
     ])}
   </Box>

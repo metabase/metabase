@@ -258,7 +258,7 @@ export default class Navbar extends Component {
           </Tooltip>
           <Tooltip tooltip={t`Activity`}>
             <Link to="activity" mx={1}>
-              <Icon name="alert" />
+              <Icon name="bell" />
             </Link>
           </Tooltip>
           <ProfileLink {...this.props} />

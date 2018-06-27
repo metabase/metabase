@@ -107,10 +107,10 @@ class DefaultLanding extends React.Component {
             ) : (
               <Box>
                 {pinned.length > 0 ? (
-                  <Box mb={2}>
-                    <Box mb={2}>
-                      <h4>{t`Pinned items`}</h4>
-                    </Box>
+                  <Box mb={4}>
+                    <CollectionSectionHeading>
+                      {t`Pins`}
+                    </CollectionSectionHeading>
                     <PinDropTarget
                       pinIndex={
                         pinned[pinned.length - 1].collection_position + 1
@@ -168,11 +168,13 @@ class DefaultLanding extends React.Component {
                     )}
                   </PinDropTarget>
                 )}
-                <Flex>
+                <Flex mt={2}>
                   {showCollectionList && (
                     <Box w={1 / 3}>
                       <Box mb={1}>
-                        <h4>{t`Collections`}</h4>
+                        <CollectionSectionHeading>
+                          {t`Collections`}
+                        </CollectionSectionHeading>
                       </Box>
                       <CollectionList
                         collections={collections}
@@ -181,11 +183,11 @@ class DefaultLanding extends React.Component {
                     </Box>
                   )}
                   <Box w={2 / 3} ml={2}>
-                    <Flex align="center" mb={2}>
+                    <Flex align="center" mb={1}>
                       {unpinned.length > 0 && (
-                        <Box>
-                          <h4>{t`Dashboards questions and pulses`}</h4>
-                        </Box>
+                        <CollectionSectionHeading>
+                          {t`Dashboards questions and pulses`}
+                        </CollectionSectionHeading>
                       )}
                     </Flex>
                     {unpinned.length > 0 ? (
@@ -421,20 +423,24 @@ class CollectionLanding extends React.Component {
     return (
       <Box mx={4}>
         <Box>
-          <Flex align="center" my={2}>
-            <BrowserCrumbs
-              crumbs={[
-                ...ancestors.map(({ id, name }) => ({
-                  title: (
-                    <CollectionDropTarget collection={{ id }} margin={8}>
-                      {name}
-                    </CollectionDropTarget>
-                  ),
-                  to: Urls.collection(id),
-                })),
-                { title: currentCollection.name },
-              ]}
-            />
+          <Flex align="center" mt={2} mb={3}>
+            <Box>
+              <Box mb={1}>
+                <BrowserCrumbs
+                  crumbs={[
+                    ...ancestors.map(({ id, name }) => ({
+                      title: (
+                        <CollectionDropTarget collection={{ id }} margin={8}>
+                          {name}
+                        </CollectionDropTarget>
+                      ),
+                      to: Urls.collection(id),
+                    })),
+                  ]}
+                />
+              </Box>
+              <h1 style={{ fontWeight: 900 }}>{currentCollection.name}</h1>
+            </Box>
 
             <Flex ml="auto">
               {currentCollection &&
@@ -473,6 +479,12 @@ class CollectionLanding extends React.Component {
     );
   }
 }
+
+const CollectionSectionHeading = ({ children }) => (
+  <h5 className="text-uppercase" style={{ color: "#93A1AB", fontWeight: 900 }}>
+    {children}
+  </h5>
+);
 
 const NewObjectMenu = ({ collectionId }) => (
   <EntityMenu
