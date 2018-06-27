@@ -5,15 +5,16 @@ const fs = require("fs");
 const path = require("path");
 const Color = require("color");
 const colorDiff = require("color-diff");
+const _ = require("underscore");
 
 const POSTCSS_CONFIG = require("../postcss.config.js");
 const cssVariables =
   POSTCSS_CONFIG.plugins["postcss-cssnext"].features.customProperties.variables;
-console.log(cssVariables);
+// console.log(cssVariables);
 
 // these are a bit liberal regexes but that's probably ok
-const COLOR_REGEX = /(#[a-fA-F0-9]{3}([a-fA-F0-9]{3})?|(rgb|hsl)a?\(\s*\d+\s*(,\s*\d+(\.\d+)?%?\s*){2,3}\))/g;
-const COLOR_REGEX_WITH_LINE = /(#[a-fA-F0-9]{3}([a-fA-F0-9]{3})?|(rgb|hsl)a?\(\s*\d+\s*(,\s*\d+(\.\d+)?%?\s*){2,3}\)).*/g;
+const COLOR_REGEX = /(?:#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?|(?:rgb|hsl)a?\(\s*\d+\s*(?:,\s*\d+(?:\.\d+)?%?\s*){2,3}\))/g;
+const COLOR_REGEX_WITH_LINE = /(?:#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?|(?:rgb|hsl)a?\(\s*\d+\s*(?:,\s*\d+(?:\.\d+)?%?\s*){2,3}\)).*/g;
 
 const CSS_SIMPLE_VAR_REGEX = /^var\(([^)]+)\)$/;
 const CSS_COLOR_VAR_REGEX = /^color\(var\(([^)]+)\) shade\(([^)]+)\)\)$/;
@@ -29,41 +30,76 @@ const COLORS_CSS_PATH = "frontend/src/metabase/css/core/colors.css";
 const varForName = name => `--color-${name}`;
 
 const colors = {
-  brand: Color("#509EE3"),
-  accent1: Color("#9CC177"),
-  accent2: Color("#A989C5"),
-  accent3: Color("#EF8C8C"),
-  accent4: Color("#F9D45C"),
-  accent5: Color("#F1B556"),
-  accent6: Color("#A6E7F3"),
-  accent7: Color("#7172AD"),
+  brand: "#509EE3",
+  accent1: "#9CC177",
+  accent2: "#A989C5",
+  accent3: "#EF8C8C",
+  accent4: "#F9D45C",
+  accent5: "#F1B556",
+  accent6: "#A6E7F3",
+  accent7: "#7172AD",
 
-  white: Color("#FFFFFF"),
+  white: "#FFFFFF",
+  black: "#2E353B",
 
-  "text-dark": Color("#2E353B"),
-  "text-medium": Color("#93A1AB"),
-  "text-light": Color("#DCE1E4"),
+  "text-dark": "#2E353B", // same as "black"
+  "text-medium": "#93A1AB",
+  "text-light": "#DCE1E4",
 
-  "bg-dark": Color("#EDF2F5"),
-  "bg-light": Color("#F9FBFC"),
+  "bg-dark": "#93A1AB",
+  "bg-medium": "#EDF2F5",
+  "bg-light": "#F9FBFC",
 
-  shadow: Color("#F4F5F6"),
-  border: Color("#D7DBDE"),
+  shadow: "#F4F5F6",
+  border: "#D7DBDE",
 
-  success: Color("#84BB4C"),
-  error: Color("#ED6E6E"),
-  warning: Color("#F9CF48"),
+  success: "#84BB4C",
+  error: "#ED6E6E",
+  warning: "#F9CF48",
 };
 
-const palette = Object.entries(colors).map(([name, color]) => ({
-  name,
-  color,
-  R: color.red(),
-  G: color.green(),
-  B: color.blue(),
-}));
+function paletteForColors(colors) {
+  return Object.entries(colors).map(([name, colorValue]) => {
+    const color = Color(colorValue);
+    return {
+      name,
+      color,
+      R: color.red(),
+      G: color.green(),
+      B: color.blue(),
+    };
+  });
+}
 
-function getBestCandidate(color) {
+const TEXT_COLOR_NAMES = ["text-dark", "text-medium", "text-light"];
+const BACKGROUND_COLOR_NAMES = ["bg-dark", "bg-medium", "bg-light"];
+
+const PALETTE_ALL = paletteForColors(_.omit(colors, "black"));
+const PALETTE_FOREGROUND = paletteForColors(
+  _.omit(colors, ...BACKGROUND_COLOR_NAMES, "black", "shadow", "border"),
+);
+const PALETTE_BACKGROUND = paletteForColors(
+  _.omit(colors, ...TEXT_COLOR_NAMES, "shadow", "border"),
+);
+const PALETTE_BORDER = paletteForColors(_.pick(colors, "border"));
+const PALETTE_SHADOW = paletteForColors(_.pick(colors, "shadow"));
+
+function paletteForCSSProperty(property) {
+  if (!property) {
+    return PALETTE_ALL;
+  } else if (property === "color" || ~property.indexOf("text")) {
+    return PALETTE_FOREGROUND;
+  } else if (~property.indexOf("bg") || ~property.indexOf("background")) {
+    return PALETTE_BACKGROUND;
+  } else if (~property.indexOf("border")) {
+    return PALETTE_BORDER;
+  } else if (~property.indexOf("shadow")) {
+    return PALETTE_SHADOW;
+  }
+  return PALETTE_ALL;
+}
+
+function getBestCandidate(color, palette = PALETTE_ALL) {
   const closest = colorDiff.closest(
     { R: color.red(), G: color.green(), B: color.blue() },
     palette,
@@ -76,40 +112,70 @@ function getBestCandidate(color) {
   return [bestName, bestColor];
 }
 
-function replaceSimpleColorValues(content, isCSS) {
-  return content.replace(COLOR_REGEX, color => {
-    const [newColorName, newColor] = getBestCandidate(Color(color));
-    if (color === newColor.string()) {
-      console.log(color, `(unchanged: ${newColorName})`);
-    } else {
-      console.log(color, "=>", newColor.string(), `(${newColorName})`);
+function toJSValue(newColorName, newColor) {
+  if (newColor.alpha() < 1) {
+    return newColor.string();
+  } else {
+    return newColor.hex();
+  }
+}
+
+function toCSSValue(newColorName, newColor) {
+  if (newColor.alpha() < 1) {
+    return `color(var(${varForName(newColorName)}) alpha(-${Math.round(
+      100 * (1 - newColor.alpha()),
+    )}%))`;
+  } else {
+    return `var(${varForName(newColorName)})`;
+  }
+}
+
+function lineAtIndex(lines, index) {
+  let charIndex = 0;
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    charIndex += lines[lineIndex].length + 1;
+    if (charIndex >= index) {
+      return lines[lineIndex];
     }
-    if (newColor.alpha < 1) {
-      return newColor.string();
-    } else if (!isCSS) {
-      return newColor.hex();
+  }
+}
+
+function cssPropertyAtIndex(lines, index) {
+  const line = lineAtIndex(lines, index);
+  if (line) {
+    const match = line.match(/^\s*([a-z0-9-]+):/);
+    if (match) {
+      return match[1].trim();
     } else {
-      return `var(${varForName(newColorName)})`;
+      console.warn("no property", line);
+    }
+  } else {
+    console.warn("no line at that index! this should not happen");
+  }
+}
+
+function replaceSimpleColorValues(content, isCSS) {
+  const lines = content.split("\n");
+  return content.replace(COLOR_REGEX, (color, index) => {
+    if (!isCSS) {
+      const [newColorName, newColor] = getBestCandidate(Color(color));
+      return toJSValue(newColorName, newColor);
+    } else {
+      const palette = paletteForCSSProperty(cssPropertyAtIndex(lines, index));
+      const [newColorName, newColor] = getBestCandidate(Color(color), palette);
+      return toCSSValue(newColorName, newColor);
     }
   });
 }
 
-function replaceCSSVariables(content, isCSS) {
-  if (!isCSS) {
-    return content;
-  }
-  return content.replace(CSS_VAR_REGEX, variable => {
+function replaceCSSVariables(content) {
+  const lines = content.split("\n");
+  return content.replace(CSS_VAR_REGEX, (variable, index) => {
     const color = resolveCSSVariableColor(variable);
     if (color) {
-      const [newColorName, newColor] = getBestCandidate(color);
-      console.log(variable, "=>", newColor.string(), `(${newColorName})`);
-
-      if (newColor.alpha() < 1) {
-        // TODO: color(var(...) alpha(...))
-        return newColor.string();
-      } else {
-        return `var(${varForName(newColorName)})`;
-      }
+      const palette = paletteForCSSProperty(cssPropertyAtIndex(lines, index));
+      const [newColorName, newColor] = getBestCandidate(Color(color), palette);
+      return toCSSValue(newColorName, newColor);
     } else {
       return variable;
     }
@@ -150,7 +216,9 @@ function processFiles(files) {
 
     let content = fs.readFileSync(file, "utf-8");
     content = replaceSimpleColorValues(content, isCSS);
-    content = replaceCSSVariables(content, isCSS);
+    if (isCSS) {
+      content = replaceCSSVariables(content);
+    }
     fs.writeFileSync(file, content);
   }
 
@@ -162,7 +230,7 @@ function prependColorVarsBlock() {
   const colorsVarsBlock =
     `:root {\n` +
     Object.entries(colors)
-      .map(([name, color]) => `  ${varForName(name)}: ${color.hex()};`)
+      .map(([name, color]) => `  ${varForName(name)}: ${color};`)
       .join("\n") +
     `\n}\n\n`;
   fs.writeFileSync(
