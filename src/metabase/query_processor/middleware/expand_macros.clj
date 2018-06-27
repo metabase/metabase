@@ -8,7 +8,6 @@
    TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
    At some point this ought to be reworked to be case-insensitive and cleaned up."
   (:require [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [metabase.models
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
