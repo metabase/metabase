@@ -248,7 +248,7 @@ export default class Navbar extends Component {
           </Link>
           <Link to="collection/root" mx={1}>
             <Box p={1} bg="#69ABE6" className="text-bold rounded">
-              Saved items
+              {t`Collections`}
             </Box>
           </Link>
           <Tooltip tooltip={t`Reference`}>

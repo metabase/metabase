@@ -20,14 +20,14 @@ const CollectionItem = ({ collection, color, iconName = "all" }) => (
     hover={{ color: normal.blue }}
     color={color || normal.grey2}
   >
-    <Card p={1}>
+    <Box bg="#F4F6F8" p={1} mb={1}>
       <Flex align="center" py={1} key={`collection-${collection.id}`}>
         <Icon name={iconName} mx={1} color="#93B3C9" />
         <h4>
           <Ellipsified>{collection.name}</Ellipsified>
         </h4>
       </Flex>
-    </Card>
+    </Box>
   </Link>
 );
 
@@ -37,54 +37,41 @@ class CollectionList extends React.Component {
     const { collections, currentUser, isRoot } = this.props;
     return (
       <Box mb={2}>
-        <Grid>
-          {isRoot && (
-            <GridItem w={1 / 4} className="relative">
-              <CollectionDropTarget
-                collection={{ id: currentUser.personal_collection_id }}
-              >
-                <CollectionItem
-                  collection={{
-                    name: t`My personal collection`,
-                    id: currentUser.personal_collection_id,
-                  }}
-                  iconName="star"
-                />
-              </CollectionDropTarget>
-            </GridItem>
+        {isRoot && (
+          <CollectionDropTarget
+            collection={{ id: currentUser.personal_collection_id }}
+          >
+            <CollectionItem
+              collection={{
+                name: t`My personal collection`,
+                id: currentUser.personal_collection_id,
+              }}
+              iconName="star"
+            />
+          </CollectionDropTarget>
+        )}
+        {isRoot &&
+          currentUser.is_superuser && (
+            <CollectionItem
+              collection={{
+                name: t`Everyone else's personal collections`,
+                // Bit of a hack. The route /collection/users lists
+                // user collections but is not itself a colllection,
+                // but using the fake id users here works
+                id: "users",
+              }}
+              iconName="person"
+            />
           )}
-          {isRoot &&
-            currentUser.is_superuser && (
-              <GridItem w={1 / 4}>
-                <CollectionItem
-                  collection={{
-                    name: t`Everyone else's personal collections`,
-                    // Bit of a hack. The route /collection/users lists
-                    // user collections but is not itself a colllection,
-                    // but using the fake id users here works
-                    id: "users",
-                  }}
-                  iconName="person"
-                />
-              </GridItem>
-            )}
-          {collections
-            .filter(c => c.id !== currentUser.personal_collection_id)
-            .map(collection => (
-              <GridItem
-                w={1 / 4}
-                key={collection.id}
-                mb={1}
-                className="relative"
-              >
-                <CollectionDropTarget collection={collection}>
-                  <ItemDragSource item={collection}>
-                    <CollectionItem collection={collection} />
-                  </ItemDragSource>
-                </CollectionDropTarget>
-              </GridItem>
-            ))}
-        </Grid>
+        {collections
+          .filter(c => c.id !== currentUser.personal_collection_id)
+          .map(collection => (
+            <CollectionDropTarget collection={collection}>
+              <ItemDragSource item={collection}>
+                <CollectionItem collection={collection} />
+              </ItemDragSource>
+            </CollectionDropTarget>
+          ))}
       </Box>
     );
   }

@@ -168,69 +168,76 @@ class DefaultLanding extends React.Component {
                     )}
                   </PinDropTarget>
                 )}
-                {showCollectionList && (
-                  <Box>
-                    <Box mb={1}>
-                      <h4>{t`Collections`}</h4>
-                    </Box>
-                    <CollectionList
-                      collections={collections}
-                      isRoot={collectionId === "root"}
-                    />
-                  </Box>
-                )}
-                <Flex align="center" mb={2}>
-                  {unpinned.length > 0 && (
-                    <Box>
-                      <h4>{t`Saved here`}</h4>
+                <Flex>
+                  {showCollectionList && (
+                    <Box w={1 / 3}>
+                      <Box mb={1}>
+                        <h4>{t`Collections`}</h4>
+                      </Box>
+                      <CollectionList
+                        collections={collections}
+                        isRoot={collectionId === "root"}
+                      />
                     </Box>
                   )}
-                </Flex>
-                {unpinned.length > 0 ? (
-                  <PinDropTarget pinIndex={null} margin={8}>
-                    <Box w={2 / 3}>
-                      <Card
-                        mb={selected.length > 0 ? 5 : 2}
-                        style={{
-                          position: "relative",
-                          height: ROW_HEIGHT * unpinned.length,
-                        }}
-                      >
-                        <VirtualizedList
-                          items={unpinned}
-                          rowHeight={ROW_HEIGHT}
-                          renderItem={({ item, index }) => (
-                            <ItemDragSource item={item} selection={selection}>
-                              <NormalItem
-                                key={`${item.type}:${item.id}`}
-                                item={item}
-                                collection={collection}
-                                selection={selection}
-                                onToggleSelected={onToggleSelected}
-                                onMove={moveItems =>
-                                  this.setState({ moveItems })
-                                }
-                              />
-                            </ItemDragSource>
-                          )}
-                        />
-                      </Card>
-                    </Box>
-                  </PinDropTarget>
-                ) : (
-                  <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
-                    {({ hovered }) => (
-                      <div
-                        className={cx(
-                          "m2 flex layout-centered",
-                          hovered ? "text-brand" : "text-grey-2",
+                  <Box w={2 / 3} ml={2}>
+                    <Flex align="center" mb={2}>
+                      {unpinned.length > 0 && (
+                        <Box>
+                          <h4>{t`Dashboards questions and pulses`}</h4>
+                        </Box>
+                      )}
+                    </Flex>
+                    {unpinned.length > 0 ? (
+                      <PinDropTarget pinIndex={null} margin={8}>
+                        <Box>
+                          <Card
+                            mb={selected.length > 0 ? 5 : 2}
+                            style={{
+                              position: "relative",
+                              height: ROW_HEIGHT * unpinned.length,
+                            }}
+                          >
+                            <VirtualizedList
+                              items={unpinned}
+                              rowHeight={ROW_HEIGHT}
+                              renderItem={({ item, index }) => (
+                                <ItemDragSource
+                                  item={item}
+                                  selection={selection}
+                                >
+                                  <NormalItem
+                                    key={`${item.type}:${item.id}`}
+                                    item={item}
+                                    collection={collection}
+                                    selection={selection}
+                                    onToggleSelected={onToggleSelected}
+                                    onMove={moveItems =>
+                                      this.setState({ moveItems })
+                                    }
+                                  />
+                                </ItemDragSource>
+                              )}
+                            />
+                          </Card>
+                        </Box>
+                      </PinDropTarget>
+                    ) : (
+                      <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
+                        {({ hovered }) => (
+                          <div
+                            className={cx(
+                              "m2 flex layout-centered",
+                              hovered ? "text-brand" : "text-grey-2",
+                            )}
+                          >
+                            {t`Drag here to un-pin`}
+                          </div>
                         )}
-                      >
-                        {t`Drag here to un-pin`}
-                      </div>
+                      </PinDropTarget>
                     )}
-                  </PinDropTarget>
-                )}
+                  </Box>
+                </Flex>
               </Box>
             )}
             <BulkActionBar showing={selected.length > 0}>
