@@ -786,7 +786,7 @@
                                            ;; so `first` realises one element at a time
                                            ;; (no chunking).
                                            first))]
-    (do
+    (let [show (or show max-cards)]
       (log/infof (trs "Applying heuristic %s to %s.") (:rule rule) full-name)
       (log/infof (trs "Dimensions bindings:\n%s")
                  (->> context
@@ -797,10 +797,10 @@
                  (-> context :metrics u/pprint-to-str)
                  (-> context :filters u/pprint-to-str))
       (-> dashboard
-          (populate/create-dashboard (or show max-cards))
+          (populate/create-dashboard show)
           (assoc :related (related context rule)
-                 :more    (when (and (-> dashboard :cards count (> max-cards))
-                                     (not= show :all))
+                 :more    (when (and (not= show :all)
+                                     (-> dashboard :cards count (> show)))
                             (format "%s#show=all" (:url root))))))
     (throw (ex-info (trs "Can''t create dashboard for {0}" full-name)
              {:root            root
