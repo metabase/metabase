@@ -211,11 +211,8 @@
   (let [user (or (db/select-one [User :id :last_login] :email email)
                  (user/create-new-ldap-auth-user! {:first_name first-name
                                                    :last_name  last-name
-                                                   :email      email
-                                                   :password   password}))]
+                                                   :email      email}))]
     (u/prog1 user
-      (when password
-        (user/set-password! (:id user) password))
       (when (ldap-group-sync)
         (let [special-ids #{(:id (group/admin)) (:id (group/all-users))}
               current-ids (set (map :group_id (db/select ['PermissionsGroupMembership :group_id] :user_id (:id user))))
