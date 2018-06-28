@@ -112,15 +112,22 @@
    ;; We want to both generate as many cards as we can to catch all aberrations, but also make sure
    ;; that size limiting works.
    (and (valid-dashboard? (automagic-analysis entity {:cell-query cell-query :show :all}))
-        (let [dashboard (automagic-analysis entity {:cell-query cell-query :show 1})]
-          (assert (->> dashboard :ordered_cards (keep :card) count (>= 1)))
-          (valid-dashboard? dashboard)))))
+        (valid-dashboard? (automagic-analysis entity {:cell-query cell-query :show 1})))))
 
 (expect
   (with-rasta
     (with-dashboard-cleanup
       (->> (db/select Table :db_id (data/id))
            (every? test-automagic-analysis)))))
+
+(expect
+  (with-rasta
+    (with-dashboard-cleanup
+      (->> (automagic-analysis (Table (data/id :venues)) {:show 1})
+           :ordered_cards
+           (filter :card)
+           count
+           (= 1)))))
 
 (expect
   (with-rasta
