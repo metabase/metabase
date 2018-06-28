@@ -534,7 +534,7 @@
 (defn- singular-cell-dimensions
   [root]
   (letfn [(collect-dimensions [[op & args]]
-            (case (qp.util/normalize-token op)
+            (case (some-> op qp.util/normalize-token)
               :and (mapcat collect-dimensions args)
               :=   (filters/collect-field-references args)
               nil))]
