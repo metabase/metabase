@@ -103,7 +103,9 @@
                                      (partial ->field root)
                                      filters/field-reference->id))
                           join-enumeration)]
-    (tru "{0} by {1}" aggregations dimensions)))
+    (if dimensions
+      (tru "{0} by {1}" aggregations dimensions)
+      aggregations)))
 
 (def ^:private ^{:arglists '([x])} encode-base64-json
   (comp codec/base64-encode codecs/str->bytes json/encode))
