@@ -250,6 +250,32 @@ export class FieldValuesWidget extends Component {
       }
     }
 
+    let filterOption = (option, filterString) =>
+      (option[0] != null &&
+        String(option[0])
+          .toLowerCase()
+          .indexOf(filterString.toLowerCase()) === 0) ||
+      (option[1] != null &&
+        String(option[1])
+          .toLowerCase()
+          .indexOf(filterString.toLowerCase()) === 0);
+
+    if (field.isString() && this.hasList()) {
+      // fuzzy search
+      filterOption = (option, filterString) => {
+        return (
+          (option[0] != null &&
+            String(option[0])
+              .toLowerCase()
+              .indexOf(filterString.toLowerCase()) >= 0) ||
+          (option[1] != null &&
+            String(option[1])
+              .toLowerCase()
+              .indexOf(filterString.toLowerCase()) >= 0)
+        );
+      };
+    }
+
     let options = [];
     if (this.hasList()) {
       options = field.values;
@@ -307,16 +333,7 @@ export class FieldValuesWidget extends Component {
               {this.renderOptions(props)}
             </div>
           )}
-          filterOption={(option, filterString) =>
-            (option[0] != null &&
-              String(option[0])
-                .toLowerCase()
-                .indexOf(filterString.toLowerCase()) === 0) ||
-            (option[1] != null &&
-              String(option[1])
-                .toLowerCase()
-                .indexOf(filterString.toLowerCase()) === 0)
-          }
+          filterOption={filterOption}
           onInputChange={this.onInputChange}
           parseFreeformValue={v => {
             // trim whitespace

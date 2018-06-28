@@ -59,6 +59,28 @@ describe("FieldValuesWidget", () => {
         expect(component.find(TokenField).props().placeholder).toEqual(
           "Search the list",
         );
+
+        it("should have a fuzzy search", () => {
+          const component = mountFieldValuesWidget({ ...props });
+          expect(
+            component
+              .find(TokenField)
+              .props()
+              .filterOption(["test"], "test"),
+          ).toBe(true);
+          expect(
+            component
+              .find(TokenField)
+              .props()
+              .filterOption(["test"], "st"),
+          ).toBe(true);
+          expect(
+            component
+              .find(TokenField)
+              .props()
+              .filterOption(["test"], "sfsf"),
+          ).toBe(false);
+        });
       });
     });
     describe("has_field_values = search", () => {
@@ -105,6 +127,33 @@ describe("FieldValuesWidget", () => {
         expect(component.find(TokenField).props().placeholder).toEqual(
           "Search the list",
         );
+      });
+      it("shouldn't have a fuzzy search", () => {
+        const component = mountFieldValuesWidget({
+          field: mock(metadata.field(ORDERS_PRODUCT_FK_FIELD_ID), {
+            has_field_values: "list",
+            values: [[1234]],
+          }),
+        });
+
+        expect(
+          component
+            .find(TokenField)
+            .props()
+            .filterOption(["test"], "test"),
+        ).toBe(true);
+        expect(
+          component
+            .find(TokenField)
+            .props()
+            .filterOption(["test"], "st"),
+        ).toBe(false);
+        expect(
+          component
+            .find(TokenField)
+            .props()
+            .filterOption(["test"], "sfsf"),
+        ).toBe(false);
       });
     });
     describe("has_field_values = search", () => {
