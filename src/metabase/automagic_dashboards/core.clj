@@ -531,6 +531,19 @@
   (not (and (isa? base_type :type/Number)
             (= engine :druid))))
 
+(defn- singular-cell-dimensions
+  [root]
+  (letfn [(collect-dimensions [[op & args]]
+            (case (qp.util/normalize-token op)
+              :and (mapcat collect-dimensions args)
+              :=   (filters/collect-field-references args)
+              nil))]
+    (->> root
+         :cell-query
+         collect-dimensions
+         (map filters/field-reference->id)
+         set)))
+
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
@@ -549,25 +562,27 @@
                                  rules/max-score)
                              (/ score rules/max-score)))
         dimensions      (map (comp (partial into [:dimension]) first) dimensions)
-        used-dimensions (rules/collect-dimensions [dimensions metrics filters query])]
+        used-dimensions (rules/collect-dimensions [dimensions metrics filters query])
+        cell-dimension? (->> context :root singular-cell-dimensions)]
     (->> used-dimensions
          (map (some-fn #(get-in (:dimensions context) [% :matches])
                        (comp #(filter-tables % (:tables context)) rules/->entity)))
          (apply combo/cartesian-product)
-         (filter (fn [instantiations]
+         (map (partial zipmap used-dimensions))
+         (filter (fn [bindings]
                    (->> dimensions
-                        (map (comp (zipmap used-dimensions instantiations) second))
-                        (every? valid-breakout-dimension?))))
-         (map (fn [instantiations]
-                (let [bindings (zipmap used-dimensions instantiations)
-                      query    (if query
-                                 (build-query context bindings query)
-                                 (build-query context bindings
-                                              filters
-                                              metrics
-                                              dimensions
-                                              limit
-                                              order_by))]
+                        (map (comp bindings second))
+                        (every? (every-pred valid-breakout-dimension?
+                                            (complement (comp cell-dimension? id-or-name)))))))
+         (map (fn [bindings]
+                (let [query (if query
+                              (build-query context bindings query)
+                              (build-query context bindings
+                                           filters
+                                           metrics
+                                           dimensions
+                                           limit
+                                           order_by))]
                   (-> card
                       (instantiate-metadata context (->> metrics
                                                          (map :name)
@@ -702,13 +717,14 @@
         dashboard (make-dashboard root rule context)
         filters   (->> rule
                        :dashboard_filters
-                       (mapcat (comp :matches (:dimensions context))))
+                       (mapcat (comp :matches (:dimensions context)))
+                       (remove (comp (singular-cell-dimensions root) id-or-name)))
         cards     (make-cards context rule)]
     (when (or (not-empty cards)
               (-> rule :cards nil?))
       [(assoc dashboard
-         :filters  filters
-         :cards    cards)
+         :filters filters
+         :cards   cards)
        rule
        context])))
 
