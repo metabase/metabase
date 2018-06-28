@@ -215,7 +215,7 @@
                      (table-like? query)   (-> source ->root :full-name)
                      :else                 (question-description {:source source} query))
      :short-name   (source-name {:source source})
-     :url          (format "%sadhoc/%s" public-endpoint (encode-base64-json query))
+     :url          (format "%sadhoc/%s" public-endpoint (encode-base64-json (:dataset_query query)))
      :rules-prefix [(if (table-like? query)
                       "table"
                       "question")]}))
