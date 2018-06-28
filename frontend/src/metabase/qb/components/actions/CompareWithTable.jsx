@@ -11,14 +11,17 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 export default ({ question }: ClickActionProps): ClickAction[] => {
   const query = question.query();
-  if (
-    !(query instanceof StructuredQuery) ||
-    !query.isBareRows() ||
-    query.filters().length == 0
-  ) {
+  if (!(query instanceof StructuredQuery)) {
     return [];
   }
-  const tableId = question.query().tableId();
+  if (!query.isBareRows()) {
+    return [];
+  }
+  if (query.filters().length == 0) {
+    return [];
+  }
+
+  const tableId = query.tableId();
   return [
     {
       name: "xray-card",

@@ -405,6 +405,26 @@ export default class Question {
     }
   }
 
+  getComparisonDashboardUrl(filters /*?: Filter[] = []*/) {
+    let cellQuery = "";
+    if (filters.length > 0) {
+      const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
+      cellQuery = `/cell/${Card_DEPRECATED.utf8_to_b64url(
+        JSON.stringify(mbqlFilter),
+      )}`;
+    }
+    const questionId = this.id();
+    const tableId = this.query().tableId();
+    if (questionId != null && !isTransientId(questionId)) {
+      return `/auto/dashboard/table/${tableId}/compare/question/${questionId}${cellQuery}`;
+    } else {
+      const adHocQuery = Card_DEPRECATED.utf8_to_b64url(
+        JSON.stringify(this.card().dataset_query),
+      );
+      return `/auto/dashboard/table/${tableId}/compare/adhoc/${adHocQuery}${cellQuery}`;
+    }
+  }
+
   setResultsMetadata(resultsMetadata) {
     let metadataColumns = resultsMetadata && resultsMetadata.columns;
     let metadataChecksum = resultsMetadata && resultsMetadata.checksum;
