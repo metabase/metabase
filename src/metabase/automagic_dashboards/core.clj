@@ -129,7 +129,7 @@
   [segment]
   (let [table (-> segment :table_id Table)]
     {:entity       segment
-     :full-name    (tru "{0} in {1} segment" (:display_name table) (:name segment))
+     :full-name    (tru "{0} in the {1} segment" (:display_name table) (:name segment))
      :short-name   (:display_name table)
      :source       table
      :database     (:db_id table)

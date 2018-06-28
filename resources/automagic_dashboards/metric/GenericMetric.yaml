@@ -1,5 +1,5 @@
 title: A look at the [[this]]
-transient_title: Here's a quick look at your [[this]]
+transient_title: Here's a quick look at the [[this]]
 description: How it's distributed across time and other categories.
 applies_to: GenericTable
 metrics:
@@ -39,9 +39,9 @@ groups:
   - Geographical:
       title: The [[this]] by location
   - Categories:
-      title: How the [[this]] is distributed across different categories
+      title: How this metric is distributed across different categories
   - Numbers:
-      title: How the [[this]] is distributed across different numbers
+      title: How this metric is distributed across different numbers
   - LargeCategories:
       title: The top and bottom for the [[this]]
 dashboard_filters:

@@ -112,7 +112,7 @@ dashboard_filters:
 cards:
 # Overview
   - Rowcount:
-      title: The number of [[this.short-name]]
+      title: Total [[this.short-name]]
       visualization: scalar
       metrics: Count
       score: 100
@@ -132,7 +132,7 @@ cards:
       group: Overview
 # General
   - NumberDistribution:
-      title: How these [[this.short-name]] are distributed across [[GenericNumber]]
+      title: How [[this.short-name]] are distributed across [[GenericNumber]]
       dimensions:
         - GenericNumber:
             aggregation: default
@@ -141,7 +141,7 @@ cards:
       score: 90
       group: General
   - CountByCategoryMedium:
-      title: "These [[this.short-name]] per [[GenericCategoryMedium]]"
+      title: "[[this.short-name]] per [[GenericCategoryMedium]]"
       dimensions: GenericCategoryMedium
       metrics: Count
       visualization: row
@@ -151,7 +151,7 @@ cards:
       order_by:
         - Count: descending
   - CountByCategoryLarge:
-      title: "These [[this.short-name]] per [[GenericCategoryLarge]]"
+      title: "[[this.short-name]] per [[GenericCategoryLarge]]"
       dimensions: GenericCategoryLarge
       metrics: Count
       visualization: table
@@ -162,7 +162,7 @@ cards:
         - Count: descending
 # Geographical
   - CountByCountry:
-      title: "These [[this.short-name]] per country"
+      title: "[[this.short-name]] per country"
       metrics: Count
       dimensions: Country
       score: 90
@@ -173,7 +173,7 @@ cards:
       group: Geographical
       height: 6
   - CountByState:
-      title: "These [[this.short-name]] per state"
+      title: "[[this.short-name]] per state"
       metrics: Count
       dimensions: State
       score: 90
@@ -184,7 +184,7 @@ cards:
       group: Geographical
       height: 6
   - CountByCoords:
-      title: "These [[this.short-name]] by coordinates"
+      title: "[[this.short-name]] by coordinates"
       metrics: Count
       dimensions:
         - Long
@@ -195,14 +195,14 @@ cards:
       height: 6
 # By Time
   - CountByJoinDate:
-      title: "These [[this.short-name]] that have joined over time"
+      title: "[[this.short-name]] that have joined over time"
       visualization: line
       dimensions: JoinTimestamp
       metrics: Count
       score: 90
       group: ByTime
   - CountByJoinDate:
-      title: "These [[this.short-name]] that have joined over time"
+      title: "[[this.short-name]] that have joined over time"
       visualization: line
       dimensions: JoinDate
       metrics: Count
@@ -223,21 +223,21 @@ cards:
       score: 90
       group: ByTime
   - CountByTimestamp:
-      title: "These [[this.short-name]] by [[Timestamp]]"
+      title: "[[this.short-name]] by [[Timestamp]]"
       visualization: line
       dimensions: Timestamp
       metrics: Count
       score: 20
       group: ByTime
   - CountByTimestamp:
-      title: "These [[this.short-name]] by [[Timestamp]]"
+      title: "[[this.short-name]] by [[Timestamp]]"
       visualization: line
       dimensions: Date
       metrics: Count
       score: 20
       group: ByTime
   - NumberOverTime:
-      title: "These [[GenericNumber]] over time"
+      title: "[[GenericNumber]] over time"
       visualization: line
       dimensions: Timestamp
       metrics:
@@ -371,7 +371,7 @@ cards:
       group: ByTime
       x_label: "[[Timestamp]]"
   - DayOfWeekCreateDate:
-      title: Weekdays when these [[this.short-name]] were added
+      title: Weekdays when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateTimestamp:
@@ -381,7 +381,7 @@ cards:
       group: ByTime
       x_label: Created At by day of the week
   - DayOfWeekCreateDate:
-      title: Weekdays when these [[this.short-name]] were added
+      title: Weekdays when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -391,7 +391,7 @@ cards:
       group: ByTime
       x_label: Created At by day of the week
   - HourOfDayCreateDate:
-      title: Hours when these [[this.short-name]] were added
+      title: Hours when [[this.short-name]] were added
       visualization: bar
       dimensions:
       - CreateTimestamp:
@@ -401,7 +401,7 @@ cards:
       group: ByTime
       x_label: Created At by hour of the day
   - HourOfDayCreateDate:
-      title: Hours when these [[this.short-name]] were added
+      title: Hours when [[this.short-name]] were added
       visualization: bar
       dimensions:
       - CreateTime:
@@ -411,7 +411,7 @@ cards:
       group: ByTime
       x_label: Created At by hour of the day
   - DayOfMonthCreateDate:
-      title: Days when these [[this.short-name]] were added
+      title: Days when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateTimestamp:
@@ -421,7 +421,7 @@ cards:
       group: ByTime
       x_label: Created At by day of the month
   - DayOfMonthCreateDate:
-      title: Days when these [[this.short-name]] were added
+      title: Days when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -431,7 +431,7 @@ cards:
       group: ByTime
       x_label: Created At by day of the month
   - MonthOfYearCreateDate:
-      title: Months when these [[this.short-name]] were added
+      title: Months when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateTimestamp:
@@ -441,7 +441,7 @@ cards:
       group: ByTime
       x_label: Created At by month of the year
   - MonthOfYearCreateDate:
-      title: Months when these [[this.short-name]] were added
+      title: Months when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -451,7 +451,7 @@ cards:
       group: ByTime
       x_label: Created At by month of the year
   - QuerterOfYearCreateDate:
-      title: Quarters when these [[this.short-name]] were added
+      title: Quarters when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateTimestamp:
@@ -461,7 +461,7 @@ cards:
       group: ByTime
       x_label: Created At by quarter of the year
   - QuerterOfYearCreateDate:
-      title: Quarters when these [[this.short-name]] were added
+      title: Quarters when [[this.short-name]] were added
       visualization: bar
       dimensions:
         - CreateDate:
@@ -471,7 +471,7 @@ cards:
       group: ByTime
       x_label: Created At by quarter of the year
   - DayOfWeekJoinDate:
-      title: Weekdays when these [[this.short-name]] joined
+      title: Weekdays when [[this.short-name]] joined
       visualization: bar
       dimensions:
         - JoinTimestamp:
@@ -481,7 +481,7 @@ cards:
       group: ByTime
       x_label: Join date by day of the week
   - DayOfWeekJoinDate:
-      title: Weekdays when these [[this.short-name]] joined
+      title: Weekdays when [[this.short-name]] joined
       visualization: bar
       dimensions:
         - JoinDate:
@@ -491,7 +491,7 @@ cards:
       group: ByTime
       x_label: Join date by day of the week
   - HourOfDayJoinDate:
-      title: Hours when these [[this.short-name]] joined
+      title: Hours when [[this.short-name]] joined
       visualization: bar
       dimensions:
       - JoinTimestamp:
@@ -501,7 +501,7 @@ cards:
       group: ByTime
       x_label: Join date by hour of the day
   - HourOfDayJoinDate:
-      title: Hours when these [[this.short-name]] joined
+      title: Hours when [[this.short-name]] joined
       visualization: bar
       dimensions:
       - JoinTime:
@@ -511,7 +511,7 @@ cards:
       group: ByTime
       x_label: Join date by hour of the day
   - DayOfMonthJoinDate:
-      title: Days of the month when these [[this.short-name]] joined
+      title: Days of the month when [[this.short-name]] joined
       visualization: bar
       dimensions:
         - JoinTimestamp:
@@ -521,7 +521,7 @@ cards:
       group: ByTime
       x_label: Join date by day of the month
   - DayOfMonthJoinDate:
-      title: Days of the month when these [[this.short-name]] joined
+      title: Days of the month when [[this.short-name]] joined
       visualization: bar
       dimensions:
         - JoinDate:
@@ -531,7 +531,7 @@ cards:
       group: ByTime
       x_label: Join date by day of the month
   - MonthOfYearJoinDate:
-      title: Months when these [[this.short-name]] joined
+      title: Months when [[this.short-name]] joined
       visualization: bar
       dimensions:
         - JoinTimestamp:
@@ -541,7 +541,7 @@ cards:
       group: ByTime
       x_label: Join date by month of the year
   - MonthOfYearJoinDate:
-      title: Months when these [[this.short-name]] joined
+      title: Months when [[this.short-name]] joined
       visualization: bar
       dimensions:
         - JoinDate:
@@ -551,7 +551,7 @@ cards:
       group: ByTime
       x_label: Join date by month of the year
   - QuerterOfYearJoinDate:
-      title: Quarters when these [[this.short-name]] joined
+      title: Quarters when [[this.short-name]] joined
       visualization: bar
       dimensions:
         - JoinTimestamp:
@@ -561,7 +561,7 @@ cards:
       group: ByTime
       x_label: Join date by quarter of the year
   - QuerterOfYearJoinDate:
-      title: Quarters when these [[this.short-name]] joined
+      title: Quarters when [[this.short-name]] joined
       visualization: bar
       dimensions:
         - JoinDate:
