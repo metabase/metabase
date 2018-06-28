@@ -103,24 +103,28 @@
 ;;; |                                                POST /api/pulse                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private default-post-card-ref-validation-error
+  {:errors
+   {:cards (str "value must be an array. Each value must satisfy one of the following requirements: "
+                "1) value must be a map with the following keys "
+                "`(collection_id, description, display, id, include_csv, include_xls, name)` "
+                "2) value must be a map with the keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}})
+
 (expect
   {:errors {:name "value must be a non-blank string."}}
   ((user->client :rasta) :post 400 "pulse" {}))
 
 (expect
-  {:errors {:cards (str "value must be an array. Each value must be a map with the keys `id`, `include_csv`, and "
-                        "`include_xls`. The array cannot be empty.")}}
+  default-post-card-ref-validation-error
   ((user->client :rasta) :post 400 "pulse" {:name "abc"}))
 
 (expect
-  {:errors {:cards (str "value must be an array. Each value must be a map with the keys `id`, `include_csv`, and "
-                        "`include_xls`. The array cannot be empty.")}}
+  default-post-card-ref-validation-error
   ((user->client :rasta) :post 400 "pulse" {:name  "abc"
                                             :cards "foobar"}))
 
 (expect
-  {:errors {:cards (str "value must be an array. Each value must be a map with the keys `id`, `include_csv`, and "
-                        "`include_xls`. The array cannot be empty.")}}
+  default-post-card-ref-validation-error
   ((user->client :rasta) :post 400 "pulse" {:name  "abc"
                                             :cards ["abc"]}))
 
@@ -192,6 +196,42 @@
                                                                       {:id          (u/get-id card-2)
                                                                        :include_csv false
                                                                        :include_xls false}]
+                                                      :channels      [daily-email-channel]
+                                                      :skip_if_empty false})
+            pulse-response
+            (update :channels remove-extra-channels-fields))))))
+
+;; Create a pulse with a HybridPulseCard and a CardRef, PUT accepts this format, we should make sure POST does as well
+(tt/expect-with-temp [Card [card-1]
+                      Card [card-2 {:name        "The card"
+                                    :description "Info"
+                                    :display     :table}]]
+  (merge
+   pulse-defaults
+   {:name          "A Pulse"
+    :creator_id    (user->id :rasta)
+    :creator       (user-details (fetch-user :rasta))
+    :cards         (for [card [card-1 card-2]]
+                     (assoc (pulse-card-details card)
+                       :collection_id true))
+    :channels      [(merge pulse-channel-defaults
+                           {:channel_type  "email"
+                            :schedule_type "daily"
+                            :schedule_hour 12
+                            :recipients    []})]
+    :collection_id true})
+  (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+    (tt/with-temp Collection [collection]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      (tu/with-model-cleanup [Pulse]
+        (-> ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
+                                                      :collection_id (u/get-id collection)
+                                                      :cards         [{:id          (u/get-id card-1)
+                                                                       :include_csv false
+                                                                       :include_xls false}
+                                                                      (-> card-2
+                                                                          (select-keys [:id :name :description :display :collection_id])
+                                                                          (assoc :include_csv false, :include_xls false))]
                                                       :channels      [daily-email-channel]
                                                       :skip_if_empty false})
             pulse-response
@@ -273,23 +313,28 @@
 ;;; |                                               PUT /api/pulse/:id                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private default-put-card-ref-validation-error
+  {:errors
+   {:cards (str "value may be nil, or if non-nil, value must be an array. "
+                "Each value must satisfy one of the following requirements: "
+                "1) value must be a map with the following keys "
+                "`(collection_id, description, display, id, include_csv, include_xls, name)` "
+                "2) value must be a map with the keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}})
+
 (expect
   {:errors {:name "value may be nil, or if non-nil, value must be a non-blank string."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name 123}))
 
 (expect
-  {:errors {:cards (str "value may be nil, or if non-nil, value must be an array. Each value must be a map with the "
-                        "keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}}
+  default-put-card-ref-validation-error
   ((user->client :rasta) :put 400 "pulse/1" {:cards 123}))
 
 (expect
-  {:errors {:cards (str "value may be nil, or if non-nil, value must be an array. Each value must be a map with the "
-                        "keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}}
+  default-put-card-ref-validation-error
   ((user->client :rasta) :put 400 "pulse/1" {:cards "foobar"}))
 
 (expect
-  {:errors {:cards (str "value may be nil, or if non-nil, value must be an array. Each value must be a map with the "
-                        "keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}}
+  default-put-card-ref-validation-error
   ((user->client :rasta) :put 400 "pulse/1" {:cards ["abc"]}))
 
 (expect
@@ -341,6 +386,35 @@
             :skip_if_empty false})
           pulse-response
           (update :channels remove-extra-channels-fields)))))
+
+;; Can we add a card to an existing pulse that has a card?  Specifically this will include a HybridPulseCard (the
+;; original card associated with the pulse) and a CardRef (the new card)
+(tt/expect-with-temp [Pulse                 [pulse {:name "Original Pulse Name"}]
+                      Card                  [card-1 {:name        "Test"
+                                                     :description "Just Testing"}]
+                      PulseCard             [_      {:card_id  (u/get-id card-1)
+                                                     :pulse_id (u/get-id pulse)}]
+                      Card                  [card-2 {:name        "Test2"
+                                                     :description "Just Testing2"}]]
+  (merge
+   pulse-defaults
+   {:name          "Original Pulse Name"
+    :creator_id    (user->id :rasta)
+    :creator       (user-details (fetch-user :rasta))
+    :cards         (mapv (comp #(assoc % :collection_id true) pulse-card-details) [card-1 card-2])
+    :channels      []
+    :collection_id true})
+  (with-pulses-in-writeable-collection [pulse]
+    (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+      ;; The FE will include the original HybridPulseCard, similar to how the API returns the card via GET
+      (let [pulse-cards (:cards ((user->client :rasta) :get 200 (format "pulse/%d" (u/get-id pulse))))]
+        (-> ((user->client :rasta) :put 200 (format "pulse/%d" (u/get-id pulse))
+             {:cards (concat pulse-cards
+                             [{:id          (u/get-id card-2)
+                               :include_csv false
+                               :include_xls false}])})
+            pulse-response
+            (update :channels remove-extra-channels-fields))))))
 
 ;; Can we update *just* the Collection ID of a Pulse?
 (expect

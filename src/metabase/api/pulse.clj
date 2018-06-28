@@ -46,7 +46,7 @@
   "Create a new `Pulse`."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position]} :body}]
   {name                su/NonBlankString
-   cards               (su/non-empty [pulse/CardRef])
+   cards               (su/non-empty [pulse/CoercibleToCardRef])
    channels            (su/non-empty [su/Map])
    skip_if_empty       (s/maybe s/Bool)
    collection_id       (s/maybe su/IntGreaterThanZero)
@@ -79,7 +79,7 @@
   "Update a Pulse with `id`."
   [id :as {{:keys [name cards channels skip_if_empty collection_id], :as pulse-updates} :body}]
   {name          (s/maybe su/NonBlankString)
-   cards         (s/maybe (su/non-empty [pulse/CardRef]))
+   cards         (s/maybe (su/non-empty [pulse/CoercibleToCardRef]))
    channels      (s/maybe (su/non-empty [su/Map]))
    skip_if_empty (s/maybe s/Bool)
    collection_id (s/maybe su/IntGreaterThanZero)}
