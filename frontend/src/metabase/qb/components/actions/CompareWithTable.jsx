@@ -27,10 +27,10 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
 
       url: () =>
         question.card().id
-          ? `/api/automagic-dashboards/table/${tableId}/compare/question/${
+          ? `/auto/dashboard/table/${tableId}/compare/question/${
               question.card().id
             }`
-          : `/api/automagic-dashboards/table/${tableId}/compare/adhoc/${utf8_to_b64url(
+          : `/auto/dashboard/table/${tableId}/compare/adhoc/${utf8_to_b64url(
               JSON.stringify(question.card().dataset_query),
             )}`,
     },
