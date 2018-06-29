@@ -138,7 +138,9 @@ class Overworld extends React.Component {
           }}
         </CollectionItemsLoader>
 
-        <CollectionList collections={this.props.collections} />
+        <Box px={4} my={3}>
+          <CollectionList collections={this.props.collections} />
+        </Box>
 
         <Box pt={2} px={4}>
           <h4>{t`Our data`}</h4>
