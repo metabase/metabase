@@ -553,8 +553,7 @@
   (let [order_by        (build-order-by dimensions metrics order_by)
         metrics         (map (partial get (:metrics context)) metrics)
         filters         (cond-> (map (partial get (:filters context)) filters)
-                          (:query-filter context)
-                          (conj {:filter (:query-filter context)}))
+                          (:query-filter context) (conj {:filter (:query-filter context)}))
         score           (if query
                           score
                           (* (or (->> dimensions
@@ -711,7 +710,7 @@
    (-> rule
        (select-keys [:title :description :transient_title :groups])
        (instantiate-metadata context {})
-       (assoc :refinements (filters/inject-refinement (:query-filter root) (:cell-query root))))))
+       (assoc :refinements (:query-filter context)))))
 
 (s/defn ^:private apply-rule
   [root, rule :- rules/Rule]
@@ -869,8 +868,9 @@
 (defn- decompose-question
   [root question opts]
   (map #(automagic-analysis % (assoc opts
-                                :source   (:source root)
-                                :database (:database root)))
+                                :source       (:source root)
+                                :query-filter (:query-filter root)
+                                :database     (:database root)))
        (concat (collect-metrics root question)
                (collect-breakout-fields root question))))
 
@@ -981,7 +981,6 @@
        (merge (cond-> root
                 cell-query (merge {:url          cell-url
                                    :entity       (:source root)
-                                   :query-filter (qp.util/get-in-normalized query [:dataset_query :query :filter])
                                    :rules-prefix ["table"]}))
               opts))
       (let [opts (assoc opts :show :all)]
