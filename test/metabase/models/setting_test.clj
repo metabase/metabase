@@ -2,13 +2,14 @@
   (:require [clojure.core.memoize :as memoize]
             [expectations :refer :all]
             [honeysql.core :as hsql]
+            [metabase
+             [db :as mdb]
+             [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.test.util :refer :all]
-            [metabase.util :as u]
             [metabase.util
              [encryption :as encryption]
-             [encryption-test :as encryption-test]
-             [honeysql-extensions :as hx]]
+             [encryption-test :as encryption-test]]
             [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db]))
 
@@ -342,7 +343,13 @@
   "Simulate a different instance updating the value of `settings-last-updated` in the DB by updating its value without
   updating our locally cached value.."
   []
-  (db/update-where! Setting {:key settings-last-updated-key} :value (hx/cast :text (hsql/raw "current_timestamp"))))
+  (db/update-where! Setting {:key settings-last-updated-key}
+    :value (hsql/raw (case (mdb/db-type)
+                       ;; make it one second in the future so we don't end up getting an exact match when we try to test
+                       ;; to see if things update below
+                       :h2       "cast(dateadd('second', 1, current_timestamp) AS text)"
+                       :mysql    "cast((current_timestamp + interval 1 second) AS char)"
+                       :postgres "cast((current_timestamp + interval '1 second') AS text)"))))
 
 (defn- simulate-another-instance-updating-setting! [setting-name new-value]
   (db/update-where! Setting {:key (name setting-name)} :value new-value)
@@ -374,6 +381,9 @@
     (clear-settings-last-updated-value-in-db!)
     (toucan-name "Bird Can")
     (let [first-value (settings-last-updated-value-in-db)]
+      ;; MySQL only has the resolution of one second on the timestamps here so we should wait that long to make sure
+      ;; the second-value actually ends up being greater than the first
+      (Thread/sleep 1200)
       (toucan-name "Bird Can")
       (let [second-value (settings-last-updated-value-in-db)]
         ;; first & second values should be different, and first value should be "less than" the second value

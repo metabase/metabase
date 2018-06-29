@@ -39,12 +39,12 @@
             [environ.core :as env]
             [honeysql.core :as hsql]
             [metabase
+             [db :as mdb]
              [events :as events]
              [util :as u]]
             [metabase.util.honeysql-extensions :as hx]
             [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]
-            [metabase.db :as mdb]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -124,8 +124,7 @@
   (let [current-timestamp-as-string-honeysql (hx/cast (if (= (mdb/db-type) :mysql) :char :text)
                                                       (hsql/raw "current_timestamp"))]
     ;; attempt to UPDATE the existing row. If no row exists, `update-where!` will return false...
-    (or (db/debug-print-queries ; NOCOMMIT
-          (db/update-where! Setting {:key settings-last-updated-key} :value current-timestamp-as-string-honeysql))
+    (or (db/update-where! Setting {:key settings-last-updated-key} :value current-timestamp-as-string-honeysql)
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
         ;; try to INSERT it at the same time; one instance would fail because it would violate the PK constraint on
         ;; `key`, and throw a SQLException. As long as one instance updates the value, we are fine, so we can go ahead
@@ -157,11 +156,11 @@
     ;; if not, get the cached value of `settings-last-updated`, and if it exists...
     (when-let [last-known-update (core/get @cache settings-last-updated-key)]
       ;; compare it to the value in the DB. This is done be seeing whether a row exists
-      ;; WHERE CAST(value AS TIMESTAMP) > CAST(<local-value> AS TIMESTAMP)
+      ;; WHERE value > <local-value>
       (db/select-one Setting
         {:where [:and
                  [:= :key settings-last-updated-key]
-                 [:> (hx/cast :timestamp :value) (hx/cast :timestamp last-known-update)]]})))))
+                 [:> :value last-known-update]]})))))
 
 (def ^:private cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
