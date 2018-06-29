@@ -4,6 +4,8 @@ Enabling Google Sign-In or LDAP lets your team log in with a click instead of us
 
 ![Authentication](./images/authentication.png)
 
+If you'd like to have your users authenticate with SAML, we offer a paid feature that lets you do just that. [Learn more about authenticating with SAML](16-authenticating-with-saml.md)
+
 As time goes on we may add other auth providers. If you have a service you’d like to see work with Metabase please let us know by [filing an issue](http://github.com/metabase/metabase/issues/new).
 
 ### Enabling Google Sign-In
@@ -37,11 +39,11 @@ Click the `Configure` button in the LDAP section of the Authentication page, and
 
 Click the toggle at the top of the form to enable LDAP, then fill in the form with the information about your LDAP server.
 
-Metabase will pull out three main attributes from your LDAP directory - email (defaulting to the `mail` attribute), first name (defaulting to the `givenName` attribute) and last name (defaulting to the `sn` attribute). If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form. 
+Metabase will pull out three main attributes from your LDAP directory - email (defaulting to the `mail` attribute), first name (defaulting to the `givenName` attribute) and last name (defaulting to the `sn` attribute). If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form.
 
 ![Attributes](./images/ldap-attributes.png)
 
-If you have user groups in Metabase you are using to control access, it is often tedious to have to manually assign a user to a group after they're logged in via SSO. You can take advantage of the groups your LDAP directory uses by enabling Group Mappings, and specifying which LDAP group corresponds to which user group on your Metabase server. 
+If you have user groups in Metabase you are using to control access, it is often tedious to have to manually assign a user to a group after they're logged in via SSO. You can take advantage of the groups your LDAP directory uses by enabling Group Mappings, and specifying which LDAP group corresponds to which user group on your Metabase server.
 
 ---
 
