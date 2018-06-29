@@ -6,7 +6,8 @@
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cemerick.friend.credentials :as creds]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
@@ -33,7 +34,8 @@
             [metabase.util.date :as du]
             [toucan
              [db :as db]
-             [models :as models]]))
+             [models :as models]])
+  (:import java.util.UUID))
 
 ;;; # Migration Helpers
 
@@ -368,7 +370,6 @@
                            :active           true}
     :has_field_values "list"))
 
-
 ;; In v0.30.0 we switiched to making standard SQL the default for BigQuery; up until that point we had been using
 ;; BigQuery legacy SQL. For a while, we've supported standard SQL if you specified the case-insensitive `#standardSQL`
 ;; directive at the beginning of your query, and similarly allowed you to specify legacy SQL with the `#legacySQL`
@@ -391,3 +392,11 @@
               ;; and save the updated dataset_query map
               (db/update! Card (u/get-id card-id)
                 :dataset_query (assoc-in query [:native :query] updated-sql)))))))))
+
+;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
+;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
+;; disable passwords for Google authenticated users
+(defmigration ^{:author "senior", :added "0.30.0"} clear-ldap-user-local-passwords
+  (db/transaction
+    (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
+      (db/update! User (u/get-id user) :password (creds/hash-bcrypt (str (:password_salt user) (UUID/randomUUID)))))))

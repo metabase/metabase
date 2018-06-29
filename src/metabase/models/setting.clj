@@ -55,7 +55,7 @@
 (u/strict-extend (class Setting)
   models/IModel
   (merge models/IModelDefaults
-         {:types (constantly {:value :clob})}))
+         {:types (constantly {:value :encrypted-text})}))
 
 
 (def ^:private Type
@@ -301,8 +301,19 @@
 (defn- update-setting!
   "Update an existing Setting. Used internally by `set-string!` below; do not use directly."
   [setting-name new-value]
-  (db/update-where! Setting {:key setting-name}
-    :value new-value))
+  ;; This is indeed a very annoying way of having to do things, but `update-where!` doesn't call `pre-update` (in case
+  ;; it updates thousands of objects). So we need to manually trigger `pre-update` behavior by calling `do-pre-update`
+  ;; so that `value` can get encrypted if `MB_ENCRYPTION_SECRET_KEY` is in use. Then take that possibly-encrypted
+  ;; value and pass that into `update-where!`.
+  (let [maybe-encrypted-new-value (if (= setting-name settings-last-updated-key)
+                                    ;; one more caveat: do not encrypt the `settings-last-updated` setting,
+                                    ;; since we use it directly in queries for determining whether the cache
+                                    ;; is out of date.
+                                    new-value
+                                    ;; all other Settings are subject to encryption
+                                    (:value (models/do-pre-update Setting {:value new-value})))]
+    (db/update-where! Setting {:key setting-name}
+      :value maybe-encrypted-new-value)))
 
 (defn- set-new-setting!
   "Insert a new row for a Setting. Used internally by `set-string!` below; do not use directly."

@@ -6,8 +6,10 @@
             [metabase.db.migrations :as migrations]
             [metabase.models
              [card :refer [Card]]
-             [database :refer [Database]]]
+             [database :refer [Database]]
+             [user :refer [User]]]
             [metabase.util :as u]
+            [metabase.util.password :as upass]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -38,3 +40,23 @@
     (#'migrations/add-legacy-sql-directive-to-bigquery-sql-cards)
     (->> (db/select-field->field :name :dataset_query Card :id [:in (map u/get-id [card-1 card-2])])
          (m/map-vals #(update % :database integer?)))))
+
+;; Test clearing of LDAP user local passwords
+(expect
+  [false true]
+  (do
+    (tt/with-temp* [User [ldap-user {:email     "ldapuser@metabase.com"
+                                     :password  "something secret"
+                                     :ldap_auth true}]
+                    User [user      {:email    "notanldapuser@metabase.com"
+                                     :password "no change"}]]
+      (#'migrations/clear-ldap-user-local-passwords)
+      (let [get-pass-and-salt          #(db/select-one [User :password :password_salt] :id (u/get-id %))
+            {ldap-pass :password,
+             ldap-salt :password_salt} (get-pass-and-salt ldap-user)
+            {user-pass :password,
+             user-salt :password_salt} (get-pass-and-salt user)]
+        ;; The LDAP user password should be no good now that it's been cleared and replaced
+        [(upass/verify-password "something secret" ldap-salt ldap-pass)
+         ;; There should be no change for a non ldap user
+         (upass/verify-password "no change" user-salt user-pass)]))))
