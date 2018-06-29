@@ -52,7 +52,7 @@ export type NativeDatasetQuery = {
 export type WrappedDatasetQuery = {
   type: "wrapped",
   database: ?DatabaseId,
-  wrapped: WrappedQuery,
+  query: WrappedQuery,
   parameters?: Array<ParameterInstance>,
 }
 

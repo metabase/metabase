@@ -17,7 +17,7 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
 
   const settings : StateSerialized = visualizationSettings[COLUMNS_SETTINGS];
 
-  if(card.display !== SummaryTable.identifier || !isOk(settings)  || !(query instanceof StructuredQuery))
+  if(card.display !== SummaryTable.identifier || !isOk(settings))
     return [];
 
   const nameToTypeMap = getNameToTypeMap(fields);

@@ -46,16 +46,17 @@
 (defn- expand-card-source-tables
   "If `source-table` is a Card reference (a string like `card__100`) then replace that with appropriate
   `:source-query` information. Does nothing if `source-table` is a normal ID. Recurses for nested-nested queries."
-  [inner-query]
-  (let [source-table (qputil/get-normalized inner-query :source-table)]
-    (if-not (string? source-table)
+  [inner-query];; {:native
+  (let [source-table (qputil/get-normalized inner-query :source-table)
+        card-query (qputil/get-normalized inner-query :base-query)]
+    (if-not (or (string? source-table) (not (nil? card-query)))
       inner-query
       ;; (recursively) expand the source query
-      (let [source-query (expand-card-source-tables (if (string? source-table) (source-table-str->source-query source-table) source-table) )
-            ]
+      (let [source-query (expand-card-source-tables (if (nil? source-table)  card-query  (source-table-str->source-query source-table)))]
         (-> inner-query
             ;; remove `source-table` `card__id` key
             (qputil/dissoc-normalized :source-table)
+            (qputil/dissoc-normalized :base-query)
             ;; Add new `source-query` info in its place. Pass the database ID up the chain, removing it from the
             ;; source query
             (assoc

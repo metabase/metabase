@@ -2,7 +2,9 @@ import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import type {DatasetQuery, NativeDatasetQuery, WrappedDatasetQuery} from "metabase/meta/types/Card";
 import Question from "metabase-lib/lib/Question";
 import {StructuredDatasetQuery} from "metabase/meta/types/Card";
-import {AggregationClause, BreakoutClause} from "metabase/meta/types/Query";
+import {AggregationClause, BreakoutClause, NativeQuery, StructuredQuery} from "metabase/meta/types/Query";
+import type {ParameterInstance} from "metabase/meta/types/Parameter";
+import type {DatabaseId} from "metabase/meta/types/Database";
 // import {WrappedDatasetQuery} from "metabase/meta/types/Card";
 
 const WRAPPED_QUERY_TEMPLATE: StructuredDatasetQuery = {
@@ -35,6 +37,7 @@ const wrapQuery = (query: DatasetQuery,     aggregation: AggregationClause,
   if(query.type === 'wrapped')
     return query;
 
-  return {...query, native : undefined,  type: 'query', query: { source_table: query.native || query.query, aggregation, breakout }};
+  const wrapped = {base_query : query.query || query.native, aggregation, breakout};
+  return {database : query.database, parameters : query.parameters, query : wrapped,  type: "query"};
 
 };

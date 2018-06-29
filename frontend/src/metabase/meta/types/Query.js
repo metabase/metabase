@@ -81,7 +81,7 @@ export type StructuredQuery = {
 };
 
 export type WrappedQuery = {
-  source_table: NativeQuery | StructuredQuery,
+  base_query: NativeQuery | StructuredQuery,
   aggregation?: AggregationClause,
   breakout?: BreakoutClause,
 }
