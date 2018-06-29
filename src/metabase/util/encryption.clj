@@ -87,7 +87,7 @@
            (log/error
             (trs "Cannot decrypt encrypted credentials. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?")
             (.getMessage e)
-            (u/filtered-stacktrace e))
+            (u/pprint-to-str (u/filtered-stacktrace e)))
            ;; otherwise return S without decrypting. It's probably not decrypted in the first place
            s)))
      s)))

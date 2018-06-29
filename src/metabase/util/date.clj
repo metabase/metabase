@@ -1,4 +1,5 @@
 (ns metabase.util.date
+  "Utility functions for working with datetimes of different types, and other related tasks."
   (:require [clj-time
              [coerce :as coerce]
              [core :as t]
