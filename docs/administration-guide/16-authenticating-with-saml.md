@@ -1,4 +1,6 @@
-## Authenticating with SAML (paid feature)
+## Authenticating with SAML
+
+**This is a paid feature of Metabase.** To find out more, visit the [Metabase Store](https://store.metabase.com/).
 
 Connecting Metabase to your SAML identity provider lets your team access Metabase with ease through SSO.
 
