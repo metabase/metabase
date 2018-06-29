@@ -452,12 +452,6 @@ class CollectionLanding extends React.Component {
 
             <Flex ml="auto">
               {currentCollection &&
-                currentCollection.can_write && (
-                  <Box ml={1}>
-                    <NewObjectMenu collectionId={collectionId} />
-                  </Box>
-                )}
-              {currentCollection &&
                 currentCollection.can_write &&
                 !currentCollection.personal_owner_id && (
                   <Box ml={1}>
@@ -492,29 +486,6 @@ const CollectionSectionHeading = ({ children }) => (
   <h5 className="text-uppercase" style={{ color: "#93A1AB", fontWeight: 900 }}>
     {children}
   </h5>
-);
-
-const NewObjectMenu = ({ collectionId }) => (
-  <EntityMenu
-    items={[
-      {
-        title: t`New dashboard`,
-        icon: "dashboard",
-        link: Urls.newDashboard(collectionId),
-      },
-      {
-        title: t`New pulse`,
-        icon: "pulse",
-        link: Urls.newPulse(collectionId),
-      },
-      {
-        title: t`New collection`,
-        icon: "all",
-        link: Urls.newCollection(collectionId),
-      },
-    ]}
-    triggerIcon="add"
-  />
 );
 
 const CollectionEditMenu = ({ isRoot, collectionId }) => (

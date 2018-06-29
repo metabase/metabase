@@ -9,12 +9,20 @@ import { space, width } from "styled-system";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
+import * as Urls from "metabase/lib/urls";
+import { normal, saturated } from "metabase/lib/colors";
+
 import Button from "metabase/components/Button.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import Tooltip from "metabase/components/Tooltip";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
+
+import Modal from "metabase/components/Modal";
+
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
@@ -44,11 +52,20 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
+const DefaultSearchColor = "#60A6E4";
+const ActiveSearchColor = "#7bb7ec";
+
 const SearchWrapper = Flex.extend`
-  ${width} border-radius: 6px;
+  ${width} background-color: ${props =>
+      props.active ? ActiveSearchColor : DefaultSearchColor};
+  border-radius: 6px;
   align-items: center;
-  border: 1px solid transparent;
+  color: white;
+  border: 1px solid ${props => (props.active ? "#4894d8" : "transparent")};
   transition: background 300ms ease-in;
+  &:hover {
+    background-color: ${ActiveSearchColor};
+  }
 `;
 
 const SearchInput = styled.input`
@@ -94,9 +111,6 @@ class SearchBar extends React.Component {
         handleDismissal={() => this.setState({ active: false })}
       >
         <SearchWrapper
-          className={cx("search-bar", {
-            "search-bar--active": this.state.active,
-          })}
           onClick={() => this.setState({ active: true })}
           active={this.state.active}
         >
@@ -122,6 +136,9 @@ class SearchBar extends React.Component {
     );
   }
 }
+
+const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
+const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
@@ -194,6 +211,7 @@ export default class Navbar extends Component {
 
           <ProfileLink {...this.props} />
         </div>
+        {this.renderModal()}
       </nav>
     );
   }
@@ -212,13 +230,14 @@ export default class Navbar extends Component {
             </Link>
           </li>
         </ul>
+        {this.renderModal()}
       </nav>
     );
   }
 
   renderMainNav() {
     return (
-      <Flex className="Nav relative bg-brand text-white z4" align="center">
+      <Flex className="relative bg-brand text-white z4" align="center">
         <Box>
           <Link
             to="/"
@@ -240,31 +259,74 @@ export default class Navbar extends Component {
             />
           </Box>
         </Flex>
-        <Flex align="center" ml="auto" className="z4">
-          <Link to="question/new" mx={1}>
-            <Button medium color="#509ee3">
-              New question
-            </Button>
+        <Flex ml="auto" align="center" className="relative z2">
+          <Link to={Urls.newQuestion()} mx={2}>
+            <Button medium>{t`Ask a question`}</Button>
           </Link>
-          <Link to="collection/root" mx={1}>
-            <Box p={1} bg="#69ABE6" className="text-bold rounded">
-              {t`Collections`}
+          <PopoverWithTrigger
+            ref={e => (this._newPopover = e)}
+            triggerElement={
+              <Tooltip tooltip="Create a dashboard or pulse">
+                <Icon name="add" mx={2} />
+              </Tooltip>
+            }
+          >
+            <Box py={2} px={3} style={{ minWidth: 300 }}>
+              <Box my={2} />
+              <Box my={2}>
+                <Flex
+                  align="center"
+                  style={{ color: normal.blue }}
+                  className="cursor-pointer"
+                  onClick={() => this.setModal(MODAL_NEW_DASHBOARD)}
+                >
+                  <Icon name="dashboard" mr={1} />
+                  <h3>{t`New dashboard`}</h3>
+                </Flex>
+              </Box>
+              <Box my={2}>
+                <Link to={Urls.newPulse()}>
+                  <Flex align="center" style={{ color: saturated.yellow }}>
+                    <Icon name="pulse" mr={1} />
+                    <h3>{t`New pulse`}</h3>
+                  </Flex>
+                </Link>
+              </Box>
             </Box>
-          </Link>
+          </PopoverWithTrigger>
           <Tooltip tooltip={t`Reference`}>
-            <Link to="reference" mx={1}>
+            <Link to="reference" mx={2}>
               <Icon name="reference" />
             </Link>
           </Tooltip>
           <Tooltip tooltip={t`Activity`}>
-            <Link to="activity" mx={1}>
+            <Link to="activity" mx={2}>
               <Icon name="bell" />
             </Link>
           </Tooltip>
           <ProfileLink {...this.props} />
         </Flex>
+        {this.renderModal()}
       </Flex>
     );
+  }
+
+  renderModal() {
+    const { modal } = this.state;
+    if (modal) {
+      return (
+        <Modal onClose={() => this.setState({ modal: null })}>
+          {modal === MODAL_NEW_DASHBOARD ? (
+            <CreateDashboardModal
+              createDashboard={this.props.createDashboard}
+              onClose={() => this.setState({ modal: null })}
+            />
+          ) : null}
+        </Modal>
+      );
+    } else {
+      return null;
+    }
   }
 
   render() {
