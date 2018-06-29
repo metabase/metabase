@@ -4,14 +4,11 @@
             [honeysql.core :as hsql]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.test.util :refer :all]
-<<<<<<< HEAD
-            [metabase.util.honeysql-extensions :as hx]
-=======
             [metabase.util :as u]
             [metabase.util
              [encryption :as encryption]
-             [encryption-test :as encryption-test]]
->>>>>>> master
+             [encryption-test :as encryption-test]
+             [honeysql-extensions :as hx]]
             [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db]))
 

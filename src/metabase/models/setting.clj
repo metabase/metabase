@@ -44,6 +44,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]
+            [metabase.db :as mdb]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -119,17 +120,22 @@
   "Update the value of `settings-last-updated` in the DB; if the row does not exist, insert one."
   []
   (log/debug (trs "Updating value of settings-last-updated in DB..."))
-  ;; attempt to UPDATE the existing row. If no row exists, `update-where!` will return false...
-  (or (db/update-where! Setting {:key settings-last-updated-key} :value (hx/cast :text (hsql/raw "current_timestamp")))
-      ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
-      ;; try to INSERT it at the same time; one instance would fail because it would violate the PK constraint on
-      ;; `key`, and throw a SQLException. As long as one instance updates the value, we are fine, so we can go ahead
-      ;; and ignore that Exception if one is thrown.
-      (try
-        (db/insert! Setting :key settings-last-updated-key, :value (hx/cast :text (hsql/raw "current_timestamp")))
-        (catch java.sql.SQLException e
-          ;; go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
-          (log/error (tru "Error inserting new Setting:") (with-out-str (jdbc/print-sql-exception-chain e))))))
+  ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
+  (let [current-timestamp-as-string-honeysql (hx/cast (if (= (mdb/db-type) :mysql) :char :text)
+                                                      (hsql/raw "current_timestamp"))]
+    ;; attempt to UPDATE the existing row. If no row exists, `update-where!` will return false...
+    (or (db/debug-print-queries ; NOCOMMIT
+          (db/update-where! Setting {:key settings-last-updated-key} :value current-timestamp-as-string-honeysql))
+        ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
+        ;; try to INSERT it at the same time; one instance would fail because it would violate the PK constraint on
+        ;; `key`, and throw a SQLException. As long as one instance updates the value, we are fine, so we can go ahead
+        ;; and ignore that Exception if one is thrown.
+        (try
+          ;; Use `simple-insert!` because we do *not* want to trigger pre-insert behavior, such as encrypting `:value`
+          (db/simple-insert! Setting :key settings-last-updated-key, :value current-timestamp-as-string-honeysql)
+          (catch java.sql.SQLException e
+            ;; go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
+            (log/error (tru "Error inserting new Setting:") (with-out-str (jdbc/print-sql-exception-chain e)))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
   (swap! cache assoc settings-last-updated-key (db/select-one-field :value Setting :key settings-last-updated-key)))
@@ -301,17 +307,13 @@
 (defn- update-setting!
   "Update an existing Setting. Used internally by `set-string!` below; do not use directly."
   [setting-name new-value]
+  (assert (not= setting-name settings-last-updated-key)
+    (tru "You cannot update `settings-last-updated` yourself! This is done automatically."))
   ;; This is indeed a very annoying way of having to do things, but `update-where!` doesn't call `pre-update` (in case
   ;; it updates thousands of objects). So we need to manually trigger `pre-update` behavior by calling `do-pre-update`
   ;; so that `value` can get encrypted if `MB_ENCRYPTION_SECRET_KEY` is in use. Then take that possibly-encrypted
   ;; value and pass that into `update-where!`.
-  (let [maybe-encrypted-new-value (if (= setting-name settings-last-updated-key)
-                                    ;; one more caveat: do not encrypt the `settings-last-updated` setting,
-                                    ;; since we use it directly in queries for determining whether the cache
-                                    ;; is out of date.
-                                    new-value
-                                    ;; all other Settings are subject to encryption
-                                    (:value (models/do-pre-update Setting {:value new-value})))]
+  (let [{maybe-encrypted-new-value :value} (models/do-pre-update Setting {:value new-value})]
     (db/update-where! Setting {:key setting-name}
       :value maybe-encrypted-new-value)))
 
