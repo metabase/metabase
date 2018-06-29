@@ -20,10 +20,6 @@ dimensions:
   - Source:
       field_type: GenericTable.Source
       score: 100
-  - GenericCategorySmall:
-      field_type: GenericTable.Category
-      score: 80
-      max_cardinality: 5
   - GenericCategoryMedium:
       field_type: GenericTable.Category
       score: 75
