@@ -34,6 +34,7 @@
              [core :as core]
              [string :as str]]
             [clojure.core.memoize :as memoize]
+            [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [environ.core :as env]
             [honeysql.core :as hsql]
@@ -126,7 +127,9 @@
       ;; and ignore that Exception if one is thrown.
       (try
         (db/insert! Setting :key settings-last-updated-key, :value (hx/cast :text (hsql/raw "current_timestamp")))
-        (catch java.sql.SQLException _)))
+        (catch java.sql.SQLException e
+          ;; go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
+          (log/error (tru "Error inserting new Setting:") (with-out-str (jdbc/print-sql-exception-chain e))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
   (swap! cache assoc settings-last-updated-key (db/select-one-field :value Setting :key settings-last-updated-key)))
