@@ -44,7 +44,7 @@
       form
       (:filter (db/select-one-field :definition Segment :id (u/get-id (second form)))))))
 
-(defn- segment-parse-filter [form]
+(defn segment-parse-filter [form]
   (when (non-empty-clause? form)
     (if (is-clause? #{:and :or :not} form)
       ;; for forms that start with AND/OR/NOT recursively parse the subclauses and put them nicely back into their

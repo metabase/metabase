@@ -197,6 +197,7 @@
     {:entity       query
      :source       source
      :database     (:database-id query)
+     :query-filter (qp.util/get-in-normalized query [:dataset_query :query :filter])
      :full-name    (cond
                      (native-query? query) (tru "Native query")
                      (table-like? query)   (-> source ->root :full-name)
@@ -512,8 +513,7 @@
   (let [order_by        (build-order-by dimensions metrics order_by)
         metrics         (map (partial get (:metrics context)) metrics)
         filters         (cond-> (map (partial get (:filters context)) filters)
-                          (:query-filter context)
-                          (conj {:filter (:query-filter context)}))
+                          (:query-filter context) (conj {:filter (:query-filter context)}))
         score           (if query
                           score
                           (* (or (->> dimensions

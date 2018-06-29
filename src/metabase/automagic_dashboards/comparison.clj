@@ -9,7 +9,7 @@
             [metabase.models
              [metric :refer [Metric]]
              [table :refer [Table]]]
-            [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses]]
+            [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses segment-parse-filter]]
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
             [metabase.util :as u]
@@ -165,6 +165,7 @@
   [segment]
   (->> segment
        :query-filter
+       segment-parse-filter
        filters/collect-field-references
        (map filters/field-reference->id)
        distinct
