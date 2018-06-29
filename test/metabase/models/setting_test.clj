@@ -2,6 +2,10 @@
   (:require [expectations :refer :all]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.test.util :refer :all]
+            [metabase.util :as u]
+            [metabase.util
+             [encryption :as encryption]
+             [encryption-test :as encryption-test]]
             [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db]))
 
@@ -167,7 +171,12 @@
 
 ;; all
 (expect
-  {:key :test-setting-2, :value "TOUCANS", :description "Test setting - this only shows up in dev (2)",  :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
+  {:key            :test-setting-2
+   :value          "TOUCANS"
+   :description    "Test setting - this only shows up in dev (2)"
+   :is_env_setting false
+   :env_name       "MB_TEST_SETTING_2"
+   :default        "[Default Value]"}
   (do (set-settings! nil "TOUCANS")
       (some (fn [setting]
               (when (re-find #"^test-setting-2$" (name (:key setting)))
@@ -176,8 +185,18 @@
 
 ;; all
 (expect
-  [{:key :test-setting-1, :value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_1", :description "Test setting - this only shows up in dev (1)", :default "Using $MB_TEST_SETTING_1"}
-   {:key :test-setting-2, :value "S2", :is_env_setting false, :env_name "MB_TEST_SETTING_2",  :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
+  [{:key            :test-setting-1
+    :value          nil
+    :is_env_setting true
+    :env_name       "MB_TEST_SETTING_1"
+    :description    "Test setting - this only shows up in dev (1)"
+    :default        "Using $MB_TEST_SETTING_1"}
+   {:key            :test-setting-2
+    :value          "S2"
+    :is_env_setting false,
+    :env_name       "MB_TEST_SETTING_2"
+    :description    "Test setting - this only shows up in dev (2)"
+    :default        "[Default Value]"}]
   (do (set-settings! nil "S2")
       (for [setting (setting/all)
             :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
@@ -269,3 +288,32 @@
     (toucan-name "Banana Beak")
     ;; ok, make sure the setting was set
     (toucan-name)))
+
+
+;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
+
+(defn- actual-value-in-db [setting-key]
+  (-> (db/query {:select [:value]
+                 :from   [:setting]
+                 :where  [:= :key (name setting-key)]})
+      first :value u/jdbc-clob->str))
+
+;; If encryption is *enabled*, make sure Settings get saved as encrypted!
+(expect
+  (encryption-test/with-secret-key "ABCDEFGH12345678"
+    (toucan-name "Sad Can")
+    (u/base64-string? (actual-value-in-db :toucan-name))))
+
+;; make sure it can be decrypted as well...
+(expect
+  "Sad Can"
+  (encryption-test/with-secret-key "12345678ABCDEFGH"
+    (toucan-name "Sad Can")
+    (encryption/decrypt (actual-value-in-db :toucan-name))))
+
+;; But if encryption is not enabled, of course Settings shouldn't get saved as encrypted.
+(expect
+  "Sad Can"
+  (encryption-test/with-secret-key nil
+    (toucan-name "Sad Can")
+    (actual-value-in-db :toucan-name)))
