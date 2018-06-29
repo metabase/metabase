@@ -186,6 +186,7 @@ class DefaultLanding extends React.Component {
 
                   {showCollectionList && (
                     <CollectionList
+                      currentCollection={collection}
                       collections={collections}
                       isRoot={collectionId === "root"}
                     />

@@ -4,8 +4,8 @@ import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
 
 import { normal } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
 
-import Card from "metabase/components/Card";
 import Ellipsified from "metabase/components/Ellipsified";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
@@ -34,7 +34,7 @@ const CollectionItem = ({ collection, color, iconName = "all" }) => (
 @connect(({ currentUser }) => ({ currentUser }), null)
 class CollectionList extends React.Component {
   render() {
-    const { collections, currentUser, isRoot } = this.props;
+    const { collections, currentUser, currentCollection, isRoot } = this.props;
     return (
       <Box>
         <Grid>
@@ -79,6 +79,22 @@ class CollectionList extends React.Component {
                 </CollectionDropTarget>
               </GridItem>
             ))}
+          {currentCollection && (
+            <GridItem w={1 / 4}>
+              <Link
+                to={Urls.newCollection(currentCollection.id)}
+                color={normal.grey2}
+                hover={{ color: normal.blue }}
+              >
+                <Box p={2} className="bordered rounded">
+                  <Flex align="center" py={1}>
+                    <Icon name="add" />
+                    <h4>{t`New collection`}</h4>
+                  </Flex>
+                </Box>
+              </Link>
+            </GridItem>
+          )}
         </Grid>
       </Box>
     );
