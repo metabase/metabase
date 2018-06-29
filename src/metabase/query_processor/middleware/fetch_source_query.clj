@@ -51,7 +51,8 @@
     (if-not (string? source-table)
       inner-query
       ;; (recursively) expand the source query
-      (let [source-query (expand-card-source-tables (source-table-str->source-query source-table))]
+      (let [source-query (expand-card-source-tables (if (string? source-table) (source-table-str->source-query source-table) source-table) )
+            ]
         (-> inner-query
             ;; remove `source-table` `card__id` key
             (qputil/dissoc-normalized :source-table)

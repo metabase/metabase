@@ -4,6 +4,7 @@
 import type { DatabaseId } from "./Database";
 import type { StructuredQuery, NativeQuery } from "./Query";
 import type { Parameter, ParameterInstance } from "./Parameter";
+import type {WrappedQuery} from "metabase/meta/types/Query";
 
 export type CardId = number;
 
@@ -48,7 +49,14 @@ export type NativeDatasetQuery = {
   parameters?: Array<ParameterInstance>,
 };
 
+export type WrappedDatasetQuery = {
+  type: "wrapped",
+  database: ?DatabaseId,
+  wrapped: WrappedQuery,
+  parameters?: Array<ParameterInstance>,
+}
+
 /**
  * All possible formats for `dataset_query`
  */
-export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
+export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery | WrappedDatasetQuery;

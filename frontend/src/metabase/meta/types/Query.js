@@ -80,6 +80,12 @@ export type StructuredQuery = {
   fields?: FieldsClause,
 };
 
+export type WrappedQuery = {
+  source_table: NativeQuery | StructuredQuery,
+  aggregation?: AggregationClause,
+  breakout?: BreakoutClause,
+}
+
 export type AggregationClause =
   | Aggregation // @deprecated: aggregation clause is now an array
   | Array<Aggregation>;

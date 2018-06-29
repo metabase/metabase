@@ -53,6 +53,8 @@ import {
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
+import Aggregation from "metabase-lib/lib/queries/Aggregation";
+import {WrappedQuery} from "metabase-lib/lib/queries/WrappedQuery";
 
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
@@ -155,7 +157,7 @@ export default class Question {
   query(): Query {
     const datasetQuery = this._card.dataset_query;
 
-    for (const QueryClass of [StructuredQuery, NativeQuery]) {
+    for (const QueryClass of [StructuredQuery, NativeQuery, WrappedQuery]) {
       if (QueryClass.isDatasetQueryType(datasetQuery)) {
         return new QueryClass(this, datasetQuery);
       }

@@ -8,6 +8,7 @@ import SummaryTable, {COLUMNS_SETTINGS} from "metabase/visualizations/visualizat
 import StateSerialized, {GROUPS_SOURCES, VALUES_SOURCES} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import {WrappedQuery} from "metabase-lib/lib/queries/WrappedQuery";
 
 
 export const getAdditionalQueries = (visualizationSettings) => (card:Card, fields) => (
@@ -33,14 +34,14 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
   const totals = settings[VALUES_SOURCES].filter(p => canTotalize(nameToTypeMap[p])).map(createTotal);
   const breakouts = settings[GROUPS_SOURCES].map(createLiteral);
 
-  const basedQuery = buildQuery(query.clearBreakouts().clearAggregations(), totals);
+  // const basedQuery = );// buildQuery(query.clearBreakouts().clearAggregations(), totals);
   const queriesWithBreakouts = breakouts.reduce(({acc, prev}, br) => {
-    const next = prev.addBreakout(br);
-    const newAcc = showTotalsFor(br[1]) ? [ prev, ...acc] : acc;
+    const next = [... prev, br];
+    const newAcc = showTotalsFor(br[1]) ? [ new WrappedQuery(query.question(), query.datasetQuery(), totals,prev), ...acc] : acc;
     return {acc : newAcc, prev:next};
-  }, {acc:[], prev:basedQuery});
+  }, {acc:[], prev:[]});
 
-
+// queriesWithBreakouts.acc
   return queriesWithBreakouts.acc.map(p => new Question({}, {
     dataset_query: p.datasetQuery(),
   }).query());

@@ -12,7 +12,8 @@
 (defn mbql-query?
   "Is the given query an MBQL query?"
   [query]
-  (= :query (keyword (:type query))))
+  (let [kw (keyword (:type query))]
+    (or (= :query kw) (= :wrapped kw))))
 
 (defn datetime-field?
   "Is FIELD a `DateTime` field?"
