@@ -88,7 +88,7 @@ class CollectionList extends React.Component {
               >
                 <Box p={2} className="bordered rounded">
                   <Flex align="center" py={1}>
-                    <Icon name="add" />
+                    <Icon name="add" mr={1} bordered />
                     <h4>{t`New collection`}</h4>
                   </Flex>
                 </Box>
