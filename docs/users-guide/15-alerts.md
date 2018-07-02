@@ -3,7 +3,7 @@
 Whether you're keeping track of revenue, users, or negative reviews, there are often times when you want to be alerted about something. Metabase has a few different kinds of alerts you can set up, and you can choose to be notified via email or Slack.
 
 ### Getting alerts
-To start using alerts, someone on your team who's an administrator will need to make sure that [email integration](../administrator-guide/02-setting-up-email.md) is set up first.
+To start using alerts, someone on your team who's an administrator will need to make sure that [email integration](../administration-guide/02-setting-up-email.md) is set up first.
 
 ### Types of alerts
 There are three kinds of things you can get alerted about in Metabase:
@@ -16,7 +16,7 @@ We'll go through these one by one.
 ### Goal line alerts
 This kind of alert is useful when you're doing things like tracking daily active users and you want to know when you reach a certain number of them, or when you're tracking orders per week and you want to know whenever that number ever goes below a certain threshold.
 
-To start, you'll need a line, area, or bar chart displaying a number over time. (If you need help with that, check out the page on [asking questions](04-asking-questions).)
+To start, you'll need a line, area, or bar chart displaying a number over time. (If you need help with that, check out the page on [asking questions](04-asking-questions.md).)
 
 Now we need to set up a goal line. To do that, open up the visualization settings by clicking the gear icon next to the dropdown where you chose your chart type. Then click on the Display tab, and turn on the "Show goal" setting. Choose a value for your goal and click Done.
 
