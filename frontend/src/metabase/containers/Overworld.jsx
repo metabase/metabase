@@ -99,10 +99,10 @@ class Overworld extends React.Component {
                 <Box mt={3} mb={1}>
                   <h4>{t`Pinned dashboards`}</h4>
                 </Box>
-                <Grid w={1 / 3}>
+                <Grid>
                   {pinnedDashboards.map(pin => {
                     return (
-                      <GridItem>
+                      <GridItem w={1 / 3}>
                         <Link
                           to={Urls.dashboard(pin.id)}
                           hover={{ color: normal.blue }}
