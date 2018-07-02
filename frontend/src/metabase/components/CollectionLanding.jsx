@@ -94,10 +94,6 @@ class DefaultLanding extends React.Component {
       onSelectNone();
     };
 
-    // Show the
-    const showCollectionList =
-      collectionId === "root" || collections.length > 0;
-
     return (
       <Box>
         <Box>

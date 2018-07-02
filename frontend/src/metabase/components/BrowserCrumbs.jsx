@@ -1,14 +1,9 @@
 import React from "react";
-import { Box, Flex } from "grid-styled";
+import { Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Subhead from "metabase/components/Subhead";
 
 // TODO: merge with Breadcrumbs
-
-const BrowseHeader = ({ children }) => (
-  <h2 style={{ fontWeight: 900 }}>{children}</h2>
-);
 
 const Crumb = ({ children }) => (
   <h5

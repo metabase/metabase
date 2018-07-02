@@ -54,10 +54,9 @@ export default class ProfileLink extends Component {
   }
 
   render() {
-    const { user, context } = this.props;
+    const { context } = this.props;
     const { modalOpen } = this.state;
     const { tag, date, ...versionExtra } = MetabaseSettings.get("version");
-    const isRoot = user.is_superuser;
     const admin = context === "admin";
     return (
       <Box>
