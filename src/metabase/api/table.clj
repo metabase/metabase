@@ -212,16 +212,11 @@
                 (update field :values fv/field-values->pairs)
                 field)))))
 
-(api/defendpoint GET "/:id/query_metadata"
-  "Get metadata about a `Table` us eful for running queries.
-   Returns DB, fields, field FKs, and field values.
-
-  By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case will
-  any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
-  [id include_sensitive_fields]
-  {include_sensitive_fields (s/maybe su/BooleanString)}
-  (let [table (api/read-check Table id)
-        driver (driver/database-id->driver (:db_id table))]
+(defn fetch-query-metadata
+  "Returns the query metadata used to power the query builder for the given table `table-or-table-id`"
+  [table include_sensitive_fields]
+  (api/read-check table)
+  (let [driver (driver/database-id->driver (:db_id table))]
     (-> table
         (hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
@@ -233,6 +228,16 @@
                           ;; Otherwise filter out all :sensitive fields
                           (partial filter (fn [{:keys [visibility_type]}]
                                             (not= (keyword visibility_type) :sensitive))))))))
+
+(api/defendpoint GET "/:id/query_metadata"
+  "Get metadata about a `Table` useful for running queries.
+   Returns DB, fields, field FKs, and field values.
+
+  By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case will
+  any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
+  [id include_sensitive_fields]
+  {include_sensitive_fields (s/maybe su/BooleanString)}
+  (fetch-query-metadata (Table id) include_sensitive_fields))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
