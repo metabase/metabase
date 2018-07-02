@@ -11,7 +11,7 @@
   [(s/one (s/constrained su/KeywordOrString
                          (comp #{:field-id :fk-> :field-literal} qp.util/normalize-token))
           "head")
-   s/Any])
+   (s/cond-pre s/Int su/KeywordOrString)])
 
 (def ^:private ^{:arglists '([form])} field-reference?
   "Is given form an MBQL field reference?"
@@ -25,7 +25,7 @@
 (defmethod field-reference->id :field-id
   [[_ id]]
   (if (sequential? id)
-    (second id)
+    (field-reference->id id)
     id))
 
 (defmethod field-reference->id :fk->
@@ -156,10 +156,10 @@
           remove-unqualified
           (sort-by interestingness >)
           (take max-filters)
-          (map #(assoc % :fk-map (build-fk-map fks %)))
           (reduce
            (fn [dashboard candidate]
-             (let [filter-id     (-> candidate hash str)
+             (let [filter-id     (-> candidate ((juxt :id :name :unit)) hash str)
+                   candidate     (assoc candidate :fk-map (build-fk-map fks candidate))
                    dashcards     (:ordered_cards dashboard)
                    dashcards-new (map #(add-filter % filter-id candidate) dashcards)]
                ;; Only add filters that apply to all cards.
@@ -172,17 +172,6 @@
                                                :slug (:name candidate)}))
                  dashboard)))
            dashboard)))))
-
-
-(defn filter-referenced-fields
-  "Return a map of fields referenced in filter cluase."
-  [filter-clause]
-  (->> filter-clause
-       collect-field-references
-       (mapcat (fn [[_ & ids]]
-                 (for [id ids]
-                   [id (Field id)])))
-       (into {})))
 
 
 (defn- flatten-filter-clause

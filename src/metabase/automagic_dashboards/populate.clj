@@ -244,8 +244,6 @@
                          :else        n)
          dashboard     {:name              title
                         :transient_name    (or transient_title title)
-                        :transient_filters refinements
-                        :param_fields      (filters/filter-referenced-fields refinements)
                         :description       description
                         :creator_id        api/*current-user-id*
                         :parameters        []}
@@ -276,45 +274,52 @@
                 line)))
        str/join))
 
+(defn- merge-filters
+  [ds]
+  (when (->> ds
+             (mapcat :ordered_cards)
+             (keep (comp :table_id :card))
+             distinct
+             count
+             (= 1))
+   [(->> ds (mapcat :parameters) distinct)
+    (->> ds
+         (mapcat :ordered_cards)
+         (mapcat :parameter_mappings)
+         (map #(dissoc % :card_id))
+         distinct)]))
+
 (defn merge-dashboards
   "Merge dashboards `ds` into dashboard `d`."
-  [d & ds]
-  (let [filter-targets (when (->> ds
-                                  (mapcat :ordered_cards)
-                                  (keep (comp :table_id :card))
-                                  distinct
-                                  count
-                                  (= 1))
-                         (->> ds
-                              (mapcat :ordered_cards)
-                              (mapcat :parameter_mappings)
-                              (mapcat (comp filters/collect-field-references :target))
-                              (map filters/field-reference->id)
-                              distinct
-                              (map Field)))]
-    (cond-> (reduce
-             (fn [target dashboard]
-               (let [offset (->> target
-                                 :ordered_cards
-                                 (map #(+ (:row %) (:sizeY %)))
-                                 (apply max -1) ; -1 so it neturalizes +1 for spacing if
-                                                ; the target dashboard is empty.
-                                 inc)
-                     cards  (->> dashboard
-                                 :ordered_cards
-                                 (map #(-> %
-                                           (update :row + offset group-heading-height)
-                                           (u/update-in-when [:visualization_settings :text]
-                                                             downsize-titles)
-                                           (dissoc :parameter_mappings))))]
-                 (-> target
-                     (add-text-card {:width                  grid-width
-                                     :height                 group-heading-height
-                                     :text                   (format "# %s" (:name dashboard))
-                                     :visualization-settings {:dashcard.background false
-                                                              :text.align_vertical :bottom}}
-                                    [offset 0])
-                     (update :ordered_cards concat cards))))
-             d
-             ds)
-      (not-empty filter-targets) (filters/add-filters filter-targets max-filters))))
+  [& ds]
+  (let [[paramters parameter-mappings] (merge-filters ds)]
+    (reduce
+     (fn [target dashboard]
+       (let [offset (->> target
+                         :ordered_cards
+                         (map #(+ (:row %) (:sizeY %)))
+                         (apply max -1) ; -1 so it neturalizes +1 for spacing if
+                                        ; the target dashboard is empty.
+                         inc)
+             cards  (->> dashboard
+                         :ordered_cards
+                         (map #(-> %
+                                   (update :row + offset group-heading-height)
+                                   (u/update-in-when [:visualization_settings :text]
+                                                     downsize-titles)
+                                   (assoc :parameter_mappings
+                                     (when (:card_id %)
+                                       (for [mapping parameter-mappings]
+                                         (assoc mapping :card_id (:card_id %))))))))]
+         (-> target
+             (add-text-card {:width                  grid-width
+                             :height                 group-heading-height
+                             :text                   (format "# %s" (:name dashboard))
+                             :visualization-settings {:dashcard.background false
+                                                      :text.align_vertical :bottom}}
+                            [offset 0])
+             (update :ordered_cards concat cards))))
+     (-> ds
+         first
+         (assoc :parameters paramters))
+     (rest ds))))
