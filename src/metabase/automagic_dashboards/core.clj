@@ -480,9 +480,9 @@
                                         (-> context :source u/get-id)
                                         (->> context :source u/get-id (str "card__")))}
                  (not-empty filters)
-                 (assoc :filter (transduce (map :filter)
-                                           merge-filter-clauses
-                                           filters))
+                 (assoc :filter (->> filters
+                                     (map :filter)
+                                     (apply merge-filter-clauses)))
 
                  (not-empty dimensions)
                  (assoc :breakout dimensions)

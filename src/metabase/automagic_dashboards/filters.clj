@@ -199,4 +199,4 @@
     (->> filter-clause
          flatten-filter-clause
          (remove (comp in-refinement? collect-field-references))
-         (reduce merge-filter-clauses refinement))))
+         (apply merge-filter-clauses refinement))))
