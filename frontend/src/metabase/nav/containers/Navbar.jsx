@@ -10,7 +10,6 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import * as Urls from "metabase/lib/urls";
-import { normal, saturated } from "metabase/lib/colors";
 
 import Button from "metabase/components/Button.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -18,7 +17,6 @@ import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import Tooltip from "metabase/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import Modal from "metabase/components/Modal";
