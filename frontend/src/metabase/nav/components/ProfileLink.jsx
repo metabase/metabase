@@ -68,16 +68,16 @@ export default class ProfileLink extends Component {
               icon: null,
               link: Urls.accountSettings(),
             },
-            ...(!isRoot && {
+            {
               title: admin ? t`Exit admin` : t`Admin`,
               icon: null,
               link: admin ? "/" : "/admin",
-            }),
-            ...(!isRoot && {
+            },
+            {
               title: t`Logs`,
               icon: null,
               action: () => this.openModal("logs"),
-            }),
+            },
             {
               title: t`About metabase`,
               icon: null,

@@ -104,7 +104,7 @@ class DefaultLanding extends React.Component {
           <Box>
             <Box>
               {pinned.length > 0 ? (
-                <Box mx={4} mt={2} mb={4}>
+                <Box mx={4} mt={2} mb={3}>
                   <CollectionSectionHeading>{t`Pins`}</CollectionSectionHeading>
                   <PinDropTarget
                     pinIndex={pinned[pinned.length - 1].collection_position + 1}
