@@ -4,9 +4,7 @@
             [clojure.tools.logging :as log]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.filters :as filters]
-            [metabase.models
-             [card :as card]
-             [field :refer [Field]]]
+            [metabase.models.card :as card]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [puppetlabs.i18n.core :as i18n :refer [trs]]
