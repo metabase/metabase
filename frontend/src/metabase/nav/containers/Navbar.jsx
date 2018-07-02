@@ -17,6 +17,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import Tooltip from "metabase/components/Tooltip";
+import EntityMenu from "metabase/components/EntityMenu";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
@@ -267,37 +268,21 @@ export default class Navbar extends Component {
           <Link to={Urls.newQuestion()} mx={2}>
             <Button medium>{t`Ask a question`}</Button>
           </Link>
-          <PopoverWithTrigger
-            ref={e => (this._newPopover = e)}
-            triggerElement={
-              <Tooltip tooltip="Create a dashboard or pulse">
-                <Icon name="add" mx={2} />
-              </Tooltip>
-            }
-          >
-            <Box py={2} px={3} style={{ minWidth: 300 }}>
-              <Box my={2} />
-              <Box my={2}>
-                <Flex
-                  align="center"
-                  style={{ color: normal.blue }}
-                  className="cursor-pointer"
-                  onClick={() => this.setModal(MODAL_NEW_DASHBOARD)}
-                >
-                  <Icon name="dashboard" mr={1} />
-                  <h3>{t`New dashboard`}</h3>
-                </Flex>
-              </Box>
-              <Box my={2}>
-                <Link to={Urls.newPulse()}>
-                  <Flex align="center" style={{ color: saturated.yellow }}>
-                    <Icon name="pulse" mr={1} />
-                    <h3>{t`New pulse`}</h3>
-                  </Flex>
-                </Link>
-              </Box>
-            </Box>
-          </PopoverWithTrigger>
+          <EntityMenu
+            triggerIcon="add"
+            items={[
+              {
+                title: t`New dashboard`,
+                icon: `dashboard`,
+                action: () => this.setModal(MODAL_NEW_DASHBOARD),
+              },
+              {
+                title: t`New pulse`,
+                icon: `pulse`,
+                link: Urls.newPulse(),
+              },
+            ]}
+          />
           <Tooltip tooltip={t`Reference`}>
             <Link to="reference" mx={2}>
               <Icon name="reference" />
