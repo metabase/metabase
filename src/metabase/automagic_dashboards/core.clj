@@ -46,10 +46,10 @@
   [root id-or-name]
   (if (->> root :source (instance? (type Table)))
     (Field id-or-name)
-    (let [field (->> root
+    (when-let [field (->> root
                      :source
                      :result_metadata
-                     (some (comp #{id-or-name} :name)))]
+                     (m/find-first (comp #{id-or-name} :name)))]
       (-> field
           (update :base_type keyword)
           (update :special_type keyword)
@@ -70,21 +70,21 @@
    :cum-count (tru "cumulative count")
    :cum-sum   (tru "cumulative sum")})
 
-(defn- metric-name
-  [[op arg]]
-  (let [op (qp.util/normalize-token op)]
-    (if (= op :metric)
-      (-> arg Metric :name)
-      (op->name op))))
+(def ^:private ^{:arglists '([metric])} saved-metric?
+  (comp #{:metric} qp.util/normalize-token first))
 
-(defn- metric->description
-  [root metric]
-  (tru "{0} of {1}" (metric-name metric) (or (some->> metric
-                                                      second
-                                                      filters/field-reference->id
-                                                      (->field root)
-                                                      :display_name)
-                                             (source-name root))))
+(def ^:private ^{:arglists '([metric])} custom-expression?
+  (comp #{:named} qp.util/normalize-token first))
+
+(def ^:private ^{:arglists '([metric])} adhoc-metric?
+  (complement (some-fn saved-metric? custom-expression?)))
+
+(defn- metric-name
+  [[op & args :as metric]]
+  (cond
+    (adhoc-metric? metric) (-> op qp.util/normalize-token op->name)
+    (saved-metric? metric) (-> args first Metric :name)
+    :else                  (second args)))
 
 (defn- join-enumeration
   [xs]
@@ -92,11 +92,25 @@
     (tru "{0} and {1}" (str/join ", " (butlast xs)) (last xs))
     (first xs)))
 
+(defn- metric->description
+  [root aggregation-clause]
+  (join-enumeration
+   (for [metric (if (sequential? (first aggregation-clause))
+                  aggregation-clause
+                  [aggregation-clause])]
+     (if (adhoc-metric? metric)
+       (tru "{0} of {1}" (metric-name metric) (or (some->> metric
+                                                           second
+                                                           filters/field-reference->id
+                                                           (->field root)
+                                                           :display_name)
+                                                  (source-name root)))
+       (metric-name metric)))))
+
 (defn- question-description
   [root question]
   (let [aggregations (->> (qp.util/get-in-normalized question [:dataset_query :query :aggregation])
-                          (map (partial metric->description root))
-                          join-enumeration)
+                          (metric->description root))
         dimensions   (->> (qp.util/get-in-normalized question [:dataset_query :query :breakout])
                           (mapcat filters/collect-field-references)
                           (map (comp :display_name
@@ -135,7 +149,7 @@
      :short-name   (:display_name table)
      :source       table
      :database     (:db_id table)
-     :query-filter (-> segment :definition :filter)
+     :query-filter [:SEGMENT (u/get-id segment)]
      :url          (format "%ssegment/%s" public-endpoint (u/get-id segment))
      :rules-prefix ["table"]}))
 
@@ -143,7 +157,9 @@
   [metric]
   (let [table (-> metric :table_id Table)]
     {:entity       metric
-     :full-name    (tru "{0} metric" (:name metric))
+     :full-name    (if (:id metric)
+                     (tru "{0} metric" (:name metric))
+                     (:name metric))
      :short-name   (:name metric)
      :source       table
      :database     (:db_id table)
@@ -677,7 +693,7 @@
                                         (update :special_type keyword)
                                         field/map->FieldInstance
                                         (classify/run-classifiers {})
-                                        (map #(assoc % :engine engine)))))
+                                        (assoc :engine engine))))
                              constantly))]
     (as-> {:source       (assoc source :fields (table->fields source))
            :root         root
@@ -709,8 +725,7 @@
   ([root rule context]
    (-> rule
        (select-keys [:title :description :transient_title :groups])
-       (instantiate-metadata context {})
-       (assoc :refinements (:query-filter context)))))
+       (instantiate-metadata context {}))))
 
 (s/defn ^:private apply-rule
   [root, rule :- rules/Rule]
@@ -791,6 +806,17 @@
         {:related          (related-entities n-related-entities root)
          :drilldown-fields (take (- max-related n-related-entities) drilldown-fields)}))))
 
+(defn- filter-referenced-fields
+  "Return a map of fields referenced in filter cluase."
+  [root filter-clause]
+  (->> filter-clause
+       filters/collect-field-references
+       (mapcat (fn [[_ & ids]]
+                 (for [id ids]
+                   [id (->field root id)])))
+       (remove (comp nil? second))
+       (into {})))
+
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
   [{:keys [rule show rules-prefix full-name] :as root}]
@@ -815,10 +841,12 @@
                  (-> context :filters u/pprint-to-str))
       (-> dashboard
           (populate/create-dashboard show)
-          (assoc :related (related context rule)
-                 :more    (when (and (not= show :all)
-                                     (-> dashboard :cards count (> show)))
-                            (format "%s#show=all" (:url root))))))
+          (assoc :related           (related context rule)
+                 :more              (when (and (not= show :all)
+                                               (-> dashboard :cards count (> show)))
+                                      (format "%s#show=all" (:url root)))
+                 :transient_filters (:query-filter context)
+                 :param_fields      (->> context :query-filter (filter-referenced-fields root)))))
     (throw (ex-info (trs "Can''t create dashboard for {0}" full-name)
              {:root            root
               :available-rules (map :rule (or (some-> rule rules/get-rule vector)
@@ -850,11 +878,11 @@
                  qp.util/normalize-token
                  (= :metric))
            (-> aggregation-clause second Metric)
-           (let [metric (metric/map->MetricInstance
-                         {:definition {:aggregation  [aggregation-clause]
-                                       :source_table (:table_id question)}
-                          :table_id   (:table_id question)})]
-             (assoc metric :name (metric->description root aggregation-clause)))))
+           (let [table-id ((some-fn :table-id :table_id) question)]
+             (metric/map->MetricInstance {:definition {:aggregation  [aggregation-clause]
+                                                       :source_table table-id}
+                                          :name       (metric->description root aggregation-clause)
+                                          :table_id   table-id}))))
        (qp.util/get-in-normalized question [:dataset_query :query :aggregation])))
 
 (defn- collect-breakout-fields
@@ -943,8 +971,7 @@
 (defn- cell-title
   [root cell-query]
   (str/join " " [(->> (qp.util/get-in-normalized (-> root :entity) [:dataset_query :query :aggregation])
-                      (map (partial metric->description root))
-                      join-enumeration)
+                      (metric->description root))
                  (tru "where {0}" (humanize-filter-value root cell-query))]))
 
 (defmethod automagic-analysis (type Card)
