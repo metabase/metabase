@@ -5,9 +5,11 @@
              [query-processor-test :refer :all]
              [util :as u]]
             [metabase.models
+             [card :refer [Card]]
              [dimension :refer [Dimension]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dim-projections]
              [expand :as ql]]
@@ -17,7 +19,8 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :as datasets]]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;;; single column
 (qp-expect-with-all-engines
@@ -245,3 +248,34 @@
                         (ql/aggregation (ql/count))
                         (ql/breakout (ql/binning-strategy $latitude :default)))
         (select-keys [:status :class :error]))))
+
+(defn- field->result-metadata [field]
+  (select-keys field [:name :display_name :description :base_type :special_type :unit :fingerprint]))
+
+(defn- nested-venues-query [card-or-card-id]
+  {:database metabase.models.database/virtual-id
+   :type :query
+   :query {:source-table (str "card__" (u/get-id card-or-card-id))
+           :aggregation  [:count]
+           :breakout     [(ql/binning-strategy (ql/field-literal "LATITUDE" :type/Float) :num-bins 20)]}})
+
+;; Binning should be allowed on nested queries that have result metadata
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+  [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type :query
+                                            :query {:source-query {:source-table (data/id :venues)}}}
+                            :result_metadata (mapv field->result-metadata (db/select Field :table_id (data/id :venues)))}]
+    (-> (nested-venues-query card)
+        qp/process-query
+        rows)))
+
+;; Binning is not supported when there is no fingerprint to determine boundaries
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+  Exception
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type :query
+                                            :query {:source-query {:source-table (data/id :venues)}}}}]
+    (-> (nested-venues-query card)
+        qp/process-query
+        rows)))
