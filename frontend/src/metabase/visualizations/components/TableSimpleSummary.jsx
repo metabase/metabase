@@ -92,9 +92,10 @@ export default class TableSimpleSummary extends Component {
       onVisualizationClick,
       visualizationIsClickable,
       isPivoted,
-      groupingManager,
     } = this.props;
     const { rows, cols } = data;
+
+    const groupingManager = data;
 
     const { page, pageSize, sortColumn, sortDescending } = this.state;
 

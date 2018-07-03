@@ -121,48 +121,27 @@ export default class SummaryTable extends Component {
   _updateData({
     data,
     settings,
+    rawSeries
   }: {
     data: DatasetData,
     settings: VisualizationSettings,
   }) {
  {
+   //todo: fix 30
+   const groupingManager = new GroupingManager(30, data, settings, rawSeries);
 
-   console.log('props.rawSeries');
-   console.log(this.props.rawSeries);
-      const { cols,  columns } = data;
-         const columnNameIndexes = this.getColumnIndexes(settings, cols);
 
-      const columnIndexes = columnNameIndexes.map(p => p[0]);
-      const fooBar = columnNameIndexes.map((p, index) => [(settings[COLUMNS_SETTINGS].columnNameToMetadata[p[1]] || {}).showTotals,index]).filter(p => p[0]).map(p => p[1]).reverse();
-   const rows = this.props.rawSeries.map((p, index) => this.normalizeRows(settings, p.data, fooBar[index - 1]));
-
-      const rowsMerged = [].concat(...rows);
-console.log(rowsMerged.length)
-      this.setState({
-        data: {
-          cols: columnIndexes.map(i => cols[i]),
-          columns: columnIndexes.map(i => columns[i]),
-          rows: rowsMerged,
-        },
+   this.setState({
+        data: groupingManager
       });
     }
   }
 
-  getColumnIndexes = (settings,  cols) => getColumnsFromSettings(settings[COLUMNS_SETTINGS])
-    .map(f => [_.findIndex(cols, c => c.name === f), f])
-    .filter(i => i[0] < cols.length);
 
-
-
-  normalizeRows = (settings, { cols, rows }, isTotalColumnIndex) : DatasetData => {
-    const columnIndexes = this.getColumnIndexes(settings, cols).map(p => p[0]);
-    const res = rows.map(row => columnIndexes.map(i => row[i])).map(p => ({isTotalColumnIndex : isTotalColumnIndex, __proto__ : p}));
-    return res;
-  };
 
 
   render() {
-    const { card, isDashboard, settings } = this.props;
+    const { card, isDashboard } = this.props;
     const { data } = this.state;
     const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
     const isColumnsDisabled = false;
@@ -174,13 +153,6 @@ console.log(rowsMerged.length)
       return null;
     }
 
-    const isPivoted = (settings[COLUMNS_SETTINGS].columnsSource || []).length >= 1;
-    const groupingIndexes = new Array((settings[COLUMNS_SETTINGS].groupsSources || []).length + (isPivoted ? 1 : 0)).keys();
-
-    //todo: fix 30
-    const groupingManager = new GroupingManager(30, [...groupingIndexes], data.rows, isPivoted, data);
-
-    const dataUpdated = { ...data, rows: groupingManager.rowsOrdered, cols : groupingManager.cols };
 
     if (isColumnsDisabled) {
       return (
@@ -204,9 +176,8 @@ console.log(rowsMerged.length)
         // $FlowFixMe
         <TableComponent
           {...this.props}
-          data={dataUpdated}
+          data={data}
           sort={sort}
-          groupingManager={groupingManager}
         />
       );
     }

@@ -30,7 +30,6 @@ const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
-import {GroupingManager} from "metabase/visualizations/lib/GroupingManager";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
   const rowIndexes = [];
@@ -53,7 +52,6 @@ type Props = VisualizationProps & {
   sort: any,
   isPivoted: boolean,
   onActionDismissal: () => void,
-  groupingManager: GroupingManager,
 };
 type State = {
   columnWidths: number[],
@@ -255,7 +253,7 @@ export default class TableInteractiveSummary extends Component {
 
 
   cellRenderer = ({visibleRowIndices, visibleColumnIndices}: CellRangeProps, { key, style, rowIndex, columnIndex }: CellRendererProps) => {
-    const groupingManager = this.props.groupingManager;
+    const groupingManager = this.props.data;
 
     if(!groupingManager.isVisible(rowIndex, columnIndex, visibleRowIndices)) {
         return null;
@@ -441,13 +439,11 @@ export default class TableInteractiveSummary extends Component {
   };
 
   render() {
-    const { width, height, data: { cols }, className, groupingManager } = this.props;
+    const { width, height, data: { cols, rows }, className } = this.props;
 
     if (!width || !height) {
       return <div className={className} />;
     }
-
-    const rows = groupingManager.rowsOrdered;
 
     return (
       <ScrollSync>
