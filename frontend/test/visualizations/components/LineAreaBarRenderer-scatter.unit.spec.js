@@ -9,7 +9,7 @@ const DEFAULT_SETTINGS = {
   "graph.y_axis.scale": "linear",
   "graph.x_axis.axis_enabled": true,
   "graph.y_axis.axis_enabled": true,
-  "graph.colors": ["#000000"],
+  "graph.colors": [colors["text-dark"]],
 };
 
 describe("LineAreaBarRenderer-scatter", () => {

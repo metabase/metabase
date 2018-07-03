@@ -12,7 +12,7 @@ const DEFAULT_SETTINGS = {
   "graph.y_axis.scale": "linear",
   "graph.x_axis.axis_enabled": true,
   "graph.y_axis.axis_enabled": true,
-  "graph.colors": ["#00FF00", "#FF0000"],
+  "graph.colors": [colors.success, colors.error],
 };
 
 describe("LineAreaBarRenderer-bar", () => {

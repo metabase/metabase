@@ -9,8 +9,8 @@ const DashCardParameterMapper = ({ dashcard }) => (
         <div
           className="mx4 my1 p1 rounded"
           style={{
-            backgroundColor: "#F5F5F5",
-            color: "#8691AC",
+            backgroundColor: colors["bg-light"],
+            color: colors["text-medium"],
             marginTop: -10,
           }}
         >

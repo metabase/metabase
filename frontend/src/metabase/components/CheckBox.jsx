@@ -36,7 +36,7 @@ export default class CheckBox extends Component {
     const { checked, indeterminate, color, padding, size, noIcon } = this.props;
 
     const checkedColor = defaultColors[color];
-    const uncheckedColor = "#ddd";
+    const uncheckedColor = colors["text-light"];
 
     const checkboxStyle = {
       width: size,

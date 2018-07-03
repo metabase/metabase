@@ -88,7 +88,7 @@ const AdvancedSettingsPane = ({
             <Icon
               name={getIconForParameter(parameter)}
               className="mr2"
-              style={{ color: "#DFE8EA" }}
+              style={{ color: colors["text-light"] }}
             />
             <h3>{parameter.name}</h3>
             <Select

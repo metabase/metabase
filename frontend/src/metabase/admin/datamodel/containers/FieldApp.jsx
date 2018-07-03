@@ -276,7 +276,7 @@ export const BackButton = ({ databaseId, tableId }) => (
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
     className="circle text-white p2 mt3 ml3 flex align-center justify-center  absolute top left"
-    style={{ backgroundColor: "#8091AB" }}
+    style={{ backgroundColor: colors["bg-dark"] }}
   >
     <Icon name="backArrow" />
   </Link>

@@ -18,7 +18,7 @@ export default class NewsletterForm extends Component {
 
       input: {
         fontSize: "1.1rem",
-        color: "#676C72",
+        color: colors["text-dark"],
         width: "350px",
       },
 
@@ -73,7 +73,7 @@ export default class NewsletterForm extends Component {
 
         <div className="MB-Newsletter sm-float-right">
           <div>
-            <div style={{ color: "#878E95" }} className="text-grey-4 h3 pb3">
+            <div style={{ color: colors["text-medium"] }} className="text-grey-4 h3 pb3">
               {t`Get infrequent emails about new releases and feature updates.`}
             </div>
 

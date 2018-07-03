@@ -79,7 +79,7 @@ export default class PulseCardPreview extends Component {
             top: 2,
             right: 2,
             background:
-              "linear-gradient(to right, rgba(255,255,255,0.2), white, white)",
+              `linear-gradient(to right, ${colors["bg-white"]}, white, white)`,
             paddingLeft: 100,
           }}
         >
@@ -177,7 +177,7 @@ const RenderedPulseCardPreviewHeader = ({ children }) => (
                 'Lato, "Helvetica Neue", Helvetica, Arial, sans-serif',
               fontSize: 16,
               fontWeight: 700,
-              color: "rgb(57,67,64)",
+              color: colors["text-dark"],
               textDecoration: "none",
             }}
           >

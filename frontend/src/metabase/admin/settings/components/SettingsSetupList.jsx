@@ -40,14 +40,14 @@ const CompletionBadge = ({ completed }) => (
     style={{
       borderWidth: 1,
       borderStyle: "solid",
-      borderColor: completed ? "#9CC177" : "#DCE9EA",
-      backgroundColor: completed ? "#9CC177" : "#fff",
+      borderColor: completed ? colors.accent1 : colors["text-light"],
+      backgroundColor: completed ? colors.accent1 : colors["text-white"],
       width: 32,
       height: 32,
       borderRadius: 99,
     }}
   >
-    {completed && <Icon name="check" color={"#fff"} />}
+    {completed && <Icon name="check" color={colors["text-white"]} />}
   </div>
 );
 

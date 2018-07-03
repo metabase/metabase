@@ -448,7 +448,7 @@ export const SearchResultsGroup = ({
   <div>
     {groupName !== null && (
       <div className="flex align-center bg-slate-almost-extra-light bordered mt3 px3 py2">
-        <Icon className="mr1" style={{ color: "#BCC5CA" }} name={groupIcon} />
+        <Icon className="mr1" style={{ color: colors["text-light"] }} name={groupIcon} />
         <h4>{groupName}</h4>
       </div>
     )}

@@ -48,7 +48,7 @@ export default class ProgressBar extends Component {
         left: 0,
         width: `${width / 4}%`,
         height: "100%",
-        backgroundColor: "rgba(0, 0, 0, 0.12)",
+        backgroundColor: colors["bg-black"],
         animation: animated ? "progress-bar 1.5s linear infinite" : "none",
       },
     });

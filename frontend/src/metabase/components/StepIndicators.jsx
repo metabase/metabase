@@ -30,7 +30,7 @@ const StepIndicators = ({
           marginLeft: 2,
           marginRight: 2,
           backgroundColor:
-            index + 1 === currentStep ? activeDotColor : "#D8D8D8",
+            index + 1 === currentStep ? activeDotColor : colors["text-light"],
           transition: "background 600ms ease-in",
         }}
         key={index}

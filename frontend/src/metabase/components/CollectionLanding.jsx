@@ -43,7 +43,7 @@ const CollectionItem = ({ collection, color, iconName = "all" }) => (
     color={color || normal.grey2}
   >
     <Flex align="center" py={1} key={`collection-${collection.id}`}>
-      <Icon name={iconName} mx={1} color="#93B3C9" />
+      <Icon name={iconName} mx={1} color={colors["text-medium"]} />
       <h4>
         <Ellipsified>{collection.name}</Ellipsified>
       </h4>

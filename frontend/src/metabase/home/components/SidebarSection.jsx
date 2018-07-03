@@ -9,7 +9,7 @@ const SidebarSection = ({ title, icon, extra, children }) => (
       <span className="pl1 Sidebar-header">{title}</span>
       {extra && <span className="float-right">{extra}</span>}
     </div>
-    <div className="rounded bg-white" style={{ border: "1px solid #E5E5E5" }}>
+    <div className="rounded bg-white" style={{ border: `1px solid ${colors.border}` }}>
       {children}
     </div>
   </div>

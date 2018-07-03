@@ -43,7 +43,7 @@ const UserCollectionList = () => (
                             <Icon
                               name="person"
                               mr={1}
-                              color="#93B3C9"
+                              color={colors["text-medium"]}
                               size={22}
                             />
                             <h2>{user.common_name}</h2>

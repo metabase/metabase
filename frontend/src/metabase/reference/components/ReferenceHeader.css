@@ -1,5 +1,5 @@
 :root {
-  --title-color: #606e7b;
+  --title-color: var(--color-text-medium);
   --icon-width: calc(48px + 1rem);
 }
 
@@ -7,7 +7,7 @@
   composes: flex flex-full border-bottom text-dark text-bold from "style";
   overflow: hidden;
   align-items: center;
-  border-color: #edf5fb;
+  border-color: var(--color-border);
 }
 
 :local(.headerTextInput) {
@@ -29,12 +29,12 @@
 }
 
 :local(.subheaderLink) {
-  color: var(--primary-button-bg-color);
+  color: var(--color-brand);
   text-decoration: none;
 }
 
 :local(.subheaderLink):hover {
-  color: color(var(--primary-button-border-color) shade(10%));
+  color: var(--color-brand);
   transition: color 0.3s linear;
 }
 

@@ -12,7 +12,7 @@ import Icon from "metabase/components/Icon";
 import { normal } from "metabase/lib/colors";
 
 const EntityItemWrapper = Flex.extend`
-  border-bottom: 1px solid #f8f9fa;
+  border-bottom: 1px solid ${colors["bg-light"]};
   /* TODO - figure out how to use the prop instead of this? */
   align-items: center;
   &:hover {

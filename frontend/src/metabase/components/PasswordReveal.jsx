@@ -15,7 +15,7 @@ const styles = {
   input: {
     fontSize: "1.2rem",
     letterSpacing: "2",
-    color: "#676C72",
+    color: colors["text-dark"],
     outline: "none",
   },
 };

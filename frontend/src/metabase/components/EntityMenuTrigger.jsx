@@ -3,7 +3,7 @@ import Icon from "metabase/components/Icon";
 import cxs from "cxs";
 
 const EntityMenuTrigger = ({ icon, onClick, open }) => {
-  const interactionColor = "#F2F4F5";
+  const interactionColor = colors["bg-light"];
   const classes = cxs({
     display: "flex",
     alignItems: "center",
@@ -12,11 +12,11 @@ const EntityMenuTrigger = ({ icon, onClick, open }) => {
     height: 40,
     borderRadius: 99,
     cursor: "pointer",
-    color: open ? "#509ee3" : "inherit",
+    color: open ? colors.brand : "inherit",
     backgroundColor: open ? interactionColor : "transparent",
     ":hover": {
       backgroundColor: interactionColor,
-      color: "#509ee3",
+      color: colors.brand,
       transition: "all 300ms linear",
     },
     // special cases for certain icons

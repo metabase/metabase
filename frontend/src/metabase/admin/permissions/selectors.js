@@ -221,18 +221,18 @@ function getRevokingAccessToAllTablesWarningModal(
 
 const OPTION_GREEN = {
   icon: "check",
-  iconColor: "#9CC177",
-  bgColor: "#F6F9F2",
+  iconColor: colors.accent1,
+  bgColor: colors["bg-light"],
 };
 const OPTION_YELLOW = {
   icon: "eye",
-  iconColor: "#F9D45C",
-  bgColor: "#FEFAEE",
+  iconColor: colors.accent4,
+  bgColor: colors["bg-white"],
 };
 const OPTION_RED = {
   icon: "close",
-  iconColor: "#EEA5A5",
-  bgColor: "#FDF3F3",
+  iconColor: colors.accent3,
+  bgColor: colors["bg-white"],
 };
 
 const OPTION_ALL = {

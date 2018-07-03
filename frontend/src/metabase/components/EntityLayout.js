@@ -10,11 +10,11 @@ export const Wrapper = ({ children }) => (
 
 export const Canvas = ({ children }) => (
   <Box
-    bg="#FCFDFD"
+    bg={colors["bg-white"]}
     p={2}
     style={{
-      borderTop: "#F4F5F6",
-      borderBottom: "#F5F5F6",
+      borderTop: colors.border,
+      borderBottom: colors.border,
     }}
   >
     {children}

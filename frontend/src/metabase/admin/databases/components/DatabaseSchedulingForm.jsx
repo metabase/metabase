@@ -20,7 +20,7 @@ export const SyncOption = ({ selected, name, children, select }) => (
         width: 18,
         height: 18,
         borderWidth: 2,
-        borderColor: selected ? "#509ee3" : "#ddd",
+        borderColor: selected ? colors.brand : colors["text-light"],
         borderStyle: "solid",
       }}
     >
@@ -30,7 +30,7 @@ export const SyncOption = ({ selected, name, children, select }) => (
           style={{
             width: 8,
             height: 8,
-            backgroundColor: selected ? "#509ee3" : "#ddd",
+            backgroundColor: selected ? colors.brand : colors["text-light"],
           }}
         />
       )}

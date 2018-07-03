@@ -31,18 +31,13 @@ import _ from "underscore";
 // const HEAT_MAP_ZERO_COLOR = '#CCC';
 
 const HEAT_MAP_COLORS = [
-  // "#E2F2FF",
-  "#C4E4FF",
-  // "#9ED2FF",
-  "#81C5FF",
-  // "#6BBAFF",
-  "#51AEFF",
-  // "#36A2FF",
-  "#1E96FF",
-  // "#0089FF",
-  "#0061B5",
+  colors["text-light"],
+  colors.brand,
+  colors.brand,
+  colors.brand,
+  colors.brand,
 ];
-const HEAT_MAP_ZERO_COLOR = "#CCC";
+const HEAT_MAP_ZERO_COLOR = colors["text-light"];
 
 const geoJsonCache = new Map();
 function loadGeoJson(geoJsonPath, callback) {

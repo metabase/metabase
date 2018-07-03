@@ -6,8 +6,8 @@ const DirectionalButton = ({ direction = "back", onClick }) => (
     className="shadowed cursor-pointer text-brand-hover text-grey-4 flex align-center circle p2 bg-white transition-background transition-color"
     onClick={onClick}
     style={{
-      border: "1px solid #DCE1E4",
-      boxShadow: "0 2px 4px 0 #DCE1E4",
+      border: `1px solid ${colors.border}`,
+      boxShadow: `0 2px 4px 0 ${colors.shadow}`,
     }}
   >
     <Icon name={`${direction}Arrow`} />

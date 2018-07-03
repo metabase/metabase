@@ -18,7 +18,7 @@ describe("QuestionLoader", () => {
 
     it("should use AdHocQuestionLoader if there is an ad-hoc question", () => {
       const wrapper = shallow(
-        <QuestionLoader questionHash={"#abc123"}>
+        <QuestionLoader questionHash={colors.success}>
           {() => <div />}
         </QuestionLoader>,
       );
@@ -37,7 +37,7 @@ describe("QuestionLoader", () => {
 
       wrapper.setProps({
         questionId: undefined,
-        questionHash: "#abc123",
+        questionHash: colors.success,
       });
 
       expect(wrapper.find(AdHocQuestionLoader).length).toBe(1);

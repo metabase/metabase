@@ -62,7 +62,7 @@ const Questions = createEntity({
   objectSelectors: {
     getName: question => question && question.name,
     getUrl: question => question && Urls.question(question.id),
-    getColor: () => "#93B3C9",
+    getColor: () => colors["text-medium"],
     getIcon: question => "beaker",
   },
 

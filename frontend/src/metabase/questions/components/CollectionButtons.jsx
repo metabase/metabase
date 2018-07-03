@@ -35,7 +35,7 @@ const NewCollectionButton = ({ push }) => (
       <div
         className="flex align-center justify-center ml-auto mr-auto mb2 mt2"
         style={{
-          border: "2px solid #D8E8F5",
+          border: `2px solid ${colors.border}`,
           borderRadius: COLLECTION_ICON_SIZE,
           height: COLLECTION_ICON_SIZE,
           width: COLLECTION_ICON_SIZE,

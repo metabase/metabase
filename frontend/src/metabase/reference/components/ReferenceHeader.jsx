@@ -24,7 +24,7 @@ const ReferenceHeader = ({
     <div className={cx("relative", L.header)}>
       <div className={L.leftIcons}>
         {headerIcon && (
-          <IconBorder borderWidth="0" style={{ backgroundColor: "#E9F4F8" }}>
+          <IconBorder borderWidth="0" style={{ backgroundColor: colors["bg-medium"] }}>
             <Icon
               className="text-brand"
               name={headerIcon}

@@ -52,7 +52,7 @@ export function plainQuestion() {
 
 export function dashboard(dashboardId, { addCardWithId } = {}) {
   return addCardWithId != null
-    ? `/dashboard/${dashboardId}#add=${addCardWithId}`
+    ? `/dashboard/${dashboardId}${colors["text-light"]}=${addCardWithId}`
     : `/dashboard/${dashboardId}`;
 }
 

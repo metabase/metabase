@@ -155,7 +155,7 @@ export default class ActionsWidget extends Component {
             height: CIRCLE_SIZE,
             transition: "opacity 300ms ease-in-out",
             opacity: popoverIsOpen || iconIsVisible ? 1 : 0,
-            boxShadow: "2px 2px 4px rgba(0, 0, 0, 0.2)",
+            boxShadow: `2px 2px 4px ${colors.shadow}`,
           }}
           onClick={this.toggle}
         >

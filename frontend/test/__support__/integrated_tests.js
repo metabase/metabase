@@ -440,7 +440,7 @@ export async function createAllUsersWritableCollection() {
   const collection = await CollectionsApi.create({
     name: "test" + Math.random(),
     description: "description",
-    color: "#F1B556",
+    color: colors.warning,
   });
   const graph = await CollectionsApi.graph();
   graph.groups[group.id][collection.id] = "write";

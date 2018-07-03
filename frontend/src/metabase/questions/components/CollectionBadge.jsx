@@ -16,7 +16,7 @@ const CollectionBadge = ({ className, collection }) => {
       className={cx(className, "flex align-center px1 rounded mx1")}
       style={{
         fontSize: 14,
-        color: lightened.isDark() ? "#fff" : darkened,
+        color: lightened.isDark() ? colors["text-white"] : darkened,
         backgroundColor: lightened,
       }}
     >

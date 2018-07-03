@@ -61,7 +61,7 @@ class PulseMoveModal extends React.Component {
                     )}
                   >
                     <Flex align="center">
-                      <Icon name="all" color={"#DCE1E4"} size={32} />
+                      <Icon name="all" color={colors["text-light"]} size={32} />
                       <h4 className="ml1">{collection.name}</h4>
                     </Flex>
                   </Box>

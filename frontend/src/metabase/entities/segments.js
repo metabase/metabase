@@ -12,7 +12,7 @@ export default createEntity({
   objectSelectors: {
     getName: segment => segment && segment.name,
     getUrl: segment => null,
-    getColor: () => "#93B3C9",
+    getColor: () => colors["text-medium"],
     getIcon: question => "segment",
   },
 });

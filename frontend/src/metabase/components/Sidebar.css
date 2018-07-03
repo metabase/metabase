@@ -15,9 +15,9 @@
 :local(.sidebar) {
   composes: py2 from "style";
   width: 345px;
-  background-color: rgb(248, 252, 253);
-  border-right: 1px solid rgb(223, 238, 245);
-  color: #606e7b;
+  background-color: var(--color-bg-light);
+  border-right: 1px solid var(--color-border);
+  color: var(--color-text-medium);
 }
 
 :local(.sidebar) a {
@@ -39,7 +39,7 @@
   composes: transition-color from "style";
   composes: transition-background from "style";
   font-size: 1em;
-  color: #cfe4f5;
+  color: var(--color-text-light);
 }
 
 :local(.item) :local(.icon) {
@@ -57,8 +57,8 @@
 :local(.sectionTitle.selected),
 :local(.item):hover,
 :local(.sectionTitle):hover {
-  background-color: #e3f0f9;
-  color: #2d86d4;
+  background-color: var(--color-bg-medium);
+  color: var(--color-brand);
 }
 
 :local(.divider) {
@@ -69,7 +69,7 @@
 
 :local(.name) {
   composes: ml2 text-bold from "style";
-  color: #9caebe;
+  color: var(--color-text-medium);
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow-x: hidden;
@@ -77,7 +77,7 @@
 
 :local(.item):hover :local(.name),
 :local(.item.selected) :local(.name) {
-  color: #2d86d4;
+  color: var(--color-brand);
 }
 
 :local(.icon) {

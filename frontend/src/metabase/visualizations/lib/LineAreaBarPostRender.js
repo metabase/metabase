@@ -170,7 +170,7 @@ function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
     this.parentNode.appendChild(this);
   });
   chart.selectAll(".goal .line").attr({
-    stroke: "rgba(157,160,164, 0.7)",
+    stroke: colors["text-medium"],
     "stroke-dasharray": "5,5",
   });
 
@@ -204,7 +204,7 @@ function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
         y: y - 5,
         "text-anchor": labelOnRight ? "end" : "start",
         "font-weight": "bold",
-        fill: "rgb(157,160,164)",
+        fill: colors["text-medium"],
       })
       .on("mouseenter", function() {
         onGoalHover(this);

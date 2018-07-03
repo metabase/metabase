@@ -21,10 +21,10 @@ export default class ActivityItem extends Component {
             <UserAvatar
               user={item.user}
               background={userColors}
-              style={{ color: "#fff", borderWidth: "0" }}
+              style={{ color: colors["text-white"], borderWidth: "0" }}
             />
           ) : (
-            <IconBorder style={{ color: "#B8C0C8" }}>
+            <IconBorder style={{ color: colors["text-light"] }}>
               <Icon name="sync" size={16} />
             </IconBorder>
           )}

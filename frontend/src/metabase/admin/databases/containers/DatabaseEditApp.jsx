@@ -46,7 +46,7 @@ export const Tab = ({ name, setTab, currentTab }) => {
     <div
       className={cx("cursor-pointer py2", { "text-brand": isCurrentTab })}
       // TODO Use css classes instead?
-      style={isCurrentTab ? { borderBottom: "3px solid #509EE3" } : {}}
+      style={isCurrentTab ? { borderBottom: `3px solid ${colors.brand}` } : {}}
       onClick={() => setTab(name)}
     >
       <h3>{name}</h3>

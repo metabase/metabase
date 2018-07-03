@@ -4,7 +4,7 @@ import Tooltip from "metabase/components/Tooltip";
 
 const termStyles = cxs({
   textDecoration: "none",
-  borderBottom: "1px dotted #DCE1E4",
+  borderBottom: `1px dotted ${colors.border}`,
 });
 export const TermWithDefinition = ({ children, definition, link }) => (
   <Tooltip tooltip={definition}>

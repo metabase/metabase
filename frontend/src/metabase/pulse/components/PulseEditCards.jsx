@@ -169,7 +169,7 @@ export default class PulseEditCards extends Component {
                     className="my4 ml3"
                     style={{
                       width: 375,
-                      borderTop: "1px dashed rgb(214,214,214)",
+                      borderTop: `1px dashed ${colors.border}`,
                     }}
                   />
                 )}

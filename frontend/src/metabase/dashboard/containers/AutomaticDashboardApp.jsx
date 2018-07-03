@@ -63,7 +63,7 @@ class AutomaticDashboardApp extends React.Component {
     const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
     triggerToast(
       <div className="flex align-center">
-        <Icon name="dashboard" size={22} className="mr2" color="#93A1AB" />
+        <Icon name="dashboard" size={22} className="mr2" color={colors["text-medium"]} />
         {t`Your dashboard was saved`}
         <Link
           className="link text-bold ml1"
@@ -202,10 +202,10 @@ const getIconForFilter = (filter, metadata) => {
 
 const suggestionClasses = cxs({
   ":hover h3": {
-    color: "#509ee3",
+    color: colors.brand,
   },
   ":hover .Icon": {
-    color: "#F9D45C",
+    color: colors.accent4,
   },
 });
 

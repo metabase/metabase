@@ -14,7 +14,7 @@ const ArchivedItem = ({
   name,
   type,
   icon,
-  color = "#DEEAF1",
+  color = colors["text-light"],
   isAdmin = false,
   onUnarchive,
 
