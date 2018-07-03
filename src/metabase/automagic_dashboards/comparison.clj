@@ -199,9 +199,13 @@
 (defn comparison-dashboard
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
    the dataset defined by segments `left` and `right`."
-  [dashboard left right]
-  (let [left               (->root left)
-        right              (->root right)
+  [dashboard left right opts]
+  (let [left               (-> left
+                               ->root
+                               (merge (:left opts)))
+        right              (-> right
+                               ->root
+                               (merge (:right opts)))
         segment-dashboards (->> (concat (segment-constituents left)
                                         (segment-constituents right))
                                 distinct

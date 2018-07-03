@@ -17,9 +17,9 @@
 
 (defn- test-comparison
   [left right]
-  (-> left
+  (-> leftgg
       (automagic-analysis {})
-      (comparison-dashboard left right)
+      (comparison-dashboard left right {})
       :ordered_cards
       count
       pos?))
