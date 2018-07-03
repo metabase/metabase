@@ -10,13 +10,13 @@
 
 /* temporary css for the navbar and search */
 .search-bar {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: color(var(--color-bg-white) alpha(-90%));
   border-color: transparent;
   color: white;
 }
 
 .search-bar--active {
-  background-color: rgba(255, 255, 255, 0.25);
+  background-color: color(var(--color-bg-white) alpha(-75%));
   border-color: var(--color-brand);
 }
 

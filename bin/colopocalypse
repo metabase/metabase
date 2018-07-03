@@ -23,9 +23,12 @@ const CSS_SIMPLE_VAR_REGEX = /^var\(([^)]+)\)$/;
 const CSS_COLOR_VAR_REGEX = /^color\(var\(([^)]+)\) shade\(([^)]+)\)\)$/;
 const CSS_VAR_REGEX = /var\([^)]+\)|color\(var\([^)]+\) shade\([^)]+\)\)/g;
 
-const FILE_GLOB = "frontend/**/*.{css,js,jsx}";
+const FILE_GLOB = "frontend/src/**/*.{css,js,jsx}";
 const FILE_GLOB_IGNORE = [
-  // "**/metabase/lib/colors.js"
+  "**/metabase/lib/colors.js",
+  "**/metabase/css/core/colors.css",
+  "**/metabase/auth/components/AuthScene.jsx",
+  "**/metabase/icon_paths.js",
   // // recast messes up these file and they don't have any colors so just ignore them:
   // "**/metabase/query_builder/components/FieldList.jsx",
   // "**/metabase/query_builder/components/filters/FilterPopover.jsx",
@@ -267,6 +270,11 @@ function replaceJSColorValues(content) {
 function replaceCSSColorVariables(content) {
   const lines = content.split("\n");
   return content.replace(CSS_VAR_REGEX, (variable, index) => {
+    const match = variable.match(/^var\(--color-(.*)\)$/);
+    if (match && colors[match[1]]) {
+      // already references a color, don't change it
+      return variable;
+    }
     const color = resolveCSSVariableColor(variable);
     if (color) {
       const palette = paletteForCSSProperty(cssPropertyAtIndex(lines, index));
@@ -349,7 +357,9 @@ ${Object.entries(colors)
 }\n\n`;
 
   const content = fs.readFileSync(COLORS_CSS_PATH, "utf-8");
-  fs.writeFileSync(COLORS_CSS_PATH, colorsVarsBlock + content);
+  if (content.indexOf("NOTE: DO NOT ADD COLORS") < 0) {
+    fs.writeFileSync(COLORS_CSS_PATH, colorsVarsBlock + content);
+  }
 }
 
 function prependJSVariablesBlock() {
@@ -361,11 +371,13 @@ const colors = window.colors = ${JSON.stringify(colors, null, 2)};
 export default colors;\n\n`;
 
   const content = fs.readFileSync(COLORS_JS_PATH, "utf-8");
-  const anchor = "export const brand = ";
-  fs.writeFileSync(
-    COLORS_JS_PATH,
-    content.replace(anchor, colorsVarsBlock + anchor),
-  );
+  if (content.indexOf("NOTE: DO NOT ADD COLORS") < 0) {
+    const anchor = "export const brand = ";
+    fs.writeFileSync(
+      COLORS_JS_PATH,
+      content.replace(anchor, colorsVarsBlock + anchor),
+    );
+  }
 }
 
 function run() {
