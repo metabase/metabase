@@ -5,7 +5,7 @@ import { t } from "c-3po";
 import { Box, Flex } from "grid-styled";
 import styled from "styled-components";
 import { space, width } from "styled-system";
-import colors from "metabase/lib/colors";
+import colors, { alpha } from "metabase/lib/colors";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -248,7 +248,11 @@ export default class Navbar extends Component {
             </Button>
           </Link>
           <Link to="collection/root" mx={1}>
-            <Box p={1} bg={colors["brand"]} className="text-bold rounded">
+            <Box
+              p={1}
+              bg={alpha(colors["bg-white"], 0.1)}
+              className="text-bold rounded"
+            >
               Saved items
             </Box>
           </Link>

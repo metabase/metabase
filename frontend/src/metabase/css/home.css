@@ -10,17 +10,13 @@
 
 /* temporary css for the navbar and search */
 .search-bar {
-  background-color: var(--color-brand);
+  background-color: rgba(255, 255, 255, 0.1);
   border-color: transparent;
   color: white;
 }
 
-.nav-light {
-  background-color: var(--color-brand);
-}
-
 .search-bar--active {
-  background-color: var(--color-brand);
+  background-color: rgba(255, 255, 255, 0.25);
   border-color: var(--color-brand);
 }
 
