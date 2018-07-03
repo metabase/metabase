@@ -61,7 +61,7 @@ export class GroupingManager {
       this.columnIndexToFirstInGroupIndexes = res3_.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
       const grCols = cols.slice(0, columnsIndexesForGrouping.length - 1).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
       const values = cols.slice(columnsIndexesForGrouping.length);
-      const tt = this.pivotedColumns.map(k => getPivotValue(k, columnsIndexesForGrouping.length)).map(getValue => values.map((col, i) => ({...col, getValue: getValue(i)})))
+      const tt = this.pivotedColumns.map(k => [getPivotValue(k, columnsIndexesForGrouping.length), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: k})))
 
       this.cols = grCols.concat(...tt)
     }

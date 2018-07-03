@@ -356,6 +356,9 @@ export default class TableInteractiveSummary extends Component {
       sort && sort[0] && sort[0][0] && sort[0][0][1] === column.id;
     const isAscending = sort && sort[0] && sort[0][1] === "ascending";
 
+    const parent = column.parentName ? ( <div> {column.parentName}
+    <br/> </div>) : undefined;
+
     return (
       <div
         key={key}
@@ -392,6 +395,7 @@ export default class TableInteractiveSummary extends Component {
                 size={8}
               />
             )}
+          {parent}
           {columnTitle}
           {isSortable &&
             !isRightAligned && (
