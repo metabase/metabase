@@ -3,12 +3,14 @@ import { Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
+import colors from "metabase/lib/colors";
+
 // TODO: merge with Breadcrumbs
 
 const Crumb = ({ children }) => (
   <h5
     className="text-uppercase text-brand-hover"
-    style={{ color: "#93A1AB", fontWeight: 900 }}
+    style={{ color: colors["text-medium"], fontWeight: 900 }}
   >
     {children}
   </h5>
@@ -26,7 +28,7 @@ const BrowserCrumbs = ({ crumbs }) => (
             <Icon
               key={"divider" + index}
               name="chevronright"
-              color="#DCE1E4"
+              color={colors["text-light"]}
               mx={1}
             />
           ) : null}

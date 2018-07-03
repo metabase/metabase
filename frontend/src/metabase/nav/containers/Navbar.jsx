@@ -52,8 +52,8 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
-const DefaultSearchColor = "#60A6E4";
-const ActiveSearchColor = "#7bb7ec";
+const DefaultSearchColor = colors.brand;
+const ActiveSearchColor = colors.brand;
 
 const SearchWrapper = Flex.extend`
   ${width} background-color: ${props =>
@@ -61,7 +61,7 @@ const SearchWrapper = Flex.extend`
   border-radius: 6px;
   align-items: center;
   color: white;
-  border: 1px solid ${props => (props.active ? "#4894d8" : "transparent")};
+  border: 1px solid ${props => (props.active ? colors.brand : "transparent")};
   transition: background 300ms ease-in;
   &:hover {
     background-color: ${ActiveSearchColor};

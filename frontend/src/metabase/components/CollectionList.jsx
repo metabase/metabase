@@ -3,7 +3,7 @@ import { t } from "c-3po";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
 
-import { normal } from "metabase/lib/colors";
+import colors, { normal } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
 import Ellipsified from "metabase/components/Ellipsified";
@@ -20,9 +20,9 @@ const CollectionItem = ({ collection, color, iconName = "all" }) => (
     hover={{ color: normal.blue }}
     color={color || normal.grey2}
   >
-    <Box bg="#F4F6F8" p={2} mb={1}>
+    <Box bg={colors["bg-light"]} p={2} mb={1}>
       <Flex align="center" py={1} key={`collection-${collection.id}`}>
-        <Icon name={iconName} mx={1} color="#93B3C9" />
+        <Icon name={iconName} mx={1} color={colors["text-medium"]} />
         <h4 className="overflow-hidden">
           <Ellipsified>{collection.name}</Ellipsified>
         </h4>
