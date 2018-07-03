@@ -148,7 +148,7 @@
         right     ((->entity comparison-entity) comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :query-filter nil})]
-    (comparison-dashboard dashboard left right)))
+    (comparison-dashboard dashboard left right {})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `ìd` using rule `rule`;
@@ -164,7 +164,7 @@
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :rule         ["table" prefix rule]
                                             :query-filter nil})]
-    (comparison-dashboard dashboard left right)))
+    (comparison-dashboard dashboard left right {})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
