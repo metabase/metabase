@@ -183,7 +183,7 @@
 .AdminInput {
   color: var(--color-text-dark);
   padding: var(--padding-1);
-  background-color: var(--color-bg-white);
+  background-color: var(--color-bg-light);
   border: 1px solid transparent;
 }
 .AdminInput:focus {
