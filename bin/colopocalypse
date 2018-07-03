@@ -128,7 +128,9 @@ const PALETTE_BACKGROUND = paletteForColors(
     ...SEMANTIC_NAMES,
   ),
 );
-const PALETTE_BORDER = paletteForColors(_.pick(colors, "border"));
+const PALETTE_BORDER = paletteForColors(
+  _.pick(colors, "border", ...PRIMARY_AND_SECONDARY_NAMES),
+);
 const PALETTE_SHADOW = paletteForColors(_.pick(colors, "shadow"));
 
 // basically everything except border/shadow
