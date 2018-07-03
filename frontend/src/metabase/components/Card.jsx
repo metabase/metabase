@@ -8,11 +8,11 @@ const Card = styled.div`
   border: 1px solid ${props => (props.dark ? "transparent" : colors["border"])};
   ${props => props.dark && `color: white`};
   border-radius: 6px;
-  box-shadow: 0 1px 3px ${colors["shadow"]};
+  box-shadow: 0 5px 22px ${props => colors["shadow"]};
   ${props =>
     props.hoverable &&
     `&:hover {
-    box-shadow: 0 2px 3px ${alpha(colors["shadow"], 0.1)};
+    box-shadow: 0 5px 16px ${alpha(colors["shadow"], 0.1)};
   }`};
 `;
 

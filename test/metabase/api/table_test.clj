@@ -18,6 +18,7 @@
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :as table :refer [Table]]]
+            [metabase.query-processor.util :as qputil]
             [metabase.test
              [data :as data]
              [util :as tu :refer [match-$]]]
@@ -25,6 +26,7 @@
              [dataset-definitions :as defs]
              [datasets :as datasets]
              [users :refer [user->client]]]
+            [metabase.test.mock.util :as mutil]
             [metabase.timeseries-query-processor-test.util :as tqpt]
             [toucan
              [db :as db]
@@ -437,6 +439,25 @@
                                                           :fields_hash  $}))))}])
   ((user->client :rasta) :get 200 (format "table/%d/fks" (data/id :users))))
 
+(defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
+  (assoc field :id ["field-literal" field-name base-type]))
+
+(defn- default-card-field-for-venues [table-id]
+  {:table_id                 table-id
+   :special_type             nil
+   :default_dimension_option nil
+   :dimension_options        []})
+
+(defn- with-numeric-dimension-options [field]
+  (assoc field
+    :default_dimension_option (var-get #'table-api/numeric-default-index)
+    :dimension_options (var-get #'table-api/numeric-dimension-indexes)))
+
+(defn- with-coordinate-dimension-options [field]
+  (assoc field
+    :default_dimension_option (var-get #'table-api/coordinate-default-index)
+    :dimension_options (var-get #'table-api/coordinate-dimension-indexes)))
+
 ;; Make sure metadata for 'virtual' tables comes back as expected from GET /api/table/:id/query_metadata
 (tt/expect-with-temp [Card [card {:name          "Go Dubs!"
                                   :database_id   (data/id)
@@ -450,23 +471,36 @@
      :id                card-virtual-table-id
      :description       nil
      :dimension_options (default-dimension-options)
-     :fields            (for [[field-name display-name base-type] [["NAME"     "Name"     "type/Text"]
-                                                                   ["ID"       "ID"       "type/Integer"]
-                                                                   ["PRICE"    "Price"    "type/Integer"]
-                                                                   ["LATITUDE" "Latitude" "type/Float"]]]
-                          {:name                     field-name
-                           :display_name             display-name
-                           :base_type                base-type
-                           :table_id                 card-virtual-table-id
-                           :id                       ["field-literal" field-name base-type]
-                           :special_type             nil
-                           :default_dimension_option nil
-                           :dimension_options        []})})
+     :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
+                                   with-field-literal-id)
+                             [{:name         "NAME"
+                               :display_name "Name"
+                               :base_type    "type/Text"
+                               :special_type "type/Name"
+                               :fingerprint  (:name mutil/venue-fingerprints)}
+                              (with-numeric-dimension-options
+                                {:name         "ID"
+                                 :display_name "ID"
+                                 :base_type    "type/Integer"
+                                 :special_type nil
+                                 :fingerprint  (:id mutil/venue-fingerprints)})
+                              (with-numeric-dimension-options
+                                {:name         "PRICE"
+                                 :display_name "Price"
+                                 :base_type    "type/Integer"
+                                 :special_type nil
+                                 :fingerprint  (:price mutil/venue-fingerprints)})
+                              (with-coordinate-dimension-options
+                                {:name         "LATITUDE"
+                                 :display_name "Latitude"
+                                 :base_type    "type/Float"
+                                 :special_type "type/Latitude"
+                                 :fingerprint  (:latitude mutil/venue-fingerprints)})])})
   (do
     ;; run the Card which will populate its result_metadata column
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
     ;; Now fetch the metadata for this "table"
-    ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))))
+    (tu/round-all-decimals 2 ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card))))))
 
 ;; Test date dimensions being included with a nested query
 (tt/expect-with-temp [Card [card {:name          "Users"
@@ -486,9 +520,12 @@
                           :base_type                "type/Text"
                           :table_id                 card-virtual-table-id
                           :id                       ["field-literal" "NAME" "type/Text"]
-                          :special_type             nil
+                          :special_type             "type/Name"
                           :default_dimension_option nil
-                          :dimension_options        []}
+                          :dimension_options        []
+                          :fingerprint              {:global {:distinct-count 15},
+                                                     :type   {:type/Text {:percent-json  0.0, :percent-url    0.0,
+                                                                          :percent-email 0.0, :average-length 13.27}}}}
                          {:name                     "LAST_LOGIN"
                           :display_name             "Last Login"
                           :base_type                "type/DateTime"
@@ -496,12 +533,15 @@
                           :id                       ["field-literal" "LAST_LOGIN" "type/DateTime"]
                           :special_type             nil
                           :default_dimension_option (var-get #'table-api/date-default-index)
-                          :dimension_options        (var-get #'table-api/datetime-dimension-indexes)}]})
+                          :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
+                          :fingerprint              {:global {:distinct-count 15},
+                                                     :type   {:type/DateTime {:earliest "2014-01-01T08:30:00.000Z",
+                                                                              :latest   "2014-12-05T15:15:00.000Z"}}}}]})
   (do
     ;; run the Card which will populate its result_metadata column
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
     ;; Now fetch the metadata for this "table"
-    ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))))
+    (tu/round-all-decimals 2 ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card))))))
 
 
 ;; make sure GET /api/table/:id/fks just returns nothing for 'virtual' tables
@@ -667,3 +707,29 @@
 (expect
   #{:metrics :segments :linked-from :linking-to :tables}
   (-> ((user->client :crowberto) :get 200 (format "table/%s/related" (data/id :venues))) keys set))
+
+;; Nested queries with a fingerprint should have dimension options for binning
+(datasets/expect-with-engines (qpt/non-timeseries-engines-with-feature :binning)
+  (repeat 2 (var-get #'table-api/coordinate-dimension-indexes))
+  (tt/with-temp Card [card {:database_id   (data/id)
+                            :dataset_query {:database (data/id)
+                                            :type    :query
+                                            :query    {:source-query {:source-table (data/id :venues)}}}}]
+    ;; run the Card which will populate its result_metadata column
+    ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+    (let [response ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]
+      (map #(dimension-options-for-field response %)
+           ["latitude" "longitude"]))))
+
+;; Nested queries missing a fingerprint should not show binning-options
+(datasets/expect-with-engines (qpt/non-timeseries-engines-with-feature :binning)
+  [nil nil]
+  (tt/with-temp Card [card {:database_id   (data/id)
+                            :dataset_query {:database (data/id)
+                                            :type    :query
+                                            :query    {:source-query {:source-table (data/id :venues)}}}}]
+    ;; By default result_metadata will be nil (and no fingerprint). Just asking for query_metadata after the card was
+    ;; created but before it was ran should not allow binning
+    (let [response ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]
+      (map #(dimension-options-for-field response %)
+           ["latitude" "longitude"]))))

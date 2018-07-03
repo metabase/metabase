@@ -430,12 +430,10 @@
 
 (defn- build-query
   ([context bindings filters metrics dimensions limit order_by]
-   (walk/postwalk
-    (fn [subform]
-      (if (rules/dimension-form? subform)
-        (let [[_ identifier opts] subform]
-          (->reference :mbql (-> identifier bindings (merge opts))))
-        subform))
+   (qp.util/postwalk-pred
+    rules/dimension-form?
+    (fn [[_ identifier opts]]
+      (->reference :mbql (-> identifier bindings (merge opts))))
     {:type     :query
      :database (-> context :root :database)
      :query    (cond-> {:source_table (if (->> context :source (instance? (type Table)))

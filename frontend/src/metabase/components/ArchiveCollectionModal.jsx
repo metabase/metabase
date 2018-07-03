@@ -32,9 +32,9 @@ class ArchiveCollectionModal extends React.Component {
         onClose={() => this.props.onClose()}
       >
         <Box px={3}>
-          <Text>
+          <p>
             {t`The dashboards, collections, and pulses in this collection will also be archived.`}
-          </Text>
+          </p>
           <Flex py={3}>
             <Button warning ml="auto" onClick={() => this._archive()}>
               {t`Archive`}

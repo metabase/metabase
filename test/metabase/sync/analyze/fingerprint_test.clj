@@ -135,7 +135,7 @@
 ;; Make sure that the above functions are used correctly to determine which Fields get (re-)fingerprinted
 (defn- field-was-fingerprinted? {:style/indent 0} [fingerprint-versions field-properties]
   (let [fingerprinted? (atom false)
-        fake-field     (field/map->FieldInstance {:name "Fake Field"})]
+        fake-field     (field/map->FieldInstance {:name "Fake Field", :base_type :type/Number})]
     (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted fingerprint-versions
                   sample/sample-fields                                         (constantly [[fake-field [1 2 3 4 5]]])
                   fingerprint/save-fingerprint!                                (fn [& _] (reset! fingerprinted? true))]

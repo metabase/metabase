@@ -120,3 +120,7 @@ export function embedDashboard(token) {
 export function userCollection(userCollectionId) {
   return `/collection/${userCollectionId}/`;
 }
+
+export function accountSettings() {
+  return `/user/edit_current`;
+}
