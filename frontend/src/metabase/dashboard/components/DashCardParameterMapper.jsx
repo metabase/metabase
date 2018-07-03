@@ -1,6 +1,9 @@
 import React from "react";
 import { t } from "c-3po";
+
 import DashCardCardParameterMapper from "../containers/DashCardCardParameterMapper.jsx";
+
+import colors from "metabase/lib/colors";
 
 const DashCardParameterMapper = ({ dashcard }) => (
   <div className="relative flex-full flex flex-column layout-centered">

@@ -29,6 +29,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import * as Q from "metabase/lib/query/query";
 import Dimension from "metabase-lib/lib/Dimension";
+import colors from "metabase/lib/colors";
 
 import { dissoc } from "icepick";
 
@@ -63,7 +64,12 @@ class AutomaticDashboardApp extends React.Component {
     const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
     triggerToast(
       <div className="flex align-center">
-        <Icon name="dashboard" size={22} className="mr2" color={colors["text-medium"]} />
+        <Icon
+          name="dashboard"
+          size={22}
+          className="mr2"
+          color={colors["text-medium"]}
+        />
         {t`Your dashboard was saved`}
         <Link
           className="link text-bold ml1"
@@ -202,10 +208,10 @@ const getIconForFilter = (filter, metadata) => {
 
 const suggestionClasses = cxs({
   ":hover h3": {
-    color: colors.brand,
+    color: colors["brand"],
   },
   ":hover .Icon": {
-    color: colors.accent4,
+    color: colors["warning"],
   },
 });
 

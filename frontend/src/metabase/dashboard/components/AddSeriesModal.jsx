@@ -1,14 +1,15 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from "c-3po";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
-import { t } from "c-3po";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
+import colors from "metabase/lib/colors";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
@@ -294,12 +295,12 @@ export default class AddSeriesModal extends Component {
           style={{
             width: 370,
             backgroundColor: colors["bg-light"],
-            borderColor: colors.border,
+            borderColor: colors["border"],
           }}
         >
           <div
             className="flex-no-shrink border-bottom flex flex-row align-center"
-            style={{ borderColor: colors.border }}
+            style={{ borderColor: colors["border"] }}
           >
             <Icon className="ml2" name="search" size={16} />
             <input

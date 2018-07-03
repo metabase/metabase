@@ -9,7 +9,7 @@ import { DatabaseListLoader } from "metabase/components/BrowseApp";
 import ExplorePane from "metabase/components/ExplorePane";
 
 import * as Urls from "metabase/lib/urls";
-import { normal } from "metabase/lib/colors";
+import colors, { normal } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";

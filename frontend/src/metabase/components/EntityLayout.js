@@ -2,6 +2,8 @@ import React from "react";
 import { Box, Flex } from "grid-styled";
 import Subhead from "metabase/components/Subhead";
 
+import colors from "metabase/lib/colors";
+
 export const Wrapper = ({ children }) => (
   <Box w="80%" ml="auto" mr="auto">
     {children}
@@ -13,8 +15,8 @@ export const Canvas = ({ children }) => (
     bg={colors["bg-white"]}
     p={2}
     style={{
-      borderTop: colors.border,
-      borderBottom: colors.border,
+      borderTop: colors["border"],
+      borderBottom: colors["border"],
     }}
   >
     {children}

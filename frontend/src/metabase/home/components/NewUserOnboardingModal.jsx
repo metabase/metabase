@@ -4,6 +4,7 @@ import StepIndicators from "metabase/components/StepIndicators";
 import RetinaImage from "react-retina-image";
 import { t } from "c-3po";
 import MetabaseSettings from "metabase/lib/settings";
+import colors from "metabase/lib/colors";
 
 type Props = {
   onClose: () => void,
@@ -107,7 +108,7 @@ const OnboardingImages = ({ currentStep }, { currentStep: object }) => (
     style={{
       position: "relative",
       backgroundColor: colors["bg-medium"],
-      borderBottom: `1px solid ${colors.border}`,
+      borderBottom: `1px solid ${colors["border"]}`,
       height: 254,
       paddingTop: "3em",
       paddingBottom: "3em",

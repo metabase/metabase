@@ -6,6 +6,8 @@ import * as Urls from "metabase/lib/urls";
 import Color from "color";
 import cx from "classnames";
 
+import colors from "metabase/lib/colors";
+
 const CollectionBadge = ({ className, collection }) => {
   const color = Color(collection.color);
   const darkened = color.darken(0.1);

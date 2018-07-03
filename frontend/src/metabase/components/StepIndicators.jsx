@@ -1,7 +1,7 @@
 /* @flow */
 import React from "react";
 
-import { normal } from "metabase/lib/colors";
+import colors from "metabase/lib/colors";
 
 type Props = {
   activeDotColor?: string,
@@ -12,7 +12,7 @@ type Props = {
 };
 
 const StepIndicators = ({
-  activeDotColor = normal.blue,
+  activeDotColor = colors["brand"],
   currentStep = 0,
   dotSize = 8,
   goToStep,

@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "c-3po";
 import Icon from "metabase/components/Icon.jsx";
+import colors from "metabase/lib/colors";
 
 export default class NewsletterForm extends Component {
   constructor(props, context) {
@@ -73,7 +74,10 @@ export default class NewsletterForm extends Component {
 
         <div className="MB-Newsletter sm-float-right">
           <div>
-            <div style={{ color: colors["text-medium"] }} className="text-grey-4 h3 pb3">
+            <div
+              style={{ color: colors["text-medium"] }}
+              className="text-grey-4 h3 pb3"
+            >
               {t`Get infrequent emails about new releases and feature updates.`}
             </div>
 

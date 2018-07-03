@@ -1,34 +1,34 @@
-
 /* NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
  * NOTE: KEEP SYNCRONIZED WITH COLORS.JS
  */
 :root {
-  --color-brand: #509EE3;
-  --color-accent1: #9CC177;
-  --color-accent2: #A989C5;
-  --color-accent3: #EF8C8C;
-  --color-accent4: #F9D45C;
-  --color-accent5: #F1B556;
-  --color-accent6: #A6E7F3;
-  --color-accent7: #7172AD;
-  --color-white: #FFFFFF;
-  --color-black: #2E353B;
-  --color-success: #84BB4C;
-  --color-error: #ED6E6E;
-  --color-warning: #F9CF48;
-  --color-text-dark: #2E353B;
-  --color-text-medium: #93A1AB;
-  --color-text-light: #DCE1E4;
-  --color-text-white: #FFFFFF;
-  --color-bg-black: #2E353B;
-  --color-bg-dark: #93A1AB;
-  --color-bg-medium: #EDF2F5;
-  --color-bg-light: #F9FBFC;
-  --color-bg-white: #FFFFFF;
-  --color-shadow: #F4F5F6;
-  --color-border: #D7DBDE;
+  --color-brand: #509ee3;
+  --color-accent1: #9cc177;
+  --color-accent2: #a989c5;
+  --color-accent3: #ef8c8c;
+  --color-accent4: #f9d45c;
+  --color-accent5: #f1b556;
+  --color-accent6: #a6e7f3;
+  --color-accent7: #7172ad;
+  --color-white: #ffffff;
+  --color-black: #2e353b;
+  --color-success: #84bb4c;
+  --color-error: #ed6e6e;
+  --color-warning: #f9cf48;
+  --color-text-dark: #2e353b;
+  --color-text-medium: #93a1ab;
+  --color-text-light: #dce1e4;
+  --color-text-white: #ffffff;
+  --color-bg-black: #2e353b;
+  --color-bg-dark: #93a1ab;
+  --color-bg-medium: #edf2f5;
+  --color-bg-light: #f9fbfc;
+  --color-bg-white: #ffffff;
+  --color-shadow: #f4f5f6;
+  --color-border: #d7dbde;
 }
 
+/* NOTE: DEPRECATED, replaced with colors above
 :root {
   --brand-color: var(--color-brand);
   --brand-light-color: var(--color-text-light);
@@ -62,7 +62,6 @@
 
   --error-color: var(--color-error);
 
-  /* type colors */
   --metric-color: var(--color-accent1);
   --segment-color: var(--color-accent2);
   --pulse-color: var(--color-accent4);
@@ -70,6 +69,7 @@
   --data-color: var(--color-accent1);
   --question-color: var(--color-text-medium);
 }
+*/
 
 .text-default,
 :local(.text-default) {

@@ -20,7 +20,6 @@
     },
     "globals": {
         "pending": false,
-        "colors": true,
     },
     "env": {
         "browser": true,

@@ -4,6 +4,7 @@ import ReactDOM from "react-dom";
 import GridItem from "./GridItem.jsx";
 
 import _ from "underscore";
+import colors from "metabase/lib/colors";
 
 export default class GridLayout extends Component {
   constructor(props, context) {
@@ -230,19 +231,23 @@ export default class GridLayout extends Component {
   getGridBackground() {
     let { margin, cols } = this.props;
     let cellSize = this.getCellSize();
-    return `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width *
-      cols}' height='${cellSize.height}'>` +
-    _(cols)
-      .times(
-        i =>
-          `<rect stroke='${colors["text-dark"]}' stroke-width='1' fill='none' x='${Math.round(
-  margin / 2 + i * cellSize.width,
-) + 1.5}' y='${margin / 2 + 1.5}' width='${Math.round(
-  cellSize.width - margin - 3,
-)}' height='${cellSize.height - margin - 3}'/>`,
-      )
-      .join("") +
-    `</svg>")`;
+    return (
+      `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width *
+        cols}' height='${cellSize.height}'>` +
+      _(cols)
+        .times(
+          i =>
+            `<rect stroke='${
+              colors["border"]
+            }' stroke-width='1' fill='none' x='${Math.round(
+              margin / 2 + i * cellSize.width,
+            ) + 1.5}' y='${margin / 2 + 1.5}' width='${Math.round(
+              cellSize.width - margin - 3,
+            )}' height='${cellSize.height - margin - 3}'/>`,
+        )
+        .join("") +
+      `</svg>")`
+    );
   }
 
   render() {

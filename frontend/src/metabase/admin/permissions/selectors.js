@@ -5,6 +5,8 @@ import { createSelector } from "reselect";
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import colors, { alpha } from "metabase/lib/colors";
+
 import { t } from "c-3po";
 import {
   isDefaultGroup,
@@ -219,20 +221,22 @@ function getRevokingAccessToAllTablesWarningModal(
   }
 }
 
+const BG_ALPHA = 0.25;
+
 const OPTION_GREEN = {
   icon: "check",
-  iconColor: colors.accent1,
-  bgColor: colors["bg-light"],
+  iconColor: colors["success"],
+  bgColor: alpha(colors["success"], BG_ALPHA),
 };
 const OPTION_YELLOW = {
   icon: "eye",
-  iconColor: colors.accent4,
-  bgColor: colors["bg-white"],
+  iconColor: colors["warning"],
+  bgColor: alpha(colors["warning"], BG_ALPHA),
 };
 const OPTION_RED = {
   icon: "close",
-  iconColor: colors.accent3,
-  bgColor: colors["bg-white"],
+  iconColor: colors["error"],
+  bgColor: alpha(colors["error"], BG_ALPHA),
 };
 
 const OPTION_ALL = {

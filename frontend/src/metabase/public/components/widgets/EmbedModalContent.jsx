@@ -14,6 +14,7 @@ import {
   getUnsignedPreviewUrl,
   getSignedToken,
 } from "metabase/public/lib/embed";
+import colors from "metabase/lib/colors";
 
 import {
   getSiteUrl,

@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import cxs from "cxs";
 
-import { normal } from "metabase/lib/colors";
+import colors from "metabase/lib/colors";
 
 type Props = {
   percentage: number,
@@ -15,7 +15,7 @@ export default class ProgressBar extends Component {
 
   static defaultProps = {
     animated: false,
-    color: normal.blue,
+    color: colors["brand"],
   };
 
   render() {

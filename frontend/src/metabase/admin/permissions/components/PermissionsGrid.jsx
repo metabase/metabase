@@ -18,6 +18,8 @@ import { capitalize, pluralize } from "metabase/lib/formatting";
 import cx from "classnames";
 import _ from "underscore";
 
+import colors from "metabase/lib/colors";
+
 const LIGHT_BORDER = colors["text-light"];
 const DARK_BORDER = colors["text-medium"];
 const BORDER_RADIUS = 4;
@@ -258,7 +260,9 @@ class GroupPermissionCell extends Component {
                 name={option.icon}
                 size={28}
                 style={{
-                  color: this.state.hovered ? colors["text-white"] : option.iconColor,
+                  color: this.state.hovered
+                    ? colors["text-white"]
+                    : option.iconColor,
                 }}
               />
               {confirmations &&

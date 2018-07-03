@@ -8,7 +8,7 @@ import BulkActionBar from "metabase/components/BulkActionBar";
 import cx from "classnames";
 
 import * as Urls from "metabase/lib/urls";
-import { normal } from "metabase/lib/colors";
+import colors, { normal } from "metabase/lib/colors";
 
 import Button from "metabase/components/Button";
 import Card from "metabase/components/Card";

@@ -10,6 +10,8 @@ import Icon from "metabase/components/Icon";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
+import colors from "metabase/lib/colors";
+
 @withRouter
 class PulseMoveModal extends React.Component {
   state = {

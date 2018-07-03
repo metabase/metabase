@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import cx from "classnames";
 import { Link } from "react-router";
+import colors from "metabase/lib/colors";
 
 export default class NewQueryOption extends Component {
   props: {

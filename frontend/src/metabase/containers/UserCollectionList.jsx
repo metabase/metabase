@@ -3,6 +3,7 @@ import { Box, Flex } from "grid-styled";
 import { t } from "c-3po";
 
 import * as Urls from "metabase/lib/urls";
+import colors from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";

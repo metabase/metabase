@@ -4,6 +4,8 @@ import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon";
 
+import colors from "metabase/lib/colors";
+
 const itemClasses = cxs({
   display: "flex",
   alignItems: "center",
@@ -16,14 +18,14 @@ const itemClasses = cxs({
   textDecoration: "none",
   transition: "all 300ms linear",
   ":hover": {
-    color: colors.brand,
+    color: colors["brand"],
   },
   "> .Icon": {
     color: colors["text-light"],
     marginRight: "0.65em",
   },
   ":hover > .Icon": {
-    color: colors.brand,
+    color: colors["brand"],
     transition: "all 300ms linear",
   },
   // icon specific tweaks

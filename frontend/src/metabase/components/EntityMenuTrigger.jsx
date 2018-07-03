@@ -2,6 +2,8 @@ import React from "react";
 import Icon from "metabase/components/Icon";
 import cxs from "cxs";
 
+import colors from "metabase/lib/colors";
+
 const EntityMenuTrigger = ({ icon, onClick, open }) => {
   const interactionColor = colors["bg-light"];
   const classes = cxs({
@@ -12,11 +14,11 @@ const EntityMenuTrigger = ({ icon, onClick, open }) => {
     height: 40,
     borderRadius: 99,
     cursor: "pointer",
-    color: open ? colors.brand : "inherit",
+    color: open ? colors["brand"] : "inherit",
     backgroundColor: open ? interactionColor : "transparent",
     ":hover": {
       backgroundColor: interactionColor,
-      color: colors.brand,
+      color: colors["brand"],
       transition: "all 300ms linear",
     },
     // special cases for certain icons

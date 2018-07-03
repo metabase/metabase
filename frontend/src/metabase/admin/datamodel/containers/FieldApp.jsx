@@ -39,6 +39,7 @@ import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 import { rescanFieldValues, discardFieldValues } from "../field";
 
 import { has_field_values_options } from "metabase/lib/core";
+import colors from "metabase/lib/colors";
 
 const SelectClasses =
   "h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold";

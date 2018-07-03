@@ -80,14 +80,14 @@
 
 .Button--warning {
   color: var(--color-text-white);
-  background: var(--color-accent3);
-  border: 1px solid var(--color-accent3);
+  background: var(--color-error);
+  border: 1px solid var(--color-error);
 }
 
 .Button--warning:hover {
   color: var(--color-text-white);
-  border-color: var(--color-accent3);
-  background-color: var(--color-accent3);
+  border-color: var(--color-error);
+  background-color: var(--color-error);
 }
 
 .Button--cancel {
@@ -147,7 +147,7 @@
 }
 
 .Button-group .Button--active {
-  background-color: var(--color-accent1);
+  background-color: var(--color-success);
   color: var(--color-text-white);
 }
 
@@ -195,62 +195,26 @@
 }
 
 .Button--danger {
-  background-color: var(--color-accent3);
-  border-color: var(--color-accent3);
+  background-color: var(--color-error);
+  border-color: var(--color-error);
   color: var(--color-text-white);
 }
 
 .Button--danger:hover {
   color: white;
-  background-color: var(--color-accent3);
-  border-color: var(--color-accent3);
+  background-color: var(--color-error);
+  border-color: var(--color-error);
 }
 
 .Button--success {
-  background-color: var(--color-accent1);
-  border-color: var(--color-accent1);
+  background-color: var(--color-success);
+  border-color: var(--color-success);
   color: var(--color-text-white);
 }
 .Button--success:hover {
-  background-color: var(--color-accent1);
-  border-color: var(--color-accent1);
+  background-color: var(--color-success);
+  border-color: var(--color-success);
   color: var(--color-text-white);
-}
-
-/* toggle button */
-.Button-toggle {
-  color: var(--color-text-medium);
-  display: flex;
-  line-height: 1;
-  border: 1px solid var(--color-border);
-  border-radius: 40px;
-  width: 3rem;
-  transition: background 0.2s linear 0.2s, border 0.2s linear 0.2s;
-}
-
-.Button-toggleIndicator {
-  margin-left: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: 99px;
-  box-shadow: 0 1px 3px color(var(--color-shadow) alpha(-98%));
-  transition: margin 0.3s linear;
-  background-color: var(--color-bg-white);
-}
-
-.Button-toggle.Button--toggled .Button-toggleIndicator {
-  margin-left: 50%;
-  transition: margin 0.3s linear;
-}
-
-.Button-toggle.Button--toggled {
-  color: var(--color-brand);
-  background-color: var(--color-brand);
-  border-color: var(--color-brand);
-  transition: background 0.2s linear 0.2s, border 0.2s linear 0.2s;
 }
 
 .Button--withIcon {

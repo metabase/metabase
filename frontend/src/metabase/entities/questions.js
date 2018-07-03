@@ -1,10 +1,11 @@
 /* @flow */
 
 import React from "react";
+import { assocIn } from "icepick";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-import { assocIn } from "icepick";
+import colors from "metabase/lib/colors";
 
 import CollectionSelect from "metabase/containers/CollectionSelect";
 import { canonicalCollectionId } from "metabase/entities/collections";

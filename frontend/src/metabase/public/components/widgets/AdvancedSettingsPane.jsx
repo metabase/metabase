@@ -1,15 +1,17 @@
 /* @flow */
 
 import React from "react";
+import { t } from "c-3po";
+import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 import Parameters from "metabase/parameters/components/Parameters";
 import Select, { Option } from "metabase/components/Select";
-import { t } from "c-3po";
-import DisplayOptionsPane from "./DisplayOptionsPane";
 
-import cx from "classnames";
+import colors from "metabase/lib/colors";
+
+import DisplayOptionsPane from "./DisplayOptionsPane";
 
 const getIconForParameter = parameter =>
   parameter.type === "category"

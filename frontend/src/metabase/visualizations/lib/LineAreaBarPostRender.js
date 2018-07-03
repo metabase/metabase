@@ -2,6 +2,7 @@
 
 import d3 from "d3";
 
+import colors from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 
