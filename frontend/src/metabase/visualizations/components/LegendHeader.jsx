@@ -105,6 +105,7 @@ export default class LegendHeader extends Component {
                       })
                   : null
             }
+            infoClassName={'text-grey-2 text-grey-4-hover'}
           />,
           onRemoveSeries &&
             index > 0 && (
@@ -118,7 +119,7 @@ export default class LegendHeader extends Component {
             ),
         ])}
         {actionButtons && (
-          <span className="flex-no-shrink flex-align-right relative">
+          <span className="text-grey-2 text-grey-4-hover flex-no-shrink flex-align-right relative">
             {actionButtons}
           </span>
         )}
