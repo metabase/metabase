@@ -221,7 +221,7 @@ function getRevokingAccessToAllTablesWarningModal(
   }
 }
 
-const BG_ALPHA = 0.25;
+const BG_ALPHA = 0.15;
 
 const OPTION_GREEN = {
   icon: "check",

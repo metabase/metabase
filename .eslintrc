@@ -19,7 +19,7 @@
         "flowtype/use-flow-type": 1
     },
     "globals": {
-        "pending": false,
+        "pending": false
     },
     "env": {
         "browser": true,
