@@ -66,7 +66,7 @@ export class SchemaBrowser extends React.Component {
                         mb={1}
                         hover={{ color: normal.purple }}
                       >
-                        <Card hoverable>
+                        <Card hoverable px={1}>
                           <EntityItem
                             name={schema.name}
                             iconName="folder"
@@ -98,16 +98,18 @@ export class TableBrowser extends React.Component {
           {({ tables, loading, error }) => {
             return (
               <Box>
-                <BrowserCrumbs
-                  crumbs={[
-                    { title: t`Your data`, to: "browse" },
-                    {
-                      title: <DatabaseName dbId={dbId} />,
-                      to: `browse/${dbId}`,
-                    },
-                    schemaName != null && { title: schemaName },
-                  ]}
-                />
+                <Box my={2}>
+                  <BrowserCrumbs
+                    crumbs={[
+                      { title: t`Your data`, to: "browse" },
+                      {
+                        title: <DatabaseName dbId={dbId} />,
+                        to: `browse/${dbId}`,
+                      },
+                      schemaName != null && { title: schemaName },
+                    ]}
+                  />
+                </Box>
                 <Grid>
                   {tables.map(table => {
                     const link = Question.create({
@@ -118,7 +120,7 @@ export class TableBrowser extends React.Component {
                     return (
                       <GridItem w={1 / 3}>
                         <Link to={link} mb={1} hover={{ color: normal.purple }}>
-                          <Card hoverable>
+                          <Card hoverable px={1}>
                             <EntityItem
                               item={table}
                               name={table.display_name || table.name}
@@ -150,7 +152,9 @@ export class DatabaseBrowser extends React.Component {
   render() {
     return (
       <Box>
-        <BrowserCrumbs crumbs={[{ title: t`Your data` }]} />
+        <Box my={2}>
+          <BrowserCrumbs crumbs={[{ title: t`Your data` }]} />
+        </Box>
         <DatabaseListLoader>
           {({ databases, loading, error }) => {
             return (

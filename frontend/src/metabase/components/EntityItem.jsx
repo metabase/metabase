@@ -18,9 +18,6 @@ const EntityItemWrapper = Flex.extend`
   &:hover {
     color: ${normal.blue};
   }
-  &:last-child {
-    border-bottom: none;
-  }
 `;
 
 const EntityItem = ({
@@ -55,7 +52,7 @@ const EntityItem = ({
   ].filter(action => action);
 
   return (
-    <EntityItemWrapper py={2} px={2} className="hover-parent hover--visibility">
+    <EntityItemWrapper py={2} className="hover-parent hover--visibility">
       <IconWrapper
         p={1}
         mr={1}

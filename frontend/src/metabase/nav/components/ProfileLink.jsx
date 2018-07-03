@@ -1,20 +1,18 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
+import { Box } from "grid-styled";
 
-import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import { t } from "c-3po";
-import cx from "classnames";
 import _ from "underscore";
 import { capitalize } from "metabase/lib/formatting";
 
 import MetabaseSettings from "metabase/lib/settings";
-import Modal from "metabase/components/Modal.jsx";
-import Logs from "metabase/components/Logs.jsx";
+import * as Urls from "metabase/lib/urls";
+import Modal from "metabase/components/Modal";
+import Logs from "metabase/components/Logs";
 
-import UserAvatar from "metabase/components/UserAvatar.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import LogoIcon from "metabase/components/LogoIcon.jsx";
+import LogoIcon from "metabase/components/LogoIcon";
+import EntityMenu from "metabase/components/EntityMenu";
 
 export default class ProfileLink extends Component {
   constructor(props, context) {
@@ -56,141 +54,45 @@ export default class ProfileLink extends Component {
   }
 
   render() {
-    const { user, context } = this.props;
-    const { modalOpen, dropdownOpen } = this.state;
+    const { context } = this.props;
+    const { modalOpen } = this.state;
     const { tag, date, ...versionExtra } = MetabaseSettings.get("version");
-
-    let dropDownClasses = cx({
-      NavDropdown: true,
-      "inline-block": true,
-      "cursor-pointer": true,
-      open: dropdownOpen,
-    });
-
+    const admin = context === "admin";
     return (
-      <div className={dropDownClasses}>
-        <a
-          data-metabase-event={"Navbar;Profile Dropdown;Toggle"}
-          className="NavDropdown-button NavItem flex align-center p2 transition-background"
-          onClick={this.toggleDropdown}
-        >
-          <div className="NavDropdown-button-layer">
-            <div className="flex align-center">
-              <UserAvatar user={user} />
-              <Icon
-                name="chevrondown"
-                className="Dropdown-chevron ml1"
-                size={8}
-              />
-            </div>
-          </div>
-        </a>
-
-        {dropdownOpen ? (
-          <OnClickOutsideWrapper handleDismissal={this.closeDropdown}>
-            <div className="NavDropdown-content right">
-              <ul className="NavDropdown-content-layer">
-                {!user.google_auth && !user.ldap_auth ? (
-                  <li>
-                    <Link
-                      to="/user/edit_current"
-                      data-metabase-event={
-                        "Navbar;Profile Dropdown;Edit Profile"
-                      }
-                      onClick={this.closeDropdown}
-                      className="Dropdown-item block text-white no-decoration"
-                    >
-                      {t`Account Settings`}
-                    </Link>
-                  </li>
-                ) : null}
-
-                {user.is_superuser && context !== "admin" ? (
-                  <li>
-                    <Link
-                      to="/admin"
-                      data-metabase-event={
-                        "Navbar;Profile Dropdown;Enter Admin"
-                      }
-                      onClick={this.closeDropdown}
-                      className="Dropdown-item block text-white no-decoration"
-                    >
-                      {t`Admin Panel`}
-                    </Link>
-                  </li>
-                ) : null}
-
-                {user.is_superuser && context === "admin" ? (
-                  <li>
-                    <Link
-                      to="/"
-                      data-metabase-event={"Navbar;Profile Dropdown;Exit Admin"}
-                      onClick={this.closeDropdown}
-                      className="Dropdown-item block text-white no-decoration"
-                    >
-                      {t`Exit Admin`}
-                    </Link>
-                  </li>
-                ) : null}
-
-                <li>
-                  <a
-                    data-metabase-event={"Navbar;Profile Dropdown;Help " + tag}
-                    className="Dropdown-item block text-white no-decoration"
-                    href={"http://www.metabase.com/docs/" + tag}
-                    target="_blank"
-                  >
-                    {t`Help`}
-                  </a>
-                </li>
-
-                {user.is_superuser && (
-                  <li>
-                    <a
-                      data-metabase-event={
-                        "Navbar;Profile Dropdown;Debugging " + tag
-                      }
-                      onClick={this.openModal.bind(this, "logs")}
-                      className="Dropdown-item block text-white no-decoration"
-                    >
-                      {t`Logs`}
-                    </a>
-                  </li>
-                )}
-
-                <li>
-                  <a
-                    data-metabase-event={"Navbar;Profile Dropdown;About " + tag}
-                    onClick={this.openModal.bind(this, "about")}
-                    className="Dropdown-item block text-white no-decoration"
-                  >
-                    {t`About Metabase`}
-                  </a>
-                </li>
-
-                <li className="border-top border-light">
-                  <Link
-                    to="/auth/logout"
-                    data-metabase-event={"Navbar;Profile Dropdown;Logout"}
-                    className="Dropdown-item block text-white no-decoration"
-                  >
-                    {t`Sign out`}
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </OnClickOutsideWrapper>
-        ) : null}
-
+      <Box>
+        <EntityMenu
+          items={[
+            {
+              title: t`Account settings`,
+              icon: null,
+              link: Urls.accountSettings(),
+            },
+            {
+              title: admin ? t`Exit admin` : t`Admin`,
+              icon: null,
+              link: admin ? "/" : "/admin",
+            },
+            {
+              title: t`Logs`,
+              icon: null,
+              action: () => this.openModal("logs"),
+            },
+            {
+              title: t`About metabase`,
+              icon: null,
+              action: () => this.openModal("about"),
+            },
+            {
+              title: t`Sign out`,
+              icon: null,
+              link: "auth/logout",
+            },
+          ]}
+          triggerIcon="person"
+        />
         {modalOpen === "about" ? (
           <Modal small onClose={this.closeModal}>
             <div className="px4 pt4 pb2 text-centered relative">
-              <span
-                className="absolute top right p4 text-normal text-grey-3 cursor-pointer"
-                onClick={this.closeModal}
-              >
-                <Icon name={"close"} size={16} />
-              </span>
               <div className="text-brand pb2">
                 <LogoIcon width={48} height={48} />
               </div>
@@ -231,7 +133,7 @@ export default class ProfileLink extends Component {
             <Logs onClose={this.closeModal} />
           </Modal>
         ) : null}
-      </div>
+      </Box>
     );
   }
 }

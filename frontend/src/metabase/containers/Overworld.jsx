@@ -1,4 +1,5 @@
 import React from "react";
+import _ from "underscore";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
 import { t } from "c-3po";
@@ -19,20 +20,43 @@ import Subhead from "metabase/components/Subhead";
 
 import { getUser } from "metabase/home/selectors";
 
+import CollectionList from "metabase/components/CollectionList";
+
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Greeting from "metabase/lib/greeting";
 
-const mapStateToProps = state => ({
-  user: getUser(state),
-});
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
 //class Overworld extends Zelda
-@connect(mapStateToProps)
+@entityListLoader({
+  entityType: "search",
+  entityQuery: (state, props) => ({ collection: "root" }),
+  wrapped: true,
+})
+@connect((state, props) => {
+  // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
+  const [collections, items] = _.partition(
+    props.list,
+    item => item.model === "collection",
+  );
+  const [pinned, unpinned] = _.partition(
+    items,
+    item => item.collection_position != null,
+  );
+  // sort the pinned items by collection_position
+  pinned.sort((a, b) => a.collection_position - b.collection_position);
+  return {
+    collections,
+    pinned,
+    unpinned,
+    user: getUser(state),
+  };
+})
 class Overworld extends React.Component {
   render() {
     return (
-      <Box px={4}>
-        <Flex mt={3} mb={1} align="center">
+      <Box>
+        <Flex px={4} pt={3} pb={1} align="center">
           <MetabotLogo />
           <Box ml={2}>
             <Subhead>{Greeting.sayHello(this.props.user.first_name)}</Subhead>
@@ -50,18 +74,20 @@ class Overworld extends React.Component {
                 <CandidateListLoader>
                   {({ candidates, sampleCandidates, isSample }) => {
                     return (
-                      <ExplorePane
-                        candidates={candidates}
-                        withMetabot={false}
-                        title=""
-                        gridColumns={1 / 3}
-                        asCards={true}
-                        description={
-                          isSample
-                            ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                            : t`I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!`
-                        }
-                      />
+                      <Box px={4}>
+                        <ExplorePane
+                          candidates={candidates}
+                          withMetabot={false}
+                          title=""
+                          gridColumns={1 / 3}
+                          asCards={true}
+                          description={
+                            isSample
+                              ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
+                              : t`I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!`
+                          }
+                        />
+                      </Box>
                     );
                   }}
                 </CandidateListLoader>
@@ -69,14 +95,14 @@ class Overworld extends React.Component {
             }
 
             return (
-              <Box>
+              <Box px={4}>
                 <Box mt={3} mb={1}>
                   <h4>{t`Pinned dashboards`}</h4>
                 </Box>
-                <Grid w={1 / 3}>
+                <Grid>
                   {pinnedDashboards.map(pin => {
                     return (
-                      <GridItem>
+                      <GridItem w={1 / 3}>
                         <Link
                           to={Urls.dashboard(pin.id)}
                           hover={{ color: normal.blue }}
@@ -114,7 +140,11 @@ class Overworld extends React.Component {
           }}
         </CollectionItemsLoader>
 
-        <Box mt={4}>
+        <Box px={4} my={3}>
+          <CollectionList collections={this.props.collections} />
+        </Box>
+
+        <Box pt={2} px={4}>
           <h4>{t`Our data`}</h4>
           <Box mt={2}>
             <DatabaseListLoader>
