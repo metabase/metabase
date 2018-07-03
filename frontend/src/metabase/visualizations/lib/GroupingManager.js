@@ -10,16 +10,48 @@ export class GroupingManager {
   defaultRowHeight: Number;
   columnIndexToFirstInGroupIndexes: {};
   rowsOrdered: Row[];
+  pivotedColumns: any[];
+  cols;
 
 
-  constructor( defaultRowHeight: Number, columnsIndexesForGrouping: Number[], rows: Row[]) {
+  constructor( defaultRowHeight: Number, columnsIndexesForGrouping: Number[], rows: Row[], isPivoted : boolean, {cols}) {
+
     this.defaultRowHeight = defaultRowHeight;
     this.rowsOrdered = _.sortBy(rows, columnsIndexesForGrouping.map(funGen));
     const foo = getFirstInGroupMap(this.rowsOrdered);
     const res = columnsIndexesForGrouping.map(foo).map(p => p.firstInGroupIndexes);
     const res2 = res.reduce(({resArr, prevElem}, elem) =>{const r = new Set([...prevElem, ...elem]); resArr.push(r); return {resArr, prevElem : r} },{ resArr: [], prevElem : new Set()}).resArr;
     const res3 = res2.map((v, i) => [columnsIndexesForGrouping[i], v]);
-    this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
+    if(isPivoted)
+    {
+      const lastGroupIndex = columnsIndexesForGrouping[columnsIndexesForGrouping.length - 2];
+      const pivotColumnNumber = columnsIndexesForGrouping[columnsIndexesForGrouping.length - 1];
+      const columns = new Set(Array.from(this.rowsOrdered.map(p => p[pivotColumnNumber])));
+      // columns.delete(undefined);
+      this.pivotedColumns = Array.from(columns);
+
+      const dd = _.sortBy(Array.from(res3[res3.length -2][1]));
+      const [x, ...tail] = dd;
+      const ttttttttttt = tail.reduce((acc, currentValue, index) => {acc[dd[index]] = currentValue - 1; return acc}, {});
+      const functionf = v => createUberRow(pivotColumnNumber, v);
+      const grouped = Object.getOwnPropertyNames(ttttttttttt).map(start => this.rowsOrdered.slice(start, ttttttttttt[start]+1)).map(functionf);
+      const foo_ = getFirstInGroupMap(grouped);
+      const res_ = columnsIndexesForGrouping.slice(0,columnsIndexesForGrouping.length -2).map(foo_).map(p => p.firstInGroupIndexes);
+      const res2_ = res_.reduce(({resArr, prevElem}, elem) =>{const r = new Set([...prevElem, ...elem]); resArr.push(r); return {resArr, prevElem : r} },{ resArr: [], prevElem : new Set()}).resArr;
+      const res3_ = res2_.map((v, i) => [columnsIndexesForGrouping[i], v]);
+      this.rowsOrdered = grouped;
+      this.columnIndexToFirstInGroupIndexes = res3_.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
+      const grCols = cols.slice(0, columnsIndexesForGrouping.length - 1).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
+      const values = cols.slice(columnsIndexesForGrouping.length);
+      const tt = this.pivotedColumns.map(k => getPivotValue(k, columnsIndexesForGrouping.length)).map(getValue => values.map((col, i) => ({...col, getValue: getValue(i)})))
+
+      this.cols = grCols.concat(...tt)
+    }
+    else
+    {
+      this.cols = cols.map((col, i) => ({...col, getValue: getValueByIndex(i)}));
+      this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
+    }
   }
 
 
@@ -62,6 +94,9 @@ export class GroupingManager {
 
 
 }
+
+const getValueByIndex = (index : Number) => (row ) => row[index];
+const getPivotValue = (key, offset ) => (index: Number) => row => ((row.piv[key] || [])[0] || [])[index + offset];
 
 //todo change name, add comment
 const funGen = columnNumber => {
@@ -115,4 +150,12 @@ const getStartGroupIndexToEndGroupIndex = (startIndexes : Set) : {} =>{
   return tail.reduce((acc, currentValue, index) => {acc[sortedIndexes[index]] = currentValue - 1; return acc}, {});
 };
 
+
+const createUberRow = (pivotIndex, values) =>{
+  const piv = values.reduce((acc, value) => ({...acc, [value[pivotIndex]] : [...(acc[value[pivotIndex]] || []), value] }), {});
+  const res = {piv};
+  res.__proto__ = values[0];
+
+  return res;
+}
 

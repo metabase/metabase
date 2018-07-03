@@ -5,7 +5,7 @@ import type {ParameterValues} from "metabase/meta/types/Parameter";
 import type {Card} from "metabase/meta/types/Card";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import SummaryTable, {COLUMNS_SETTINGS} from "metabase/visualizations/visualizations/SummaryTable";
-import StateSerialized, {GROUPS_SOURCES, VALUES_SOURCES} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
+import StateSerialized, {GROUPS_SOURCES, VALUES_SOURCES, COLUMNS_SOURCE} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import {WrappedQuery} from "metabase-lib/lib/queries/WrappedQuery";
@@ -24,6 +24,7 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
 
   if(!settings[GROUPS_SOURCES].every(p => nameToTypeMap[p])
     || !settings[VALUES_SOURCES].every(p => nameToTypeMap[p])
+    || !settings[COLUMNS_SOURCE].every(p => nameToTypeMap[p])
   || !settings[VALUES_SOURCES].some(p => canTotalize(nameToTypeMap[p])))
     return [];
 
@@ -32,7 +33,7 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
   const showTotalsFor = (name) => ((settings.columnNameToMetadata|| {})[name] || {}).showTotals;
 
   const totals = settings[VALUES_SOURCES].filter(p => canTotalize(nameToTypeMap[p])).map(createTotal);
-  const breakouts = settings[GROUPS_SOURCES].map(createLiteral);
+  const breakouts = [...settings[GROUPS_SOURCES].map(createLiteral) ,...settings[COLUMNS_SOURCE].map(createLiteral)];
 
   // const basedQuery = );// buildQuery(query.clearBreakouts().clearAggregations(), totals);
   const queriesWithBreakouts = breakouts.reduce(({acc, prev}, br) => {

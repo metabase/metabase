@@ -174,12 +174,13 @@ console.log(rowsMerged.length)
       return null;
     }
 
-    const groupingIndexes = new Array((settings[COLUMNS_SETTINGS].groupsSources || []).length).keys();
+    const isPivoted = (settings[COLUMNS_SETTINGS].columnsSource || []).length >= 1;
+    const groupingIndexes = new Array((settings[COLUMNS_SETTINGS].groupsSources || []).length + (isPivoted ? 1 : 0)).keys();
 
     //todo: fix 30
-    const groupingManager = new GroupingManager(30, [...groupingIndexes], data.rows);
+    const groupingManager = new GroupingManager(30, [...groupingIndexes], data.rows, isPivoted, data);
 
-    const dataUpdated = { ...data, rows: groupingManager.rowsOrdered };
+    const dataUpdated = { ...data, rows: groupingManager.rowsOrdered, cols : groupingManager.cols };
 
     if (isColumnsDisabled) {
       return (

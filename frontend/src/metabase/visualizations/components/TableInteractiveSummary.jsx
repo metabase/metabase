@@ -267,10 +267,9 @@ export default class TableInteractiveSummary extends Component {
       visualizationIsClickable,
     } = this.props;
     const { rows, cols } = data;
-
     const column = cols[columnIndex];
     const row = rows[rowIndex];
-    let value = row[columnIndex];
+    let value = column.getValue(row);
 
     if (row.isTotalColumnIndex === 0 && columnIndex === 0)
       value = 'Grand totals';

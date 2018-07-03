@@ -19,7 +19,7 @@ import Toggle from "metabase/components/Toggle";
 
 
 export const GROUPS_SOURCES = 'groupsSources';
-const COLUMNS_SOURCE = 'columnsSource';
+export const COLUMNS_SOURCE = 'columnsSource';
 export const VALUES_SOURCES = 'valuesSources';
 const UNUSED_COLUMNS = 'unusedColumns';
 
