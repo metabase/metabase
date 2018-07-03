@@ -34,10 +34,23 @@
 }
 
 .EditHeader {
+  background-color: rgba(255, 255, 255, 0.15);
+  position: relative;
+}
+
+/* a bit of a hack to fade out the edit header */
+.EditHeader:after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
   background-color: var(--color-brand);
 }
 
-.EditHeader.EditHeader--admin {
+.EditHeader.EditHeader--admin:after {
   background-color: var(--color-bg-dark);
 }
 
