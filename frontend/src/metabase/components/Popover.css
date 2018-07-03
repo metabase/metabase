@@ -111,7 +111,7 @@
 /* create a smaller inset arrow on the right */
 .PopoverHeader-item--withArrow:after {
   right: -15px;
-  border-left-color: var(--color-border);
+  border-left-color: var(--color-bg-white);
 }
 
 /* create a slightly larger arrow on the top for border purposes */
@@ -126,10 +126,10 @@
 /* create a smaller inset arrow on the top */
 .tether-element-attached-top .PopoverBody--withArrow:after {
   top: -18px;
-  border-bottom-color: var(--color-border);
+  border-bottom-color: var(--color-bg-white);
 }
 .tether-element-attached-top .PopoverBody--tooltip:after {
-  border-bottom-color: var(--color-accent2);
+  border-bottom-color: var(--color-bg-black);
 }
 
 /* create a slightly larger arrow on the bottom for border purposes */
@@ -144,10 +144,10 @@
 /* create a smaller inset arrow on the bottom */
 .tether-element-attached-bottom .PopoverBody--withArrow:after {
   bottom: -18px;
-  border-top-color: var(--color-border);
+  border-top-color: var(--color-bg-white);
 }
 .tether-element-attached-bottom .PopoverBody--tooltip:after {
-  border-top-color: var(--color-accent2);
+  border-top-color: var(--color-bg-black);
 }
 
 /* if the tether element is attached right, move our arrows right */

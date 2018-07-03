@@ -26,7 +26,7 @@
 /* create a smaller inset arrow on the right */
 .arrow-right:after {
   right: -19px;
-  border-left-color: var(--color-border);
+  border-left-color: var(--color-white);
 }
 
 /* move our arrows to the center */
