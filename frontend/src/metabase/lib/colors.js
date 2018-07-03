@@ -24,7 +24,7 @@ const colors = {
   error: "#ED6E6E",
   warning: "#F9CF48",
   "text-dark": "#2E353B",
-  "text-medium": "#93A1AB",
+  "text-medium": "#74838F",
   "text-light": "#C7CFD4",
   "text-white": "#FFFFFF",
   "bg-black": "#2E353B",
