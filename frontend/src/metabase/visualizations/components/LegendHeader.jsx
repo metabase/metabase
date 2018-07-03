@@ -105,7 +105,7 @@ export default class LegendHeader extends Component {
                       })
                   : null
             }
-            infoClassName={'text-grey-2 text-grey-4-hover'}
+            infoClassName={"text-grey-2 text-grey-4-hover"}
           />,
           onRemoveSeries &&
             index > 0 && (
