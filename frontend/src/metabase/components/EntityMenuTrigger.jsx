@@ -5,7 +5,7 @@ import cxs from "cxs";
 import colors from "metabase/lib/colors";
 
 const EntityMenuTrigger = ({ icon, onClick, open }) => {
-  const interactionColor = colors["bg-light"];
+  const interactionColor = colors["bg-medium"];
   const classes = cxs({
     display: "flex",
     alignItems: "center",
