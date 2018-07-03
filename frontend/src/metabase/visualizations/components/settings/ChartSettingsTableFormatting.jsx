@@ -28,16 +28,16 @@ const OPERATOR_NAMES = {
   "!=": t`not equal to`,
 };
 
-import { desaturated, getColorScale } from "metabase/lib/colors";
+import colors, { desaturated, getColorScale } from "metabase/lib/colors";
 
 const COLORS = Object.values(desaturated);
 const COLOR_RANGES = [].concat(
   ...COLORS.map(color => [["white", color], [color, "white"]]),
   [
-    [desaturated.red, "white", desaturated.green],
-    [desaturated.green, "white", desaturated.red],
-    [desaturated.red, desaturated.yellow, desaturated.green],
-    [desaturated.green, desaturated.yellow, desaturated.red],
+    [colors.error, "white", colors.success],
+    [colors.success, "white", colors.error],
+    [colors.error, colors.warning, colors.success],
+    [colors.success, colors.warning, colors.error],
   ],
 );
 
