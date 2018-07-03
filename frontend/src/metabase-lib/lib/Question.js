@@ -416,12 +416,12 @@ export default class Question {
     const questionId = this.id();
     const tableId = this.query().tableId();
     if (questionId != null && !isTransientId(questionId)) {
-      return `/auto/dashboard/table/${tableId}/compare/question/${questionId}${cellQuery}`;
+      return `/auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
     } else {
       const adHocQuery = Card_DEPRECATED.utf8_to_b64url(
         JSON.stringify(this.card().dataset_query),
       );
-      return `/auto/dashboard/table/${tableId}/compare/adhoc/${adHocQuery}${cellQuery}`;
+      return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
     }
   }
 
