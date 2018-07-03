@@ -24,7 +24,7 @@
   --color-bg-medium: #edf2f5;
   --color-bg-light: #f9fbfc;
   --color-bg-white: #ffffff;
-  --color-shadow: #f4f5f6;
+  --color-shadow: rgba(0, 0, 0, 0.08);
   --color-border: #d7dbde;
 }
 

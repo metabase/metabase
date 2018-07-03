@@ -23,7 +23,7 @@
 :local .Text .text-card-textarea:focus {
   border-color: var(--color-brand);
   background-color: white;
-  box-shadow: 0 1px 7px color(var(--color-shadow) alpha(-90%));
+  box-shadow: 0 1px 7px var(--color-shadow);
 }
 :local .Text .text-card-markdown {
   overflow: auto;

@@ -32,7 +32,7 @@ const colors = {
   "bg-medium": "#EDF2F5",
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
-  shadow: "#F4F5F6",
+  shadow: "rgba(0,0,0,0.08)",
   border: "#D7DBDE",
 };
 export default colors;
@@ -133,4 +133,9 @@ export const getColorScale = (
 export const alpha = (color: ColorString, alpha: number): ColorString =>
   Color(color)
     .alpha(alpha)
+    .string();
+
+export const darken = (color: ColorString, factor: number): ColorString =>
+  Color(color)
+    .darken(factor)
     .string();

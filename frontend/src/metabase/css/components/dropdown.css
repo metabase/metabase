@@ -17,7 +17,7 @@
   border: 1px solid color(var(--color-accent2) alpha(-94%));
   background-color: var(--color-bg-white);
   border-radius: 4px;
-  box-shadow: 0 0 2px color(var(--color-shadow) alpha(-88%));
+  box-shadow: 0 0 2px var(--color-shadow);
   background-clip: padding-box;
   padding-top: 1em;
   padding-bottom: 1em;

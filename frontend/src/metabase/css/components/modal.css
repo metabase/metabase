@@ -10,7 +10,7 @@
 .Modal {
   margin: auto;
   width: 640px;
-  box-shadow: 0 0 6px color(var(--color-shadow) alpha(-88%));
+  box-shadow: 0 0 6px var(--color-shadow);
   max-height: 90%;
   overflow-y: auto;
 }

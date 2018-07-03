@@ -170,11 +170,11 @@
 }
 
 .DashCard .Card {
-  box-shadow: 0px 1px 3px color(var(--color-shadow) alpha(-92%));
+  box-shadow: 0px 1px 3px var(--color-shadow);
 }
 
 .Dash--editing .DashCard.dragging .Card {
-  box-shadow: 3px 3px 8px color(var(--color-shadow) alpha(-90%));
+  box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
 .Dash--editing .DashCard.dragging,

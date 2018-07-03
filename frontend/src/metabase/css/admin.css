@@ -120,7 +120,7 @@
   border: var(--border-size) var(--border-style) var(--color-border);
   border-radius: var(--default-border-radius);
   width: 266px;
-  box-shadow: inset -1px -1px 3px color(var(--color-shadow) alpha(-95%));
+  box-shadow: inset -1px -1px 3px var(--color-shadow);
   padding-bottom: 0.75em;
 }
 
@@ -168,7 +168,7 @@
   margin-right: -0.5em;
   padding-left: 1.5em;
   padding-right: 1.5em;
-  box-shadow: 0 1px 2px color(var(--color-shadow) alpha(-90%));
+  box-shadow: 0 1px 2px var(--color-shadow);
 }
 
 .AdminList-section {

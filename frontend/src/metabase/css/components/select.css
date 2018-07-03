@@ -55,7 +55,7 @@
   -webkit-appearance: none;
   -moz-appearance: none;
 
-  box-shadow: 0 1px 2px color(var(--color-shadow) alpha(-88%));
+  box-shadow: 0 1px 2px var(--color-shadow);
 }
 
 .Select--blue select {

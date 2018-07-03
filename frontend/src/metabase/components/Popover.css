@@ -17,7 +17,7 @@
 
 .PopoverBody.PopoverBody--withBackground {
   border: 1px solid var(--color-border);
-  box-shadow: 0 4px 10px color(var(--color-shadow) alpha(-90%));
+  box-shadow: 0 4px 10px var(--color-shadow);
   background-color: var(--color-bg-white);
   border-radius: 4px;
   overflow: hidden;

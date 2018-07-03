@@ -10,7 +10,7 @@
   border-bottom-right-radius: 8px;
   border: 3px solid white;
   border-left: 1px solid white;
-  box-shadow: 2px 2px 6px color(var(--color-shadow) alpha(-50%));
+  box-shadow: 2px 2px 6px var(--color-shadow);
 
   color: white;
   font-weight: bold;

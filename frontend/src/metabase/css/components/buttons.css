@@ -190,7 +190,7 @@
 
 .Button--selected,
 .Button--selected:hover {
-  box-shadow: inset 0 1px 1px color(var(--color-shadow) alpha(-88%));
+  box-shadow: inset 0 1px 1px var(--color-shadow);
   background-color: var(--color-bg-light);
 }
 

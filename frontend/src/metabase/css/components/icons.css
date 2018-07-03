@@ -16,7 +16,7 @@
     box-shadow: 0 0 5px var(--color-shadow);
   }
   50% {
-    box-shadow: 0 0 5px color(var(--color-shadow) alpha(-75%));
+    box-shadow: 0 0 5px var(--color-shadow);
   }
   100% {
     box-shadow: 0 0 5px var(--color-shadow);
