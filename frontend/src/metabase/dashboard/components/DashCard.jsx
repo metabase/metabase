@@ -138,6 +138,7 @@ export default class DashCard extends Component {
       >
         <Visualization
           className="flex-full"
+          classNameWidgets={isEmbed && "text-grey-2 text-grey-4-hover"}
           error={errorMessage}
           errorIcon={errorIcon}
           isSlow={isSlow}
@@ -163,7 +164,7 @@ export default class DashCard extends Component {
               />
             ) : isEmbed ? (
               <QueryDownloadWidget
-                className="m1 text-brand-hover"
+                className="m1 text-brand-hover text-grey-2"
                 classNameClose="hover-child"
                 card={dashcard.card}
                 params={params}
