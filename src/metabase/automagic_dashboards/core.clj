@@ -32,6 +32,7 @@
             [metabase.related :as related]
             [metabase.sync.analyze.classify :as classify]
             [metabase.util :as u]
+            [metabase.util.date :as date]
             [puppetlabs.i18n.core :as i18n :refer [tru trs]]
             [ring.util.codec :as codec]
             [schema.core :as s]
@@ -902,15 +903,23 @@
        (concat (collect-metrics root question)
                (collect-breakout-fields root question))))
 
-(def ^:private date-formatter (t.format/formatter "MMMM d, YYYY"))
-(def ^:private datetime-formatter (t.format/formatter "EEEE, MMMM d, YYYY h:mm a"))
-
 (defn- humanize-datetime
-  [dt]
-  (t.format/unparse (if (str/index-of dt "T")
-                      datetime-formatter
-                      date-formatter)
-                    (t.format/parse dt)))
+  [dt unit]
+  (let [dt                     (t.format/parse dt)
+        unparse-with-formatter (fn [formatter dt]
+                                 (t.format/unparse (t.format/formatter formatter) dt))]
+    (case unit
+      :minute      (tru "ot {0}" (unparse-with-formatter "EEEE, MMMM d, YYYY h:mm a" dt))
+      :hour        (tru "at {0}" (unparse-with-formatter "EEEE, MMMM d, YYYY h a" dt))
+      :day         (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
+      :month       (tru "in {0}" (unparse-with-formatter "MMMM YYYY" dt))
+      :quarter     (tru "in Q{0} {1}"
+                        (date/date-extract :quarter-of-year dt)
+                        (->> dt (date/date-extract :year) str))
+      :year        (date/date-extract :year dt)
+      :day-of-week (tru "on a {}" (unparse-with-formatter "EEEE" dt))
+      (:minute-of-hour :hour-of-day ::day-of-month :week-of-year :month-of-year :quarter-of-year)
+      (date/date-extract unit dt))))
 
 (defn- field-reference->field
   [root field-reference]
@@ -928,13 +937,13 @@
   humanize-filter-value (fn [_ [op & args]]
                           (qp.util/normalize-token op)))
 
-(def ^:private unit-name (comp {:minute-of-hour  "minute of hour"
-                                :hour-of-day     "hour of day"
-                                :day-of-week     "day of week"
+(def ^:private unit-name (comp {:minute-of-hour  "minute"
+                                :hour-of-day     "hour"
+                                :day-of-week     ""
                                 :day-of-month    "day of month"
-                                :week-of-year    "week of year"
-                                :month-of-year   "month of year"
-                                :quarter-of-year "quarter of year"}
+                                :week-of-year    "week of"
+                                :month-of-year   "month of"
+                                :quarter-of-year "quarter of"}
                                qp.util/normalize-token))
 
 (defn- field-name
@@ -948,8 +957,9 @@
   [root [_ field-reference value]]
   (let [field      (field-reference->field root field-reference)
         field-name (field-name field)]
-    (if (filters/datetime? field)
-      (tru "{0} is on {1}" field-name (humanize-datetime value))
+    (if (or (filters/datetime? field)
+            (filters/periodic-datetime? field))
+      (tru "{0} is {1}" field-name (humanize-datetime value (:unit field)))
       (tru "{0} is {1}" field-name value))))
 
 (defmethod humanize-filter-value :between
