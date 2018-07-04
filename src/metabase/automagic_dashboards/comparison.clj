@@ -45,10 +45,10 @@
 
 (defn- inject-filter
   "Inject filter clause into card."
-  [{:keys [query-filter]} card]
+  [{:keys [query-filter cell-query] :as root} card]
   (-> card
-      (update-in [:dataset_query :query :filter] merge-filter-clauses query-filter)
-      (update :series (partial map (partial inject-filter query-filter)))))
+      (update-in [:dataset_query :query :filter] merge-filter-clauses query-filter cell-query)
+      (update :series (partial map (partial inject-filter root)))))
 
 (defn- multiseries?
   [card]
