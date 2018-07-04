@@ -1,16 +1,5 @@
 :root {
   --default-button-border-radius: 4px;
-  --default-button-border-color: var(--color-border);
-  --default-button-background-color: var(--color-bg-white);
-
-  --primary-button-border-color: var(--color-brand);
-  --primary-button-bg-color: var(--color-brand);
-  --warning-button-border-color: var(--color-accent3);
-  --warning-button-bg-color: var(--color-accent3);
-  --danger-button-bg-color: var(--color-accent3);
-  --selected-button-bg-color: var(--color-bg-light);
-
-  --success-button-color: var(--color-accent1);
 }
 
 .Button {

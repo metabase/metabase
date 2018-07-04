@@ -63,32 +63,21 @@
   border-color: color(var(--color-accent2) alpha(-80%)) !important;
 }
 
-.border-grey-1 {
-  border-color: var(--color-border) !important;
-}
-.border-grey-2 {
-  border-color: var(--color-border) !important;
-}
-
-.border-green {
-  border-color: var(--color-accent1) !important;
-}
-
 .border-purple {
   border-color: var(--color-accent2) !important;
 }
 
 .border-error,
 :local(.border-error) {
-  border-color: var(--color-accent3) !important;
+  border-color: var(--color-error) !important;
 }
 
 .border-gold {
-  border-color: var(--color-accent4) !important;
+  border-color: var(--color-warning) !important;
 }
 
 .border-success {
-  border-color: var(--color-accent1) !important;
+  border-color: var(--color-success) !important;
 }
 
 .border-brand,

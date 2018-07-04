@@ -41,8 +41,8 @@ const CompletionBadge = ({ completed }) => (
     style={{
       borderWidth: 1,
       borderStyle: "solid",
-      borderColor: completed ? colors["accent1"] : colors["text-light"],
-      backgroundColor: completed ? colors["accent1"] : colors["text-white"],
+      borderColor: completed ? colors["success"] : colors["text-light"],
+      backgroundColor: completed ? colors["success"] : colors["text-white"],
       width: 32,
       height: 32,
       borderRadius: 99,

@@ -92,7 +92,7 @@ export default class CollectionPicker extends React.Component {
                 !isRoot(collection) && (
                   <Icon
                     name="chevronright"
-                    className="p1 ml-auto circular text-grey-2 border-grey-2 bordered bg-white-hover cursor-pointer"
+                    className="p1 ml-auto circular text-grey-2 bordered bg-white-hover cursor-pointer"
                     onClick={e => {
                       e.stopPropagation();
                       this.setState({ parentId: collection.id });

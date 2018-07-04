@@ -217,10 +217,9 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
     <div className="p2 flex align-center">
       <RuleBackground
         rule={rule}
-        className={cx(
-          "mr2 flex-no-shrink rounded overflow-hidden border-grey-1",
-          { bordered: rule.type === "range" },
-        )}
+        className={cx("mr2 flex-no-shrink rounded overflow-hidden", {
+          bordered: rule.type === "range",
+        })}
         style={{ width: 40, height: 40 }}
       />
       <RuleDescription rule={rule} />
