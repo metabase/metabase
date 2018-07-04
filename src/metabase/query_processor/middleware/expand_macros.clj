@@ -119,12 +119,13 @@
   ([] [])
   ([clause] clause)
   ([base-clause & additional-clauses]
-   (cond
-     (and (seq base-clause)
-          (seq additional-clauses)) (apply vector :and base-clause additional-clauses)
-     (seq base-clause)              base-clause
-     (seq additional-clauses)       (apply merge-filter-clauses additional-clauses)
-     :else                          [])))
+   (let [additional-clauses (filter seq additional-clauses)]
+     (cond
+       (and (seq base-clause)
+            (seq additional-clauses)) (apply vector :and base-clause additional-clauses)
+       (seq base-clause)              base-clause
+       (seq additional-clauses)       (apply merge-filter-clauses additional-clauses)
+       :else                          []))))
 
 (defn- add-metrics-filter-clauses
   "Add any FILTER-CLAUSES to the QUERY-DICT. If query has existing filter clauses, the new ones are
