@@ -44,6 +44,9 @@
                                org.apache.httpcomponents/httpclient
                                net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
+                 [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
+                   :exclusions [org.slf4j/slf4j-api
+                                it.unimi.dsi/fastutil]]
                  [com.draines/postal "2.0.2"]                         ; SMTP library
                  [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
                   "v3-rev154-1.23.0"]

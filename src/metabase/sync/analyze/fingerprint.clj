@@ -1,9 +1,14 @@
 (ns metabase.sync.analyze.fingerprint
   "Analysis sub-step that takes a sample of values for a Field and saving a non-identifying fingerprint
    used for classification. This fingerprint is saved as a column on the Field it belongs to."
-  (:require [clojure.set :as set]
+  (:require [clj-time
+             [coerce :as t.coerce]
+             [core :as t]]
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.helpers :as h]
+            [kixi.stats.core :as stats]
+            [medley.core :as m]
             [metabase.models.field :refer [Field]]
             [metabase.sync
              [interface :as i]
@@ -18,27 +23,102 @@
             [metabase.util
              [date :as du]
              [schema :as su]]
+            [redux.core :as redux]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
 
-(s/defn ^:private type-specific-fingerprint :- (s/maybe i/TypeSpecificFingerprint)
-  "Return type-specific fingerprint info for FIELD AND. a FieldSample of Values if it has an elligible base type"
-  [field :- i/FieldInstance, values :- i/FieldSample]
-  (condp #(isa? %2 %1) (:base_type field)
-    :type/Text     {:type/Text (text/text-fingerprint values)}
-    :type/Number   {:type/Number (number/number-fingerprint values)}
-    :type/DateTime {:type/DateTime (datetime/datetime-fingerprint values)}
-    nil))
+(defn- col-wise
+  [& rfs]
+  (fn
+    ([]
+     (mapv (fn [rf]
+             (rf))
+           rfs))
+    ([acc]
+     (mapv (fn [rf acc]
+             (rf acc))
+           rfs acc))
+    ([acc e]
+     (mapv (fn [rf acc e]
+             (rf acc e))
+           rfs acc e))))
 
-(s/defn ^:private fingerprint :- i/Fingerprint
-  "Generate a 'fingerprint' from a FieldSample of VALUES."
-  [field :- i/FieldInstance, values :- i/FieldSample]
-  (merge
-   (when-let [global-fingerprint (global/global-fingerprint values)]
-     {:global global-fingerprint})
-   (when-let [type-specific-fingerprint (type-specific-fingerprint field values)]
-     {:type type-specific-fingerprint})))
+(defn- monoid
+  [f init]
+  (fn
+    ([] init)
+    ([acc] (f acc))
+    ([acc x] (f acc x))))
 
+(defn- share
+  [pred]
+  (fn
+    ([]
+     {:match 0
+      :total 0})
+    ([{:keys [match total]}]
+     (/ match (max total 1)))
+    ([{:keys [match total]} e]
+     {:match (cond-> match
+               (pred e) inc)
+      :total (inc total)})))
+
+(defn cardinality
+  "Transducer that sketches cardinality using HyperLogLog++.
+   https://research.google.com/pubs/pub40671.html"
+  ([] (HyperLogLogPlus. 14 25))
+  ([^HyperLogLogPlus acc] (.cardinality acc))
+  ([^HyperLogLogPlus acc x]
+   (.offer acc x)
+   acc))
+
+(defmulti
+  ^{:private  true
+    :arglists '([field])}
+  fingerprinter :base_type)
+
+(def ^:private global-fingerprinter
+  (redux/fuse {:distinct-count cardinality}))
+
+(defmethod fingerprinter :default
+  [_]
+  global-fingerprinter)
+
+(defn- with-global-fingerprinter
+  [prefix fingerprinter]
+  (redux/post-complete
+   (redux/juxt
+    fingerprinter
+    global-fingerprinter)
+   (fn [[type-fingerprint global-fingerprint]]
+     {:global global-fingerprint
+      :type   {prefix type-fingerprint}})))
+
+(defmacro ^:private deffingerprinter
+  [type transducer]
+  `(defmethod fingerprinter ~type
+     [_#]
+     (with-global-fingerprinter ~type ~transducer)))
+
+(deffingerprinter :type/DateTime
+  ((map du/str->date-time)
+   (redux/post-complete
+    (redux/fuse {:earliest (monoid t/min-date (t.coerce/from-long Long/MAX_VALUE))
+                 :latest   (monoid t/max-date (t.coerce/from-long 0))})
+    (partial m/map-vals str))))
+
+(deffingerprinter :type/Number
+  ((remove nil?)
+   (redux/fuse {:min (monoid min Double/POSITIVE_INFINITY)
+                :max (monoid max Double/NEGATIVE_INFINITY)
+                :avg stats/mean})))
+
+(deffingerprinter :type/Text
+  (redux/fuse {:percent-json   (share text/valid-serialized-json?)
+               :percent-url    (share u/url?)
+               :percent-email  (share u/email?)
+               :average-length ((map (comp count str)) stats/mean)}))
 
 (s/defn ^:private save-fingerprint!
   [field :- i/FieldInstance, fingerprint :- i/Fingerprint]
@@ -61,18 +141,9 @@
 
 (s/defn ^:private fingerprint-table!
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
-  (let [fields-to-sample (sample/sample-fields table fields)]
-    (reduce (fn [count-info [field sample]]
-              (if-not sample
-                (update count-info :no-data-fingerprints inc)
-                (let [result (sync-util/with-error-handling (format "Error generating fingerprint for %s"
-                                                                    (sync-util/name-for-logging field))
-                               (save-fingerprint! field (fingerprint field sample)))]
-                  (if (instance? Exception result)
-                    (update count-info :failed-fingerprints inc)
-                    (update count-info :updated-fingerprints inc)))))
-            (empty-stats-map (count fields-to-sample))
-            fields-to-sample)))
+  (transduce identity
+             (apply col-wise (map fingerprinter fields))
+             (sample/sample-fields table fields)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

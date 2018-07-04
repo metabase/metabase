@@ -22,7 +22,7 @@
     (/ (double matching-count)
        (double total-count))))
 
-(defn- valid-serialized-json?
+(defn valid-serialized-json?
   "True if X is a serialized JSON dictionary or array."
   [x]
   (boolean
