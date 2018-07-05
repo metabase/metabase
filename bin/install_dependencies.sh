@@ -3,5 +3,5 @@ mvn package -f ./local-query-execution-factory/pom.xml
 cp ./local-query-execution-factory/target/local-query-execution-factory-0.2.jar ./bin/lib/local-query-execution-factory-0.2.jar
 mvn install:install-file -Dfile=./bin/lib/local-query-execution-factory-0.2.jar -DgroupId=com.stratio.metabase -DartifactId=local-query-execution-factory -Dversion=0.2 -Dpackaging=jar
 
-mvn dependency:copy -Dartifact=com.stratio.jdbc:stratio-crossdata-jdbc4:2.12.0 -DoutputDirectory=./bin/lib/
-mvn install:install-file -Dfile=./bin/lib/stratio-crossdata-jdbc4-2.12.0.jar -DgroupId=com.stratio.jdbc -DartifactId=stratio-crossdata-jdbc4 -Dversion=2.12.0 -Dpackaging=jar
+mvn dependency:copy -Dartifact=com.stratio.jdbc:stratio-crossdata-jdbc4:2.13.0-5000715 -DoutputDirectory=./bin/lib/
+mvn install:install-file -Dfile=./bin/lib/stratio-crossdata-jdbc4-2.13.0-5000715.jar -DgroupId=com.stratio.jdbc -DartifactId=stratio-crossdata-jdbc4 -Dversion=2.13.0-5000715 -Dpackaging=jar
