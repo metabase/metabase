@@ -903,23 +903,38 @@
        (concat (collect-metrics root question)
                (collect-breakout-fields root question))))
 
+(defn- pluralize
+  [x]
+  (case (mod x 10)
+    1 (tru "{0}st" x)
+    2 (tru "{0}nd" x)
+    3 (tru "{0}rd" x)
+    (tru "{0}th" x)))
+
 (defn- humanize-datetime
   [dt unit]
   (let [dt                     (t.format/parse dt)
         unparse-with-formatter (fn [formatter dt]
                                  (t.format/unparse (t.format/formatter formatter) dt))]
     (case unit
-      :minute      (tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
-      :hour        (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
-      :day         (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
-      :month       (tru "in {0}" (unparse-with-formatter "MMMM, YYYY" dt))
-      :quarter     (tru "in Q{0}, {1}"
-                        (date/date-extract :quarter-of-year dt)
-                        (->> dt (date/date-extract :year) str))
-      :year        (tru "{0}" (unparse-with-formatter "YYYY" dt))
-      :day-of-week (tru "on a {}" (unparse-with-formatter "EEEE" dt))
-      (:minute-of-hour :hour-of-day ::day-of-month :week-of-year :month-of-year :quarter-of-year)
-      (date/date-extract unit dt))))
+      :minute          (tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
+      :hour            (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
+      :day             (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
+      :week            (tru "in {0} week - {1}"
+                            (->> dt (date/date-extract :week-of-year) pluralize)
+                            (->> dt (date/date-extract :year) str))
+      :month           (tru "in {0}" (unparse-with-formatter "MMMM, YYYY" dt))
+      :quarter         (tru "in Q{0} - {1}"
+                            (date/date-extract :quarter-of-year dt)
+                            (->> dt (date/date-extract :year) str))
+      :year            (unparse-with-formatter "YYYY" dt)
+      :day-of-week     (tru "on a {0}" (unparse-with-formatter "EEEE" dt))
+      :hour-of-day     (tru "at {0}" (unparse-with-formatter "h a" dt))
+      :month-of-year   (unparse-with-formatter "MMMM" dt)
+      :quarter-of-year (tru "Q{0}" (date/date-extract :quarter-of-year dt))
+      (:minute-of-hour
+       :day-of-month
+       :week-of-year)  (date/date-extract unit dt))))
 
 (defn- field-reference->field
   [root field-reference]
@@ -941,9 +956,9 @@
                                 :hour-of-day     "hour"
                                 :day-of-week     ""
                                 :day-of-month    "day of month"
-                                :week-of-year    "week of"
-                                :month-of-year   "month of"
-                                :quarter-of-year "quarter of"}
+                                :week-of-year    "week"
+                                :month-of-year   "month"
+                                :quarter-of-year "quarter"}
                                qp.util/normalize-token))
 
 (defn- field-name
