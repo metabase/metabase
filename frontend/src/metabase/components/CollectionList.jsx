@@ -17,12 +17,12 @@ import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 const CollectionItem = ({ collection, color, iconName = "all" }) => (
   <Link
     to={`collection/${collection.id}`}
-    hover={{ color: normal.blue }}
     color={color || normal.grey2}
+    className="text-brand-hover"
   >
     <Box bg="#F4F6F8" p={2} mb={1}>
       <Flex align="center" py={1} key={`collection-${collection.id}`}>
-        <Icon name={iconName} mx={1} color="#93B3C9" />
+        <Icon name={iconName} mx={1} />
         <h4 className="overflow-hidden">
           <Ellipsified>{collection.name}</Ellipsified>
         </h4>
