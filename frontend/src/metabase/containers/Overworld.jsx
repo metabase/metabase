@@ -139,9 +139,9 @@ class Overworld extends React.Component {
                     color={normal.grey2}
                     className="text-brand-hover"
                   >
-                    <Flex bg="#F4F6F8" p={2} mb={1} align='center'>
-                      <Box ml='auto' mr='auto'>
-                        <Flex align='center'>
+                    <Flex bg="#F4F6F8" p={2} mb={1} align="center">
+                      <Box ml="auto" mr="auto">
+                        <Flex align="center">
                           <h3>{t`Browse saved items`}</h3>
                           <Icon name="chevronright" size={14} ml={1} />
                         </Flex>
