@@ -123,33 +123,36 @@ class Overworld extends React.Component {
                     );
                   })}
                 </Grid>
-                <Box my={2}>
-                  <Link
-                    to="/collection/root"
-                    color={normal.grey2}
-                    className="text-brand-hover"
-                  >
-                    <Flex bg="#F4F6F8" p={2} mb={1} align="center">
-                      <Box ml="auto" mr="auto">
-                        <Flex align="center">
-                          <h3>{t`Browse saved items`}</h3>
-                          <Icon name="chevronright" size={14} ml={1} />
-                        </Flex>
-                      </Box>
-                    </Flex>
-                  </Link>
-                </Box>
               </Box>
             );
           }}
         </CollectionItemsLoader>
 
-        <Box px={4} my={3}>
-          <h4>{t`Collections`}</h4>
-          <Box mt={2}>
-            <CollectionList collections={this.props.collections} />
-          </Box>
+        <Box my={2} mx={4}>
+          <Link
+            to="/collection/root"
+            color={normal.grey2}
+            className="text-brand-hover"
+          >
+            <Flex bg="#F4F6F8" p={2} mb={1} align="center">
+              <Box ml="auto" mr="auto">
+                <Flex align="center">
+                  <h3>{t`Browse saved items`}</h3>
+                  <Icon name="chevronright" size={14} ml={1} />
+                </Flex>
+              </Box>
+            </Flex>
+          </Link>
         </Box>
+
+        {this.props.collections.length > 0 && (
+          <Box px={4} my={3}>
+            <h4>{t`Collections`}</h4>
+            <Box mt={2}>
+              <CollectionList collections={this.props.collections} />
+            </Box>
+          </Box>
+        )}
 
         <Box pt={2} px={4}>
           <h4>{t`Our data`}</h4>
