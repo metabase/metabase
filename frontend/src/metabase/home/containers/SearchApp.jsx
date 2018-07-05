@@ -36,8 +36,7 @@ export default class SearchApp extends React.Component {
                     </Box>
                     <Box mt={4}>
                       <Subhead>{t`It's quiet around here...`}</Subhead>
-                      <Text
-                      >{t`Metabase couldn't find any results for this.`}</Text>
+                      <p>{t`Metabase couldn't find any results for this.`}</p>
                     </Box>
                   </Flex>
                 );
@@ -48,12 +47,13 @@ export default class SearchApp extends React.Component {
                     .groupBy("model")
                     .pairs()
                     .value()
+                    .reverse() // show dashboards and collections before questions
                     .map(([model, items]) => (
                       <Box mt={2} mb={3}>
                         <div className="text-uppercase text-grey-4 text-small text-bold my1">
                           {entityTypeForModel(model)}
                         </div>
-                        <Card>
+                        <Card px={2}>
                           {items.map(item => (
                             <Link to={item.getUrl()}>
                               <EntityItem
