@@ -68,22 +68,6 @@ class CollectionList extends React.Component {
                 />
               </GridItem>
             )}
-          {!currentCollection && (
-            <GridItem w={1 / 4}>
-              <Link
-                to={Urls.collection()}
-                color={normal.grey2}
-                hover={{ color: normal.blue }}
-              >
-                <Box p={2} className="bordered rounded">
-                  <Flex align="center" py={1}>
-                    <Icon name="dashboard" mr={1} bordered />
-                    <h4>{t`Dashboards and questions`}</h4>
-                  </Flex>
-                </Box>
-              </Link>
-            </GridItem>
-          )}
           {collections
             .filter(c => c.id !== currentUser.personal_collection_id)
             .map(collection => (
