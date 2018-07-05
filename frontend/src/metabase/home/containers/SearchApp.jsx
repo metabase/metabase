@@ -12,8 +12,6 @@ import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import Subhead from "metabase/components/Subhead";
 
-import { entityTypeForModel } from "metabase/schema";
-
 export default class SearchApp extends React.Component {
   render() {
     return (
@@ -41,31 +39,84 @@ export default class SearchApp extends React.Component {
                   </Flex>
                 );
               }
+              const types = _.chain(list)
+                .groupBy("model")
+                .value();
+
               return (
                 <Box>
-                  {_.chain(list)
-                    .groupBy("model")
-                    .pairs()
-                    .value()
-                    .reverse() // show dashboards and collections before questions
-                    .map(([model, items]) => (
-                      <Box mt={2} mb={3}>
-                        <div className="text-uppercase text-grey-4 text-small text-bold my1">
-                          {entityTypeForModel(model)}
-                        </div>
-                        <Card px={2}>
-                          {items.map(item => (
-                            <Link to={item.getUrl()}>
-                              <EntityItem
-                                name={item.getName()}
-                                iconName={item.getIcon()}
-                                iconColor={item.getColor()}
-                              />
-                            </Link>
-                          ))}
-                        </Card>
-                      </Box>
-                    ))}
+                  {types.dashboard && (
+                    <Box mt={2} mb={3}>
+                      <div className="text-uppercase text-grey-4 text-small text-bold my1">
+                        {t`Dashboards`}
+                      </div>
+                      <Card px={2}>
+                        {types.dashboard.map(item => (
+                          <Link to={item.getUrl()}>
+                            <EntityItem
+                              name={item.getName()}
+                              iconName={item.getIcon()}
+                              iconColor={item.getColor()}
+                            />
+                          </Link>
+                        ))}
+                      </Card>
+                    </Box>
+                  )}
+                  {types.collection && (
+                    <Box mt={2} mb={3}>
+                      <div className="text-uppercase text-grey-4 text-small text-bold my1">
+                        {t`Collections`}
+                      </div>
+                      <Card px={2}>
+                        {types.collection.map(item => (
+                          <Link to={item.getUrl()}>
+                            <EntityItem
+                              name={item.getName()}
+                              iconName={item.getIcon()}
+                              iconColor={item.getColor()}
+                            />
+                          </Link>
+                        ))}
+                      </Card>
+                    </Box>
+                  )}
+                  {types.card && (
+                    <Box mt={2} mb={3}>
+                      <div className="text-uppercase text-grey-4 text-small text-bold my1">
+                        {t`Questions`}
+                      </div>
+                      <Card px={2}>
+                        {types.card.map(item => (
+                          <Link to={item.getUrl()}>
+                            <EntityItem
+                              name={item.getName()}
+                              iconName={item.getIcon()}
+                              iconColor={item.getColor()}
+                            />
+                          </Link>
+                        ))}
+                      </Card>
+                    </Box>
+                  )}
+                  {types.pulse && (
+                    <Box mt={2} mb={3}>
+                      <div className="text-uppercase text-grey-4 text-small text-bold my1">
+                        {t`Pulse`}
+                      </div>
+                      <Card px={2}>
+                        {types.pulse.map(item => (
+                          <Link to={item.getUrl()}>
+                            <EntityItem
+                              name={item.getName()}
+                              iconName={item.getIcon()}
+                              iconColor={item.getColor()}
+                            />
+                          </Link>
+                        ))}
+                      </Card>
+                    </Box>
+                  )}
                 </Box>
               );
             }}
