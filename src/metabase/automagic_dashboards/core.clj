@@ -909,7 +909,7 @@
         unparse-with-formatter (fn [formatter dt]
                                  (t.format/unparse (t.format/formatter formatter) dt))]
     (case unit
-      :minute      (tru "ot {0}" (unparse-with-formatter "EEEE, MMMM d, YYYY h:mm a" dt))
+      :minute      (tru "on {0}" (unparse-with-formatter "EEEE, MMMM d, YYYY, h:mm a" dt))
       :hour        (tru "at {0}" (unparse-with-formatter "EEEE, MMMM d, YYYY h a" dt))
       :day         (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
       :month       (tru "in {0}" (unparse-with-formatter "MMMM YYYY" dt))
