@@ -909,14 +909,14 @@
         unparse-with-formatter (fn [formatter dt]
                                  (t.format/unparse (t.format/formatter formatter) dt))]
     (case unit
-      :minute      (tru "on {0}" (unparse-with-formatter "EEEE, MMMM d, YYYY, h:mm a" dt))
-      :hour        (tru "at {0}" (unparse-with-formatter "EEEE, MMMM d, YYYY h a" dt))
+      :minute      (tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
+      :hour        (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
       :day         (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
-      :month       (tru "in {0}" (unparse-with-formatter "MMMM YYYY" dt))
-      :quarter     (tru "in Q{0} {1}"
+      :month       (tru "in {0}" (unparse-with-formatter "MMMM, YYYY" dt))
+      :quarter     (tru "in Q{0}, {1}"
                         (date/date-extract :quarter-of-year dt)
                         (->> dt (date/date-extract :year) str))
-      :year        (date/date-extract :year dt)
+      :year        (tru "{0}" (unparse-with-formatter "YYYY" dt))
       :day-of-week (tru "on a {}" (unparse-with-formatter "EEEE" dt))
       (:minute-of-hour :hour-of-day ::day-of-month :week-of-year :month-of-year :quarter-of-year)
       (date/date-extract unit dt))))
