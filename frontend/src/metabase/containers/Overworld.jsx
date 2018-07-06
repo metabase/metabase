@@ -17,7 +17,7 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Subhead from "metabase/components/Subhead";
-import Tooltip from "metabase/components/Tooltip"
+import Tooltip from "metabase/components/Tooltip";
 
 import { getUser } from "metabase/home/selectors";
 
@@ -77,7 +77,7 @@ class Overworld extends React.Component {
                     return (
                       <Box mx={4} mt={2}>
                         <Box mb={1}>
-                          <h4>{t`Metabot suggestions`}</h4>
+                          <h4>{t`Not sure where to start?`}</h4>
                         </Box>
                         <Card px={3} pb={1}>
                           <ExplorePane
@@ -89,7 +89,7 @@ class Overworld extends React.Component {
                             description={
                               isSample
                                 ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                                : t`I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!`
+                                : t`I took a look at the data you have connected, and I have some explorations of interesting things I found. Hope you like them!`
                             }
                           />
                         </Card>
@@ -177,18 +177,28 @@ class Overworld extends React.Component {
                               mb={3}
                               size={28}
                             />
-                            <Flex align='center'>
+                            <Flex align="center">
                               <h3>{database.name}</h3>
-                              <Box ml='auto' mr={1} className="hover-child">
-                                <Flex align='center'>
+                              <Box ml="auto" mr={1} className="hover-child">
+                                <Flex align="center">
                                   <Tooltip tooltip={t`X-ray this table`}>
                                     <Link to={`explore/${database.id}/`}>
-                                      <Icon name="bolt" mx={1} color={normal.yellow} size={20} />
+                                      <Icon
+                                        name="bolt"
+                                        mx={1}
+                                        color={normal.yellow}
+                                        size={20}
+                                      />
                                     </Link>
                                   </Tooltip>
                                   <Tooltip tooltip={t`Learn about this table`}>
-                                    <Link to={`reference/databases/${database.id}`}>
-                                      <Icon name="reference" color={normal.grey1} />
+                                    <Link
+                                      to={`reference/databases/${database.id}`}
+                                    >
+                                      <Icon
+                                        name="reference"
+                                        color={normal.grey1}
+                                      />
                                     </Link>
                                   </Tooltip>
                                 </Flex>
