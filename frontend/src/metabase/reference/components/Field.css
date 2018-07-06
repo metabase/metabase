@@ -1,5 +1,5 @@
 :root {
-  --title-color: #606e7b;
+  --title-color: var(--color-text-medium);
 }
 
 :local(.field) {

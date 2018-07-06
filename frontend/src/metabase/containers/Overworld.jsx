@@ -10,7 +10,7 @@ import { DatabaseListLoader } from "metabase/components/BrowseApp";
 import ExplorePane from "metabase/components/ExplorePane";
 
 import * as Urls from "metabase/lib/urls";
-import { normal } from "metabase/lib/colors";
+import colors, { normal } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
@@ -157,7 +157,7 @@ class Overworld extends React.Component {
                           to={`browse/${database.id}`}
                           hover={{ color: normal.blue }}
                         >
-                          <Box p={3} bg="#F2F5F7">
+                          <Box p={3} bg={colors["bg-medium"]}>
                             <Icon
                               name="database"
                               color={normal.green}

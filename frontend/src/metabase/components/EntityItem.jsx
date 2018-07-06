@@ -9,14 +9,14 @@ import CheckBox from "metabase/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
-import { normal } from "metabase/lib/colors";
+import colors from "metabase/lib/colors";
 
 const EntityItemWrapper = Flex.extend`
-  border-bottom: 1px solid #f8f9fa;
+  border-bottom: 1px solid ${colors["bg-light"]};
   /* TODO - figure out how to use the prop instead of this? */
   align-items: center;
   &:hover {
-    color: ${normal.blue};
+    color: ${colors["brand"]};
   }
 `;
 

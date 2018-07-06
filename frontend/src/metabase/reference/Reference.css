@@ -1,6 +1,6 @@
 :root {
-  --title-color: #606e7b;
-  --subtitle-color: #aab7c3;
+  --title-color: var(--color-text-medium);
+  --subtitle-color: var(--color-text-medium);
   --icon-width: calc(48px + 1rem);
 }
 
@@ -103,7 +103,7 @@
 :local(.guideEditHeader) {
   composes: full text-body my4 from "style";
   max-width: 550px;
-  color: var(--dark-color);
+  color: var(--color-text-dark);
 }
 
 :local(.guideEditHeaderTitle) {
@@ -138,7 +138,7 @@
 
 :local(.guideEditSubtitle) {
   composes: text-body from "style";
-  color: var(--grey-2);
+  color: var(--color-text-light);
   font-size: 16px;
   max-width: 700px;
 }

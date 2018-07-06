@@ -5,6 +5,7 @@ import { t } from "c-3po";
 import { Box, Flex } from "grid-styled";
 import styled from "styled-components";
 import { space, width } from "styled-system";
+import colors from "metabase/lib/colors";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -51,8 +52,8 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
-const DefaultSearchColor = "#60A6E4";
-const ActiveSearchColor = "#7bb7ec";
+const DefaultSearchColor = colors.brand;
+const ActiveSearchColor = colors.brand;
 
 const SearchWrapper = Flex.extend`
   ${width} background-color: ${props =>
@@ -60,7 +61,7 @@ const SearchWrapper = Flex.extend`
   border-radius: 6px;
   align-items: center;
   color: white;
-  border: 1px solid ${props => (props.active ? "#4894d8" : "transparent")};
+  border: 1px solid ${props => (props.active ? colors.brand : "transparent")};
   transition: background 300ms ease-in;
   &:hover {
     background-color: ${ActiveSearchColor};
@@ -77,7 +78,7 @@ const SearchInput = styled.input`
     outline: none;
   }
   &::placeholder {
-    color: rgba(255, 255, 255, 0.85);
+    color: ${colors["text-white"]};
   }
 `;
 

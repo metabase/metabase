@@ -20,13 +20,13 @@
 /* create a slightly larger arrow on the right for border purposes */
 .arrow-right:before {
   right: -20px;
-  border-left-color: #ddd;
+  border-left-color: var(--color-border);
 }
 
 /* create a smaller inset arrow on the right */
 .arrow-right:after {
   right: -19px;
-  border-left-color: #fff;
+  border-left-color: var(--color-white);
 }
 
 /* move our arrows to the center */

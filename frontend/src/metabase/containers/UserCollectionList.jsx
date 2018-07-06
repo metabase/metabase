@@ -3,6 +3,7 @@ import { Box, Flex } from "grid-styled";
 import { t } from "c-3po";
 
 import * as Urls from "metabase/lib/urls";
+import colors from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
@@ -43,7 +44,7 @@ const UserCollectionList = () => (
                             <Icon
                               name="person"
                               mr={1}
-                              color="#93B3C9"
+                              color={colors["text-medium"]}
                               size={22}
                             />
                             <h2>{user.common_name}</h2>

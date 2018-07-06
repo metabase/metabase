@@ -1,12 +1,12 @@
 :root {
   --form-padding: 1em;
-  --form-input-placeholder-color: #c0c0c0;
+  --form-input-placeholder-color: var(--color-text-light);
 
   --form-input-size: 1rem;
   --form-input-size-medium: 1.25rem;
   --form-input-size-large: 1.571rem;
 
-  --form-label-color: #949494;
+  --form-label-color: var(--color-text-medium);
   --form-offset: 2.4rem;
 }
 
@@ -17,13 +17,13 @@
 /* TODO: combine this and the scoped version */
 .Form-label {
   display: block;
-  color: var(--form-label-color);
+  color: var(--color-text-medium);
   font-size: 1.2rem;
 }
 
 .Form-field {
   position: relative;
-  color: #6c6c6c;
+  color: var(--color-text-medium);
   margin-bottom: 1.5rem;
 }
 
@@ -37,7 +37,7 @@
 }
 
 .Form-field.Form--fieldError {
-  color: var(--error-color);
+  color: var(--color-error);
 }
 
 .Form-input {
@@ -92,7 +92,7 @@
   left: 0;
   width: 0.15em;
   height: 3em;
-  background-color: #ddd;
+  background-color: var(--color-bg-medium);
   box-sizing: border-box;
   opacity: 0;
   transition: background-color 0.3s linear;
@@ -100,24 +100,24 @@
 }
 
 .Form-field.Form--fieldError .Form-charm {
-  background-color: var(--error-color);
+  background-color: var(--color-error);
   opacity: 1;
 }
 
 .Form-input:focus + .Form-charm {
-  background-color: var(--brand-color);
+  background-color: var(--color-brand);
   opacity: 1;
 }
 
 .Form-field:hover .Form-input {
-  color: #ddd;
-  background: rgba(0, 0, 0, 0.02);
+  color: var(--color-text-light);
+  background: color(var(--color-bg-black) alpha(-98%));
 }
 
 /* ewww */
 .Form-field:hover .Form-input.ng-dirty {
-  color: #222;
-  background-color: #fff;
+  color: var(--color-text-dark);
+  background-color: var(--color-bg-white);
 }
 
 .Form-field:hover .Form-charm {
@@ -126,7 +126,7 @@
 
 .Form-field:hover .Form-input:focus {
   transition: color 0.3s linear;
-  color: #444;
+  color: var(--color-text-dark);
   background-color: transparent;
   transition: background 0.3s linear;
 }
@@ -144,13 +144,13 @@
   width: 8px;
   height: 8px;
   border: 2px solid white;
-  box-shadow: 0 0 0 2px var(--grey-3);
+  box-shadow: 0 0 0 2px var(--color-shadow);
   border-radius: 8px;
 }
 
 .Form-radio:checked + label {
-  box-shadow: 0 0 0 2px var(--brand-color);
-  background-color: var(--brand-color);
+  box-shadow: 0 0 0 2px var(--color-shadow);
+  background-color: var(--color-brand);
 }
 
 /* TODO: replace instances of Form-group with Form-field */
@@ -174,44 +174,44 @@
 
 .FormTitleSeparator {
   position: relative;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--color-border);
 }
 
 ::-webkit-input-placeholder {
   /* WebKit browsers */
-  color: var(--form-input-placeholder-color);
+  color: var(--color-text-light);
 }
 :-moz-placeholder {
   /* Mozilla Firefox 4 to 18 */
-  color: var(--form-input-placeholder-color);
+  color: var(--color-text-light);
   opacity: 1;
 }
 ::-moz-placeholder {
   /* Mozilla Firefox 19+ */
-  color: var(--form-input-placeholder-color);
+  color: var(--color-text-light);
   opacity: 1;
 }
 :-ms-input-placeholder {
   /* Internet Explorer 10+ */
-  color: var(--form-input-placeholder-color);
+  color: var(--color-text-light);
 }
 
 .NewForm .Form-label {
   text-transform: uppercase;
-  color: color(var(--base-grey) shade(30%));
+  color: var(--color-text-medium);
   margin-bottom: 0.5em;
 }
 
 .NewForm .Form-input {
   font-size: 16px;
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
   padding: 0.5em;
-  background-color: #fcfcfc;
-  border: 1px solid #eaeaea;
+  background-color: var(--color-bg-white);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
 }
 .NewForm .Form-input:focus {
-  border-color: var(--brand-color);
+  border-color: var(--color-brand);
   box-shadow: none;
   outline: 0;
 }

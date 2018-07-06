@@ -4,11 +4,13 @@ import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon";
 
+import colors from "metabase/lib/colors";
+
 const itemClasses = cxs({
   display: "flex",
   alignItems: "center",
   cursor: "pointer",
-  color: "#616D75",
+  color: colors["text-medium"],
   paddingLeft: "1.45em",
   paddingRight: "1.45em",
   paddingTop: "0.85em",
@@ -16,14 +18,14 @@ const itemClasses = cxs({
   textDecoration: "none",
   transition: "all 300ms linear",
   ":hover": {
-    color: "#509ee3",
+    color: colors["brand"],
   },
   "> .Icon": {
-    color: "#BCC5CA",
+    color: colors["text-light"],
     marginRight: "0.65em",
   },
   ":hover > .Icon": {
-    color: "#509ee3",
+    color: colors["brand"],
     transition: "all 300ms linear",
   },
   // icon specific tweaks

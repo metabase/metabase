@@ -7,6 +7,8 @@ import "number-to-locale-string";
 // strings/elements to assist in finding untranslated strings.
 import "metabase/lib/i18n-debug";
 
+import "metabase/lib/colors";
+
 // make the i18n function "t" global so we don't have to import it in basically every file
 import { t, jt } from "c-3po";
 global.t = t;

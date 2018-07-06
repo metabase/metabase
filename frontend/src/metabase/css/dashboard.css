@@ -1,14 +1,14 @@
 :root {
-  --night-mode-color: rgba(255, 255, 255, 0.86);
+  --night-mode-color: color(var(--color-text-white) alpha(-14%));
 }
 .Dashboard {
-  background-color: #f9fbfc;
+  background-color: var(--color-bg-light);
   min-height: 100vh;
 }
 
 .DashboardHeader {
   background-color: white;
-  border-bottom: var(--border-size) var(--border-style) var(--border-color);
+  border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .Dash-wrapper {
@@ -35,7 +35,7 @@
 
 /* Fullscreen mode */
 .Dashboard.Dashboard--fullscreen .Header-button {
-  color: #d2dbe4;
+  color: var(--color-text-light);
 }
 
 .Dashboard.Dashboard--fullscreen .DashboardHeader {
@@ -48,35 +48,35 @@
 
 /* Night mode */
 .Dashboard.Dashboard--night {
-  background-color: rgb(34, 37, 39);
+  background-color: var(--color-bg-black);
 }
 
 .Dashboard.Dashboard--night .Card {
-  color: #fff;
+  color: var(--color-text-white);
 }
 
 .Dashboard.Dashboard--night .Header-button,
 .Dashboard.Dashboard--night .Header-button svg {
-  color: rgba(151, 151, 151, 0.3);
+  color: color(var(--color-text-medium) alpha(-70%));
 }
 
 .Dashboard.Dashboard--fullscreen .fullscreen-normal-text {
-  color: #3f3a3a;
+  color: var(--color-text-dark);
   transition: color 1s linear;
 }
 
 .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text {
-  color: var(--night-mode-color);
+  color: color(var(--color-text-white) alpha(-14%));
   transition: color 1s linear;
 }
 
 .Dashboard.Dashboard--night .DashCard .Card svg text {
-  fill: rgba(255, 255, 255, 0.86) !important;
+  fill: color(var(--color-text-white) alpha(-14%)) !important;
 }
 
 .Dashboard.Dashboard--night .DashCard .Card {
-  background-color: rgb(54, 58, 61);
-  border: 1px solid rgb(46, 49, 52);
+  background-color: var(--color-bg-black);
+  border: 1px solid var(--color-accent2);
 }
 
 .Dashboard.Dashboard--night .enable-dots-onhover .dc-tooltip circle.dot:hover,
@@ -107,11 +107,11 @@
   right: 0;
   overflow: hidden;
   background-color: white;
-  border: 1px solid rgb(219, 219, 219);
+  border: 1px solid var(--color-border);
 }
 
 .DashCard .Card.Card--slow {
-  border-color: var(--gold-color);
+  border-color: var(--color-accent4);
 }
 
 .Dash--editing .DashCard .Card {
@@ -124,10 +124,10 @@
 
 @keyframes fade-out-yellow {
   from {
-    background-color: rgba(255, 250, 243, 1);
+    background-color: var(--color-bg-white);
   }
   to {
-    background-color: rgba(255, 255, 255, 1);
+    background-color: var(--color-bg-white);
   }
 }
 
@@ -162,7 +162,7 @@
 
 .PinMapUpdateButton--disabled {
   pointer-events: none;
-  color: color(var(--base-grey) shade(10%));
+  color: var(--color-text-light);
 }
 
 .Dash--editing .DashCard .Card {
@@ -170,11 +170,11 @@
 }
 
 .DashCard .Card {
-  box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0px 1px 3px var(--color-shadow);
 }
 
 .Dash--editing .DashCard.dragging .Card {
-  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
 .Dash--editing .DashCard.dragging,
@@ -184,8 +184,8 @@
 
 .Dash--editing .DashCard.dragging .Card,
 .Dash--editing .DashCard.resizing .Card {
-  background-color: #e5f1fb !important;
-  border: 1px solid var(--brand-color);
+  background-color: var(--color-bg-medium) !important;
+  border: 1px solid var(--color-brand);
 }
 
 .DashCard .DashCard-actions {
@@ -250,15 +250,15 @@
   height: 8px;
   bottom: 10px;
   right: 10px;
-  border-bottom: 2px solid color(var(--base-grey) shade(20%));
-  border-right: 2px solid color(var(--base-grey) shade(20%));
+  border-bottom: 2px solid var(--color-border);
+  border-right: 2px solid var(--color-border);
   border-bottom-right-radius: 2px;
   transition: opacity 0.2s;
   opacity: 0.01;
 }
 
 .Dash--editing .DashCard .react-resizable-handle:hover:after {
-  border-color: color(var(--base-grey) shade(40%));
+  border-color: var(--color-border);
 }
 
 .Dash--editing .DashCard:hover .react-resizable-handle:after {
@@ -272,7 +272,7 @@
 
 .Dash--editing .react-grid-placeholder {
   z-index: 0;
-  background-color: #f2f2f2;
+  background-color: var(--color-bg-light);
   transition: all 0.15s linear;
 }
 
@@ -330,13 +330,13 @@
   }
   .DashCard .Card {
     box-shadow: none;
-    border-color: #a1a1a1;
+    border-color: var(--color-border);
   }
   /* improve label contrast */
   .dc-chart .axis .tick text,
   .dc-chart .x-axis-label,
   .dc-chart .y-axis-label {
-    fill: #222222;
+    fill: var(--color-text-dark);
   }
 }
 
@@ -362,5 +362,5 @@
 
 /* when in night mode code snippets should have a more readable background-color */
 .Dashboard--night pre code {
-  background-color: rgba(255, 255, 255, 0.14);
+  background-color: color(var(--color-bg-white) alpha(-86%));
 }
