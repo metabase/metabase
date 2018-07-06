@@ -56,16 +56,16 @@ export class GroupingManager {
       const pivotColumnNumber = columnsIndexesForGrouping.length;
       const columns = new Set(Array.from([].concat(...this.rows.map(p => Object.getOwnPropertyNames(p.piv)))));
 
-      const pivotedColumns = Array.from(columns);
+      const pivotedColumns = _.sortBy(Array.from(columns));
 
       const tmp = getAvailableColumnIndexes(settings, rawCols);
       const colsTmp = tmp.map(p => rawCols[p[0]]).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
 
       this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
       const grColumnsLength = (settings[COLUMNS_SETTINGS][GROUPS_SOURCES] || []).length;
-      const grCols = colsTmp.slice(0, grColumnsLength).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
+      const grCols = colsTmp.slice(0, grColumnsLength).map((col, i) => ({...col, getValue: getValueByIndex(i), parentName: ["",1] }));
       const values = colsTmp.slice(grColumnsLength + 1);
-      const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: k})))
+      const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: i === 0 ? [k === 'undefined' ? 'Grand totals' : k, values.length] : undefined})))
       cols = grCols.concat(...tt)
     }
 
