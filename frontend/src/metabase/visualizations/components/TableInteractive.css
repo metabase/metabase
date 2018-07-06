@@ -30,12 +30,12 @@
 
 /* if the column is the one that is being sorted*/
 .TableInteractive-headerCellData--sorted {
-  color: var(--brand-color);
+  color: var(--color-brand);
 }
 
 .TableInteractive-header {
   box-sizing: border-box;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .TableInteractive .TableInteractive-cellWrapper {
@@ -47,14 +47,14 @@
   border-top: 1px solid transparent;
   border-left: 1px solid transparent;
   border-right: 1px solid transparent;
-  border-bottom: 1px solid var(--table-border-color);
+  border-bottom: 1px solid color(var(--color-border) alpha(-70%));
 }
 
 .TableInteractive .TableInteractive-cellWrapper--active,
 .TableInteractive:not(.TableInteractive--noHover)
   .TableInteractive-cellWrapper:hover {
-  border-color: var(--brand-color);
-  color: var(--brand-color);
+  border-color: var(--color-brand);
+  color: var(--color-brand);
 }
 
 .TableInteractive .TableInteractive-cellWrapper--active {
@@ -63,13 +63,13 @@
 
 .TableInteractive .TableInteractive-header,
 .TableInteractive .TableInteractive-header .TableInteractive-cellWrapper {
-  background-color: #fff;
+  background-color: var(--color-bg-white);
   background-image: none;
 }
 
 .TableInteractive .TableInteractive-header,
 .TableInteractive .TableInteractive-header .TableInteractive-cellWrapper {
-  background-color: #fff;
+  background-color: var(--color-bg-white);
 }
 
 /* cell overflow ellipsis */
@@ -83,14 +83,14 @@
 /* pivot */
 .TableInteractive.TableInteractive--pivot
   .TableInteractive-cellWrapper--firstColumn {
-  border-right: 1px solid rgb(205, 205, 205);
+  border-right: 1px solid var(--color-border);
 }
 
 .PagingButtons {
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border);
 }
 
 .TableInteractive .TableInteractive-cellWrapper.tether-enabled {
-  background-color: var(--brand-color);
+  background-color: var(--color-brand);
   color: white !important;
 }

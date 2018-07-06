@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { t } from "c-3po";
 
 import Icon from "metabase/components/Icon";
+import colors from "metabase/lib/colors";
 
 const COLLECTION_ICON_SIZE = 18;
 
@@ -35,7 +36,7 @@ const NewCollectionButton = ({ push }) => (
       <div
         className="flex align-center justify-center ml-auto mr-auto mb2 mt2"
         style={{
-          border: "2px solid #D8E8F5",
+          border: `2px solid ${colors["border"]}`,
           borderRadius: COLLECTION_ICON_SIZE,
           height: COLLECTION_ICON_SIZE,
           width: COLLECTION_ICON_SIZE,

@@ -29,7 +29,6 @@
              [setting :as setting]
              [table :refer [Table]]
              [user :refer [User]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data
@@ -380,13 +379,6 @@
                           [:cols])]
     (update-in query-results maybe-data-cols #(map round-fingerprint %))))
 
-(defn round-all-decimals
-  "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"
-  [decimal-place data]
-  (qputil/postwalk-pred double?
-                        #(u/round-to-decimals decimal-place %)
-                        data))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   SCHEDULER                                                    |
@@ -566,11 +558,3 @@
          ;; This releases the fake query function so it finishes
          (deliver pause-query true)
          true)])))
-
-(defmacro throw-if-called
-  "Redefines `fn-var` with a function that throws an exception if it's called"
-  {:style/indent 1}
-  [fn-var & body]
-  `(with-redefs [~fn-var (fn [& args#]
-                           (throw (RuntimeException. "Should not be called!")))]
-     ~@body))

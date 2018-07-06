@@ -1,6 +1,6 @@
 .ColumnarSelector {
   display: flex;
-  background-color: #fcfcfc;
+  background-color: var(--color-bg-white);
   font-weight: 700;
 }
 
@@ -16,7 +16,7 @@
 }
 
 .ColumnarSelector-title {
-  color: color(var(--base-grey) shade(30%));
+  color: var(--color-text-medium);
   text-transform: uppercase;
   font-size: 10px;
   font-weight: 700;
@@ -30,7 +30,7 @@
 
 .ColumnarSelector-description {
   margin-top: 0.5em;
-  color: color(var(--base-grey) shade(30%));
+  color: var(--color-text-medium);
   max-width: 270px;
 }
 
@@ -45,24 +45,24 @@
 
 .ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover,
 .ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover .Icon {
-  background-color: var(--brand-color) !important;
+  background-color: var(--color-brand) !important;
   color: white !important;
 }
 
 .ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover
   .ColumnarSelector-description {
-  color: rgba(255, 255, 255, 0.5);
+  color: color(var(--color-text-white) alpha(-50%));
 }
 
 .ColumnarSelector-row--selected {
   color: inherit !important;
   background: white;
-  border-top: var(--border-size) var(--border-style) var(--border-color);
-  border-bottom: var(--border-size) var(--border-style) var(--border-color);
+  border-top: var(--border-size) var(--border-style) var(--color-border);
+  border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .ColumnarSelector-row--disabled {
-  color: var(--grey-3);
+  color: var(--color-text-medium);
 }
 
 .ColumnarSelector-row .Icon-check {
@@ -81,7 +81,7 @@
 /* only apply if there's more than one, aka the last is not the first */
 .ColumnarSelector-column:last-child:not(:first-child) {
   background-color: white;
-  border-left: var(--border-size) var(--border-style) var(--border-color);
+  border-left: var(--border-size) var(--border-style) var(--color-border);
   position: relative;
   left: -1px;
 }
@@ -90,5 +90,5 @@
   background: inherit;
   border-top: none;
   border-bottom: none;
-  color: var(--brand-color);
+  color: var(--color-brand);
 }

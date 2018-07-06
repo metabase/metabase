@@ -3,8 +3,7 @@
             [clojure.walk :as walk]
             [metabase
              [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.query-processor.util :as qputil])
+             [util :as u]])
   (:import [metabase.query_processor.interface BetweenFilter BinnedField ComparisonFilter]))
 
 (defn- update!
@@ -163,6 +162,8 @@
   (fn [query]
     (let [filter-field-map (filter->field-map (get-in query [:query :filter]))]
       (qp
-       (qputil/postwalk-pred #(instance? BinnedField %)
-                             #(update-binned-field % filter-field-map)
-                             query)))))
+       (walk/postwalk (fn [node]
+                        (if (instance? BinnedField node)
+                          (update-binned-field node filter-field-map)
+                          node))
+                      query)))))

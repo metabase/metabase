@@ -8,7 +8,7 @@ import BulkActionBar from "metabase/components/BulkActionBar";
 import cx from "classnames";
 
 import * as Urls from "metabase/lib/urls";
-import { normal } from "metabase/lib/colors";
+import colors, { normal } from "metabase/lib/colors";
 
 import Button from "metabase/components/Button";
 import Card from "metabase/components/Card";
@@ -227,7 +227,6 @@ class DefaultLanding extends React.Component {
                 </Box>
               </Box>
             </Box>
-            )}
             <BulkActionBar showing={selected.length > 0}>
               <Flex align="center">
                 <Flex align="center">
@@ -454,7 +453,10 @@ class CollectionLanding extends React.Component {
 }
 
 const CollectionSectionHeading = ({ children }) => (
-  <h5 className="text-uppercase" style={{ color: "#93A1AB", fontWeight: 900 }}>
+  <h5
+    className="text-uppercase"
+    style={{ color: colors["text-medium"], fontWeight: 900 }}
+  >
     {children}
   </h5>
 );

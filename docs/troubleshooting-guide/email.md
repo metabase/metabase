@@ -19,6 +19,7 @@
 
 4. For user accounts specifically, did you previously create an account under this email and then delete it? This occasionally results in that email address being "claimed".
 
+5. Make sure that the HOSTNAME is being set correctly. EC2 instances in particular have those set to the local ip, and some email delivery services such as GMail will error out in this situation.
 
 ## Specific Problems:
 

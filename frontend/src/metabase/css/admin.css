@@ -1,24 +1,24 @@
 :root {
-  --admin-nav-bg-color: #8091ab;
-  --admin-nav-bg-color-tint: #9aa7bc;
-  --admin-nav-item-text-color: rgba(255, 255, 255, 0.63);
-  --admin-nav-item-text-active-color: #fff;
+  --admin-nav-bg-color: var(--color-bg-dark);
+  --admin-nav-bg-color-tint: var(--color-bg-dark);
+  --admin-nav-item-text-color: color(var(--color-text-white) alpha(-37%));
+  --admin-nav-item-text-active-color: var(--color-text-white);
   --page-header-padding: 2.375rem;
 }
 
 .AdminNav {
-  background: var(--admin-nav-bg-color);
-  color: #fff;
+  background: var(--color-bg-dark);
+  color: var(--color-text-white);
   font-size: 0.85rem;
 }
 
 .AdminNav .NavItem {
-  color: var(--admin-nav-item-text-color);
+  color: color(var(--color-text-white) alpha(-37%));
 }
 
 .AdminNav .NavItem:hover,
 .AdminNav .NavItem.is--selected {
-  color: var(--admin-nav-item-text-active-color);
+  color: var(--color-text-white);
 }
 
 /* TODO: this feels itchy. should refactor .NavItem.is--selected to be less cascadey */
@@ -29,27 +29,27 @@
 
 .AdminNav .NavDropdown.open .NavDropdown-button,
 .AdminNav .NavDropdown .NavDropdown-content-layer {
-  background-color: var(--admin-nav-bg-color-tint);
+  background-color: var(--color-bg-dark);
 }
 
 .AdminNav .Dropdown-item:hover {
-  background-color: var(--admin-nav-bg-color);
+  background-color: var(--color-bg-dark);
 }
 
 /* utility to get a simple common hover state for admin items */
 .HoverItem:hover,
 .AdminHoverItem:hover {
-  background-color: #f3f8fd;
+  background-color: var(--color-bg-medium);
   transition: background 0.2s linear;
 }
 
 .AdminNav .Dropdown-chevron {
-  color: #fff;
+  color: var(--color-text-white);
 }
 
 .Actions {
-  background-color: rgba(243, 243, 243, 0.46);
-  border: 1px solid #e0e0e0;
+  background-color: color(var(--color-bg-light) alpha(-54%));
+  border: 1px solid var(--color-border);
   padding: 2em;
 }
 
@@ -74,13 +74,13 @@
 }
 
 .ContentTable thead {
-  border-bottom: 1px solid #d8d8d8;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .AdminBadge {
-  background-color: #a989c5;
+  background-color: var(--color-accent2);
   border-radius: 4px;
-  color: #fff;
+  color: var(--color-text-white);
   padding: 0.25em;
 }
 .PageHeader {
@@ -107,7 +107,7 @@
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
-  background-color: rgba(74, 144, 226, 0.04);
+  background-color: color(var(--color-brand) alpha(-96%));
 }
 
 .ContentTable tr:hover .Table-actions {
@@ -116,11 +116,11 @@
 }
 
 .AdminList {
-  background-color: #f9fbfc;
-  border: var(--border-size) var(--border-style) var(--border-color);
+  background-color: var(--color-bg-light);
+  border: var(--border-size) var(--border-style) var(--color-border);
   border-radius: var(--default-border-radius);
   width: 266px;
-  box-shadow: inset -1px -1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: inset -1px -1px 3px var(--color-shadow);
   padding-bottom: 0.75em;
 }
 
@@ -136,7 +136,7 @@
   bottom: 0;
   margin: auto;
   margin-left: 1em;
-  color: #c0c0c0;
+  color: var(--color-text-light);
 }
 
 .AdminList-search .AdminInput {
@@ -146,7 +146,7 @@
   width: 100%;
   border-top-left-radius: var(--default-border-radius);
   border-top-right-radius: var(--default-border-radius);
-  border-bottom-color: var(--border-color);
+  border-bottom-color: var(--color-border);
 }
 
 .AdminList-item {
@@ -157,37 +157,37 @@
 }
 
 .AdminList-item.selected {
-  color: var(--brand-color);
+  color: var(--color-brand);
 }
 
 .AdminList-item.selected,
 .AdminList-item:hover {
   background-color: white;
-  border-color: var(--border-color);
+  border-color: var(--color-border);
   margin-left: -0.5em;
   margin-right: -0.5em;
   padding-left: 1.5em;
   padding-right: 1.5em;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px var(--color-shadow);
 }
 
 .AdminList-section {
   margin-top: 1em;
   padding: 0.5em 1em 0.5em 1em;
   text-transform: uppercase;
-  color: color(var(--base-grey) shade(20%));
+  color: var(--color-text-light);
   font-weight: 700;
   font-size: smaller;
 }
 
 .AdminInput {
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
   padding: var(--padding-1);
-  background-color: #fcfcfc;
+  background-color: var(--color-bg-light);
   border: 1px solid transparent;
 }
 .AdminInput:focus {
-  border-color: var(--brand-color);
+  border-color: var(--color-brand);
   box-shadow: none;
   outline: 0;
 }
@@ -195,7 +195,7 @@
 .AdminSelect {
   display: inline-block;
   padding: 0.6em;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-border);
   border-radius: var(--default-border-radius);
   font-size: 14px;
   font-weight: 700;
@@ -220,7 +220,7 @@
 }
 
 .MetadataTable-title {
-  background-color: #fcfcfc;
+  background-color: var(--color-bg-white);
 }
 
 .TableEditor-table-name {
@@ -237,32 +237,32 @@
 }
 
 .TableEditor-field-visibility {
-  /*color: var(--orange-color);*/
+  /*color: var(--color-warning);*/
 }
 
 .TableEditor-field-visibility .ColumnarSelector-row:hover {
-  background-color: var(--brand-color) !important;
+  background-color: var(--color-brand) !important;
   color: white !important;
 }
 
 .TableEditor-field-type {
-  /*color: var(--purple-color);*/
+  /*color: var(--color-accent2);*/
 }
 
 .TableEditor-field-type .ColumnarSelector-row:hover {
-  background-color: var(--brand-color) !important;
+  background-color: var(--color-brand) !important;
   color: white !important;
 }
 
 .TableEditor-field-special-type,
 .TableEditor-field-target {
   margin-top: 3px;
-  /*color: var(--green-color);*/
+  /*color: var(--color-accent1);*/
 }
 
 .TableEditor-field-special-type .ColumnarSelector-row:hover,
 .TableEditor-field-target .ColumnarSelector-row:hover {
-  background-color: var(--brand-color) !important;
+  background-color: var(--color-brand) !important;
   color: white !important;
 }
 
@@ -297,13 +297,13 @@
 
 .AdminTable th {
   text-transform: uppercase;
-  color: color(var(--base-grey) shade(40%));
+  color: var(--color-text-medium);
   padding: var(--padding-1);
   font-weight: normal;
 }
 
 .AdminTable thead {
-  border-bottom: var(--border-size) var(--border-style) var(--border-color);
+  border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .AdminTable tbody tr:first-child td {

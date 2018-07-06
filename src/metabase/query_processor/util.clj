@@ -4,9 +4,7 @@
              [codecs :as codecs]
              [hash :as hash]]
             [cheshire.core :as json]
-            [clojure
-             [string :as str]
-             [walk :as walk]]
+            [clojure.string :as str]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -140,14 +138,3 @@
     (when (string? source-table)
       (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
         (Integer/parseInt card-id-str)))))
-
-;;; ---------------------------------------- General Tree Manipulation Helpers ---------------------------------------
-
-(defn postwalk-pred
-  "Transform `form` by applying `f` to each node where `pred` returns true"
-  [pred f form]
-  (walk/postwalk (fn [node]
-                   (if (pred node)
-                     (f node)
-                     node))
-                 form))

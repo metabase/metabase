@@ -225,7 +225,7 @@
 
 ;;; ## breakout & fields
 
-(s/defn ^:ql binning-strategy :- (s/cond-pre FieldPlaceholder FieldLiteral)
+(s/defn ^:ql binning-strategy :- FieldPlaceholder
   "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and
   `STRATEGY-PARAM`"
   ([f strategy-name & [strategy-param]]

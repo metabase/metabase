@@ -1,4 +1,5 @@
 /* @flow weak */
+/* eslint-disable no-color-literals */
 
 /*
     Metabase Icon Paths

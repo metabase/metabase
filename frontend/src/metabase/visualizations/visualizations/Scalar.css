@@ -3,7 +3,7 @@
   flex-direction: column;
   justify-content: center;
   padding: 1em 2em 1em 2em;
-  color: #525658;
+  color: var(--color-text-dark);
 }
 :local .Scalar .Value {
   font-weight: bold;

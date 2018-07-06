@@ -78,7 +78,7 @@ export default class ProfileLink extends Component {
               action: () => this.openModal("logs"),
             },
             {
-              title: t`About metabase`,
+              title: t`About Metabase`,
               icon: null,
               action: () => this.openModal("about"),
             },

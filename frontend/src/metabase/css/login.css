@@ -10,7 +10,7 @@
 }
 
 .Login-header {
-  color: #6a6a6a;
+  color: var(--color-text-dark);
 }
 
 .brand-scene {
@@ -121,16 +121,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: var(--success-color);
+  color: var(--color-accent1);
   padding: 4em;
 }
 
 .SuccessMark {
   display: flex;
   padding: 1em;
-  border: 3px solid var(--success-color);
+  border: 3px solid var(--color-accent1);
   border-radius: 99px;
-  color: var(--success-color);
+  color: var(--color-accent1);
   line-height: 1;
 }
 
