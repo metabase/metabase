@@ -1,6 +1,8 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import { extractQueryParams } from "metabase/lib/urls";
+
 import Button from "metabase/components/Button.jsx";
 
 const DownloadButton = ({
@@ -14,10 +16,7 @@ const DownloadButton = ({
   ...props
 }) => (
   <form className={className} style={style} method={method} action={url}>
-    {params &&
-      Object.entries(params).map(([name, value]) => (
-        <input key={name} type="hidden" name={name} value={value} />
-      ))}
+    {params && extractQueryParams(params).map(getInput)}
     <Button
       onClick={e => {
         if (window.OSX) {
@@ -32,6 +31,10 @@ const DownloadButton = ({
       {children}
     </Button>
   </form>
+);
+
+const getInput = ([name, value]) => (
+  <input type="hidden" name={name} value={value} />
 );
 
 DownloadButton.propTypes = {
