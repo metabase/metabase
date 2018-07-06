@@ -43,7 +43,6 @@ export const harmony = [];
 // DEPRECATED: we should remove these and use `colors` directly
 // compute satured/desaturated variants using "color" lib if absolutely required
 export const normal = {};
-export const brand = {};
 export const saturated = {};
 export const desaturated = {};
 
@@ -88,8 +87,6 @@ function syncHarmony() {
 
 // syncs deprecated color families for legacy code
 function syncDeprecatedColorFamilies() {
-  // brand
-  brand.normal = brand.saturated = brand.desaturated = colors["brand"];
   // normal + saturated + desaturated
   normal.blue = saturated.blue = desaturated.blue = colors["brand"];
   normal.green = saturated.green = desaturated.green = colors["accent1"];

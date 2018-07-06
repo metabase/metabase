@@ -1,6 +1,5 @@
 import React from "react";
 import Card from "metabase/components/Card";
-import { t } from "c-3po";
 export const component = Card;
 
 export const description = `

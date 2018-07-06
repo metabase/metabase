@@ -5,7 +5,7 @@ import { t } from "c-3po";
 import { Box, Flex } from "grid-styled";
 import styled from "styled-components";
 import { space, width } from "styled-system";
-import colors, { alpha } from "metabase/lib/colors";
+import colors from "metabase/lib/colors";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
