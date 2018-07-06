@@ -177,18 +177,11 @@
   [unit]
   (contains? relative-datetime-value-units (keyword unit)))
 
-(def binning-strategies
-  "Valid binning strategies for a `BinnedField`"
-  #{:num-bins :bin-width :default})
-
 ;; TODO - maybe we should figure out some way to have the schema validate that the driver supports field literals,
 ;; like we do for some of the other clauses. Ideally we'd do that in a more generic way (perhaps in expand, we could
 ;; make the clauses specify required feature metadata and have that get checked automatically?)
-(s/defrecord FieldLiteral [field-name       :- su/NonBlankString
-                           base-type        :- su/FieldType
-                           binning-strategy :- (s/maybe (apply s/enum binning-strategies))
-                           binning-param    :- (s/maybe s/Num)
-                           fingerprint      :- (s/maybe i/Fingerprint)]
+(s/defrecord FieldLiteral [field-name    :- su/NonBlankString
+                           base-type     :- su/FieldType]
   nil
   :load-ns true
   clojure.lang.Named
@@ -217,7 +210,11 @@
   nil
   :load-ns true)
 
-(s/defrecord BinnedField [field     :- (s/cond-pre Field FieldLiteral)
+(def binning-strategies
+  "Valid binning strategies for a `BinnedField`"
+  #{:num-bins :bin-width :default})
+
+(s/defrecord BinnedField [field     :- Field
                           strategy  :- (apply s/enum binning-strategies)
                           num-bins  :- s/Int
                           min-value :- s/Num

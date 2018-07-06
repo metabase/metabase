@@ -12,9 +12,7 @@
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.sync.util-test :as sut]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.data :as data]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan
              [db :as db]
@@ -183,6 +181,11 @@
   (doseq [statement statements]
     (jdbc/execute! one-off-dbs/*conn* [statement])))
 
+(defmacro ^:private throw-if-called {:style/indent 1} [fn-var & body]
+  `(with-redefs [~fn-var (fn [& args#]
+                           (throw (RuntimeException. "Should not be called!")))]
+     ~@body))
+
 ;; Validate the changing of a column's type triggers a hash miss and sync
 (expect
   [ ;; Original column type
@@ -209,7 +212,7 @@
             {new-db-type :database_type} (get-field)]
 
         ;; Syncing again with no change should not call sync-field-instances! or update the hash
-        (tu/throw-if-called metabase.sync.sync-metadata.fields/sync-field-instances!
+        (throw-if-called metabase.sync.sync-metadata.fields/sync-field-instances!
           (sync/sync-database! (data/db))
           [old-db-type
            new-db-type

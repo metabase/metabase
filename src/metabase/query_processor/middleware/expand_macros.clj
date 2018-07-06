@@ -8,6 +8,7 @@
    TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
    At some point this ought to be reworked to be case-insensitive and cleaned up."
   (:require [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [metabase.models
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
@@ -104,9 +105,12 @@
     (maybe-unnest-ag-clause ag-clause)))
 
 (defn- expand-metrics-in-ag-clause [query-dict filter-clauses-atom]
-  (qputil/postwalk-pred metric?
-                        #(expand-metric % filter-clauses-atom)
-                        query-dict))
+  (walk/postwalk
+   (fn [form]
+     (if-not (metric? form)
+       form
+       (expand-metric form filter-clauses-atom)))
+   query-dict))
 
 (defn merge-filter-clauses
   "Merge filter clauses."

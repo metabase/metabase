@@ -24,7 +24,7 @@
 (defn- card-id->source-query
   "Return the source query info for Card with CARD-ID."
   [card-id]
-  (let [card       (db/select-one ['Card :dataset_query :database_id :result_metadata] :id card-id)
+  (let [card       (db/select-one ['Card :dataset_query :database_id] :id card-id)
         card-query (:dataset_query card)]
     (assoc (or (:query card-query)
                (when-let [native (:native card-query)]
@@ -33,8 +33,7 @@
                (throw (Exception. (str "Missing source query in Card " card-id))))
       ;; include database ID as well; we'll pass that up the chain so it eventually gets put in its spot in the
       ;; outer-query
-      :database        (:database card-query)
-      :result_metadata (:result_metadata card))))
+      :database (:database card-query))))
 
 (defn- source-table-str->source-query
   "Given a SOURCE-TABLE-STR like `card__100` return the appropriate source query."
@@ -42,10 +41,7 @@
   (let [[_ card-id-str] (re-find #"^card__(\d+)$" source-table-str)]
     (u/prog1 (card-id->source-query (Integer/parseInt card-id-str))
       (when-not i/*disable-qp-logging*
-        (log/infof "\nFETCHED SOURCE QUERY FROM CARD %s:\n%s"
-                   card-id-str
-                   ;; No need to include result metadata here, it can be large and will clutter the logs
-                   (u/pprint-to-str 'yellow (dissoc <> :result_metadata)))))))
+        (log/info "\nFETCHED SOURCE QUERY FROM CARD" card-id-str ":\n" (u/pprint-to-str 'yellow <>))))))
 
 (defn- expand-card-source-tables
   "If `source-table` is a Card reference (a string like `card__100`) then replace that with appropriate
@@ -62,9 +58,8 @@
             ;; Add new `source-query` info in its place. Pass the database ID up the chain, removing it from the
             ;; source query
             (assoc
-              :source-query    (dissoc source-query :database :result_metadata)
-              :database        (:database source-query)
-              :result_metadata (:result_metadata source-query)))))))
+              :source-query (dissoc source-query :database)
+              :database     (:database source-query)))))))
 
 (defn- fetch-source-query* [{inner-query :query, :as outer-query}]
   (if-not inner-query
@@ -73,11 +68,9 @@
     ;; otherwise attempt to expand any source queries as needed
     (let [expanded-inner-query (expand-card-source-tables inner-query)]
       (merge outer-query
-             {:query (dissoc expanded-inner-query :database :result_metadata)}
+             {:query (dissoc expanded-inner-query :database)}
              (when-let [database (:database expanded-inner-query)]
-               {:database database})
-             (when-let [result-metadata (:result_metadata expanded-inner-query)]
-               {:result_metadata result-metadata})))))
+               {:database database})))))
 
 (defn fetch-source-query
   "Middleware that assocs the `:source-query` for this query if it was specified using the shorthand `:source-table`
