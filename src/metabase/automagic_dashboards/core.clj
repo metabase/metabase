@@ -206,7 +206,7 @@
                              source-question
                              (assoc :entity_type :entity/GenericTable))
     (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
-    :else                (-> card ((some-fn :table_id :table-id)) Table)))
+    :else                (-> card (qp.util/get-normalized :table-id) Table)))
 
 (defmethod ->root (type Card)
   [card]
@@ -311,9 +311,9 @@
 
 (defmethod ->reference :default
   [_ form]
-  (or (cond-> form
-        (map? form) ((some-fn :full-name :name) form))
-      form))
+  (cond
+    (map? form) ((some-fn :display_name :name) form)
+    :else       form))
 
 (defn- field-isa?
   [{:keys [base_type special_type]} t]
@@ -879,7 +879,7 @@
                  qp.util/normalize-token
                  (= :metric))
            (-> aggregation-clause second Metric)
-           (let [table-id ((some-fn :table-id :table_id) question)]
+           (let [table-id (qp.util/get-normalized question :table-id)]
              (metric/map->MetricInstance {:definition {:aggregation  [aggregation-clause]
                                                        :source_table table-id}
                                           :name       (metric->description root aggregation-clause)
