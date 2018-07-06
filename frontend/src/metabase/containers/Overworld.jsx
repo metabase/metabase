@@ -17,7 +17,6 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Subhead from "metabase/components/Subhead";
-import Tooltip from "metabase/components/Tooltip";
 
 import { getUser } from "metabase/home/selectors";
 
