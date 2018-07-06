@@ -15,7 +15,7 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Subhead from "metabase/components/Subhead";
-import Tooltip from "metabase/components/Tooltip"
+import Tooltip from "metabase/components/Tooltip";
 
 export const DatabaseListLoader = props => (
   <EntityListLoader entityType="databases" {...props} />
@@ -56,7 +56,7 @@ export class SchemaBrowser extends React.Component {
                 <Box my={2}>
                   <BrowserCrumbs
                     crumbs={[
-                      { title: t`Your data`, to: "browse" },
+                      { title: t`Our data`, to: "browse" },
                       { title: <DatabaseName dbId={dbId} /> },
                     ]}
                   />
@@ -70,14 +70,14 @@ export class SchemaBrowser extends React.Component {
                         hover={{ color: normal.purple }}
                       >
                         <Card hoverable px={1}>
-                          <Flex align='center'>
+                          <Flex align="center">
                             <EntityItem
                               name={schema.name}
                               iconName="folder"
                               iconColor={normal.purple}
                               item={schema}
                             />
-                            <Box ml='auto'>
+                            <Box ml="auto">
                               <Icon name="reference" />
                               <Tooltip tooltip={t`X-ray this schema`}>
                                 <Icon name="bolt" mx={1} />
@@ -112,7 +112,7 @@ export class TableBrowser extends React.Component {
                 <Box my={2}>
                   <BrowserCrumbs
                     crumbs={[
-                      { title: t`Your data`, to: "browse" },
+                      { title: t`Our data`, to: "browse" },
                       {
                         title: <DatabaseName dbId={dbId} />,
                         to: `browse/${dbId}`,
@@ -130,32 +130,52 @@ export class TableBrowser extends React.Component {
 
                     return (
                       <GridItem w={1 / 3}>
-                          <Card hoverable px={1} className="hover-parent hover--visibility">
-                            <Flex align='center'>
-                              <Link to={link} ml={1} hover={{ color: normal.purple }}>
-                                <EntityItem
-                                  item={table}
-                                  name={table.display_name || table.name}
-                                  iconName="table"
-                                  iconColor={normal.purple}
-                                />
-                              </Link>
-                              <Box ml='auto' mr={1} className="hover-child">
-                                <Flex align='center'>
-                                  <Tooltip tooltip={t`X-ray this table`}>
-                                    <Link to={`auto/dashboard/table/${table.id}`}>
-                                      <Icon name="bolt" mx={1} color={normal.yellow} size={20} />
-                                    </Link>
-                                  </Tooltip>
-                                  <Tooltip tooltip={t`Learn about this table`}>
-                                    <Link to={`reference/databases/${dbId}/tables/${table.id}`}>
-                                      <Icon name="reference" color={normal.grey1} />
-                                    </Link>
-                                  </Tooltip>
-                                </Flex>
-                              </Box>
-                            </Flex>
-                          </Card>
+                        <Card
+                          hoverable
+                          px={1}
+                          className="hover-parent hover--visibility"
+                        >
+                          <Flex align="center">
+                            <Link
+                              to={link}
+                              ml={1}
+                              hover={{ color: normal.purple }}
+                            >
+                              <EntityItem
+                                item={table}
+                                name={table.display_name || table.name}
+                                iconName="table"
+                                iconColor={normal.purple}
+                              />
+                            </Link>
+                            <Box ml="auto" mr={1} className="hover-child">
+                              <Flex align="center">
+                                <Tooltip tooltip={t`X-ray this table`}>
+                                  <Link to={`auto/dashboard/table/${table.id}`}>
+                                    <Icon
+                                      name="bolt"
+                                      mx={1}
+                                      color={normal.yellow}
+                                      size={20}
+                                    />
+                                  </Link>
+                                </Tooltip>
+                                <Tooltip tooltip={t`Learn about this table`}>
+                                  <Link
+                                    to={`reference/databases/${dbId}/tables/${
+                                      table.id
+                                    }`}
+                                  >
+                                    <Icon
+                                      name="reference"
+                                      color={normal.grey1}
+                                    />
+                                  </Link>
+                                </Tooltip>
+                              </Flex>
+                            </Box>
+                          </Flex>
+                        </Card>
                       </GridItem>
                     );
                   })}
@@ -180,7 +200,7 @@ export class DatabaseBrowser extends React.Component {
     return (
       <Box>
         <Box my={2}>
-          <BrowserCrumbs crumbs={[{ title: t`Your data` }]} />
+          <BrowserCrumbs crumbs={[{ title: t`Our data` }]} />
         </Box>
         <DatabaseListLoader>
           {({ databases, loading, error }) => {
