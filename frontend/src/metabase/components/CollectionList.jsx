@@ -68,38 +68,38 @@ class CollectionList extends React.Component {
         </Grid>
         <Box mt={2}>
           <Grid>
-          {isRoot && (
-            <GridItem w={1 / 4}>
-              <CollectionDropTarget
-                collection={{ id: currentUser.personal_collection_id }}
-              >
-                <CollectionItem
-                  collection={{
-                    name: t`My personal collection`,
-                    id: currentUser.personal_collection_id,
-                  }}
-                  iconName="star"
-                />
-              </CollectionDropTarget>
-            </GridItem>
-          )}
-          {isRoot &&
-            currentUser.is_superuser && (
+            {isRoot && (
               <GridItem w={1 / 4}>
-                <CollectionItem
-                  collection={{
-                    name: t`Everyone else's personal collections`,
-                    // Bit of a hack. The route /collection/users lists
-                    // user collections but is not itself a colllection,
-                    // but using the fake id users here works
-                    id: "users",
-                  }}
-                  iconName="person"
-                />
+                <CollectionDropTarget
+                  collection={{ id: currentUser.personal_collection_id }}
+                >
+                  <CollectionItem
+                    collection={{
+                      name: t`My personal collection`,
+                      id: currentUser.personal_collection_id,
+                    }}
+                    iconName="star"
+                  />
+                </CollectionDropTarget>
               </GridItem>
             )}
-            </Grid>
-          </Box>
+            {isRoot &&
+              currentUser.is_superuser && (
+                <GridItem w={1 / 4}>
+                  <CollectionItem
+                    collection={{
+                      name: t`Everyone else's personal collections`,
+                      // Bit of a hack. The route /collection/users lists
+                      // user collections but is not itself a colllection,
+                      // but using the fake id users here works
+                      id: "users",
+                    }}
+                    iconName="person"
+                  />
+                </GridItem>
+              )}
+          </Grid>
+        </Box>
       </Box>
     );
   }
