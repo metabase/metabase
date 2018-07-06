@@ -73,14 +73,14 @@ export class SchemaBrowser extends React.Component {
                         hover={{ color: normal.purple }}
                       >
                         <Card hoverable px={1}>
-                          <Flex align='center'>
+                          <Flex align="center">
                             <EntityItem
                               name={schema.name}
                               iconName="folder"
                               iconColor={normal.purple}
                               item={schema}
                             />
-                            <Box ml='auto'>
+                            <Box ml="auto">
                               <Icon name="reference" />
                               <Tooltip tooltip={t`X-ray this schema`}>
                                 <Icon name="bolt" mx={1} />
