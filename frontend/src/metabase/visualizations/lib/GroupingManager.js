@@ -32,9 +32,17 @@ export class GroupingManager {
     if(isPivoted){
       const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length + (isPivoted ? 1 : 0)).keys()];
       const sortOrderMethod = columnsIndexesForGrouping.map(funGen);
-       mappedRows = datas.map(p => normalizeRows(settings, p)).map(rows => pivotRows(rows, sortOrderMethod))
+      const normalizedRows = datas.map(p => normalizeRows(settings, p))
+
+      if(normalizedRows.length > 1){
+        //normalizedRows[1] - grand total column
+        normalizedRows[0] = [...normalizedRows[0], ... normalizedRows[1]]
+        normalizedRows[1] = [];
+      }
+      mappedRows = normalizedRows.map(rows => pivotRows(rows, sortOrderMethod))
     } else {
       mappedRows = datas.map(p => normalizeRows(settings, p));
+
       const tmp = getAvailableColumnIndexes(settings, rawCols);
       cols = tmp.map(p => rawCols[p[0]]).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
     }
