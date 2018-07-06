@@ -453,7 +453,10 @@ class CollectionLanding extends React.Component {
 }
 
 const CollectionSectionHeading = ({ children }) => (
-  <h5 className="text-uppercase" style={{ color: colors["text-medium"], fontWeight: 900 }}>
+  <h5
+    className="text-uppercase"
+    style={{ color: colors["text-medium"], fontWeight: 900 }}
+  >
     {children}
   </h5>
 );
