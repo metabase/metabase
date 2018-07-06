@@ -387,7 +387,12 @@ export default class TableInteractiveSummary extends Component {
             style={{
                marginBottom: 0
             }}>
-            {group.name}
+            {formatValue(group.name, {
+              column: group.name === 'Grand totals' ? undefined : group.columnInfo,
+              type: "cell",
+              jsx: true,
+              rich: true
+            })}
           </div>
         </div>
       </div>
@@ -516,7 +521,7 @@ export default class TableInteractiveSummary extends Component {
       return <div className={className} />;
     }
 
-    let groups = cols.filter( c => c.parentName ).map( ({parentName}) => ({name: parentName[0], indexFrom: 0, indexTo: parentName[1] }));
+    let groups = cols.filter( c => c.parentName ).map( ({parentName}) => ({name: parentName[0], indexFrom: 0, indexTo: parentName[1], columnInfo: parentName[2]}));
 
     let idx= 0;
     for( let i in groups ) {
