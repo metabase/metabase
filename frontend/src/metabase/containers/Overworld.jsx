@@ -136,7 +136,7 @@ class Overworld extends React.Component {
 
         <Box px={4} my={3}>
           <Box mb={2}>
-            <h4>{t`Collections`}</h4>
+            <h4>{t`Our analytics`}</h4>
           </Box>
           <Card p={3}>
             <CollectionList collections={this.props.collections} />
