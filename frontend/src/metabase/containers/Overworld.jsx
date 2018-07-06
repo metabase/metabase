@@ -74,19 +74,24 @@ class Overworld extends React.Component {
                 <CandidateListLoader>
                   {({ candidates, sampleCandidates, isSample }) => {
                     return (
-                      <Box px={4}>
-                        <ExplorePane
-                          candidates={candidates}
-                          withMetabot={false}
-                          title=""
-                          gridColumns={1 / 3}
-                          asCards={true}
-                          description={
-                            isSample
-                              ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                              : t`I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!`
-                          }
-                        />
+                      <Box mx={4} mt={2}>
+                        <Box mb={1}>
+                          <h4>{t`Metabot suggestions`}</h4>
+                        </Box>
+                        <Card px={3} pb={1}>
+                          <ExplorePane
+                            candidates={candidates}
+                            withMetabot={false}
+                            title=""
+                            gridColumns={1 / 3}
+                            asCards={false}
+                            description={
+                              isSample
+                                ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
+                                : t`I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!`
+                            }
+                          />
+                        </Card>
                       </Box>
                     );
                   }}
@@ -128,31 +133,28 @@ class Overworld extends React.Component {
           }}
         </CollectionItemsLoader>
 
-        <Box my={2} mx={4}>
-          <Link
-            to="/collection/root"
-            color={normal.grey2}
-            className="text-brand-hover"
-          >
-            <Flex bg="#F4F6F8" p={2} mb={1} align="center">
-              <Box ml="auto" mr="auto">
-                <Flex align="center">
-                  <h3>{t`Browse saved items`}</h3>
-                  <Icon name="chevronright" size={14} ml={1} />
-                </Flex>
-              </Box>
-            </Flex>
-          </Link>
-        </Box>
-
-        {this.props.collections.length > 0 && (
-          <Box px={4} my={3}>
+        <Box px={4} my={3}>
+          <Box mb={2}>
             <h4>{t`Collections`}</h4>
-            <Box mt={2}>
-              <CollectionList collections={this.props.collections} />
-            </Box>
           </Box>
-        )}
+          <Card p={3}>
+            <CollectionList collections={this.props.collections} />
+            <Link
+              to="/collection/root"
+              color={normal.grey2}
+              className="text-brand-hover"
+            >
+              <Flex bg="#F4F6F8" p={2} mb={1} align="center">
+                <Box ml="auto" mr="auto">
+                  <Flex align="center">
+                    <h3>{t`Browse all items`}</h3>
+                    <Icon name="chevronright" size={14} ml={1} />
+                  </Flex>
+                </Box>
+              </Flex>
+            </Link>
+          </Card>
+        </Box>
 
         <Box pt={2} px={4}>
           <h4>{t`Our data`}</h4>
@@ -175,6 +177,11 @@ class Overworld extends React.Component {
                               size={28}
                             />
                             <h3>{database.name}</h3>
+                            <Flex align='center'>
+                              <Link to={`explore/${database.id}`}>
+                                <Icon name="bolt" ml="auto" color={normal.yellow} />
+                              </Link>
+                            </Flex>
                           </Box>
                         </Link>
                       </GridItem>
