@@ -182,6 +182,11 @@ class Overworld extends React.Component {
                               size={28}
                             />
                             <h3>{database.name}</h3>
+                            <Flex align='center'>
+                              <Link to={`explore/${database.id}`}>
+                                <Icon name="bolt" ml="auto" color={normal.yellow} />
+                              </Link>
+                            </Flex>
                           </Box>
                         </Link>
                       </GridItem>
