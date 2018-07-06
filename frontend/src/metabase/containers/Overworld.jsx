@@ -76,7 +76,7 @@ class Overworld extends React.Component {
                     return (
                       <Box mx={4} mt={2}>
                         <Box mb={1}>
-                          <h4>{t`Metabot suggestions`}</h4>
+                          <h4>{t`Not sure where to start?`}</h4>
                         </Box>
                         <Card px={3} pb={1}>
                           <ExplorePane
@@ -88,7 +88,7 @@ class Overworld extends React.Component {
                             description={
                               isSample
                                 ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                                : t`I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!`
+                                : t`I took a look at the data you have connected, and I have some explorations of interesting things I found. Hope you like them!`
                             }
                           />
                         </Card>
@@ -177,9 +177,13 @@ class Overworld extends React.Component {
                               size={28}
                             />
                             <h3>{database.name}</h3>
-                            <Flex align='center'>
+                            <Flex align="center">
                               <Link to={`explore/${database.id}`}>
-                                <Icon name="bolt" ml="auto" color={normal.yellow} />
+                                <Icon
+                                  name="bolt"
+                                  ml="auto"
+                                  color={normal.yellow}
+                                />
                               </Link>
                             </Flex>
                           </Box>
