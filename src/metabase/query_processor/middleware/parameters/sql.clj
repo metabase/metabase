@@ -228,6 +228,45 @@
         ;; otherwise just return the single number
         (first parts)))))
 
+(defn numericString?
+  "Return true if s is a numeric string"
+  [s]
+  (and (string? s)
+       (if-let [s (seq s)]
+         (let [s (if (= (first s) \-) (next s) s)
+               s (drop-while #(Character/isDigit %) s)
+               s (if (= (first s) \.) (next s) s)
+               s (drop-while #(Character/isDigit %) s)]
+           (empty? s)))))
+
+(defn sequentialNumericStrings?
+  "Return true if coll implements Sequential and the first item is a numeric string"
+  [coll]
+  (and (sequential? coll)
+       (numericString? (first coll))))
+
+(defn singleNumericString?
+  "Return true if x doesn't implement Sequential and is a numeric string"
+  [s]
+  (and (not(sequential? s))
+       (numericString? s)))
+
+(defn numericStrings?
+  "Return true if x is sequential numbers or a single number"
+  [x]
+  (or (sequentialNumericStrings? x)
+      (singleNumericString? x)))
+
+(defn parse-numbers
+  "Parse a string like `1` or `2.0` or a vector of strings like [`0` `1`] into a valid number or a vector of valid numbers."
+  [x]
+  (cond
+    (sequentialNumericStrings? x) (into [] (for [value x]
+                                                          (cond
+                                                            (string? value) (parse-number value)
+                                                            :else value)))
+    (singleNumericString? x)      (parse-number x)))
+
 (s/defn ^:private parse-value-for-type :- ParamValue
   [param-type value]
   (cond
@@ -239,6 +278,10 @@
     (sequential? value)                              (map->MultipleValues
                                                       {:values (for [v value]
                                                                  (parse-value-for-type param-type v))})
+    ;; :value ["0" "1" 2 3] or :value "0"
+    (and (= param-type "dimension")
+         (= (get-in value [:param :type]) "category")
+         (numericStrings? (get-in value [:param :value])))  (update-in value [:param :value] parse-numbers)
     :else                                            value))
 
 (s/defn ^:private value-for-tag :- ParamValue
