@@ -22,12 +22,6 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
 
   const nameToTypeMap = getNameToTypeMap(fields);
 
-  if(!settings[GROUPS_SOURCES].every(p => nameToTypeMap[p])
-    || !settings[VALUES_SOURCES].every(p => nameToTypeMap[p])
-    || !settings[COLUMNS_SOURCE].every(p => nameToTypeMap[p])
-  || !settings[VALUES_SOURCES].some(p => canTotalize(nameToTypeMap[p])))
-    return [];
-
   const createLiteral = (name) => ['field-literal', name, nameToTypeMap[name]];
   const createTotal = (name) => ['named', ["sum", createLiteral(name)], name];
   const showTotalsFor = (name) => ((settings.columnNameToMetadata|| {})[name] || {}).showTotals;
