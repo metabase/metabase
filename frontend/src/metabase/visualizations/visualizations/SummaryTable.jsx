@@ -119,7 +119,6 @@ export default class SummaryTable extends Component {
   }
 
   _updateData({
-    data,
     settings,
     rawSeries
   }: {
@@ -128,7 +127,7 @@ export default class SummaryTable extends Component {
   }) {
  {
    //todo: fix 30
-   const groupingManager = new GroupingManager(30, data, settings, rawSeries);
+   const groupingManager = new GroupingManager(30, settings, rawSeries);
 
 
    this.setState({

@@ -1,87 +1,80 @@
 import {Row} from "metabase/meta/types/Dataset";
 import _ from 'lodash';
 import {COLUMNS_SETTINGS} from "metabase/visualizations/visualizations/SummaryTable";
-import {getColumnsFromSettings} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
+import StateSerialized, {getColumnsFromSettings, GROUPS_SOURCES, COLUMNS_SOURCE, VALUES_SOURCES} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
 
 type ColumnAcc = {
   prevRow : Row,
   firstInGroupIndexes : Set
 }
 
+//todo: change class to function prepareSummaryData
 export class GroupingManager {
   defaultRowHeight: Number;
   columnIndexToFirstInGroupIndexes: {};
   rows: Row[];
-  pivotedColumns: any[];
   cols;
   settings;
 
 
-  constructor( defaultRowHeight: Number, data, settings, rawSeries) {
-
+  constructor( defaultRowHeight: Number, settings, rawSeries) {
+    this.defaultRowHeight = defaultRowHeight;
+    const rawCols = rawSeries[0].data.cols;
     this.settings = settings;
-    const colsRaw = data.cols;
-
-    const columnNameIndexes = this.getColumnIndexes(settings, colsRaw);
-    const cols = columnNameIndexes.map(p => colsRaw[p[0]])
-
-    const columnIndexes = columnNameIndexes.map(p => p[0]);
-    const fooBar = columnNameIndexes.map((p, index) => [(settings[COLUMNS_SETTINGS].columnNameToMetadata[p[1]] || {}).showTotals,index]).filter(p => p[0]).map(p => p[1]).reverse();
-    const rowsRaw = rawSeries.map((p, index) => this.normalizeRows(settings, p.data, fooBar[index - 1]));
-
-    const rows = [].concat(...rowsRaw);
+    const datas = rawSeries.map(p => p.data);
+    const summaryTableSettings = settings[COLUMNS_SETTINGS];
 
     const isPivoted = (settings[COLUMNS_SETTINGS].columnsSource || []).length >= 1;
-    const columnsIndexesForGrouping =[...new Array((settings[COLUMNS_SETTINGS].groupsSources || []).length + (isPivoted ? 1 : 0)).keys()];
 
-    this.defaultRowHeight = defaultRowHeight;
-    this.rows = _.sortBy(rows, columnsIndexesForGrouping.map(funGen));
+
+    let mappedRows = undefined;
+    let cols = undefined;
+    if(isPivoted){
+      const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length + (isPivoted ? 1 : 0)).keys()];
+      const sortOrderMethod = columnsIndexesForGrouping.map(funGen);
+       mappedRows = datas.map(p => normalizeRows(settings, p)).map(rows => pivotRows(rows, sortOrderMethod))
+    } else {
+      mappedRows = datas.map(p => normalizeRows(settings, p));
+      const tmp = getAvailableColumnIndexes(settings, rawCols);
+      cols = tmp.map(p => rawCols[p[0]]).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
+    }
+    const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length).keys()];
+    const sortOrderMethod = columnsIndexesForGrouping.map(funGen);
+
+    const fooBar = ([...(settings[COLUMNS_SETTINGS][GROUPS_SOURCES] || []),...settings[COLUMNS_SETTINGS][COLUMNS_SOURCE] || []]).map((p, index) => [(settings[COLUMNS_SETTINGS].columnNameToMetadata[p] || {}).showTotals,index]).filter(p => p[0]).map(p => p[1]).reverse();
+
+    mappedRows = mappedRows.map((rs, index) => rs.map(r => ({__proto__ : r, isTotalColumnIndex :fooBar[index - 1]})));
+
+    const rows = [].concat(...mappedRows);
+    this.rows = _.sortBy(rows, sortOrderMethod);
     const foo = getFirstInGroupMap(this.rows);
     const res = columnsIndexesForGrouping.map(foo).map(p => p.firstInGroupIndexes);
     const res2 = res.reduce(({resArr, prevElem}, elem) =>{const r = new Set([...prevElem, ...elem]); resArr.push(r); return {resArr, prevElem : r} },{ resArr: [], prevElem : new Set()}).resArr;
     const res3 = res2.map((v, i) => [columnsIndexesForGrouping[i], v]);
-    if(isPivoted)
-    {
-      const lastGroupIndex = columnsIndexesForGrouping[columnsIndexesForGrouping.length - 2];
-      const pivotColumnNumber = columnsIndexesForGrouping[columnsIndexesForGrouping.length - 1];
-      const columns = new Set(Array.from(this.rows.map(p => p[pivotColumnNumber])));
-      // columns.delete(undefined);
-      this.pivotedColumns = Array.from(columns);
 
-      const dd = _.sortBy(Array.from(res3[res3.length -2][1]));
-      const [x, ...tail] = dd;
-      const ttttttttttt = tail.reduce((acc, currentValue, index) => {acc[dd[index]] = currentValue - 1; return acc}, {});
-      const functionf = v => createUberRow(pivotColumnNumber, v);
-      const grouped = Object.getOwnPropertyNames(ttttttttttt).map(start => this.rows.slice(start, ttttttttttt[start]+1)).map(functionf);
-      const foo_ = getFirstInGroupMap(grouped);
-      const res_ = columnsIndexesForGrouping.slice(0,columnsIndexesForGrouping.length -2).map(foo_).map(p => p.firstInGroupIndexes);
-      const res2_ = res_.reduce(({resArr, prevElem}, elem) =>{const r = new Set([...prevElem, ...elem]); resArr.push(r); return {resArr, prevElem : r} },{ resArr: [], prevElem : new Set()}).resArr;
-      const res3_ = res2_.map((v, i) => [columnsIndexesForGrouping[i], v]);
-      this.rows = grouped;
-      this.columnIndexToFirstInGroupIndexes = res3_.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
-      const grCols = cols.slice(0, columnsIndexesForGrouping.length - 1).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
-      const values = cols.slice(columnsIndexesForGrouping.length);
-      const tt = this.pivotedColumns.map(k => [getPivotValue(k, columnsIndexesForGrouping.length), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: k})))
+    if(isPivoted){
+      const pivotColumnNumber = columnsIndexesForGrouping.length;
+      const columns = new Set(Array.from([].concat(...this.rows.map(p => Object.getOwnPropertyNames(p.piv)))));
 
-      this.cols = grCols.concat(...tt)
-    }
-    else
-    {
-      this.cols = cols.map((col, i) => ({...col, getValue: getValueByIndex(i)}));
+      const pivotedColumns = Array.from(columns);
+
+      const tmp = getAvailableColumnIndexes(settings, rawCols);
+      const colsTmp = tmp.map(p => rawCols[p[0]]).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
+
       this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
+      const grColumnsLength = (settings[COLUMNS_SETTINGS][GROUPS_SOURCES] || []).length;
+      const grCols = colsTmp.slice(0, grColumnsLength).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
+      const values = colsTmp.slice(grColumnsLength + 1);
+      const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: k})))
+      cols = grCols.concat(...tt)
     }
+
+    this.cols = cols;
+    this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
   }
 
-  getColumnIndexes = (settings,  cols) => getColumnsFromSettings(settings[COLUMNS_SETTINGS])
-    .map(f => [_.findIndex(cols, c => c.name === f), f])
-    .filter(i => i[0] < cols.length);
 
 
-  normalizeRows = (settings, { cols, rows }, isTotalColumnIndex) : DatasetData => {
-    const columnIndexes = this.getColumnIndexes(settings, cols).map(p => p[0]);
-    const res = rows.map(row => columnIndexes.map(i => row[i])).map(p => ({isTotalColumnIndex : isTotalColumnIndex, __proto__ : p}));
-    return res;
-  };
 
 
   isVisible = (rowIndex: Number, columnIndex: Number, visibleRowIndices: Range): Boolean => {
@@ -124,7 +117,7 @@ export class GroupingManager {
 }
 
 const getValueByIndex = (index : Number) => (row ) => row[index];
-const getPivotValue = (key, offset ) => (index: Number) => row => ((row.piv[key] || [])[0] || [])[index + offset];
+const getPivotValue = (key, offset ) => (index: Number) => row => (row.piv[key] || [])[index + offset];
 
 //todo change name, add comment
 const funGen = columnNumber => {
@@ -158,12 +151,7 @@ const updateFirstInGroup = (hasTheSameValue, columnIndex) => ({prevRow, firstInG
   return {prevRow : currentRow, firstInGroupIndexes};
 };
 
-const getFirstInGroupMap = (rows:Row) => (columnIndex :  Number) => {
-  return rows.reduce(updateFirstInGroup(hasTheSameValueByColumn(columnIndex), columnIndex), {
-    prevRow: [],
-    firstInGroupIndexes: new Set().add(0).add((rows.length))
-  });
-};
+
 
 const getFirstRowInGroupIndex = (firstInGroup, rowIndex: Number) : Number => {
   while(!(rowIndex in firstInGroup))
@@ -179,11 +167,50 @@ const getStartGroupIndexToEndGroupIndex = (startIndexes : Set) : {} =>{
 };
 
 
-const createUberRow = (pivotIndex, values) =>{
+const createUberRows = (pivotIndex, values) =>{
   const piv = values.reduce((acc, value) => ({...acc, [value[pivotIndex]] : [...(acc[value[pivotIndex]] || []), value] }), {});
-  const res = {piv};
-  res.__proto__ = values[0];
-
-  return res;
+  const properties = Object.getOwnPropertyNames(piv);
+  const resPart = _.zip(...properties.map(propName => piv[propName]));
+  const aa = resPart.map(arr => properties.reduce((acc, propName, i) => ({...acc, [propName] : arr[i]}), {}));
+  return aa.map(piv => ({piv, __proto__ : values[0]}));
 }
 
+////////////////////////////////////
+
+const getFirstInGroupMap = (rows:Row) => (columnIndex :  Number) => {
+  return rows.reduce(updateFirstInGroup(hasTheSameValueByColumn(columnIndex), columnIndex), {
+    prevRow: [],
+    firstInGroupIndexes: new Set().add(0).add((rows.length))
+  });
+};
+
+const getAvailableColumnIndexes = (settings,  cols) => getColumnsFromSettings(settings[COLUMNS_SETTINGS])
+  .map(f => [_.findIndex(cols, c => c.name === f), f])
+  .filter(i => i[0] < cols.length);
+
+
+
+const normalizeRows = (settings, { cols, rows }) => {
+  const columnIndexes = getAvailableColumnIndexes(settings, cols).map(p => p[0]);
+  return rows.map(row => columnIndexes.map(i => row[i]));
+};
+
+
+const pivotRows = (rows, cmp) =>{
+  const rowsOrdered = _.orderBy(rows, cmp);
+
+  const foo = getFirstInGroupMap(rowsOrdered);
+  const res = [...cmp.keys()].map(foo).map(p => p.firstInGroupIndexes);
+  const res2 = res.reduce(({resArr, prevElem}, elem) =>{const r = new Set([...prevElem, ...elem]); resArr.push(r); return {resArr, prevElem : r} },{ resArr: [], prevElem : new Set()}).resArr;
+
+  const pivotColumnNumber = cmp.length - 1;
+  // columns.delete(undefined);
+
+  const dd = _.sortBy(Array.from(res2[res2.length -2]));
+  const [x, ...tail] = dd;
+  const ttttttttttt = tail.reduce((acc, currentValue, index) => {acc[dd[index]] = currentValue - 1; return acc}, {});
+  const functionf = v => createUberRows(pivotColumnNumber, v);
+  const grouped = [].concat(...Object.getOwnPropertyNames(ttttttttttt).map(start => rowsOrdered.slice(start, ttttttttttt[start]+1)).map(functionf));
+
+  return grouped;
+}
