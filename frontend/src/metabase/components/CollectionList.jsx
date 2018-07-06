@@ -38,6 +38,36 @@ class CollectionList extends React.Component {
     return (
       <Box>
         <Grid>
+          {collections
+            .filter(c => c.id !== currentUser.personal_collection_id)
+            .map(collection => (
+              <GridItem w={1 / 4}>
+                <CollectionDropTarget collection={collection}>
+                  <ItemDragSource item={collection}>
+                    <CollectionItem collection={collection} />
+                  </ItemDragSource>
+                </CollectionDropTarget>
+              </GridItem>
+            ))}
+          {currentCollection && (
+            <GridItem w={1 / 4}>
+              <Link
+                to={Urls.newCollection(currentCollection.id)}
+                color={normal.grey2}
+                hover={{ color: normal.blue }}
+              >
+                <Box p={2} className="bordered rounded">
+                  <Flex align="center" py={1}>
+                    <Icon name="add" mr={1} bordered />
+                    <h4>{t`New collection`}</h4>
+                  </Flex>
+                </Box>
+              </Link>
+            </GridItem>
+          )}
+        </Grid>
+        <Box mt={2}>
+          <Grid>
           {isRoot && (
             <GridItem w={1 / 4}>
               <CollectionDropTarget
@@ -68,34 +98,8 @@ class CollectionList extends React.Component {
                 />
               </GridItem>
             )}
-          {collections
-            .filter(c => c.id !== currentUser.personal_collection_id)
-            .map(collection => (
-              <GridItem w={1 / 4}>
-                <CollectionDropTarget collection={collection}>
-                  <ItemDragSource item={collection}>
-                    <CollectionItem collection={collection} />
-                  </ItemDragSource>
-                </CollectionDropTarget>
-              </GridItem>
-            ))}
-          {currentCollection && (
-            <GridItem w={1 / 4}>
-              <Link
-                to={Urls.newCollection(currentCollection.id)}
-                color={normal.grey2}
-                hover={{ color: normal.blue }}
-              >
-                <Box p={2} className="bordered rounded">
-                  <Flex align="center" py={1}>
-                    <Icon name="add" mr={1} bordered />
-                    <h4>{t`New collection`}</h4>
-                  </Flex>
-                </Box>
-              </Link>
-            </GridItem>
-          )}
-        </Grid>
+            </Grid>
+          </Box>
       </Box>
     );
   }
