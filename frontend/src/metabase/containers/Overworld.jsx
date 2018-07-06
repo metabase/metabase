@@ -17,6 +17,7 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Subhead from "metabase/components/Subhead";
+import Tooltip from "metabase/components/Tooltip"
 
 import { getUser } from "metabase/home/selectors";
 
@@ -158,7 +159,7 @@ class Overworld extends React.Component {
 
         <Box pt={2} px={4}>
           <h4>{t`Our data`}</h4>
-          <Box mt={2}>
+          <Box mt={2} mb={4}>
             <DatabaseListLoader>
               {({ databases }) => {
                 return (
@@ -176,11 +177,22 @@ class Overworld extends React.Component {
                               mb={3}
                               size={28}
                             />
-                            <h3>{database.name}</h3>
                             <Flex align='center'>
-                              <Link to={`explore/${database.id}`}>
-                                <Icon name="bolt" ml="auto" color={normal.yellow} />
-                              </Link>
+                              <h3>{database.name}</h3>
+                              <Box ml='auto' mr={1} className="hover-child">
+                                <Flex align='center'>
+                                  <Tooltip tooltip={t`X-ray this table`}>
+                                    <Link to={`explore/${database.id}/`}>
+                                      <Icon name="bolt" mx={1} color={normal.yellow} size={20} />
+                                    </Link>
+                                  </Tooltip>
+                                  <Tooltip tooltip={t`Learn about this table`}>
+                                    <Link to={`reference/databases/${database.id}`}>
+                                      <Icon name="reference" color={normal.grey1} />
+                                    </Link>
+                                  </Tooltip>
+                                </Flex>
+                              </Box>
                             </Flex>
                           </Box>
                         </Link>
