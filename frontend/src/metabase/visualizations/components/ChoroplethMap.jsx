@@ -1,3 +1,5 @@
+/* eslint-disable no-color-literals */
+
 import React, { Component } from "react";
 import { t } from "c-3po";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";

@@ -10,6 +10,7 @@ type ColorFamily = { [name: ColorName]: ColorString };
 
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
+/* eslint-disable no-color-literals */
 const colors = {
   brand: "#509EE3",
   accent1: "#9CC177",
@@ -36,6 +37,7 @@ const colors = {
   shadow: "rgba(0,0,0,0.08)",
   border: "#D7DBDE",
 };
+/* eslint-enable no-color-literals */
 export default colors;
 
 export const harmony = [];
