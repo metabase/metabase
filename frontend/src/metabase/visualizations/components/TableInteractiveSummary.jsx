@@ -24,7 +24,7 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import { Grid, ScrollSync, defaultCellRangeRenderer } from "react-virtualized";
 import Draggable from "react-draggable";
 
-const HEADER_HEIGHT = 36;
+const HEADER_HEIGHT = 30;
 const ROW_HEIGHT = 30;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
@@ -171,7 +171,7 @@ export default class TableInteractiveSummary extends Component {
       <div style={{ display: "flex" }}>
         {cols.map((column, columnIndex) => (
           <div className="fake-column" key={"column-" + columnIndex}>
-            {this.tableHeaderRenderer({
+            {this.tableLowerHeaderRenderer({
               columnIndex,
               rowIndex: 0,
               key: "header",
@@ -320,7 +320,81 @@ export default class TableInteractiveSummary extends Component {
     );
   };
 
-  tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
+  tableUpperHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps, group) => {
+    const {
+      sort,
+      isPivoted,
+      onVisualizationClick,
+      visualizationIsClickable,
+    } = this.props;
+    // $FlowFixMe: not sure why flow has a problem with this
+    const { cols } = this.props.data;
+    const column = cols[columnIndex];
+
+    let columnTitle = formatColumn(column);
+    if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
+      columnTitle = t`Unset`;
+    }
+
+    let clicked;
+    if (isPivoted) {
+      // if it's a pivot table, the first column is
+      if (columnIndex >= 0) {
+        clicked = column._dimension;
+      }
+    } else {
+      clicked = { column };
+    }
+
+    const isClickable =
+      onVisualizationClick && visualizationIsClickable(clicked);
+
+    // the column id is in `["field-id", fieldId]` format
+    return (
+      <div
+        key={key}
+        style={{
+          ...style,
+          paddingBottom: 5,
+          overflow: "visible" /* ensure resize handle is visible */,
+        }}
+        className={cx(
+          "TableInteractive-upperHeadlineCellWrapper TableInteractive-headerCellData",
+          {
+            "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+            "TableInteractive-cellWrapper--lastColumn": columnIndex === cols.length - 1,
+            "cursor-pointer": isClickable,
+//            "justify-end": false,
+          },
+        )}
+        // use onMouseUp instead of onClick since we can stopPropation when resizing headers
+        onMouseUp={
+          isClickable
+            ? e => {
+              onVisualizationClick({ ...clicked, element: e.currentTarget });
+            }
+            : undefined
+        }
+      >
+        <div
+          className={cx(
+            {
+              "groupName": group.name,
+            }
+          )}
+        >
+          <div className="cellData"
+            style={{
+               marginBottom: 0
+            }}>
+            {group.name}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  tableLowerHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
     const {
       sort,
       isPivoted,
@@ -356,9 +430,6 @@ export default class TableInteractiveSummary extends Component {
       sort && sort[0] && sort[0][0] && sort[0][0][1] === column.id;
     const isAscending = sort && sort[0] && sort[0][1] === "ascending";
 
-    const parent = column.parentName ? ( <div> {column.parentName}
-    <br/> </div>) : undefined;
-
     return (
       <div
         key={key}
@@ -369,9 +440,6 @@ export default class TableInteractiveSummary extends Component {
         className={cx(
           "TableInteractive-cellWrapper TableInteractive-headerCellData",
           {
-            "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-            "TableInteractive-cellWrapper--lastColumn":
-              columnIndex === cols.length - 1,
             "TableInteractive-headerCellData--sorted": isSorted,
             "cursor-pointer": isClickable,
             "justify-end": isRightAligned,
@@ -388,23 +456,22 @@ export default class TableInteractiveSummary extends Component {
       >
         <div className="cellData">
           {isSortable &&
-            isRightAligned && (
-              <Icon
-                className="Icon mr1"
-                name={isAscending ? "chevronup" : "chevrondown"}
-                size={8}
-              />
-            )}
-          {parent}
+          isRightAligned && (
+            <Icon
+              className="Icon mr1"
+              name={isAscending ? "chevronup" : "chevrondown"}
+              size={8}
+            />
+          )}
           {columnTitle}
           {isSortable &&
-            !isRightAligned && (
-              <Icon
-                className="Icon ml1"
-                name={isAscending ? "chevronup" : "chevrondown"}
-                size={8}
-              />
-            )}
+          !isRightAligned && (
+            <Icon
+              className="Icon ml1"
+              name={isAscending ? "chevronup" : "chevrondown"}
+              size={8}
+            />
+          )}
         </div>
         <Draggable
           axis="x"
@@ -449,6 +516,16 @@ export default class TableInteractiveSummary extends Component {
       return <div className={className} />;
     }
 
+    let groups = cols.filter( c => c.parentName ).map( ({parentName}) => ({name: parentName[0], indexFrom: 0, indexTo: parentName[1] }));
+
+    let idx= 0;
+    for( let i in groups ) {
+      let g = groups[i];
+      g.indexFrom = idx;
+      idx += g.indexTo;
+      g.indexTo = idx;
+    }
+
     return (
       <ScrollSync>
         {({
@@ -480,6 +557,46 @@ export default class TableInteractiveSummary extends Component {
                 position: "absolute",
                 overflow: "hidden",
               }}
+              className="scroll-hide-all"
+              width={width || 0}
+              height={HEADER_HEIGHT}
+              rowCount={1}
+              rowHeight={HEADER_HEIGHT}
+              // HACK: there might be a better way to do this, but add a phantom padding cell at the end to ensure scroll stays synced if main content scrollbars are visible
+              columnCount={groups.length + 1}
+              columnWidth={
+                props => {
+                  if( props.index < groups.length ) {
+                    let g=groups[props.index];
+                    let wd = 0;
+                    for( let idx2=g.indexFrom ; idx2<g.indexTo ; ++idx2 )
+                      wd += this.getColumnWidth({index:idx2});
+                    return wd;
+
+                  }
+                  else
+                      return 50;
+                }
+              }
+              cellRenderer={props =>
+                props.columnIndex < groups.length
+                  ? this.tableUpperHeaderRenderer(props,groups[props.columnIndex])
+                  : null
+              }
+              onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
+              scrollLeft={scrollLeft}
+              tabIndex={null}
+            />
+            <Grid
+              ref={ref => (this.header = ref)}
+              style={{
+                top: HEADER_HEIGHT,
+                left: 0,
+                right: 0,
+                height: HEADER_HEIGHT,
+                position: "absolute",
+                overflow: "hidden",
+              }}
               className="TableInteractive-header scroll-hide-all"
               width={width || 0}
               height={HEADER_HEIGHT}
@@ -492,7 +609,7 @@ export default class TableInteractiveSummary extends Component {
               }
               cellRenderer={props =>
                 props.columnIndex < cols.length
-                  ? this.tableHeaderRenderer(props)
+                  ? this.tableLowerHeaderRenderer(props)
                   : null
               }
               onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
@@ -502,7 +619,7 @@ export default class TableInteractiveSummary extends Component {
             <Grid
               ref={ref => (this.grid = ref)}
               style={{
-                top: HEADER_HEIGHT,
+                top: HEADER_HEIGHT*2,
                 left: 0,
                 right: 0,
                 bottom: 0,
@@ -510,7 +627,7 @@ export default class TableInteractiveSummary extends Component {
               }}
               className=""
               width={width}
-              height={height - HEADER_HEIGHT}
+              height={height - 2*HEADER_HEIGHT}
               columnCount={cols.length}
               columnWidth={this.getColumnWidth}
               rowCount={rows.length}

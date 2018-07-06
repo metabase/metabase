@@ -50,6 +50,22 @@
   border-bottom: 1px solid var(--table-border-color);
 }
 
+.TableInteractive .TableInteractive-upperHeadlineCellWrapper {
+  padding: 1em 1.25em;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+
+  border: 1px solid transparent;
+}
+
+.TableInteractive .TableInteractive-upperHeadlineCellWrapper .groupName {
+  margin-bottom: 0;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--table-border-color);
+  width: 100%;
+}
+
 .TableInteractive .TableInteractive-cellWrapper--active,
 .TableInteractive:not(.TableInteractive--noHover)
   .TableInteractive-cellWrapper:hover {
