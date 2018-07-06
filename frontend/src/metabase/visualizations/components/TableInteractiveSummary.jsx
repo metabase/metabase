@@ -388,7 +388,7 @@ export default class TableInteractiveSummary extends Component {
                marginBottom: 0
             }}>
             {formatValue(group.name, {
-              column: group.name === 'Grand totals' ? undefined : group.columnInfo,
+              column: group.columnInfo,
               type: "cell",
               jsx: true,
               rich: true

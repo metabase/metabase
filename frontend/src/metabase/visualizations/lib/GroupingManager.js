@@ -65,7 +65,7 @@ export class GroupingManager {
       const grColumnsLength = (settings[COLUMNS_SETTINGS][GROUPS_SOURCES] || []).length;
       const grCols = colsTmp.slice(0, grColumnsLength).map((col, i) => ({...col, getValue: getValueByIndex(i), parentName: ["",1] }));
       const values = colsTmp.slice(grColumnsLength + 1);
-      const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: i === 0 ? [k === 'undefined' ? 'Grand totals' : k, values.length, colsTmp[grColumnsLength]] : undefined})))
+      const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: i === 0 ? [k === 'undefined' ? 'Grand totals' : k, values.length, k === 'undefined' ? undefined : colsTmp[grColumnsLength]] : undefined})).filter(col => k !== 'undefined' || canTotalize(col.base_type)))
       cols = grCols.concat(...tt)
     }
 
@@ -214,3 +214,6 @@ const pivotRows = (rows, cmp) =>{
 
   return grouped;
 }
+
+//todo remove, use from SummaryTableQueryBuilder
+const canTotalize = (type : string) => type ==='type/Integer' || type === 'type/Float' || type === 'type/Decimal';
