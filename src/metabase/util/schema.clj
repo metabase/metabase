@@ -118,6 +118,12 @@
       (s/constrained s/Int (partial < 0) (tru "Integer greater than zero"))
     (tru "value must be an integer greater than zero.")))
 
+(def PositiveNum
+  "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
+  (with-api-error-message
+      (s/constrained s/Num (partial < 0) (tru "Number greater than zero"))
+    (tru "value must be a number greater than zero.")))
+
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
   (s/named (s/cond-pre s/Keyword s/Str) (tru "Keyword or string")))
