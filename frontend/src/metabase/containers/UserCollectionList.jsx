@@ -21,7 +21,7 @@ const UserCollectionList = () => (
     <Box py={2}>
       <BrowserCrumbs
         crumbs={[
-          { title: t`Saved items`, to: Urls.collection() },
+          { title: t`Our analytics`, to: Urls.collection() },
           { title: t`Everyone else’s personal collections` },
         ]}
       />
