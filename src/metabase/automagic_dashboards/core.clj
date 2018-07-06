@@ -311,9 +311,9 @@
 
 (defmethod ->reference :default
   [_ form]
-  (cond
-    (map? form) ((some-fn :display_name :name) form)
-    :else       form))
+  (or (cond-> form
+        (map? form) ((some-fn :full-name :name) form))
+      form))
 
 (defn- field-isa?
   [{:keys [base_type special_type]} t]
