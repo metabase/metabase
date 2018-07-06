@@ -145,7 +145,7 @@ class Overworld extends React.Component {
               color={normal.grey2}
               className="text-brand-hover"
             >
-              <Flex bg="#F4F6F8" p={2} mb={1} align="center">
+              <Flex bg={colors["bg-light"]} p={2} mb={1} align="center">
                 <Box ml="auto" mr="auto">
                   <Flex align="center">
                     <h3>{t`Browse all items`}</h3>
@@ -186,7 +186,7 @@ class Overworld extends React.Component {
                                       <Icon
                                         name="bolt"
                                         mx={1}
-                                        color={normal.yellow}
+                                        color={colors["warning"]}
                                         size={20}
                                       />
                                     </Link>
