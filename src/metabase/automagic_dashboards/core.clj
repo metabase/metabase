@@ -36,7 +36,8 @@
             [puppetlabs.i18n.core :as i18n :refer [tru trs]]
             [ring.util.codec :as codec]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import java.util.TimeZone))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
@@ -914,7 +915,7 @@
 (defn- humanize-datetime
   [dt unit]
   (let [dt                     (date/str->date-time dt)
-        tz                     (-> date/jvm-timezone deref .getID)
+        tz                     (-> date/jvm-timezone deref ^TimeZone .getID)
         unparse-with-formatter (fn [formatter dt]
                                  (t.format/unparse
                                   (t.format/with-zone
