@@ -74,19 +74,24 @@ class Overworld extends React.Component {
                 <CandidateListLoader>
                   {({ candidates, sampleCandidates, isSample }) => {
                     return (
-                      <Box px={4}>
-                        <ExplorePane
-                          candidates={candidates}
-                          withMetabot={false}
-                          title=""
-                          gridColumns={1 / 3}
-                          asCards={true}
-                          description={
-                            isSample
-                              ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                              : t`I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!`
-                          }
-                        />
+                      <Box mx={4} mt={2}>
+                        <Box mb={1}>
+                          <h4>{t`Not sure where to start?`}</h4>
+                        </Box>
+                        <Card px={3} pb={1}>
+                          <ExplorePane
+                            candidates={candidates}
+                            withMetabot={false}
+                            title=""
+                            gridColumns={1 / 3}
+                            asCards={false}
+                            description={
+                              isSample
+                                ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
+                                : t`I took a look at the data you have connected, and I have some explorations of interesting things I found. Hope you like them!`
+                            }
+                          />
+                        </Card>
                       </Box>
                     );
                   }}
@@ -97,7 +102,7 @@ class Overworld extends React.Component {
             return (
               <Box px={4}>
                 <Box mt={3} mb={1}>
-                  <h4>{t`Pinned dashboards`}</h4>
+                  <h4>{t`Start here`}</h4>
                 </Box>
                 <Grid>
                   {pinnedDashboards.map(pin => {
@@ -122,18 +127,6 @@ class Overworld extends React.Component {
                       </GridItem>
                     );
                   })}
-                  <GridItem>
-                    <Link
-                      to="/collection/root"
-                      color={normal.grey2}
-                      className="text-brand-hover"
-                    >
-                      <Flex p={4} align="center">
-                        <h3>See more items</h3>
-                        <Icon name="chevronright" size={14} ml={1} />
-                      </Flex>
-                    </Link>
-                  </GridItem>
                 </Grid>
               </Box>
             );
@@ -141,12 +134,31 @@ class Overworld extends React.Component {
         </CollectionItemsLoader>
 
         <Box px={4} my={3}>
-          <CollectionList collections={this.props.collections} />
+          <Box mb={2}>
+            <h4>{t`Our analytics`}</h4>
+          </Box>
+          <Card p={3}>
+            <CollectionList collections={this.props.collections} />
+            <Link
+              to="/collection/root"
+              color={normal.grey2}
+              className="text-brand-hover"
+            >
+              <Flex bg={colors["bg-light"]} p={2} mb={1} align="center">
+                <Box ml="auto" mr="auto">
+                  <Flex align="center">
+                    <h3>{t`Browse all items`}</h3>
+                    <Icon name="chevronright" size={14} ml={1} />
+                  </Flex>
+                </Box>
+              </Flex>
+            </Link>
+          </Card>
         </Box>
 
         <Box pt={2} px={4}>
           <h4>{t`Our data`}</h4>
-          <Box mt={2}>
+          <Box mt={2} mb={4}>
             <DatabaseListLoader>
               {({ databases }) => {
                 return (

@@ -19,12 +19,14 @@ const UserListLoader = ({ children, ...props }) => (
 
 const UserCollectionList = () => (
   <Box px={4}>
-    <BrowserCrumbs
-      crumbs={[
-        { title: t`Saved items`, to: Urls.collection() },
-        { title: t`Everyone else’s personal collections` },
-      ]}
-    />
+    <Box py={2}>
+      <BrowserCrumbs
+        crumbs={[
+          { title: t`Our analytics`, to: Urls.collection() },
+          { title: t`Everyone else’s personal collections` },
+        ]}
+      />
+    </Box>
     <UserListLoader>
       {({ list }) => {
         return (

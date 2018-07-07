@@ -331,7 +331,7 @@
 
 ;; Check that we can see stuff that isn't in any Collection -- meaning they're in the so-called "Root" Collection
 (expect
-  {:name                "Saved items"
+  {:name                "Our analytics"
    :id                  "root"
    :can_write           true
    :effective_location  nil
