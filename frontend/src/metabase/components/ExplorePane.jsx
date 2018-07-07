@@ -156,20 +156,17 @@ export const ExploreList = ({
 );
 
 export const ExploreOption = ({ option }: { option: Candidate }) => (
-  <Link to={option.url} className="flex align-center text-bold no-decoration">
-    <div
-      className="bg-grey-0 flex align-center rounded mr2 p2 justify-center text-gold"
-      style={{ width: 48, height: 48 }}
-    >
-      <Icon name="bolt" size={24} className="flex-no-shrink" />
-    </div>
+  <Link
+    to={option.url}
+    className="flex align-center text-bold no-decoration text-grey-5 text-brand-hover bg-grey-0 p2 py3"
+  >
+    <Icon
+      name="bolt"
+      size={20}
+      className="flex-no-shrink mr1 justify-center text-gold"
+    />
     <div>
-      <div className="link">{option.title}</div>
-      {option.description && (
-        <div className="text-grey-4 text-small" style={{ marginTop: "0.25em" }}>
-          {option.description}
-        </div>
-      )}
+      <span className="text-normal">{t`A look at your`}</span> {option.title}
     </div>
   </Link>
 );
