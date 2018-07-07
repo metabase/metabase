@@ -913,28 +913,33 @@
 
 (defn- humanize-datetime
   [dt unit]
-  (let [dt                     (t.format/parse dt)
+  (let [dt                     (date/str->date-time dt)
+        tz                     (-> date/jvm-timezone deref .getID)
         unparse-with-formatter (fn [formatter dt]
-                                 (t.format/unparse (t.format/formatter formatter) dt))]
+                                 (t.format/unparse
+                                  (t.format/with-zone
+                                    (t.format/formatter formatter)
+                                    (t/time-zone-for-id tz))
+                                  dt))]
     (case unit
       :minute          (tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
       :hour            (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
       :day             (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
       :week            (tru "in {0} week - {1}"
-                            (->> dt (date/date-extract :week-of-year) pluralize)
-                            (->> dt (date/date-extract :year) str))
+                            (->> dt (date/date-extract :week-of-year tz) pluralize)
+                            (->> dt (date/date-extract :year tz) str))
       :month           (tru "in {0}" (unparse-with-formatter "MMMM, YYYY" dt))
       :quarter         (tru "in Q{0} - {1}"
-                            (date/date-extract :quarter-of-year dt)
-                            (->> dt (date/date-extract :year) str))
+                            (date/date-extract :quarter-of-year tz dt)
+                            (->> dt (date/date-extract :year tz) str))
       :year            (unparse-with-formatter "YYYY" dt)
       :day-of-week     (tru "on a {0}" (unparse-with-formatter "EEEE" dt))
       :hour-of-day     (tru "at {0}" (unparse-with-formatter "h a" dt))
       :month-of-year   (unparse-with-formatter "MMMM" dt)
-      :quarter-of-year (tru "Q{0}" (date/date-extract :quarter-of-year dt))
+      :quarter-of-year (tru "Q{0}" (date/date-extract :quarter-of-year tz dt))
       (:minute-of-hour
        :day-of-month
-       :week-of-year)  (date/date-extract unit dt))))
+       :week-of-year)  (date/date-extract unit tz dt))))
 
 (defn- field-reference->field
   [root field-reference]
