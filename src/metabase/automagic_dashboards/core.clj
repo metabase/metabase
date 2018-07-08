@@ -915,7 +915,7 @@
 (defn- humanize-datetime
   [dt unit]
   (let [dt                     (date/str->date-time dt)
-        tz                     (-> date/jvm-timezone deref ^TimeZone .getID)
+        tz                     (.getID ^TimeZone @date/jvm-timezone)
         unparse-with-formatter (fn [formatter dt]
                                  (t.format/unparse
                                   (t.format/formatter formatter (t/time-zone-for-id tz))
