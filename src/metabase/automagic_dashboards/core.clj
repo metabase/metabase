@@ -918,29 +918,27 @@
         tz                     (-> date/jvm-timezone deref ^TimeZone .getID)
         unparse-with-formatter (fn [formatter dt]
                                  (t.format/unparse
-                                  (t.format/with-zone
-                                    (t.format/formatter formatter)
-                                    (t/time-zone-for-id tz))
+                                  (t.format/formatter formatter (t/time-zone-for-id tz))
                                   dt))]
     (case unit
       :minute          (tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
       :hour            (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
       :day             (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
       :week            (tru "in {0} week - {1}"
-                            (->> dt (date/date-extract :week-of-year tz) pluralize)
-                            (->> dt (date/date-extract :year tz) str))
-      :month           (tru "in {0}" (unparse-with-formatter "MMMM, YYYY" dt))
+                            (pluralize (date/date-extract :week-of-year dt tz))
+                            (str (date/date-extract :year dt tz)))
+      :month           (tru "in {0}" (unparse-with-formatter "MMMM YYYY" dt))
       :quarter         (tru "in Q{0} - {1}"
-                            (date/date-extract :quarter-of-year tz dt)
-                            (->> dt (date/date-extract :year tz) str))
+                            (date/date-extract :quarter-of-year dt tz)
+                            (str (date/date-extract :year dt tz)))
       :year            (unparse-with-formatter "YYYY" dt)
       :day-of-week     (tru "on a {0}" (unparse-with-formatter "EEEE" dt))
       :hour-of-day     (tru "at {0}" (unparse-with-formatter "h a" dt))
       :month-of-year   (unparse-with-formatter "MMMM" dt)
-      :quarter-of-year (tru "Q{0}" (date/date-extract :quarter-of-year tz dt))
+      :quarter-of-year (tru "Q{0}" (date/date-extract :quarter-of-year dt tz))
       (:minute-of-hour
        :day-of-month
-       :week-of-year)  (date/date-extract unit tz dt))))
+       :week-of-year)  (date/date-extract unit dt tz))))
 
 (defn- field-reference->field
   [root field-reference]
