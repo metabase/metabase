@@ -112,11 +112,7 @@ class CollectionList extends React.Component {
 }
 
 CollectionList.defaultProps = {
-<<<<<<< HEAD
-  w: 1 / 4,
-=======
   w: [1, 1 / 2, 1 / 4],
->>>>>>> origin/master
 };
 
 export default CollectionList;
