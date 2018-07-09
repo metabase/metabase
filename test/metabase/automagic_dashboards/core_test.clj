@@ -474,7 +474,7 @@
           (date/date-extract :quarter-of-year dt tz)
           (str (date/date-extract :year dt tz)))
      (unparse-with-formatter "YYYY" dt)
-     (tru "on a {0}" (unparse-with-formatter "EEEE" dt))
+     (unparse-with-formatter "EEEE" dt)
      (tru "at {0}" (unparse-with-formatter "h a" dt))
      (unparse-with-formatter "MMMM" dt)
      (tru "Q{0}" (date/date-extract :quarter-of-year dt tz))

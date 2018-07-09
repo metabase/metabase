@@ -932,7 +932,7 @@
                             (date/date-extract :quarter-of-year dt tz)
                             (str (date/date-extract :year dt tz)))
       :year            (unparse-with-formatter "YYYY" dt)
-      :day-of-week     (tru "{0}" (unparse-with-formatter "EEEE" dt))
+      :day-of-week     (unparse-with-formatter "EEEE" dt)
       :hour-of-day     (tru "at {0}" (unparse-with-formatter "h a" dt))
       :month-of-year   (unparse-with-formatter "MMMM" dt)
       :quarter-of-year (tru "Q{0}" (date/date-extract :quarter-of-year dt tz))
