@@ -139,7 +139,7 @@ class Overworld extends React.Component {
           <Box mb={2}>
             <h4>{t`Our analytics`}</h4>
           </Box>
-          <Card p={3}>
+          <Card p={[2, 3]}>
             <CollectionList collections={this.props.collections} />
             <Link
               to="/collection/root"

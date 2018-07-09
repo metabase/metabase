@@ -62,7 +62,7 @@ class CollectionList extends React.Component {
                 color={normal.grey2}
                 hover={{ color: normal.blue }}
               >
-                <Box p={2} className="bordered rounded">
+                <Box p={[1, 2]} className="bordered rounded">
                   <Flex align="center" py={1}>
                     <Icon name="add" mr={1} bordered />
                     <h4>{t`New collection`}</h4>
@@ -72,7 +72,7 @@ class CollectionList extends React.Component {
             </GridItem>
           )}
         </Grid>
-        <Box mt={2}>
+        <Box mt={[1, 2]}>
           <Grid>
             {isRoot && (
               <GridItem w={w}>
