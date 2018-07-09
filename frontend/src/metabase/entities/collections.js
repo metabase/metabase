@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import { createEntity, undo } from "metabase/lib/entities";
-import { normal, getRandomColor } from "metabase/lib/colors";
+import colors from "metabase/lib/colors";
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
@@ -47,7 +47,9 @@ const Collections = createEntity({
   },
 
   form: {
-    fields: (values = {}) => [
+    fields: (values = {
+      color: colors.brand
+    }) => [
       {
         name: "name",
         placeholder: "My new fantastic collection",
@@ -62,9 +64,8 @@ const Collections = createEntity({
         normalize: description => description || null, // expected to be nil or non-empty string
       },
       {
-        name: "color",
-        type: "color",
-        initial: () => getRandomColor(normal),
+        name: 'color',
+        initial: () => colors.brand,
         validate: color => !color && t`Color is required`,
       },
       {
