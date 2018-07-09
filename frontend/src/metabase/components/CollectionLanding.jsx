@@ -22,6 +22,7 @@ import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
 import VirtualizedList from "metabase/components/VirtualizedList";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
+import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar"
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
@@ -182,6 +183,7 @@ class DefaultLanding extends React.Component {
                   {unpinned.length > 0 ? (
                     <PinDropTarget pinIndex={null} margin={8}>
                       <Box>
+                        <ItemTypeFilterBar />
                         <Box
                           mb={selected.length > 0 ? 5 : 2}
                           style={{

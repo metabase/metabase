@@ -11,6 +11,7 @@ import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import Subhead from "metabase/components/Subhead";
+import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar"
 
 export default class SearchApp extends React.Component {
   render() {
@@ -19,6 +20,7 @@ export default class SearchApp extends React.Component {
         <Flex align="center" mb={2} py={3}>
           <Subhead>{jt`Results for "${this.props.location.query.q}"`}</Subhead>
         </Flex>
+        <ItemTypeFilterBar />
         <Box w={2 / 3}>
           <EntityListLoader
             entityType="search"
