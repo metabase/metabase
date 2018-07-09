@@ -25,7 +25,7 @@
              [db :as db]
              [hydrate :refer [hydrate]]])
   (:import java.util.TimeZone
-           [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldPlaceholder
+           [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldLiteral FieldPlaceholder
             RelativeDatetime RelativeDateTimeValue TimeField TimeValue Value ValuePlaceholder]))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
@@ -161,7 +161,7 @@
 
 ;;; ----------------------------------------------- FIELD PLACEHOLDER ------------------------------------------------
 
-(defn- resolve-binned-field [{:keys [binning-strategy binning-param] :as field-ph} field]
+(defn- resolve-binned-field [binning-strategy binning-param field]
   (let [binned-field (i/map->BinnedField {:field    field
                                           :strategy binning-strategy})]
     (case binning-strategy
@@ -200,7 +200,7 @@
       (i/map->TimeField {:field field})
 
       binning-strategy
-      (resolve-binned-field this field)
+      (resolve-binned-field binning-strategy binning-param field)
 
       :else field)
     ;; If that fails just return ourselves as-is
@@ -399,6 +399,29 @@
           (assoc-in <> [:query :join-tables]  joined-tables)
           (walk/postwalk #(resolve-table % fk-id+table-id->table) <>))))))
 
+(defn- resolve-field-literals
+  "When resolving a field, we connect a `field-id` with a `Field` in our metadata tables. This is a similar process
+  for `FieldLiteral`s, except we are attempting to connect a `FieldLiteral` with an associated entry in the
+  `result_metadata` attached to the query (typically from the `Card` of a nested query)."
+  [{:keys [result_metadata] :as expanded-query-dict}]
+  (let [name->fingerprint (zipmap (map :name result_metadata)
+                                  (map :fingerprint result_metadata))]
+    (qputil/postwalk-pred #(instance? FieldLiteral %)
+                          (fn [{:keys [binning-strategy binning-param] :as node}]
+                            (let [fingerprint     (get name->fingerprint (:field-name node))
+                                  node-with-print (assoc node :fingerprint fingerprint)]
+                              (cond
+                                ;; We can't bin without min/max values found from a fingerprint
+                                (and binning-strategy (not fingerprint))
+                                (throw (Exception. "Binning not supported on a field literal with no fingerprint"))
+
+                                (and fingerprint binning-strategy)
+                                (resolve-binned-field binning-strategy binning-param node-with-print)
+
+                                :else
+                                node-with-print)))
+                          expanded-query-dict)))
+
 
 ;;; ------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------
 
@@ -408,6 +431,7 @@
   (some-> expanded-query-dict
           record-fk-field-ids
           resolve-fields
+          resolve-field-literals
           resolve-tables))
 
 (defn resolve-middleware
