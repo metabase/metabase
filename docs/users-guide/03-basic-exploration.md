@@ -1,8 +1,15 @@
 ### Exploring in Metabase
-As long as you're not the very first user in your team's Metabase, the easiest way to start exploring your data is by looking at dashboards, charts, and lists that your teammates have already created.
+As long as you're not the very first user in your team's Metabase, the easiest way to start exploring your data is by looking at dashboards, charts, and lists that your teammates have already created. The best place to start is by checking out any dashboards that might be pinned on your home page or in the collections you have access to.
 
-#### Exploring dashboards
-Click on the `Dashboards` nav item to see all the dashboards your teammates have created. Dashboards are simply collections of charts and numbers that you want to be able to refer back to regularly. (You can learn more about dashboards [here](07-dashboards.md))
+Alternatively, you can dive right in to exploring the data in Metabase by clicking on one of the databases at the bottom of the home page, and then clicking on a table to see it. You can also click on the bolt icon on any table to see an automatic exploration of its data. Give it a try!
+
+#### Exploring collections
+Collections in Metabase are a lot like folders, and they're where all your team's dashboards, saved questions, and other collections are kept. To explore them, click any of the boxes in the "Our analytics" section of the home page. If your teammates are cool, hopefully they've already pinned some important dashboards or questions within your collections. If so, those important or useful items will show up nice and large at the top of a collection.
+
+
+
+
+Dashboards are simply collections of charts and numbers that you want to be able to refer back to regularly. (You can learn more about dashboards [here](07-dashboards.md))
 
 If you click on a part of a chart, such as a bar in a bar chart, or a dot on a line chart, you'll see a menu with actions you can take to dive deeper into that result, or to branch off from it in a different direction.
 

@@ -15,3 +15,11 @@ If you connected your database to Metabase during setup, you'll see it listed at
 
 ### Ask a question or write a query
 Click the `Ask a question button` to start a new custom exploration of one of your tables or to write a new SQL or native query if you want to really dig in.
+
+### Make a new dashboard or pulse
+In Metabase, dashboards are made up of saved questions that you can arrange and resize as you please. They're a great way to track important metrics and analytics that you care about. Pulses are what regularly scheduled reports are called in Metabase. Pulses can be sent out either via email, Slack, or both.
+
+To make a dashboard or pulse, click the plus (+) icon in the top-right of the main navigation bar.
+
+### Use search to quickly find things
+The search bar that's always present at the top of the screen let's you search through your dashboards, collections, saved questions, and pulses in an instant. Just type part of the title of the thing you're looking for and hit enter.
