@@ -19,8 +19,9 @@
   [dashboard]
   (->> dashboard
        :ordered_cards
-       (map (fn [{:keys [sizeY card col row series]}]
+       (map (fn [{:keys [sizeY card col row series] :as dashcard}]
               (assoc card
+                :text     (-> dashcard :visualization_settings :text)
                 :series   series
                 :height   sizeY
                 :position (+ (* row populate/grid-width) col))))
@@ -58,59 +59,66 @@
 
 (defn- comparison-row
   [dashboard row left right card]
-  (let [height                   (:height card)
-        card-left                (->> card (inject-filter left) clone-card)
-        card-right               (->> card (inject-filter right) clone-card)
-        [color-left color-right] (->> [left right]
-                                      (map #(qp.util/get-in-normalized % [:dataset_query :query :filter]) )
-                                      populate/map-to-colors)]
-    (if (overlay-comparison? card)
-      (let [card   (-> card-left
-                       (assoc-in [:visualization_settings :graph.colors] [color-left color-right])
-                       (update :name #(format "%s (%s)" % (:full-name left))))
-            series (-> card-right
-                       (update :name #(format "%s (%s)" % (:full-name right)))
-                       vector)]
-        (update dashboard :ordered_cards conj {:col                    0
-                                               :row                    row
-                                               :sizeX                  populate/grid-width
-                                               :sizeY                  height
-                                               :card                   card
-                                               :card_id                (:id card)
-                                               :series                 series
-                                               :visualization_settings
-                                               (cond-> {}
-                                                 (-> card-left display-type (= :bar))
-                                                 (assoc :graph.y_axis.auto_split false))
-                                               :id                     (gensym)}))
-      (let [width        (/ populate/grid-width 2)
-            series-left  (map clone-card (:series card-left))
-            series-right (map clone-card (:series card-right))
-            card-left    (cond-> card-left
-                           (not (multiseries? card-left))
-                           (assoc-in [:visualization_settings :graph.colors] [color-left]))
-            card-right   (cond-> card-right
-                           (not (multiseries? card-right))
-                           (assoc-in [:visualization_settings :graph.colors] [color-right]))]
-        (-> dashboard
-            (update :ordered_cards conj {:col                    0
-                                         :row                    row
-                                         :sizeX                  width
-                                         :sizeY                  height
-                                         :card                   card-left
-                                         :card_id                (:id card-left)
-                                         :series                 series-left
-                                         :visualization_settings {}
-                                         :id                     (gensym)})
-            (update :ordered_cards conj {:col                    width
-                                         :row                    row
-                                         :sizeX                  width
-                                         :sizeY                  height
-                                         :card                   card-right
-                                         :card_id                (:id card-right)
-                                         :series                 series-right
-                                         :visualization_settings {}
-                                         :id                     (gensym)}))))))
+  (if (:display card)
+    (let [height                   (:height card)
+          card-left                (->> card (inject-filter left) clone-card)
+          card-right               (->> card (inject-filter right) clone-card)
+          [color-left color-right] (->> [left right]
+                                        (map #(qp.util/get-in-normalized % [:dataset_query :query :filter]) )
+                                        populate/map-to-colors)]
+      (if (overlay-comparison? card)
+        (let [card   (-> card-left
+                         (assoc-in [:visualization_settings :graph.colors] [color-left color-right])
+                         (update :name #(format "%s (%s)" % (:full-name left))))
+              series (-> card-right
+                         (update :name #(format "%s (%s)" % (:full-name right)))
+                         vector)]
+          (update dashboard :ordered_cards conj {:col                    0
+                                                 :row                    row
+                                                 :sizeX                  populate/grid-width
+                                                 :sizeY                  height
+                                                 :card                   card
+                                                 :card_id                (:id card)
+                                                 :series                 series
+                                                 :visualization_settings
+                                                 (cond-> {}
+                                                   (-> card-left display-type (= :bar))
+                                                   (assoc :graph.y_axis.auto_split false))
+                                                 :id                     (gensym)}))
+        (let [width        (/ populate/grid-width 2)
+              series-left  (map clone-card (:series card-left))
+              series-right (map clone-card (:series card-right))
+              card-left    (cond-> card-left
+                             (not (multiseries? card-left))
+                             (assoc-in [:visualization_settings :graph.colors] [color-left]))
+              card-right   (cond-> card-right
+                             (not (multiseries? card-right))
+                             (assoc-in [:visualization_settings :graph.colors] [color-right]))]
+          (-> dashboard
+              (update :ordered_cards conj {:col                    0
+                                           :row                    row
+                                           :sizeX                  width
+                                           :sizeY                  height
+                                           :card                   card-left
+                                           :card_id                (:id card-left)
+                                           :series                 series-left
+                                           :visualization_settings {}
+                                           :id                     (gensym)})
+              (update :ordered_cards conj {:col                    width
+                                           :row                    row
+                                           :sizeX                  width
+                                           :sizeY                  height
+                                           :card                   card-right
+                                           :card_id                (:id card-right)
+                                           :series                 series-right
+                                           :visualization_settings {}
+                                           :id                     (gensym)})))))
+    (populate/add-text-card dashboard {:text                   (:text card)
+                                       :width                  (/ populate/grid-width 2)
+                                       :height                 (:height card)
+                                       :visualization-settings {:dashcard.background false
+                                                                :text.align_vertical :bottom}}
+                            [row 0])))
 
 (def ^:private ^Long ^:const title-height 2)
 
@@ -215,8 +223,8 @@
     (->> (concat segment-dashboards [dashboard])
          (apply populate/merge-dashboards)
          dashboard->cards
-         (m/distinct-by :dataset_query)
-         (transduce (comp (filter :display)
+      ;   (m/distinct-by :dataset_query)
+         (transduce (comp ;(filter :display)
                           (mapcat unroll-multiseries))
                     (fn
                       ([]
