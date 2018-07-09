@@ -99,7 +99,10 @@
   "Add a given job and trigger to our scheduler."
   [job :- JobDetail, trigger :- Trigger]
   (when-let [scheduler (scheduler)]
-    (qs/schedule scheduler job trigger)))
+    (try
+      (qs/schedule scheduler job trigger)
+      (catch org.quartz.ObjectAlreadyExistsException _
+        (log/info (trs "Job already exists:") (-> job .getKey .getName))))))
 
 (s/defn delete-task!
   "delete a task from the scheduler"
