@@ -21,7 +21,7 @@ const StandardForm = ({
 
   form,
   className,
-  resetButton = true,
+  resetButton = false,
   newForm = true,
 
   ...props
