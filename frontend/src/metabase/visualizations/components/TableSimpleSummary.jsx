@@ -126,10 +126,48 @@ export default class TableSimpleSummary extends Component {
               )}
             >
               <thead ref="header">
+              <tr >
+                {cols.map((col, colIndex) => {
+                  if (col.parentName) {
+                    return (
+                    <th
+                      key={'1'-colIndex}
+                      className={cx(
+                        "TableInteractive-headerCellData cellData text-brand-hover",
+                        {
+                          "TableInteractive-headerCellData--sorted":
+                          sortColumn === colIndex,
+                          "text-right": isColumnRightAligned(col.parentName[2]),
+                        },
+                      )}
+                      colSpan={col.parentName[1]}
+                    >
+                      <div className="relative">
+                        <Icon
+                          name={sortDescending ? "chevrondown" : "chevronup"}
+                          width={8}
+                          height={8}
+                          style={{
+                            position: "absolute",
+                            right: "100%",
+                            marginRight: 3,
+                          }}
+                        />
+                        <Ellipsified>{formatValue(col.parentName[0], {
+                          column: col.parentName[2],
+                          jsx: true,
+                          rich: true,
+                        })}
+                        </Ellipsified>
+                      </div>
+                    </th>)
+                  }
+                })}
+              </tr>
                 <tr>
                   {cols.map((col, colIndex) => (
                     <th
-                      key={colIndex}
+                      key={'2'-colIndex}
                       className={cx(
                         "TableInteractive-headerCellData cellData text-brand-hover",
                         {
@@ -160,11 +198,11 @@ export default class TableSimpleSummary extends Component {
               <tbody>
                 {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
                   <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
-                    {rows[rowIndex].map((cell, columnIndex) => {
-                      if (
-                        columnIndex !== 0 ||
-                        !groupingManager.isVisible(rowIndex, columnIndex, {start, stop:end})
+                    {cols.map((_, columnIndex) => {
+                      if (groupingManager.isVisible(rowIndex, columnIndex, {start, stop:end})
                       ) {
+                        const column = cols[columnIndex];
+                        const cell = column.getValue(rows[rowIndex]);
                         const clicked = getTableCellClickedObject(
                           data,
                           rowIndex,
@@ -174,14 +212,11 @@ export default class TableSimpleSummary extends Component {
                         const isClickable =
                           onVisualizationClick &&
                           visualizationIsClickable(clicked);
-                        const rowSpan = undefined;
-                          // columnIndex === 0 &&
-                          // !groupingManager.isVisible(rowIndex, columnIndex, {start, stop:end})
-                          //   ? undefined //groupingManager.getRowSpan(rowIndex, start)
-                          //   : undefined;
+                        const rowSpan = groupingManager.getRowSpan(rowIndex, columnIndex, {start, stop:end});
+
                         const res = (
                           <td
-                            key={columnIndex}
+                            key={rowIndex + '-' + columnIndex}
                             style={{ whiteSpace: "nowrap" }}
                             className={cx("px1 border-bottom", {
                               "text-right": isColumnRightAligned(
@@ -208,7 +243,7 @@ export default class TableSimpleSummary extends Component {
                               {cell == null
                                 ? "-"
                                 : formatValue(cell, {
-                                    column: cols[columnIndex],
+                                    column: column,
                                     jsx: true,
                                     rich: true,
                                   })}

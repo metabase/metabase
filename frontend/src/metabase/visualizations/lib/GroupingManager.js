@@ -120,7 +120,19 @@ export class GroupingManager {
     return cellStyle;
   };
 
+  getRowSpan = (rowIndex: Number, columnIndex: Number, visibleRowIndices: Range): Number => {
 
+    if(columnIndex in this.columnIndexToFirstInGroupIndexes) {
+        const tmp = this.columnIndexToFirstInGroupIndexes[columnIndex];
+        const ri = getFirstRowInGroupIndex(tmp, rowIndex);
+        const endIndex = tmp[ri];
+        const visibleStartIndex = Math.max(rowIndex, ri)
+        const visibleEndIndex = Math.min(endIndex, visibleRowIndices.stop);
+        const rowSpan = visibleEndIndex - visibleStartIndex + 1;
+        return rowSpan;
+    }
+    return 1;
+  };
 
 }
 
