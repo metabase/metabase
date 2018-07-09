@@ -34,14 +34,14 @@ const CollectionItem = ({ collection, color, iconName = "all" }) => (
 @connect(({ currentUser }) => ({ currentUser }), null)
 class CollectionList extends React.Component {
   render() {
-    const { collections, currentUser, currentCollection, isRoot } = this.props;
+    const { collections, currentUser, currentCollection, isRoot, w } = this.props;
     return (
       <Box>
         <Grid>
           {collections
             .filter(c => c.id !== currentUser.personal_collection_id)
             .map(collection => (
-              <GridItem w={1 / 4}>
+              <GridItem w={w}>
                 <CollectionDropTarget collection={collection}>
                   <ItemDragSource item={collection}>
                     <CollectionItem collection={collection} />
@@ -50,7 +50,7 @@ class CollectionList extends React.Component {
               </GridItem>
             ))}
           {currentCollection && (
-            <GridItem w={1 / 4}>
+            <GridItem w={w}>
               <Link
                 to={Urls.newCollection(currentCollection.id)}
                 color={normal.grey2}
@@ -69,7 +69,7 @@ class CollectionList extends React.Component {
         <Box mt={2}>
           <Grid>
             {isRoot && (
-              <GridItem w={1 / 4}>
+              <GridItem w={w}>
                 <CollectionDropTarget
                   collection={{ id: currentUser.personal_collection_id }}
                 >
@@ -85,7 +85,7 @@ class CollectionList extends React.Component {
             )}
             {isRoot &&
               currentUser.is_superuser && (
-                <GridItem w={1 / 4}>
+                <GridItem w={w}>
                   <CollectionItem
                     collection={{
                       name: t`Everyone else's personal collections`,
@@ -103,6 +103,10 @@ class CollectionList extends React.Component {
       </Box>
     );
   }
+}
+
+CollectionList.defaultProps = {
+  w: [1, 1/2, 1/4]
 }
 
 export default CollectionList;
