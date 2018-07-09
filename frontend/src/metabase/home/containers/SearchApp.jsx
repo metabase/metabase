@@ -15,16 +15,17 @@ import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar"
 
 export default class SearchApp extends React.Component {
   render() {
+    const { location } = this.props
     return (
       <Box mx={4}>
         <Flex align="center" mb={2} py={3}>
-          <Subhead>{jt`Results for "${this.props.location.query.q}"`}</Subhead>
+          <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
         </Flex>
         <ItemTypeFilterBar />
         <Box w={2 / 3}>
           <EntityListLoader
             entityType="search"
-            entityQuery={this.props.location.query}
+            entityQuery={location.query}
             wrapped
           >
             {({ list }) => {
@@ -41,7 +42,13 @@ export default class SearchApp extends React.Component {
                   </Flex>
                 );
               }
-              const types = _.chain(list)
+
+
+              const types = _.chain(
+                location.query.type
+                  ? list.filter(l => l.model === location.query.type)
+                  : list
+                )
                 .groupBy("model")
                 .value();
 
