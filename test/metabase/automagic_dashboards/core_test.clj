@@ -504,3 +504,8 @@
    (tru "{0}th" 0)
    (tru "{0}th" 8)]
   (map #'magic/pluralize [1 22 303 0 8]))
+
+;; Make sure we have handlers for all the units available
+(expect
+  (every? (partial #'magic/humanize-datetime "1990-09-09T12:30:00")
+          (concat (var-get #'date/date-extract-units) (var-get #'date/date-trunc-units))))

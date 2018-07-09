@@ -938,6 +938,7 @@
       :quarter-of-year (tru "Q{0}" (date/date-extract :quarter-of-year dt tz))
       (:minute-of-hour
        :day-of-month
+       :day-of-year
        :week-of-year)  (date/date-extract unit dt tz))))
 
 (defn- field-reference->field
@@ -960,6 +961,7 @@
                                 :hour-of-day     "hour"
                                 :day-of-week     "day of week"
                                 :day-of-month    "day of month"
+                                :day-of-year     "day of year"
                                 :week-of-year    "week"
                                 :month-of-year   "month"
                                 :quarter-of-year "quarter"}
