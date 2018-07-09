@@ -174,9 +174,6 @@ class DefaultLanding extends React.Component {
                 />
                 <Box>
                   <Box align="center" mb={1} mt={3}>
-                    <CollectionSectionHeading>
-                      {t`Dashboards questions and pulses`}
-                    </CollectionSectionHeading>
                     {unpinned.length === 0 && (
                       <Box pb={4}>
                         <CollectionEmptyState />
