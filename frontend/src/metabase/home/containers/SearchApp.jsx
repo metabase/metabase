@@ -11,11 +11,11 @@ import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import Subhead from "metabase/components/Subhead";
-import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar"
+import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar";
 
 export default class SearchApp extends React.Component {
   render() {
-    const { location } = this.props
+    const { location } = this.props;
     return (
       <Box mx={4}>
         <Flex align="center" mb={2} py={3}>
@@ -43,12 +43,11 @@ export default class SearchApp extends React.Component {
                 );
               }
 
-
               const types = _.chain(
                 location.query.type
                   ? list.filter(l => l.model === location.query.type)
-                  : list
-                )
+                  : list,
+              )
                 .groupBy("model")
                 .value();
 

@@ -6,7 +6,7 @@ import _ from "underscore";
 import listSelect from "metabase/hoc/ListSelect";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import cx from "classnames";
-import { withRouter } from "react-router"
+import { withRouter } from "react-router";
 
 import * as Urls from "metabase/lib/urls";
 import colors, { normal } from "metabase/lib/colors";
@@ -23,7 +23,7 @@ import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
 import VirtualizedList from "metabase/components/VirtualizedList";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
-import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar"
+import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
@@ -86,7 +86,7 @@ class DefaultLanding extends React.Component {
       selection,
       onToggleSelected,
       onSelectNone,
-      location
+      location,
     } = this.props;
     const { moveItems } = this.state;
 
@@ -192,7 +192,13 @@ class DefaultLanding extends React.Component {
                           }}
                         >
                           <VirtualizedList
-                            items={location.query.type ? unpinned.filter(u => u.model === location.query.type) : unpinned}
+                            items={
+                              location.query.type
+                                ? unpinned.filter(
+                                    u => u.model === location.query.type,
+                                  )
+                                : unpinned
+                            }
                             rowHeight={ROW_HEIGHT}
                             renderItem={({ item, index }) => (
                               <ItemDragSource item={item} selection={selection}>
