@@ -34,7 +34,13 @@ const CollectionItem = ({ collection, color, iconName = "all" }) => (
 @connect(({ currentUser }) => ({ currentUser }), null)
 class CollectionList extends React.Component {
   render() {
-    const { collections, currentUser, currentCollection, isRoot, w } = this.props;
+    const {
+      collections,
+      currentUser,
+      currentCollection,
+      isRoot,
+      w,
+    } = this.props;
     return (
       <Box>
         <Grid>
@@ -106,7 +112,7 @@ class CollectionList extends React.Component {
 }
 
 CollectionList.defaultProps = {
-  w: 1/4
-}
+  w: 1 / 4,
+};
 
 export default CollectionList;

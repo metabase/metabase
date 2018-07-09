@@ -33,8 +33,8 @@ const ItemTypeFilterBar = props => {
       {FILTERS.map(f => {
         let isActive = location.query.type === f.filter;
 
-        if(!location.query.type && !f.filter) {
-          isActive = true
+        if (!location.query.type && !f.filter) {
+          isActive = true;
         }
 
         const color = isActive ? colors.brand : "inherit";
@@ -56,7 +56,10 @@ const ItemTypeFilterBar = props => {
           >
             <h5
               className="text-uppercase"
-              style={{ color: isActive ? colors.brand : colors["text-medium"], fontWeight: 900 }}
+              style={{
+                color: isActive ? colors.brand : colors["text-medium"],
+                fontWeight: 900,
+              }}
             >
               {f.name}
             </h5>

@@ -98,9 +98,9 @@ class DefaultLanding extends React.Component {
       onSelectNone();
     };
 
-    const collectionWidth = unpinned.length > 0 ? 1/3 : 1
-    const itemWidth = unpinned.length > 0 ? 2/3 : 0
-    const collectionGridSize = unpinned.length > 0 ? 1 : 1/4
+    const collectionWidth = unpinned.length > 0 ? 1 / 3 : 1;
+    const itemWidth = unpinned.length > 0 ? 2 / 3 : 0;
+    const collectionGridSize = unpinned.length > 0 ? 1 : 1 / 4;
 
     return (
       <Box>
@@ -164,7 +164,7 @@ class DefaultLanding extends React.Component {
                   )}
                 </PinDropTarget>
               )}
-              <Box pt={2} px={4} bg='white'>
+              <Box pt={2} px={4} bg="white">
                 <Grid>
                   <GridItem w={collectionWidth}>
                     <Box pr={2}>
@@ -197,13 +197,16 @@ class DefaultLanding extends React.Component {
                               items={
                                 location.query.type
                                   ? unpinned.filter(
-                                    u => u.model === location.query.type,
-                                  )
+                                      u => u.model === location.query.type,
+                                    )
                                   : unpinned
                               }
                               rowHeight={ROW_HEIGHT}
                               renderItem={({ item, index }) => (
-                                <ItemDragSource item={item} selection={selection}>
+                                <ItemDragSource
+                                  item={item}
+                                  selection={selection}
+                                >
                                   <NormalItem
                                     key={`${item.type}:${item.id}`}
                                     item={item}
@@ -211,7 +214,7 @@ class DefaultLanding extends React.Component {
                                     selection={selection}
                                     onToggleSelected={onToggleSelected}
                                     onMove={moveItems =>
-                                        this.setState({ moveItems })
+                                      this.setState({ moveItems })
                                     }
                                   />
                                 </ItemDragSource>
@@ -234,7 +237,7 @@ class DefaultLanding extends React.Component {
                         )}
                       </PinDropTarget>
                     )}
-                </GridItem>
+                  </GridItem>
                 </Grid>
               </Box>
             </Box>
