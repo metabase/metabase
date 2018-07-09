@@ -160,79 +160,85 @@ class DefaultLanding extends React.Component {
                   )}
                 </PinDropTarget>
               )}
-              <Box pt={2} px={4} bg="white">
-                <Box py={2}>
-                  <CollectionSectionHeading>
-                    {t`Collections`}
-                  </CollectionSectionHeading>
-                </Box>
-
-                <CollectionList
-                  currentCollection={collection}
-                  collections={collections}
-                  isRoot={collectionId === "root"}
-                />
-                <Box>
-                  <Box align="center" mb={1} mt={3}>
-                    {unpinned.length === 0 && (
-                      <Box pb={4}>
-                        <CollectionEmptyState />
+              <Box pt={2} px={4} bg='white'>
+                <Grid>
+                  <GridItem w={1/3}>
+                    <Box pr={2}>
+                      <Box py={2}>
+                        <CollectionSectionHeading>
+                          {t`Collections`}
+                        </CollectionSectionHeading>
                       </Box>
-                    )}
-                  </Box>
-                  {unpinned.length > 0 ? (
-                    <PinDropTarget pinIndex={null} margin={8}>
-                      <Box>
-                        <ItemTypeFilterBar />
-                        <Box
-                          mb={selected.length > 0 ? 5 : 2}
-                          style={{
-                            position: "relative",
-                            height: ROW_HEIGHT * unpinned.length,
-                          }}
-                        >
-                          <VirtualizedList
-                            items={
-                              location.query.type
-                                ? unpinned.filter(
+                      <CollectionList
+                        currentCollection={collection}
+                        collections={collections}
+                        isRoot={collectionId === "root"}
+                        w={1}
+                      />
+                    </Box>
+                  </GridItem>
+                  <GridItem w={2/3}>
+                    <Box align="center" mb={1}>
+                      {unpinned.length === 0 && (
+                        <Box pb={4}>
+                          <CollectionEmptyState />
+                        </Box>
+                      )}
+                    </Box>
+                    {unpinned.length > 0 ? (
+                      <PinDropTarget pinIndex={null} margin={8}>
+                        <Box>
+                          <ItemTypeFilterBar />
+                          <Box
+                            mb={selected.length > 0 ? 5 : 2}
+                            style={{
+                              position: "relative",
+                              height: ROW_HEIGHT * unpinned.length,
+                            }}
+                          >
+                            <VirtualizedList
+                              items={
+                                location.query.type
+                                  ? unpinned.filter(
                                     u => u.model === location.query.type,
                                   )
-                                : unpinned
-                            }
-                            rowHeight={ROW_HEIGHT}
-                            renderItem={({ item, index }) => (
-                              <ItemDragSource item={item} selection={selection}>
-                                <NormalItem
-                                  key={`${item.type}:${item.id}`}
-                                  item={item}
-                                  collection={collection}
-                                  selection={selection}
-                                  onToggleSelected={onToggleSelected}
-                                  onMove={moveItems =>
-                                    this.setState({ moveItems })
-                                  }
-                                />
-                              </ItemDragSource>
-                            )}
-                          />
+                                  : unpinned
+                              }
+                              rowHeight={ROW_HEIGHT}
+                              renderItem={({ item, index }) => (
+                                <ItemDragSource item={item} selection={selection}>
+                                  <NormalItem
+                                    key={`${item.type}:${item.id}`}
+                                    item={item}
+                                    collection={collection}
+                                    selection={selection}
+                                    onToggleSelected={onToggleSelected}
+                                    onMove={moveItems =>
+                                        this.setState({ moveItems })
+                                    }
+                                  />
+                                </ItemDragSource>
+                              )}
+                            />
+                          </Box>
                         </Box>
-                      </Box>
-                    </PinDropTarget>
-                  ) : (
-                    <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
-                      {({ hovered }) => (
-                        <div
-                          className={cx(
-                            "m2 flex layout-centered",
-                            hovered ? "text-brand" : "text-grey-2",
-                          )}
-                        >
-                          {t`Drag here to un-pin`}
-                        </div>
-                      )}
-                    </PinDropTarget>
-                  )}
-                </Box>
+                      </PinDropTarget>
+                    ) : (
+                      <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
+                        {({ hovered }) => (
+                          <div
+                            className={cx(
+                              "m2 flex layout-centered",
+                              hovered ? "text-brand" : "text-grey-2",
+                            )}
+                          >
+                            {t`Drag here to un-pin`}
+                          </div>
+                        )}
+                      </PinDropTarget>
+                    )}
+                </GridItem>
+                </Grid>
               </Box>
             </Box>
             <BulkActionBar showing={selected.length > 0}>
