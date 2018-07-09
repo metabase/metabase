@@ -8,6 +8,8 @@ Metabase uses a group-based approach to set permissions and restrictions on your
 
 A user can be a member of multiple groups, and if one of the groups they’re in has access to a particular database or table, but another group they’re a member of does not, then they **will** have access to that database.
 
+In addition to setting permissions on your databases and tables, you can also [set access permissions on the collections](06-collections.md) where your dashboards, questions, and pulses are saved.
+
 ### Groups
 
 To view and manage your groups, go to the Admin Panel, click on the People section, and then click on Groups from the side menu.
