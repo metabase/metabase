@@ -6,6 +6,7 @@ import _ from "underscore";
 import listSelect from "metabase/hoc/ListSelect";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import cx from "classnames";
+import { withRouter } from "react-router"
 
 import * as Urls from "metabase/lib/urls";
 import colors, { normal } from "metabase/lib/colors";
@@ -66,6 +67,7 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
   listProp: "unpinned",
   keyForItem: item => `${item.model}:${item.id}`,
 })
+@withRouter
 class DefaultLanding extends React.Component {
   state = {
     moveItems: null,
@@ -84,6 +86,7 @@ class DefaultLanding extends React.Component {
       selection,
       onToggleSelected,
       onSelectNone,
+      location
     } = this.props;
     const { moveItems } = this.state;
 
@@ -192,7 +195,7 @@ class DefaultLanding extends React.Component {
                           }}
                         >
                           <VirtualizedList
-                            items={unpinned}
+                            items={location.query.type ? unpinned.filter(u => u.model === location.query.type) : unpinned}
                             rowHeight={ROW_HEIGHT}
                             renderItem={({ item, index }) => (
                               <ItemDragSource item={item} selection={selection}>

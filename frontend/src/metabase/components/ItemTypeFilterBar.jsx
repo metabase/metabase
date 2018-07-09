@@ -14,15 +14,15 @@ const FILTERS = [
   },
   {
     name: t`Dashboards`,
-    filter: 'dashbaords'
+    filter: 'dashboard'
   },
   {
     name: t`Questions`,
-    filter: 'questions'
+    filter: 'card'
   },
   {
     name: t`Pulses`,
-    filter: 'pulses'
+    filter: 'pulse'
   },
 ]
 
