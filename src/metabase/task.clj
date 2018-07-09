@@ -56,13 +56,17 @@
   connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
   `quartz.properties` file.)"
   []
-  (let [{:keys [classname user password subname subprotocol]} (mdb/jdbc-details)]
+  (let [{:keys [classname user password subname subprotocol type]} (mdb/jdbc-details)]
+    ;; If we're using a Postgres application DB the driverDelegateClass has to be the Postgres-specific one rather
+    ;; than the Standard JDBC one we define in `quartz.properties`
+    (when (= type :postgres)
+      (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate"))
+    ;; set other properties like URL, user, and password so Quartz knows how to connect
     (doseq [[k, ^String v] {:driver   classname
                             :URL      (str "jdbc:" subprotocol \: subname)
                             :user     user
                             :password password}]
       (when v
-        (println (u/format-color 'green "set property: org.quartz.dataSource.db.%s -> %s" (name k) v))
         (System/setProperty (str "org.quartz.dataSource.db." (name k)) v)))))
 
 (defn start-scheduler!
