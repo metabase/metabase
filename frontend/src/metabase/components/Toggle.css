@@ -25,6 +25,7 @@
   left: 1px;
   background-color: white;
   transition: all 0.3s;
+  box-shadow: 2px 2px 6px var(--color-shadow);
 }
 
 :local(.toggle.selected):after {

@@ -62,7 +62,7 @@ class CollectionList extends React.Component {
                 color={normal.grey2}
                 hover={{ color: normal.blue }}
               >
-                <Box p={2}>
+                <Box p={[1, 2]}>
                   <Flex align="center" py={1}>
                     <Icon name="add" mr={1} bordered />
                     <h4>{t`New collection`}</h4>
@@ -72,7 +72,7 @@ class CollectionList extends React.Component {
             </GridItem>
           )}
         </Grid>
-        <Box mt={2}>
+        <Box mt={[1, 2]}>
           <Grid>
             {isRoot && (
               <GridItem w={w}>
@@ -112,7 +112,11 @@ class CollectionList extends React.Component {
 }
 
 CollectionList.defaultProps = {
+<<<<<<< HEAD
   w: 1 / 4,
+=======
+  w: [1, 1 / 2, 1 / 4],
+>>>>>>> origin/master
 };
 
 export default CollectionList;
