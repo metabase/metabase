@@ -9,7 +9,7 @@ import colors from "metabase/lib/colors";
 
 const FILTERS = [
   {
-    name: t`All items`,
+    name: t`Everything`,
     filter: null,
   },
   {
@@ -31,8 +31,14 @@ const ItemTypeFilterBar = props => {
   return (
     <Flex align="center" className="border-bottom">
       {FILTERS.map(f => {
-        const isActive = location.query.type === f.filter;
+        let isActive = location.query.type === f.filter;
+
+        if(!location.query.type && !f.filter) {
+          isActive = true
+        }
+
         const color = isActive ? colors.brand : "inherit";
+
         return (
           <Link
             to={{
@@ -48,7 +54,12 @@ const ItemTypeFilterBar = props => {
               }`,
             }}
           >
-            <h4>{f.name}</h4>
+            <h5
+              className="text-uppercase"
+              style={{ color: isActive ? colors.brand : colors["text-medium"], fontWeight: 900 }}
+            >
+              {f.name}
+            </h5>
           </Link>
         );
       })}

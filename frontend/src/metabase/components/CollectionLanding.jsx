@@ -98,6 +98,10 @@ class DefaultLanding extends React.Component {
       onSelectNone();
     };
 
+    const collectionWidth = unpinned.length > 0 ? 1/3 : 1
+    const itemWidth = unpinned.length > 0 ? 2/3 : 0
+    const collectionGridSize = unpinned.length > 0 ? 1 : 1/4
+
     return (
       <Box>
         <Box>
@@ -162,7 +166,7 @@ class DefaultLanding extends React.Component {
               )}
               <Box pt={2} px={4} bg='white'>
                 <Grid>
-                  <GridItem w={1/3}>
+                  <GridItem w={collectionWidth}>
                     <Box pr={2}>
                       <Box py={2}>
                         <CollectionSectionHeading>
@@ -173,18 +177,11 @@ class DefaultLanding extends React.Component {
                         currentCollection={collection}
                         collections={collections}
                         isRoot={collectionId === "root"}
-                        w={1}
+                        w={collectionGridSize}
                       />
                     </Box>
                   </GridItem>
-                  <GridItem w={2/3}>
-                    <Box align="center" mb={1}>
-                      {unpinned.length === 0 && (
-                        <Box pb={4}>
-                          <CollectionEmptyState />
-                        </Box>
-                      )}
-                    </Box>
+                  <GridItem w={itemWidth}>
                     {unpinned.length > 0 ? (
                       <PinDropTarget pinIndex={null} margin={8}>
                         <Box>
