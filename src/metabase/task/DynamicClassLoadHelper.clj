@@ -1,21 +1,32 @@
 (ns metabase.task.DynamicClassLoadHelper
   "This is needed to get the JDBC backend for Quartz working, or something like that. See
   http://clojurequartz.info/articles/durable_quartz_stores.html for details."
-  (:import clojure.lang.DynamicClassLoader
-           clojure.lang.Reflector
-           org.quartz.spi.ClassLoadHelper)
   (:gen-class
    :extends clojure.lang.DynamicClassLoader
    :exposes-methods {loadClass superLoadClass}
    :implements [org.quartz.spi.ClassLoadHelper]))
 
-(defn -initialize [_])
+;; docstrings are copies of the ones for the corresponding methods of the ClassLoadHelper interface
+
+(defn -initialize
+  "void initialize()
+
+  Called to give the ClassLoadHelper a chance to initialize itself, including the opportunity to \"steal\" the class
+  loader off of the calling thread, which is the thread that is initializing Quartz."
+  [_])
 
 (defn -loadClass
-  ([^metabase.task.DynamicClassLoadHelper this, ^String name]
-   (.superLoadClass this name true))
-  ([^metabase.task.DynamicClassLoadHelper this, ^String name, _]
-   (.superLoadClass this name true)))   ; loadClass(String name, boolean resolve)
+  "Class loadClass(String className)
 
-(defn -getClassLoader [this]
+  Return the class with the given name."
+  ([^metabase.task.DynamicClassLoadHelper this, ^String class-name]
+   (.superLoadClass this class-name true)) ; loadClass(String name, boolean resolve)
+  ([^metabase.task.DynamicClassLoadHelper this, ^String class-name, _]
+   (.superLoadClass this class-name true)))
+
+(defn -getClassLoader
+  "ClassLoader getClassLoader()
+
+  Enable sharing of the class-loader with 3rd party"
+  [this]
   this)
