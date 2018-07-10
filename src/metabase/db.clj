@@ -34,7 +34,10 @@
            ;; File-based DB
            (let [db-file-name (config/config-str :mb-db-file)
                  db-file      (io/file db-file-name)
-                 options      ";DB_CLOSE_DELAY=-1"]
+                 ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which
+                 ;; means without MVCC we "will experience dead-locks". MVCC is the default for everyone using the
+                 ;; MVStore engine anyway so this only affects people still with legacy PageStore databases
+                 options      ";DB_CLOSE_DELAY=-1;MVCC=TRUE;"]
              (apply str "file:" (if (.isAbsolute db-file)
                                   ;; when an absolute path is given for the db file then don't mess with it
                                   [db-file-name options]

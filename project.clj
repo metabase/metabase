@@ -146,8 +146,9 @@
                                            org.clojure/tools.namespace]]]
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"]
-                   ;; Log appender class needs to be compiled for log4j to use it,
-                   :aot [metabase.logger]}
+                   ;; Log appender class needs to be compiled for log4j to use it. Same with the Quartz class load helper
+                   :aot [metabase.logger
+                         metabase.task.DynamicClassLoadHelper]}
              :ci {:jvm-opts ["-Xmx2500m"]}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup  ; for test setup stuff
