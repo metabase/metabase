@@ -9,8 +9,8 @@ import colors from "metabase/lib/colors";
 
 const Crumb = ({ children }) => (
   <h5
-    className="text-uppercase text-brand-hover"
-    style={{ color: colors["text-medium"], fontWeight: 900 }}
+    className="text-uppercase text-brand-hover text-grey-3"
+    style={{ fontWeight: 900 }}
   >
     {children}
   </h5>

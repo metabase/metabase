@@ -6,6 +6,7 @@ import _ from "underscore";
 import listSelect from "metabase/hoc/ListSelect";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import cx from "classnames";
+import { withRouter } from "react-router";
 
 import * as Urls from "metabase/lib/urls";
 import colors, { normal } from "metabase/lib/colors";
@@ -18,10 +19,10 @@ import EntityItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
 import VirtualizedList from "metabase/components/VirtualizedList";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
+import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
@@ -65,6 +66,7 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
   listProp: "unpinned",
   keyForItem: item => `${item.model}:${item.id}`,
 })
+@withRouter
 class DefaultLanding extends React.Component {
   state = {
     moveItems: null,
@@ -83,6 +85,7 @@ class DefaultLanding extends React.Component {
       selection,
       onToggleSelected,
       onSelectNone,
+      location,
     } = this.props;
     const { moveItems } = this.state;
 
@@ -93,6 +96,10 @@ class DefaultLanding extends React.Component {
       // different collection pages
       onSelectNone();
     };
+
+    const collectionWidth = unpinned.length > 0 ? 1 / 3 : 1;
+    const itemWidth = unpinned.length > 0 ? 2 / 3 : 0;
+    const collectionGridSize = unpinned.length > 0 ? 1 : 1 / 4;
 
     return (
       <Box>
@@ -157,74 +164,80 @@ class DefaultLanding extends React.Component {
                 </PinDropTarget>
               )}
               <Box pt={2} px={4} bg="white">
-                <Box py={2}>
-                  <CollectionSectionHeading>
-                    {t`Collections`}
-                  </CollectionSectionHeading>
-                </Box>
-
-                <CollectionList
-                  currentCollection={collection}
-                  collections={collections}
-                  isRoot={collectionId === "root"}
-                />
-                <Box>
-                  <Box align="center" mb={1} mt={3}>
-                    <CollectionSectionHeading>
-                      {t`Dashboards questions and pulses`}
-                    </CollectionSectionHeading>
-                    {unpinned.length === 0 && (
-                      <Box pb={4}>
-                        <CollectionEmptyState />
+                <Grid>
+                  <GridItem w={collectionWidth}>
+                    <Box pr={2}>
+                      <Box py={2}>
+                        <CollectionSectionHeading>
+                          {t`Collections`}
+                        </CollectionSectionHeading>
                       </Box>
-                    )}
-                  </Box>
-                  {unpinned.length > 0 ? (
-                    <PinDropTarget pinIndex={null} margin={8}>
-                      <Box>
-                        <Box
-                          mb={selected.length > 0 ? 5 : 2}
-                          style={{
-                            position: "relative",
-                            height: ROW_HEIGHT * unpinned.length,
-                          }}
-                        >
-                          <VirtualizedList
-                            items={unpinned}
-                            rowHeight={ROW_HEIGHT}
-                            renderItem={({ item, index }) => (
-                              <ItemDragSource item={item} selection={selection}>
-                                <NormalItem
-                                  key={`${item.type}:${item.id}`}
+                      <CollectionList
+                        currentCollection={collection}
+                        collections={collections}
+                        isRoot={collectionId === "root"}
+                        w={collectionGridSize}
+                      />
+                    </Box>
+                  </GridItem>
+                  <GridItem w={itemWidth}>
+                    {unpinned.length > 0 ? (
+                      <PinDropTarget pinIndex={null} margin={8}>
+                        <Box>
+                          <ItemTypeFilterBar />
+                          <Box
+                            mb={selected.length > 0 ? 5 : 2}
+                            style={{
+                              position: "relative",
+                              height: ROW_HEIGHT * unpinned.length,
+                            }}
+                          >
+                            <VirtualizedList
+                              items={
+                                location.query.type
+                                  ? unpinned.filter(
+                                      u => u.model === location.query.type,
+                                    )
+                                  : unpinned
+                              }
+                              rowHeight={ROW_HEIGHT}
+                              renderItem={({ item, index }) => (
+                                <ItemDragSource
                                   item={item}
-                                  collection={collection}
                                   selection={selection}
-                                  onToggleSelected={onToggleSelected}
-                                  onMove={moveItems =>
-                                    this.setState({ moveItems })
-                                  }
-                                />
-                              </ItemDragSource>
-                            )}
-                          />
+                                >
+                                  <NormalItem
+                                    key={`${item.type}:${item.id}`}
+                                    item={item}
+                                    collection={collection}
+                                    selection={selection}
+                                    onToggleSelected={onToggleSelected}
+                                    onMove={moveItems =>
+                                      this.setState({ moveItems })
+                                    }
+                                  />
+                                </ItemDragSource>
+                              )}
+                            />
+                          </Box>
                         </Box>
-                      </Box>
-                    </PinDropTarget>
-                  ) : (
-                    <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
-                      {({ hovered }) => (
-                        <div
-                          className={cx(
-                            "m2 flex layout-centered",
-                            hovered ? "text-brand" : "text-grey-2",
-                          )}
-                        >
-                          {t`Drag here to un-pin`}
-                        </div>
-                      )}
-                    </PinDropTarget>
-                  )}
-                </Box>
+                      </PinDropTarget>
+                    ) : (
+                      <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
+                        {({ hovered }) => (
+                          <div
+                            className={cx(
+                              "m2 flex layout-centered",
+                              hovered ? "text-brand" : "text-grey-2",
+                            )}
+                          >
+                            {t`Drag here to un-pin`}
+                          </div>
+                        )}
+                      </PinDropTarget>
+                    )}
+                  </GridItem>
+                </Grid>
               </Box>
             </Box>
             <BulkActionBar showing={selected.length > 0}>
@@ -469,7 +482,7 @@ const CollectionEditMenu = ({ isRoot, collectionId }) => (
             {
               title: t`Edit this collection`,
               icon: "editdocument",
-              link: `/collections/${collectionId}`,
+              link: `/collection/${collectionId}/edit`,
             },
           ]
         : []),

@@ -20,7 +20,7 @@ const CollectionItem = ({ collection, color, iconName = "all" }) => (
     color={color || normal.grey2}
     className="text-brand-hover"
   >
-    <Box bg={colors["bg-light"]} p={2} mb={1}>
+    <Box bg={colors["bg-light"]} p={2}>
       <Flex align="center" py={1} key={`collection-${collection.id}`}>
         <Icon name={iconName} mx={1} />
         <h4 className="overflow-hidden">
@@ -55,6 +55,36 @@ class CollectionList extends React.Component {
                 </CollectionDropTarget>
               </GridItem>
             ))}
+          {isRoot && (
+            <GridItem w={w}>
+              <CollectionDropTarget
+                collection={{ id: currentUser.personal_collection_id }}
+              >
+                <CollectionItem
+                  collection={{
+                    name: t`My personal collection`,
+                    id: currentUser.personal_collection_id,
+                  }}
+                  iconName="star"
+                />
+              </CollectionDropTarget>
+            </GridItem>
+          )}
+          {isRoot &&
+            currentUser.is_superuser && (
+              <GridItem w={w}>
+                <CollectionItem
+                  collection={{
+                    name: t`Everyone else's personal collections`,
+                    // Bit of a hack. The route /collection/users lists
+                    // user collections but is not itself a colllection,
+                    // but using the fake id users here works
+                    id: "users",
+                  }}
+                  iconName="person"
+                />
+              </GridItem>
+            )}
           {currentCollection && (
             <GridItem w={w}>
               <Link
@@ -62,7 +92,7 @@ class CollectionList extends React.Component {
                 color={normal.grey2}
                 hover={{ color: normal.blue }}
               >
-                <Box p={[1, 2]} className="bordered rounded">
+                <Box p={[1, 2]}>
                   <Flex align="center" py={1}>
                     <Icon name="add" mr={1} bordered />
                     <h4>{t`New collection`}</h4>
@@ -72,40 +102,6 @@ class CollectionList extends React.Component {
             </GridItem>
           )}
         </Grid>
-        <Box mt={[1, 2]}>
-          <Grid>
-            {isRoot && (
-              <GridItem w={w}>
-                <CollectionDropTarget
-                  collection={{ id: currentUser.personal_collection_id }}
-                >
-                  <CollectionItem
-                    collection={{
-                      name: t`My personal collection`,
-                      id: currentUser.personal_collection_id,
-                    }}
-                    iconName="star"
-                  />
-                </CollectionDropTarget>
-              </GridItem>
-            )}
-            {isRoot &&
-              currentUser.is_superuser && (
-                <GridItem w={w}>
-                  <CollectionItem
-                    collection={{
-                      name: t`Everyone else's personal collections`,
-                      // Bit of a hack. The route /collection/users lists
-                      // user collections but is not itself a colllection,
-                      // but using the fake id users here works
-                      id: "users",
-                    }}
-                    iconName="person"
-                  />
-                </GridItem>
-              )}
-          </Grid>
-        </Box>
       </Box>
     );
   }
