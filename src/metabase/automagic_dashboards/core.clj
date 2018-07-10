@@ -850,14 +850,13 @@
 (s/defn ^:private related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
    root type individually via `related-selectors`. That recepie is then filled round-robin style."
-  [dashboard, rule :- (s/maybe rules/Rule)]
-  (let [root (-> dashboard :context :root)]
-    (->> (merge (indepth root rule)
-                (drilldown-fields dashboard)
-                (related-entities root))
-         (fill-related max-related (related-selectors (-> root :entity type)))
-         (group-by :selector)
-         (m/map-vals (partial map :entity)))))
+  [{:keys [root] :as context}, rule :- (s/maybe rules/Rule)]
+  (->> (merge (indepth root rule)
+              (drilldown-fields context)
+              (related-entities root))
+       (fill-related max-related (related-selectors (-> root :entity type)))
+       (group-by :selector)
+       (m/map-vals (partial map :entity))))
 
 (defn- filter-referenced-fields
   "Return a map of fields referenced in filter cluase."
