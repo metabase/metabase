@@ -43,9 +43,7 @@ const ItemTypeFilterBar = props => {
           <Link
             to={{
               pathname: location.pathname,
-              query: Object.assign({}, location.query, {
-                type: f.filter,
-              }),
+              query: { ...location.query, type: f.filter },
             }}
             color={color}
             hover={{ color: colors.brand }}
