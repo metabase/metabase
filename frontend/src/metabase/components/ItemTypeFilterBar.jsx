@@ -7,7 +7,7 @@ import Link from "metabase/components/Link";
 
 import colors from "metabase/lib/colors";
 
-const FILTERS = [
+export const FILTERS = [
   {
     name: t`Everything`,
     filter: null,
@@ -30,7 +30,7 @@ const ItemTypeFilterBar = props => {
   const { location } = props;
   return (
     <Flex align="center" className="border-bottom">
-      {FILTERS.map(f => {
+      {props.filters.map(f => {
         let isActive = location.query.type === f.filter;
 
         if (!location.query.type && !f.filter) {
@@ -43,7 +43,9 @@ const ItemTypeFilterBar = props => {
           <Link
             to={{
               pathname: location.pathname,
-              query: f.filter ? { type: f.filter } : null,
+              query: Object.assign({}, location.query, {
+                type: f.filter,
+              }),
             }}
             color={color}
             mr={2}
@@ -68,6 +70,10 @@ const ItemTypeFilterBar = props => {
       })}
     </Flex>
   );
+};
+
+ItemTypeFilterBar.defaultProps = {
+  filters: FILTERS,
 };
 
 export default withRouter(ItemTypeFilterBar);

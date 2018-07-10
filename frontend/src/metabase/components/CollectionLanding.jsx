@@ -519,4 +519,16 @@ const CollectionBurgerMenu = () => (
   />
 );
 
+const QuestionEmptyState = () => (
+  <Box>
+    <Icon name="beaker" size={36} />
+  </Box>
+);
+
+const DashboardEmptyState = () => (
+  <Box>
+    <Icon name="dashboard" size={36} />
+  </Box>
+);
+
 export default CollectionLanding;
