@@ -15,6 +15,7 @@
              [generic-sql :as sql]
              [hive-like :as hive-like]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor.util :as qputil]
             [metabase.util.honeysql-extensions :as hx]
             [puppetlabs.i18n.core :refer [trs]])
@@ -32,9 +33,13 @@
 
 (def ^:private source-table-alias "t1")
 
+(defn- find-source-table [query]
+  (first (qputil/postwalk-collect #(instance? (type Table) %)
+                                  identity
+                                  query)))
+
 (defn- resolve-table-alias [{:keys [schema-name table-name special-type field-name] :as field}]
-  (let [source-table (or (get-in sqlqp/*query* [:query :source-table])
-                         (get-in sqlqp/*query* [:query :source-query :source-table]))]
+  (let [source-table (find-source-table sqlqp/*query*)]
     (if (and (= schema-name (:schema source-table))
              (= table-name (:name source-table)))
       (-> (assoc field :schema-name nil)
@@ -49,7 +54,7 @@
 
 (defmethod  sqlqp/->honeysql [SparkSQLDriver Field]
   [driver field-before-aliasing]
-  (let [{:keys [schema-name table-name special-type field-name]} (resolve-table-alias field-before-aliasing)
+  (let [{:keys [schema-name table-name special-type field-name] :as foo} (resolve-table-alias field-before-aliasing)
         field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
     (cond
       (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
