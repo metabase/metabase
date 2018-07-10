@@ -635,6 +635,18 @@ export default class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeExpression, arguments);
   }
 
+  // FIELDS
+  /**
+   * Returns dimension options that can appear in the `fields` clause
+   */
+  fieldsOptions(dimensionFilter = () => true): DimensionOptions {
+    if (this.isBareRows() && this.breakouts().length === 0) {
+      return this.dimensionOptions(dimensionFilter);
+    }
+    // TODO: allow adding fields connected by broken out PKs?
+    return { count: 0, dimensions: [], fks: [] };
+  }
+
   // DIMENSION OPTIONS
 
   // TODO Atte Keinänen 6/18/17: Refactor to dimensionOptions which takes a dimensionFilter

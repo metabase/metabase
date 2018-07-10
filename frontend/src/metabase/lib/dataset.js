@@ -9,7 +9,7 @@ import type {
   ColumnName,
   DatasetData,
 } from "metabase/meta/types/Dataset";
-import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
+import type { Card } from "metabase/meta/types/Card";
 import type { ConcreteField } from "metabase/meta/types/Query";
 
 type ColumnSetting = {

@@ -1,10 +1,7 @@
 import React, { Component } from "react";
 import { t } from "c-3po";
 
-import CheckBox from "metabase/components/CheckBox.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import FieldList from "metabase/query_builder/components/FieldList";
 
 import { SortableContainer, SortableElement } from "react-sortable-hoc";
 
@@ -15,7 +12,6 @@ import {
 } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
-import cx from "classnames";
 import _ from "underscore";
 
 const SortableColumn = SortableElement(
@@ -74,12 +70,12 @@ export default class ChartSettingOrderedColumns extends Component {
     );
 
   render() {
-    const { value, question, addField, columns, columnNames } = this.props;
+    const { value, question, addField, columns } = this.props;
 
     let additionalFieldOptions = { count: 0 };
     if (columns && question && question.query() instanceof StructuredQuery) {
       const fieldRefs = columns.map(column => fieldRefForColumn(column));
-      additionalFieldOptions = question.query().dimensionOptions(dimension => {
+      additionalFieldOptions = question.query().fieldsOptions(dimension => {
         const mbql = dimension.mbql();
         return !_.find(fieldRefs, fieldRef => _.isEqual(fieldRef, mbql));
       });
@@ -108,7 +104,7 @@ export default class ChartSettingOrderedColumns extends Component {
           </div>
         )}
         {disabledColumns.length > 0 || additionalFieldOptions.count > 0 ? (
-          <h4 className="mb2 mt4">{`More fields`}</h4>
+          <h4 className="mb2 mt4 pt4 border-top">{`More fields`}</h4>
         ) : null}
         {disabledColumns.map(columnSetting => (
           <ColumnItem

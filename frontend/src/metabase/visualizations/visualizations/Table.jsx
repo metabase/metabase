@@ -9,10 +9,7 @@ import * as DataGrid from "metabase/lib/data_grid";
 
 import Query from "metabase/lib/query";
 import { isMetric, isDimension } from "metabase/lib/schema_metadata";
-import {
-  columnsAreValid,
-  getFriendlyName,
-} from "metabase/visualizations/lib/utils";
+import { columnsAreValid } from "metabase/visualizations/lib/utils";
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
 import ChartSettingsTableFormatting, {
   isFormattable,
@@ -202,10 +199,6 @@ export default class Table extends Component {
         })),
       getProps: ([{ data: { cols } }]) => ({
         columns: cols,
-        columnNames: cols.reduce(
-          (o, col) => ({ ...o, [col.name]: getFriendlyName(col) }),
-          {},
-        ),
       }),
     },
     "table.column_widths": {},
