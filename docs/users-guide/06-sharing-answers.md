@@ -1,5 +1,5 @@
 
-## Sharing your questions and answers
+## Sharing and organizing your questions and answers
 ---
 
 ### How to save a question
@@ -17,33 +17,43 @@ If your Metabase administrator has enabled [public sharing](../administration-gu
 ![Share icon](images/share-icon.png)
 
 ### Organizing and finding your saved questions
-After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions. The Questions page has several tools that’ll help you organize things and find what you’re looking for.
+After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions. Metabase has several ways to help you organize things and find what you’re looking for.
 
-![Questions](images/saved-questions.png)
+![ FIX ME ]( NEW IMAGE HERE)
 
 #### Collections
-Administrators of Metabase can create collections to put saved questions in. Depending on the permissions you've been given to collections, you'll be able to view the questions inside, edit them, and move questions from one collection to another. Questions that aren't saved in any collection will appear in the "Everything else" section of the main Questions page, and are visible to all Metabase users in your organization. If you're an administrator of your Metabase instance, here are [instructions for creating collections and managing permissions](../administration-guide/06-collections.md).
+Collections are the main way to organize questions, as well as dashboards and pulses. Administrators can give you different kinds of access to each collection:
 
-#### Shortcuts
-At the top of lists of saved questions you’ll find a dropdown with shortcuts to your favorite questions (mark a question as a favorite by clicking on the star icon that appears when you hover over it), questions you’ve recently viewed, questions that you’ve saved personally, and popular questions that are used the most by your team.
+- **View access:** you can see the collection and its contents, but you can't modify anything or put anything new into the collection.
+- **Curate access:** you can edit, move, or archive the collection and its contents. You can also move or save new things in it and create new collections inside of it, and can also pin items in the collection to the top of the screen. Only administrators can edit permissions for collections, however.
+- **No access:** you can't see the collection or its contents. If you have access to a dashboard, but it contains questions that are saved in a collection you don't have access to, those questions will show a permissions notification instead of the chart or table.
 
-#### Search and filtering
-On the main Questions page, you can search through all of your collections for a particular question using the search box in the top-right. You can also filter lists of saved questions by typing in the `Filter the list…` area.
+If you're an administrator of your Metabase instance, here are [instructions for creating collections and managing permissions](../administration-guide/06-collections.md).
+
+#### Your personal collection
+In addition to the collections you and your teammates have made, you'll also always have your own personal collection that only you and administrators can see. To find it, click on the "browse all items" button on the homepage and click on "my personal collection" in the list of collections. You can use your personal collection as a scratch space to put experiments and explorations that you don't think would be particularly interesting to the rest of your team, or as a work-in-progress space where you can work on things and then move them to a shared place once they're ready.
+
+#### Pinned items
+In each collection, you can pin important or useful dashboards or questions to make them stick to the top of the screen. Pinned items will also be displayed as large cards to make them stand out well. If you have Curate permissions for a collection, you can pin and un-pin things, and drag and drop pins to change their order.
+
+Any dashboards that are pinned in the main "Our analytics" collection will also show up on the homepage.
+
+#### Search
+Type into the search box that's at the top of Metabase and hit enter to search through all the dashboards, questions, collections, and pulses your team has.
 
 #### Moving
-To move a question into a collection, or from one collection to another, hover over it and click on the right-arrow icon that appears on the far right of the question. Note that you have to have permission to edit the collection that you're moving a question into, and the collection you're moving the question out of.
+To move a question, dashboard, or pulse into a collection, or from one collection to another, just click and drag it onto the collection where you want it to go. You can also click on the `…` menu to the right of the question and pick the Move action. If you're trying to move several things at once, click on the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
+
+![Selecting questions](images/question-checkbox.png)
+
+Note that you have to have Curate permission for the collection that you're moving a question into *and* the collection you're moving the question out of.
 
 #### Archiving
-Sometimes questions outlive their usefulness and need to be sent to Question Heaven. To archive a question, just click on the box icon that appears on the far right when you hover over a question. Collections can also be archived and unarchived, but only by Metabase administrators.
+Sometimes questions outlive their usefulness and need to be sent to Question Heaven. To archive a question, just click on the `…` menu that appears on the far right when you hover over a question and pick the Archive action. You can also archive multiple items at once, the same way as you move multipe items. You can also archive Collections and dashboards as long as you have Curate permissions.
 
 Note that archiving a question removes it from all dashboards or Pulses where it appears, so be careful!
 
-If you have second thoughts and want to bring an archived question back, you can see all your archived questions from the **Archive** icon at the top-right of the Questions page. To unarchive a question, hover over it and click the box icon that appears on the far right.
-
-#### Selecting multiple questions
-Clicking on the icon to the left of questions let's you select several at once so that you can move or archive many questions at once.
-
-![Selecting questions](images/question-checkbox.png)
+If you have second thoughts and want to bring an archived question back, you can see all your archived questions from the archive; click the menu icon in the top-right of any collection page to get to the archive. To unarchive a question, hover over it and click the unarchive icon that appears on the far right.
 
 ---
 

@@ -2,12 +2,10 @@
 ## Sharing updates with pulses
 The Pulses feature in Metabase gives you the ability to automatically send regular updates to your teammates to help everyone keep track of changes to the metrics that matter to you most. You can deliver a pulse via email or [Slack](https://slack.com/), on the schedule of your choice.
 
-Click the `Pulses` link in the top menu to view all of your pulses, and click `Create a pulse` to make a new one.
-
-![Create a pulse](images/pulses/01-empty-state.png)
+To create a new pulse, click the plus (+) button in the top-right of Metabase and select `New pulse`.
 
 ### Name it
-First, choose a name for your pulse. This will show up in the email subject line and the Slack message title, so choose something that will let people know what kind of updates the pulse will contain, like “Daily Marketing Update,” or “Users Metrics.”
+First, choose a name for your pulse. This will show up in the email subject line and the Slack message title, so choose something that will let people know what kind of updates the pulse will contain, like “Daily Marketing Update,” or “Users Metrics.” Next, choose which collection it should be saved in so that it's easy to find in the future.
 
 ![Giving it a name](images/pulses/02-name-it.png)
 
@@ -51,14 +49,10 @@ Each pulse you create can be delivered by email, Slack, or both. You can also se
 
 To send via Slack, you’ll need to choose which channel you want to post the pulse in, whether you want it to post hourly or daily, and at what time. Again, the schedule for Slack can be different from the schedule for email.
 
-Once you’re done, just click `Create pulse`. You’ll see your new pulse, along with its recipients, and the saved questions that are included in the pulse. If anyone else on your team wants to subscribe to a pulse that’s delivered by email, they can click the button that says `Get this email` from the Pulses screen.
+Once you’re done, just click `Create pulse` and you’ll see your new pulse in the collection where you chose to save it
 
-![A beautiful, completed pulse](images/pulses/06-created.png)
-
-### Editing and Deleting a Pulse
-If you ever need to make changes to a pulse, just hover over the pulse from the list and click the `edit` button that appears.
-
-![Edit button](images/pulses/07-edit-button.png)
+### Editing and deleting a pulse
+If you ever need to make changes to a pulse, just navigate to it or search for it and click on it.
 
 If you want to delete a pulse, you can find that option at the bottom of the edit screen. Just remember: if you delete a pulse, no one will receive it anymore.
 

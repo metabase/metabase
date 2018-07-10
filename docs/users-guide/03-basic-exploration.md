@@ -18,13 +18,13 @@ In this example of pie orders by type over time, clicking on a dot on this line 
 - View these Orders — which lets us see a list of banana cream pie orders in June 2017
 - Break out by a category — this lets us do things like see the banana cream pie orders in June 2017 broken out by the status of the customer (e.g., `new` or `VIP`, etc.) or other different aspects of the order. Different charts will have different break out options, such as Location and Time.
 
+**Note that charts created with SQL don't currently have these action options.**
+
 Other charts as well as table cells will often also allow you to go to a filtered view of that chart or table. You can click on one of the inequality symbols to see that chart where, for example, the value of the Subtotal column is less than $100, or where the Purchased-at timestamp is greater than (i.e., after) April 1, 2017.
 
 ![Inequality filters](images/drill-through/inequality-filters.png)
 
 Lastly, clicking on the ID of an item in a table gives you the option to go to a detail view for that single record. (E.g., you can click on a customer's ID to see the profile view for that one customer.)
-
-**Note that charts created with SQL don't currently have these action options.**
 
 #### Exploring saved questions
 In Metabase parlance, every chart or number on a dashboard is called a "question." Clicking on the title of a question on a dashboard will take you to a detail view of that question. You'll also end up at this detail view if you use one of the actions mentioned above.
