@@ -485,16 +485,17 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
     }
 
     const queries = result && result.data && result.data.cols && getAdditionalQueries(card.visualization_settings)(card, result.data.cols)(datasetQuery) || [];
-
+console.log('res',result)
     const seriesAll = queries.map(q => {
       const datasetQueryWithParameters = {...q,
         parameters: datasetQuery.parameters
           ? JSON.stringify(datasetQuery.parameters)
           : undefined,};
-      return MetabaseApi.dataset(
-        datasetQueryWithParameters);
+      return fetchDataOrError(MetabaseApi.dataset(
+        datasetQueryWithParameters));
     });
-
+    console.log('res',seriesAll)
+    console.log('dashboardType',dashboardType)
     const series = await Promise.all(seriesAll);
     clearTimeout(slowCardTimer);
 

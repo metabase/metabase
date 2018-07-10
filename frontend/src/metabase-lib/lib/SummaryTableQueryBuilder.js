@@ -28,7 +28,10 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
   const showTotalsFor = (name) => ((settings.columnNameToMetadata|| {})[name] || {}).showTotals;
 
   const totals = settings[VALUES_SOURCES].filter(p => canTotalize(nameToTypeMap[p])).map(createTotal);
-  const breakouts = [...settings[GROUPS_SOURCES].map(createLiteral) ,...settings[COLUMNS_SOURCE].map(createLiteral)];
+  const groupingLiterals = settings[GROUPS_SOURCES].map(createLiteral);
+  const pivotLiteral = settings[COLUMNS_SOURCE].map(createLiteral);
+  const breakouts = [ ... groupingLiterals,...pivotLiteral];
+  const breakouts1 = [...pivotLiteral, ... groupingLiterals];
 
   // const basedQuery = );// buildQuery(query.clearBreakouts().clearAggregations(), totals);
   const queriesWithBreakouts = breakouts.reduce(({acc, prev}, br) => {
@@ -36,7 +39,13 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
     const newAcc = showTotalsFor(br[1]) ? [ wrapQuery(query, totals,prev), ...acc] : acc;
     return {acc : newAcc, prev:next};
   }, {acc:[], prev:[]});
-  return queriesWithBreakouts.acc;
+  const totalsForPivot = pivotLiteral.length === 1 && showTotalsFor(pivotLiteral[0][1]) ? breakouts1.reduce(({acc, prev}, br) => {
+    const next = [... prev, br];
+    const newAcc = showTotalsFor(br[1]) ? [ wrapQuery(query, totals,prev), ...acc] : acc;
+    return {acc : newAcc, prev:next};
+  }, {acc:[], prev:[]}) : {acc:[]};
+  //totalsForPivot last is grand total
+  return [...queriesWithBreakouts.acc, ...totalsForPivot.acc];
 };
 
 const getNameToTypeMap = (fields) => {

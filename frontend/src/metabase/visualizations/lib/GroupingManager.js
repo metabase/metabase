@@ -32,13 +32,31 @@ export class GroupingManager {
     if(isPivoted){
       const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length + (isPivoted ? 1 : 0)).keys()];
       const sortOrderMethod = columnsIndexesForGrouping.map(funGen);
-      const normalizedRows = datas.map(p => normalizeRows(settings, p))
+      let normalizedRows = datas.map(p => normalizeRows(settings, p))
 
-      if(normalizedRows.length > 1){
-        //normalizedRows[1] - grand total column
-        normalizedRows[0] = [...normalizedRows[0], ... normalizedRows[1]]
-        normalizedRows[1] = [];
+      if((settings[COLUMNS_SETTINGS].columnNameToMetadata[settings[COLUMNS_SETTINGS][COLUMNS_SOURCE]] || {}).showTotals)
+      {
+        const totalLen = settings[COLUMNS_SETTINGS][GROUPS_SOURCES].filter(p => (settings[COLUMNS_SETTINGS].columnNameToMetadata[p] || {}).showTotals).length + 1;
+        const suff = [...normalizedRows.slice(normalizedRows.length - totalLen)];
+        normalizedRows = [...normalizedRows.slice(0, normalizedRows.length - totalLen)];//+1 == mainRes, +1 == pivot
+
+
+        for(let i = 2; i < normalizedRows.length; i++)
+        {
+          normalizedRows[i] = [...normalizedRows[i], ...suff[i-2]];
+
+        }
+
+        if(normalizedRows.length > 1){
+          //normalizedRows[1] - grand total column
+          normalizedRows[0] = [...normalizedRows[0], ... normalizedRows[1]]
+          normalizedRows[1] = [];
+        }
       }
+
+
+      console.log('grouping', settings[COLUMNS_SETTINGS][GROUPS_SOURCES].filter(p => (settings[COLUMNS_SETTINGS].columnNameToMetadata[p] || {}).showTotals))
+      console.log('nr', normalizedRows);
       mappedRows = normalizedRows.map(rows => pivotRows(rows, sortOrderMethod))
     } else {
       mappedRows = datas.map(p => normalizeRows(settings, p));
