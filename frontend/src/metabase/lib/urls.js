@@ -11,8 +11,7 @@ export const newQuestion = () => "/question/new";
 export const newDashboard = collectionId =>
   `collection/${collectionId}/new_dashboard`;
 
-export const newPulse = collectionId =>
-  `/pulse/create?collectionId=${collectionId}`;
+export const newPulse = () => `/pulse/create`;
 
 export const newCollection = collectionId =>
   `collection/${collectionId}/new_collection`;
