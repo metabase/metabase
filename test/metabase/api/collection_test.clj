@@ -342,7 +342,7 @@
 
 ;; Make sure you can see everything for Users that can see everything
 (expect
-  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :disply "table"})
+  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
    (collection-item "Crowberto Corv's Personal Collection")
    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
    (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
@@ -406,6 +406,7 @@
   [{:name                "Business Card"
     :description         nil
     :collection_position nil
+    :display             "table"
     :favorite            false
     :model               "card"}]
   (tt/with-temp Card [card {:name "Business Card", :archived true}]
