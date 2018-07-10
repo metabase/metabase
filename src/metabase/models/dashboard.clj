@@ -9,7 +9,6 @@
              [public-settings :as public-settings]
              [query-processor :as qp]
              [util :as u]]
-            [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.models
              [card :as card :refer [Card]]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
@@ -20,6 +19,7 @@
              [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.query-processor.interface :as qpi]
+            [puppetlabs.i18n.core :as i18n :refer [tru]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -240,14 +240,7 @@
            (map (fn [{:keys [field value]}]
                   (format "%s %s" (str/join " " field) value)))
            (str/join ", ")
-           (str "Filtered by: ")))
-
-(defn- ensure-unique-collection-name
-  [collection]
-  (let [c (db/count 'Collection :name [:like (format "%s%%" collection)])]
-    (if (zero? c)
-      collection
-      (format "%s %s" collection (inc c)))))
+           (tru "Filtered by: ")))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
@@ -259,18 +252,10 @@
                                  :transient_filters :param_fields :more)
                          (assoc :description (->> dashboard
                                                   :transient_filters
-                                                  applied-filters-blurb))))
-        collection (magic.populate/create-collection!
-                    (ensure-unique-collection-name
-                     (format "Questions for the dashboard \"%s\"" (:name dashboard)))
-                    (rand-nth magic.populate/colors)
-                    "Automatically generated cards.")]
+                                                  applied-filters-blurb))))]
     (doseq [dashcard dashcards]
-      (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
-            series   (some->> dashcard :series (map (fn [card]
-                                                      (-> card
-                                                          (assoc :collection_id (:id collection))
-                                                          save-card!))))
+      (let [card     (some->> dashcard :card save-card!)
+            series   (some->> dashcard :series (map save-card!))
             dashcard (-> dashcard
                          (dissoc :card :id :card_id)
                          (update :parameter_mappings
