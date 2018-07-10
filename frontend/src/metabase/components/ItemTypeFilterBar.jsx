@@ -48,6 +48,7 @@ const ItemTypeFilterBar = props => {
               }),
             }}
             color={color}
+            hover={{ color: colors.brand }}
             mr={2}
             py={1}
             style={{
