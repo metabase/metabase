@@ -5,50 +5,12 @@
   (:require [buddy.core.hash :as hash]
             [cheshire.core :as json]
             [clojure.tools.logging :as log]
-            [metabase.models.humanization :as humanization]
             [metabase.query-processor.interface :as i]
+            [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
-            [metabase.util
-             [encryption :as encryption]
-             [schema :as su]]
+            [metabase.util.encryption :as encryption]
             [ring.util.codec :as codec]
-            [schema.core :as s]
             [toucan.db :as db]))
-
-(def ^:private DateTimeUnitKeywordOrString
-  "Schema for a valid datetime unit string like \"default\" or \"minute-of-hour\"."
-  (s/constrained su/KeywordOrString
-                 (fn [unit]
-                   (contains? i/datetime-field-units (keyword unit)))
-                 "Valid field datetime unit keyword or string"))
-
-(def ResultsMetadata
-  "Schema for valid values of the `result_metadata` column."
-  (su/with-api-error-message (s/named [{:name                          su/NonBlankString
-                                        :display_name                  su/NonBlankString
-                                        (s/optional-key :description)  (s/maybe su/NonBlankString)
-                                        :base_type                     su/FieldTypeKeywordOrString
-                                        (s/optional-key :special_type) (s/maybe su/FieldTypeKeywordOrString)
-                                        (s/optional-key :unit)         (s/maybe DateTimeUnitKeywordOrString)}]
-                                      "Valid array of results column metadata maps")
-    "value must be an array of valid results column metadata maps."))
-
-(s/defn ^:private results->column-metadata :- (s/maybe ResultsMetadata)
-  "Return the desired storage format for the column metadata coming back from RESULTS, or `nil` if no columns were returned."
-  [results]
-  ;; rarely certain queries will return columns with no names, for example `SELECT COUNT(*)` in SQL Server seems to come back with no name
-  ;; since we can't use those as field literals in subsequent queries just filter them out
-  (seq (for [col   (:cols results)
-             :when (seq (:name col))]
-         (merge
-          ;; if base-type isn't set put a default one in there. Similarly just use humanized value of `:name` for `:display_name` if one isn't set
-          {:base_type    :type/*
-           :display_name (humanization/name->human-readable-name (name (:name col)))}
-          (u/select-non-nil-keys col [:name :display_name :description :base_type :special_type :unit])
-          ;; since years are actually returned as text they can't be used for breakout purposes so don't advertise them as DateTime columns
-          (when (= (:unit col) :year)
-            {:base_type :type/Text
-             :unit      nil})))))
 
 ;; TODO - is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current Card
 ;; metadata as part of the query context so we can compare for changes
@@ -88,7 +50,7 @@
   (fn [{{:keys [card-id nested?]} :info, :as query}]
     (let [results (qp query)]
       (try
-        (let [metadata (results->column-metadata results)]
+        (let [metadata (seq (qr/results->column-metadata results))]
           ;; At the very least we can skip the Extra DB call to update this Card's metadata results
           ;; if its DB doesn't support nested queries in the first place
           (when (i/driver-supports? :nested-queries)
