@@ -66,7 +66,7 @@
    :avg       (tru "average")
    :min       (tru "minumum")
    :max       (tru "maximum")
-   :count     (tru "count")
+   :count     (tru "number")
    :distinct  (tru "distinct count")
    :stddev    (tru "standard deviation")
    :cum-count (tru "cumulative count")
@@ -1047,7 +1047,7 @@
                                                      cell-query (assoc :url cell-url))
                                                    opts))
                        (decompose-question root query opts))
-          cell-query (merge (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
+          cell-query (merge (let [title (tru "A closer look at the {0}" (cell-title root cell-query))]
                               {:transient_name  title
                                :name            title})))))))
 

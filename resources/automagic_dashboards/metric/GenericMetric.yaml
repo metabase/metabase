@@ -42,8 +42,10 @@ groups:
       title: How this metric is distributed across different categories
   - Numbers:
       title: How this metric is distributed across different numbers
-  - LargeCategories:
-      title: The top and bottom for the [[this]]
+  - LargeCategoriesTop:
+      title: Top 5 per category
+  - LargeCategoriesBottom:
+      title: Bottom 5 per category
 dashboard_filters:
   - Timestamp
   - State
@@ -119,7 +121,7 @@ cards:
           map.region: us_states
   - ByNumber:
       group: Numbers
-      title: How [[this]] is distributed across [[GenericNumber]]
+      title: "[[this]] by [[GenericNumber]]"
       metrics: this
       dimensions:
         - GenericNumber:
@@ -153,7 +155,7 @@ cards:
       order_by:
         this: descending
   - ByCategoryLargeTop:
-      group: LargeCategories
+      group: LargeCategoriesTop
       title: "[[this]] per [[GenericCategoryLarge]], top 5"
       metrics: this
       dimensions: GenericCategoryLarge
@@ -162,7 +164,7 @@ cards:
         this: descending
       limit: 5
   - ByCategoryLargeBottom:
-      group: LargeCategories
+      group: LargeCategoriesBottom
       title: "[[this]] per [[GenericCategoryLarge]], bottom 5"
       metrics: this
       dimensions: GenericCategoryLarge

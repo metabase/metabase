@@ -128,7 +128,7 @@ cards:
       group: Overview
 # General
   - NumberDistribution:
-      title: How [[this.short-name]] are distributed across [[GenericNumber]]
+      title: "[[this.short-name]] by [[GenericNumber]]"
       dimensions:
         - GenericNumber:
             aggregation: default
