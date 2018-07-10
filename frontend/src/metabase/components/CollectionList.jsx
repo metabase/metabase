@@ -20,7 +20,7 @@ const CollectionItem = ({ collection, color, iconName = "all" }) => (
     color={color || normal.grey2}
     className="text-brand-hover"
   >
-    <Box bg={colors["bg-light"]} p={2} mb={1}>
+    <Box bg={colors["bg-light"]} p={2}>
       <Flex align="center" py={1} key={`collection-${collection.id}`}>
         <Icon name={iconName} mx={1} />
         <h4 className="overflow-hidden">
@@ -55,25 +55,6 @@ class CollectionList extends React.Component {
                 </CollectionDropTarget>
               </GridItem>
             ))}
-          {currentCollection && (
-            <GridItem w={w}>
-              <Link
-                to={Urls.newCollection(currentCollection.id)}
-                color={normal.grey2}
-                hover={{ color: normal.blue }}
-              >
-                <Box p={[1, 2]}>
-                  <Flex align="center" py={1}>
-                    <Icon name="add" mr={1} bordered />
-                    <h4>{t`New collection`}</h4>
-                  </Flex>
-                </Box>
-              </Link>
-            </GridItem>
-          )}
-        </Grid>
-        <Box mt={[1, 2]}>
-          <Grid>
             {isRoot && (
               <GridItem w={w}>
                 <CollectionDropTarget
@@ -104,8 +85,23 @@ class CollectionList extends React.Component {
                   />
                 </GridItem>
               )}
-          </Grid>
-        </Box>
+          {currentCollection && (
+            <GridItem w={w}>
+              <Link
+                to={Urls.newCollection(currentCollection.id)}
+                color={normal.grey2}
+                hover={{ color: normal.blue }}
+              >
+                <Box p={[1, 2]}>
+                  <Flex align="center" py={1}>
+                    <Icon name="add" mr={1} bordered />
+                    <h4>{t`New collection`}</h4>
+                  </Flex>
+                </Box>
+              </Link>
+            </GridItem>
+          )}
+        </Grid>
       </Box>
     );
   }
