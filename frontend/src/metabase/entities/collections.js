@@ -47,9 +47,11 @@ const Collections = createEntity({
   },
 
   form: {
-    fields: (values = {
-      color: colors.brand
-    }) => [
+    fields: (
+      values = {
+        color: colors.brand,
+      },
+    ) => [
       {
         name: "name",
         placeholder: "My new fantastic collection",
@@ -64,7 +66,8 @@ const Collections = createEntity({
         normalize: description => description || null, // expected to be nil or non-empty string
       },
       {
-        name: 'color',
+        name: "color",
+        type: "hidden",
         initial: () => colors.brand,
         validate: color => !color && t`Color is required`,
       },
