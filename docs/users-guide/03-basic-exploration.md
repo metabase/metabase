@@ -4,14 +4,12 @@ As long as you're not the very first user in your team's Metabase, the easiest w
 Alternatively, you can dive right in to exploring the data in Metabase by clicking on one of the databases at the bottom of the home page, and then clicking on a table to see it. You can also click on the bolt icon on any table to see an automatic exploration of its data. Give it a try!
 
 #### Exploring collections
-Collections in Metabase are a lot like folders, and they're where all your team's dashboards, saved questions, and other collections are kept. To explore them, click any of the boxes in the "Our analytics" section of the home page. If your teammates are cool, hopefully they've already pinned some important dashboards or questions within your collections. If so, those important or useful items will show up nice and large at the top of a collection.
+Collections in Metabase are a lot like folders. They're where all your team's dashboards and charts are kept. To explore a collection just click on one in the "Our analytics" section of the home page, or just click on `Browse all items` to see everything. If your teammates are cool, they'll have pinned some important dashboards or questions within your collections; if so, those important or useful items will show up nice and large at the top of a collection. Collections also have a list of any other items that are saved within them, as well as a list of other collections that are saved inside the current one.
 
+#### Exploring dashboards
+Dashboards are simply collections of charts and numbers that you want to be able to refer back to regularly. You can learn more about dashboards [here](07-dashboards.md).
 
-
-
-Dashboards are simply collections of charts and numbers that you want to be able to refer back to regularly. (You can learn more about dashboards [here](07-dashboards.md))
-
-If you click on a part of a chart, such as a bar in a bar chart, or a dot on a line chart, you'll see a menu with actions you can take to dive deeper into that result, or to branch off from it in a different direction.
+If you click on a part of a chart, such as a bar in a bar chart, or a dot on a line chart, you'll see a menu with actions you can take to dive deeper into that result, to branch off from it in a different direction, or to [x-ray](14-x-rays.md) it to see an automatic exploration the thing you clicked on.
 
 ![Drill through](images/drill-through/drill-through.png)
 
@@ -24,14 +22,14 @@ Other charts as well as table cells will often also allow you to go to a filtere
 
 ![Inequality filters](images/drill-through/inequality-filters.png)
 
-Lastly, clicking on the ID of an item in table gives you the option to go to a detail view for that single record. (E.g., you can click on a customer's ID to see the profile view for that one customer.)
+Lastly, clicking on the ID of an item in a table gives you the option to go to a detail view for that single record. (E.g., you can click on a customer's ID to see the profile view for that one customer.)
 
 **Note that charts created with SQL don't currently have these action options.**
 
 #### Exploring saved questions
-In Metabase parlance, every chart or number on a dashboard is called a "question." Clicking on the title of a question on a dashboard will take you to a detail view of that question. You'll also end up at this detail view if you use one of the actions mentioned above. You can also browse all the questions your teammates have saved by clicking the `Questions` link in the main navigation.
+In Metabase parlance, every chart or number on a dashboard is called a "question." Clicking on the title of a question on a dashboard will take you to a detail view of that question. You'll also end up at this detail view if you use one of the actions mentioned above.
 
-When you're viewing the detail view of a question, you can use all the same actions mentioned above. You can also click on the headings of tables to see more options, like viewing the sum of the values in a column, or finding the minimum or maximum value in it.
+When you're looking at the detail view of a question, you can use all the same actions mentioned above. You can also click on the headings of tables to see more options, like viewing the sum of the values in a column, or finding the minimum or maximum value in it.
 
 ![Heading actions](images/drill-through/heading-actions.png)
 

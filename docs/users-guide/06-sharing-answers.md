@@ -5,11 +5,11 @@
 ### How to save a question
 Whenever you’ve arrived at an answer that you want to save for later, click the **SAVE** button in the top right of the screen. This will also save the visualization option you’ve chosen for your answer.
 
-![savebutton](images/SaveButton.png)
+![Save button](images/SaveButton.png)
 
-A pop-up box will appear, you to give your question a name and a description. We suggest phrasing the names for your questions in the form of a question, such as, “How many customers did we have last month?” After saving your question, you'll be asked if you want to add it to a dashboard.
+A pop-up box will appear, prompting you to give your question a name and description, and to pick which collection to save it in. Note that your administrator might have set things up so that you're only allowed to save questions in certain collections, but you can always save things in your Personal Collection. After saving your question, you'll be asked if you want to add it to a new or existing dashboard.
 
-Now, whenever you want to refer to your question again you can find it in the saved questions list by clicking on the **Questions** link from the main navigation. To edit your question, go to it and click the pencil icon in the top-right.
+Now, whenever you want to refer to your question again you can find it by searching for it in the search bar at the top of Metabase, or by navigating to the collection where you saved it. To edit your question, go to it and click the pencil icon in the top-right.
 
 ### Sharing questions with public links
 If your Metabase administrator has enabled [public sharing](../administration-guide/12-public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the sharing icon to find its public links. Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post.
