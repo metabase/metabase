@@ -85,22 +85,23 @@ class CollectionList extends React.Component {
                 />
               </GridItem>
             )}
-          {currentCollection && (
-            <GridItem w={w}>
-              <Link
-                to={Urls.newCollection(currentCollection.id)}
-                color={normal.grey2}
-                hover={{ color: normal.blue }}
-              >
-                <Box p={[1, 2]}>
-                  <Flex align="center" py={1}>
-                    <Icon name="add" mr={1} bordered />
-                    <h4>{t`New collection`}</h4>
-                  </Flex>
-                </Box>
-              </Link>
-            </GridItem>
-          )}
+          {currentCollection &&
+            currentCollection.can_write && (
+              <GridItem w={w}>
+                <Link
+                  to={Urls.newCollection(currentCollection.id)}
+                  color={normal.grey2}
+                  hover={{ color: normal.blue }}
+                >
+                  <Box p={[1, 2]}>
+                    <Flex align="center" py={1}>
+                      <Icon name="add" mr={1} bordered />
+                      <h4>{t`New collection`}</h4>
+                    </Flex>
+                  </Box>
+                </Link>
+              </GridItem>
+            )}
         </Grid>
       </Box>
     );
