@@ -19,7 +19,6 @@ import EntityItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
 import VirtualizedList from "metabase/components/VirtualizedList";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
@@ -517,18 +516,6 @@ const CollectionBurgerMenu = () => (
     ]}
     triggerIcon="burger"
   />
-);
-
-const QuestionEmptyState = () => (
-  <Box>
-    <Icon name="beaker" size={36} />
-  </Box>
-);
-
-const DashboardEmptyState = () => (
-  <Box>
-    <Icon name="dashboard" size={36} />
-  </Box>
 );
 
 export default CollectionLanding;
