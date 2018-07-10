@@ -483,7 +483,7 @@ const CollectionEditMenu = ({ isRoot, collectionId }) => (
             {
               title: t`Edit this collection`,
               icon: "editdocument",
-              link: `/collections/${collectionId}`,
+              link: `/collection/${collectionId}/edit`,
             },
           ]
         : []),
