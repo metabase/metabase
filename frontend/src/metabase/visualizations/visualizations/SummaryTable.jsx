@@ -126,8 +126,9 @@ export default class SummaryTable extends Component {
     settings: VisualizationSettings,
   }) {
  {
+    const additionalSeries = ((rawSeries[0] || []).series || [])
    //todo: fix 30
-   const groupingManager = new GroupingManager(30, settings, rawSeries);
+   const groupingManager = new GroupingManager(30, settings, [...rawSeries,...additionalSeries]);
 
 
    this.setState({

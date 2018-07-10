@@ -190,10 +190,11 @@ export default class Question {
   /**
    * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
    */
-  atomicQueries(fields): AtomicQuery[] {
+  atomicQueries(fields): DatasetQuery[] {
     const query = this.query();
     if (query instanceof AtomicQuery) {
-      return [query, ...getAdditionalQueries(this.visualizationSettings())(this.card(), fields || this.metadata().fields)(query)];
+      const dsq = query.datasetQuery();
+      return [dsq, ...getAdditionalQueries(this.visualizationSettings())(this.card(), fields || this.metadata().fields)(dsq)];
     }
     return [];
   }
@@ -457,7 +458,7 @@ export default class Question {
     };
 
 
-    let datasetQueries = this.atomicQueries().map(query => query.datasetQuery());
+    let datasetQueries = this.atomicQueries();
 
     let mainQueryPromise : Promise;
 
@@ -476,7 +477,7 @@ export default class Question {
 
     return mainQueryPromise.then(res => {
       const {data : {cols}} = res;
-      const queries = this.atomicQueries(cols).map(query => query.datasetQuery());
+      const queries = this.atomicQueries(cols);
       return Promise.all([mainQueryPromise, ...queries.slice(1).map(getDatasetQueryResult)]);
       }
     )

@@ -32,7 +32,7 @@ export class WrappedQuery extends AtomicQuery {
 
 }
 
-const wrapQuery = (query: DatasetQuery,     aggregation: AggregationClause,
+export const wrapQuery = (query: DatasetQuery,     aggregation: AggregationClause,
                    breakout: BreakoutClause) : WrappedDatasetQuery =>{
   if(query.type === 'wrapped')
     return query;

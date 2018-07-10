@@ -2,23 +2,24 @@
 import * as Q from "metabase/lib/query/query";
 import Query from './queries/Query';
 import type {ParameterValues} from "metabase/meta/types/Parameter";
-import type {Card} from "metabase/meta/types/Card";
+import type {Card, DatasetQuery} from "metabase/meta/types/Card";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import SummaryTable, {COLUMNS_SETTINGS} from "metabase/visualizations/visualizations/SummaryTable";
 import StateSerialized, {GROUPS_SOURCES, VALUES_SOURCES, COLUMNS_SOURCE} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import {WrappedQuery} from "metabase-lib/lib/queries/WrappedQuery";
+import {WrappedQuery, wrapQuery} from "metabase-lib/lib/queries/WrappedQuery";
 
 
 export const getAdditionalQueries = (visualizationSettings) => (card:Card, fields) => (
-                           query: StructuredQuery,
-                        ) : Card[] => {
+                           query: DatasetQuery,
+                        ) : DatasetQuery[] => {
 
   const settings : StateSerialized = visualizationSettings[COLUMNS_SETTINGS];
 
   if(card.display !== SummaryTable.identifier || !isOk(settings))
     return [];
+
 
   const nameToTypeMap = getNameToTypeMap(fields);
 
@@ -32,14 +33,10 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
   // const basedQuery = );// buildQuery(query.clearBreakouts().clearAggregations(), totals);
   const queriesWithBreakouts = breakouts.reduce(({acc, prev}, br) => {
     const next = [... prev, br];
-    const newAcc = showTotalsFor(br[1]) ? [ new WrappedQuery(query.question(), query.datasetQuery(), totals,prev), ...acc] : acc;
+    const newAcc = showTotalsFor(br[1]) ? [ wrapQuery(query, totals,prev), ...acc] : acc;
     return {acc : newAcc, prev:next};
   }, {acc:[], prev:[]});
-
-// queriesWithBreakouts.acc
-  return queriesWithBreakouts.acc.map(p => new Question({}, {
-    dataset_query: p.datasetQuery(),
-  }).query());
+  return queriesWithBreakouts.acc;
 };
 
 const getNameToTypeMap = (fields) => {

@@ -40,6 +40,8 @@ import {
 } from "metabase/redux/metadata";
 import { push } from "react-router-redux";
 
+import {getAdditionalQueries} from "../../metabase-lib/lib/SummaryTableQueryBuilder";
+
 import {
   DashboardApi,
   CardApi,
@@ -61,7 +63,7 @@ const card = new schema.Entity("card");
 const dashboard = new schema.Entity("dashboard", {
   ordered_cards: [dashcard],
 });
-
+import Question from "metabase-lib/lib/Question";
 // action constants
 
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
@@ -482,13 +484,26 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     }
 
+    const queries = result && result.data && result.data.cols && getAdditionalQueries(card.visualization_settings)(card, result.data.cols)(datasetQuery) || [];
+
+    const seriesAll = queries.map(q => {
+      const datasetQueryWithParameters = {...q,
+        parameters: datasetQuery.parameters
+          ? JSON.stringify(datasetQuery.parameters)
+          : undefined,};
+      return MetabaseApi.dataset(
+        datasetQueryWithParameters);
+    });
+
+    const series = await Promise.all(seriesAll);
     clearTimeout(slowCardTimer);
 
-    return {
+    const r = {
       dashcard_id: dashcard.id,
       card_id: card.id,
-      result: result,
+      result: {...result, series: series},
     };
+    return r;
   };
 });
 
