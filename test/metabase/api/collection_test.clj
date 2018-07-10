@@ -140,7 +140,7 @@
 
 ;; check that you get to see the children as appropriate
 (expect
-  (map default-item [{:name "Birthday Card", :description nil, :favorite false, :model "card"}
+  (map default-item [{:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"}
                      {:name "Dine & Dashboard", :description nil, :model "dashboard"}
                      {:name "Electro-Magnetic Pulse", :model "pulse"}])
   (tt/with-temp Collection [collection {:name "Debt Collection"}]
@@ -342,7 +342,7 @@
 
 ;; Make sure you can see everything for Users that can see everything
 (expect
-  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card"})
+  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :disply "table"})
    (collection-item "Crowberto Corv's Personal Collection")
    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
    (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
@@ -358,7 +358,7 @@
 
 ;; ...but if they have read perms for the Root Collection they should get to see them
 (expect
-  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card"})
+  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
    (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
    (collection-item "Rasta Toucan's Personal Collection")]
