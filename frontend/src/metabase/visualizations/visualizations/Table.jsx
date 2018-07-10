@@ -186,7 +186,7 @@ export default class Table extends Component {
     },
     "table.columns": {
       section: "Data",
-      title: t`Fields to include`,
+      title: t`Visible fields`,
       widget: ChartSettingOrderedFields,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
       isValid: ([{ card, data }]) =>

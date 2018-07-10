@@ -55,17 +55,14 @@ class ChartSettings extends Component {
     };
   }
 
-  getChartTypeName() {
-    let { CardVisualization } = getVisualizationTransformed(this.props.series);
-    switch (CardVisualization.identifier) {
-      case "table":
-        return "table";
-      case "scalar":
-        return "number";
-      case "funnel":
-        return "funnel";
-      default:
-        return "chart";
+  componentWillReceiveProps(nextProps) {
+    if (this.props.series !== nextProps.series) {
+      this.setState({
+        series: this._getSeries(
+          nextProps.series,
+          nextProps.series[0].card.visualization_settings,
+        ),
+      });
     }
   }
 

@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { t } from "c-3po";
 
 import CheckBox from "metabase/components/CheckBox.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -8,44 +9,35 @@ import FieldList from "metabase/query_builder/components/FieldList";
 import { SortableContainer, SortableElement } from "react-sortable-hoc";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { fieldRefForColumn } from "metabase/lib/dataset";
+import {
+  fieldRefForColumn,
+  findColumnForColumnSetting,
+} from "metabase/lib/dataset";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import cx from "classnames";
 import _ from "underscore";
 
-const SortableField = SortableElement(
-  ({ field, columnNames, onSetEnabled }) => (
-    <div
-      className={cx("flex align-center p1", {
-        "text-grey-2": !field.enabled,
-      })}
-    >
-      <CheckBox
-        checked={field.enabled}
-        onChange={e => onSetEnabled(e.target.checked)}
-      />
-      <span className="ml1 h4">{columnNames[field.name]}</span>
-      <Icon
-        className="flex-align-right text-grey-2 mr1 cursor-pointer"
-        name="grabber"
-        width={14}
-        height={14}
-      />
-    </div>
+const SortableColumn = SortableElement(
+  ({ columnSetting, getColumnName, onRemove }) => (
+    <ColumnItem
+      title={getColumnName(columnSetting)}
+      onRemove={() => onRemove(columnSetting)}
+    />
   ),
 );
 
-const SortableFieldList = SortableContainer(
-  ({ fields, columnNames, onSetEnabled }) => {
+const SortableColumnList = SortableContainer(
+  ({ columnSettings, getColumnName, onRemove }) => {
     return (
       <div>
-        {fields.map((field, index) => (
-          <SortableField
+        {columnSettings.map((columnSetting, index) => (
+          <SortableColumn
             key={`item-${index}`}
-            index={index}
-            field={field}
-            columnNames={columnNames}
-            onSetEnabled={enabled => onSetEnabled(index, enabled)}
+            index={columnSetting.index}
+            columnSetting={columnSetting}
+            getColumnName={getColumnName}
+            onRemove={onRemove}
           />
         ))}
       </div>
@@ -53,19 +45,19 @@ const SortableFieldList = SortableContainer(
   },
 );
 
-export default class ChartSettingOrderedFields extends Component {
-  handleSetEnabled = (index, checked) => {
-    const fields = [...this.props.value];
-    fields[index] = { ...fields[index], enabled: checked };
-    this.props.onChange(fields);
+export default class ChartSettingOrderedColumns extends Component {
+  handleEnable = columnSetting => {
+    const columnSettings = [...this.props.value];
+    const index = columnSetting.index;
+    columnSettings[index] = { ...columnSettings[index], enabled: true };
+    this.props.onChange(columnSettings);
   };
 
-  handleToggleAll = anyEnabled => {
-    const fields = this.props.value.map(field => ({
-      ...field,
-      enabled: !anyEnabled,
-    }));
-    this.props.onChange([...fields]);
+  handleDisable = columnSetting => {
+    const columnSettings = [...this.props.value];
+    const index = columnSetting.index;
+    columnSettings[index] = { ...columnSettings[index], enabled: false };
+    this.props.onChange(columnSettings);
   };
 
   handleSortEnd = ({ oldIndex, newIndex }) => {
@@ -74,74 +66,113 @@ export default class ChartSettingOrderedFields extends Component {
     this.props.onChange(fields);
   };
 
-  isAnySelected = () => {
-    const { value } = this.props;
-    return _.any(value, field => field.enabled);
-  };
+  getColumnName = columnSetting =>
+    getFriendlyName(
+      findColumnForColumnSetting(this.props.columns, columnSetting) || {
+        display_name: "[Unknown]",
+      },
+    );
 
   render() {
     const { value, question, addField, columns, columnNames } = this.props;
-    const anyEnabled = this.isAnySelected();
 
-    let additionalFieldsButton;
+    let additionalFieldOptions = { count: 0 };
     if (columns && question && question.query() instanceof StructuredQuery) {
       const fieldRefs = columns.map(column => fieldRefForColumn(column));
-
-      additionalFieldsButton = (
-        <PopoverWithTrigger
-          triggerElement={"Add a field..."}
-          triggerClasses="mt1"
-        >
-          {({ onClose }) => (
-            <FieldList
-              tableMetadata={question.query().table()}
-              field={null}
-              fieldOptions={question.query().dimensionOptions(dimension => {
-                const mbql = dimension.mbql();
-                return !_.find(fieldRefs, fieldRef =>
-                  _.isEqual(fieldRef, mbql),
-                );
-              })}
-              onFieldChange={field => {
-                addField(field);
-                onClose();
-              }}
-              enableTimeGrouping={false}
-            />
-          )}
-        </PopoverWithTrigger>
-      );
+      additionalFieldOptions = question.query().dimensionOptions(dimension => {
+        const mbql = dimension.mbql();
+        return !_.find(fieldRefs, fieldRef => _.isEqual(fieldRef, mbql));
+      });
     }
+
+    const [enabledColumns, disabledColumns] = _.partition(
+      value.map((columnSetting, index) => ({ ...columnSetting, index })),
+      columnSetting => columnSetting.enabled,
+    );
 
     return (
       <div className="list">
-        <div className="toggle-all">
-          <div
-            className={cx("flex align-center p1", {
-              "text-grey-2": !anyEnabled,
-            })}
-          >
-            <CheckBox
-              checked={anyEnabled}
-              className={cx("text-brand", { "text-grey-2": !anyEnabled })}
-              onChange={e => this.handleToggleAll(anyEnabled)}
-              invertChecked
-            />
-            <span className="ml1 h4">
-              {anyEnabled ? "Unselect all" : "Select all"}
-            </span>
+        <div>{t`Click and drag to change their order`}</div>
+        {enabledColumns.length > 0 ? (
+          <SortableColumnList
+            columnSettings={enabledColumns}
+            getColumnName={this.getColumnName}
+            onRemove={this.handleDisable}
+            onSortEnd={this.handleSortEnd}
+            distance={5}
+            helperClass="z5"
+          />
+        ) : (
+          <div className="my2 p2 flex layout-centered bg-grey-0 text-grey-1 text-bold rounded">
+            {t`Add fields from the list below`}
           </div>
-        </div>
-        <SortableFieldList
-          fields={value}
-          columnNames={columnNames}
-          onSetEnabled={this.handleSetEnabled}
-          onSortEnd={this.handleSortEnd}
-          distance={5}
-          helperClass="z5"
-        />
-        {additionalFieldsButton}
+        )}
+        {disabledColumns.length > 0 || additionalFieldOptions.count > 0 ? (
+          <h4 className="mb2 mt4">{`More fields`}</h4>
+        ) : null}
+        {disabledColumns.map(columnSetting => (
+          <ColumnItem
+            title={this.getColumnName(columnSetting)}
+            onAdd={() => this.handleEnable(columnSetting)}
+          />
+        ))}
+        {additionalFieldOptions.count > 0 && (
+          <div>
+            {additionalFieldOptions.dimensions.map(dimension => (
+              <ColumnItem
+                title={dimension.displayName()}
+                onAdd={() => addField(dimension.mbql())}
+              />
+            ))}
+            {additionalFieldOptions.fks.map(fk => (
+              <div>
+                <div className="my2 text-grey-4 text-bold text-uppercase text-small">
+                  {fk.field.target.table.display_name}
+                </div>
+                {fk.dimensions.map(dimension => (
+                  <ColumnItem
+                    title={dimension.displayName()}
+                    onAdd={() => addField(dimension.mbql())}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
 }
+
+const ColumnItem = ({ title, onAdd, onRemove }) => (
+  <div
+    className="my1 bordered rounded shadowed cursor-pointer overflow-hidden bg-white"
+    onClick={onAdd}
+  >
+    <div className="p1 border-bottom relative">
+      <div className="px1 flex align-center relative">
+        <span className="h4 flex-full text-dark">{title}</span>
+        {onAdd && (
+          <Icon
+            name="add"
+            className="cursor-pointer text-grey-1 text-grey-4-hover"
+            onClick={e => {
+              e.stopPropagation();
+              onAdd();
+            }}
+          />
+        )}
+        {onRemove && (
+          <Icon
+            name="close"
+            className="cursor-pointer text-grey-1 text-grey-4-hover"
+            onClick={e => {
+              e.stopPropagation();
+              onRemove();
+            }}
+          />
+        )}
+      </div>
+    </div>
+  </div>
+);

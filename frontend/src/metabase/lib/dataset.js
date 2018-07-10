@@ -71,13 +71,18 @@ export function findColumnForColumnSetting(
   columns: Column[],
   columnSetting: ColumnSetting,
 ): ?Column {
-  return _.find(
-    columns,
-    column =>
-      (columnSetting.fieldRef &&
-        _.isEqual(columnSetting.fieldRef, fieldRefForColumn(column))) ||
-      columnSetting.name === column.name,
-  );
+  const { fieldRef } = columnSetting;
+  // first try to find by fieldRef
+  if (fieldRef != null) {
+    const column = _.find(columns, col =>
+      _.isEqual(fieldRef, fieldRefForColumn(col)),
+    );
+    if (column) {
+      return column;
+    }
+  }
+  // if that fails, find by column name
+  return _.findWhere(columns, { name: columnSetting.name });
 }
 
 /**
@@ -110,6 +115,7 @@ export function getExistingFields(card: Card, cols: Column[]): ConcreteField[] {
   if (query.fields && query.fields > 0) {
     return query.fields;
   } else if (Q.isBareRows(query)) {
+    // $FlowFixMe:
     return cols.map(col => fieldRefForColumn(col)).filter(id => id != null);
   } else {
     return [];
