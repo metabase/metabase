@@ -11,7 +11,9 @@ import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import Subhead from "metabase/components/Subhead";
-import ItemTypeFilterBar, { FILTERS } from "metabase/components/ItemTypeFilterBar";
+import ItemTypeFilterBar, {
+  FILTERS,
+} from "metabase/components/ItemTypeFilterBar";
 
 export default class SearchApp extends React.Component {
   render() {
@@ -22,13 +24,10 @@ export default class SearchApp extends React.Component {
           <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
         </Flex>
         <ItemTypeFilterBar
-          filters={
-            FILTERS
-              .concat({
-                name: t`'Collections`,
-                filter: 'collection'
-              })
-          }
+          filters={FILTERS.concat({
+            name: t`'Collections`,
+            filter: "collection",
+          })}
         />
         <Box w={2 / 3}>
           <EntityListLoader

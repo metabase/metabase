@@ -110,8 +110,9 @@
   (tu/obj->json->obj
     [{:id                  (u/get-id card)
       :name                (:name card)
-      :description         nil
       :collection_position nil
+      :display            "table"
+      :description         nil
       :favorite            false
       :model               "card"}])
   (tu/obj->json->obj
