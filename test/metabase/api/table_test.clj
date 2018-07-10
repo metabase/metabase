@@ -478,12 +478,11 @@
                                :base_type    "type/Text"
                                :special_type "type/Name"
                                :fingerprint  (:name mutil/venue-fingerprints)}
-                              (with-numeric-dimension-options
-                                {:name         "ID"
-                                 :display_name "ID"
-                                 :base_type    "type/Integer"
-                                 :special_type nil
-                                 :fingerprint  (:id mutil/venue-fingerprints)})
+                              {:name         "ID"
+                               :display_name "ID"
+                               :base_type    "type/Integer"
+                               :special_type nil
+                               :fingerprint  (:id mutil/venue-fingerprints)}
                               (with-numeric-dimension-options
                                 {:name         "PRICE"
                                  :display_name "Price"
