@@ -1,52 +1,83 @@
+/* NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
+ * NOTE: KEEP SYNCRONIZED WITH COLORS.JS
+ */
 :root {
-  --brand-color: #509ee3;
-  --brand-light-color: #cde3f8;
-  --brand-saturated-color: #2d86d4;
-
-  --base-grey: #f8f9fa;
-  --grey-5percent: color(var(--base-grey) shade(5%));
-  --grey-1: color(var(--base-grey) shade(10%));
-  --grey-2: color(var(--base-grey) shade(20%));
-  --grey-3: color(var(--base-grey) shade(30%));
-  --grey-4: color(var(--base-grey) shade(40%));
-  --grey-5: color(var(--base-grey) shade(50%));
-
-  --grey-text-color: #797979;
-  --alt-color: #f5f7f9;
-  --alt-bg-color: #f4f6f8;
-
-  --success-color: #9cc177;
-  --headsup-color: #f5a623;
-
-  --gold-color: #f9d45c;
-  --orange-color: #f9a354;
-  --purple-color: #a989c5;
-  --green-color: #9cc177;
-  --green-saturated-color: #90bd64;
-  --dark-color: #4c545b;
-  --slate-color: #9ba5b1;
-  --slate-light-color: #dfe8ea;
-  --slate-almost-extra-light-color: #edf2f5;
-  --slate-extra-light-color: #f9fbfc;
-
-  --error-color: #e35050;
-
-  /* type colors */
-  --metric-color: #9cc177;
-  --segment-color: #7172ad;
-  --pulse-color: #f9d45c;
-  --dashboard-color: #509ee3;
-  --data-color: "#9cc177";
-  --question-color: #93b3c9;
+  --color-brand: #509ee3;
+  --color-accent1: #9cc177;
+  --color-accent2: #a989c5;
+  --color-accent3: #ef8c8c;
+  --color-accent4: #f9d45c;
+  --color-accent5: #f1b556;
+  --color-accent6: #a6e7f3;
+  --color-accent7: #7172ad;
+  --color-white: #ffffff;
+  --color-black: #2e353b;
+  --color-success: #84bb4c;
+  --color-error: #ed6e6e;
+  --color-warning: #f9cf48;
+  --color-text-dark: #2e353b;
+  --color-text-medium: #74838f;
+  --color-text-light: #c7cfd4;
+  --color-text-white: #ffffff;
+  --color-bg-black: #2e353b;
+  --color-bg-dark: #93a1ab;
+  --color-bg-medium: #edf2f5;
+  --color-bg-light: #f9fbfc;
+  --color-bg-white: #ffffff;
+  --color-shadow: rgba(0, 0, 0, 0.08);
+  --color-border: #d7dbde;
 }
+
+/* NOTE: DEPRECATED, replaced with colors above
+:root {
+  --brand-color: var(--color-brand);
+  --brand-light-color: var(--color-text-light);
+  --brand-saturated-color: var(--color-brand);
+
+  --base-grey: var(--color-bg-light);
+  --grey-5percent: var(--color-bg-medium);
+  --grey-1: var(--color-text-light);
+  --grey-2: var(--color-text-light);
+  --grey-3: var(--color-text-medium);
+  --grey-4: var(--color-text-medium);
+  --grey-5: var(--color-text-medium);
+
+  --grey-text-color: var(--color-text-medium);
+  --alt-color: var(--color-bg-light);
+  --alt-bg-color: var(--color-bg-light);
+
+  --success-color: var(--color-accent1);
+  --headsup-color: var(--color-warning);
+
+  --gold-color: var(--color-accent4);
+  --orange-color: var(--color-warning);
+  --purple-color: var(--color-accent2);
+  --green-color: var(--color-accent1);
+  --green-saturated-color: var(--color-accent1);
+  --dark-color: var(--color-text-dark);
+  --slate-color: var(--color-text-medium);
+  --slate-light-color: var(--color-text-light);
+  --slate-almost-extra-light-color: var(--color-bg-medium);
+  --slate-extra-light-color: var(--color-bg-light);
+
+  --error-color: var(--color-error);
+
+  --metric-color: var(--color-accent1);
+  --segment-color: var(--color-accent2);
+  --pulse-color: var(--color-accent4);
+  --dashboard-color: var(--color-brand);
+  --data-color: var(--color-accent1);
+  --question-color: var(--color-text-medium);
+}
+*/
 
 .text-default,
 :local(.text-default) {
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
 }
 
 .text-default-hover:hover {
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
 }
 
 /* brand */
@@ -54,40 +85,40 @@
 :local(.text-brand),
 .text-brand-hover:hover,
 :local(.text-brand-hover):hover {
-  color: var(--brand-color);
+  color: var(--color-brand);
 }
 
 .text-brand-darken,
 .text-brand-darken-hover:hover {
-  color: color(var(--brand-color) shade(20%));
+  color: var(--color-brand);
 }
 
 .text-brand-light,
 :local(.text-brand-light),
 .text-brand-light-hover:hover,
 :local(.text-brand-light-hover):hover {
-  color: var(--brand-light-color);
+  color: var(--color-text-light);
 }
 
 .bg-brand,
 .bg-brand-hover:hover,
 .bg-brand-active:active {
-  background-color: var(--brand-color);
+  background-color: var(--color-brand);
 }
 
 @media screen and (--breakpoint-min-md) {
   .md-bg-brand {
-    background-color: var(--brand-color) !important;
+    background-color: var(--color-brand) !important;
   }
 }
 
 /* success */
 
 .text-success {
-  color: var(--success-color);
+  color: var(--color-accent1);
 }
 .bg-success {
-  background-color: var(--success-color);
+  background-color: var(--color-accent1);
 }
 
 /* error */
@@ -95,191 +126,191 @@
 .text-error,
 :local(.text-error),
 .text-error-hover:hover {
-  color: var(--error-color);
+  color: var(--color-error);
 }
 
 .bg-error,
 .bg-error-hover:hover {
-  background-color: var(--error-color);
+  background-color: var(--color-error);
 }
 .bg-error-input {
-  background-color: #fce8e8;
+  background-color: var(--color-bg-white);
 }
 
 /* favorite */
 .text-gold,
 .text-gold-hover:hover {
-  color: var(--gold-color);
+  color: var(--color-accent4);
 }
 
 .text-purple,
 .text-purple-hover:hover {
-  color: var(--purple-color);
+  color: var(--color-accent2);
 }
 
 .text-green,
 .text-green-hover:hover {
-  color: var(--green-color);
+  color: var(--color-accent1);
 }
 
 .text-green-saturated,
 .text-green-saturated-hover:hover {
-  color: var(--green-saturated-color);
+  color: var(--color-accent1);
 }
 
 .text-orange,
 .text-orange-hover:hover {
-  color: var(--orange-color);
+  color: var(--color-warning);
 }
 
 .text-slate {
-  color: var(--slate-color);
+  color: var(--color-text-medium);
 }
 .text-slate-light {
-  color: var(--slate-light-color);
+  color: var(--color-text-light);
 }
 .text-slate-extra-light {
-  background-color: var(--slate-extra-light-color);
+  background-color: var(--color-bg-light);
 }
 
 .bg-gold {
-  background-color: var(--gold-color);
+  background-color: var(--color-accent4);
 }
 
 .bg-purple,
 .bg-purple-hover:hover {
-  background-color: var(--purple-color);
+  background-color: var(--color-accent2);
 }
 
 .bg-green {
-  background-color: var(--green-color);
+  background-color: var(--color-accent1);
 }
 .bg-green-saturated,
 .bg-green-saturated-hover:hover {
-  background-color: var(--green-saturated-color);
+  background-color: var(--color-accent1);
 }
 
 /* alt */
 .bg-alt,
 .bg-alt-hover:hover {
-  background-color: var(--alt-color);
+  background-color: var(--color-bg-light);
 }
 
 /* grey */
 .text-grey-1,
 :local(.text-grey-1),
 .text-grey-1-hover:hover {
-  color: var(--grey-1);
+  color: var(--color-text-light);
 }
 
 .text-grey-2,
 :local(.text-grey-2),
 .text-grey-2-hover:hover {
-  color: var(--grey-2);
+  color: var(--color-text-light);
 }
 
 .text-grey-3,
 :local(.text-grey-3),
 .text-grey-3-hover:hover {
-  color: var(--grey-3);
+  color: var(--color-text-medium);
 }
 
 .text-grey-4,
 .text-grey-4-hover:hover {
-  color: var(--grey-4);
+  color: var(--color-text-medium);
 }
 
 .text-grey-5,
 .text-grey-5-hover:hover {
-  color: var(--grey-5);
+  color: var(--color-text-medium);
 }
 
 .bg-grey-0,
 .bg-grey-0-hover:hover {
-  background-color: var(--base-grey);
+  background-color: var(--color-bg-light);
 }
 .bg-grey-05 {
-  background-color: var(--grey-5percent);
+  background-color: var(--color-bg-medium);
 }
 .bg-grey-1 {
-  background-color: var(--grey-1);
+  background-color: var(--color-bg-medium);
 }
 .bg-grey-2 {
-  background-color: var(--grey-2);
+  background-color: var(--color-bg-medium);
 }
 .bg-grey-3 {
-  background-color: var(--grey-3);
+  background-color: var(--color-bg-dark);
 }
 .bg-grey-4 {
-  background-color: var(--grey-4);
+  background-color: var(--color-bg-dark);
 }
 .bg-grey-5 {
-  background-color: var(--grey-5);
+  background-color: var(--color-bg-dark);
 }
 
 .bg-slate {
-  background-color: var(--slate-color);
+  background-color: var(--color-bg-dark);
 }
 .bg-slate-light {
-  background-color: var(--slate-light-color);
+  background-color: var(--color-bg-medium);
 }
 .bg-slate-almost-extra-light {
-  background-color: var(--slate-almost-extra-light-color);
+  background-color: var(--color-bg-medium);
 }
 .bg-slate-extra-light {
-  background-color: var(--slate-extra-light-color);
+  background-color: var(--color-bg-light);
 }
 .bg-slate-extra-light-hover:hover {
-  background-color: var(--slate-extra-light-color);
+  background-color: var(--color-bg-light);
 }
 
 .text-dark,
 :local(.text-dark) {
-  color: var(--dark-color);
+  color: var(--color-text-dark);
 }
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .text-white,
 :local(.text-white),
 .text-white-hover:hover {
-  color: #fff;
+  color: var(--color-text-white);
 }
 
 @media screen and (--breakpoint-min-md) {
   .md-text-white {
-    color: #fff;
+    color: var(--color-text-white);
   }
 }
 
 /* common pattern, background brand, text white when hovering or selected */
 .brand-hover:hover {
-  color: #fff;
-  background-color: var(--brand-color);
+  color: var(--color-text-white);
+  background-color: var(--color-brand);
 }
 .brand-hover:hover * {
-  color: #fff;
+  color: var(--color-text-white);
 }
 
 .bg-white,
 :local(.bg-white),
 .bg-white-hover:hover {
-  background-color: #fff;
+  background-color: var(--color-bg-white);
 }
 
 .bg-light-blue {
-  background-color: #f5fafc;
+  background-color: var(--color-bg-light);
 }
 
 .bg-light-blue-hover:hover {
-  background-color: #e4f0fa;
+  background-color: var(--color-bg-medium);
 }
 
 .text-light-blue,
 .text-light-blue-hover:hover {
-  color: #cfe4f5;
+  color: var(--color-text-light);
 }
 .text-slate {
-  color: #606e7b;
+  color: var(--color-text-medium);
 }
 
 .bg-transparent {
@@ -289,43 +320,43 @@
 /* entity colors */
 
 .bg-metric {
-  background-color: var(--metric-color);
+  background-color: var(--color-accent1);
 }
 .text-metric {
-  color: var(--metric-color);
+  color: var(--color-accent1);
 }
 
 .bg-data {
-  background-color: var(--data-color);
+  background-color: var(--color-accent1);
 }
 .text-data {
-  color: var(--data-color);
+  color: var(--color-accent1);
 }
 
 .bg-segment {
-  background-color: var(--segment-color);
+  background-color: var(--color-accent2);
 }
 .text-segment {
-  color: var(--segment-color);
+  color: var(--color-accent2);
 }
 
 .bg-dashboard {
-  background-color: var(--dashboard-color);
+  background-color: var(--color-brand);
 }
 .text-dashboard {
-  color: var(--dashboard-color);
+  color: var(--color-brand);
 }
 
 .bg-pulse {
-  background-color: var(--pulse-color);
+  background-color: var(--color-accent4);
 }
 .text-pulse {
-  color: var(--pulse-color);
+  color: var(--color-accent4);
 }
 
 .bg-question {
-  background-color: var(--question-color);
+  background-color: var(--color-bg-dark);
 }
 .text-question {
-  color: var(--question-color);
+  color: var(--color-text-medium);
 }

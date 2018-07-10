@@ -22,7 +22,7 @@
   border: 4px solid transparent;
   border-radius: 7px;
   background-clip: padding-box;
-  background-color: #c2c2c2;
+  background-color: var(--color-bg-medium);
 }
 
 .scroll-show::-webkit-scrollbar-button {
@@ -35,28 +35,28 @@
 }
 
 .scroll-show:hover::-webkit-scrollbar-thumb {
-  background-color: #7d7d7d;
+  background-color: var(--color-bg-dark);
 }
 .scroll-show::-webkit-scrollbar-thumb:horizontal:hover,
 .scroll-show::-webkit-scrollbar-thumb:vertical:hover {
-  background-color: #7d7d7d;
+  background-color: var(--color-bg-dark);
 }
 .scroll-show::-webkit-scrollbar-thumb:horizontal:active,
 .scroll-show::-webkit-scrollbar-thumb:vertical:active {
-  background-color: #7d7d7d;
+  background-color: var(--color-bg-dark);
 }
 
 /* scroll light */
 .scroll-show.scroll--light::-webkit-scrollbar-thumb {
   border-radius: 0;
-  background-color: #cfe4f5;
+  background-color: var(--color-bg-medium);
 }
 
 .scroll-show.scroll--light::-webkit-scrollbar-thumb:horizontal:hover,
 .scroll-show.scroll--light::-webkit-scrollbar-thumb:vertical:hover,
 .scroll-show.scroll--light::-webkit-scrollbar-thumb:horizontal:active,
 .scroll-show.scroll--light::-webkit-scrollbar-thumb:vertical:active {
-  background-color: #c7d9e4;
+  background-color: var(--color-bg-medium);
 }
 
 .scroll-hide {

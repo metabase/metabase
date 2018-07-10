@@ -280,8 +280,9 @@ export default class GroupsListing extends Component {
       },
       error => {
         console.error("Error creating group:", error);
-        if (error.data && typeof error.data === "string")
+        if (error.data && typeof error.data === "string") {
           this.alert(error.data);
+        }
       },
     );
   }
@@ -354,8 +355,9 @@ export default class GroupsListing extends Component {
       },
       error => {
         console.error("Error updating group name:", error);
-        if (error.data && typeof error.data === "string")
+        if (error.data && typeof error.data === "string") {
           this.alert(error.data);
+        }
       },
     );
   }
@@ -373,8 +375,9 @@ export default class GroupsListing extends Component {
       },
       error => {
         console.error("Error deleting group: ", error);
-        if (error.data && typeof error.data === "string")
+        if (error.data && typeof error.data === "string") {
           this.alert(error.data);
+        }
       },
     );
   }

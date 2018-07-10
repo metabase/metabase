@@ -90,7 +90,7 @@ export const canonicalCollectionId = collectionId =>
 
 export const ROOT_COLLECTION = {
   id: "root",
-  name: "Saved items",
+  name: "Our analytics",
   location: "",
   path: [],
 };

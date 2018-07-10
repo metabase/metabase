@@ -446,7 +446,9 @@ export const loadMetadataForCard = createThunkAction(
   card => {
     return async (dispatch, getState) => {
       // Short-circuit if we're in a weird state where the card isn't completely loaded
-      if (!card && !card.dataset_query) return;
+      if (!card && !card.dataset_query) {
+        return;
+      }
 
       const query = card && new Question(getMetadata(getState()), card).query();
 
@@ -531,8 +533,9 @@ function updateVisualizationSettings(card, isEditing, display, vizSettings) {
   if (
     card.display === display &&
     _.isEqual(card.visualization_settings, vizSettings)
-  )
+  ) {
     return card;
+  }
 
   let updatedCard = Utils.copy(card);
 
@@ -983,7 +986,9 @@ export const setQueryDatabase = createThunkAction(
           let database = databases[databaseId],
             tables = database ? database.tables : [],
             table = tables.length > 0 ? tables[0] : null;
-          if (table) updatedCard.dataset_query.native.collection = table.name;
+          if (table) {
+            updatedCard.dataset_query.native.collection = table.name;
+          }
         }
 
         dispatch(loadMetadataForCard(updatedCard));
@@ -1324,7 +1329,9 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     const { qb: { card } } = getState();
     const queryResult = getFirstQueryResult(getState());
 
-    if (!queryResult || !fk) return false;
+    if (!queryResult || !fk) {
+      return false;
+    }
 
     // extract the value we will use to filter our new query
     let originValue;

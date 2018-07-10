@@ -5,7 +5,7 @@ import { normal } from "metabase/lib/colors";
 const DropTargetBackgroundAndBorder = ({
   highlighted,
   hovered,
-  noBorder = false,
+  noDrop = false,
   margin = 0,
   marginLeft = margin,
   marginRight = margin,
@@ -25,7 +25,7 @@ const DropTargetBackgroundAndBorder = ({
       zIndex: -1,
       boxSizing: "border-box",
       border: "2px solid transparent",
-      borderColor: hovered & !noBorder ? normal.blue : "transparent",
+      borderColor: hovered & !noDrop ? normal.blue : "transparent",
     }}
   />
 );

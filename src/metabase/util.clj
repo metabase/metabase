@@ -4,9 +4,7 @@
              [data :as data]
              [pprint :refer [pprint]]
              [string :as s]]
-            [clojure.java
-             [classpath :as classpath]
-             [jdbc :as jdbc]]
+            [clojure.java.classpath :as classpath]
             [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
@@ -15,7 +13,6 @@
             [puppetlabs.i18n.core :as i18n :refer [trs]]
             [ring.util.codec :as codec])
   (:import [java.net InetAddress InetSocketAddress Socket]
-           java.sql.SQLException
            [java.text Normalizer Normalizer$Form]))
 
 ;; This is the very first log message that will get printed.  It's here because this is one of the very first
@@ -290,45 +287,6 @@
                                                          :when (re-find #"metabase" s)]
                                                      (s/replace s #"^metabase\." ""))))})
 
-(defn wrap-try-catch
-  "Returns a new function that wraps F in a `try-catch`. When an exception is caught, it is logged
-   with `log/error` and returns `nil`."
-  ([f]
-   (wrap-try-catch f nil))
-  ([f f-name]
-   (let [exception-message (if f-name
-                             (format "Caught exception in %s: " f-name)
-                             "Caught exception: ")]
-     (fn [& args]
-       (try
-         (apply f args)
-         (catch SQLException e
-           (log/error (format-color 'red "%s\n%s\n%s"
-                                    exception-message
-                                    (with-out-str (jdbc/print-sql-exception-chain e))
-                                    (pprint-to-str (filtered-stacktrace e)))))
-         (catch Throwable e
-           (log/error (format-color 'red "%s %s\n%s"
-                                    exception-message
-                                    (or (.getMessage e) e)
-                                    (pprint-to-str (filtered-stacktrace e))))))))))
-
-(defn try-apply
-  "Like `apply`, but wraps F inside a `try-catch` block and logs exceptions caught.
-   (This is actaully more flexible than `apply` -- the last argument doesn't have to be
-   a sequence:
-
-     (try-apply vector :a :b [:c :d]) -> [:a :b :c :d]
-     (apply vector :a :b [:c :d])     -> [:a :b :c :d]
-     (try-apply vector :a :b :c :d)   -> [:a :b :c :d]
-     (apply vector :a :b :c :d)       -> Not ok - :d is not a sequence
-
-   This allows us to use `try-apply` in more situations than we'd otherwise be able to."
-  [^clojure.lang.IFn f & args]
-  (apply (wrap-try-catch f) (concat (butlast args) (if (sequential? (last args))
-                                                     (last args)
-                                                     [(last args)]))))
-
 (defn deref-with-timeout
   "Call `deref` on a FUTURE and throw an exception if it takes more than TIMEOUT-MS."
   [futur timeout-ms]
@@ -515,7 +473,7 @@
                   (select-nested-keys v nested-keys))})))
 
 (defn base64-string?
-  "Is S a Base-64 encoded string?"
+  "Is `s` a Base-64 encoded string?"
   ^Boolean [s]
   (boolean (when (string? s)
              (re-find #"^[0-9A-Za-z/+]+=*$" s))))

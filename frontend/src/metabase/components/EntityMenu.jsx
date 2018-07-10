@@ -30,7 +30,9 @@ class EntityMenu extends Component {
   };
 
   toggleMenu = () => {
-    if (this.state.freezeMenu) return;
+    if (this.state.freezeMenu) {
+      return;
+    }
 
     const open = !this.state.open;
     this.setState({ open, menuItemContent: null });

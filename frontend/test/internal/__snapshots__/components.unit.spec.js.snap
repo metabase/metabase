@@ -1,5 +1,41 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Card should render "dark" correctly 1`] = `
+<div
+  className="Card-RQot jvlGhM"
+>
+  <div
+    className="p4"
+  >
+    Look, a card!
+  </div>
+</div>
+`;
+
+exports[`Card should render "hoverable" correctly 1`] = `
+<div
+  className="Card-RQot lhSKsP"
+>
+  <div
+    className="p4"
+  >
+    Look, a card!
+  </div>
+</div>
+`;
+
+exports[`Card should render "normal" correctly 1`] = `
+<div
+  className="Card-RQot eykJzW"
+>
+  <div
+    className="p4"
+  >
+    Look, a card!
+  </div>
+</div>
+`;
+
 exports[`CheckBox should render "Default - Off" correctly 1`] = `
 <div
   className="cursor-pointer"
@@ -10,7 +46,7 @@ exports[`CheckBox should render "Default - Off" correctly 1`] = `
     style={
       Object {
         "backgroundColor": "white",
-        "border": "2px solid #ddd",
+        "border": "2px solid #C7CFD4",
         "height": 16,
         "width": 16,
       }
@@ -180,8 +216,8 @@ exports[`CheckBox should render "Yellow" correctly 1`] = `
     className="flex align-center justify-center rounded"
     style={
       Object {
-        "backgroundColor": "#f9d45c",
-        "border": "2px solid #f9d45c",
+        "backgroundColor": "#F9D45C",
+        "border": "2px solid #F9D45C",
         "height": 16,
         "width": 16,
       }
@@ -808,7 +844,7 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
         style={
           Object {
             "backgroundColor": "white",
-            "border": "2px solid #ddd",
+            "border": "2px solid #C7CFD4",
             "height": 16,
             "width": 16,
           }
@@ -825,7 +861,7 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
       style={
         Object {
           "backgroundColor": "white",
-          "border": "2px solid #ddd",
+          "border": "2px solid #C7CFD4",
           "height": 16,
           "width": 16,
         }

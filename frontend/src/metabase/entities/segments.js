@@ -3,6 +3,7 @@
 import { createEntity } from "metabase/lib/entities";
 
 import { SegmentSchema } from "metabase/schema";
+import colors from "metabase/lib/colors";
 
 export default createEntity({
   name: "segments",
@@ -12,7 +13,7 @@ export default createEntity({
   objectSelectors: {
     getName: segment => segment && segment.name,
     getUrl: segment => null,
-    getColor: () => "#93B3C9",
+    getColor: () => colors["text-medium"],
     getIcon: question => "segment",
   },
 });

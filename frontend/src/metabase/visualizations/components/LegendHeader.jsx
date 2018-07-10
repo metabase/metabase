@@ -28,6 +28,7 @@ export default class LegendHeader extends Component {
     onChangeCardAndRun: PropTypes.func,
     actionButtons: PropTypes.node,
     description: PropTypes.string,
+    classNameWidgets: PropTypes.string,
   };
 
   static defaultProps = {
@@ -59,6 +60,7 @@ export default class LegendHeader extends Component {
       description,
       onVisualizationClick,
       visualizationIsClickable,
+      classNameWidgets,
     } = this.props;
     const showDots = series.length > 1;
     const isNarrow = this.state.width < 150;
@@ -105,6 +107,7 @@ export default class LegendHeader extends Component {
                       })
                   : null
             }
+            infoClassName={classNameWidgets}
           />,
           onRemoveSeries &&
             index > 0 && (
@@ -118,7 +121,12 @@ export default class LegendHeader extends Component {
             ),
         ])}
         {actionButtons && (
-          <span className="flex-no-shrink flex-align-right relative">
+          <span
+            className={cx(
+              classNameWidgets,
+              "flex-no-shrink flex-align-right relative",
+            )}
+          >
             {actionButtons}
           </span>
         )}

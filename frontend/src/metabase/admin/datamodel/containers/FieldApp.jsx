@@ -39,6 +39,7 @@ import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 import { rescanFieldValues, discardFieldValues } from "../field";
 
 import { has_field_values_options } from "metabase/lib/core";
+import colors from "metabase/lib/colors";
 
 const SelectClasses =
   "h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold";
@@ -276,7 +277,7 @@ export const BackButton = ({ databaseId, tableId }) => (
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
     className="circle text-white p2 mt3 ml3 flex align-center justify-center  absolute top left"
-    style={{ backgroundColor: "#8091AB" }}
+    style={{ backgroundColor: colors["bg-dark"] }}
   >
     <Icon name="backArrow" />
   </Link>
@@ -492,11 +493,19 @@ export class FieldRemapping extends Component {
   }
 
   getMappingTypeForField = field => {
-    if (this.state.isChoosingInitialFkTarget) return MAP_OPTIONS.foreign;
+    if (this.state.isChoosingInitialFkTarget) {
+      return MAP_OPTIONS.foreign;
+    }
 
-    if (_.isEmpty(field.dimensions)) return MAP_OPTIONS.original;
-    if (field.dimensions.type === "external") return MAP_OPTIONS.foreign;
-    if (field.dimensions.type === "internal") return MAP_OPTIONS.custom;
+    if (_.isEmpty(field.dimensions)) {
+      return MAP_OPTIONS.original;
+    }
+    if (field.dimensions.type === "external") {
+      return MAP_OPTIONS.foreign;
+    }
+    if (field.dimensions.type === "internal") {
+      return MAP_OPTIONS.custom;
+    }
 
     throw new Error(t`Unrecognized mapping type`);
   };

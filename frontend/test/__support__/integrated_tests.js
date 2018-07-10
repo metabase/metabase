@@ -231,7 +231,9 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
           actionWithTimestamp,
         );
 
-        if (store._onActionDispatched) store._onActionDispatched();
+        if (store._onActionDispatched) {
+          store._onActionDispatched();
+        }
         return result;
       },
 
@@ -677,7 +679,9 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
         );
         console.log(error, { depth: null });
         console.log(`The original request: ${method} ${url}`);
-        if (requestBody) console.log(`Original payload: ${requestBody}`);
+        if (requestBody) {
+          console.log(`Original payload: ${requestBody}`);
+        }
       }
 
       throw error;
