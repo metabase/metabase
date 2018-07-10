@@ -2,8 +2,13 @@ import React, { Component } from "react";
 
 import CheckBox from "metabase/components/CheckBox.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import FieldList from "metabase/query_builder/components/FieldList";
 
 import { SortableContainer, SortableElement } from "react-sortable-hoc";
+
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import { fieldRefForColumn } from "metabase/lib/dataset";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -75,8 +80,39 @@ export default class ChartSettingOrderedFields extends Component {
   };
 
   render() {
-    const { value, columnNames } = this.props;
+    const { value, question, addField, columns, columnNames } = this.props;
     const anyEnabled = this.isAnySelected();
+
+    let additionalFieldsButton;
+    if (columns && question && question.query() instanceof StructuredQuery) {
+      const fieldRefs = columns.map(column => fieldRefForColumn(column));
+
+      additionalFieldsButton = (
+        <PopoverWithTrigger
+          triggerElement={"Add a field..."}
+          triggerClasses="mt1"
+        >
+          {({ onClose }) => (
+            <FieldList
+              tableMetadata={question.query().table()}
+              field={null}
+              fieldOptions={question.query().dimensionOptions(dimension => {
+                const mbql = dimension.mbql();
+                return !_.find(fieldRefs, fieldRef =>
+                  _.isEqual(fieldRef, mbql),
+                );
+              })}
+              onFieldChange={field => {
+                addField(field);
+                onClose();
+              }}
+              enableTimeGrouping={false}
+            />
+          )}
+        </PopoverWithTrigger>
+      );
+    }
+
     return (
       <div className="list">
         <div className="toggle-all">
@@ -104,6 +140,7 @@ export default class ChartSettingOrderedFields extends Component {
           distance={5}
           helperClass="z5"
         />
+        {additionalFieldsButton}
       </div>
     );
   }

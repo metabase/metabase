@@ -201,6 +201,7 @@ export default class Table extends Component {
           enabled: col.visibility_type !== "details-only",
         })),
       getProps: ([{ data: { cols } }]) => ({
+        columns: cols,
         columnNames: cols.reduce(
           (o, col) => ({ ...o, [col.name]: getFriendlyName(col) }),
           {},

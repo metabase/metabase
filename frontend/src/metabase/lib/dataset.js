@@ -1,6 +1,7 @@
 /* @flow */
 
 import _ from "underscore";
+import * as Q from "metabase/lib/query/query";
 
 import type {
   Value,
@@ -101,5 +102,16 @@ export function syncQueryFields(card: Card, cols: Column[]): void {
       console.log("fields expected", fields);
       card.dataset_query.query.fields = fields;
     }
+  }
+}
+
+export function getExistingFields(card: Card, cols: Column[]): ConcreteField[] {
+  const query = card.dataset_query.query;
+  if (query.fields && query.fields > 0) {
+    return query.fields;
+  } else if (Q.isBareRows(query)) {
+    return cols.map(col => fieldRefForColumn(col)).filter(id => id != null);
+  } else {
+    return [];
   }
 }
