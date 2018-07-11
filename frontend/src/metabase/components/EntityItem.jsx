@@ -12,7 +12,7 @@ import Icon from "metabase/components/Icon";
 import colors from "metabase/lib/colors";
 
 const EntityItemWrapper = Flex.extend`
-  border-bottom: 1px solid ${colors["bg-light"]};
+  border-bottom: 1px solid ${colors["bg-medium"]};
   /* TODO - figure out how to use the prop instead of this? */
   align-items: center;
   &:hover {
@@ -52,10 +52,10 @@ const EntityItem = ({
   ].filter(action => action);
 
   return (
-    <EntityItemWrapper py={2} className="hover-parent hover--visibility">
+    <EntityItemWrapper pb={1} pt={2} className="hover-parent hover--visibility">
       <IconWrapper
-        p={1}
-        mr={1}
+        p={2}
+        mr={2}
         align="center"
         justify="center"
         onClick={

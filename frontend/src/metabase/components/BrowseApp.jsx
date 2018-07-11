@@ -109,7 +109,7 @@ export class TableBrowser extends React.Component {
           {({ tables, loading, error }) => {
             return (
               <Box>
-                <Box my={2}>
+                <Box mt={3} mb={2}>
                   <BrowserCrumbs
                     crumbs={[
                       { title: t`Our data`, to: "browse" },

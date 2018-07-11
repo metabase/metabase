@@ -414,7 +414,7 @@ class CollectionLanding extends React.Component {
     return (
       <Box>
         <Box>
-          <Flex align="center" mt={2} mb={3} mx={4}>
+          <Flex align="center" mt={3} mb={3} mx={4}>
             <Box>
               <Box mb={1}>
                 <BrowserCrumbs
@@ -430,7 +430,7 @@ class CollectionLanding extends React.Component {
                   ]}
                 />
               </Box>
-              <h1 style={{ fontWeight: 900 }}>{currentCollection.name}</h1>
+              <h2 style={{ fontWeight: 900 }} className="pt1">{currentCollection.name}</h2>
             </Box>
 
             <Flex ml="auto">
