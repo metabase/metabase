@@ -291,6 +291,17 @@ export default class TableInteractiveSummary extends Component {
     const isClickable =
       onVisualizationClick && visualizationIsClickable(clicked);
 
+    let formatedRes = formatValue(value, {
+      column: column,
+      type: "cell",
+      jsx: true,
+      rich: true,
+      isTotal : row.isTotalColumnIndex === columnIndex + 1
+    });
+
+    if(row.isTotalColumnIndex === columnIndex + 1 && typeof formatedRes === 'string')
+      formatedRes = 'Totals for ' + formatedRes;
+
     return (
       <div
         key={key}
@@ -311,15 +322,11 @@ export default class TableInteractiveSummary extends Component {
             : undefined
         }
       >
+
+
         <div className="cellData">
           {/* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */}
-          {formatValue(value, {
-            column: column,
-            type: "cell",
-            jsx: true,
-            rich: true,
-            isTotal : row.isTotalColumnIndex === columnIndex + 1
-          })}
+          {formatedRes}
         </div>
       </div>
     );

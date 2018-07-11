@@ -224,6 +224,17 @@ export default class TableSimpleSummary extends Component {
                         else if (row.isTotalColumnIndex)
                           mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', 'font-weight':'bold' };
 
+
+                        let formatedRes = formatValue(cell, {
+                          column: column,
+                          jsx: true,
+                          rich: true,
+                        });
+
+                        if(row.isTotalColumnIndex === columnIndex + 1 && typeof formatedRes === 'string')
+                          formatedRes = 'Totals for ' + formatedRes;
+
+
                         const res = (
                           <td
                             key={rowIndex + '-' + columnIndex}
@@ -252,11 +263,7 @@ export default class TableSimpleSummary extends Component {
                             >
                               {cell == null
                                 ? "-"
-                                : formatValue(cell, {
-                                    column: column,
-                                    jsx: true,
-                                    rich: true,
-                                  })}
+                                : formatedRes}
                             </span>
                           </td>
                         );
