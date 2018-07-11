@@ -264,58 +264,33 @@ export const getRoutes = store => (
           component={GettingStartedGuideContainer}
         />
         <Route path="metrics" component={MetricListContainer} />
-        <Route path="metrics/:metricId" component={MetricDetailContainer} />
-        <Route
-          path="metrics/:metricId/questions"
-          component={MetricQuestionsContainer}
-        />
-        <Route
-          path="metrics/:metricId/revisions"
-          component={MetricRevisionsContainer}
-        />
+        <Route path="metrics/:metricId">
+          <IndexRoute component={MetricDetailContainer} />
+          <Route path="questions" component={MetricQuestionsContainer} />
+          <Route path="revisions" component={MetricRevisionsContainer} />
+        </Route>
         <Route path="segments" component={SegmentListContainer} />
-        <Route path="segments/:segmentId" component={SegmentDetailContainer} />
-        <Route
-          path="segments/:segmentId/fields"
-          component={SegmentFieldListContainer}
-        />
-        <Route
-          path="segments/:segmentId/fields/:fieldId"
-          component={SegmentFieldDetailContainer}
-        />
-        <Route
-          path="segments/:segmentId/questions"
-          component={SegmentQuestionsContainer}
-        />
-        <Route
-          path="segments/:segmentId/revisions"
-          component={SegmentRevisionsContainer}
-        />
+        <Route path="segments/:segmentId">
+          <IndexRoute component={SegmentDetailContainer} />
+          <Route path="fields" component={SegmentFieldListContainer} />
+          <Route
+            path="fields/:fieldId"
+            component={SegmentFieldDetailContainer}
+          />
+          <Route path="questions" component={SegmentQuestionsContainer} />
+          <Route path="revisions" component={SegmentRevisionsContainer} />
+        </Route>
         <Route path="databases" component={DatabaseListContainer} />
-        <Route
-          path="databases/:databaseId"
-          component={DatabaseDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables"
-          component={TableListContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId"
-          component={TableDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/fields"
-          component={FieldListContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/fields/:fieldId"
-          component={FieldDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/questions"
-          component={TableQuestionsContainer}
-        />
+        <Route path="databases/:databaseId">
+          <IndexRoute component={DatabaseDetailContainer} />
+          <Route path="tables" component={TableListContainer} />
+          <Route path="tables/:tableId">
+            <IndexRoute component={TableDetailContainer} />
+            <Route path="fields" component={FieldListContainer} />
+            <Route path="fields/:fieldId" component={FieldDetailContainer} />
+            <Route path="questions" component={TableQuestionsContainer} />
+          </Route>
+        </Route>
       </Route>
 
       {/* PULSE */}
