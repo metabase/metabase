@@ -15,7 +15,7 @@ import Button from "metabase/components/Button";
 import Card from "metabase/components/Card";
 import Modal from "metabase/components/Modal";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
-import EntityItem from "metabase/components/EntityItem";
+import EntityListItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -308,8 +308,8 @@ export const NormalItem = ({
   onToggleSelected,
   onMove,
 }) => (
-  <Link to={item.getUrl()}>
-    <EntityItem
+  <Link to={item.getUrl()} className="block">
+    <EntityListItem
       showSelect={selection.size > 0}
       selectable
       item={item}
@@ -414,7 +414,7 @@ class CollectionLanding extends React.Component {
     return (
       <Box>
         <Box>
-          <Flex align="center" mt={2} mb={3} mx={4}>
+          <Flex align="center" my={3} mx={4}>
             <Box>
               <Box mb={1}>
                 <BrowserCrumbs
@@ -430,7 +430,9 @@ class CollectionLanding extends React.Component {
                   ]}
                 />
               </Box>
-              <h1 style={{ fontWeight: 900 }}>{currentCollection.name}</h1>
+              <h2 style={{ fontWeight: 900 }} className="pt1">
+                {currentCollection.name}
+              </h2>
             </Box>
 
             <Flex ml="auto">

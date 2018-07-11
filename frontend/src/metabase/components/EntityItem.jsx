@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "c-3po";
 
-import { Flex } from "grid-styled";
+import { Box, Flex } from "grid-styled";
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
 import IconWrapper from "metabase/components/IconWrapper";
@@ -12,13 +12,21 @@ import Icon from "metabase/components/Icon";
 import colors from "metabase/lib/colors";
 
 const EntityItemWrapper = Flex.extend`
-  border-bottom: 1px solid ${colors["bg-light"]};
+  border-bottom: 1px solid ${colors["bg-medium"]};
   /* TODO - figure out how to use the prop instead of this? */
   align-items: center;
   &:hover {
     color: ${colors["brand"]};
   }
 `;
+
+export const EntityListItem = props => <EntityItem {...props} />;
+
+export const EntityCardItem = props => (
+  <Box my={1}>
+    <EntityItem {...props} />
+  </Box>
+);
 
 const EntityItem = ({
   name,
@@ -55,7 +63,7 @@ const EntityItem = ({
     <EntityItemWrapper py={2} className="hover-parent hover--visibility">
       <IconWrapper
         p={1}
-        mr={1}
+        mr={2}
         align="center"
         justify="center"
         onClick={
@@ -70,11 +78,13 @@ const EntityItem = ({
         {selectable ? (
           <Swapper
             startSwapped={selected}
-            defaultElement={<Icon name={iconName} color={iconColor} />}
-            swappedElement={<CheckBox checked={selected} />}
+            defaultElement={
+              <Icon name={iconName} color={iconColor} size={18} />
+            }
+            swappedElement={<CheckBox checked={selected} size={18} />}
           />
         ) : (
-          <Icon name={iconName} color={iconColor} />
+          <Icon name={iconName} color={iconColor} size={18} />
         )}
       </IconWrapper>
       <h3>

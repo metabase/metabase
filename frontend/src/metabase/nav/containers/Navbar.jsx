@@ -270,10 +270,11 @@ export default class Navbar extends Component {
           </Box>
         </Flex>
         <Flex ml="auto" align="center" className="relative z2">
-          <Link to={Urls.newQuestion()} mx={2}>
+          <Link to={Urls.newQuestion()} mx={2} className="hide sm-show">
             <Button medium>{t`Ask a question`}</Button>
           </Link>
           <EntityMenu
+            className="hide sm-show"
             triggerIcon="add"
             items={[
               {
