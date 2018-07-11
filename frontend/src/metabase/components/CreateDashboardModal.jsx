@@ -22,12 +22,9 @@ const mapDispatchToProps = {
 
 @connect(null, mapDispatchToProps)
 @withRouter
-class CreateDashboardModal extends Component {
+export default class CreateDashboardModal extends Component {
   constructor(props, context) {
     super(props, context);
-    this.createNewDash = this.createNewDash.bind(this);
-    this.setDescription = this.setDescription.bind(this);
-    this.setName = this.setName.bind(this);
 
     this.state = {
       name: null,
@@ -56,7 +53,7 @@ class CreateDashboardModal extends Component {
     this.setState({ description: event.target.value });
   };
 
-  async createNewDash(event) {
+  createNewDash = async event => {
     event.preventDefault();
 
     let name = this.state.name && this.state.name.trim();
@@ -156,6 +153,3 @@ class CreateDashboardModal extends Component {
   }
 }
 
-export default connect(null, mapDispatchToProps)(
-  withRouter(CreateDashboardModal),
-);
