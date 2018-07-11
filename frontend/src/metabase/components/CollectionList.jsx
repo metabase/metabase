@@ -3,10 +3,10 @@ import { t } from "c-3po";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
 
-import colors, { normal } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
-import Ellipsified from "metabase/components/Ellipsified";
+import CollectionItem from "metabase/components/CollectionItem"
+import { normal } from "metabase/lib/colors";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -14,22 +14,6 @@ import Link from "metabase/components/Link";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
-const CollectionItem = ({ collection, color, iconName = "all" }) => (
-  <Link
-    to={`collection/${collection.id}`}
-    color={color || normal.grey2}
-    className="text-brand-hover"
-  >
-    <Box bg={colors["bg-light"]} p={2}>
-      <Flex align="center" py={1} key={`collection-${collection.id}`}>
-        <Icon name={iconName} mx={1} />
-        <h4 className="overflow-hidden">
-          <Ellipsified>{collection.name}</Ellipsified>
-        </h4>
-      </Flex>
-    </Box>
-  </Link>
-);
 
 @connect(({ currentUser }) => ({ currentUser }), null)
 class CollectionList extends React.Component {
