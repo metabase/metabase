@@ -146,10 +146,10 @@ class Overworld extends React.Component {
               color={normal.grey2}
               className="text-brand-hover"
             >
-              <Flex bg={colors["bg-light"]} p={2} mb={1} align="center">
+              <Flex bg={colors["bg-light"]} p={2} my={1} align="center">
                 <Box ml="auto" mr="auto">
                   <Flex align="center">
-                    <h3>{t`Browse all items`}</h3>
+                    <h4>{t`Browse all items`}</h4>
                     <Icon name="chevronright" size={14} ml={1} />
                   </Flex>
                 </Box>
