@@ -38,7 +38,7 @@ import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 
-const ROW_HEIGHT = 86;
+const ROW_HEIGHT = 72;
 
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 

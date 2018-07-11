@@ -20,9 +20,7 @@ const EntityItemWrapper = Flex.extend`
   }
 `;
 
-export const EntityListItem = props => (
-  <EntityItem {...props} />
-);
+export const EntityListItem = props => <EntityItem {...props} />;
 
 export const EntityCardItem = props => (
   <Box my={1}>
@@ -64,7 +62,7 @@ const EntityItem = ({
   return (
     <EntityItemWrapper py={2} className="hover-parent hover--visibility">
       <IconWrapper
-        p={2}
+        p={1}
         mr={2}
         align="center"
         justify="center"
@@ -80,11 +78,13 @@ const EntityItem = ({
         {selectable ? (
           <Swapper
             startSwapped={selected}
-            defaultElement={<Icon name={iconName} color={iconColor} size={20} />}
-            swappedElement={<CheckBox checked={selected} size={20} />}
+            defaultElement={
+              <Icon name={iconName} color={iconColor} size={18} />
+            }
+            swappedElement={<CheckBox checked={selected} size={18} />}
           />
         ) : (
-          <Icon name={iconName} color={iconColor} size={20} />
+          <Icon name={iconName} color={iconColor} size={18} />
         )}
       </IconWrapper>
       <h3>
