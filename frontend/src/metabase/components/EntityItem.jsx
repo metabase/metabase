@@ -80,11 +80,11 @@ const EntityItem = ({
         {selectable ? (
           <Swapper
             startSwapped={selected}
-            defaultElement={<Icon name={iconName} color={iconColor} />}
-            swappedElement={<CheckBox checked={selected} />}
+            defaultElement={<Icon name={iconName} color={iconColor} size={20} />}
+            swappedElement={<CheckBox checked={selected} size={20} />}
           />
         ) : (
-          <Icon name={iconName} color={iconColor} />
+          <Icon name={iconName} color={iconColor} size={20} />
         )}
       </IconWrapper>
       <h3>
