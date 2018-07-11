@@ -4295,3 +4295,660 @@ databaseChangeLog:
             tableName: raw_column
         - dropTable:
             tableName: raw_table
+
+# The Quartz Task Scheduler can use a DB to 'cluster' tasks and make sure they are only ran by a single instance where
+# using a multi-instance Metabase setup.
+
+  - changeSet:
+      id: 89
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - createTable:
+            tableName: QRTZ_JOB_DETAILS
+            remarks: 'Used for Quartz scheduler.'
+            columns:
+              - column:
+                  name: SCHED_NAME
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: JOB_NAME
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: JOB_GROUP
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: DESCRIPTION
+                  type: varchar(250)
+              - column:
+                  name: JOB_CLASS_NAME
+                  type: varchar(250)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: IS_DURABLE
+                  type: bool
+                  constraints:
+                    nullable: false
+              - column:
+                  name: IS_NONCONCURRENT
+                  type: bool
+                  constraints:
+                    nullable: false
+              - column:
+                  name: IS_UPDATE_DATA
+                  type: bool
+                  constraints:
+                    nullable: false
+              - column:
+                  name: REQUESTS_RECOVERY
+                  type: bool
+                  constraints:
+                    nullable: false
+              - column:
+                  name: JOB_DATA
+                  type: ${blob.type}
+        - addPrimaryKey:
+            tableName: QRTZ_JOB_DETAILS
+            columnNames: SCHED_NAME, JOB_NAME, JOB_GROUP
+            constraintName: PK_QRTZ_JOB_DETAILS
+        - createTable:
+            tableName: QRTZ_TRIGGERS
+            remarks: 'Used for Quartz scheduler.'
+            columns:
+              - column:
+                  name: SCHED_NAME
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_NAME
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_GROUP
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: JOB_NAME
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: JOB_GROUP
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: DESCRIPTION
+                  type: varchar(250)
+              - column:
+                  name: NEXT_FIRE_TIME
+                  type: bigint
+              - column:
+                  name: PREV_FIRE_TIME
+                  type: bigint
+              - column:
+                  name: PRIORITY
+                  type: integer
+              - column:
+                  name: TRIGGER_STATE
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_TYPE
+                  type: varchar(8)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: START_TIME
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: END_TIME
+                  type: bigint
+              - column:
+                  name: CALENDAR_NAME
+                  type: varchar(200)
+              - column:
+                  name: MISFIRE_INSTR
+                  type: smallint
+              - column:
+                  name: JOB_DATA
+                  type: ${blob.type}
+        - addPrimaryKey:
+            tableName: QRTZ_TRIGGERS
+            columnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            constraintName: PK_QRTZ_TRIGGERS
+        - addForeignKeyConstraint:
+            baseTableName: QRTZ_TRIGGERS
+            baseColumnNames: SCHED_NAME, JOB_NAME, JOB_GROUP
+            referencedTableName: QRTZ_JOB_DETAILS
+            referencedColumnNames: SCHED_NAME, JOB_NAME, JOB_GROUP
+            constraintName: FK_QRTZ_TRIGGERS_JOB_DETAILS
+        - createTable:
+            tableName: QRTZ_SIMPLE_TRIGGERS
+            remarks: 'Used for Quartz scheduler.'
+            columns:
+              - column:
+                  name: SCHED_NAME
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_NAME
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_GROUP
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: REPEAT_COUNT
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: REPEAT_INTERVAL
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TIMES_TRIGGERED
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: QRTZ_SIMPLE_TRIGGERS
+            columnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            constraintName: PK_QRTZ_SIMPLE_TRIGGERS
+        - addForeignKeyConstraint:
+            baseTableName: QRTZ_SIMPLE_TRIGGERS
+            baseColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            referencedTableName: QRTZ_TRIGGERS
+            referencedColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            constraintName: FK_QRTZ_SIMPLE_TRIGGERS_TRIGGERS
+        - createTable:
+            tableName: QRTZ_CRON_TRIGGERS
+            remarks: 'Used for Quartz scheduler.'
+            columns:
+              - column:
+                  name: SCHED_NAME
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_NAME
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_GROUP
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: CRON_EXPRESSION
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TIME_ZONE_ID
+                  type: varchar(80)
+        - addPrimaryKey:
+            tableName: QRTZ_CRON_TRIGGERS
+            columnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            constraintName: PK_QRTZ_CRON_TRIGGERS
+        - addForeignKeyConstraint:
+            baseTableName: QRTZ_CRON_TRIGGERS
+            baseColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            referencedTableName: QRTZ_TRIGGERS
+            referencedColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            constraintName: FK_QRTZ_CRON_TRIGGERS_TRIGGERS
+        - createTable:
+            tableName: QRTZ_SIMPROP_TRIGGERS
+            remarks: 'Used for Quartz scheduler.'
+            columns:
+              - column:
+                  name: SCHED_NAME
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_NAME
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_GROUP
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: STR_PROP_1
+                  type: varchar(512)
+              - column:
+                  name: STR_PROP_2
+                  type: varchar(512)
+              - column:
+                  name: STR_PROP_3
+                  type: varchar(512)
+              - column:
+                  name: INT_PROP_1
+                  type: int
+              - column:
+                  name: INT_PROP_2
+                  type: int
+              - column:
+                  name: LONG_PROP_1
+                  type: bigint
+              - column:
+                  name: LONG_PROP_2
+                  type: bigint
+              - column:
+                  name: DEC_PROP_1
+                  type: numeric(13,4)
+              - column:
+                  name: DEC_PROP_2
+                  type: numeric(13,4)
+              - column:
+                  name: BOOL_PROP_1
+                  type: bool
+              - column:
+                  name: BOOL_PROP_2
+                  type: bool
+        - addPrimaryKey:
+            tableName: QRTZ_SIMPROP_TRIGGERS
+            columnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            constraintName: PK_QRTZ_SIMPROP_TRIGGERS
+        - addForeignKeyConstraint:
+            baseTableName: QRTZ_SIMPROP_TRIGGERS
+            baseColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            referencedTableName: QRTZ_TRIGGERS
+            referencedColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            constraintName: FK_QRTZ_SIMPROP_TRIGGERS_TRIGGERS
+        - createTable:
+            tableName: QRTZ_BLOB_TRIGGERS
+            remarks: 'Used for Quartz scheduler.'
+            columns:
+              - column:
+                  name: SCHED_NAME
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_NAME
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_GROUP
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: BLOB_DATA
+                  type: ${blob.type}
+        - addPrimaryKey:
+            tableName: QRTZ_BLOB_TRIGGERS
+            columnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            constraintName: PK_QRTZ_BLOB_TRIGGERS
+        - addForeignKeyConstraint:
+            baseTableName: QRTZ_BLOB_TRIGGERS
+            baseColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            referencedTableName: QRTZ_TRIGGERS
+            referencedColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
+            constraintName: FK_QRTZ_BLOB_TRIGGERS_TRIGGERS
+        - createTable:
+            tableName: QRTZ_CALENDARS
+            remarks: 'Used for Quartz scheduler.'
+            columns:
+              - column:
+                  name: SCHED_NAME
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: CALENDAR_NAME
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: CALENDAR
+                  type: ${blob.type}
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: QRTZ_CALENDARS
+            columnNames: SCHED_NAME, CALENDAR_NAME
+            constraintName: PK_QRTZ_CALENDARS
+        - createTable:
+            tableName: QRTZ_PAUSED_TRIGGER_GRPS
+            remarks: 'Used for Quartz scheduler.'
+            columns:
+              - column:
+                  name: SCHED_NAME
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_GROUP
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: QRTZ_PAUSED_TRIGGER_GRPS
+            columnNames: SCHED_NAME, TRIGGER_GROUP
+            constraintName: PK_SCHED_NAME
+        - createTable:
+            tableName: QRTZ_FIRED_TRIGGERS
+            remarks: 'Used for Quartz scheduler.'
+            columns:
+              - column:
+                  name: SCHED_NAME
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ENTRY_ID
+                  type: varchar(95)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_NAME
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: TRIGGER_GROUP
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: INSTANCE_NAME
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: FIRED_TIME
+                  type: bigint
+                  constraints:
+                    nullable: false
+# Note: this column is not used on Quartz 2.1.x; it is used in 2.2.x, which recommends making it NOT NULL. I've made it
+# nullable since at the time of this migration we're still using 2.1.7; including it gives us an easy upgrade path in
+# the future.
+              - column:
+                  name: SCHED_TIME
+                  type: bigint
+              - column:
+                  name: PRIORITY
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: STATE
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: JOB_NAME
+                  type: varchar(200)
+              - column:
+                  name: JOB_GROUP
+                  type: varchar(200)
+              - column:
+                  name: IS_NONCONCURRENT
+                  type: bool
+              - column:
+                  name: REQUESTS_RECOVERY
+                  type: bool
+        - addPrimaryKey:
+            tableName: QRTZ_FIRED_TRIGGERS
+            columnNames: SCHED_NAME, ENTRY_ID
+            constraintName: PK_QRTZ_FIRED_TRIGGERS
+        - createTable:
+            tableName: QRTZ_SCHEDULER_STATE
+            remarks: 'Used for Quartz scheduler.'
+            columns:
+              - column:
+                  name: SCHED_NAME
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: INSTANCE_NAME
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: LAST_CHECKIN_TIME
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: CHECKIN_INTERVAL
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: QRTZ_SCHEDULER_STATE
+            columnNames: SCHED_NAME, INSTANCE_NAME
+            constraintName: PK_QRTZ_SCHEDULER_STATE
+        - createTable:
+            tableName: QRTZ_LOCKS
+            remarks: 'Used for Quartz scheduler.'
+            columns:
+              - column:
+                  name: SCHED_NAME
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: LOCK_NAME
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: QRTZ_LOCKS
+            columnNames: SCHED_NAME, LOCK_NAME
+            constraintName: PK_QRTZ_LOCKS
+        - createIndex:
+            indexName: IDX_QRTZ_J_REQ_RECOVERY
+            tableName: QRTZ_JOB_DETAILS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: REQUESTS_RECOVERY
+        - createIndex:
+            indexName: IDX_QRTZ_J_GRP
+            tableName: QRTZ_JOB_DETAILS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: JOB_GROUP
+        - createIndex:
+            indexName: IDX_QRTZ_T_J
+            tableName: QRTZ_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: JOB_NAME
+              - column:
+                  name: JOB_GROUP
+        - createIndex:
+            indexName: IDX_QRTZ_T_JG
+            tableName: QRTZ_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: JOB_GROUP
+        - createIndex:
+            indexName: IDX_QRTZ_T_C
+            tableName: QRTZ_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: CALENDAR_NAME
+        - createIndex:
+            indexName: IDX_QRTZ_T_G
+            tableName: QRTZ_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: TRIGGER_GROUP
+        - createIndex:
+            indexName: IDX_QRTZ_T_STATE
+            tableName: QRTZ_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: TRIGGER_STATE
+        - createIndex:
+            indexName: IDX_QRTZ_T_N_STATE
+            tableName: QRTZ_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: TRIGGER_NAME
+              - column:
+                  name: TRIGGER_GROUP
+              - column:
+                  name: TRIGGER_STATE
+        - createIndex:
+            indexName: IDX_QRTZ_T_N_G_STATE
+            tableName: QRTZ_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: TRIGGER_GROUP
+              - column:
+                  name: TRIGGER_STATE
+        - createIndex:
+            indexName: IDX_QRTZ_T_NEXT_FIRE_TIME
+            tableName: QRTZ_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: NEXT_FIRE_TIME
+        - createIndex:
+            indexName: IDX_QRTZ_T_NFT_ST
+            tableName: QRTZ_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: TRIGGER_STATE
+              - column:
+                  name: NEXT_FIRE_TIME
+        - createIndex:
+            indexName: IDX_QRTZ_T_NFT_MISFIRE
+            tableName: QRTZ_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: MISFIRE_INSTR
+              - column:
+                  name: NEXT_FIRE_TIME
+        - createIndex:
+            indexName: IDX_QRTZ_T_NFT_ST_MISFIRE
+            tableName: QRTZ_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: MISFIRE_INSTR
+              - column:
+                  name: NEXT_FIRE_TIME
+              - column:
+                  name: TRIGGER_STATE
+        - createIndex:
+            indexName: IDX_QRTZ_T_NFT_ST_MISFIRE_GRP
+            tableName: QRTZ_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: MISFIRE_INSTR
+              - column:
+                  name: NEXT_FIRE_TIME
+              - column:
+                  name: TRIGGER_GROUP
+              - column:
+                  name: TRIGGER_STATE
+        - createIndex:
+            indexName: IDX_QRTZ_FT_TRIG_INST_NAME
+            tableName: QRTZ_FIRED_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: INSTANCE_NAME
+        - createIndex:
+            indexName: IDX_QRTZ_FT_INST_JOB_REQ_RCVRY
+            tableName: QRTZ_FIRED_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: INSTANCE_NAME
+              - column:
+                  name: REQUESTS_RECOVERY
+        - createIndex:
+            indexName: IDX_QRTZ_FT_J_G
+            tableName: QRTZ_FIRED_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: JOB_NAME
+              - column:
+                  name: JOB_GROUP
+        - createIndex:
+            indexName: IDX_QRTZ_FT_JG
+            tableName: QRTZ_FIRED_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: JOB_GROUP
+        - createIndex:
+            indexName: IDX_QRTZ_FT_T_G
+            tableName: QRTZ_FIRED_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: TRIGGER_NAME
+              - column:
+                  name: TRIGGER_GROUP
+        - createIndex:
+            indexName: IDX_QRTZ_FT_TG
+            tableName: QRTZ_FIRED_TRIGGERS
+            columns:
+              - column:
+                  name: SCHED_NAME
+              - column:
+                  name: TRIGGER_GROUP

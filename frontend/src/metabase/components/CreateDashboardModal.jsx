@@ -3,6 +3,9 @@ import PropTypes from "prop-types";
 import { t } from "c-3po";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
+import { push } from "react-router-redux";
+
+import * as Urls from "metabase/lib/urls";
 
 import FormField from "metabase/components/form/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -14,6 +17,7 @@ import Dashboards from "metabase/entities/dashboards";
 
 const mapDispatchToProps = {
   createDashboard: Dashboards.actions.create,
+  push,
 };
 
 @connect(null, mapDispatchToProps)
@@ -25,7 +29,6 @@ export default class CreateDashboardModal extends Component {
     this.setDescription = this.setDescription.bind(this);
     this.setName = this.setName.bind(this);
 
-    console.log(props.params);
     this.state = {
       name: null,
       description: null,
@@ -49,7 +52,7 @@ export default class CreateDashboardModal extends Component {
     this.setState({ description: event.target.value });
   }
 
-  createNewDash(event) {
+  async createNewDash(event) {
     event.preventDefault();
 
     let name = this.state.name && this.state.name.trim();
@@ -62,7 +65,8 @@ export default class CreateDashboardModal extends Component {
       collection_id: this.state.collection_id,
     };
 
-    this.props.createDashboard(newDash, { redirect: true });
+    const { payload } = await this.props.createDashboard(newDash);
+    this.props.push(Urls.dashboard(payload.result));
     this.props.onClose();
   }
 

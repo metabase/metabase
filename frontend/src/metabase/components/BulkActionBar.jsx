@@ -22,14 +22,14 @@ const BulkActionBar = ({ children, showing }) => (
     }}
   >
     {({ opacity, translateY }) => (
-      <FixedBottomBar>
-        <Card
-          style={{
-            borderRadius: 0,
-            opacity,
-            transform: `translateY(${translateY}px)`,
-          }}
-        >
+      <FixedBottomBar
+        style={{
+          borderRadius: 0,
+          opacity,
+          transform: `translateY(${translateY}px)`,
+        }}
+      >
+        <Card>
           <Flex align="center" py={2} px={4}>
             {children}
           </Flex>

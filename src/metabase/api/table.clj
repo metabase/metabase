@@ -250,12 +250,10 @@
           (assoc
               :table_id     (str "card__" card-id)
               :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
-              ;; don't return :special_type if it's a PK or FK because it confuses the frontend since it can't
-              ;; actually be used that way IRL
-              :special_type (when-let [special-type (keyword (:special_type col))]
-                              (when-not (or (isa? special-type :type/PK)
-                                            (isa? special-type :type/FK))
-                                special-type)))
+              ;; Assoc special_type at least temprorarily. We need the correct special type in place to make decisions
+              ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
+              ;; the dimension options
+              :special_type (keyword (:special_type col)))
           add-field-dimension-options))))
 
 (defn card->virtual-table
@@ -273,6 +271,16 @@
                                                                            database_id
                                                                            (:result_metadata card))))))
 
+(defn- remove-nested-pk-fk-special-types
+  "This method clears the special_type attribute for PK/FK fields of nested queries. Those fields having a special
+  type confuses the frontend and it can really used in the same way"
+  [{:keys [fields] :as metadata-response}]
+  (assoc metadata-response :fields (for [{:keys [special_type] :as field} fields]
+                                     (if (or (isa? special_type :type/PK)
+                                             (isa? special_type :type/FK))
+                                       (assoc field :special_type nil)
+                                       field))))
+
 (api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
@@ -282,7 +290,8 @@
     (-> card
         api/read-check
         (card->virtual-table :include-fields? true)
-        (assoc-dimension-options (driver/database-id->driver database_id)))))
+        (assoc-dimension-options (driver/database-id->driver database_id))
+        remove-nested-pk-fk-special-types)))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
