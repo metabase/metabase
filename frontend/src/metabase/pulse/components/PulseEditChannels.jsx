@@ -297,7 +297,7 @@ export default class PulseEditChannels extends Component {
       slack: { name: t`Slack`, type: "slack" },
     };
     return (
-      <ul className="bordered rounded">
+      <ul className="bordered rounded bg-white">
         {Object.values(channels).map(channelSpec =>
           this.renderChannelSection(channelSpec),
         )}
