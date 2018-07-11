@@ -2,7 +2,7 @@
 
 exports[`Card should render "dark" correctly 1`] = `
 <div
-  className="Card-RQot jvlGhM"
+  className="Card-RQot fgzjUV"
 >
   <div
     className="p4"
@@ -14,7 +14,7 @@ exports[`Card should render "dark" correctly 1`] = `
 
 exports[`Card should render "hoverable" correctly 1`] = `
 <div
-  className="Card-RQot lhSKsP"
+  className="Card-RQot gCQWtx"
 >
   <div
     className="p4"
@@ -26,7 +26,7 @@ exports[`Card should render "hoverable" correctly 1`] = `
 
 exports[`Card should render "normal" correctly 1`] = `
 <div
-  className="Card-RQot eykJzW"
+  className="Card-RQot krKrLM"
 >
   <div
     className="p4"
