@@ -15,21 +15,24 @@ import ItemTypeFilterBar, {
   FILTERS,
 } from "metabase/components/ItemTypeFilterBar";
 
+const PAGE_PADDING = [1, 2, 4];
+
 export default class SearchApp extends React.Component {
   render() {
     const { location } = this.props;
     return (
-      <Box mx={4}>
-        <Flex align="center" mb={2} py={3}>
+      <Box mx={PAGE_PADDING}>
+        <Flex align="center" mb={2} py={[2, 3]}>
           <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
         </Flex>
         <ItemTypeFilterBar
           filters={FILTERS.concat({
             name: t`'Collections`,
             filter: "collection",
+            icon: "all",
           })}
         />
-        <Box w={2 / 3}>
+        <Box w={[1, 2 / 3]}>
           <EntityListLoader
             entityType="search"
             entityQuery={location.query}
