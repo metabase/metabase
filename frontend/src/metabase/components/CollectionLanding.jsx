@@ -38,7 +38,7 @@ import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 
-const ROW_HEIGHT = 72;
+const ROW_HEIGHT = 86;
 
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
@@ -308,7 +308,7 @@ export const NormalItem = ({
   onToggleSelected,
   onMove,
 }) => (
-  <Link to={item.getUrl()}>
+  <Link to={item.getUrl()} className="block">
     <EntityListItem
       showSelect={selection.size > 0}
       selectable
