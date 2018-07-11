@@ -1,6 +1,38 @@
 import generatePassword from "password-generator";
 import { t } from "c-3po";
 
+const LAYOUT_PROPS = [
+  'm',
+  'ml',
+  'mr',
+  'mt',
+  'mb',
+  'mx',
+  'my',
+  'p',
+  'pl',
+  'pr',
+  'pt',
+  'pb',
+  'px',
+  'py',
+  'bg',
+  'color',
+  'hover'
+]
+
+export function stripLayoutProps (props) {
+  const newProps = props
+
+  LAYOUT_PROPS.map(l => {
+    if(Object.keys(newProps).includes(l)) {
+     delete newProps[l]
+    }
+  })
+
+  return newProps
+}
+
 function s4() {
   return Math.floor((1 + Math.random()) * 0x10000)
     .toString(16)
