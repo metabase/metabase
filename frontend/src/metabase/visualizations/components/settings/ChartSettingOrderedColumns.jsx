@@ -62,6 +62,18 @@ export default class ChartSettingOrderedColumns extends Component {
     this.props.onChange(fields);
   };
 
+  handleAddNewField = fieldRef => {
+    const { value, onChange, addField } = this.props;
+    onChange([
+      // remove duplicates
+      ...value.filter(
+        columnSetting => !_.isEqual(columnSetting.fieldRef, fieldRef),
+      ),
+      { fieldRef, enabled: true },
+    ]);
+    addField(fieldRef);
+  };
+
   getColumnName = columnSetting =>
     getFriendlyName(
       findColumnForColumnSetting(this.props.columns, columnSetting) || {
@@ -70,7 +82,7 @@ export default class ChartSettingOrderedColumns extends Component {
     );
 
   render() {
-    const { value, question, addField, columns } = this.props;
+    const { value, question, columns } = this.props;
 
     let additionalFieldOptions = { count: 0 };
     if (columns && question && question.query() instanceof StructuredQuery) {
@@ -82,7 +94,11 @@ export default class ChartSettingOrderedColumns extends Component {
     }
 
     const [enabledColumns, disabledColumns] = _.partition(
-      value.map((columnSetting, index) => ({ ...columnSetting, index })),
+      value
+        .filter(columnSetting =>
+          findColumnForColumnSetting(columns, columnSetting),
+        )
+        .map((columnSetting, index) => ({ ...columnSetting, index })),
       columnSetting => columnSetting.enabled,
     );
 
@@ -106,18 +122,20 @@ export default class ChartSettingOrderedColumns extends Component {
         {disabledColumns.length > 0 || additionalFieldOptions.count > 0 ? (
           <h4 className="mb2 mt4 pt4 border-top">{`More fields`}</h4>
         ) : null}
-        {disabledColumns.map(columnSetting => (
+        {disabledColumns.map((columnSetting, index) => (
           <ColumnItem
+            key={index}
             title={this.getColumnName(columnSetting)}
             onAdd={() => this.handleEnable(columnSetting)}
           />
         ))}
         {additionalFieldOptions.count > 0 && (
           <div>
-            {additionalFieldOptions.dimensions.map(dimension => (
+            {additionalFieldOptions.dimensions.map((dimension, index) => (
               <ColumnItem
+                key={index}
                 title={dimension.displayName()}
-                onAdd={() => addField(dimension.mbql())}
+                onAdd={() => this.handleAddNewField(dimension.mbql())}
               />
             ))}
             {additionalFieldOptions.fks.map(fk => (
@@ -125,10 +143,11 @@ export default class ChartSettingOrderedColumns extends Component {
                 <div className="my2 text-grey-4 text-bold text-uppercase text-small">
                   {fk.field.target.table.display_name}
                 </div>
-                {fk.dimensions.map(dimension => (
+                {fk.dimensions.map((dimension, index) => (
                   <ColumnItem
+                    key={index}
                     title={dimension.displayName()}
-                    onAdd={() => addField(dimension.mbql())}
+                    onAdd={() => this.handleAddNewField(dimension.mbql())}
                   />
                 ))}
               </div>

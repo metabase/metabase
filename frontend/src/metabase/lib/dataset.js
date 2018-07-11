@@ -71,18 +71,30 @@ export function findColumnForColumnSetting(
   columns: Column[],
   columnSetting: ColumnSetting,
 ): ?Column {
+  const index = findColumnIndexForColumnSetting(columns, columnSetting);
+  if (index >= 0) {
+    return columns[index];
+  } else {
+    return null;
+  }
+}
+
+export function findColumnIndexForColumnSetting(
+  columns: Column[],
+  columnSetting: ColumnSetting,
+): number {
   const { fieldRef } = columnSetting;
   // first try to find by fieldRef
   if (fieldRef != null) {
-    const column = _.find(columns, col =>
+    const index = _.findIndex(columns, col =>
       _.isEqual(fieldRef, fieldRefForColumn(col)),
     );
-    if (column) {
-      return column;
+    if (index >= 0) {
+      return index;
     }
   }
   // if that fails, find by column name
-  return _.findWhere(columns, { name: columnSetting.name });
+  return _.findIndex(columns, col => col.name === columnSetting.name);
 }
 
 /**
