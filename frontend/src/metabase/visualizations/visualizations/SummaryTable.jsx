@@ -27,6 +27,7 @@ import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 import { GroupingManager } from "../lib/GroupingManager";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import {RawSeries, SingleSeries} from "metabase/meta/types/Visualization";
+import {GROUPS_SOURCES, VALUES_SOURCES} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
 
 type Props = {
   card: Card,
@@ -66,21 +67,15 @@ export default class SummaryTable extends Component {
   static settings = {
     [COLUMNS_SETTINGS]: {
       widget: SummaryTableColumnsSetting,
-      getHidden: () => false,
       isValid: ([{ card, data }]) =>
         settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
-      getDefault: ([tmp]) =>
+      getDefault: ([{data : {columns}}]) =>
         {
+          const gs = columns.slice(0, columns.length -1);
+          const vs = columns.slice(columns.length -1);
+          return {[GROUPS_SOURCES] : gs, [VALUES_SOURCES] : vs, columnNameToMetadata: gs.reduce((acc, column) => ({...acc, [column]: {showTotals : true}}), {} )}
 
 
-          console.log(tmp);
-
-            return {cols : []}
-
-        // columnNameToMetadata:cols.reduce(
-        //   (o, col) => ({ ...o, [col.name]: {enabled: col.visibility_type !== "details-only"} }),
-        //   {},
-        // )
       }
       ,
         // cols.map(col => ({
