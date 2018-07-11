@@ -99,8 +99,18 @@ export const ROOT_COLLECTION = {
   path: [],
 };
 
+// the user's personal collection
+export const PERSONAL_COLLECTION = {
+  id: undefined, // to be filled in by getExpandedCollectionsById
+  name: t`My personal collection`,
+  location: "/",
+  path: ["root"],
+  can_edit: true,
+};
+
+// fake collection for admins that contains all other user's collections
 export const PERSONAL_COLLECTIONS = {
-  id: "personal",
+  id: "personal", // placeholder id
   name: t`Personal Collections`,
   location: "/",
   path: ["root"],
@@ -110,17 +120,7 @@ export const PERSONAL_COLLECTIONS = {
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
-function getExpandedCollectionsById(
-  collections,
-  userPersonalCollectionId,
-  includePersonalCollections = true,
-) {
-  const personalCollections = collections.filter(
-    collection => collection.personal_owner_id != null,
-  );
-  collections = collections.filter(
-    collection => collection.personal_owner_id == null,
-  );
+function getExpandedCollectionsById(collections, userPersonalCollectionId) {
   const collectionsById = {};
   for (const c of collections) {
     collectionsById[c.id] = {
@@ -135,44 +135,49 @@ function getExpandedCollectionsById(
     };
   }
 
-  // make sure we have the root collection with all relevant info
+  // "Our Analytics"
   collectionsById[ROOT_COLLECTION.id] = {
-    children: [],
     ...ROOT_COLLECTION,
+    parent: null,
+    children: [],
     ...(collectionsById[ROOT_COLLECTION.id] || {}),
   };
 
   // "My personal collection"
   if (userPersonalCollectionId != null) {
     collectionsById[ROOT_COLLECTION.id].children.push({
+      ...PERSONAL_COLLECTION,
       id: userPersonalCollectionId,
-      name: t`My personal collection`,
-      location: "/",
-      path: ["root"],
-      parent: collectionsById[PERSONAL_COLLECTIONS.id],
+      parent: collectionsById[ROOT_COLLECTION.id],
+      children: [],
     });
   }
 
   // "Personal Collections"
-  if (includePersonalCollections && personalCollections.length > 0) {
-    collectionsById[PERSONAL_COLLECTIONS.id] = {
-      children: personalCollections,
-      ...PERSONAL_COLLECTIONS,
-    };
-    collectionsById[ROOT_COLLECTION.id].children.push(
-      collectionsById[PERSONAL_COLLECTIONS.id],
-    );
-    for (const c of personalCollections) {
-      c.parent = collectionsById[PERSONAL_COLLECTIONS.id];
-    }
-  }
+  collectionsById[PERSONAL_COLLECTIONS.id] = {
+    ...PERSONAL_COLLECTIONS,
+    parent: collectionsById[ROOT_COLLECTION.id],
+    children: [],
+  };
+  collectionsById[ROOT_COLLECTION.id].children.push(
+    collectionsById[PERSONAL_COLLECTIONS.id],
+  );
 
   // iterate over original collections so we don't include ROOT_COLLECTION as
   // a child of itself
   for (const { id } of collections) {
     const c = collectionsById[id];
     if (c.path) {
-      const parent = c.path[c.path.length - 1] || "root";
+      let parent;
+      // move personal collections into PERSONAL_COLLECTIONS fake collection
+      if (c.personal_owner_id != null) {
+        parent = PERSONAL_COLLECTIONS.id;
+      } else if (c.path[c.path.length - 1]) {
+        parent = c.path[c.path.length - 1];
+      } else {
+        parent = ROOT_COLLECTION.id;
+      }
+
       c.parent = collectionsById[parent];
       // need to ensure the parent collection exists, it may have been filtered
       // because we're selecting a collection's parent collection and it can't
@@ -182,5 +187,11 @@ function getExpandedCollectionsById(
       }
     }
   }
+
+  // remove PERSONAL_COLLECTIONS collection if there are none
+  if (collectionsById[PERSONAL_COLLECTIONS.id].children.length === 0) {
+    delete collectionsById[PERSONAL_COLLECTIONS.id];
+  }
+
   return collectionsById;
 }

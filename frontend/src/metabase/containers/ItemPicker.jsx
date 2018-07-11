@@ -26,6 +26,8 @@ export default class ItemPicker extends React.Component {
     super(props);
     this.state = {
       parentId: "root",
+      searchMode: false,
+      searchString: false,
     };
   }
 
@@ -60,7 +62,7 @@ export default class ItemPicker extends React.Component {
 
   render() {
     const { value, onChange, collectionsById, style, className } = this.props;
-    const { parentId } = this.state;
+    const { parentId, searchMode, searchString } = this.state;
 
     const models = new Set(this.props.models);
     const modelsIncludeNonCollections =
@@ -95,41 +97,73 @@ export default class ItemPicker extends React.Component {
 
     return (
       <Box style={style} className={className}>
-        <Box pb={1} mb={2} className="border-bottom">
-          <Breadcrumbs crumbs={crumbs} />
-        </Box>
-        <Box className="scroll-y">
-          {allCollections.map(collection => (
-            <Item
-              item={collection}
-              name={collection.name}
-              color={COLLECTION_ICON_COLOR}
-              icon="all"
-              selected={isSelected(collection) && models.has("collection")}
-              canSelect={
-                models.has("collection") && collection.can_edit !== false
-              }
-              hasChildren={
-                (collection.children &&
-                  collection.children.length > 0 &&
-                  // exclude root since we show root's subcollections alongside it
-                  !isRoot(collection)) ||
-                modelsIncludeNonCollections
-              }
-              onChange={collection =>
-                isRoot(collection)
-                  ? // "root" collection should have `null` id
-                    onChange({ id: null, model: "collection" })
-                  : onChange(collection)
-              }
-              onChangeParentId={parentId => this.setState({ parentId })}
+        {searchMode ? (
+          <Box pb={1} mb={2} className="border-bottom flex align-center">
+            <input
+              type="search"
+              className="input rounded flex-full"
+              placeholder="Search"
+              autoFocus
+              onKeyPress={e => {
+                if (e.key === "Enter") {
+                  this.setState({ searchString: e.target.value });
+                }
+              }}
             />
-          ))}
-          {modelsIncludeNonCollections && (
+            <Icon
+              name="close"
+              className="ml-auto pl2 text-grey-2 text-grey-4-hover cursor-pointer"
+              onClick={() =>
+                this.setState({ searchMode: null, searchString: null })
+              }
+            />
+          </Box>
+        ) : (
+          <Box pb={1} mb={2} className="border-bottom flex align-center">
+            <Breadcrumbs crumbs={crumbs} />
+            <Icon
+              name="search"
+              className="ml-auto pl2 text-grey-2 text-grey-4-hover cursor-pointer"
+              onClick={() => this.setState({ searchMode: true })}
+            />
+          </Box>
+        )}
+        <Box className="scroll-y">
+          {!searchString
+            ? allCollections.map(collection => (
+                <Item
+                  item={collection}
+                  name={collection.name}
+                  color={COLLECTION_ICON_COLOR}
+                  icon="all"
+                  selected={isSelected(collection) && models.has("collection")}
+                  canSelect={
+                    models.has("collection") && collection.can_edit !== false
+                  }
+                  hasChildren={
+                    (collection.children &&
+                      collection.children.length > 0 &&
+                      // exclude root since we show root's subcollections alongside it
+                      !isRoot(collection)) ||
+                    modelsIncludeNonCollections
+                  }
+                  onChange={collection =>
+                    isRoot(collection)
+                      ? // "root" collection should have `null` id
+                        onChange({ id: null, model: "collection" })
+                      : onChange(collection)
+                  }
+                  onChangeParentId={parentId => this.setState({ parentId })}
+                />
+              ))
+            : null}
+          {(modelsIncludeNonCollections || searchString) && (
             <EntityListLoader
               entityType="search"
               entityQuery={{
-                collection: parentId,
+                ...(searchString
+                  ? { q: searchString }
+                  : { collection: parentId }),
                 ...(models.size === 1 ? { model: Array.from(models)[0] } : {}),
               }}
               wrapped
@@ -138,7 +172,10 @@ export default class ItemPicker extends React.Component {
                 list
                   .filter(
                     item =>
-                      item.model !== "collection" && models.has(item.model),
+                      // remove collections unless we're searching
+                      (item.model !== "collection" || !!searchString) &&
+                      // only include desired models (TODO: ideally the endpoint would handle this)
+                      models.has(item.model),
                   )
                   .map(item => (
                     <Item
