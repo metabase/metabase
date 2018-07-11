@@ -7,7 +7,7 @@
              [card :refer [Card]]
              [collection :as collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
-             [permissions :refer [Permissions] :as perms]
+             [permissions :as perms :refer [Permissions]]
              [permissions-group :as group :refer [PermissionsGroup]]
              [pulse :refer [Pulse]]
              [user :refer [User]]]
