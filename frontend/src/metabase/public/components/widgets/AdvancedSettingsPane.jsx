@@ -66,7 +66,7 @@ const AdvancedSettingsPane = ({
   <div
     className={cx(
       className,
-      "p4 full-height flex flex-column bg-slate-extra-light",
+      "p4 full-height flex flex-column bg-light",
     )}
     style={{ width: 400 }}
   >

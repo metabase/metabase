@@ -230,7 +230,7 @@ const SuggestionsList = ({ suggestions, section }) => (
           }
         >
           <div
-            className="bg-slate-extra-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
+            className="bg-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
             style={{ width: 48, height: 48 }}
           >
             <Icon name="bolt" className="Icon text-grey-1" size={22} />
@@ -246,7 +246,7 @@ const SuggestionsList = ({ suggestions, section }) => (
 );
 
 const SuggestionsSidebar = ({ related }) => (
-  <div className="flex flex-column bg-slate-almost-extra-light full-height">
+  <div className="flex flex-column bg-medium full-height">
     <div className="py2 text-centered my3">
       <h3 className="text-grey-3">More X-rays</h3>
     </div>
