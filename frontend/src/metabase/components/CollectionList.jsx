@@ -31,7 +31,7 @@ class CollectionList extends React.Component {
           {collections
             .filter(c => c.id !== currentUser.personal_collection_id)
             .map(collection => (
-              <GridItem w={w}>
+              <GridItem w={w} key={collection.id}>
                 <CollectionDropTarget collection={collection}>
                   <ItemDragSource item={collection}>
                     <CollectionItem collection={collection} />
