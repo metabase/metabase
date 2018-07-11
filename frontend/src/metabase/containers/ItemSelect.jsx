@@ -1,11 +1,18 @@
 import React from "react";
+import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/components/SelectButton";
 
+const MIN_POPOVER_WIDTH = 300;
+
 export default (PickerComponent, NameComponent, type) =>
   class ItemSelect extends React.Component {
+    state = {
+      width: null,
+    };
+
     static propTypes = {
       // collection ID, null (for root collection), or undefined
       value: PropTypes.number,
@@ -13,11 +20,22 @@ export default (PickerComponent, NameComponent, type) =>
       field: PropTypes.object.isRequired,
       // optional collectionId to filter out so you can't move a collection into itself
       collectionId: PropTypes.number,
+      // make the popover content inherit the select widget's width
+      inheritWidth: PropTypes.bool,
     };
 
     static defaultProps = {
       placeholder: `Select a ${type}`,
+      inheritWidth: true,
     };
+
+    componentDidUpdate() {
+      // save the width so we can make the poopver content match
+      const width = ReactDOM.findDOMNode(this).clientWidth;
+      if (this.state.width !== width) {
+        this.setState({ width });
+      }
+    }
 
     render() {
       const {
@@ -26,6 +44,7 @@ export default (PickerComponent, NameComponent, type) =>
         className,
         style,
         placeholder,
+        inheritWidth,
         ...props
       } = this.props;
       return (
@@ -45,7 +64,11 @@ export default (PickerComponent, NameComponent, type) =>
           {({ onClose }) => (
             <PickerComponent
               {...props}
-              style={{ minWidth: 300 }}
+              style={
+                inheritWidth
+                  ? { width: this.state.width }
+                  : { minWidth: MIN_POPOVER_WIDTH }
+              }
               className="p2 overflow-auto"
               value={value}
               onChange={itemId => {
