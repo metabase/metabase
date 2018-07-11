@@ -229,7 +229,7 @@ if (NODE_ENV === "hot") {
   config.plugins.unshift(
     new webpack.NoEmitOnErrorsPlugin(),
     new webpack.NamedModulesPlugin(),
-    new webpack.HotModuleReplacementPlugin(),
+    new webpack.HotModuleReplacementPlugin()
   );
 }
 
@@ -264,7 +264,7 @@ if (NODE_ENV !== "production") {
           }),
         },
       },
-    }),
+    })
   );
 
   config.devtool = "source-map";
