@@ -10,6 +10,7 @@
             [hiccup
              [core :refer [h html]]
              [util :as hutil]]
+            [metabase.pulse.color :as color]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
@@ -366,32 +367,38 @@
     (bar-td-style)))
 
 (defn- render-table
-  [header+rows]
-  [:table {:style (style {:max-width (str "100%"), :white-space :nowrap, :padding-bottom :8px, :border-collapse :collapse})}
-   (let [{header-row :row bar-width :bar-width} (first header+rows)]
+  [card header+rows]
+  (let [{bar-width :bar-width :as header} (first header+rows)
+        header-row                        (vec (:row header))
+        color-selector                    (color/make-color-selector header+rows (:visualization_settings card))]
+    [:table {:style (style {:max-width (str "100%"), :white-space :nowrap, :padding-bottom :8px, :border-collapse :collapse})}
      [:thead
       [:tr
        (for [header-cell header-row]
          [:th {:style (style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :60px})}
           (h header-cell)])
        (when bar-width
-         [:th {:style (style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
-   [:tbody
-    (map-indexed (fn [row-idx {:keys [row bar-width]}]
-                   [:tr {:style (style {:color color-gray-3})}
-                    (map-indexed (fn [col-idx cell]
-                                   [:td {:style (style (row-style-for-type cell) (when (and bar-width (= col-idx 1)) {:font-weight 700}))}
-                                    (h cell)])
-                                 row)
-                    (when bar-width
-                      [:td {:style (style (bar-td-style) {:width :99%})}
-                       [:div {:style (style {:background-color color-purple
-                                             :max-height       :10px
-                                             :height           :10px
-                                             :border-radius    :2px
-                                             :width            (str bar-width "%")})}
-                        "&#160;"]])])
-                 (rest header+rows))]])
+         [:th {:style (style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]]
+     [:tbody
+      (map-indexed (fn [row-idx {:keys [row bar-width]}]
+                     [:tr {:style (style {:color color-gray-3})}
+                      (map-indexed (fn [col-idx cell]
+                                     (let [bg-color (color/get-background-color color-selector cell (get header-row col-idx) row-idx)]
+                                       [:td {:style (style (row-style-for-type cell)
+                                                           (merge {:background-color bg-color}
+                                                                  (when (and bar-width (= col-idx 1))
+                                                                    {:font-weight 700})))}
+                                        (h cell)]))
+                                   row)
+                      (when bar-width
+                        [:td {:style (style (bar-td-style) {:width :99%})}
+                         [:div {:style (style {:background-color color-purple
+                                               :max-height       :10px
+                                               :height           :10px
+                                               :border-radius    :2px
+                                               :width            (str bar-width "%")})}
+                          "&#160;"]])])
+                   (rest header+rows))]]))
 
 (defn- create-remapping-lookup
   "Creates a map with from column names to a column index. This is used to figure out what a given column name or value
@@ -493,7 +500,7 @@
 (s/defn ^:private render:table :- RenderedPulseCard
   [render-type timezone card {:keys [cols rows] :as data}]
   (let [table-body [:div
-                    (render-table (prep-for-html-rendering timezone cols rows nil nil cols-limit))
+                    (render-table card (prep-for-html-rendering timezone cols rows nil nil cols-limit))
                     (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
     {:attachments nil
      :content     (if-let [results-attached (attached-results-text render-type cols cols-limit rows rows-limit)]
@@ -506,7 +513,7 @@
         max-value (apply max (map y-axis-rowfn rows))]
     {:attachments nil
      :content     [:div
-                   (render-table (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
+                   (render-table card (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
                    (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
 (s/defn ^:private render:scalar :- RenderedPulseCard

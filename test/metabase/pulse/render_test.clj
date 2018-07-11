@@ -2,7 +2,8 @@
   (:require [clojure.walk :as walk]
             [expectations :refer :all]
             [hiccup.core :refer [html]]
-            [metabase.pulse.render :as render :refer :all])
+            [metabase.pulse.render :as render :refer :all]
+            [metabase.query-processor.util :as qputil])
   (:import java.util.TimeZone))
 
 (def ^:private pacific-tz (TimeZone/getTimeZone "America/Los_Angeles"))
@@ -288,3 +289,51 @@
   4
   (count-displayed-columns
    (concat test-columns [description-col detail-col sensitive-col retired-col])))
+
+(defn- find-table-body
+  "Given the hiccup data structure, find the table body and return it"
+  [results]
+  (qputil/postwalk-collect (every-pred vector? #(= :tbody (first %)))
+                           ;; The Hiccup form is [:tbody (...rows...)], so grab the second item
+                           second
+                           results))
+
+(defn- style-map->background-color
+  "Finds the background color in the style string of a Hiccup style map"
+  [{:keys [style]}]
+  (let [[_ color-str] (re-find #".*background-color: (.*);" style)]
+    color-str))
+
+(defn- cell-value->background-color
+  "Returns a map of cell values to background colors of the pulse table found in the hiccup `results` data
+  structure. This only includes the data cell values, not the header values."
+  [results]
+  (into {} (qputil/postwalk-collect (every-pred vector? #(= :td (first %)))
+                                    (fn [[_ style-map cell-value]]
+                                      [cell-value (style-map->background-color style-map)])
+                                    results)))
+
+(defn- make-row
+  "Makes a pulse header or data row with no bar-width. Including bar-width just adds extra HTML that will be ignored."
+  [row-values]
+  {:row       row-values
+   :bar-width nil})
+
+;; Smoke test for background color selection. Background color decided by some shared javascript code. It's being
+;; invoked and included in the cell color of the pulse table. This is somewhat fragile code as the only way to find
+;; that style information is to crawl the clojure-ized HTML datastructure and pick apart the style string associated
+;; with the cell value. The script right now is hard coded to always return #ff0000. Once the real script is in place,
+;; we should find some similar basic values that can rely on. The goal isn't to test out the javascript choosing in
+;; the color (that should be done in javascript) but to verify that the pieces are all connecting correctly
+(expect
+  (zipmap (map str (range 1 7))
+          (repeat "#ff0000"))
+  (let [viz-settings {:visualization_settings {}}
+        query-results (map make-row [["a" "b"]
+                                     [1 2]
+                                     [3 4]
+                                     [5 6]])]
+    (->> query-results
+         (#'render/render-table viz-settings)
+         find-table-body
+         cell-value->background-color)))
