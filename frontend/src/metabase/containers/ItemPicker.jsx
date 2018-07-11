@@ -6,17 +6,21 @@ import { Flex, Box } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 
+import { connect } from "react-redux";
 import EntityListLoader, {
   entityListLoader,
 } from "metabase/entities/containers/EntityListLoader";
 
-import { getExpandedCollectionsById } from "metabase/entities/collections";
+import Collections from "metabase/entities/collections";
 
 const COLLECTION_ICON_COLOR = "#DCE1E4";
 
 const isRoot = collection => collection.id === "root" || collection.id == null;
 
 @entityListLoader({ entityType: "collections" })
+@connect((state, props) => ({
+  collectionsById: Collections.selectors.getExpandedCollectionsById(state),
+}))
 export default class ItemPicker extends React.Component {
   constructor(props) {
     super(props);
@@ -55,18 +59,13 @@ export default class ItemPicker extends React.Component {
   }
 
   render() {
-    const { value, onChange, collections, style, className } = this.props;
+    const { value, onChange, collectionsById, style, className } = this.props;
     const { parentId } = this.state;
 
     const models = new Set(this.props.models);
     const modelsIncludeNonCollections =
       this.props.models.filter(model => model !== "collection").length > 0;
 
-    if (!collections) {
-      return <div>nope</div>;
-    }
-
-    const collectionsById = getExpandedCollectionsById(collections);
     const collection = collectionsById[parentId];
     const crumbs = this._getCrumbs(collection, collectionsById);
 
@@ -83,10 +82,15 @@ export default class ItemPicker extends React.Component {
       model: "collection",
     }));
 
+    // special case for root collection
+    const getId = item =>
+      item &&
+      (item.model === "collection" && item.id === null ? "root" : item.id);
+
     const isSelected = item =>
       item &&
       value &&
-      item.id === value.id &&
+      getId(item) === getId(value) &&
       (models.size === 1 || item.model === value.model);
 
     return (
@@ -102,7 +106,9 @@ export default class ItemPicker extends React.Component {
               color={COLLECTION_ICON_COLOR}
               icon="all"
               selected={isSelected(collection) && models.has("collection")}
-              canSelect={models.has("collection")}
+              canSelect={
+                models.has("collection") && collection.can_edit !== false
+              }
               hasChildren={
                 (collection.children &&
                   collection.children.length > 0 &&

@@ -5,6 +5,8 @@ import colors from "metabase/lib/colors";
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
+import { getUser } from "metabase/selectors/user";
+
 import { t } from "c-3po";
 
 const Collections = createEntity({
@@ -30,8 +32,12 @@ const Collections = createEntity({
 
   selectors: {
     getExpandedCollectionsById: createSelector(
-      [state => state.entities.collections],
-      collections => getExpandedCollectionsById(Object.values(collections)),
+      [state => state.entities.collections, getUser],
+      (collections, user) =>
+        getExpandedCollectionsById(
+          Object.values(collections),
+          user && user.personal_collection_id,
+        ),
     ),
   },
 
@@ -88,15 +94,33 @@ export const canonicalCollectionId = collectionId =>
 
 export const ROOT_COLLECTION = {
   id: "root",
-  name: "Our analytics",
+  name: t`Our analytics`,
   location: "",
   path: [],
+};
+
+export const PERSONAL_COLLECTIONS = {
+  id: "personal",
+  name: t`Personal Collections`,
+  location: "/",
+  path: ["root"],
+  can_edit: false,
 };
 
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
-export function getExpandedCollectionsById(collections) {
+function getExpandedCollectionsById(
+  collections,
+  userPersonalCollectionId,
+  includePersonalCollections = true,
+) {
+  const personalCollections = collections.filter(
+    collection => collection.personal_owner_id != null,
+  );
+  collections = collections.filter(
+    collection => collection.personal_owner_id == null,
+  );
   const collectionsById = {};
   for (const c of collections) {
     collectionsById[c.id] = {
@@ -117,6 +141,31 @@ export function getExpandedCollectionsById(collections) {
     ...ROOT_COLLECTION,
     ...(collectionsById[ROOT_COLLECTION.id] || {}),
   };
+
+  // "My personal collection"
+  if (userPersonalCollectionId != null) {
+    collectionsById[ROOT_COLLECTION.id].children.push({
+      id: userPersonalCollectionId,
+      name: t`My personal collection`,
+      location: "/",
+      path: ["root"],
+      parent: collectionsById[PERSONAL_COLLECTIONS.id],
+    });
+  }
+
+  // "Personal Collections"
+  if (includePersonalCollections && personalCollections.length > 0) {
+    collectionsById[PERSONAL_COLLECTIONS.id] = {
+      children: personalCollections,
+      ...PERSONAL_COLLECTIONS,
+    };
+    collectionsById[ROOT_COLLECTION.id].children.push(
+      collectionsById[PERSONAL_COLLECTIONS.id],
+    );
+    for (const c of personalCollections) {
+      c.parent = collectionsById[PERSONAL_COLLECTIONS.id];
+    }
+  }
 
   // iterate over original collections so we don't include ROOT_COLLECTION as
   // a child of itself
