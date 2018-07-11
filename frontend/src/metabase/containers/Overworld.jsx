@@ -109,7 +109,7 @@ class Overworld extends React.Component {
                 <Grid>
                   {pinnedDashboards.map(pin => {
                     return (
-                      <GridItem w={[1, 1 / 2, 1 / 3]}>
+                      <GridItem w={[1, 1 / 2, 1 / 3]} key={`${pin.model}-${pin.id}`}>
                         <Link
                           to={Urls.dashboard(pin.id)}
                           hover={{ color: normal.blue }}
@@ -166,7 +166,7 @@ class Overworld extends React.Component {
                 return (
                   <Grid>
                     {databases.map(database => (
-                      <GridItem w={[1, 1 / 3]}>
+                      <GridItem w={[1, 1 / 3]} key={database.id}>
                         <Link
                           to={`browse/${database.id}`}
                           hover={{ color: normal.blue }}
