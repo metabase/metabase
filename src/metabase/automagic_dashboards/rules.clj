@@ -104,8 +104,9 @@
                (s/optional-key :series_labels) [s/Str]}})
 
 (def ^:private Groups
-  {Identifier {(s/required-key :title)       s/Str
-               (s/optional-key :description) s/Str}})
+  {Identifier {(s/required-key :title)            s/Str
+               (s/optional-key :comparison_title) s/Str
+               (s/optional-key :description)      s/Str}})
 
 (def ^{:arglists '([definition])} identifier
   "Return `key` in `{key {}}`."

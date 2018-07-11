@@ -94,10 +94,13 @@ groups:
     title: These are the same for all your [[this]]
 - ByTime:
     title: "[[this]] across time"
+    comparison_title: How they compare across time
 - Geographical:
     title: Where your [[this]] are
+    comparison_title: How they compare acrosss location
 - General:
     title: How [[this]] are distributed
+    comparison_title: How they differ in distributions
 dashboard_filters:
 - Timestamp
 - Date

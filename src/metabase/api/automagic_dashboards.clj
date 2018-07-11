@@ -147,7 +147,8 @@
   (let [left      ((->entity entity) entity-id-or-query)
         right     ((->entity comparison-entity) comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
-                                            :query-filter nil})]
+                                            :query-filter nil
+                                            :comparison?  true})]
     (comparison-dashboard dashboard left right {})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"
@@ -163,7 +164,8 @@
         right     ((->entity comparison-entity) comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :rule         ["table" prefix rule]
-                                            :query-filter nil})]
+                                            :query-filter nil
+                                            :comparison?  true})]
     (comparison-dashboard dashboard left right {})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query"
@@ -178,7 +180,8 @@
   (let [left      ((->entity entity) entity-id-or-query)
         right     ((->entity comparison-entity) comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
-                                            :query-filter nil})]
+                                            :query-filter nil
+                                            :comparison?  true})]
     (comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"

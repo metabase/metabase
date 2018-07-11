@@ -766,7 +766,7 @@
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [rule show rules-prefix query-filter cell-query full-name] :as root}]
+  [{:keys [rule show rules-prefix query-filter cell-query full-name comparison?] :as root}]
   (if-let [[dashboard rule] (if rule
                               (apply-rule root (rules/get-rule rule))
                               (->> root
@@ -787,6 +787,9 @@
                  (-> dashboard :context :metrics u/pprint-to-str)
                  (-> dashboard :context :filters u/pprint-to-str))
       (-> (cond-> dashboard
+            comparison?
+            (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
+                                                  (update group :title #(or comparison_title %)))))
             (or query-filter cell-query)
             (assoc :title (tru "A closer look at {0}" full-name)))
           (populate/create-dashboard (or show max-cards))
