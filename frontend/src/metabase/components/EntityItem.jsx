@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "c-3po";
 
-import { Flex } from "grid-styled";
+import { Box, Flex } from "grid-styled";
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
 import IconWrapper from "metabase/components/IconWrapper";
@@ -19,6 +19,16 @@ const EntityItemWrapper = Flex.extend`
     color: ${colors["brand"]};
   }
 `;
+
+export const EntityListItem = (props) =>
+    <Box mt={1} mb={2}>
+        <EntityItem {...props} />
+    </Box>
+
+export const EntityCardItem = (props) =>
+    <Box my={1}>
+        <EntityItem {...props} />
+    </Box>
 
 const EntityItem = ({
   name,
@@ -52,7 +62,7 @@ const EntityItem = ({
   ].filter(action => action);
 
   return (
-    <EntityItemWrapper pb={1} pt={2} className="hover-parent hover--visibility">
+    <EntityItemWrapper py={2} className="hover-parent hover--visibility">
       <IconWrapper
         p={2}
         mr={2}
