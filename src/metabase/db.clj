@@ -10,8 +10,8 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [puppetlabs.i18n.core :refer [trs]]
             [metabase.db.spec :as dbspec]
+            [puppetlabs.i18n.core :refer [trs]]
             [ring.util.codec :as codec]
             [toucan.db :as db])
   (:import com.mchange.v2.c3p0.ComboPooledDataSource

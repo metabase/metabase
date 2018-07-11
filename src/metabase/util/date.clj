@@ -113,7 +113,7 @@
   on clj-time to ensure correct conversions between the various types
 
   NOTE: This function requires you to pass in a timezone or bind `*report-timezone*`, probably to make sure you're not
-  doing something dumb by forgetting it.For cases where you'd just like to parse an ISO-8601-encoded String in peace
+  doing something dumb by forgetting it. For cases where you'd just like to parse an ISO-8601-encoded String in peace
   without specifying a timezone, pass in `:no-timezone` as the second param to explicitly have things parsed without
   one."
   ([coercible-to-ts]
