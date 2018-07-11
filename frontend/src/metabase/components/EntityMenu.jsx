@@ -121,6 +121,7 @@ class EntityMenu extends Component {
                                   })
                                 }
                                 link={item.link}
+                                onClose={() => this.toggleMenu()}
                               />
                             </li>
                           );
