@@ -1,5 +1,5 @@
 import React from "react"
-import { Box, Flex } from "grid-styled";
+import { Flex } from "grid-styled";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";

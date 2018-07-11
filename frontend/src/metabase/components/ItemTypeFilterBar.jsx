@@ -54,6 +54,7 @@ const ItemTypeFilterBar = props => {
             hover={{ color: colors.brand }}
             className="flex-full flex align-center justify-center sm-block"
             mr={[0, 2]}
+            key={f.filter}
             py={1}
             style={{
               borderBottom: `2px solid ${

@@ -56,8 +56,8 @@ export default class ComponentsApp extends Component {
             {COMPONENTS.filter(
               ({ component, description, examples }) =>
                 !componentName || componentName === slugify(component.name),
-            ).map(({ component, description, examples }) => (
-              <div id={component.name}>
+            ).map(({ component, description, examples }, index) => (
+              <div id={component.name} key={index}>
                 <h2>
                   <Link
                     to={`_internal/components/${slugify(component.name)}`}
