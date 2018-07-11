@@ -100,7 +100,7 @@ class DefaultLanding extends React.Component {
 
     const collectionWidth = unpinned.length > 0 ? [1, 1 / 3] : 1;
     const itemWidth = unpinned.length > 0 ? [1, 2 / 3] : 0;
-    const collectionGridSize = unpinned.length > 0 ? 1 : [1,  1 / 4];
+    const collectionGridSize = unpinned.length > 0 ? 1 : [1, 1 / 4];
 
     return (
       <Box>
@@ -164,7 +164,7 @@ class DefaultLanding extends React.Component {
                   )}
                 </PinDropTarget>
               )}
-              <Box pt={[1,2]} px={[2,4]} bg="white">
+              <Box pt={[1, 2]} px={[2, 4]} bg="white">
                 <Grid>
                   <GridItem w={collectionWidth}>
                     <Box pr={2} className="relative">
