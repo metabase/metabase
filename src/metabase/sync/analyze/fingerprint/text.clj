@@ -3,9 +3,10 @@
   (:require [cheshire.core :as json]
             [metabase.sync.interface :as i]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
-(s/defn ^:private average-length :- (s/constrained Double #(>= % 0))
+(s/defn ^:private average-length :- su/PositiveNum
   "Return the average length of VALUES."
   [values :- i/FieldSample]
   (let [total-length (reduce + (for [value values]

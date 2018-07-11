@@ -15,7 +15,7 @@ import Modal from "metabase/components/Modal.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
-import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
+import CollectionMoveModal from "metabase/containers/CollectionMoveModal.jsx";
 import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal.jsx";
@@ -289,25 +289,30 @@ export default class QueryHeader extends Component {
 
         buttonSections.push([
           <ModalWithTrigger
-            ref="move"
             key="move"
-            full
             triggerElement={
               <Tooltip tooltip={t`Move question`}>
                 <Icon name="move" />
               </Tooltip>
             }
           >
-            <MoveToCollection
-              questionId={this.props.card.id}
-              initialCollectionId={
-                this.props.card && this.props.card.collection_id
-              }
-              setCollection={({ id }, collection) => {
-                this.props.onSetCardAttribute("collection", collection);
-                this.props.onSetCardAttribute("collection_id", collection.id);
-              }}
-            />
+            {({ onClose }) => (
+              <CollectionMoveModal
+                title={t`Which collection should this be in?`}
+                initialCollectionId={
+                  this.props.card && this.props.card.collection_id
+                }
+                onClose={onClose}
+                onMove={collection => {
+                  this.props.onSetCardAttribute("collection", collection);
+                  this.props.onSetCardAttribute(
+                    "collection_id",
+                    collection && collection.id,
+                  );
+                  onClose();
+                }}
+              />
+            )}
           </ModalWithTrigger>,
         ]);
       }

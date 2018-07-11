@@ -103,7 +103,7 @@
 (defn literal
   "Wrap keyword or string S in single quotes and a HoneySQL `raw` form."
   [s]
-  (Literal. s))
+  (Literal. (name s)))
 
 
 (def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between EXPRS and wrap in parentheses." (partial hsql/call :+))

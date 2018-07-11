@@ -10,9 +10,11 @@ import E from "metabase/reference/components/EditButton.css";
 
 import IconBorder from "metabase/components/IconBorder.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import Input from "metabase/components/Input.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import EditButton from "metabase/reference/components/EditButton.jsx";
+
+import colors from "metabase/lib/colors";
 
 const EditableReferenceHeader = ({
   entity = {},
@@ -36,7 +38,10 @@ const EditableReferenceHeader = ({
     >
       <div className={L.leftIcons}>
         {headerIcon && (
-          <IconBorder borderWidth="0" style={{ backgroundColor: "#E9F4F8" }}>
+          <IconBorder
+            borderWidth="0"
+            style={{ backgroundColor: colors["bg-medium"] }}
+          >
             <Icon
               className="text-brand"
               name={headerIcon}
@@ -56,7 +61,7 @@ const EditableReferenceHeader = ({
         }
       >
         {isEditing && name === "Details" ? (
-          <Input
+          <InputBlurChange
             className={S.headerTextInput}
             type="text"
             placeholder={entity.name}

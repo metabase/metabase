@@ -17,7 +17,7 @@
 
 (defn- test-comparison
   [left right]
-  (-> leftgg
+  (-> left
       (automagic-analysis {})
       (comparison-dashboard left right {})
       :ordered_cards

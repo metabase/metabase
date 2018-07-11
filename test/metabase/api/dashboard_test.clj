@@ -18,6 +18,7 @@
              [dashboard-test :as dashboard-test]
              [permissions :as perms]
              [permissions-group :as group]
+             [pulse :refer [Pulse]]
              [revision :refer [Revision]]]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]
@@ -351,6 +352,164 @@
      {:collection_position nil})
     (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                              UPDATING DASHBOARD COLLECTION POSITIONS                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Check that we can update a dashboard's position in a collection of only dashboards
+(expect
+  {"a" 1
+   "c" 2
+   "d" 3
+   "b" 4}
+  (tt/with-temp Collection [collection]
+    (card-api-test/with-ordered-items collection [Dashboard a
+                                                  Dashboard b
+                                                  Dashboard c
+                                                  Dashboard d]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id b))
+       {:collection_position 4})
+      (card-api-test/get-name->collection-position :rasta collection))))
+
+;; Check that updating a dashboard at position 3 to position 1 will increment the positions before 3, not after
+(expect
+  {"c" 1
+   "a" 2
+   "b" 3
+   "d" 4}
+  (tt/with-temp Collection [collection]
+    (card-api-test/with-ordered-items collection [Card      a
+                                                  Pulse     b
+                                                  Dashboard c
+                                                  Dashboard d]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id c))
+       {:collection_position 1})
+      (card-api-test/get-name->collection-position :rasta collection))))
+
+;; Check that updating position 1 to 3 will cause b and c to be decremented
+(expect
+  {"b" 1
+   "c" 2
+   "a" 3
+   "d" 4}
+  (tt/with-temp Collection [collection]
+    (card-api-test/with-ordered-items collection [Dashboard a
+                                                  Card      b
+                                                  Pulse     c
+                                                  Dashboard d]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id a))
+       {:collection_position 3})
+      (card-api-test/get-name->collection-position :rasta collection))))
+
+;; Check that updating position 1 to 4 will cause a through c to be decremented
+(expect
+  {"b" 1
+   "c" 2
+   "d" 3
+   "a" 4}
+  (tt/with-temp Collection [collection]
+    (card-api-test/with-ordered-items collection [Dashboard a
+                                                  Card      b
+                                                  Pulse     c
+                                                  Pulse     d]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id a))
+       {:collection_position 4})
+      (card-api-test/get-name->collection-position :rasta collection))))
+
+;; Check that updating position 4 to 1 will cause a through c to be incremented
+(expect
+  {"d" 1
+   "a" 2
+   "b" 3
+   "c" 4}
+  (tt/with-temp Collection [collection]
+    (card-api-test/with-ordered-items collection [Card      a
+                                                  Pulse     b
+                                                  Card      c
+                                                  Dashboard d]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id d))
+       {:collection_position 1})
+      (card-api-test/get-name->collection-position :rasta collection))))
+
+;; Check that moving a dashboard to another collection will fixup both collections
+(expect
+  [{"b" 1
+    "c" 2
+    "d" 3}
+   {"a" 1
+    "e" 2
+    "f" 3
+    "g" 4
+    "h" 5}]
+  (tt/with-temp* [Collection [collection-1]
+                  Collection [collection-2]]
+    (card-api-test/with-ordered-items collection-1 [Dashboard a
+                                                    Card      b
+                                                    Card      c
+                                                    Pulse     d]
+      (card-api-test/with-ordered-items collection-2 [Pulse     e
+                                                      Pulse     f
+                                                      Dashboard g
+                                                      Card      h]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection-1)
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection-2)
+        ;; Move the first dashboard in collection-1 to collection-1
+        ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id a))
+         {:collection_position 1, :collection_id (u/get-id collection-2)})
+        ;; "a" should now be gone from collection-1 and all the existing dashboards bumped down in position
+        [(card-api-test/get-name->collection-position :rasta collection-1)
+         ;; "a" is now first, all other dashboards in collection-2 bumped down 1
+         (card-api-test/get-name->collection-position :rasta collection-2)]))))
+
+;; Check that adding a new card at position 3 will cause the existing card at 3 to be incremented
+(expect
+  [{"a" 1
+    "b" 2
+    "d" 3}
+   {"a" 1
+    "b" 2
+    "c" 3
+    "d" 4}]
+  (tt/with-temp Collection [collection]
+    (tu/with-model-cleanup [Dashboard]
+      (card-api-test/with-ordered-items collection [Card  a
+                                                    Pulse b
+                                                    Card  d]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+        [(card-api-test/get-name->collection-position :rasta collection)
+         (do
+           ((user->client :rasta) :post 200 "dashboard" {:name "c"
+                                                         :parameters          [{}]
+                                                         :collection_id       (u/get-id collection)
+                                                         :collection_position 3})
+           (card-api-test/get-name->collection-position :rasta collection))]))))
+
+;; Check that adding a new card without a position, leaves the existing positions unchanged
+(expect
+  [{"a" 1
+    "b" 2
+    "d" 3}
+   {"a" 1
+    "b" 2
+    "c" nil
+    "d" 3}]
+  (tt/with-temp Collection [collection]
+    (tu/with-model-cleanup [Dashboard]
+      (card-api-test/with-ordered-items collection [Dashboard a
+                                                    Card      b
+                                                    Pulse     d]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+        [(card-api-test/get-name->collection-position :rasta collection)
+         (do
+           ((user->client :rasta) :post 200 "dashboard" {:name "c"
+                                                         :parameters          [{}]
+                                                         :collection_id       (u/get-id collection)})
+           (card-api-test/get-name->collection-position :rasta collection))]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

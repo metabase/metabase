@@ -36,7 +36,9 @@ export default class SetUserPassword extends Component {
     // required: first_name, last_name, email
     for (let fieldName in this.refs) {
       let node = ReactDOM.findDOMNode(this.refs[fieldName]);
-      if (node.required && MetabaseUtils.isEmpty(node.value)) isValid = false;
+      if (node.required && MetabaseUtils.isEmpty(node.value)) {
+        isValid = false;
+      }
     }
 
     if (isValid !== valid) {

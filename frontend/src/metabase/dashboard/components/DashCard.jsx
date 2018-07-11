@@ -7,6 +7,7 @@ import Visualization, {
   ERROR_MESSAGE_GENERIC,
   ERROR_MESSAGE_PERMISSION,
 } from "metabase/visualizations/components/Visualization.jsx";
+import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
@@ -20,6 +21,8 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
+import { getParametersBySlug } from "metabase/meta/Parameter";
+import Utils from "metabase/lib/utils";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
@@ -65,6 +68,8 @@ export default class DashCard extends Component {
       onRemove,
       navigateToNewCardFromDashboard,
       metadata,
+      dashboard,
+      parameterValues,
     } = this.props;
 
     const mainCard = {
@@ -75,6 +80,8 @@ export default class DashCard extends Component {
       },
     };
     const cards = [mainCard].concat(dashcard.series || []);
+    const dashboardId = dashcard.dashboard_id;
+    const isEmbed = Utils.isJWT(dashboardId);
     const series = cards.map(card => ({
       ...getIn(dashcardData, [dashcard.id, card.id]),
       card: card,
@@ -108,6 +115,8 @@ export default class DashCard extends Component {
       errorIcon = "warning";
     }
 
+    const params = getParametersBySlug(dashboard.parameters, parameterValues);
+
     const hideBackground =
       !isEditing &&
       mainCard.visualization_settings["dashcard.background"] === false;
@@ -129,6 +138,7 @@ export default class DashCard extends Component {
       >
         <Visualization
           className="flex-full"
+          classNameWidgets={isEmbed && "text-grey-2 text-grey-4-hover"}
           error={errorMessage}
           errorIcon={errorIcon}
           isSlow={isSlow}
@@ -151,6 +161,16 @@ export default class DashCard extends Component {
                 onReplaceAllVisualizationSettings={
                   this.props.onReplaceAllVisualizationSettings
                 }
+              />
+            ) : isEmbed ? (
+              <QueryDownloadWidget
+                className="m1 text-brand-hover text-grey-2"
+                classNameClose="hover-child"
+                card={dashcard.card}
+                params={params}
+                dashcardId={dashcard.id}
+                token={dashcard.dashboard_id}
+                icon="download"
               />
             ) : (
               undefined

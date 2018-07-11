@@ -4,7 +4,9 @@
              [codecs :as codecs]
              [hash :as hash]]
             [cheshire.core :as json]
-            [clojure.string :as str]
+            [clojure
+             [string :as str]
+             [walk :as walk]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -160,3 +162,30 @@
     (when (string? source-table)
       (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
         (Integer/parseInt card-id-str)))))
+
+;;; ---------------------------------------- General Tree Manipulation Helpers ---------------------------------------
+
+(defn postwalk-pred
+  "Transform `form` by applying `f` to each node where `pred` returns true"
+  [pred f form]
+  (walk/postwalk (fn [node]
+                   (if (pred node)
+                     (f node)
+                     node))
+                 form))
+
+(defn postwalk-collect
+  "Invoke `collect-fn` on each node satisfying `pred`. If `collect-fn` returns a value, accumulate that and return the
+  results.
+
+  Note: This would be much better as a zipper. It could have the same API, would be faster and would avoid side
+  affects."
+  [pred collect-fn form]
+  (let [results (atom [])]
+    (postwalk-pred pred
+                   (fn [node]
+                     (when-let [result (collect-fn node)]
+                       (swap! results conj result))
+                     node)
+                   form)
+    @results))

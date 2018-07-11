@@ -1,4 +1,5 @@
 (ns metabase.util.date
+  "Utility functions for working with datetimes of different types, and other related tasks."
   (:require [clj-time
              [coerce :as coerce]
              [core :as t]
@@ -40,7 +41,8 @@
   "UTC TimeZone"
   (coerce-to-timezone "UTC"))
 
-(def ^:private jvm-timezone
+(def jvm-timezone
+  "Machine time zone"
   (delay (coerce-to-timezone (System/getProperty "user.timezone"))))
 
 (defn- warn-on-timezone-conflict

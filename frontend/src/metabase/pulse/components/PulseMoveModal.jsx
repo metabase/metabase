@@ -10,6 +10,8 @@ import Icon from "metabase/components/Icon";
 
 import CollectionListLoader from "metabase/containers/CollectionListLoader";
 
+import colors from "metabase/lib/colors";
+
 @withRouter
 class PulseMoveModal extends React.Component {
   state = {
@@ -61,7 +63,7 @@ class PulseMoveModal extends React.Component {
                     )}
                   >
                     <Flex align="center">
-                      <Icon name="all" color={"#DCE1E4"} size={32} />
+                      <Icon name="all" color={colors["text-light"]} size={32} />
                       <h4 className="ml1">{collection.name}</h4>
                     </Flex>
                   </Box>

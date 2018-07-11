@@ -12,6 +12,7 @@
              [user :as user :refer [User]]]
             [metabase.test.data.users :as test-users :refer [user->id]]
             [metabase.test.util :as tu]
+            [metabase.util.password :as upass]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -162,3 +163,17 @@
     (test-users/delete-temp-users!)
     (tt/with-temp User [_ {:is_superuser true, :is_active false}]
       (invite-user-accept-and-check-inboxes! :google-auth? true))))
+
+;; LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user password, it gets
+;; swapped with something random
+(expect
+  false
+  (try
+    (user/create-new-ldap-auth-user! {:email      "ldaptest@metabase.com"
+                                      :first_name "Test"
+                                      :last_name  "SomeLdapStuff"
+                                      :password   "should be removed"})
+    (let [{:keys [password password_salt]} (db/select-one [User :password :password_salt] :email "ldaptest@metabase.com")]
+      (upass/verify-password "should be removed" password_salt password))
+    (finally
+      (db/delete! User :email "ldaptest@metabase.com"))))

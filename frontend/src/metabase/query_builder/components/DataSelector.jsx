@@ -482,8 +482,6 @@ export default class DataSelector extends Component {
           />
         );
       case TABLE_STEP:
-        const canGoBack = this.hasPreviousStep();
-
         return (
           <TablePicker
             selectedDatabase={selectedDatabase}
@@ -493,7 +491,7 @@ export default class DataSelector extends Component {
             segments={segments}
             disabledTableIds={disabledTableIds}
             onChangeTable={this.onChangeTable}
-            onBack={canGoBack && this.onBack}
+            onBack={this.hasPreviousStep() && this.onBack}
             hasAdjacentStep={hasAdjacentStep}
           />
         );
@@ -747,7 +745,9 @@ export const TablePicker = ({
 }) => {
   // In case DataSelector props get reseted
   if (!selectedDatabase) {
-    if (onBack) onBack();
+    if (onBack) {
+      onBack();
+    }
     return null;
   }
 
@@ -843,7 +843,9 @@ export class FieldPicker extends Component {
     } = this.props;
     // In case DataSelector props get reseted
     if (!selectedTable) {
-      if (onBack) onBack();
+      if (onBack) {
+        onBack();
+      }
       return null;
     }
 

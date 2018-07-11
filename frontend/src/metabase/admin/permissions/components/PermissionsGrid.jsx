@@ -18,8 +18,10 @@ import { capitalize, pluralize } from "metabase/lib/formatting";
 import cx from "classnames";
 import _ from "underscore";
 
-const LIGHT_BORDER = "rgb(225, 226, 227)";
-const DARK_BORDER = "rgb(161, 163, 169)";
+import colors from "metabase/lib/colors";
+
+const LIGHT_BORDER = colors["text-light"];
+const DARK_BORDER = colors["text-medium"];
 const BORDER_RADIUS = 4;
 
 const getBorderStyles = ({
@@ -46,8 +48,8 @@ const HEADER_WIDTH = 240;
 
 const DEFAULT_OPTION = {
   icon: "unknown",
-  iconColor: "#9BA5B1",
-  bgColor: "#DFE8EA",
+  iconColor: colors["text-medium"],
+  bgColor: colors["bg-medium"],
 };
 
 const PermissionsHeader = ({ permissions, isFirst, isLast }) => (
@@ -258,7 +260,9 @@ class GroupPermissionCell extends Component {
                 name={option.icon}
                 size={28}
                 style={{
-                  color: this.state.hovered ? "#fff" : option.iconColor,
+                  color: this.state.hovered
+                    ? colors["text-white"]
+                    : option.iconColor,
                 }}
               />
               {confirmations &&

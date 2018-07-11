@@ -314,7 +314,8 @@
    (format-rows-by format-fns (not :format-nil-values?) rows))
   ([format-fns format-nil-values? rows]
    (cond
-     (= (:status rows) :failed) (throw (ex-info (:error rows) rows))
+     (= (:status rows) :failed) (do (println "Error running query:" (u/pprint-to-str 'red rows))
+                                    (throw (ex-info (:error rows) rows)))
 
      (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
      (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))

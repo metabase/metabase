@@ -257,6 +257,7 @@ export const SessionApi = {
 export const SettingsApi = {
   list: GET("/api/setting"),
   put: PUT("/api/setting/:key"),
+  putAll: PUT("/api/setting"),
   // setAll:                      PUT("/api/setting"),
   // delete:                   DELETE("/api/setting/:key"),
 };

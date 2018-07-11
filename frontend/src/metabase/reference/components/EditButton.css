@@ -1,12 +1,12 @@
 :local(.editButton) {
   composes: flex align-center text-dark p0 mx1 from "style";
-  color: var(--primary-button-bg-color);
+  color: var(--color-brand);
   font-weight: normal;
   font-size: 16px;
 }
 
 :local(.editButton):hover {
-  color: color(var(--primary-button-border-color) shade(10%));
+  color: var(--color-brand);
   transition: color 0.3s linear;
 }
 

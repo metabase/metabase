@@ -9,6 +9,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 
 import { t } from "c-3po";
 import cx from "classnames";
+import colors, { alpha } from "metabase/lib/colors";
 
 export default class PulseCardPreview extends Component {
   constructor(props, context) {
@@ -78,8 +79,10 @@ export default class PulseCardPreview extends Component {
           style={{
             top: 2,
             right: 2,
-            background:
-              "linear-gradient(to right, rgba(255,255,255,0.2), white, white)",
+            background: `linear-gradient(to right, ${alpha(
+              colors["bg-white"],
+              0.2,
+            )}, white, white)`,
             paddingLeft: 100,
           }}
         >
@@ -177,7 +180,7 @@ const RenderedPulseCardPreviewHeader = ({ children }) => (
                 'Lato, "Helvetica Neue", Helvetica, Arial, sans-serif',
               fontSize: 16,
               fontWeight: 700,
-              color: "rgb(57,67,64)",
+              color: colors["text-dark"],
               textDecoration: "none",
             }}
           >

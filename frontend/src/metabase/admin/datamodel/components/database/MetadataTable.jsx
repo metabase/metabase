@@ -5,7 +5,7 @@ import MetricsList from "./MetricsList.jsx";
 import ColumnsList from "./ColumnsList.jsx";
 import SegmentsList from "./SegmentsList.jsx";
 import { t } from "c-3po";
-import Input from "metabase/components/Input.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import ProgressBar from "metabase/components/ProgressBar.jsx";
 
 import { normal } from "metabase/lib/colors";
@@ -103,13 +103,13 @@ export default class MetadataTable extends Component {
     return (
       <div className="MetadataTable px3">
         <div className="MetadataTable-title flex flex-column bordered rounded">
-          <Input
+          <InputBlurChange
             className="AdminInput TableEditor-table-name text-bold border-bottom rounded-top"
             type="text"
             value={tableMetadata.display_name || ""}
             onBlurChange={this.onNameChange}
           />
-          <Input
+          <InputBlurChange
             className="AdminInput TableEditor-table-description rounded-bottom"
             type="text"
             value={tableMetadata.description || ""}

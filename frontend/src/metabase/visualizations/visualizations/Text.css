@@ -21,9 +21,9 @@
   border-radius: var(--default-border-radius);
 }
 :local .Text .text-card-textarea:focus {
-  border-color: var(--brand-color);
+  border-color: var(--color-brand);
   background-color: white;
-  box-shadow: 0 1px 7px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 7px var(--color-shadow);
 }
 :local .Text .text-card-markdown {
   overflow: auto;
@@ -90,7 +90,7 @@
   font-weight: bold;
   cursor: pointer;
   text-decoration: none;
-  color: var(--default-link-color);
+  color: var(--color-brand);
 }
 :local .text-card-markdown a:hover {
   text-decoration: underline;
@@ -116,15 +116,15 @@
   text-align: left;
 }
 :local .text-card-markdown tr {
-  border-bottom: 1px solid var(--table-border-color);
+  border-bottom: 1px solid color(var(--color-border) alpha(-70%));
 }
 :local .text-card-markdown tr:nth-child(even) {
-  background-color: var(--table-alt-bg-color);
+  background-color: color(var(--color-bg-black) alpha(-98%));
 }
 :local .text-card-markdown th,
 :local .text-card-markdown td {
   padding: 0.75em;
-  border: 1px solid var(--table-border-color);
+  border: 1px solid color(var(--color-border) alpha(-70%));
 }
 
 :local .text-card-markdown code {
@@ -132,7 +132,7 @@
   font-size: 12.64px;
   line-height: 20px;
   padding: 0 0.25em;
-  background-color: var(--base-grey);
+  background-color: var(--color-bg-light);
   border-radius: var(--default-border-radius);
 }
 
@@ -143,8 +143,8 @@
 }
 
 :local .text-card-markdown blockquote {
-  color: var(--grey-4);
-  border-left: 5px solid var(--grey-1);
+  color: var(--color-text-medium);
+  border-left: 5px solid var(--color-border);
   padding: 0 1.5em 0 17px;
   margin: 0.5em 0 0.5em 1em;
 }
