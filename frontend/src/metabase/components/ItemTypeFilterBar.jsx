@@ -34,7 +34,7 @@ export const FILTERS = [
 const ItemTypeFilterBar = props => {
   const { location } = props;
   return (
-    <Flex align="center" className="border-bottom">
+    <Flex align="center" className="border-bottom mt1">
       {props.filters.map(f => {
         let isActive = location.query.type === f.filter;
 
