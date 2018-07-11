@@ -48,10 +48,7 @@ export default class ComponentsApp extends Component {
             ))}
           </ul>
         </nav>
-        <div
-          className="bg-light flex-full bg-white"
-          style={{ flex: "66.66%" }}
-        >
+        <div className="bg-light flex-full bg-white" style={{ flex: "66.66%" }}>
           <div className="p4">
             {COMPONENTS.filter(
               ({ component, description, examples }) =>

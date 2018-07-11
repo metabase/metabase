@@ -109,7 +109,10 @@ class Overworld extends React.Component {
                 <Grid>
                   {pinnedDashboards.map(pin => {
                     return (
-                      <GridItem w={[1, 1 / 2, 1 / 3]} key={`${pin.model}-${pin.id}`}>
+                      <GridItem
+                        w={[1, 1 / 2, 1 / 3]}
+                        key={`${pin.model}-${pin.id}`}
+                      >
                         <Link
                           to={Urls.dashboard(pin.id)}
                           hover={{ color: normal.blue }}

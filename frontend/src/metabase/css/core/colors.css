@@ -225,7 +225,6 @@
   color: var(--color-text-medium);
 }
 
-
 .text-dark,
 :local(.text-dark) {
   color: var(--color-text-dark);

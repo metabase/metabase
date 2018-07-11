@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
 
-import CollectionItem from "metabase/components/CollectionItem"
+import CollectionItem from "metabase/components/CollectionItem";
 import { normal } from "metabase/lib/colors";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
@@ -13,7 +13,6 @@ import Link from "metabase/components/Link";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
-
 
 @connect(({ currentUser }) => ({ currentUser }), null)
 class CollectionList extends React.Component {

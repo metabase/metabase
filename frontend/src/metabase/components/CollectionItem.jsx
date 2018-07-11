@@ -1,4 +1,4 @@
-import React from "react"
+import React from "react";
 import { Flex } from "grid-styled";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
@@ -14,9 +14,9 @@ const CollectionItem = ({ collection, color, iconName = "all" }) => (
     className="block rounded"
     hover={{
       color: colors.primary,
-      backgroundColor: colors["bg-medium"]
+      backgroundColor: colors["bg-medium"],
     }}
-    p={[1,2]}
+    p={[1, 2]}
   >
     <Flex align="center" py={1} key={`collection-${collection.id}`}>
       <Icon name={iconName} mx={1} />
@@ -27,4 +27,4 @@ const CollectionItem = ({ collection, color, iconName = "all" }) => (
   </Link>
 );
 
-export default CollectionItem
+export default CollectionItem;

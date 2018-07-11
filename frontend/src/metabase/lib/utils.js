@@ -2,35 +2,35 @@ import generatePassword from "password-generator";
 import { t } from "c-3po";
 
 const LAYOUT_PROPS = [
-  'm',
-  'ml',
-  'mr',
-  'mt',
-  'mb',
-  'mx',
-  'my',
-  'p',
-  'pl',
-  'pr',
-  'pt',
-  'pb',
-  'px',
-  'py',
-  'bg',
-  'color',
-  'hover'
-]
+  "m",
+  "ml",
+  "mr",
+  "mt",
+  "mb",
+  "mx",
+  "my",
+  "p",
+  "pl",
+  "pr",
+  "pt",
+  "pb",
+  "px",
+  "py",
+  "bg",
+  "color",
+  "hover",
+];
 
-export function stripLayoutProps (props) {
-  const newProps = props
+export function stripLayoutProps(props) {
+  const newProps = props;
 
   LAYOUT_PROPS.map(l => {
-    if(Object.keys(newProps).includes(l)) {
-     delete newProps[l]
+    if (Object.keys(newProps).includes(l)) {
+      delete newProps[l];
     }
-  })
+  });
 
-  return newProps
+  return newProps;
 }
 
 function s4() {

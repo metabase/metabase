@@ -64,10 +64,7 @@ const AdvancedSettingsPane = ({
   onChangeParameterValue,
 }: Props) => (
   <div
-    className={cx(
-      className,
-      "p4 full-height flex flex-column bg-light",
-    )}
+    className={cx(className, "p4 full-height flex flex-column bg-light")}
     style={{ width: 400 }}
   >
     <Section title={t`Style`}>

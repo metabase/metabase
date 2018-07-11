@@ -7,7 +7,7 @@ import { color, space, hover } from "styled-system";
 import cx from "classnames";
 
 import { loadIcon } from "metabase/icon_paths";
-import { stripLayoutProps } from "metabase/lib/utils"
+import { stripLayoutProps } from "metabase/lib/utils";
 
 import Tooltipify from "metabase/hoc/Tooltipify";
 
