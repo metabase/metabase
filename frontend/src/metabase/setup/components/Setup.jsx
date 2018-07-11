@@ -138,7 +138,7 @@ export default class Setup extends Component {
               />
 
               {setupComplete ? (
-                <section className="SetupStep rounded SetupStep--active flex flex-column layout-centered p4">
+                <section className="SetupStep bg-white rounded SetupStep--active flex flex-column layout-centered p4">
                   <h1
                     style={{ fontSize: "xx-large" }}
                     className="text-light pt2 pb2"

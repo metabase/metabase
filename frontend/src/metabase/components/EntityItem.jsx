@@ -9,17 +9,14 @@ import CheckBox from "metabase/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
-import { normal } from "metabase/lib/colors";
+import colors from "metabase/lib/colors";
 
 const EntityItemWrapper = Flex.extend`
-  border-bottom: 1px solid #f8f9fa;
+  border-bottom: 1px solid ${colors["bg-light"]};
   /* TODO - figure out how to use the prop instead of this? */
   align-items: center;
   &:hover {
-    color: ${normal.blue};
-  }
-  &:last-child {
-    border-bottom: none;
+    color: ${colors["brand"]};
   }
 `;
 
@@ -55,7 +52,7 @@ const EntityItem = ({
   ].filter(action => action);
 
   return (
-    <EntityItemWrapper py={2} px={2} className="hover-parent hover--visibility">
+    <EntityItemWrapper py={2} className="hover-parent hover--visibility">
       <IconWrapper
         p={1}
         mr={1}

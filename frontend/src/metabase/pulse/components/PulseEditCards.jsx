@@ -10,6 +10,8 @@ import QuestionSelect from "metabase/containers/QuestionSelect";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+import colors from "metabase/lib/colors";
+
 const SOFT_LIMIT = 10;
 const HARD_LIMIT = 25;
 const TABLE_MAX_ROWS = 20;
@@ -170,7 +172,7 @@ export default class PulseEditCards extends Component {
                     className="my4 ml3"
                     style={{
                       width: 375,
-                      borderTop: "1px dashed rgb(214,214,214)",
+                      borderTop: `1px dashed ${colors["border"]}`,
                     }}
                   />
                 )}

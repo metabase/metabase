@@ -121,17 +121,29 @@
                 special-type))
             pattern+base-types+special-type)))
 
-(s/defn infer-special-type :- (s/maybe i/FieldInstance)
+(def ^:private FieldOrColumn
+  "Schema that allows a `metabase.model.field/Field` or a column from a query resultset"
+  {:name                          su/NonBlankString
+   :base_type                     s/Keyword
+   (s/optional-key :special_type) (s/maybe s/Keyword)
+   s/Any                          s/Any})
+
+(s/defn infer-special-type :- (s/maybe s/Keyword)
   "Classifer that infers the special type of a FIELD based on its name and base type."
-  [field :- i/FieldInstance, _ :- (s/maybe i/Fingerprint)]
+  [field-or-column :- FieldOrColumn]
   ;; Don't overwrite keys, else we're ok with overwriting as a new more precise type might have
   ;; been added.
-  (when (not-any? (partial isa? (:special_type field)) [:type/PK :type/FK])
-    (when-let [inferred-special-type (special-type-for-name-and-base-type (:name field) (:base_type field))]
+  (when (not-any? (partial isa? (:special_type field-or-column)) [:type/PK :type/FK])
+    (special-type-for-name-and-base-type (:name field-or-column) (:base_type field-or-column))))
+
+(s/defn infer-and-assoc-special-type  :- (s/maybe FieldOrColumn)
+  "Returns `field-or-column` with a computed special type based on the name and base type of the `field-or-column`"
+  [field-or-column :- FieldOrColumn, _ :- (s/maybe i/Fingerprint)]
+  (when-let [inferred-special-type (infer-special-type field-or-column)]
       (log/debug (format "Based on the name of %s, we're giving it a special type of %s."
-                         (sync-util/name-for-logging field)
+                         (sync-util/name-for-logging field-or-column)
                          inferred-special-type))
-      (assoc field :special_type inferred-special-type))))
+      (assoc field-or-column :special_type inferred-special-type)))
 
 (defn- prefix-or-postfix
   [s]

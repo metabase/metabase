@@ -6,9 +6,8 @@ const VirtualizedList = ({ items, rowHeight, renderItem }) => (
   <AutoSizer>
     {({ width }) => (
       <WindowScroller>
-        {({ height, isScrolling, registerChild, scrollTop }) => (
+        {({ height, isScrolling, scrollTop }) => (
           <List
-            ref={registerChild}
             autoHeight
             width={width}
             height={Math.min(height, rowHeight * items.length)}

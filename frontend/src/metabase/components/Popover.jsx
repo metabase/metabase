@@ -108,9 +108,10 @@ export default class Popover extends Component {
         if (this._popoverElement.parentNode) {
           this._popoverElement.parentNode.removeChild(this._popoverElement);
         }
-        clearInterval(this._timer);
-        delete this._popoverElement, this._timer;
+        delete this._popoverElement;
       }, POPOVER_TRANSITION_LEAVE);
+      clearInterval(this._timer);
+      delete this._timer;
     }
   }
 

@@ -104,7 +104,7 @@
   {(s/optional-key :percent-json)   Percent
    (s/optional-key :percent-url)    Percent
    (s/optional-key :percent-email)  Percent
-   (s/optional-key :average-length) (s/constrained Double #(>= % 0) "Valid number greater than or equal to zero")})
+   (s/optional-key :average-length) su/PositiveNum})
 
 (def DateTimeFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/DateTime`."

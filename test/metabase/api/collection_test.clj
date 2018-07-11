@@ -110,8 +110,9 @@
   (tu/obj->json->obj
     [{:id                  (u/get-id card)
       :name                (:name card)
-      :description         nil
       :collection_position nil
+      :display            "table"
+      :description         nil
       :favorite            false
       :model               "card"}])
   (tu/obj->json->obj
@@ -139,7 +140,7 @@
 
 ;; check that you get to see the children as appropriate
 (expect
-  (map default-item [{:name "Birthday Card", :description nil, :favorite false, :model "card"}
+  (map default-item [{:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"}
                      {:name "Dine & Dashboard", :description nil, :model "dashboard"}
                      {:name "Electro-Magnetic Pulse", :model "pulse"}])
   (tt/with-temp Collection [collection {:name "Debt Collection"}]
@@ -331,7 +332,7 @@
 
 ;; Check that we can see stuff that isn't in any Collection -- meaning they're in the so-called "Root" Collection
 (expect
-  {:name                "Saved items"
+  {:name                "Our analytics"
    :id                  "root"
    :can_write           true
    :effective_location  nil
@@ -341,7 +342,7 @@
 
 ;; Make sure you can see everything for Users that can see everything
 (expect
-  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card"})
+  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
    (collection-item "Crowberto Corv's Personal Collection")
    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
    (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
@@ -357,7 +358,7 @@
 
 ;; ...but if they have read perms for the Root Collection they should get to see them
 (expect
-  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card"})
+  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
    (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
    (collection-item "Rasta Toucan's Personal Collection")]
@@ -405,6 +406,7 @@
   [{:name                "Business Card"
     :description         nil
     :collection_position nil
+    :display             "table"
     :favorite            false
     :model               "card"}]
   (tt/with-temp Card [card {:name "Business Card", :archived true}]

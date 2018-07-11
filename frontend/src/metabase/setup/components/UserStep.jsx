@@ -1,6 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { Box, Flex } from "grid-styled";
 import { t } from "c-3po";
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
@@ -166,7 +167,7 @@ export default class UserStep extends Component {
       );
     } else {
       return (
-        <section className="SetupStep SetupStep--active rounded full relative">
+        <section className="SetupStep SetupStep--active rounded bg-white full relative">
           <StepTitle title={stepText} circleText={"1"} />
           <form
             name="userForm"
@@ -175,43 +176,45 @@ export default class UserStep extends Component {
             className="mt2"
           >
             <FormField
-              className="Grid mb3"
+              className="mb3"
               fieldName="first_name"
               formError={formError}
             >
-              <div>
-                <FormLabel
-                  title={t`First name`}
-                  fieldName="first_name"
-                  formError={formError}
-                />
-                <input
-                  className="Form-input Form-offset full"
-                  name="first_name"
-                  defaultValue={userDetails ? userDetails.first_name : ""}
-                  placeholder="Johnny"
-                  required
-                  autoFocus={true}
-                  onChange={this.onFirstNameChange}
-                />
-                <span className="Form-charm" />
-              </div>
-              <div>
-                <FormLabel
-                  title={t`Last name`}
-                  fieldName="last_name"
-                  formError={formError}
-                />
-                <input
-                  className="Form-input Form-offset"
-                  name="last_name"
-                  defaultValue={userDetails ? userDetails.last_name : ""}
-                  placeholder="Appleseed"
-                  required
-                  onChange={this.onLastNameChange}
-                />
-                <span className="Form-charm" />
-              </div>
+              <Flex align="center">
+                <Box>
+                  <FormLabel
+                    title={t`First name`}
+                    fieldName="first_name"
+                    formError={formError}
+                  />
+                  <input
+                    className="Form-input Form-offset"
+                    name="first_name"
+                    defaultValue={userDetails ? userDetails.first_name : ""}
+                    placeholder="Johnny"
+                    required
+                    autoFocus={true}
+                    onChange={this.onFirstNameChange}
+                  />
+                  <span className="Form-charm" />
+                </Box>
+                <Box>
+                  <FormLabel
+                    title={t`Last name`}
+                    fieldName="last_name"
+                    formError={formError}
+                  />
+                  <input
+                    className="Form-input Form-offset"
+                    name="last_name"
+                    defaultValue={userDetails ? userDetails.last_name : ""}
+                    placeholder="Appleseed"
+                    required
+                    onChange={this.onLastNameChange}
+                  />
+                  <span className="Form-charm" />
+                </Box>
+              </Flex>
             </FormField>
 
             <FormField fieldName="email" formError={formError}>

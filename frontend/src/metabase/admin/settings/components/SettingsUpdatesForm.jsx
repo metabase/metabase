@@ -95,7 +95,7 @@ export default class SettingsUpdatesForm extends Component {
     } else {
       return (
         <div>
-          <div className="p2 bg-green bordered rounded border-green flex flex-row align-center justify-between">
+          <div className="p2 bg-green bordered rounded border-success flex flex-row align-center justify-between">
             <span className="text-white text-bold">{jt`Metabase ${this.removeVersionPrefixIfNeeded(
               versionInfo.latest.version,
             )} is available.  You're running ${this.removeVersionPrefixIfNeeded(
