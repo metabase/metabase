@@ -99,7 +99,7 @@ class DefaultLanding extends React.Component {
     };
 
     const collectionWidth = unpinned.length > 0 ? [1, 1 / 3] : 1;
-    const itemWidth = unpinned.length > 0 ? 2 / 3 : 0;
+    const itemWidth = unpinned.length > 0 ? [1, 2 / 3] : 0;
     const collectionGridSize = unpinned.length > 0 ? 1 : [1,  1 / 4];
 
     return (
