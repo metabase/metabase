@@ -10,7 +10,7 @@ const CollectionItem = ({ collection, color, iconName = "all" }) => (
   <Link
     to={`collection/${collection.id}`}
     color={normal.grey2}
-    bg={colors["bg-light"]}
+    bg={colors["bg-medium"]}
     className="block rounded"
     hover={{
       color: colors.primary,
