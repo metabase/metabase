@@ -27,15 +27,6 @@
      (with-open [stream (get-classpath-resource js-file-path)]
        (make-js-engine-with-script (slurp stream))))))
 
-(defn- make-args-array
-  "Useful for converting `args` into an object array which is necessary for invoking a varargs Java method via
-  Clojure"
-  [& args]
-  (let [^objects args-array (make-array Object (count args))]
-    (doall (map-indexed (fn [idx arg]
-                          (aset args-array idx arg)) args))
-    args-array))
-
 (defn make-color-selector
   "Returns a curried javascript function (object) that can be used with `get-background-color` for delegating to JS
   code to pick out the correct color for a given cell in a pulse table. The logic for picking a color is somewhat
@@ -43,15 +34,13 @@
   particular cell value, others affect the row, so it's necessary to call this once for the resultset and then
   `get-background-color` on each cell."
   [data viz-settings]
-  (let [^Invocable engine @js-engine]
-    (->> viz-settings
-         ;; Keyword strings don't serialize correctly when being passed to the JS engine
-         walk/stringify-keys
-         (make-args-array data)
-         (.invokeFunction engine "makeCellBackgroundGetter"))))
+  (let [^Invocable engine @js-engine
+        ;; Keyword strings don't serialize correctly when being passed to the JS engine
+        js-fn-args (object-array [data (walk/stringify-keys viz-settings)])]
+    (.invokeFunction engine "makeCellBackgroundGetter" js-fn-args)))
 
 (defn get-background-color
   "Get the correct color for a cell in a pulse table. This is intended to be invoked on each cell of every row in the
   table. See `make-color-selector` for more info."
   [^JSObject color-selector cell-value column-name row-index]
-  (.call color-selector color-selector (make-args-array cell-value column-name row-index)))
+  (.call color-selector color-selector (object-array [cell-value column-name row-index])))
