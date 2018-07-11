@@ -20,15 +20,17 @@ const EntityItemWrapper = Flex.extend`
   }
 `;
 
-export const EntityListItem = (props) =>
-    <Box mt={1} mb={2}>
-        <EntityItem {...props} />
-    </Box>
+export const EntityListItem = props => (
+  <Box mt={1} mb={2}>
+    <EntityItem {...props} />
+  </Box>
+);
 
-export const EntityCardItem = (props) =>
-    <Box my={1}>
-        <EntityItem {...props} />
-    </Box>
+export const EntityCardItem = props => (
+  <Box my={1}>
+    <EntityItem {...props} />
+  </Box>
+);
 
 const EntityItem = ({
   name,
