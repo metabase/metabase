@@ -54,9 +54,6 @@ export class GroupingManager {
         }
       }
 
-
-      console.log('grouping', settings[COLUMNS_SETTINGS][GROUPS_SOURCES].filter(p => (settings[COLUMNS_SETTINGS].columnNameToMetadata[p] || {}).showTotals))
-      console.log('nr', normalizedRows);
       mappedRows = normalizedRows.map(rows => pivotRows(rows, sortOrderMethod))
     } else {
       mappedRows = datas.map(p => normalizeRows(settings, p));
