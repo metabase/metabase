@@ -119,6 +119,7 @@ export class GroupingManager {
 
   mapStyle = (rowIndex: Number, columnIndex: Number, visibleRowIndices: Range, cellStyle: {}): {} => {
 
+    let res = cellStyle;
     if(columnIndex in this.columnIndexToFirstInGroupIndexes) {
       if ("height" in cellStyle) {
         const tmp = this.columnIndexToFirstInGroupIndexes[columnIndex];
@@ -128,11 +129,13 @@ export class GroupingManager {
         const rowSpan = endIndex - ri + 1;
         const top  = cellStyle.top - this.defaultRowHeight * (rowIndex  - ri);
         const height = this.defaultRowHeight * rowSpan;
-        const res = {...cellStyle, top: top, height: height, 'display': 'block', 'padding-top' : '.25em'};
-        return res;
+        res = {...cellStyle, top: top, height: height, 'display': 'block', 'padding-top' : '.25em'};
+
       }
+      res = {...res, background: '#F8F9FA'}
     }
-    return cellStyle;
+
+    return res;
   };
 
   getRowSpan = (rowIndex: Number, columnIndex: Number, visibleRowIndices: Range): Number => {

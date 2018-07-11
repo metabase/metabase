@@ -268,11 +268,16 @@ export default class TableInteractiveSummary extends Component {
     const column = cols[columnIndex];
     const row = rows[rowIndex];
     let value = column.getValue(row);
+    const isGrandTotal = row.isTotalColumnIndex === 0;
 
-    if (row.isTotalColumnIndex === 0 && columnIndex === 0)
+    if (isGrandTotal && columnIndex === 0)
       value = 'Grand totals';
 
-    const mappedStyle = groupingManager.mapStyle(rowIndex, columnIndex, visibleRowIndices, style);
+    let mappedStyle = {... groupingManager.mapStyle(rowIndex, columnIndex, visibleRowIndices, style)};
+    if(isGrandTotal)
+      mappedStyle = {... mappedStyle, background: '#509ee3', color: 'white', 'font-weight':'bold'};
+    else if (row.isTotalColumnIndex)
+      mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', 'font-weight':'bold' };
 
     if(groupingManager.isGrouped(columnIndex))
       key = (columnIndex + '-' + [...Array(columnIndex+1).keys()].map(i => row[i] || 'dd').join('-')) + (row.isTotalColumnIndex || '');

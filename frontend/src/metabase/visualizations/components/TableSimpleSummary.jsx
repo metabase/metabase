@@ -202,7 +202,8 @@ export default class TableSimpleSummary extends Component {
                       if (groupingManager.isVisible(rowIndex, columnIndex, {start, stop:end})
                       ) {
                         const column = cols[columnIndex];
-                        const cell = column.getValue(rows[rowIndex]);
+                        const row = rows[rowIndex];
+                        let cell = column.getValue(row);
                         const clicked = getTableCellClickedObject(
                           data,
                           rowIndex,
@@ -213,11 +214,20 @@ export default class TableSimpleSummary extends Component {
                           onVisualizationClick &&
                           visualizationIsClickable(clicked);
                         const rowSpan = groupingManager.getRowSpan(rowIndex, columnIndex, {start, stop:end});
+                        const isGrandTotal = row.isTotalColumnIndex === 0;
+                        if (isGrandTotal && columnIndex === 0)
+                          cell = 'Grand totals';
+
+                        let mappedStyle = {... groupingManager.mapStyle(rowIndex, columnIndex, {start, stop:end}, {})};
+                        if(isGrandTotal)
+                          mappedStyle = {... mappedStyle, background: '#509ee3', color: 'white', 'font-weight':'bold'};
+                        else if (row.isTotalColumnIndex)
+                          mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', 'font-weight':'bold' };
 
                         const res = (
                           <td
                             key={rowIndex + '-' + columnIndex}
-                            style={{ whiteSpace: "nowrap" }}
+                            style={{...mappedStyle, whiteSpace: "nowrap" }}
                             className={cx("px1 border-bottom", {
                               "text-right": isColumnRightAligned(
                                 cols[columnIndex],
