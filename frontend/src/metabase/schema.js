@@ -41,8 +41,27 @@ MetricSchema.define({
   table: TableSchema,
 });
 
+// backend returns model = "card" instead of "question"
+export const entityTypeForModel = model =>
+  model === "card" ? "questions" : `${model}s`;
+
+export const entityTypeForObject = object =>
+  object && entityTypeForModel(object.model);
+
+export const ENTITIES_SCHEMA_MAP = {
+  questions: QuestionSchema,
+  dashboards: DashboardSchema,
+  pulses: PulseSchema,
+  collections: CollectionSchema,
+  segments: SegmentSchema,
+  metrics: MetricSchema,
+};
+
+export const ObjectUnionSchema = new schema.Union(
+  ENTITIES_SCHEMA_MAP,
+  (object, parent, key) => entityTypeForObject(object),
+);
+
 CollectionSchema.define({
-  cards: [QuestionSchema],
-  dashboards: [DashboardSchema],
-  pulses: [PulseSchema],
+  items: [ObjectUnionSchema],
 });

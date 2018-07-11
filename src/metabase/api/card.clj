@@ -32,6 +32,7 @@
             [metabase.query-processor.middleware
              [cache :as cache]
              [results-metadata :as results-metadata]]
+            [metabase.sync.analyze.query-results :as qr]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [trs]]
             [schema.core :as s]
@@ -180,7 +181,7 @@
 ;; we'll also pass a simple checksum and have the frontend pass it back to us.  See the QP `results-metadata`
 ;; middleware namespace for more details
 
-(s/defn ^:private result-metadata-for-query :- results-metadata/ResultsMetadata
+(s/defn ^:private result-metadata-for-query :- qr/ResultsMetadata
   "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return.
    This is obviously a bit wasteful so hopefully we can avoid having to do this."
   [query]
@@ -191,12 +192,12 @@
                    (u/pprint-to-str 'red results))
         (get-in results [:data :results_metadata :columns])))))
 
-(s/defn ^:private result-metadata :- (s/maybe results-metadata/ResultsMetadata)
+(s/defn ^:private result-metadata :- (s/maybe qr/ResultsMetadata)
   "Get the right results metadata for this CARD. We'll check to see whether the METADATA passed in seems valid;
    otherwise we'll run the query ourselves to get the right values."
   [query metadata checksum]
   (let [valid-metadata? (and (results-metadata/valid-checksum? metadata checksum)
-                             (s/validate results-metadata/ResultsMetadata metadata))]
+                             (s/validate qr/ResultsMetadata metadata))]
     (log/info (str "Card results metadata passed in to API is "
                    (cond
                      valid-metadata? "VALID. Thanks!"
@@ -216,7 +217,7 @@
    visualization_settings su/Map
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
-   result_metadata        (s/maybe results-metadata/ResultsMetadata)
+   result_metadata        (s/maybe qr/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)}
   ;; check that we have permissions to run the query that we're trying to save
   (api/check-403 (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
@@ -224,16 +225,21 @@
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
   ;; everything is g2g, now save the card
-  (let [card (db/insert! Card
-               :creator_id             api/*current-user-id*
-               :dataset_query          dataset_query
-               :description            description
-               :display                display
-               :name                   name
-               :visualization_settings visualization_settings
-               :collection_id          collection_id
-               :collection_position    collection_position
-               :result_metadata        (result-metadata dataset_query result_metadata metadata_checksum))]
+  (let [card-data {:creator_id             api/*current-user-id*
+                   :dataset_query          dataset_query
+                   :description            description
+                   :display                display
+                   :name                   name
+                   :visualization_settings visualization_settings
+                   :collection_id          collection_id
+                   :collection_position    collection_position
+                   :result_metadata        (result-metadata dataset_query result_metadata metadata_checksum)}
+
+        card      (db/transaction
+                    ;; Adding a new card at `collection_position` could cause other cards in this
+                    ;; collection to change position, check that and fix it if needed
+                    (api/maybe-reconcile-collection-position! card-data)
+                    (db/insert! Card card-data))]
     (events/publish-event! :card-create card)
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has
     ;; with returned one -- See #4283
@@ -390,7 +396,7 @@
    embedding_params       (s/maybe su/EmbeddingParams)
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
-   result_metadata        (s/maybe results-metadata/ResultsMetadata)
+   result_metadata        (s/maybe qr/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)}
   (let [card-before-update (api/write-check Card id)]
     ;; Do various permissions checks
@@ -402,14 +408,19 @@
     (let [card-updates (assoc card-updates
                          :result_metadata (result-metadata-for-updating card-before-update dataset_query
                                                                         result_metadata metadata_checksum))]
-      ;; ok, now save the Card
-      (db/update! Card id
-        ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
-        ;; modified if they're passed in as non-nil
-        (u/select-keys-when card-updates
-          :present #{:collection_id :collection_position :description}
-          :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                     :embedding_params :result_metadata})))
+
+      ;; Setting up a transaction here so that we don't get a partially reconciled/updated card.
+      (db/transaction
+        (api/maybe-reconcile-collection-position! card-before-update card-updates)
+
+        ;; ok, now save the Card
+        (db/update! Card id
+          ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
+          ;; modified if they're passed in as non-nil
+          (u/select-keys-when card-updates
+            :present #{:collection_id :collection_position :description}
+            :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
+                       :embedding_params :result_metadata}))))
     ;; Fetch the updated Card from the DB
     (let [card (Card id)]
       (delete-alerts-if-needed! card-before-update card)
@@ -454,26 +465,71 @@
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
 
+(defn- update-collection-positions!
+  "For cards that have a position in the previous collection, add them to the end of the new collection, trying to
+  preseve the order from the original collections. Note it's possible for there to be multiple collections
+  (and thus duplicate collection positions) merged into this new collection. No special tie breaker logic for when
+  that's the case, just use the order the DB returned it in"
+  [new-collection-id-or-nil cards]
+  ;; Sorting by `:collection_position` to ensure lower position cards are appended first
+  (let [sorted-cards        (sort-by :collection_position cards)
+        max-position-result (db/select-one [Card [:%max.collection_position :max_position]]
+                              :collection_id new-collection-id-or-nil)
+        ;; collection_position for the next card in the collection
+        starting-position   (inc (get max-position-result :max_position 0))]
+
+    ;; This is using `map` but more like a `doseq` with multiple seqs. Wrapping this in a `doall` as we don't want it
+    ;; to be lazy and we're just going to discard the results
+    (doall
+     (map (fn [idx {:keys [collection_id collection_position] :as card}]
+            ;; We are removing this card from `collection_id` so we need to reconcile any
+            ;; `collection_position` entries left behind by this move
+            (api/reconcile-position-for-collection! collection_id collection_position nil)
+            ;; Now we can update the card with the new collection and a new calculated position
+            ;; that appended to the end
+            (db/update! Card (u/get-id card)
+              :collection_position idx
+              :collection_id       new-collection-id-or-nil))
+          ;; These are reversed because of the classic issue when removing an item from array. If we remove an
+          ;; item at index 1, everthing above index 1 will get decremented. By reversing our processing order we
+          ;; can avoid changing the index of cards we haven't yet updated
+          (reverse (range starting-position (+ (count sorted-cards) starting-position)))
+          (reverse sorted-cards)))))
+
 (defn- move-cards-to-collection! [new-collection-id-or-nil card-ids]
   ;; if moving to a collection, make sure we have write perms for it
   (when new-collection-id-or-nil
     (api/write-check Collection new-collection-id-or-nil))
   ;; for each affected card...
   (when (seq card-ids)
-    (let [cards (db/select [Card :id :collection_id :dataset_query]
+    (let [cards (db/select [Card :id :collection_id :collection_position :dataset_query]
                   {:where [:and [:in :id (set card-ids)]
                                 [:or [:not= :collection_id new-collection-id-or-nil]
-                                     (when new-collection-id-or-nil
-                                       [:= :collection_id nil])]]})] ; poisioned NULLs = ick
+                                  (when new-collection-id-or-nil
+                                    [:= :collection_id nil])]]})] ; poisioned NULLs = ick
       ;; ...check that we have write permissions for it...
       (doseq [card cards]
         (api/write-check card))
       ;; ...and check that we have write permissions for the old collections if applicable
       (doseq [old-collection-id (set (filter identity (map :collection_id cards)))]
-        (api/write-check Collection old-collection-id)))
-    ;; ok, everything checks out. Set the new `collection_id` for all the Cards
-    (db/update-where! Card {:id [:in (set card-ids)]}
-      :collection_id new-collection-id-or-nil)))
+        (api/write-check Collection old-collection-id))
+
+      ;; Ensure all of the card updates occur in a transaction. Read commited (the default) really isn't what we want
+      ;; here. We are querying for the max card position for a given collection, then using that to base our position
+      ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
+      ;; get duplicates
+      (db/transaction
+        ;; If any of the cards have a `:collection_position`, we'll need to fixup the old collection now that the cards
+        ;; are gone and update the position in the new collection
+        (when-let [cards-with-position (seq (filter :collection_position cards))]
+          (update-collection-positions! new-collection-id-or-nil cards-with-position))
+
+        ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already
+        (when-let [cards-without-position (seq (for [card cards
+                                                     :when (not (:collection_position card))]
+                                                 (u/get-id card)))]
+          (db/update-where! Card {:id [:in (set cards-without-position)]}
+            :collection_id new-collection-id-or-nil))))))
 
 (api/defendpoint POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with

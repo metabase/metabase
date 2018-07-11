@@ -4,11 +4,11 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting.jsx";
 
+import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon.jsx";
 
 import RetinaImage from "react-retina-image";
 
-import cx from "classnames";
 import _ from "underscore";
 import { t, jt } from "c-3po";
 
@@ -59,7 +59,9 @@ export default class SettingsSlackForm extends Component {
 
   // return null if element passes validation, otherwise return an error message
   validateElement([validationType, validationMessage], value, element) {
-    if (MetabaseUtils.isEmpty(value)) return;
+    if (MetabaseUtils.isEmpty(value)) {
+      return;
+    }
 
     switch (validationType) {
       case "email":
@@ -93,7 +95,9 @@ export default class SettingsSlackForm extends Component {
             formData[element.key],
             element,
           );
-          if (validationErrors[element.key]) valid = false;
+          if (validationErrors[element.key]) {
+            valid = false;
+          }
         }, this);
       }
     }, this);
@@ -262,17 +266,15 @@ export default class SettingsSlackForm extends Component {
         <ul>
           {settings}
           <li className="m2 mb4">
-            <button
-              className={cx(
-                "Button mr2",
-                { "Button--primary": !disabled },
-                { "Button--success-new": submitting === "success" },
-              )}
+            <Button
+              mr={2}
+              primary={!disabled}
+              success={submitting === "success"}
               disabled={disabled}
               onClick={this.updateSlackSettings.bind(this)}
             >
               {saveButtonText}
-            </button>
+            </Button>
             {formErrors && formErrors.message ? (
               <span className="pl2 text-error text-bold">
                 {formErrors.message}

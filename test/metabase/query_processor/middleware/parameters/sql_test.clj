@@ -532,7 +532,7 @@
   ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery and
   ;; Presto we will just hackily return the correct identifier here
   (case datasets/*engine*
-    :bigquery "[test_data.checkins]"
+    :bigquery "`test_data.checkins`"
     :presto   "\"default\".\"checkins\""
     (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :checkins))]
       (str (when (seq schema)

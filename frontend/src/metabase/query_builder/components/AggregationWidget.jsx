@@ -70,7 +70,7 @@ export default class AggregationWidget extends Component {
           )}
           {fieldId && (
             <FieldName
-              className="View-section-aggregation-target SelectionModule py1"
+              className="View-section-aggregation-target SelectionModule py1 QueryOption"
               tableMetadata={tableMetadata}
               field={fieldId}
               fieldOptions={Query.getFieldOptions(tableMetadata.fields, true)}

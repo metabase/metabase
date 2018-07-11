@@ -1,12 +1,14 @@
 /* @flow */
 
 import React from "react";
+import { assocIn } from "icepick";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-import { assocIn } from "icepick";
+import colors from "metabase/lib/colors";
 
 import CollectionSelect from "metabase/containers/CollectionSelect";
+import { canonicalCollectionId } from "metabase/entities/collections";
 
 import { POST, DELETE } from "metabase/lib/api";
 
@@ -33,18 +35,17 @@ const Questions = createEntity({
     setCollection: ({ id }, collection, opts) =>
       Questions.actions.update(
         { id },
-        // TODO - would be dope to make this check in one spot instead of on every movable item type
-        {
-          collection_id:
-            !collection || collection.id === "root" ? null : collection.id,
-        },
+        { collection_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "question", "moved"),
       ),
 
     setPinned: ({ id }, pinned, opts) =>
       Questions.actions.update(
         { id },
-        { collection_position: pinned ? 1 : null },
+        {
+          collection_position:
+            typeof pinned === "number" ? pinned : pinned ? 1 : null,
+        },
         opts,
       ),
 
@@ -62,8 +63,10 @@ const Questions = createEntity({
   objectSelectors: {
     getName: question => question && question.name,
     getUrl: question => question && Urls.question(question.id),
-    getColor: () => "#93B3C9",
-    getIcon: question => "beaker",
+    getColor: () => colors["text-medium"],
+    getIcon: question =>
+      (require("metabase/visualizations").default.get(question.display) || {})
+        .iconName || "beaker",
   },
 
   reducer: (state = {}, { type, payload, error }) => {

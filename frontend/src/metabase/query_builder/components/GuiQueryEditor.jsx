@@ -7,7 +7,7 @@ import { t } from "c-3po";
 import AggregationWidget_LEGACY from "./AggregationWidget.jsx";
 import BreakoutWidget_LEGACY from "./BreakoutWidget.jsx";
 import ExtendedOptions from "./ExtendedOptions.jsx";
-import FilterList from "./filters/FilterList.jsx";
+import FilterWidgetList from "./filters/FilterWidgetList.jsx";
 import FilterPopover from "./filters/FilterPopover.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from "metabase/components/IconBorder.jsx";
@@ -120,7 +120,9 @@ export default class GuiQueryEditor extends Component {
   renderFilters() {
     const { query, features, setDatasetQuery } = this.props;
 
-    if (!features.filter) return;
+    if (!features.filter) {
+      return;
+    }
 
     let enabled;
     let filterList;
@@ -132,7 +134,7 @@ export default class GuiQueryEditor extends Component {
       let filters = query.filters();
       if (filters && filters.length > 0) {
         filterList = (
-          <FilterList
+          <FilterWidgetList
             query={query}
             filters={filters}
             removeFilter={index =>

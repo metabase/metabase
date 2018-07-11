@@ -19,6 +19,7 @@ export default class UserAvatar extends Component {
   static propTypes = {
     background: PropTypes.string,
     user: PropTypes.object.isRequired,
+    transparent: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -51,7 +52,11 @@ export default class UserAvatar extends Component {
     return (
       <div
         className={cx(classes)}
-        style={{ ...this.styles, ...this.props.style }}
+        style={{
+          ...this.styles,
+          ...this.props.style,
+          ...(this.props.transparent ? { background: "transparent" } : {}),
+        }}
       >
         {this.userInitials()}
       </div>

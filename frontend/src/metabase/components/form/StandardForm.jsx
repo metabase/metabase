@@ -21,7 +21,7 @@ const StandardForm = ({
 
   form,
   className,
-  resetButton = true,
+  resetButton = false,
   newForm = true,
 
   ...props
@@ -39,6 +39,7 @@ const StandardForm = ({
             }
             offset={!newForm}
             {...field}
+            hidden={formField.type === "hidden"}
           >
             <FormWidget field={field} offset={!newForm} {...formField} />
             {!newForm && <span className="Form-charm" />}

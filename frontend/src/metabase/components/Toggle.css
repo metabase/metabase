@@ -1,13 +1,13 @@
 :local(.toggle) {
   position: relative;
   display: inline-block;
-  color: var(--brand-color);
+  color: var(--color-brand);
   box-sizing: border-box;
   width: 48px;
   height: 24px;
   border-radius: 99px;
-  border: 1px solid #eaeaea;
-  background-color: #f7f7f7;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-medium);
   transition: all 0.3s;
 }
 
@@ -23,8 +23,9 @@
   position: absolute;
   top: 1px;
   left: 1px;
-  background-color: #d9d9d9;
+  background-color: white;
   transition: all 0.3s;
+  box-shadow: 2px 2px 6px var(--color-shadow);
 }
 
 :local(.toggle.selected):after {

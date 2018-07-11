@@ -53,7 +53,7 @@
 
 (defmethod fetch-collection-children :card
   [_ collection {:keys [archived?]}]
-  (-> (db/select [Card :id :name :description :collection_position]
+  (-> (db/select [Card :id :name :description :collection_position :display]
         :collection_id (:id collection)
         :archived      archived?)
       (hydrate :favorite)))
@@ -91,30 +91,50 @@
        (sort-by (comp str/lower-case :name))))
 
 (s/defn ^:private collection-detail
-  "Add a standard set of details to `collection`, including things like `effective_location` as well as items in the
-  Collection, restricted by `children-options`. Works for either a normal Collection or the Root Collection."
-  [collection :- collection/CollectionWithLocationAndIDOrRoot, children-options :- CollectionChildrenOptions]
+  "Add a standard set of details to `collection`, including things like `effective_location`.
+  Works for either a normal Collection or the Root Collection."
+  [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
-      (hydrate :effective_location :effective_ancestors :can_write)
-      (assoc :items (collection-children collection children-options))))
+      (hydrate :effective_location :effective_ancestors :can_write)))
+
+(s/defn ^:private collection-items
+  "Return items in the Collection, restricted by `children-options`.
+  Works for either a normal Collection or the Root Collection."
+  [collection :- collection/CollectionWithLocationAndIDOrRoot, children-options :- CollectionChildrenOptions]
+  (collection-children collection children-options))
 
 (api/defendpoint GET "/:id"
-  "Fetch a specific Collection with the following options:
+  "Fetch a specific Collection with standard details added"
+  [id]
+  (collection-detail (api/read-check Collection id)))
+
+(api/defendpoint GET "/:id/items"
+  "Fetch a specific Collection's items with the following options:
 
   *  `model` - only include objects of a specific `model`. If unspecified, returns objects of all models
   *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`."
   [id model archived]
   {model    (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
    archived (s/maybe su/BooleanString)}
-  (collection-detail
+  (collection-items
     (api/read-check Collection id)
     {:model     (keyword model)
      :archived? (Boolean/parseBoolean archived)}))
 
-
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
 (api/defendpoint GET "/root"
+  "Return the 'Root' Collection object with standard details added"
+  []
+  (-> (collection-detail collection/root-collection)
+      ;; add in some things for the FE to display since the 'Root' Collection isn't real and wouldn't normally have
+      ;; these things
+      (assoc
+          :name (tru "Our analytics")
+          :id   "root")
+      (dissoc ::collection/is-root?)))
+
+(api/defendpoint GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
   `collection_id` exist. It does, however, have its own set of Permissions.
@@ -128,23 +148,14 @@
   [model archived]
   {model    (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
    archived (s/maybe su/BooleanString)}
-  (-> (collection-detail
-       collection/root-collection
-       ;; Return collection details, including Collections that have an effective location of being in the Root
-       ;; Collection for the Current User.
-       ;;
-       ;; Only people with Root Collection Read Permissions get to see Cards/Dashboards/Pulses/etc. that have no
-       ;; `collection_id`. Thus, if we don't have Root Collection read perms, only return Collections.
-       {:model     (if (mi/can-read? collection/root-collection)
-                     (keyword model)
-                     :collection)
-        :archived? (Boolean/parseBoolean archived)})
-      ;; add in some things for the FE to display since the 'Root Collection' isn't real and wouldn't normally have
-      ;; these things
-      (assoc
-          :name (tru "Root Collection")
-          :id   "root")
-      (dissoc :metabase.models.collection/is-root?)))
+  ;; Return collection contents, including Collections that have an effective location of being in the Root
+  ;; Collection for the Current User.
+  (collection-items
+    collection/root-collection
+    {:model     (if (mi/can-read? collection/root-collection)
+                  (keyword model)
+                  :collection)
+     :archived? (Boolean/parseBoolean archived)}))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------

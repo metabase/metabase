@@ -10,10 +10,10 @@ import withToast from "metabase/hoc/Toast";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
+import Filter from "metabase/query_builder/components/Filter";
 
 import cxs from "cxs";
 import { t } from "c-3po";
-import _ from "underscore";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
@@ -26,7 +26,9 @@ import { DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import { getParameterIconName } from "metabase/meta/Parameter";
+import * as Q from "metabase/lib/query/query";
+import Dimension from "metabase-lib/lib/Dimension";
+import colors from "metabase/lib/colors";
 
 import { dissoc } from "icepick";
 
@@ -61,7 +63,12 @@ class AutomaticDashboardApp extends React.Component {
     const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
     triggerToast(
       <div className="flex align-center">
-        <Icon name="dashboard" size={22} className="mr2" color="#93A1AB" />
+        <Icon
+          name="dashboard"
+          size={22}
+          className="mr2"
+          color={colors["text-medium"]}
+        />
         {t`Your dashboard was saved`}
         <Link
           className="link text-bold ml1"
@@ -89,7 +96,7 @@ class AutomaticDashboardApp extends React.Component {
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
     const more = dashboard && dashboard.more;
     const related = dashboard && dashboard.related;
-    const hasSidebar = _.any(related || {}, list => list.length > 0);
+    const hasSidebar = related && related.length > 0;
 
     return (
       <div className="relative">
@@ -100,9 +107,11 @@ class AutomaticDashboardApp extends React.Component {
               <div>
                 <h2>{dashboard && <TransientTitle dashboard={dashboard} />}</h2>
                 {dashboard &&
-                  dashboard.transient_filters &&
-                  dashboard.transient_filters.length > 0 && (
-                    <TransientFilters filters={dashboard.transient_filters} />
+                  dashboard.transient_filters && (
+                    <TransientFilters
+                      filter={dashboard.transient_filters}
+                      metadata={this.props.metadata}
+                    />
                   )}
               </div>
               {savedDashboardId != null ? (
@@ -169,38 +178,39 @@ const TransientTitle = ({ dashboard }) =>
     <span>{dashboard.name}</span>
   ) : null;
 
-const TransientFilters = ({ filters }) => (
+const TransientFilters = ({ filter, metadata }) => (
   <div className="mt1 flex align-center text-grey-4 text-bold">
-    {filters.map((filter, index) => (
-      <TransientFilter key={index} filter={filter} />
+    {/* $FlowFixMe */}
+    {Q.getFilters({ filter }).map((f, index) => (
+      <TransientFilter key={index} filter={f} metadata={metadata} />
     ))}
   </div>
 );
 
-const TransientFilter = ({ filter }) => (
+const TransientFilter = ({ filter, metadata }) => (
   <div className="mr3">
-    <Icon name={getParameterIconName(filter.type)} size={12} className="mr1" />
-    {filter.field.map((str, index) => [
-      <span key={"name" + index}>{str}</span>,
-      index !== filter.field.length - 1 ? (
-        <Icon
-          key={"icon" + index}
-          size={10}
-          style={{ marginLeft: 3, marginRight: 3 }}
-          name="connections"
-        />
-      ) : null,
-    ])}
-    <span> {filter.value}</span>
+    <Icon size={12} name={getIconForFilter(filter, metadata)} className="mr1" />
+    <Filter filter={filter} metadata={metadata} />
   </div>
 );
 
+const getIconForFilter = (filter, metadata) => {
+  const field = Dimension.parseMBQL(filter[1], metadata).field();
+  if (field.isDate()) {
+    return "calendar";
+  } else if (field.isLocation()) {
+    return "location";
+  } else {
+    return "label";
+  }
+};
+
 const suggestionClasses = cxs({
   ":hover h3": {
-    color: "#509ee3",
+    color: colors["brand"],
   },
   ":hover .Icon": {
-    color: "#F9D45C",
+    color: colors["warning"],
   },
 });
 
@@ -240,9 +250,7 @@ const SuggestionsSidebar = ({ related }) => (
     <div className="py2 text-centered my3">
       <h3 className="text-grey-3">More X-rays</h3>
     </div>
-    {Object.entries(related).map(([section, suggestions]) => (
-      <SuggestionsList section={section} suggestions={suggestions} />
-    ))}
+    <SuggestionsList section="related" suggestions={related} />
   </div>
 );
 

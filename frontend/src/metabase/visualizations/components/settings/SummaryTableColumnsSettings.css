@@ -7,15 +7,15 @@
   font-family: var(--default-font-family), sans-serif;
   border: none;
   background: transparent;
-  color: color(var(--base-grey) shade(40%));
+  color: color(var(--color-bg-light) shade(40%));
 }
 
 :local .SortOrder:hover {
-  color: color(var(--brand-color));
+  color: color(var(--color-brand));
 }
 
 :local .DescriptionText {
-  color: var(--slate-color);
+  color: var(--color-text-medium);
   font-weight: bold;
 }
 :local .charthr {

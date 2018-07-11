@@ -166,7 +166,9 @@
   (when-not archived?
     (-> (make-honeysql-search-query Pulse "pulse" pulse-columns-without-type)
         (merge-name-search search-ctx)
-        (add-collection-criteria :collection_id search-ctx))))
+        (add-collection-criteria :collection_id search-ctx)
+        ;; We don't want alerts included in pulse results
+        (h/merge-where [:= :alert_condition nil]))))
 
 (s/defmethod ^:private create-search-query :metric
   [_ search-ctx :- SearchContext]
@@ -196,7 +198,7 @@
 (s/defn ^:private make-search-context :- SearchContext
   [search-string :- (s/maybe su/NonBlankString)
    archived-string :- (s/maybe su/BooleanString)]
-  {:search-string       (str "%" (str/lower-case search-string) "%")
+  {:search-string       search-string
    :archived?           (Boolean/parseBoolean archived-string)
    :visible-collections (coll/permissions-set->visible-collection-ids @*current-user-permissions-set*)})
 

@@ -60,9 +60,8 @@
               (throw e))))))
 
 
-(defn- native-query? [query-type]
-  (or (= query-type "native")
-      (= query-type :native)))
+(def ^:private ^{:arglists '([query-type])} native-query?
+  (comp #{:native} qputil/normalize-token))
 
 (defn query->database-and-table-ids
   "Return a map with `:database-id` and source `:table-id` that should be saved for a Card. Handles queries that use

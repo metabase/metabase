@@ -14,7 +14,8 @@
   functions for fetching a specific Pulse). At some point in the future, we can clean this namespace up and bring the
   code in line with the rest of the codebase, but for the time being, it probably makes sense to follow the existing
   patterns in this namespace rather than further confuse things."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase
              [events :as events]
@@ -27,6 +28,7 @@
              [pulse-channel :as pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -73,30 +75,6 @@
    :can-write?        (partial i/current-user-has-full-permissions? :write)
    :perms-objects-set perms-objects-set})
 
-
-;;; --------------------------------------------------- Hydration ----------------------------------------------------
-
-(defn ^:hydrate channels
-  "Return the PulseChannels associated with this `notification`."
-  [notification-or-id]
-  (db/select PulseChannel, :pulse_id (u/get-id notification-or-id)))
-
-
-(defn ^:hydrate cards
-  "Return the Cards associated with this `notification`."
-  [notification-or-id]
-  (map (partial models/do-post-select Card)
-       (db/query
-        {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls]
-         :from      [[Pulse :p]]
-         :join      [[PulseCard :pc] [:= :p.id :pc.pulse_id]
-                     [Card :c] [:= :c.id :pc.card_id]]
-         :where     [:and
-                     [:= :p.id (u/get-id notification-or-id)]
-                     [:= :c.archived false]]
-         :order-by [[:pc.position :asc]]})))
-
-
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
 (def AlertConditions
@@ -109,8 +87,51 @@
   (su/with-api-error-message {:id          su/IntGreaterThanZero
                               :include_csv s/Bool
                               :include_xls s/Bool}
-    "value must be a map with the keys `id`, `include_csv`, and `include_xls`."))
+    (tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "id" "include_csv" "include_xls")))
 
+(def HybridPulseCard
+  "This schema represents the cards that are included in a pulse. This is the data from the `PulseCard` and some
+  additional information used by the UI to display it from `Card`. This is a superset of `CardRef` and is coercible to
+  a `CardRef`"
+  (su/with-api-error-message
+      (merge (:schema CardRef)
+             {:name          (s/maybe s/Str)
+              :description   (s/maybe s/Str)
+              :display       (s/maybe su/KeywordOrString)
+              :collection_id (s/maybe su/IntGreaterThanZero)})
+    (tru "value must be a map with the following keys `({0})`"
+         (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"]))))
+
+(def CoercibleToCardRef
+  "Schema for functions accepting either a `HybridPulseCard` or `CardRef`."
+  (s/conditional
+   (fn check-hybrid-pulse-card [maybe-map]
+     (and (map? maybe-map)
+          (some #(contains? maybe-map %) [:name :description :display :collection_id])))
+   HybridPulseCard
+   :else
+   CardRef))
+
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
+
+(defn ^:hydrate channels
+  "Return the PulseChannels associated with this `notification`."
+  [notification-or-id]
+  (db/select PulseChannel, :pulse_id (u/get-id notification-or-id)))
+
+(s/defn ^:hydrate cards :- [HybridPulseCard]
+  "Return the Cards associated with this `notification`."
+  [notification-or-id]
+  (map (partial models/do-post-select Card)
+       (db/query
+        {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls]
+         :from      [[Pulse :p]]
+         :join      [[PulseCard :pc] [:= :p.id :pc.pulse_id]
+                     [Card :c] [:= :c.id :pc.card_id]]
+         :where     [:and
+                     [:= :p.id (u/get-id notification-or-id)]
+                     [:= :c.archived false]]
+         :order-by [[:pc.position :asc]]})))
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 
@@ -342,7 +363,7 @@
                     (s/optional-key :skip_if_empty)       s/Bool
                     (s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZero)
                     (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)
-                    (s/optional-key :cards)               [CardRef]
+                    (s/optional-key :cards)               [CoercibleToCardRef]
                     (s/optional-key :channels)            [su/Map]}]
   (db/update! Pulse (u/get-id notification)
     (u/select-keys-when notification

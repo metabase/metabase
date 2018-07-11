@@ -23,7 +23,9 @@ export default class Aggregation {
    * Returns `null` if the clause isn't in a standard format
    */
   getOption(): ?AggregationOption {
-    if (this._query == null) return null;
+    if (this._query == null) {
+      return null;
+    }
 
     const operator = this.getOperator();
     return operator

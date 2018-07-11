@@ -12,10 +12,10 @@
 }
 
 .PulseButton {
-  color: rgb(121, 130, 127);
+  color: var(--color-text-medium);
   font-weight: 700;
   border-width: 2px;
-  border-color: rgb(222, 228, 226);
+  border-color: var(--color-border);
 }
 
 .PulseEdit .input,
@@ -24,7 +24,7 @@
 .PulseEdit .border-row-divider,
 .PulseEdit .AdminSelect {
   border-width: 2px;
-  border-color: rgb(222, 228, 226);
+  border-color: var(--color-border);
 }
 
 .PulseEdit .AdminSelect {
@@ -34,7 +34,7 @@
 .PulseEdit .input:focus,
 .PulseEdit .input--focus {
   border-width: 2px;
-  border-color: rgb(97, 167, 229) !important;
+  border-color: var(--color-brand) !important;
 }
 
 .PulseListItem button {
@@ -42,7 +42,7 @@
 }
 
 .bg-grey-0 {
-  background-color: rgb(252, 252, 253);
+  background-color: var(--color-bg-white);
 }
 
 .PulseEditButton {
@@ -59,27 +59,27 @@
 }
 
 .PulseListItem.PulseListItem--focused {
-  border-color: #509ee3;
-  box-shadow: 0 0 3px #509ee3;
+  border-color: var(--color-brand);
+  box-shadow: 0 0 3px var(--color-shadow);
 }
 
 .DangerZone:hover {
-  border-color: var(--error-color);
+  border-color: var(--color-accent3);
   transition: border 0.3s ease-in;
 }
 
 .DangerZone .Button--danger {
   opacity: 0.4;
-  background: #fbfcfd;
-  border: 1px solid #ddd;
-  color: #444;
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-dark);
 }
 
 .DangerZone:hover .Button--danger {
   opacity: 1;
-  background-color: var(--danger-button-bg-color);
-  border-color: var(--danger-button-bg-color);
-  color: #fff;
+  background-color: var(--color-accent3);
+  border-color: var(--color-accent3);
+  color: var(--color-text-white);
 }
 
 .Modal.WhatsAPulseModal {
