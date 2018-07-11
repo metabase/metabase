@@ -430,7 +430,9 @@ class CollectionLanding extends React.Component {
                   ]}
                 />
               </Box>
-              <h2 style={{ fontWeight: 900 }} className="pt1">{currentCollection.name}</h2>
+              <h2 style={{ fontWeight: 900 }} className="pt1">
+                {currentCollection.name}
+              </h2>
             </Box>
 
             <Flex ml="auto">
