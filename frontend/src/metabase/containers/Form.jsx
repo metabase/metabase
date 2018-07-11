@@ -76,7 +76,10 @@ export default class Form_ extends React.Component {
   _updateFormComponent(props: Props) {
     if (this.props.form) {
       const form = makeForm(this.props.form);
-      const initialValues = this.props.initialValues || form.initial();
+      const initialValues = {
+        ...form.initial(),
+        ...(this.props.initialValues || {}),
+      };
       // redux-form config:
       const formConfig = {
         form: this._formName,
