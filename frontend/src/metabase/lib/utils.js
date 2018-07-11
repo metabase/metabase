@@ -19,6 +19,7 @@ const LAYOUT_PROPS = [
   "bg",
   "color",
   "hover",
+  'bordered'
 ];
 
 export function stripLayoutProps(props) {
