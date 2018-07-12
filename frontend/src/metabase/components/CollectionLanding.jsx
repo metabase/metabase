@@ -39,6 +39,7 @@ import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 
 const ROW_HEIGHT = 72;
+const PAGE_PADDING = [2, 3, 4];
 
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
@@ -97,9 +98,9 @@ class DefaultLanding extends React.Component {
       onSelectNone();
     };
 
-    const collectionWidth = unpinned.length > 0 ? 1 / 3 : 1;
-    const itemWidth = unpinned.length > 0 ? 2 / 3 : 0;
-    const collectionGridSize = unpinned.length > 0 ? 1 : 1 / 4;
+    const collectionWidth = unpinned.length > 0 ? [1, 1 / 3] : 1;
+    const itemWidth = unpinned.length > 0 ? [1, 2 / 3] : 0;
+    const collectionGridSize = unpinned.length > 0 ? 1 : [1, 1 / 4];
 
     return (
       <Box>
@@ -107,7 +108,7 @@ class DefaultLanding extends React.Component {
           <Box>
             <Box>
               {pinned.length > 0 ? (
-                <Box mx={4} mt={2} mb={3}>
+                <Box mx={PAGE_PADDING} mt={2} mb={3}>
                   <CollectionSectionHeading>{t`Pins`}</CollectionSectionHeading>
                   <PinDropTarget
                     pinIndex={pinned[pinned.length - 1].collection_position + 1}
@@ -117,7 +118,7 @@ class DefaultLanding extends React.Component {
                   >
                     <Grid>
                       {pinned.map((item, index) => (
-                        <GridItem w={1 / 3} className="relative">
+                        <GridItem w={[1, 1 / 3]} className="relative">
                           <ItemDragSource item={item}>
                             <PinnedItem
                               key={`${item.type}:${item.id}`}
@@ -163,10 +164,10 @@ class DefaultLanding extends React.Component {
                   )}
                 </PinDropTarget>
               )}
-              <Box pt={2} px={4} bg="white">
+              <Box pt={[1, 2]} px={[2, 4]} bg="white">
                 <Grid>
                   <GridItem w={collectionWidth}>
-                    <Box pr={2}>
+                    <Box pr={2} className="relative">
                       <Box py={2}>
                         <CollectionSectionHeading>
                           {t`Collections`}
@@ -413,43 +414,41 @@ class CollectionLanding extends React.Component {
 
     return (
       <Box>
-        <Box>
-          <Flex align="center" mt={2} mb={3} mx={4}>
-            <Box>
-              <Box mb={1}>
-                <BrowserCrumbs
-                  crumbs={[
-                    ...ancestors.map(({ id, name }) => ({
-                      title: (
-                        <CollectionDropTarget collection={{ id }} margin={8}>
-                          {name}
-                        </CollectionDropTarget>
-                      ),
-                      to: Urls.collection(id),
-                    })),
-                  ]}
-                />
-              </Box>
-              <h1 style={{ fontWeight: 900 }}>{currentCollection.name}</h1>
+        <Flex align="center" mt={2} mb={3} mx={PAGE_PADDING}>
+          <Box>
+            <Box mb={1}>
+              <BrowserCrumbs
+                crumbs={[
+                  ...ancestors.map(({ id, name }) => ({
+                    title: (
+                      <CollectionDropTarget collection={{ id }} margin={8}>
+                        {name}
+                      </CollectionDropTarget>
+                    ),
+                    to: Urls.collection(id),
+                  })),
+                ]}
+              />
             </Box>
+            <h1 style={{ fontWeight: 900 }}>{currentCollection.name}</h1>
+          </Box>
 
-            <Flex ml="auto">
-              {currentCollection &&
-                currentCollection.can_write &&
-                !currentCollection.personal_owner_id && (
-                  <Box ml={1}>
-                    <CollectionEditMenu
-                      collectionId={collectionId}
-                      isRoot={isRoot}
-                    />
-                  </Box>
-                )}
-              <Box ml={1}>
-                <CollectionBurgerMenu />
-              </Box>
-            </Flex>
+          <Flex ml="auto" className="hide sm-show">
+            {currentCollection &&
+              currentCollection.can_write &&
+              !currentCollection.personal_owner_id && (
+                <Box ml={1}>
+                  <CollectionEditMenu
+                    collectionId={collectionId}
+                    isRoot={isRoot}
+                  />
+                </Box>
+              )}
+            <Box ml={1}>
+              <CollectionBurgerMenu />
+            </Box>
           </Flex>
-        </Box>
+        </Flex>
         <Box>
           <DefaultLanding
             collection={currentCollection}
