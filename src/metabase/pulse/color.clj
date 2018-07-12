@@ -53,4 +53,4 @@
   "Get the correct color for a cell in a pulse table. This is intended to be invoked on each cell of every row in the
   table. See `make-color-selector` for more info."
   [^JSObject color-selector cell-value column-name row-index]
-  (.call color-selector color-selector (object-array [cell-value column-name row-index])))
+  (.call color-selector color-selector (object-array [cell-value row-index column-name])))

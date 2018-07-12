@@ -7,7 +7,7 @@
 
 (def ^:private ^String test-script
   "function makeCellBackgroundGetter(data, settings) {
-     return function(value, columnName, rowIndex) {
+     return function(value, rowIndex, columnName) {
         if(rowIndex % 2 == 0){
           return settings[\"even\"]
         } else {

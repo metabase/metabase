@@ -337,6 +337,6 @@
                               [3 4]
                               [5 6]]}]
     (-> (color/make-color-selector query-results viz-settings)
-        (#'render/render-table (query-results->header+rows query-results))
+        (#'render/render-table ["a" "b"] (query-results->header+rows query-results))
         find-table-body
         cell-value->background-color)))

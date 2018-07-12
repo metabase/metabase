@@ -367,13 +367,16 @@
     (bar-td-style)))
 
 (defn- render-table
-  [color-selector header+rows]
-  (let [{bar-width :bar-width :as header} (first header+rows)
-        header-row                        (vec (:row header))]
+  "This function returns the HTML data structure for the pulse table. `color-selector` is a function that returns the
+  background color for a given cell. `column-names` is different from the header in `header+rows` as the header is the
+  display_name (i.e. human friendly. `header+rows` includes the text contents of the table we're about ready to
+  create."
+  [color-selector column-names header+rows]
+  (let [{bar-width :bar-width :as header} (first header+rows)]
     [:table {:style (style {:max-width (str "100%"), :white-space :nowrap, :padding-bottom :8px, :border-collapse :collapse})}
      [:thead
       [:tr
-       (for [header-cell header-row]
+       (for [header-cell (:row header)]
          [:th {:style (style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :60px})}
           (h header-cell)])
        (when bar-width
@@ -382,7 +385,7 @@
       (map-indexed (fn [row-idx {:keys [row bar-width]}]
                      [:tr {:style (style {:color color-gray-3})}
                       (map-indexed (fn [col-idx cell]
-                                     (let [bg-color (color/get-background-color color-selector cell (get header-row col-idx) row-idx)]
+                                     (let [bg-color (color/get-background-color color-selector cell (get column-names col-idx) row-idx)]
                                        [:td {:style (style (row-style-for-type cell)
                                                            (merge {:background-color bg-color}
                                                                   (when (and bar-width (= col-idx 1))
@@ -500,6 +503,7 @@
   [render-type timezone card {:keys [cols rows] :as data}]
   (let [table-body [:div
                     (render-table (color/make-color-selector data (:visualization_settings card))
+                                  (mapv :name (:cols data))
                                   (prep-for-html-rendering timezone cols rows nil nil cols-limit))
                     (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
     {:attachments nil
@@ -514,6 +518,7 @@
     {:attachments nil
      :content     [:div
                    (render-table (color/make-color-selector data (:visualization_settings card))
+                                 (mapv :name (:cols data))
                                  (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
                    (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 

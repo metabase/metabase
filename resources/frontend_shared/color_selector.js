@@ -1,5 +1,5 @@
 function makeCellBackgroundGetter(data, settings) {
-    return function(value, columnName, rowIndex) {
+    return function(value, rowIndex, columnName) {
       return "#ff0000";
     }
 }
