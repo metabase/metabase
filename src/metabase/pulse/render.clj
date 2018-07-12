@@ -367,10 +367,9 @@
     (bar-td-style)))
 
 (defn- render-table
-  [card header+rows]
+  [color-selector header+rows]
   (let [{bar-width :bar-width :as header} (first header+rows)
-        header-row                        (vec (:row header))
-        color-selector                    (color/make-color-selector header+rows (:visualization_settings card))]
+        header-row                        (vec (:row header))]
     [:table {:style (style {:max-width (str "100%"), :white-space :nowrap, :padding-bottom :8px, :border-collapse :collapse})}
      [:thead
       [:tr
@@ -500,7 +499,8 @@
 (s/defn ^:private render:table :- RenderedPulseCard
   [render-type timezone card {:keys [cols rows] :as data}]
   (let [table-body [:div
-                    (render-table card (prep-for-html-rendering timezone cols rows nil nil cols-limit))
+                    (render-table (color/make-color-selector data (:visualization_settings card))
+                                  (prep-for-html-rendering timezone cols rows nil nil cols-limit))
                     (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
     {:attachments nil
      :content     (if-let [results-attached (attached-results-text render-type cols cols-limit rows rows-limit)]
@@ -513,7 +513,8 @@
         max-value (apply max (map y-axis-rowfn rows))]
     {:attachments nil
      :content     [:div
-                   (render-table card (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
+                   (render-table (color/make-color-selector data (:visualization_settings card))
+                                 (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
                    (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
 (s/defn ^:private render:scalar :- RenderedPulseCard

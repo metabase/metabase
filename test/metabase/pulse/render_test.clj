@@ -2,7 +2,9 @@
   (:require [clojure.walk :as walk]
             [expectations :refer :all]
             [hiccup.core :refer [html]]
-            [metabase.pulse.render :as render :refer :all]
+            [metabase.pulse
+             [color :as color]
+             [render :as render :refer :all]]
             [metabase.query-processor.util :as qputil])
   (:import java.util.TimeZone))
 
@@ -313,11 +315,12 @@
                                       [cell-value (style-map->background-color style-map)])
                                     results)))
 
-(defn- make-row
-  "Makes a pulse header or data row with no bar-width. Including bar-width just adds extra HTML that will be ignored."
-  [row-values]
-  {:row       row-values
-   :bar-width nil})
+(defn- query-results->header+rows
+  "Makes pulse header and data rows with no bar-width. Including bar-width just adds extra HTML that will be ignored."
+  [{:keys [cols rows]}]
+  (for [row-values (cons (map :name cols) rows)]
+    {:row row-values
+     :bar-width nil}))
 
 ;; Smoke test for background color selection. Background color decided by some shared javascript code. It's being
 ;; invoked and included in the cell color of the pulse table. This is somewhat fragile code as the only way to find
@@ -328,12 +331,12 @@
 (expect
   (zipmap (map str (range 1 7))
           (repeat "#ff0000"))
-  (let [viz-settings {:visualization_settings {}}
-        query-results (map make-row [["a" "b"]
-                                     [1 2]
-                                     [3 4]
-                                     [5 6]])]
-    (->> query-results
-         (#'render/render-table viz-settings)
-         find-table-body
-         cell-value->background-color)))
+  (let [viz-settings  {:visualization_settings {}}
+        query-results {:cols [{:name "a"} {:name "b"}]
+                       :rows [[1 2]
+                              [3 4]
+                              [5 6]]}]
+    (-> (color/make-color-selector query-results viz-settings)
+        (#'render/render-table (query-results->header+rows query-results))
+        find-table-body
+        cell-value->background-color)))
