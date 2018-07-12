@@ -36,7 +36,7 @@ const ItemTypeFilterBar = props => {
   return (
     <Flex align="center" className="border-bottom mt1">
       {props.filters.map(f => {
-        let isActive = location.query.type === f.filter;
+        let isActive = location && location.query.type === f.filter;
 
         if (!location.query.type && !f.filter) {
           isActive = true;
