@@ -34,7 +34,7 @@
   from `:rows`"
   {:cols [{:name s/Str
            s/Any s/Any}]
-   :rows [[(s/cond-pre s/Str s/Num s/Bool)]]
+   :rows [[s/Any]]
    s/Any s/Any})
 
 (s/defn make-color-selector
