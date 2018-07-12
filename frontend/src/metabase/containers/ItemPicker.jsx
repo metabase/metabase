@@ -223,7 +223,7 @@ const Item = ({
     })}
   >
     <Flex align="center">
-      <Icon name={icon} color={selected ? "white" : color} size={32} />
+      <Icon name={icon} color={selected ? "white" : color} size={22} />
       <h4 className="mx1">{name}</h4>
       {hasChildren && (
         <Icon
