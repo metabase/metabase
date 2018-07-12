@@ -76,12 +76,10 @@ class CollectionList extends React.Component {
                   color={normal.grey2}
                   hover={{ color: normal.blue }}
                 >
-                  <Box p={[1, 2]}>
-                    <Flex align="center" py={1}>
-                      <Icon name="add" mr={1} bordered />
-                      <h4>{t`New collection`}</h4>
-                    </Flex>
-                  </Box>
+                  <Flex align="center" py={1}>
+                    <Icon name="add" mr={1} bordered />
+                    <h4>{t`New collection`}</h4>
+                  </Flex>
                 </Link>
               </GridItem>
             )}
