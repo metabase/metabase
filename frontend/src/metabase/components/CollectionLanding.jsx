@@ -229,7 +229,7 @@ class DefaultLanding extends React.Component {
                       <PinDropTarget pinIndex={null} margin={8}>
                         <Box>
                           <ItemTypeFilterBar />
-                          <Card>
+                          <Card mt={1}>
                             <Box
                               mb={selected.length > 0 ? 5 : 2}
                               style={{
@@ -354,7 +354,7 @@ export const NormalItem = ({
   onToggleSelected,
   onMove,
 }) => (
-  <Link to={item.getUrl()} px={1}>
+  <Link to={item.getUrl()} px={2}>
     <EntityItem
       showSelect={selection.size > 0}
       selectable
