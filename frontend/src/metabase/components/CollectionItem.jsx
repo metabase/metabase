@@ -4,7 +4,7 @@ import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
-import colors, { normal } from "metabase/lib/colors";
+import colors from "metabase/lib/colors";
 
 const CollectionItem = ({ collection, color, iconName = "all" }) => (
   <Link
