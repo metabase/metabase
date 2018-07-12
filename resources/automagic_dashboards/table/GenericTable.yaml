@@ -96,7 +96,7 @@ groups:
     comparison_title: How they compare acrosss location
 - General:
     title: How these [[this.short-name]] are distributed
-    comparison_title: How they differ in distributions
+    comparison_title: How these [[this.short-name]] are distributed
 dashboard_filters:
 - Timestamp
 - Date
