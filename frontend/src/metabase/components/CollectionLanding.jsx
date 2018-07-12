@@ -104,6 +104,12 @@ class DefaultLanding extends React.Component {
     const itemWidth = unpinned.length > 0 ? [1, 2 / 3] : 0;
     const collectionGridSize = unpinned.length > 0 ? 1 : [1, 1 / 4];
 
+    let unpinnedItems = unpinned;
+
+    if (location.query.type) {
+      unpinnedItems = unpinned.filter(u => u.model === location.query.type);
+    }
+
     return (
       <Box>
         <Box>
@@ -229,63 +235,62 @@ class DefaultLanding extends React.Component {
                     </Box>
                   </GridItem>
                   <GridItem w={itemWidth}>
-                    {unpinned.length > 0 ? (
-                      <PinDropTarget pinIndex={null} margin={8}>
-                        <Box>
-                          <ItemTypeFilterBar />
-                          <Card mt={1}>
+                    <Box>
+                      <ItemTypeFilterBar />
+                      <Card mt={1} className="relative">
+                        {unpinnedItems.length > 0 ? (
+                          <PinDropTarget pinIndex={null} margin={8}>
                             <Box
-                              mb={selected.length > 0 ? 5 : 2}
                               style={{
                                 position: "relative",
-                                height: ROW_HEIGHT * unpinned.length,
+                                height: ROW_HEIGHT * unpinnedItems.length,
                               }}
                             >
                               <VirtualizedList
-                                items={
-                                  location.query.type
-                                    ? unpinned.filter(
-                                        u => u.model === location.query.type,
-                                      )
-                                    : unpinned
-                                }
+                                items={unpinnedItems}
                                 rowHeight={ROW_HEIGHT}
                                 renderItem={({ item, index }) => (
-                                  <ItemDragSource
-                                    item={item}
-                                    selection={selection}
-                                  >
-                                    <NormalItem
-                                      key={`${item.type}:${item.id}`}
+                                  <Box className="relative">
+                                    <ItemDragSource
                                       item={item}
-                                      collection={collection}
                                       selection={selection}
-                                      onToggleSelected={onToggleSelected}
-                                      onMove={moveItems =>
-                                        this.setState({ moveItems })
-                                      }
-                                    />
-                                  </ItemDragSource>
+                                    >
+                                      <NormalItem
+                                        key={`${item.type}:${item.id}`}
+                                        item={item}
+                                        collection={collection}
+                                        selection={selection}
+                                        onToggleSelected={onToggleSelected}
+                                        onMove={moveItems =>
+                                          this.setState({ moveItems })
+                                        }
+                                      />
+                                    </ItemDragSource>
+                                  </Box>
                                 )}
                               />
                             </Box>
-                          </Card>
-                        </Box>
-                      </PinDropTarget>
-                    ) : (
-                      <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
-                        {({ hovered }) => (
-                          <div
-                            className={cx(
-                              "m2 flex layout-centered",
-                              hovered ? "text-brand" : "text-grey-2",
-                            )}
+                          </PinDropTarget>
+                        ) : (
+                          <PinDropTarget
+                            pinIndex={null}
+                            hideUntilDrag
+                            margin={10}
                           >
-                            {t`Drag here to un-pin`}
-                          </div>
+                            {({ hovered }) => (
+                              <div
+                                className={cx(
+                                  "m2 flex layout-centered",
+                                  hovered ? "text-brand" : "text-grey-2",
+                                )}
+                              >
+                                {t`Drag here to un-pin`}
+                              </div>
+                            )}
+                          </PinDropTarget>
                         )}
-                      </PinDropTarget>
-                    )}
+                      </Card>
+                    </Box>
                   </GridItem>
                 </Grid>
               </Box>
@@ -358,7 +363,7 @@ export const NormalItem = ({
   onToggleSelected,
   onMove,
 }) => (
-  <Link to={item.getUrl()} px={2}>
+  <Link to={item.getUrl()}>
     <EntityItem
       variant="list"
       showSelect={selection.size > 0}

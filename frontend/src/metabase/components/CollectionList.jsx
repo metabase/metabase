@@ -25,7 +25,7 @@ class CollectionList extends React.Component {
       w,
     } = this.props;
     return (
-      <Box>
+      <Box className="relative">
         <Grid>
           {collections
             .filter(c => c.id !== currentUser.personal_collection_id)
@@ -39,7 +39,7 @@ class CollectionList extends React.Component {
               </GridItem>
             ))}
           {isRoot && (
-            <GridItem w={w}>
+            <GridItem w={w} className="relative">
               <CollectionDropTarget
                 collection={{ id: currentUser.personal_collection_id }}
               >

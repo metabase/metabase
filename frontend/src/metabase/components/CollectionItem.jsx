@@ -9,11 +9,9 @@ import colors, { normal } from "metabase/lib/colors";
 const CollectionItem = ({ collection, color, iconName = "all" }) => (
   <Link
     to={`collection/${collection.id}`}
-    color={normal.grey2}
     bg={colors["bg-medium"]}
-    className="block rounded"
+    className="block rounded relative text-brand-hover text-medium"
     hover={{
-      color: colors.primary,
       backgroundColor: colors["bg-medium"],
     }}
     p={[1, 2]}
