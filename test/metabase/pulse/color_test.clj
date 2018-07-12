@@ -27,7 +27,9 @@
 (expect
   [red green red green]
   (with-test-js-engine
-    (let [color-selector (make-color-selector [] {"even" red, "odd"  green})]
+    (let [color-selector (make-color-selector {:cols [{:name "test"}]
+                                               :rows [[1] [2] [3] [4]]}
+                                              {"even" red, "odd" green})]
       (for [row-index (range 0 4)]
         (get-background-color color-selector "any value" "any column" row-index)))))
 
@@ -36,6 +38,8 @@
 (expect
   [red green red green]
   (with-test-js-engine
-    (let [color-selector (make-color-selector [] {:even red, :odd  green})]
+    (let [color-selector (make-color-selector {:cols [{:name "test"}]
+                                               :rows [[1] [2] [3] [4]]}
+                                              {:even red, :odd  green})]
       (for [row-index (range 0 4)]
         (get-background-color color-selector "any value" "any column" row-index)))))
