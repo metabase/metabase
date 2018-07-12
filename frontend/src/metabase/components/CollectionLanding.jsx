@@ -161,7 +161,11 @@ class DefaultLanding extends React.Component {
                   >
                     <Grid>
                       {pinned.map((item, index) => (
-                        <GridItem w={[1, 1 / 3]} className="relative" key={index}>
+                        <GridItem
+                          w={[1, 1 / 3]}
+                          className="relative"
+                          key={index}
+                        >
                           <ItemDragSource item={item}>
                             <PinnedItem
                               key={`${item.type}:${item.id}`}
@@ -356,6 +360,7 @@ export const NormalItem = ({
 }) => (
   <Link to={item.getUrl()} px={2}>
     <EntityItem
+      variant="list"
       showSelect={selection.size > 0}
       selectable
       item={item}
