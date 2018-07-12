@@ -21,7 +21,7 @@ export default class Activity extends Component {
       "bg-error",
       "bg-green",
       "bg-gold",
-      "bg-grey-2",
+      "bg-medium",
     ];
   }
 

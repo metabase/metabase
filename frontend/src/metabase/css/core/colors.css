@@ -225,48 +225,24 @@
   color: var(--color-text-medium);
 }
 
-.bg-grey-0,
-.bg-grey-0-hover:hover {
-  background-color: var(--color-bg-light);
-}
-.bg-grey-05 {
-  background-color: var(--color-bg-medium);
-}
-.bg-grey-1 {
-  background-color: var(--color-bg-medium);
-}
-.bg-grey-2 {
-  background-color: var(--color-bg-medium);
-}
-.bg-grey-3 {
-  background-color: var(--color-bg-dark);
-}
-.bg-grey-4 {
-  background-color: var(--color-bg-dark);
-}
-.bg-grey-5 {
-  background-color: var(--color-bg-dark);
-}
-
-.bg-slate {
-  background-color: var(--color-bg-dark);
-}
-.bg-slate-light {
-  background-color: var(--color-bg-medium);
-}
-.bg-slate-almost-extra-light {
-  background-color: var(--color-bg-medium);
-}
-.bg-slate-extra-light {
-  background-color: var(--color-bg-light);
-}
-.bg-slate-extra-light-hover:hover {
-  background-color: var(--color-bg-light);
-}
-
 .text-dark,
 :local(.text-dark) {
   color: var(--color-text-dark);
+}
+
+.bg-light,
+.bg-light-hover:hover {
+  background-color: var(--color-bg-light);
+}
+
+.bg-medium,
+.bg-medium-hover:hover {
+  background-color: var(--color-bg-medium);
+}
+
+.bg-dark,
+.bg-dark-hover:hover {
+  background-color: var(--color-bg-dark);
 }
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */

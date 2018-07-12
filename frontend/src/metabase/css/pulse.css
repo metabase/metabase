@@ -41,10 +41,6 @@
   font-family: "Lato", Helvetica, sans-serif;
 }
 
-.bg-grey-0 {
-  background-color: var(--color-bg-white);
-}
-
 .PulseEditButton {
   opacity: 0;
   transition: opacity 0.3s linear;
