@@ -221,7 +221,7 @@ export default class TableSimpleSummary extends Component {
                         let mappedStyle = {... groupingManager.mapStyle(rowIndex, columnIndex, {start, stop:end}, {})};
                         if(isGrandTotal)
                           mappedStyle = {... mappedStyle, background: '#509ee3', color: 'white', 'font-weight':'bold'};
-                        else if (row.isTotalColumnIndex)
+                        else if (row.isTotalColumnIndex && row.isTotalColumnIndex <= columnIndex +1)
                           mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', 'font-weight':'bold' };
 
 
@@ -238,7 +238,7 @@ export default class TableSimpleSummary extends Component {
                         const res = (
                           <td
                             key={rowIndex + '-' + columnIndex}
-                            style={{...mappedStyle, whiteSpace: "nowrap" }}
+                            style={{...mappedStyle, whiteSpace: "nowrap", verticalAlign :'top' }}
                             className={cx("px1 border-bottom", {
                               "text-right": isColumnRightAligned(
                                 cols[columnIndex],
@@ -261,9 +261,7 @@ export default class TableSimpleSummary extends Component {
                                   : undefined
                               }
                             >
-                              {cell == null
-                                ? "-"
-                                : formatedRes}
+                              {formatedRes}
                             </span>
                           </td>
                         );

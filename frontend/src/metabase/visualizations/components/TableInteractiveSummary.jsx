@@ -268,7 +268,7 @@ export default class TableInteractiveSummary extends Component {
     const column = cols[columnIndex];
     const row = rows[rowIndex];
     let value = column.getValue(row);
-    const isGrandTotal = row.isTotalColumnIndex === 0;
+    const isGrandTotal = row.isTotalColumnIndex === 0 && groupingManager.rows.length-1 === rowIndex;
 
     if (isGrandTotal && columnIndex === 0)
       value = 'Grand totals';
@@ -276,7 +276,7 @@ export default class TableInteractiveSummary extends Component {
     let mappedStyle = {... groupingManager.mapStyle(rowIndex, columnIndex, visibleRowIndices, style)};
     if(isGrandTotal)
       mappedStyle = {... mappedStyle, background: '#509ee3', color: 'white', 'font-weight':'bold'};
-    else if (row.isTotalColumnIndex)
+    else if (row.isTotalColumnIndex && row.isTotalColumnIndex <= columnIndex +1)
       mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', 'font-weight':'bold' };
 
     if(groupingManager.isGrouped(columnIndex))
