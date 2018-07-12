@@ -1,7 +1,6 @@
 /* @flow */
 
 import _ from "underscore";
-import * as Q from "metabase/lib/query/query";
 
 import type {
   Value,
@@ -126,7 +125,7 @@ export function getExistingFields(card: Card, cols: Column[]): ConcreteField[] {
   const query = card.dataset_query.query;
   if (query.fields && query.fields > 0) {
     return query.fields;
-  } else if (Q.isBareRows(query)) {
+  } else if (!query.aggregation && !query.breakout) {
     // $FlowFixMe:
     return cols.map(col => fieldRefForColumn(col)).filter(id => id != null);
   } else {
