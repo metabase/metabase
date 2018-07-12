@@ -41,6 +41,54 @@ import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 const ROW_HEIGHT = 72;
 const PAGE_PADDING = [2, 3, 4];
 
+const EmptyStateWrapper = ({ children }) => (
+  <Flex
+    align="center"
+    justify="center"
+    py={3}
+    flexDirection="column"
+    w={1}
+    h={"200px"}
+    className="text-medium"
+  >
+    {children}
+  </Flex>
+);
+
+const DashboardEmptyState = () => (
+  <EmptyStateWrapper>
+    <Box>
+      <Icon name="dashboard" size={32} />
+    </Box>
+    <h3>{t`Dashboards let you collect and share data in one place.`}</h3>
+  </EmptyStateWrapper>
+);
+
+const PulseEmptyState = () => (
+  <EmptyStateWrapper>
+    <Box>
+      <Icon name="pulse" size={32} />
+    </Box>
+    <h3
+    >{t`Pulses let you send out the latest data to your team on a schedule via email or slack.`}</h3>
+  </EmptyStateWrapper>
+);
+
+const QuestionEmptyState = () => (
+  <EmptyStateWrapper>
+    <Box>
+      <Icon name="beaker" size={32} />
+    </Box>
+    <h3>{t`Quesitons are a saved look at your data.`}</h3>
+  </EmptyStateWrapper>
+);
+
+const EMPTY_STATES = {
+  dashboard: <DashboardEmptyState />,
+  pulse: <PulseEmptyState />,
+  card: <QuestionEmptyState />,
+};
+
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
 @entityListLoader({
@@ -272,22 +320,26 @@ class DefaultLanding extends React.Component {
                             </Box>
                           </PinDropTarget>
                         ) : (
-                          <PinDropTarget
-                            pinIndex={null}
-                            hideUntilDrag
-                            margin={10}
-                          >
-                            {({ hovered }) => (
-                              <div
-                                className={cx(
-                                  "m2 flex layout-centered",
-                                  hovered ? "text-brand" : "text-grey-2",
-                                )}
-                              >
-                                {t`Drag here to un-pin`}
-                              </div>
-                            )}
-                          </PinDropTarget>
+                          <Box>
+                            {location.query.type &&
+                              EMPTY_STATES[location.query.type]}
+                            <PinDropTarget
+                              pinIndex={null}
+                              hideUntilDrag
+                              margin={10}
+                            >
+                              {({ hovered }) => (
+                                <div
+                                  className={cx(
+                                    "m2 flex layout-centered",
+                                    hovered ? "text-brand" : "text-grey-2",
+                                  )}
+                                >
+                                  {t`Drag here to un-pin`}
+                                </div>
+                              )}
+                            </PinDropTarget>
+                          </Box>
                         )}
                       </Card>
                     </Box>
