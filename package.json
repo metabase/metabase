@@ -183,6 +183,7 @@
     "build-watch": "yarn && webpack --watch",
     "build-hot": "yarn && NODE_ENV=hot webpack-dev-server --progress",
     "build-stats": "yarn && webpack --json > stats.json",
+    "build-shared": "yarn && webpack --config webpack.shared.config.js",
     "start": "yarn build && lein ring server",
     "precommit": "lint-staged",
     "preinstall":

@@ -2,6 +2,7 @@
   "Namespaces that uses the Nashorn javascript engine to invoke some shared javascript code that we use to determine
   the background color of pulse table cells"
   (:require [clojure.walk :as walk]
+            [cheshire.core :as json]
             [puppetlabs.i18n.core :refer [trs]]
             [schema.core :as s])
   (:import java.io.InputStream
@@ -46,7 +47,7 @@
   [query-results :- QueryResults, viz-settings]
   (let [^Invocable engine @js-engine
         ;; Keyword strings don't serialize correctly when being passed to the JS engine
-        js-fn-args (object-array [(walk/stringify-keys query-results) (walk/stringify-keys viz-settings)])]
+        js-fn-args (object-array [(json/generate-string query-results) (json/generate-string viz-settings)])]
     (.invokeFunction engine "makeCellBackgroundGetter" js-fn-args)))
 
 (defn get-background-color
