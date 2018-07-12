@@ -1,7 +1,8 @@
 import React from "react";
 import { t } from "c-3po";
+import cx from "classnames";
+import { Flex } from "grid-styled";
 
-import { Box, Flex } from "grid-styled";
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
 import IconWrapper from "metabase/components/IconWrapper";
@@ -20,14 +21,6 @@ const EntityItemWrapper = Flex.extend`
   }
 `;
 
-export const EntityListItem = props => <EntityItem {...props} />;
-
-export const EntityCardItem = props => (
-  <Box my={1}>
-    <EntityItem {...props} />
-  </Box>
-);
-
 const EntityItem = ({
   name,
   iconName,
@@ -40,6 +33,7 @@ const EntityItem = ({
   selected,
   onToggleSelected,
   selectable,
+  variant,
 }) => {
   const actions = [
     onPin && {
@@ -59,8 +53,29 @@ const EntityItem = ({
     },
   ].filter(action => action);
 
+  let spacing;
+
+  switch (variant) {
+    case "list":
+      spacing = {
+        px: 2,
+        py: 2,
+      };
+      break;
+    default:
+      spacing = {
+        py: 2,
+      };
+      break;
+  }
+
   return (
-    <EntityItemWrapper py={2} className="hover-parent hover--visibility">
+    <EntityItemWrapper
+      {...spacing}
+      className={cx("hover-parent hover--visibility", {
+        "bg-light-hover": variant === "list",
+      })}
+    >
       <IconWrapper
         p={1}
         mr={2}

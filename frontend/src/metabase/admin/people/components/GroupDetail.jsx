@@ -115,7 +115,7 @@ const AddUserRow = ({
         onCancel={onCancel}
       >
         {selectedUsers.map(user => (
-          <div className="bg-slate-light p1 px2 mr1 rounded flex align-center">
+          <div className="bg-medium p1 px2 mr1 rounded flex align-center">
             {user.common_name}
             <Icon
               className="pl1 cursor-pointer text-slate text-grey-4-hover"

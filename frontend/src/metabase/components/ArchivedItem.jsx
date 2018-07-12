@@ -24,7 +24,7 @@ const ArchivedItem = ({
   onToggleSelected,
   showSelect,
 }) => (
-  <div className="flex align-center p2 hover-parent hover--visibility border-bottom bg-grey-0-hover">
+  <div className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover">
     <IconWrapper p={1} mr={1} align="center" justify="center">
       <Swapper
         startSwapped={showSelect}
