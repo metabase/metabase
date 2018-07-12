@@ -1,30 +1,33 @@
 import React from "react";
 import { Link } from "react-router";
 
+import Icon from "metabase/components/Icon";
+
+import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import * as Urls from "metabase/lib/urls";
 
-import Color from "color";
 import cx from "classnames";
 
-import colors from "metabase/lib/colors";
-
-const CollectionBadge = ({ className, collection }) => {
-  const color = Color(collection.color);
-  const darkened = color.darken(0.1);
-  const lightened = color.lighten(0.4);
-  return (
-    <Link
-      to={Urls.collection(collection.id)}
-      className={cx(className, "flex align-center px1 rounded mx1")}
-      style={{
-        fontSize: 14,
-        color: lightened.isDark() ? colors["text-white"] : darkened,
-        backgroundColor: lightened,
-      }}
-    >
-      {collection.name}
-    </Link>
-  );
-};
+@entityObjectLoader({
+  entityType: "collections",
+  entityId: (state, props) => props.collectionId || "root",
+  wrapped: true,
+})
+class CollectionBadge extends React.Component {
+  render() {
+    const { object } = this.props;
+    return (
+      <Link
+        to={Urls.collection(object.id)}
+        className={cx("flex align-center link")}
+      >
+        <Icon name={object.getIcon()} mr={1} />
+        <h5 className="text-uppercase" style={{ fontWeight: 900 }}>
+          {object.name}
+        </h5>
+      </Link>
+    );
+  }
+}
 
 export default CollectionBadge;
