@@ -446,16 +446,25 @@
       (Thread/sleep (* 60 1000))
       (recur))))
 
+(defn- seconds-to-wait-before-starting
+  "Return a random number of seconds to wait before starting MetaBot processess, between 0 and 59. This is done to
+  introduce a bit of jitter that should prevent a rush of multiple instances all racing to become the MetaBot at the
+  same time."
+  []
+  (mod (.nextInt (java.security.SecureRandom.)) 60))
+
 (defn start-metabot!
   "Start the MetaBot! :robot_face:
 
   This will spin up a background thread that opens and maintains a Slack WebSocket connection."
   []
-  (when (and (slack/slack-token)
-             (metabot-enabled))
-    (log/info (trs "Starting MetaBot threads..."))
-    (start-websocket-monitor!)
-    (start-instance-monitor!)))
+  (future
+    (Thread/sleep (* 1000 (seconds-to-wait-before-starting)))
+    (when (and (slack/slack-token)
+               (metabot-enabled))
+      (log/info (trs "Starting MetaBot threads..."))
+      (start-websocket-monitor!)
+      (start-instance-monitor!))))
 
 (defn stop-metabot!
   "Stop the MetaBot! :robot_face:
