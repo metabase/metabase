@@ -115,7 +115,7 @@
   NOTE: This function requires you to pass in a timezone or bind `*report-timezone*`, probably to make sure you're not
   doing something dumb by forgetting it. For cases where you'd just like to parse an ISO-8601-encoded String in peace
   without specifying a timezone, pass in `:no-timezone` as the second param to explicitly have things parsed without
-  one."
+  one. (Keep in mind that if your string does not specify a timezone, it will be parsed as UTC by default.)"
   ([coercible-to-ts]
    {:pre [(or (not (string? coercible-to-ts))
               (and (string? coercible-to-ts) (bound? #'*report-timezone*)))]}

@@ -104,12 +104,12 @@
 
 (def ^:private ^Integer recent-checkin-timeout-interval-seconds
   "Number of seconds since the last MetaBot checkin that we will consider the MetaBot job to be 'up for grabs',
-  currently 2 minutes. (i.e. if the current MetaBot job holder doesn't check in for more than 2 minutes, it's up for
+  currently 3 minutes. (i.e. if the current MetaBot job holder doesn't check in for more than 3 minutes, it's up for
   grabs.)"
-  (int (* 60 2)))
+  (int (* 60 3)))
 
 (defn- last-checkin-was-not-recent?
-  "`true` if the last checkin of the active MetaBot instance was more than 2 minutes ago, or if there has never been a
+  "`true` if the last checkin of the active MetaBot instance was more than 3 minutes ago, or if there has never been a
   checkin. (This requires DB calls, so it should not be called too often -- once a minute [at the time of this
   writing] should be sufficient.)"
   []
