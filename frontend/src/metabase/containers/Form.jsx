@@ -45,6 +45,7 @@ type Props = {
   initialValues?: ?FormValues,
   formName?: string,
   onSubmit: (values: FormValues) => Promise<any>,
+  formComponent?: React$Component<any, any, any>,
 };
 
 let FORM_ID = 0;
@@ -69,7 +70,7 @@ export default class Form_ extends React.Component {
   };
 
   static defaultProps = {
-    children: StandardForm,
+    formComponent: StandardForm,
   };
 
   // dynamically generates a component decorated with reduxForm
@@ -101,7 +102,7 @@ export default class Form_ extends React.Component {
         }
       };
       this._FormComponent = reduxForm(formConfig, mapStateToProps)(
-        props.children,
+        props.formComponent,
       );
     }
   }

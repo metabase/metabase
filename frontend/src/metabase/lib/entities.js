@@ -58,6 +58,9 @@ type EntityDefinition = {
   wrapEntity?: (object: EntityObject) => any,
   form?: any,
   actionShouldInvalidateLists?: (action: Action) => boolean,
+
+  // list of properties for this object which should be persisted
+  writableProperties?: string[],
 };
 
 type EntityObject = any;
@@ -136,6 +139,8 @@ export type Entity = {
 
   requestsReducer: Reducer,
   actionShouldInvalidateLists: (action: Action) => boolean,
+
+  writableProperties?: string[],
 };
 
 export function createEntity(def: EntityDefinition): Entity {
@@ -170,7 +175,7 @@ export function createEntity(def: EntityDefinition): Entity {
     ["entities", entity.name + "_list"].concat(getIdForQuery(entityQuery));
 
   const getWritableProperties = object =>
-    entity.writableProperties
+    entity.writableProperties != null
       ? _.pick(object, "id", ...entity.writableProperties)
       : object;
 

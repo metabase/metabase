@@ -63,6 +63,7 @@ export default (PickerComponent, NameComponent, type) =>
               )}
             </SelectButton>
           }
+          pinInitialAttachment
           sizeToFit
           autoWidth
         >

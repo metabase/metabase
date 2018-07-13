@@ -1,4 +1,4 @@
-/* @flow weak */
+/* @flow */
 
 import { createEntity, undo } from "metabase/lib/entities";
 import colors from "metabase/lib/colors";
@@ -91,7 +91,9 @@ export default Collections;
 
 // API requires items in "root" collection be persisted with a "null" collection ID
 // Also ensure it's parsed as a number
-export const canonicalCollectionId = collectionId =>
+export const canonicalCollectionId = (
+  collectionId: PseudoCollectionId,
+): CollectionId | null =>
   collectionId == null || collectionId === "root"
     ? null
     : parseInt(collectionId, 10);
@@ -121,11 +123,36 @@ export const PERSONAL_COLLECTIONS = {
   can_edit: false,
 };
 
+type UserId = number;
+
+// a "real" collection
+type CollectionId = number;
+
+type Collection = {
+  id: CollectionId,
+  location?: string,
+  personal_owner_id?: UserId,
+};
+
+// includes "root" and "personal" pseudo collection IDs
+type PseudoCollectionId = CollectionId | "root" | "personal";
+
+type ExpandedCollection = {
+  id: PseudoCollectionId,
+  path: ?(string[]),
+  parent: ?ExpandedCollection,
+  children: ExpandedCollection[],
+  is_personal?: boolean,
+};
+
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
-function getExpandedCollectionsById(collections, userPersonalCollectionId) {
-  const collectionsById = {};
+function getExpandedCollectionsById(
+  collections: Collection[],
+  userPersonalCollectionId: ?CollectionId,
+): { [key: PseudoCollectionId]: ExpandedCollection } {
+  const collectionsById: { [key: PseudoCollectionId]: ExpandedCollection } = {};
   for (const c of collections) {
     collectionsById[c.id] = {
       ...c,
@@ -135,7 +162,9 @@ function getExpandedCollectionsById(collections, userPersonalCollectionId) {
           : c.location != null
             ? ["root", ...c.location.split("/").filter(l => l)]
             : null,
+      parent: null,
       children: [],
+      is_personal: c.personal_owner_id != null,
     };
   }
 
@@ -154,6 +183,7 @@ function getExpandedCollectionsById(collections, userPersonalCollectionId) {
       id: userPersonalCollectionId,
       parent: collectionsById[ROOT_COLLECTION.id],
       children: [],
+      is_personal: true,
     });
   }
 
@@ -162,6 +192,7 @@ function getExpandedCollectionsById(collections, userPersonalCollectionId) {
     ...PERSONAL_COLLECTIONS,
     parent: collectionsById[ROOT_COLLECTION.id],
     children: [],
+    is_personal: true,
   };
   collectionsById[ROOT_COLLECTION.id].children.push(
     collectionsById[PERSONAL_COLLECTIONS.id],
@@ -172,22 +203,24 @@ function getExpandedCollectionsById(collections, userPersonalCollectionId) {
   for (const { id } of collections) {
     const c = collectionsById[id];
     if (c.path) {
-      let parent;
+      let parentId;
       // move personal collections into PERSONAL_COLLECTIONS fake collection
       if (c.personal_owner_id != null) {
-        parent = PERSONAL_COLLECTIONS.id;
+        parentId = PERSONAL_COLLECTIONS.id;
       } else if (c.path[c.path.length - 1]) {
-        parent = c.path[c.path.length - 1];
+        parentId = c.path[c.path.length - 1];
       } else {
-        parent = ROOT_COLLECTION.id;
+        parentId = ROOT_COLLECTION.id;
       }
 
-      c.parent = collectionsById[parent];
+      // $FlowFixMe
+      const parent = parentId == null ? null : collectionsById[parentId];
+      c.parent = parent;
       // need to ensure the parent collection exists, it may have been filtered
       // because we're selecting a collection's parent collection and it can't
       // contain itself
-      if (collectionsById[parent]) {
-        collectionsById[parent].children.push(c);
+      if (parent) {
+        parent.children.push(c);
       }
     }
   }
