@@ -76,14 +76,21 @@
 (defmulti
   ^{:private  true
     :arglists '([field])}
-  fingerprinter :base_type)
+  fingerprinter (juxt :base_type :special_type))
 
 (def ^:private global-fingerprinter
   (redux/fuse {:distinct-count cardinality}))
 
 (defmethod fingerprinter :default
   [_]
-  global-fingerprinter)
+  (redux/post-complete global-fingerprinter (partial hash-map :global)))
+
+(defmethod fingerprinter [:type/* :type/FK]
+  [_]
+  (redux/post-complete global-fingerprinter (partial hash-map :global)))
+
+(prefer-method fingerprinter [:type/* :type/FK] [:type/Number :type/*])
+(prefer-method fingerprinter [:type/* :type/FK] [:type/Text :type/*])
 
 (defn- with-global-fingerprinter
   [prefix fingerprinter]
@@ -119,30 +126,30 @@
   `(defmethod fingerprinter ~type
      [field#]
      (with-error-handling
-       (with-global-fingerprinter ~type ~transducer)
+       (with-global-fingerprinter (first ~type) ~transducer)
        (format "Error generating fingerprint for %s" (sync-util/name-for-logging field#)))))
 
-(deffingerprinter :type/DateTime
+(deffingerprinter [:type/DateTime :type/*]
   ((keep du/str->date-time)
    (redux/post-complete
     (redux/fuse {:earliest (monoid t/min-date (t.coerce/from-long Long/MAX_VALUE))
                  :latest   (monoid t/max-date (t.coerce/from-long 0))})
     (partial m/map-vals str))))
 
-(deffingerprinter :type/Number
+(deffingerprinter [:type/Number :type/*]
   ((remove nil?)
    (redux/fuse {:min (monoid min Double/POSITIVE_INFINITY)
                 :max (monoid max Double/NEGATIVE_INFINITY)
                 :avg stats/mean})))
 
-(deffingerprinter :type/Text
+(deffingerprinter [:type/Text :type/*]
   (redux/fuse {:percent-json   (share text/valid-serialized-json?)
                :percent-url    (share u/url?)
                :percent-email  (share u/email?)
                :average-length ((map (comp count str)) stats/mean)}))
 
 (s/defn ^:private save-fingerprint!
-  [field :- i/FieldInstance, fingerprint :- i/Fingerprint]
+  [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
   ;; don't bother saving fingerprint if it's completely empty
   (when (seq fingerprint)
     (log/debug (format "Saving fingerprint for %s" (sync-util/name-for-logging field)))
@@ -253,6 +260,7 @@
   ([]
    {:where [:and
             [:= :active true]
+            [:not= :special_type "type/PK"]
             [:not= :visibility_type "retired"]
             (cons :or (versions-clauses))]})
 
