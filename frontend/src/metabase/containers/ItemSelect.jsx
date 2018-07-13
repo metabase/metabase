@@ -10,7 +10,7 @@ const MIN_POPOVER_WIDTH = 300;
 export default (PickerComponent, NameComponent, type) =>
   class ItemSelect extends React.Component {
     state = {
-      width: null,
+      width: MIN_POPOVER_WIDTH,
     };
 
     static propTypes = {
@@ -29,9 +29,13 @@ export default (PickerComponent, NameComponent, type) =>
       inheritWidth: true,
     };
 
+    componentDidMount() {
+      this.componentDidUpdate();
+    }
+
     componentDidUpdate() {
       // save the width so we can make the poopver content match
-      const width = ReactDOM.findDOMNode(this).clientWidth;
+      const { width } = ReactDOM.findDOMNode(this).getBoundingClientRect();
       if (this.state.width !== width) {
         this.setState({ width });
       }
@@ -60,13 +64,14 @@ export default (PickerComponent, NameComponent, type) =>
             </SelectButton>
           }
           sizeToFit
+          autoWidth
         >
           {({ onClose }) => (
             <PickerComponent
               {...props}
               style={
                 inheritWidth
-                  ? { width: this.state.width }
+                  ? { width: Math.max(this.state.width, MIN_POPOVER_WIDTH) }
                   : { minWidth: MIN_POPOVER_WIDTH }
               }
               className="p2 overflow-auto"

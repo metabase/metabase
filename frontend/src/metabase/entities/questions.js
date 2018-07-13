@@ -1,6 +1,5 @@
 /* @flow */
 
-import React from "react";
 import { assocIn } from "icepick";
 
 import { createEntity, undo } from "metabase/lib/entities";

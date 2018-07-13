@@ -37,7 +37,6 @@ export default class PulseEditCards extends Component {
     pulseId: PropTypes.number,
     cardPreviews: PropTypes.object.isRequired,
     cards: PropTypes.object.isRequired,
-    cardList: PropTypes.array.isRequired,
     fetchPulseCardPreview: PropTypes.func.isRequired,
     setPulse: PropTypes.func.isRequired,
     attachmentsEnabled: PropTypes.bool,
@@ -150,7 +149,7 @@ export default class PulseEditCards extends Component {
   }
 
   render() {
-    let { pulse, cards, cardList, cardPreviews } = this.props;
+    let { pulse, cards, cardPreviews } = this.props;
 
     let pulseCards = pulse ? pulse.cards.slice() : [];
     if (pulseCards.length < HARD_LIMIT) {

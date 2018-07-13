@@ -1,5 +1,3 @@
-import React from "react";
-
 import ItemSelect from "./ItemSelect";
 
 import QuestionPicker from "./QuestionPicker";
