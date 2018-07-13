@@ -2,6 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: '1'
       author: agilliland
+      objectQuotingStrategy: QUOTE_ALL_OBJECTS
       changes:
       - createTable:
           columns:
@@ -1698,6 +1699,7 @@ databaseChangeLog:
   - changeSet:
       id: 15
       author: agilliland
+      objectQuotingStrategy: QUOTE_ALL_OBJECTS
       changes:
         - addColumn:
             tableName: revision
@@ -2060,6 +2062,7 @@ databaseChangeLog:
   - changeSet:
       id: 23
       author: agilliland
+      objectQuotingStrategy: QUOTE_ALL_OBJECTS
       changes:
         - modifyDataType:
             tableName: metabase_table
@@ -3186,6 +3189,7 @@ databaseChangeLog:
   - changeSet:
       id: 46
       author: camsaul
+      objectQuotingStrategy: QUOTE_ALL_OBJECTS
       changes:
         - addNotNullConstraint:
             tableName: report_dashboardcard
