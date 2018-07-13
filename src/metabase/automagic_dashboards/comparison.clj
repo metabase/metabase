@@ -133,7 +133,7 @@
                               :width                  (/ populate/grid-width 2)
                               :height                 height
                               :visualization-settings {:dashcard.background false
-                                                       :text.align_vertical :bottom}}
+                                                       :text.align_vertical :top}}
                              [0 col])
      height]))
 
