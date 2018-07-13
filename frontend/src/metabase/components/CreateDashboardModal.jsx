@@ -69,7 +69,7 @@ export default class CreateDashboardModal extends Component {
     const { payload } = await this.props.createDashboard(newDash);
     this.props.push(Urls.dashboard(payload.result));
     this.props.onClose();
-  }
+  };
 
   render() {
     let formError;
@@ -152,4 +152,3 @@ export default class CreateDashboardModal extends Component {
     );
   }
 }
-

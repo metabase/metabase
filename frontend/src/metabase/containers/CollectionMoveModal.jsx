@@ -1,7 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import _ from "underscore";
 import { t } from "c-3po";
 
 import { Flex, Box } from "grid-styled";
@@ -9,7 +8,6 @@ import Subhead from "metabase/components/Subhead";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 
-import CollectionListLoader from "metabase/containers/CollectionListLoader";
 import CollectionPicker from "metabase/containers/CollectionPicker";
 
 class CollectionMoveModal extends React.Component {

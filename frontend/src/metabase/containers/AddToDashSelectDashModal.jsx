@@ -1,7 +1,6 @@
 /* @flow  */
 
 import React, { Component } from "react";
-import { connect } from "react-redux";
 import { t } from "c-3po";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
