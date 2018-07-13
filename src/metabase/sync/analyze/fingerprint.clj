@@ -95,14 +95,35 @@
      {:global global-fingerprint
       :type   {prefix type-fingerprint}})))
 
+(defn- with-error-handling
+  [rf msg]
+  (fn
+    ([]
+     (let [result (sync-util/with-error-handling msg (rf))]
+       (if (instance? Exception result)
+         (reduced result)
+         result)))
+    ([acc]
+     (let [result (sync-util/with-error-handling msg (rf acc))]
+       (if (instance? Exception result)
+         (reduced result)
+         result)))
+    ([acc e]
+     (let [result (sync-util/with-error-handling msg (rf acc e))]
+       (if (instance? Exception result)
+         (reduced result)
+         result)))))
+
 (defmacro ^:private deffingerprinter
   [type transducer]
   `(defmethod fingerprinter ~type
-     [_#]
-     (with-global-fingerprinter ~type ~transducer)))
+     [field#]
+     (with-error-handling
+       (with-global-fingerprinter ~type ~transducer)
+       (format "Error generating fingerprint for %s" (sync-util/name-for-logging field#)))))
 
 (deffingerprinter :type/DateTime
-  ((map du/str->date-time)
+  ((keep du/str->date-time)
    (redux/post-complete
     (redux/fuse {:earliest (monoid t/min-date (t.coerce/from-long Long/MAX_VALUE))
                  :latest   (monoid t/max-date (t.coerce/from-long 0))})
@@ -142,9 +163,24 @@
 (s/defn ^:private fingerprint-table!
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
   (transduce identity
-             (apply col-wise (map fingerprinter fields))
-             (sample/sample-fields table fields)))
+             (redux/post-complete
+              (apply col-wise (map fingerprinter fields))
+              (fn [fingerprints]
+                (reduce (fn [count-info [field fingerprint]]
+                          (cond
+                            (instance? Exception fingerprint)
+                            (update count-info :failed-fingerprints inc)
 
+                            (some-> fingerprint :global :distinct-count zero?)
+                            (update count-info :no-data-fingerprints inc)
+
+                            :else
+                            (do
+                              (save-fingerprint! field fingerprint)
+                              (update count-info :updated-fingerprints inc))))
+                        (empty-stats-map (count fingerprints))
+                        (map vector fields fingerprints))))
+             (sample/sample-fields table fields)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
