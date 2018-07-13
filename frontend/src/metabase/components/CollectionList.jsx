@@ -75,6 +75,7 @@ class CollectionList extends React.Component {
                   to={Urls.newCollection(currentCollection.id)}
                   color={normal.grey2}
                   hover={{ color: normal.blue }}
+                  p={w === 1 ? [1, 2] : 0}
                 >
                   <Flex align="center" py={1}>
                     <Icon name="add" mr={1} bordered />
