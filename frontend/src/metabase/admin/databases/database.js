@@ -1,4 +1,4 @@
-import _ from "underscore";
+/* @flow weak */
 
 import { createAction } from "redux-actions";
 import {
@@ -12,6 +12,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { MetabaseApi } from "metabase/services";
+import Databases from "metabase/entities/databases";
 
 // Default schedules for db sync and deep analysis
 export const DEFAULT_SCHEDULES = {
@@ -69,21 +70,12 @@ export const CLEAR_FORM_STATE = "metabase/admin/databases/CLEAR_FORM_STATE";
 export const MIGRATE_TO_NEW_SCHEDULING_SETTINGS =
   "metabase/admin/databases/MIGRATE_TO_NEW_SCHEDULING_SETTINGS";
 
+// NOTE: some but not all of these actions have been migrated to use metabase/entities/databases
+
 export const reset = createAction(RESET);
 
 // selectEngine (uiControl)
 export const selectEngine = createAction(SELECT_ENGINE);
-
-// fetchDatabases
-export const fetchDatabases = createThunkAction(FETCH_DATABASES, function() {
-  return async function(dispatch, getState) {
-    try {
-      return await MetabaseApi.db_list();
-    } catch (error) {
-      console.error("error fetching databases", error);
-    }
-  };
-});
 
 // Migrates old "Enable in-depth database analysis" option to new "Let me choose when Metabase syncs and scans" option
 // Migration is run as a separate action because that makes it easy to track in tests
@@ -112,7 +104,10 @@ export const initializeDatabase = function(databaseId) {
   return async function(dispatch, getState) {
     if (databaseId) {
       try {
-        const database = await MetabaseApi.db_get({ dbId: databaseId });
+        const { payload } = await dispatch(
+          Databases.actions.fetch({ id: databaseId }, { reload: true }),
+        );
+        const database = payload.entities.databases[databaseId];
         dispatch.action(INITIALIZE_DATABASE, database);
 
         // If the new scheduling toggle isn't set, run the migration
@@ -196,12 +191,9 @@ export const createDatabase = function(database) {
   return async function(dispatch, getState) {
     try {
       dispatch.action(CREATE_DATABASE_STARTED, {});
-      const createdDatabase = await MetabaseApi.db_create(database);
+      const { payload } = await dispatch(Databases.actions.create(database));
+      const createdDatabase = payload.entities.databases[payload.result];
       MetabaseAnalytics.trackEvent("Databases", "Create", database.engine);
-
-      // update the db metadata already here because otherwise there will be a gap between "Adding..." status
-      // and seeing the db that was just added
-      await dispatch(fetchDatabases());
 
       dispatch.action(CREATE_DATABASE);
       dispatch(push("/admin/databases?created=" + createdDatabase.id));
@@ -221,7 +213,8 @@ export const updateDatabase = function(database) {
   return async function(dispatch, getState) {
     try {
       dispatch.action(UPDATE_DATABASE_STARTED, { database });
-      const savedDatabase = await MetabaseApi.db_update(database);
+      const { payload } = await dispatch(Databases.actions.update(database));
+      const savedDatabase = payload.entities.databases[payload.result];
       MetabaseAnalytics.trackEvent("Databases", "Update", database.engine);
 
       dispatch.action(UPDATE_DATABASE, { database: savedDatabase });
@@ -270,7 +263,7 @@ export const deleteDatabase = function(databaseId, isDetailView = true) {
     try {
       dispatch.action(DELETE_DATABASE_STARTED, { databaseId });
       dispatch(push("/admin/databases/"));
-      await MetabaseApi.db_delete({ dbId: databaseId });
+      await dispatch(Databases.actions.delete({ id: databaseId }));
       MetabaseAnalytics.trackEvent(
         "Databases",
         "Delete",
@@ -333,18 +326,6 @@ export const discardSavedFieldValues = createThunkAction(
 );
 
 // reducers
-
-const databases = handleActions(
-  {
-    [FETCH_DATABASES]: { next: (state, { payload }) => payload },
-    [ADD_SAMPLE_DATASET]: {
-      next: (state, { payload }) => (payload ? [...state, payload] : state),
-    },
-    [DELETE_DATABASE]: (state, { payload: { databaseId } }) =>
-      databaseId ? _.reject(state, d => d.id === databaseId) : state,
-  },
-  null,
-);
 
 const editingDatabase = handleActions(
   {
@@ -420,7 +401,6 @@ const formState = handleActions(
 );
 
 export default combineReducers({
-  databases,
   editingDatabase,
   deletionError,
   databaseCreationStep,
