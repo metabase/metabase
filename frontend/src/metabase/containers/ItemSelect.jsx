@@ -53,6 +53,7 @@ export default (PickerComponent, NameComponent, type) =>
       } = this.props;
       return (
         <PopoverWithTrigger
+          pinInitialAttachment // keep the popover from jumping if content height changes
           triggerClasses={className}
           triggerElement={
             <SelectButton style={style}>
