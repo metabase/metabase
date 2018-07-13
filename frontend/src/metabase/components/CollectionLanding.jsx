@@ -41,6 +41,54 @@ import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 const ROW_HEIGHT = 72;
 const PAGE_PADDING = [2, 3, 4];
 
+const EmptyStateWrapper = ({ children }) => (
+  <Flex
+    align="center"
+    justify="center"
+    py={3}
+    flexDirection="column"
+    w={1}
+    h={"200px"}
+    className="text-medium"
+  >
+    {children}
+  </Flex>
+);
+
+const DashboardEmptyState = () => (
+  <EmptyStateWrapper>
+    <Box>
+      <Icon name="dashboard" size={32} />
+    </Box>
+    <h3>{t`Dashboards let you collect and share data in one place.`}</h3>
+  </EmptyStateWrapper>
+);
+
+const PulseEmptyState = () => (
+  <EmptyStateWrapper>
+    <Box>
+      <Icon name="pulse" size={32} />
+    </Box>
+    <h3
+    >{t`Pulses let you send out the latest data to your team on a schedule via email or slack.`}</h3>
+  </EmptyStateWrapper>
+);
+
+const QuestionEmptyState = () => (
+  <EmptyStateWrapper>
+    <Box>
+      <Icon name="beaker" size={32} />
+    </Box>
+    <h3>{t`Quesitons are a saved look at your data.`}</h3>
+  </EmptyStateWrapper>
+);
+
+const EMPTY_STATES = {
+  dashboard: <DashboardEmptyState />,
+  pulse: <PulseEmptyState />,
+  card: <QuestionEmptyState />,
+};
+
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
 @entityListLoader({
@@ -103,6 +151,12 @@ class DefaultLanding extends React.Component {
     const collectionWidth = unpinned.length > 0 ? [1, 1 / 3] : 1;
     const itemWidth = unpinned.length > 0 ? [1, 2 / 3] : 0;
     const collectionGridSize = unpinned.length > 0 ? 1 : [1, 1 / 4];
+
+    let unpinnedItems = unpinned;
+
+    if (location.query.type) {
+      unpinnedItems = unpinned.filter(u => u.model === location.query.type);
+    }
 
     return (
       <Box>
@@ -229,63 +283,66 @@ class DefaultLanding extends React.Component {
                     </Box>
                   </GridItem>
                   <GridItem w={itemWidth}>
-                    {unpinned.length > 0 ? (
-                      <PinDropTarget pinIndex={null} margin={8}>
-                        <Box>
-                          <ItemTypeFilterBar />
-                          <Card mt={1}>
+                    <Box>
+                      <ItemTypeFilterBar />
+                      <Card mt={1} className="relative">
+                        {unpinnedItems.length > 0 ? (
+                          <PinDropTarget pinIndex={null} margin={8}>
                             <Box
-                              mb={selected.length > 0 ? 5 : 2}
                               style={{
                                 position: "relative",
-                                height: ROW_HEIGHT * unpinned.length,
+                                height: ROW_HEIGHT * unpinnedItems.length,
                               }}
                             >
                               <VirtualizedList
-                                items={
-                                  location.query.type
-                                    ? unpinned.filter(
-                                        u => u.model === location.query.type,
-                                      )
-                                    : unpinned
-                                }
+                                items={unpinnedItems}
                                 rowHeight={ROW_HEIGHT}
                                 renderItem={({ item, index }) => (
-                                  <ItemDragSource
-                                    item={item}
-                                    selection={selection}
-                                  >
-                                    <NormalItem
-                                      key={`${item.type}:${item.id}`}
+                                  <Box className="relative">
+                                    <ItemDragSource
                                       item={item}
-                                      collection={collection}
                                       selection={selection}
-                                      onToggleSelected={onToggleSelected}
-                                      onMove={moveItems =>
-                                        this.setState({ moveItems })
-                                      }
-                                    />
-                                  </ItemDragSource>
+                                    >
+                                      <NormalItem
+                                        key={`${item.type}:${item.id}`}
+                                        item={item}
+                                        collection={collection}
+                                        selection={selection}
+                                        onToggleSelected={onToggleSelected}
+                                        onMove={moveItems =>
+                                          this.setState({ moveItems })
+                                        }
+                                      />
+                                    </ItemDragSource>
+                                  </Box>
                                 )}
                               />
                             </Box>
-                          </Card>
-                        </Box>
-                      </PinDropTarget>
-                    ) : (
-                      <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
-                        {({ hovered }) => (
-                          <div
-                            className={cx(
-                              "m2 flex layout-centered",
-                              hovered ? "text-brand" : "text-grey-2",
-                            )}
-                          >
-                            {t`Drag here to un-pin`}
-                          </div>
+                          </PinDropTarget>
+                        ) : (
+                          <Box>
+                            {location.query.type &&
+                              EMPTY_STATES[location.query.type]}
+                            <PinDropTarget
+                              pinIndex={null}
+                              hideUntilDrag
+                              margin={10}
+                            >
+                              {({ hovered }) => (
+                                <div
+                                  className={cx(
+                                    "m2 flex layout-centered",
+                                    hovered ? "text-brand" : "text-grey-2",
+                                  )}
+                                >
+                                  {t`Drag here to un-pin`}
+                                </div>
+                              )}
+                            </PinDropTarget>
+                          </Box>
                         )}
-                      </PinDropTarget>
-                    )}
+                      </Card>
+                    </Box>
                   </GridItem>
                 </Grid>
               </Box>
@@ -358,7 +415,7 @@ export const NormalItem = ({
   onToggleSelected,
   onMove,
 }) => (
-  <Link to={item.getUrl()} px={2}>
+  <Link to={item.getUrl()}>
     <EntityItem
       variant="list"
       showSelect={selection.size > 0}

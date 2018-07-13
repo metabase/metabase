@@ -25,7 +25,7 @@ class CollectionList extends React.Component {
       w,
     } = this.props;
     return (
-      <Box>
+      <Box className="relative">
         <Grid>
           {collections
             .filter(c => c.id !== currentUser.personal_collection_id)
@@ -39,7 +39,7 @@ class CollectionList extends React.Component {
               </GridItem>
             ))}
           {isRoot && (
-            <GridItem w={w}>
+            <GridItem w={w} className="relative">
               <CollectionDropTarget
                 collection={{ id: currentUser.personal_collection_id }}
               >
@@ -76,12 +76,10 @@ class CollectionList extends React.Component {
                   color={normal.grey2}
                   hover={{ color: normal.blue }}
                 >
-                  <Box p={[1, 2]}>
-                    <Flex align="center" py={1}>
-                      <Icon name="add" mr={1} bordered />
-                      <h4>{t`New collection`}</h4>
-                    </Flex>
-                  </Box>
+                  <Flex align="center" py={1}>
+                    <Icon name="add" mr={1} bordered />
+                    <h4>{t`New collection`}</h4>
+                  </Flex>
                 </Link>
               </GridItem>
             )}

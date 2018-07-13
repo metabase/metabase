@@ -52,7 +52,7 @@ const ItemTypeFilterBar = props => {
             }}
             color={color}
             hover={{ color: colors.brand }}
-            className="flex-full flex align-center justify-center sm-block"
+            className="flex-full flex align-center justify-center sm-block text-brand-hover text-medium"
             mr={[0, 2]}
             key={f.filter}
             py={1}
@@ -66,7 +66,7 @@ const ItemTypeFilterBar = props => {
             <h5
               className="text-uppercase hide sm-show"
               style={{
-                color: isActive ? colors.brand : colors["text-medium"],
+                color: isActive ? colors.brand : "inherit",
                 fontWeight: 900,
               }}
             >

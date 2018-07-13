@@ -336,3 +336,13 @@
 .text-question {
   color: var(--color-text-medium);
 }
+
+.text-light {
+  color: var(--color-text-light);
+}
+.text-medium {
+  color: var(--color-text-medium);
+}
+.text-dark {
+  color: var(--color-text-dark);
+}

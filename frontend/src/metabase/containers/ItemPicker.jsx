@@ -13,13 +13,17 @@ import EntityListLoader, {
   entityListLoader,
 } from "metabase/entities/containers/EntityListLoader";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Collections from "metabase/entities/collections";
 
 const COLLECTION_ICON_COLOR = colors["text-light"];
 
 const isRoot = collection => collection.id === "root" || collection.id == null;
 
-@entityListLoader({ entityType: "collections" })
+@entityListLoader({
+  entityType: "collections",
+  loadingAndErrorWrapper: false,
+})
 @connect((state, props) => ({
   collectionsById: Collections.selectors.getExpandedCollectionsById(state),
 }))
@@ -98,103 +102,109 @@ export default class ItemPicker extends React.Component {
       (models.size === 1 || item.model === value.model);
 
     return (
-      <Box style={style} className={className}>
-        {searchMode ? (
-          <Box pb={1} mb={2} className="border-bottom flex align-center">
-            <input
-              type="search"
-              className="input rounded flex-full"
-              placeholder="Search"
-              autoFocus
-              onKeyPress={e => {
-                if (e.key === "Enter") {
-                  this.setState({ searchString: e.target.value });
+      <LoadingAndErrorWrapper loading={!collectionsById} className="scroll-y">
+        <Box style={style} className={cx(className, "scroll-y")}>
+          {searchMode ? (
+            <Box pb={1} mb={2} className="border-bottom flex align-center">
+              <input
+                type="search"
+                className="input rounded flex-full"
+                placeholder="Search"
+                autoFocus
+                onKeyPress={e => {
+                  if (e.key === "Enter") {
+                    this.setState({ searchString: e.target.value });
+                  }
+                }}
+              />
+              <Icon
+                name="close"
+                className="ml-auto pl2 text-grey-2 text-grey-4-hover cursor-pointer"
+                onClick={() =>
+                  this.setState({ searchMode: null, searchString: null })
                 }
-              }}
-            />
-            <Icon
-              name="close"
-              className="ml-auto pl2 text-grey-2 text-grey-4-hover cursor-pointer"
-              onClick={() =>
-                this.setState({ searchMode: null, searchString: null })
-              }
-            />
-          </Box>
-        ) : (
-          <Box pb={1} mb={2} className="border-bottom flex align-center">
-            <Breadcrumbs crumbs={crumbs} />
-            <Icon
-              name="search"
-              className="ml-auto pl2 text-grey-2 text-grey-4-hover cursor-pointer"
-              onClick={() => this.setState({ searchMode: true })}
-            />
-          </Box>
-        )}
-        <Box className="scroll-y">
-          {!searchString
-            ? allCollections.map(collection => (
-                <Item
-                  item={collection}
-                  name={collection.name}
-                  color={COLLECTION_ICON_COLOR}
-                  icon="all"
-                  selected={isSelected(collection) && models.has("collection")}
-                  canSelect={
-                    models.has("collection") && collection.can_edit !== false
-                  }
-                  hasChildren={
-                    (collection.children &&
-                      collection.children.length > 0 &&
-                      // exclude root since we show root's subcollections alongside it
-                      !isRoot(collection)) ||
-                    modelsIncludeNonCollections
-                  }
-                  onChange={collection =>
-                    isRoot(collection)
-                      ? // "root" collection should have `null` id
-                        onChange({ id: null, model: "collection" })
-                      : onChange(collection)
-                  }
-                  onChangeParentId={parentId => this.setState({ parentId })}
-                />
-              ))
-            : null}
-          {(modelsIncludeNonCollections || searchString) && (
-            <EntityListLoader
-              entityType="search"
-              entityQuery={{
-                ...(searchString
-                  ? { q: searchString }
-                  : { collection: parentId }),
-                ...(models.size === 1 ? { model: Array.from(models)[0] } : {}),
-              }}
-              wrapped
-            >
-              {({ list }) =>
-                list
-                  .filter(
-                    item =>
-                      // remove collections unless we're searching
-                      (item.model !== "collection" || !!searchString) &&
-                      // only include desired models (TODO: ideally the endpoint would handle this)
-                      models.has(item.model),
-                  )
-                  .map(item => (
-                    <Item
-                      item={item}
-                      name={item.getName()}
-                      color={item.getColor()}
-                      icon={item.getIcon()}
-                      selected={isSelected(item)}
-                      canSelect
-                      onChange={onChange}
-                    />
-                  ))
-              }
-            </EntityListLoader>
+              />
+            </Box>
+          ) : (
+            <Box pb={1} mb={2} className="border-bottom flex align-center">
+              <Breadcrumbs crumbs={crumbs} />
+              <Icon
+                name="search"
+                className="ml-auto pl2 text-grey-2 text-grey-4-hover cursor-pointer"
+                onClick={() => this.setState({ searchMode: true })}
+              />
+            </Box>
           )}
+          <Box className="scroll-y">
+            {!searchString
+              ? allCollections.map(collection => (
+                  <Item
+                    item={collection}
+                    name={collection.name}
+                    color={COLLECTION_ICON_COLOR}
+                    icon="all"
+                    selected={
+                      isSelected(collection) && models.has("collection")
+                    }
+                    canSelect={
+                      models.has("collection") && collection.can_edit !== false
+                    }
+                    hasChildren={
+                      (collection.children &&
+                        collection.children.length > 0 &&
+                        // exclude root since we show root's subcollections alongside it
+                        !isRoot(collection)) ||
+                      modelsIncludeNonCollections
+                    }
+                    onChange={collection =>
+                      isRoot(collection)
+                        ? // "root" collection should have `null` id
+                          onChange({ id: null, model: "collection" })
+                        : onChange(collection)
+                    }
+                    onChangeParentId={parentId => this.setState({ parentId })}
+                  />
+                ))
+              : null}
+            {(modelsIncludeNonCollections || searchString) && (
+              <EntityListLoader
+                entityType="search"
+                entityQuery={{
+                  ...(searchString
+                    ? { q: searchString }
+                    : { collection: parentId }),
+                  ...(models.size === 1
+                    ? { model: Array.from(models)[0] }
+                    : {}),
+                }}
+                wrapped
+              >
+                {({ list }) =>
+                  list
+                    .filter(
+                      item =>
+                        // remove collections unless we're searching
+                        (item.model !== "collection" || !!searchString) &&
+                        // only include desired models (TODO: ideally the endpoint would handle this)
+                        models.has(item.model),
+                    )
+                    .map(item => (
+                      <Item
+                        item={item}
+                        name={item.getName()}
+                        color={item.getColor()}
+                        icon={item.getIcon()}
+                        selected={isSelected(item)}
+                        canSelect
+                        onChange={onChange}
+                      />
+                    ))
+                }
+              </EntityListLoader>
+            )}
+          </Box>
         </Box>
-      </Box>
+      </LoadingAndErrorWrapper>
     );
   }
 }
