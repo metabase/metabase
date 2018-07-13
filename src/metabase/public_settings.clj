@@ -172,7 +172,7 @@
    :premium_token         (metastore/premium-embedding-token)
    :public_sharing        (enable-public-sharing)
    :report_timezone       (setting/get :report-timezone)
-   :setup_token           ((resolve 'metabase.setup/token-value))
+   :setup_token           ((resolve 'metabase.setup/setup-token))
    :site_name             (site-name)
    :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))

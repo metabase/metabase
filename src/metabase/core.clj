@@ -112,15 +112,18 @@
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- -init-create-setup-token
-  "Create and set a new setup token and log it."
+  "Create and set a new setup token (as a side-effect of calling `setup-token`), and log a message telling people to
+  visit the setup URL to set up their instance."
   []
-  (let [setup-token (setup/create-token!)                    ; we need this here to create the initial token
-        hostname    (or (config/config-str :mb-jetty-host) "localhost")
-        port        (config/config-int :mb-jetty-port)
-        setup-url   (str "http://"
-                         (or hostname "localhost")
-                         (when-not (= 80 port) (str ":" port))
-                         "/setup/")]
+  ;; create token if needed...
+  (setup/setup-token)
+  ;; log the message
+  (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
+        port      (config/config-int :mb-jetty-port)
+        setup-url (str "http://"
+                       (or hostname "localhost")
+                       (when-not (= 80 port) (str ":" port))
+                       "/setup/")]
     (log/info (u/format-color 'green
                   (str (trs "Please use the following URL to setup your Metabase installation:")
                        "\n\n"
