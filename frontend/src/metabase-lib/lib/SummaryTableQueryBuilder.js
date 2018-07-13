@@ -1,7 +1,7 @@
 
 import * as Q from "metabase/lib/query/query";
 import Query from './queries/Query';
-import type {ParameterValues} from "metabase/meta/types/Parameter";
+import type {Parameter, ParameterValues} from "metabase/meta/types/Parameter";
 import type {Card, DatasetQuery} from "metabase/meta/types/Card";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import SummaryTable, {COLUMNS_SETTINGS} from "metabase/visualizations/visualizations/SummaryTable";
@@ -9,10 +9,12 @@ import StateSerialized, {GROUPS_SOURCES, VALUES_SOURCES, COLUMNS_SOURCE} from "m
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import {WrappedQuery, wrapQuery} from "metabase-lib/lib/queries/WrappedQuery";
+import {parameterToMBQLFilter} from "metabase/meta/Parameter";
+import {updateIn} from "icepick";
 
 
 export const getAdditionalQueries = (visualizationSettings) => (card:Card, fields) => (
-                           query: DatasetQuery,
+  query: DatasetQuery, parameters: Array<Parameter>
                         ) : DatasetQuery[] => {
 
   const settings : StateSerialized = visualizationSettings[COLUMNS_SETTINGS];
@@ -21,6 +23,13 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
     return [];
 
 
+  if(query.query) {
+    console.log(fields)
+    const fieldsNorm = fields instanceof Array ? fields.reduce((acc, p) => ({...acc, [p.id] : p}), {}) : fields;
+    const metadata = {fields: fieldsNorm || {}};
+    const filters = (parameters || []).map(datasetParameter => parameterToMBQLFilter(datasetParameter, metadata)).reduce((acc, p) => (acc && ['AND', acc, p]) || p, query.query.filter);
+    query = {...query, query: {...query.query, filter: filters}};
+  }
   const nameToTypeMap = getNameToTypeMap(fields);
 
   const createLiteral = (name) => ['field-literal', name, nameToTypeMap[name]];
