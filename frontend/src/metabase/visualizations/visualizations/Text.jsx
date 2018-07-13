@@ -160,7 +160,7 @@ export default class Text extends Component {
           ) : (
             <textarea
               className={cx(
-                "full flex-full flex flex-column bg-grey-0 bordered drag-disabled",
+                "full flex-full flex flex-column bg-light bordered drag-disabled",
                 styles["text-card-textarea"],
               )}
               name="text"

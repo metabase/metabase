@@ -188,7 +188,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
     className="my2 bordered rounded shadowed cursor-pointer overflow-hidden bg-white"
     onClick={onClick}
   >
-    <div className="p1 border-bottom relative bg-grey-0">
+    <div className="p1 border-bottom relative bg-light">
       <div className="px1 flex align-center relative">
         <span className="h4 flex-full text-dark">
           {rule.columns.length > 0 ? (

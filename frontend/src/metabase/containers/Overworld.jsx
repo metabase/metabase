@@ -109,7 +109,10 @@ class Overworld extends React.Component {
                 <Grid>
                   {pinnedDashboards.map(pin => {
                     return (
-                      <GridItem w={[1, 1 / 2, 1 / 3]}>
+                      <GridItem
+                        w={[1, 1 / 2, 1 / 3]}
+                        key={`${pin.model}-${pin.id}`}
+                      >
                         <Link
                           to={Urls.dashboard(pin.id)}
                           hover={{ color: normal.blue }}
@@ -146,10 +149,10 @@ class Overworld extends React.Component {
               color={normal.grey2}
               className="text-brand-hover"
             >
-              <Flex bg={colors["bg-light"]} p={2} mb={1} align="center">
+              <Flex bg={colors["bg-light"]} p={2} my={1} align="center">
                 <Box ml="auto" mr="auto">
                   <Flex align="center">
-                    <h3>{t`Browse all items`}</h3>
+                    <h4>{t`Browse all items`}</h4>
                     <Icon name="chevronright" size={14} ml={1} />
                   </Flex>
                 </Box>
@@ -166,7 +169,7 @@ class Overworld extends React.Component {
                 return (
                   <Grid>
                     {databases.map(database => (
-                      <GridItem w={[1, 1 / 3]}>
+                      <GridItem w={[1, 1 / 3]} key={database.id}>
                         <Link
                           to={`browse/${database.id}`}
                           hover={{ color: normal.blue }}
