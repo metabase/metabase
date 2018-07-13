@@ -256,7 +256,7 @@
 
 
 (defn get-string
-  "Get string value of `setting-or-name`. This is the default getter for `String` settings; valuBis fetched as follows:
+  "Get string value of `setting-or-name`. This is the default getter for `String` settings; value is fetched as follows:
 
    1.  From the database (i.e., set via the admin panel), if a value is present;
    2.  From corresponding env var, if any;
