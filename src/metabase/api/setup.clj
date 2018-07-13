@@ -71,7 +71,7 @@
                     (database-api/schedule-map->cron-strings schedules))))]
         (events/publish-event! :database-create db)))
     ;; clear the setup token now, it's no longer needed
-    (setup/clear-token!)
+    (setup/mark-setup-token-as-used!)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
     (db/insert! Session
       :id      session-id
