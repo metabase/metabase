@@ -180,6 +180,7 @@
    :personal_owner_id   (user->id :lucky)
    :effective_ancestors ()
    :effective_location  "/"
+   :parent_id           nil
    :id                  (u/get-id (collection/user->personal-collection (user->id :lucky)))
    :location            "/"})
 
@@ -336,7 +337,8 @@
    :id                  "root"
    :can_write           true
    :effective_location  nil
-   :effective_ancestors []}
+   :effective_ancestors []
+   :parent_id           nil}
   (with-some-children-of-collection nil
     ((user->client :crowberto) :get 200 "collection/root")))
 
