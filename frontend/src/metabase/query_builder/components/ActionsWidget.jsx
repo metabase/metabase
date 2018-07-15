@@ -6,6 +6,7 @@ import Icon from "metabase/components/Icon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import colors from "metabase/lib/colors";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -155,7 +156,7 @@ export default class ActionsWidget extends Component {
             height: CIRCLE_SIZE,
             transition: "opacity 300ms ease-in-out",
             opacity: popoverIsOpen || iconIsVisible ? 1 : 0,
-            boxShadow: "2px 2px 4px rgba(0, 0, 0, 0.2)",
+            boxShadow: `2px 2px 4px ${colors["shadow"]}`,
           }}
           onClick={this.toggle}
         >

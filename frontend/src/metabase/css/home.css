@@ -1,7 +1,7 @@
 :root {
-  --search-bar-color: #60a6e4;
-  --search-bar-active-color: #7bb7ec;
-  --search-bar-active-border-color: #4894d8;
+  --search-bar-color: var(--color-brand);
+  --search-bar-active-color: var(--color-brand);
+  --search-bar-active-border-color: var(--color-brand);
 }
 
 .Nav {
@@ -10,22 +10,18 @@
 
 /* temporary css for the navbar and search */
 .search-bar {
-  background-color: var(--search-bar-color);
+  background-color: color(var(--color-bg-white) alpha(-90%));
   border-color: transparent;
   color: white;
 }
 
-.nav-light {
-  background-color: var(--search-bar-color);
-}
-
 .search-bar--active {
-  background-color: var(--search-bar-active-color);
-  border-color: var(--search-bar-active-border-color);
+  background-color: color(var(--color-bg-white) alpha(-75%));
+  border-color: var(--color-brand);
 }
 
 .NavItem.NavItem--selected {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: color(var(--color-bg-black) alpha(-80%));
 }
 
 .NavItem {
@@ -45,16 +41,16 @@
   }
   .NavItem:hover,
   .NavItem.NavItem--selected {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: color(var(--color-bg-white) alpha(-92%));
   }
 }
 
 .NavNewQuestion {
-  box-shadow: 0px 2px 2px 0px rgba(77, 136, 189, 0.69);
+  box-shadow: 0px 2px 2px 0px var(--color-shadow);
 }
 .NavNewQuestion:hover {
-  box-shadow: 0px 3px 2px 2px rgba(77, 136, 189, 0.75);
-  color: #3875ac;
+  box-shadow: 0px 3px 2px 2px var(--color-shadow);
+  color: var(--color-brand);
 }
 
 .Greeting {
@@ -75,7 +71,7 @@
 }
 .bullet:before {
   content: "\2022";
-  color: #6fb0eb;
+  color: var(--color-brand);
   position: absolute;
   top: 0;
   margin-top: 16px;
@@ -117,7 +113,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 4px var(--color-shadow);
   background-clip: padding-box;
 }
 
@@ -145,7 +141,7 @@
 
 .NavDropdown.open .NavDropdown-button,
 .NavDropdown .NavDropdown-content-layer {
-  background-color: #6fb0eb;
+  background-color: var(--color-brand);
 }
 
 .NavDropdown .NavDropdown-content-layer {
@@ -206,10 +202,10 @@
 
 .tooltip {
   position: absolute;
-  background-color: #fff;
+  background-color: var(--color-bg-white);
   border-radius: 2px;
-  box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.12);
-  color: #ddd;
+  box-shadow: 1px 1px 1px var(--color-shadow);
+  color: var(--color-text-light);
 }
 
 .TableDescription {
@@ -220,8 +216,8 @@
 .Layout-sidebar {
   min-height: 100vh;
   width: 346px;
-  background-color: #f9fbfc;
-  border-left: 2px solid var(--border-color);
+  background-color: var(--color-bg-light);
+  border-left: 2px solid var(--color-border);
 }
 .Layout-mainColumn {
   max-width: 700px;

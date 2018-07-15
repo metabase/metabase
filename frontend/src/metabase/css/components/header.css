@@ -4,19 +4,19 @@
 
 .Header-title-name {
   font-size: 1.24em;
-  color: var(--grey-text-color);
+  color: var(--color-text-dark);
 }
 
 .Header-attribution {
   display: none; /* disabled */
-  color: #adadad;
+  color: var(--color-text-medium);
   margin-bottom: 0.5em;
 }
 
 .Header-buttonSection {
   padding-right: 1em;
   margin-right: 1em;
-  border-right: 1px solid rgba(0, 0, 0, 0.2);
+  border-right: 1px solid color(var(--color-accent2) alpha(-80%));
 }
 
 .Header-buttonSection:last-child {
@@ -34,11 +34,24 @@
 }
 
 .EditHeader {
-  background-color: #6cafed;
+  background-color: color(var(--color-bg-white) alpha(-85%));
+  position: relative;
 }
 
-.EditHeader.EditHeader--admin {
-  background-color: var(--admin-nav-bg-color-tint);
+/* a bit of a hack to fade out the edit header */
+.EditHeader:after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  background-color: var(--color-brand);
+}
+
+.EditHeader.EditHeader--admin:after {
+  background-color: var(--color-bg-dark);
 }
 
 .EditHeader-title {
@@ -47,7 +60,7 @@
 }
 
 .EditHeader-subtitle {
-  color: rgba(255, 255, 255, 0.5);
+  color: color(var(--color-text-white) alpha(-50%));
 }
 
 .EditHeader .Button {
@@ -55,25 +68,25 @@
   border: none;
   font-size: 1em;
   text-transform: capitalize;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: color(var(--color-bg-white) alpha(-90%));
   margin-left: 0.75em;
 }
 
 .EditHeader .Button--primary {
   background-color: white;
-  color: var(--brand-color);
+  color: var(--color-brand);
 }
 
 .EditHeader.EditHeader--admin .Button--primary {
   background-color: white;
-  color: var(--70-percent-black);
+  color: var(--color-text-dark);
 }
 
 .EditHeader .Button:hover {
   color: white;
-  background-color: var(--brand-color);
+  background-color: var(--color-brand);
 }
 
 .EditHeader.EditHeader--admin .Button:hover {
-  background-color: var(--admin-nav-bg-color);
+  background-color: var(--color-bg-dark);
 }

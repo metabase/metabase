@@ -42,7 +42,9 @@
              [db :as mdb]
              [events :as events]
              [util :as u]]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util
+             [date :as du]
+             [honeysql-extensions :as hx]]
             [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]
             [toucan
@@ -60,7 +62,16 @@
 
 
 (def ^:private Type
-  (s/enum :string :boolean :json :integer :double))
+  (s/enum :string :boolean :json :integer :double :timestamp))
+
+(def ^:private default-tag-for-type
+  "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
+  warnings."
+  {:string    String
+   :boolean   Boolean
+   :integer   Long
+   :double    Double
+   :timestamp java.sql.Timestamp})
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
@@ -69,7 +80,9 @@
    :type        Type             ; all values are stored in DB as Strings,
    :getter      clojure.lang.IFn ; different getters/setters take care of parsing/unparsing
    :setter      clojure.lang.IFn
-   :internal?   s/Bool})         ; should the API never return this setting? (default: false)
+   :tag         (s/maybe Class)  ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
+   :internal?   s/Bool           ; should the API never return this setting? (default: false)
+   :cache?      s/Bool})         ; should the getter always fetch this value "fresh" from the DB? (default: false)
 
 
 (defonce ^:private registered-settings
@@ -157,10 +170,13 @@
     (when-let [last-known-update (core/get @cache settings-last-updated-key)]
       ;; compare it to the value in the DB. This is done be seeing whether a row exists
       ;; WHERE value > <local-value>
-      (db/select-one Setting
-        {:where [:and
-                 [:= :key settings-last-updated-key]
-                 [:> :value last-known-update]]})))))
+      (u/prog1 (db/select-one Setting
+                 {:where [:and
+                          [:= :key settings-last-updated-key]
+                          [:> :value last-known-update]]})
+        (when <>
+          (log/info (u/format-color 'red
+                        (trs "Settings have been changed on another instance, and will be reloaded here.")))))))))
 
 (def ^:private cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
@@ -227,15 +243,20 @@
     (when (seq v)
       v)))
 
+(def ^:private ^:dynamic *disable-cache* false)
+
 (defn- db-value
   "Get the value, if any, of `setting-or-name` from the DB (using / restoring the cache as needed)."
   ^String [setting-or-name]
-  (restore-cache-if-needed!)
-  (clojure.core/get @cache (setting-name setting-or-name)))
+  (if *disable-cache*
+    (db/select-one-field :value Setting :key (setting-name setting-or-name))
+    (do
+      (restore-cache-if-needed!)
+      (clojure.core/get @cache (setting-name setting-or-name)))))
 
 
 (defn get-string
-  "Get string value of `setting-or-name`. This is the default getter for `String` settings; valuBis fetched as follows:
+  "Get string value of `setting-or-name`. This is the default getter for `String` settings; value is fetched as follows:
 
    1.  From the database (i.e., set via the admin panel), if a value is present;
    2.  From corresponding env var, if any;
@@ -285,18 +306,26 @@
   [setting-or-name]
   (json/parse-string (get-string setting-or-name) keyword))
 
+(defn get-timestamp
+  "Get the string value of `setting-or-name` and parse it as an ISO-8601-formatted string, returning a Timestamp."
+  [setting-or-name]
+  (du/->Timestamp (get-string setting-or-name) :no-timezone))
+
 (def ^:private default-getter-for-type
-  {:string  get-string
-   :boolean get-boolean
-   :integer get-integer
-   :json    get-json
-   :double  get-double})
+  {:string    get-string
+   :boolean   get-boolean
+   :integer   get-integer
+   :json      get-json
+   :timestamp get-timestamp
+   :double    get-double})
 
 (defn get
   "Fetch the value of `setting-or-name`. What this means depends on the Setting's `:getter`; by default, this looks for
    first for a corresponding env var, then checks the cache, then returns the default value of the Setting, if any."
   [setting-or-name]
-  ((:getter (resolve-setting setting-or-name))))
+  (let [{:keys [cache? getter]} (resolve-setting setting-or-name)]
+    (binding [*disable-cache* (not cache?)]
+      (getter))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -353,7 +382,10 @@
       (swap! cache assoc  setting-name new-value)
       (swap! cache dissoc setting-name))
     ;; Record the fact that a Setting has been updated so eventaully other instances (if applicable) find out about it
-    (update-settings-last-updated!)
+    ;; (For Settings that don't use the Cache, don't update the `last-updated` value, because it will cause other
+    ;; instances to do needless reloading of the cache from the DB)
+    (when-not *disable-cache*
+      (update-settings-last-updated!))
     ;; Now return the `new-value`.
     new-value))
 
@@ -389,15 +421,20 @@
 (defn set-json!
   "Serialize `new-value` for `setting-or-name` as a JSON string and save it."
   [setting-or-name new-value]
-  (set-string! setting-or-name (when new-value
-                                 (json/generate-string new-value))))
+  (set-string! setting-or-name (some-> new-value json/generate-string)))
+
+(defn set-timestamp!
+  "Serialize `new-value` for `setting-or-name` as a ISO 8601-encoded timestamp strign and save it."
+  [setting-or-name new-value]
+  (set-string! setting-or-name (some-> new-value du/date->iso-8601)))
 
 (def ^:private default-setter-for-type
-  {:string  set-string!
-   :boolean set-boolean!
-   :integer set-integer!
-   :json    set-json!
-   :double  set-double!})
+  {:string    set-string!
+   :boolean   set-boolean!
+   :integer   set-integer!
+   :json      set-json!
+   :timestamp set-timestamp!
+   :double    set-double!})
 
 (defn set!
   "Set the value of `setting-or-name`. What this means depends on the Setting's `:setter`; by default, this just updates
@@ -409,7 +446,9 @@
 
      (mandrill-api-key \"xyz123\")"
   [setting-or-name new-value]
-  ((:setter (resolve-setting setting-or-name)) new-value))
+  (let [{:keys [setter cache?]} (resolve-setting setting-or-name)]
+    (binding [*disable-cache* (not cache?)]
+      (setter new-value))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -427,7 +466,9 @@
                      :default     default
                      :getter      (partial (default-getter-for-type setting-type) setting-name)
                      :setter      (partial (default-setter-for-type setting-type) setting-name)
-                     :internal?   false}
+                     :tag         (default-tag-for-type setting-type)
+                     :internal?   false
+                     :cache?      true}
                     (dissoc setting :name :type :default)))
     (s/validate SettingDefinition <>)
     (swap! registered-settings assoc setting-name <>)))
@@ -440,10 +481,11 @@
 
 (defn metadata-for-setting-fn
   "Create metadata for the function automatically generated by `defsetting`."
-  [{:keys [default description], setting-type :type, :as setting}]
+  [{:keys [default description tag], setting-type :type, :as setting}]
   {:arglists '([] [new-value])
    ;; indentation below is intentional to make it clearer what shape the generated documentation is going to take.
    ;; Turn on auto-complete-mode in Emacs and see for yourself!
+   :tag tag
    :doc (str/join "\n" [        description
                                 ""
                         (format "`%s` is a %s Setting. You can get its value by calling:" (setting-name setting) (name setting-type))
@@ -501,7 +543,9 @@
    *  `:setter`    - A custom setter fn, which takes a single argument. Overrides the default implementation. (This
                      can in turn call functions in this namespace like `set-string!` or `set-boolean!` to invoke the
                      default setter behavior. Keep in mind that the custom setter may be passed `nil`, which should
-                     clear the values of the Setting.)"
+                     clear the values of the Setting.)
+   *  `:cache?`    - Should this Setting be cached? (default `true`)? Be careful when disabling this, because it could
+                     have a very negative performance impact."
   {:style/indent 1}
   [setting-symb description & {:as options}]
   {:pre [(symbol? setting-symb)]}

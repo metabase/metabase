@@ -467,7 +467,7 @@ export function assignUserColors(
     "bg-error",
     "bg-green",
     "bg-gold",
-    "bg-grey-2",
+    "bg-medium",
   ],
 ) {
   let assignments = {};

@@ -43,6 +43,22 @@
    :schedule_day   nil
    :enabled        true})
 
+(def venue-fingerprints
+  "Fingerprints for the full venues table"
+  {:name        {:global {:distinct-count 100},
+                 :type   {:type/Text {:percent-json  0.0, :percent-url    0.0,
+                                      :percent-email 0.0, :average-length 15.63}}}
+   :id          {:global {:distinct-count 100},
+                 :type   {:type/Number {:min 1, :max 100, :avg 50.5}}}
+   :price       {:global {:distinct-count 4},
+                 :type   {:type/Number {:min 1, :max 4, :avg 2.03}}}
+   :latitude    {:global {:distinct-count 94},
+                 :type   {:type/Number {:min 10.06, :max 40.78, :avg 35.51}}}
+   :category_id {:global {:distinct-count 28},
+                 :type   {:type/Number {:min 2, :max 74, :avg 29.98}}}
+   :longitude   {:global {:distinct-count 84},
+                 :type   {:type/Number {:min -165.37, :max -73.95, :avg -116.0}}}})
+
 ;; This is just a fake implementation that just swoops in and returns somewhat-correct looking results for different
 ;; queries we know will get ran as part of sync
 (defn- is-table-row-count-query? [expanded-query]

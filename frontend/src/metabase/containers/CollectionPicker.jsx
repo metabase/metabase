@@ -8,7 +8,9 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 
 import { getExpandedCollectionsById } from "metabase/entities/collections";
 
-const COLLECTION_ICON_COLOR = "#DCE1E4";
+import colors from "metabase/lib/colors";
+
+const COLLECTION_ICON_COLOR = colors["text-light"];
 
 const isRoot = collection => collection.id === "root" || collection.id == null;
 
@@ -90,7 +92,7 @@ export default class CollectionPicker extends React.Component {
                 !isRoot(collection) && (
                   <Icon
                     name="chevronright"
-                    className="p1 ml-auto circular text-grey-2 border-grey-2 bordered bg-white-hover cursor-pointer"
+                    className="p1 ml-auto circular text-grey-2 bordered bg-white-hover cursor-pointer"
                     onClick={e => {
                       e.stopPropagation();
                       this.setState({ parentId: collection.id });

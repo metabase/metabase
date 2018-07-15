@@ -1,5 +1,5 @@
 :root {
-  --selection-color: #ccdff6;
+  --selection-color: var(--color-text-light);
 }
 
 #react_qb_viz {
@@ -23,7 +23,7 @@
 .QueryHeader-section {
   padding-right: 1em;
   margin-right: 1em;
-  border-right: 1px solid rgba(0, 0, 0, 0.2);
+  border-right: 1px solid color(var(--color-accent2) alpha(-80%));
 }
 
 .QueryHeader-section:last-child {
@@ -33,13 +33,13 @@
 /*
 .Icon-download,
 .Icon-addToDash {
-    fill: #919191;
+    fill: var(--color-text-medium);
     transition: fill .3s linear;
 }
 
 .Icon-download:hover,
 .Icon-addToDash:hover {
-    fill: var(--brand-color);
+    fill: var(--color-brand);
     transition: fill .3s linear;
 }
 */
@@ -65,7 +65,7 @@
   text-transform: uppercase;
   font-size: 10px;
   font-weight: 700;
-  color: color(var(--base-grey) shade(30%));
+  color: var(--color-text-medium);
 }
 
 .Query-filters {
@@ -88,7 +88,7 @@
 }
 
 .Query-filter.selected {
-  border-color: var(--purple-color);
+  border-color: var(--color-accent2);
 }
 
 .Filter-section {
@@ -123,7 +123,7 @@
     @selectionmodule
 */
 .SelectionModule {
-  color: var(--brand-color);
+  color: var(--color-brand);
 }
 
 .SelectionList {
@@ -151,7 +151,7 @@
   align-items: center;
   cursor: pointer;
   padding: 0.75rem 1.5rem 0.75rem 0.75rem;
-  background-color: #fff;
+  background-color: var(--color-bg-white);
 }
 
 .SelectionItem:hover {
@@ -173,15 +173,15 @@
 }
 
 .SelectionItem:hover .Icon {
-  color: #fff !important;
+  color: var(--color-text-white) !important;
 }
 
 .SelectionItem:hover .SelectionModule-display {
-  color: #fff;
+  color: var(--color-text-white);
 }
 
 .SelectionItem:hover .SelectionModule-description {
-  color: #fff;
+  color: var(--color-text-white);
 }
 
 .SelectionItem.SelectionItem--selected .Icon-check {
@@ -194,7 +194,7 @@
 }
 
 .SelectionModule-description {
-  color: color(var(--base-grey) shade(40%));
+  color: var(--color-text-medium);
   font-size: 0.8rem;
 }
 
@@ -217,7 +217,7 @@
 }
 
 .Loading {
-  background-color: rgba(255, 255, 255, 0.82);
+  background-color: color(var(--color-bg-white) alpha(-18%));
 }
 
 /* query errors */
@@ -232,7 +232,7 @@
 .QueryError-iconWrapper {
   padding: 2em;
   margin-bottom: 2em;
-  border: 4px solid var(--error-color);
+  border: 4px solid var(--color-accent3);
   border-radius: 99px;
 }
 
@@ -279,7 +279,7 @@
   position: relative;
   display: inline-block;
   border-radius: var(--default-border-radius);
-  border: 1px solid rgb(197, 197, 197);
+  border: 1px solid var(--color-border);
   margin-top: var(--margin-2);
   padding: var(--padding-1) var(--padding-4) var(--padding-1) var(--padding-4);
 }
@@ -310,7 +310,7 @@
 }
 
 .QueryError2-detailBody {
-  background-color: #f8f8f8;
+  background-color: var(--color-bg-light);
   max-height: 15rem;
   overflow: auto;
 }
@@ -323,9 +323,9 @@
   flex-direction: column;
   font-size: 0.9em;
   z-index: 2;
-  background-color: #fff;
+  background-color: var(--color-bg-white);
 
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--color-border);
 }
 
 /* for medium breakpoint only expand if data reference is not shown */
@@ -337,22 +337,22 @@
 
 /* un-expanded (default) */
 .GuiBuilder-row {
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--color-border);
 }
 .GuiBuilder-row:last-child {
   border-bottom-color: transparent;
 }
 .GuiBuilder-data {
-  border-right: 1px solid #e0e0e0;
+  border-right: 1px solid var(--color-border);
 }
 .GuiBuilder-filtered-by {
   border-right: 1px solid transparent;
 }
 .GuiBuilder-view {
-  border-right: 1px solid #e0e0e0;
+  border-right: 1px solid var(--color-border);
 }
 .GuiBuilder-sort-limit {
-  border-left: 1px solid #e0e0e0;
+  border-left: 1px solid var(--color-border);
 }
 
 /* expanded */
@@ -361,10 +361,10 @@
 }
 .GuiBuilder.GuiBuilder--expand .GuiBuilder-row:last-child {
   border-right-color: transparent;
-  border-bottom-color: #e0e0e0;
+  border-bottom-color: var(--color-border);
 }
 .GuiBuilder.GuiBuilder--expand .GuiBuilder-filtered-by {
-  border-right-color: #e0e0e0;
+  border-right-color: var(--color-border);
 }
 
 .GuiBuilder-section {
@@ -407,19 +407,19 @@
 
 .Filter-section-field,
 .Filter-section-operator {
-  color: var(--purple-color);
+  color: var(--color-accent2);
 }
 
 .Filter-section-field .QueryOption {
-  color: var(--purple-color);
+  color: var(--color-accent2);
 }
 .Filter-section-operator .QueryOption {
-  color: var(--purple-color);
+  color: var(--color-accent2);
 }
 .Filter-section-value .QueryOption {
   color: white;
-  background-color: var(--purple-color);
-  border: 1px solid color(var(--purple-color) shade(30%));
+  background-color: var(--color-accent2);
+  border: 1px solid var(--color-accent2);
   border-radius: 6px;
   padding: 0.5em;
   padding-top: 0.3em;
@@ -439,10 +439,10 @@
 
 .FilterPopover .ColumnarSelector-row--selected,
 .FilterPopover .PopoverHeader-item.selected {
-  color: var(--purple-color) !important;
+  color: var(--color-accent2) !important;
 }
 .FilterPopover .ColumnarSelector-row:hover {
-  background-color: var(--purple-color) !important;
+  background-color: var(--color-accent2) !important;
 }
 
 /* VIEW SECTION */
@@ -450,13 +450,13 @@
 .View-section-aggregation,
 .View-section-aggregation-target,
 .View-section-breakout {
-  color: var(--green-color);
+  color: var(--color-accent1);
 }
 
 .View-section-aggregation.selected .QueryOption,
 .View-section-aggregation-target.selected .QueryOption,
 .View-section-breakout.selected .QueryOption {
-  color: var(--green-color);
+  color: var(--color-accent1);
 }
 
 /* SORT/LIMIT SECTION */
@@ -488,7 +488,7 @@
   height: 38px;
   border-radius: 38px;
   background-color: white;
-  border: 1px solid #ccdff6;
+  border: 1px solid var(--color-border);
 }
 
 .ChartType-popover {
@@ -497,7 +497,7 @@
 
 .ChartType--selected {
   color: white;
-  background-color: rgb(74, 144, 226);
+  background-color: var(--color-brand);
 }
 
 .ChartType--notSensible {
@@ -514,7 +514,7 @@
 .RunButton {
   z-index: 1;
   opacity: 1;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 1px 2px var(--color-shadow);
   transition: transform 0.5s, opacity 0.5s;
   min-width: 8em;
   position: relative;
@@ -534,7 +534,7 @@
   right: 0;
   width: 300px;
   height: 100%;
-  background-color: var(--slate-extra-light-color);
+  background-color: var(--color-bg-light);
   overflow: hidden;
 }
 
@@ -559,7 +559,7 @@
   width: 100%;
   margin: 0 auto;
   margin-bottom: 2rem;
-  border: 1px solid #dedede;
+  border: 1px solid var(--color-border);
 }
 
 @media screen and (--breakpoint-min-xl) {
@@ -570,11 +570,11 @@
 }
 
 .ObjectDetail-headingGroup {
-  border-bottom: 1px solid #dedede;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .ObjectDetail-infoMain {
-  border-right: 1px solid #dedede;
+  border-right: 1px solid var(--color-border);
   margin-left: 2.4rem;
   font-size: 1rem;
 }
@@ -583,8 +583,8 @@
   max-height: 200px;
   overflow: scroll;
   padding: 1em;
-  background-color: #f8f8f8;
-  border: 1px solid #dedede;
+  background-color: var(--color-bg-light);
+  border: 1px solid var(--color-border);
   border-radius: 2px;
 }
 
@@ -599,23 +599,23 @@
 
 .List-item--segment .Icon,
 .List-item--segment .List-item-title {
-  color: var(--purple-color);
+  color: var(--color-accent2);
 }
 
 .List-item--customfield .Icon,
 .List-item--customfield .List-item-title {
-  color: var(--brand-color);
+  color: var(--color-brand);
 }
 
 .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
   visibility: visible;
-  border-left: 2px solid rgba(0, 0, 0, 0.1);
-  color: rgba(255, 255, 255, 0.5);
+  border-left: 2px solid color(var(--color-accent2) alpha(-90%));
+  color: color(var(--color-text-white) alpha(-50%));
 }
 
 .QuestionTooltipTarget {
-  color: rgb(225, 225, 225);
+  color: var(--color-text-light);
   display: inline-block;
   border: 2px solid currentColor;
   border-radius: 99px;
@@ -644,8 +644,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--purple-color);
-  border: 1px solid var(--purple-color);
+  background-color: var(--color-accent2);
+  border: 1px solid var(--color-accent2);
   transition: opacity 0.3s ease-out;
 }
 
@@ -666,27 +666,27 @@
   white-space: pre-wrap;
   white-space: -moz-pre-wrap;
   white-space: -o-pre-wrap;
-  background-color: #f9fbfc;
-  border: 1px solid #d5dbe3;
+  background-color: var(--color-bg-light);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
 }
 
 .ParameterValuePickerNoPopover input {
   font-size: 16px;
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
   border: none;
 }
 
 .ParameterValuePickerNoPopover--selected input {
   font-weight: bold;
-  color: var(--brand-color);
+  color: var(--color-brand);
 }
 
 .ParameterValuePickerNoPopover input:focus {
   outline: none;
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
 }
 
 .ParameterValuePickerNoPopover input::-webkit-input-placeholder {
-  color: var(--grey-4);
+  color: var(--color-text-medium);
 }

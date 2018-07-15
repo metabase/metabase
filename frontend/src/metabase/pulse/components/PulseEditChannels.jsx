@@ -276,7 +276,7 @@ export default class PulseEditChannels extends Component {
           />
         </div>
         {channels.length > 0 && channelSpec.configured ? (
-          <ul className="bg-grey-0 px3">{channels}</ul>
+          <ul className="bg-light px3">{channels}</ul>
         ) : channels.length > 0 && !channelSpec.configured ? (
           <div className="p4 text-centered">
             <h3 className="mb2">{t`${
@@ -297,7 +297,7 @@ export default class PulseEditChannels extends Component {
       slack: { name: t`Slack`, type: "slack" },
     };
     return (
-      <ul className="bordered rounded">
+      <ul className="bordered rounded bg-white">
         {Object.values(channels).map(channelSpec =>
           this.renderChannelSection(channelSpec),
         )}

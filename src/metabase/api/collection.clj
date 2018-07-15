@@ -53,7 +53,7 @@
 
 (defmethod fetch-collection-children :card
   [_ collection {:keys [archived?]}]
-  (-> (db/select [Card :id :name :description :collection_position]
+  (-> (db/select [Card :id :name :description :collection_position :display]
         :collection_id (:id collection)
         :archived      archived?)
       (hydrate :favorite)))
@@ -130,7 +130,7 @@
       ;; add in some things for the FE to display since the 'Root' Collection isn't real and wouldn't normally have
       ;; these things
       (assoc
-          :name (tru "Saved items")
+          :name (tru "Our analytics")
           :id   "root")
       (dissoc ::collection/is-root?)))
 

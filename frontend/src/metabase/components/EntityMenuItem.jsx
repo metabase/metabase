@@ -4,11 +4,13 @@ import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon";
 
+import colors from "metabase/lib/colors";
+
 const itemClasses = cxs({
   display: "flex",
   alignItems: "center",
   cursor: "pointer",
-  color: "#616D75",
+  color: colors["text-medium"],
   paddingLeft: "1.45em",
   paddingRight: "1.45em",
   paddingTop: "0.85em",
@@ -16,14 +18,14 @@ const itemClasses = cxs({
   textDecoration: "none",
   transition: "all 300ms linear",
   ":hover": {
-    color: "#509ee3",
+    color: colors["brand"],
   },
   "> .Icon": {
-    color: "#BCC5CA",
+    color: colors["text-light"],
     marginRight: "0.65em",
   },
   ":hover > .Icon": {
-    color: "#509ee3",
+    color: colors["brand"],
     transition: "all 300ms linear",
   },
   // icon specific tweaks
@@ -39,15 +41,15 @@ const itemClasses = cxs({
   "> .Icon.Icon-download": {
     transform: `translateY(1px)`,
   },
-  // the history icon is wider so it needs adjustement to center it with other
+  // the history icon is wider so it needs adjustment to center it with other
   // icons
   "> .Icon.Icon-history": {
     transform: `translateX(-2px)`,
   },
 });
 
-const LinkMenuItem = ({ children, link }) => (
-  <Link className={itemClasses} to={link}>
+const LinkMenuItem = ({ children, link, onClose }) => (
+  <Link className={itemClasses} to={link} onClick={onClose}>
     {children}
   </Link>
 );
@@ -58,7 +60,7 @@ const ActionMenuItem = ({ children, action }) => (
   </div>
 );
 
-const EntityMenuItem = ({ action, title, icon, link }) => {
+const EntityMenuItem = ({ action, title, icon, link, onClose }) => {
   if (link && action) {
     console.warn(
       "EntityMenuItem Error: You cannot specify both action and link props",
@@ -72,7 +74,11 @@ const EntityMenuItem = ({ action, title, icon, link }) => {
   ];
 
   if (link) {
-    return <LinkMenuItem link={link}>{content}</LinkMenuItem>;
+    return (
+      <LinkMenuItem link={link} onClose={onClose}>
+        {content}
+      </LinkMenuItem>
+    );
   }
   if (action) {
     return <ActionMenuItem action={action}>{content}</ActionMenuItem>;

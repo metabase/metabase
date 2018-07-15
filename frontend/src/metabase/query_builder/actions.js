@@ -24,6 +24,7 @@ import {
 } from "metabase/lib/card";
 import { formatSQL } from "metabase/lib/formatting";
 import Query, { createQuery } from "metabase/lib/query";
+import { syncQueryFields, getExistingFields } from "metabase/lib/dataset";
 import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
@@ -520,7 +521,13 @@ export const loadDatabaseFields = createThunkAction(
   },
 );
 
-function updateVisualizationSettings(card, isEditing, display, vizSettings) {
+function updateVisualizationSettings(
+  card,
+  isEditing,
+  display,
+  vizSettings,
+  result,
+) {
   // don't need to store undefined
   vizSettings = Utils.copy(vizSettings);
   for (const name in vizSettings) {
@@ -549,6 +556,10 @@ function updateVisualizationSettings(card, isEditing, display, vizSettings) {
   updatedCard.display = display;
   updatedCard.visualization_settings = vizSettings;
 
+  if (result && result.data && result.data.cols) {
+    syncQueryFields(updatedCard, result.data.cols);
+  }
+
   return updatedCard;
 }
 
@@ -569,6 +580,7 @@ export const setCardVisualization = createThunkAction(
         uiControls.isEditing,
         display,
         card.visualization_settings,
+        getFirstQueryResult(getState()),
       );
       dispatch(updateUrl(updatedCard, { dirty: true }));
       return updatedCard;
@@ -588,6 +600,7 @@ export const updateCardVisualizationSettings = createThunkAction(
         uiControls.isEditing,
         card.display,
         { ...card.visualization_settings, ...settings },
+        getFirstQueryResult(getState()),
       );
       dispatch(updateUrl(updatedCard, { dirty: true }));
       return updatedCard;
@@ -607,6 +620,7 @@ export const replaceAllCardVisualizationSettings = createThunkAction(
         uiControls.isEditing,
         card.display,
         settings,
+        getFirstQueryResult(getState()),
       );
       dispatch(updateUrl(updatedCard, { dirty: true }));
       return updatedCard;
@@ -1421,6 +1435,35 @@ export const loadObjectDetailFKReferences = createThunkAction(
 
       return fkReferences;
     };
+  },
+);
+
+const ADD_FIELD = "metabase/qb/ADD_FIELD";
+export const addField = createThunkAction(
+  ADD_FIELD,
+  (field, run = true) => (dispatch, getState) => {
+    const { qb: { card } } = getState();
+    const queryResult = getFirstQueryResult(getState());
+    if (
+      card.dataset_query.type === "query" &&
+      queryResult &&
+      queryResult.data
+    ) {
+      dispatch(
+        setDatasetQuery(
+          {
+            ...card.dataset_query,
+            query: {
+              ...card.dataset_query.query,
+              fields: getExistingFields(card, queryResult.data.cols).concat([
+                field,
+              ]),
+            },
+          },
+          true,
+        ),
+      );
+    }
   },
 );
 

@@ -167,3 +167,43 @@
 (expect
   nil
   (qputil/dissoc-normalized nil :num-toucans))
+
+(defrecord ^:private TestRecord1 [x])
+(defrecord ^:private TestRecord2 [x])
+
+(def ^:private test-tree
+  {:a {:aa (TestRecord1. 1)
+       :ab (TestRecord2. 1)}
+   :b (TestRecord1. 1)
+   :c (TestRecord2. 1)
+   :d [1 2 3 4]})
+
+;; Test that we can change only the items matching the `instance?` predicate
+(expect
+  (-> test-tree
+      (update-in [:a :aa :x] inc)
+      (update-in [:b :x] inc))
+  (qputil/postwalk-pred #(instance? TestRecord1 %)
+                        #(update % :x inc)
+                        test-tree))
+
+;; If nothing matches, the original tree should be returned
+(expect
+  test-tree
+  (qputil/postwalk-pred set?
+                        #(set (map inc %))
+                        test-tree))
+
+;; We should be able to collect items matching the predicate
+(expect
+  [(TestRecord1. 1) (TestRecord1. 1)]
+  (qputil/postwalk-collect #(instance? TestRecord1 %)
+                           identity
+                           test-tree))
+
+;; Not finding any of the items should just return an empty seq
+(expect
+  []
+  (qputil/postwalk-collect set?
+                           identity
+                           test-tree))

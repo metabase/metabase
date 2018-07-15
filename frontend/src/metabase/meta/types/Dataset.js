@@ -21,6 +21,8 @@ export type Column = {
   source?: "fields" | "aggregation" | "breakout",
   unit?: DatetimeUnit,
   binning_info?: BinningInfo,
+  fk_field_id?: FieldId,
+  "expression-name"?: any,
 };
 
 export type Value = string | number | ISO8601Time | boolean | null | {};

@@ -1,22 +1,22 @@
 :local(.button) {
   composes: flex align-center bg-white text-bold cursor-pointer from "style";
   font-size: 16px;
-  border: 2px solid var(--brand-color);
+  border: 2px solid var(--color-brand);
   border-radius: 4px;
   min-height: 30px;
   min-width: 100px;
   padding: 0.25em 0.5em 0.25em 0.5em;
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
 }
 
 :local(.mapped) {
-  border-color: var(--green-color);
-  color: var(--green-color);
+  border-color: var(--color-accent1);
+  color: var(--color-accent1);
 }
 
 :local(.warn) {
-  border-color: var(--error-color) !important;
-  color: var(--error-color) !important;
+  border-color: var(--color-accent3) !important;
+  color: var(--color-error) !important;
 }
 
 :local(.disabled) {

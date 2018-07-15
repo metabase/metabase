@@ -16,7 +16,7 @@ import {
 
 import { formatValue } from "metabase/lib/formatting";
 
-import * as colors from "metabase/lib/colors";
+import { normal, harmony } from "metabase/lib/colors";
 
 import cx from "classnames";
 
@@ -136,9 +136,7 @@ export default class PieChart extends Component {
     let total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
     // use standard colors for up to 5 values otherwise use color harmony to help differentiate slices
-    let sliceColors = Object.values(
-      rows.length > 5 ? colors.harmony : colors.normal,
-    );
+    let sliceColors = Object.values(rows.length > 5 ? harmony : normal);
     let sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
         ? settings["pie.slice_threshold"] / 100
@@ -162,7 +160,7 @@ export default class PieChart extends Component {
           key: "Other",
           value: otherTotal,
           percentage: otherTotal / total,
-          color: colors.normal.grey1,
+          color: normal.grey1,
         };
         slices.push(otherSlice);
       }
@@ -188,7 +186,7 @@ export default class PieChart extends Component {
     if (slices.length === 0) {
       otherSlice = {
         value: 1,
-        color: colors.normal.grey1,
+        color: normal.grey1,
         noHover: true,
       };
       slices.push(otherSlice);

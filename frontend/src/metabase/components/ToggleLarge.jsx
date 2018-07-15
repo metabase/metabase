@@ -11,7 +11,7 @@ const ToggleLarge = ({
   textRight,
 }) => (
   <div
-    className={cx(className, "bg-grey-1 flex relative text-bold", {
+    className={cx(className, "bg-medium flex relative text-bold", {
       "cursor-pointer": onChange,
     })}
     style={{ borderRadius: 8, ...style }}
