@@ -83,7 +83,7 @@
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
-                 [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
+                 [org.liquibase/liquibase-core "3.6.2"]               ; migration management (Java lib)
                  [org.postgresql/postgresql "42.2.2"]                 ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
