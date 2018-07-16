@@ -1,8 +1,22 @@
 databaseChangeLog:
+# The quoting strategy decides when things like column names should be quoted.
+# This is in place to deal with Liquibase not knowing about all of the new
+# reserved words in MySQL 8+. Using a column name that is a reserved word
+# causes a failure. Quoting all objects breaks H2 support though as it will
+# quote table names but not quote that same table name in a foreign key reference
+# which will cause a failure when trying to initially setup the database.
+  - property:
+      name: quote_strategy
+      value: QUOTE_ALL_OBJECTS
+      dbms: mysql,mariadb
+  - property:
+      name: quote_strategy
+      value: LEGACY
+      dbms: postgresql,h2
   - changeSet:
       id: '1'
       author: agilliland
-      objectQuotingStrategy: QUOTE_ALL_OBJECTS
+      objectQuotingStrategy: ${quote_strategy}
       changes:
       - createTable:
           columns:
@@ -1703,7 +1717,7 @@ databaseChangeLog:
   - changeSet:
       id: 15
       author: agilliland
-      objectQuotingStrategy: QUOTE_ALL_OBJECTS
+      objectQuotingStrategy: ${quote_strategy}
       changes:
         - addColumn:
             tableName: revision
@@ -2066,7 +2080,7 @@ databaseChangeLog:
   - changeSet:
       id: 23
       author: agilliland
-      objectQuotingStrategy: QUOTE_ALL_OBJECTS
+      objectQuotingStrategy: ${quote_strategy}
       changes:
         - modifyDataType:
             tableName: metabase_table
@@ -3193,7 +3207,7 @@ databaseChangeLog:
   - changeSet:
       id: 46
       author: camsaul
-      objectQuotingStrategy: QUOTE_ALL_OBJECTS
+      objectQuotingStrategy: ${quote_strategy}
       changes:
         - addNotNullConstraint:
             tableName: report_dashboardcard
