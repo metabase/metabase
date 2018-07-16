@@ -15,7 +15,10 @@ const DownloadButton = ({
   extensions,
   ...props
 }) => (
-  <form className={className} style={style} method={method} action={url}>
+  <form className={className} style={style} method={method} action={url}
+    onSubmit={e => {
+      alert("Your download is being prepared and will download automatically.");
+    }}>
     {params && extractQueryParams(params).map(getInput)}
     <Button
       onClick={e => {

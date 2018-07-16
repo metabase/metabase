@@ -5,10 +5,10 @@ import { t } from "c-3po";
 import { parse as urlParse } from "url";
 import querystring from "querystring";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Icon from "metabase/components/Icon.jsx";
+// import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+// import Icon from "metabase/components/Icon.jsx";
 import DownloadButton from "metabase/components/DownloadButton.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+// import Tooltip from "metabase/components/Tooltip.jsx";
 
 import FieldSet from "metabase/components/FieldSet.jsx";
 
@@ -17,7 +17,7 @@ import * as Urls from "metabase/lib/urls";
 import _ from "underscore";
 import cx from "classnames";
 
-const EXPORT_FORMATS = ["csv", "xlsx", "json"];
+const EXPORT_FORMATS = ["csv", "xlsx"]; // Other available options: "json"
 
 const QueryDownloadWidget = ({
   className,
@@ -30,17 +30,20 @@ const QueryDownloadWidget = ({
   icon,
   params,
 }) => (
-  <PopoverWithTrigger
-    triggerElement={
-      <Tooltip tooltip={t`Download full results`}>
-        <Icon title={t`Download this data`} name={icon} size={16} />
-      </Tooltip>
-    }
-    triggerClasses={cx(className, "text-brand-hover")}
-    triggerClassesClose={classNameClose}
-  >
-    <div className="p2" style={{ maxWidth: 320 }}>
-      <h4>{t`Download full results`}</h4>
+  // <PopoverWithTrigger
+  //   triggerElement={
+  //     <Tooltip tooltip={t`Download full results`}>
+  //       <span className="text-export-tooltip">
+  //         <Icon className="mr1 icon-vertical-align" title={t`Download this data`} name={icon} size={16} />
+  //         Export
+  //       </span>
+  //     </Tooltip>
+  //   }
+  //   triggerClasses={cx(className, "text-brand-hover")}
+  //   triggerClassesClose={classNameClose}
+  // >
+    <div className="p1" style={{ maxWidth: 320 }}>
+      {/* <h4>{t`Download full results`}</h4> */}
       {result.data != null &&
         result.data.rows_truncated != null && (
           <FieldSet className="my2 text-gold border-gold" legend={t`Warning`}>
@@ -48,7 +51,7 @@ const QueryDownloadWidget = ({
             <div>{t`The maximum download size is 1 million rows.`}</div>
           </FieldSet>
         )}
-      <div className="flex flex-row mt2">
+      <div className="flex flex-row">
         {EXPORT_FORMATS.map(
           type =>
             dashcardId && token ? (
@@ -59,7 +62,7 @@ const QueryDownloadWidget = ({
                 token={token}
                 card={card}
                 params={params}
-                className="mr1 text-uppercase text-default"
+                className="mr1 text-uppercase text-default dashboard-embed-query-button"
               />
             ) : uuid ? (
               <PublicQueryButton
@@ -67,14 +70,14 @@ const QueryDownloadWidget = ({
                 type={type}
                 uuid={uuid}
                 result={result}
-                className="mr1 text-uppercase text-default"
+                className="mr1 text-uppercase text-default public-query-button"
               />
             ) : token ? (
               <EmbedQueryButton
                 key={type}
                 type={type}
                 token={token}
-                className="mr1 text-uppercase text-default"
+                className="mr1 text-uppercase text-default embed-query-button"
               />
             ) : card && card.id ? (
               <SavedQueryButton
@@ -82,7 +85,7 @@ const QueryDownloadWidget = ({
                 type={type}
                 card={card}
                 result={result}
-                className="mr1 text-uppercase text-default"
+                className="mr1 text-uppercase text-default saved-query-button"
               />
             ) : card && !card.id ? (
               <UnsavedQueryButton
@@ -90,13 +93,13 @@ const QueryDownloadWidget = ({
                 type={type}
                 card={card}
                 result={result}
-                className="mr1 text-uppercase text-default"
+                className="mr1 text-uppercase text-default unsaved-query-button"
               />
             ) : null,
         )}
       </div>
     </div>
-  </PopoverWithTrigger>
+  // </PopoverWithTrigger>
 );
 
 const UnsavedQueryButton = ({
@@ -176,6 +179,7 @@ const DashboardEmbedQueryButton = ({
   token,
   card,
   params,
+  showExportAlert,
 }) => (
   <DownloadButton
     className={className}
@@ -185,6 +189,7 @@ const DashboardEmbedQueryButton = ({
     }/${type}`}
     extensions={[type]}
     params={params}
+    onClick={showExportAlert}
   >
     {type}
   </DownloadButton>
@@ -198,12 +203,14 @@ QueryDownloadWidget.propTypes = {
   uuid: PropTypes.string,
   icon: PropTypes.string,
   params: PropTypes.object,
+  showExportAlert: PropTypes.bool,
 };
 
 QueryDownloadWidget.defaultProps = {
   result: {},
   icon: "downarrow",
   params: {},
+  showExportAlert: false,
 };
 
 export default QueryDownloadWidget;

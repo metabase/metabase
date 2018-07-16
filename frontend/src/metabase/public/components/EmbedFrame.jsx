@@ -116,7 +116,7 @@ export default class EmbedFrame extends Component {
         >
           {name || (parameters && parameters.length > 0) ? (
             <div className="EmbedFrame-header flex align-center p1 sm-p2 lg-p3">
-              {name && <div className="h4 text-bold sm-h3 md-h2">{name}</div>}
+              {/* {name && <div className="h4 text-bold sm-h3 md-h2">{name}</div>} */}
               {parameters && parameters.length > 0 ? (
                 <div className="flex ml-auto">
                   <Parameters
@@ -139,9 +139,6 @@ export default class EmbedFrame extends Component {
         </div>
         {footer && (
           <div className="EmbedFrame-footer p1 md-p2 lg-p3 border-top flex-no-shrink flex align-center">
-            {!MetabaseSettings.hideEmbedBranding() && (
-              <LogoBadge dark={theme} />
-            )}
             {actionButtons && (
               <div className="flex-align-right text-grey-3">
                 {actionButtons}

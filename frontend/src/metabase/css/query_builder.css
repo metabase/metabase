@@ -690,3 +690,13 @@
 .ParameterValuePickerNoPopover input::-webkit-input-placeholder {
   color: var(--color-text-medium);
 }
+
+.text-export-tooltip {
+  font-size: 14px;
+  font-weight: 600;
+  color: #000;
+}
+
+.icon-vertical-align {
+  vertical-align:middle;
+}

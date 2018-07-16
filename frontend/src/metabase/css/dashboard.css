@@ -2,7 +2,7 @@
   --night-mode-color: color(var(--color-text-white) alpha(-14%));
 }
 .Dashboard {
-  background-color: var(--color-bg-light);
+  background-color: white;
   min-height: 100vh;
 }
 
