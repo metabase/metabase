@@ -160,10 +160,7 @@ export default class PeopleListingApp extends Component {
       });
     } else {
       // generate a password
-      const password = MetabaseUtils.generatePassword(
-        14,
-        MetabaseSettings.get("password_complexity"),
-      );
+      const password = MetabaseUtils.generatePassword();
 
       // trigger the reset
       this.props.resetPasswordManually(user, password);
