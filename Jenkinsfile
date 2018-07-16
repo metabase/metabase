@@ -29,8 +29,8 @@ hose {
                                       'TOKEN_AUTHENTICATION=true',
                                       'DCOS_USER=admin@demo.stratio.com',
                                       'DCOS_PASSWORD=1234',
-                                      'BOOTSTRAP_USER=operador',
-                                      'PEM_FILE_PATH=/paascerts/PaasIntegration.pem'],
+                                      'BOOTSTRAP_USER=root',
+                                      'REMOTE_PASSWORD=stratio'],
                            'sleep':  120,
                            'healthcheck': 5000]]
         ]
