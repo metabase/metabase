@@ -11,7 +11,7 @@ import QuestionListLoader from "metabase/containers/QuestionListLoader";
 import ExpandingSearchField from "../components/ExpandingSearchField.jsx";
 
 const QuestionRow = ({ question, onClick }) => (
-  <div className="py2 border-top border-grey-1">
+  <div className="py2 border-top">
     <div className="flex flex-full align-center">
       <QuestionIcon
         question={question}

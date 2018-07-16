@@ -67,7 +67,9 @@ export default class MetadataHeader extends Component {
   // TODO - it would be nicer just to disable the gear so the page doesn't jump around once you select a Table.
   renderTableSettingsButton() {
     const isViewingTable = this.props.location.pathname.match(/table\/\d+\/?$/);
-    if (!isViewingTable) return null;
+    if (!isViewingTable) {
+      return null;
+    }
 
     return (
       <span className="ml4 mr3">

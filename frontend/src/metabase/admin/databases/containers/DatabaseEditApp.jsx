@@ -13,6 +13,8 @@ import ActionButton from "metabase/components/ActionButton.jsx";
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 
+import colors from "metabase/lib/colors";
+
 import {
   getEditingDatabase,
   getFormState,
@@ -46,7 +48,9 @@ export const Tab = ({ name, setTab, currentTab }) => {
     <div
       className={cx("cursor-pointer py2", { "text-brand": isCurrentTab })}
       // TODO Use css classes instead?
-      style={isCurrentTab ? { borderBottom: "3px solid #509EE3" } : {}}
+      style={
+        isCurrentTab ? { borderBottom: `3px solid ${colors["brand"]}` } : {}
+      }
       onClick={() => setTab(name)}
     >
       <h3>{name}</h3>

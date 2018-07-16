@@ -189,7 +189,9 @@ export default class Question {
    */
   atomicQueries(): AtomicQuery[] {
     const query = this.query();
-    if (query instanceof AtomicQuery) return [query];
+    if (query instanceof AtomicQuery) {
+      return [query];
+    }
     return [];
   }
 

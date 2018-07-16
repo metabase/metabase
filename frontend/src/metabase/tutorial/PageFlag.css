@@ -4,13 +4,13 @@
   position: relative;
   min-width: 50px;
   height: 24px;
-  background-color: rgb(53, 141, 248);
+  background-color: var(--color-brand);
   box-sizing: content-box;
   border-top-right-radius: 8px;
   border-bottom-right-radius: 8px;
   border: 3px solid white;
   border-left: 1px solid white;
-  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.5);
+  box-shadow: 2px 2px 6px var(--color-shadow);
 
   color: white;
   font-weight: bold;
@@ -36,7 +36,7 @@
   left: -12px;
   border-top: 12px solid transparent;
   border-bottom: 12px solid transparent;
-  border-right: 12px solid rgb(53, 141, 248);
+  border-right: 12px solid var(--color-brand);
 }
 
 .PageFlag:before {

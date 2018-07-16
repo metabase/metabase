@@ -482,8 +482,6 @@ export default class DataSelector extends Component {
           />
         );
       case TABLE_STEP:
-        const canGoBack = this.hasPreviousStep();
-
         return (
           <TablePicker
             selectedDatabase={selectedDatabase}
@@ -493,7 +491,7 @@ export default class DataSelector extends Component {
             segments={segments}
             disabledTableIds={disabledTableIds}
             onChangeTable={this.onChangeTable}
-            onBack={canGoBack && this.onBack}
+            onBack={this.hasPreviousStep() && this.onBack}
             hasAdjacentStep={hasAdjacentStep}
           />
         );
@@ -699,7 +697,7 @@ export const DatabaseSchemaPicker = ({
   const sections = databases.map(database => ({
     name: database.name,
     items: database.schemas.length > 1 ? database.schemas : [],
-    className: database.is_saved_questions ? "bg-slate-extra-light" : null,
+    className: database.is_saved_questions ? "bg-light" : null,
     icon: database.is_saved_questions ? "all" : "database",
   }));
 
@@ -747,7 +745,9 @@ export const TablePicker = ({
 }) => {
   // In case DataSelector props get reseted
   if (!selectedDatabase) {
-    if (onBack) onBack();
+    if (onBack) {
+      onBack();
+    }
     return null;
   }
 
@@ -817,7 +817,7 @@ export const TablePicker = ({
           showItemArrows={hasAdjacentStep}
         />
         {isSavedQuestionList && (
-          <div className="bg-slate-extra-light p2 text-centered border-top">
+          <div className="bg-light p2 text-centered border-top">
             {t`Is a question missing?`}
             <a
               href="http://metabase.com/docs/latest/users-guide/04-asking-questions.html#source-data"
@@ -843,7 +843,9 @@ export class FieldPicker extends Component {
     } = this.props;
     // In case DataSelector props get reseted
     if (!selectedTable) {
-      if (onBack) onBack();
+      if (onBack) {
+        onBack();
+      }
       return null;
     }
 

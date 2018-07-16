@@ -75,7 +75,7 @@ export default class ExpandingSearchField extends Component {
       <div
         className={cx(
           className,
-          "bordered border-grey-1 flex align-center pr2 transition-border",
+          "bordered flex align-center pr2 transition-border",
           { "border-brand": active },
         )}
         onClick={this.setActive}

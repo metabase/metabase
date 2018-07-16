@@ -278,8 +278,10 @@
   (h/where honeysql-form (filter-clause->predicate driver clause)))
 
 (defn apply-join-tables
-  "Apply expanded query `join-tables` clause to HONEYSQL-FORM. Default implementation of `apply-join-tables` for SQL drivers."
+  "Apply expanded query `join-tables` clause to `honeysql-form`. Default implementation of `apply-join-tables` for SQL
+  drivers."
   [_ honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
+  ;; TODO - why doesn't this use ->honeysql like mostly everything else does?
   (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
     (let [honeysql-form (h/merge-left-join honeysql-form
                           [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
@@ -317,7 +319,7 @@
   "Apply `source-table` clause to `honeysql-form`. Default implementation of `apply-source-table` for SQL drivers.
   Override as needed."
   [_ honeysql-form {{table-name :name, schema :schema} :source-table}]
-  {:pre [table-name]}
+  {:pre [(seq table-name)]}
   (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
 
 (declare apply-clauses)

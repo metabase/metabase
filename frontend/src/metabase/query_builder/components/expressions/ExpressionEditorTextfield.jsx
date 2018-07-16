@@ -263,7 +263,9 @@ export default class ExpressionEditorTextfield extends Component {
 
   render() {
     let errorMessage = this.state.expressionErrorMessage;
-    if (errorMessage && !errorMessage.length) errorMessage = t`unknown error`;
+    if (errorMessage && !errorMessage.length) {
+      errorMessage = t`unknown error`;
+    }
 
     const { placeholder } = this.props;
     const { suggestions, showAll } = this.state;

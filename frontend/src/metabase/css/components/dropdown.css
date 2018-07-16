@@ -1,5 +1,5 @@
 :root {
-  --dropdown-border-color: rgba(0, 0, 0, 0.064);
+  --dropdown-border-color: color(var(--color-accent2) alpha(-94%));
 }
 
 .Dropdown {
@@ -14,10 +14,10 @@
   top: 40px;
   min-width: 200px;
   margin-top: 18px;
-  border: 1px solid var(--dropdown-border-color);
-  background-color: #fff;
+  border: 1px solid color(var(--color-accent2) alpha(-94%));
+  background-color: var(--color-bg-white);
   border-radius: 4px;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 2px var(--color-shadow);
   background-clip: padding-box;
   padding-top: 1em;
   padding-bottom: 1em;
@@ -56,8 +56,8 @@
 }
 
 .Dropdown-item:hover {
-  color: #fff;
-  background-color: var(--brand-color);
+  color: var(--color-text-white);
+  background-color: var(--color-brand);
 }
 
 .Dropdown .Dropdown-item:hover {

@@ -430,12 +430,10 @@
 
 (defn- build-query
   ([context bindings filters metrics dimensions limit order_by]
-   (walk/postwalk
-    (fn [subform]
-      (if (rules/dimension-form? subform)
-        (let [[_ identifier opts] subform]
-          (->reference :mbql (-> identifier bindings (merge opts))))
-        subform))
+   (qp.util/postwalk-pred
+    rules/dimension-form?
+    (fn [[_ identifier opts]]
+      (->reference :mbql (-> identifier bindings (merge opts))))
     {:type     :query
      :database (-> context :root :database)
      :query    (cond-> {:source_table (if (->> context :source (instance? (type Table)))
@@ -700,20 +698,12 @@
      :description (:description dashboard)}))
 
 (defn- related-entities
-  ([root] (related-entities max-related root))
-  ([n root]
-   (let [recommendations     (-> root :entity related/related)
-         fields-selector     (comp (partial remove key-col?) :fields)
-         ;; Not everything `related/related` returns is relevent for us. Also note that the order
-         ;; influences which entities get shown when results are trimmed.
-         relevant-dimensions [:table :segments :metrics :linking-to :dashboard-mates
-                              :similar-questions :linked-from :tables fields-selector]]
-     (->> relevant-dimensions
-          (reduce (fn [acc selector]
-                    (concat acc (-> recommendations selector rules/ensure-seq)))
-                  [])
-          (take n)
-          (map ->related-entity)))))
+  [root]
+  (-> root
+      :entity
+      related/related
+      (update :fields (partial remove key-col?))
+      (->> (m/map-vals (comp (partial map ->related-entity) rules/ensure-seq)))))
 
 (s/defn ^:private indepth
   [root, rule :- (s/maybe rules/Rule)]
@@ -723,7 +713,7 @@
                  {:title       ((some-fn :short-title :title) dashboard)
                   :description (:description dashboard)
                   :url         (format "%s/rule/%s/%s" (:url root) (:rule rule) (:rule indepth))})))
-       (take max-related)))
+       (hash-map :indepth)))
 
 (defn- drilldown-fields
   [dashboard]
@@ -733,20 +723,79 @@
        vals
        (mapcat :matches)
        filters/interesting-fields
-       (map ->related-entity)))
+       (map ->related-entity)
+       (hash-map :drilldown-fields)))
+
+(defn- fill-related
+  "We fill available slots round-robin style. Each selector is a list of fns that are tried against
+   `related` in sequence until one matches. Matching items are stored in a map so we can later
+   reconstruct ordering and group items by selector."
+  [available-slots selectors related]
+  (let [pop-first (fn [m ks]
+                    (loop [[k & ks] ks]
+                      (let [item (-> k m first)]
+                        (cond
+                          item        [item k (update m k rest)]
+                          (empty? ks) [nil nil m]
+                          :else       (recur ks)))))]
+    (loop [[selector & remaining-selectors] selectors
+           related                          related
+           selected                         []]
+      (let [[next selector related] (pop-first related (mapcat shuffle selector))
+            num-selected            (count selected)]
+        (cond
+          (= num-selected available-slots)
+          selected
+
+          next
+          (recur remaining-selectors related (conj selected {:entity   next
+                                                             :selector selector}))
+
+          (and (empty? remaining-selectors)
+               (empty? selected))
+          {}
+
+          (empty? remaining-selectors)
+          (concat selected (fill-related (- available-slots num-selected) selectors related))
+
+          :else
+          (recur remaining-selectors related selected))))))
+
+(def ^:private related-selectors
+  {(type Table)   (let [down     [[:indepth] [:segments :metrics] [:drilldown-fields]]
+                        sideways [[:linking-to :linked-from] [:tables]]]
+                    [down down down down sideways sideways])
+   (type Segment) (let [down     [[:indepth] [:segments :metrics] [:drilldown-fields]]
+                        sideways [[:linking-to] [:tables]]
+                        up       [[:table]]]
+                    [down down down sideways sideways up])
+   (type Metric)  (let [down     [[:drilldown-fields]]
+                        sideways [[:metrics :segments]]
+                        up       [[:table]]]
+                    [sideways sideways sideways down down up])
+   (type Field)   (let [sideways [[:fields]]
+                        up       [[:table] [:metrics :segments]]]
+                    [sideways sideways up])
+   (type Card)    (let [down     [[:drilldown-fields]]
+                        sideways [[:metrics] [:similar-questions :dashboard-mates]]
+                        up       [[:table]]]
+                    [sideways sideways sideways down down up])
+   (type Query)   (let [down     [[:drilldown-fields]]
+                        sideways [[:metrics] [:similar-questions]]
+                        up       [[:table]]]
+                    [sideways sideways sideways down down up])})
 
 (s/defn ^:private related
+  "Build a balancee list of related X-rays. General composition of the list is determined for each
+   root type individually via `related-selectors`. That recepie is then filled round-robin style."
   [dashboard, rule :- (s/maybe rules/Rule)]
-  (let [root    (-> dashboard :context :root)
-        indepth (indepth root rule)]
-    (if (not-empty indepth)
-      {:indepth indepth
-       :related (related-entities (- max-related (count indepth)) root)}
-      (let [drilldown-fields   (drilldown-fields dashboard)
-            n-related-entities (max (math/floor (* (/ 2 3) max-related))
-                                    (- max-related (count drilldown-fields)))]
-        {:related          (related-entities n-related-entities root)
-         :drilldown-fields (take (- max-related n-related-entities) drilldown-fields)}))))
+  (let [root (-> dashboard :context :root)]
+    (->> (merge (indepth root rule)
+                (drilldown-fields dashboard)
+                (related-entities root))
+         (fill-related max-related (related-selectors (-> root :entity type)))
+         (group-by :selector)
+         (m/map-vals (partial map :entity)))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."

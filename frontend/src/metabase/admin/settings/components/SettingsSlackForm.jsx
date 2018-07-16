@@ -59,7 +59,9 @@ export default class SettingsSlackForm extends Component {
 
   // return null if element passes validation, otherwise return an error message
   validateElement([validationType, validationMessage], value, element) {
-    if (MetabaseUtils.isEmpty(value)) return;
+    if (MetabaseUtils.isEmpty(value)) {
+      return;
+    }
 
     switch (validationType) {
       case "email":
@@ -93,7 +95,9 @@ export default class SettingsSlackForm extends Component {
             formData[element.key],
             element,
           );
-          if (validationErrors[element.key]) valid = false;
+          if (validationErrors[element.key]) {
+            valid = false;
+          }
         }, this);
       }
     }, this);

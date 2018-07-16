@@ -12,7 +12,7 @@ import PulseEditSkip from "./PulseEditSkip.jsx";
 import WhatsAPulse from "./WhatsAPulse.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
-import Link from "metabase/components/Link";
+import Button from "metabase/components/Button";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -23,7 +23,10 @@ import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 import cx from "classnames";
+import { connect } from "react-redux";
+import { goBack } from "react-router-redux";
 
+@connect(null, { goBack })
 @withRouter
 export default class PulseEdit extends Component {
   constructor(props) {
@@ -45,6 +48,7 @@ export default class PulseEdit extends Component {
     deletePulse: PropTypes.func.isRequired,
     onChangeLocation: PropTypes.func.isRequired,
     location: PropTypes.object,
+    goBack: PropTypes.func,
   };
 
   componentDidMount() {
@@ -207,10 +211,9 @@ export default class PulseEdit extends Component {
             failedText={t`Save failed`}
             successText={t`Saved`}
           />
-          <Link
-            to={Urls.collection(location.query.collectionId)}
-            className="Button ml2"
-          >{t`Cancel`}</Link>
+          <Button onClick={() => this.props.goBack()} ml={2}>
+            {t`Cancel`}
+          </Button>
         </div>
       </div>
     );

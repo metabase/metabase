@@ -14,7 +14,6 @@ import Filter from "metabase/query_builder/components/Filter";
 
 import cxs from "cxs";
 import { t } from "c-3po";
-import _ from "underscore";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
@@ -29,6 +28,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import * as Q from "metabase/lib/query/query";
 import Dimension from "metabase-lib/lib/Dimension";
+import colors from "metabase/lib/colors";
 
 import { dissoc } from "icepick";
 
@@ -63,7 +63,12 @@ class AutomaticDashboardApp extends React.Component {
     const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
     triggerToast(
       <div className="flex align-center">
-        <Icon name="dashboard" size={22} className="mr2" color="#93A1AB" />
+        <Icon
+          name="dashboard"
+          size={22}
+          className="mr2"
+          color={colors["text-medium"]}
+        />
         {t`Your dashboard was saved`}
         <Link
           className="link text-bold ml1"
@@ -91,7 +96,7 @@ class AutomaticDashboardApp extends React.Component {
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
     const more = dashboard && dashboard.more;
     const related = dashboard && dashboard.related;
-    const hasSidebar = _.any(related || {}, list => list.length > 0);
+    const hasSidebar = related && related.length > 0;
 
     return (
       <div className="relative">
@@ -202,10 +207,10 @@ const getIconForFilter = (filter, metadata) => {
 
 const suggestionClasses = cxs({
   ":hover h3": {
-    color: "#509ee3",
+    color: colors["brand"],
   },
   ":hover .Icon": {
-    color: "#F9D45C",
+    color: colors["warning"],
   },
 });
 
@@ -225,7 +230,7 @@ const SuggestionsList = ({ suggestions, section }) => (
           }
         >
           <div
-            className="bg-slate-extra-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
+            className="bg-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
             style={{ width: 48, height: 48 }}
           >
             <Icon name="bolt" className="Icon text-grey-1" size={22} />
@@ -241,13 +246,11 @@ const SuggestionsList = ({ suggestions, section }) => (
 );
 
 const SuggestionsSidebar = ({ related }) => (
-  <div className="flex flex-column bg-slate-almost-extra-light full-height">
+  <div className="flex flex-column bg-medium full-height">
     <div className="py2 text-centered my3">
       <h3 className="text-grey-3">More X-rays</h3>
     </div>
-    {Object.entries(related).map(([section, suggestions]) => (
-      <SuggestionsList section={section} suggestions={suggestions} />
-    ))}
+    <SuggestionsList section="related" suggestions={related} />
   </div>
 );
 

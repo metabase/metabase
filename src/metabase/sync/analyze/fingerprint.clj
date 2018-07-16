@@ -148,6 +148,10 @@
                :percent-email  (share u/email?)
                :average-length ((map (comp count str)) stats/mean)}))
 
+(defn fingerprint-fields
+  [fields]
+  (apply col-wise (map fingerprinter fields)))
+
 (s/defn ^:private save-fingerprint!
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
   ;; don't bother saving fingerprint if it's completely empty
@@ -171,7 +175,7 @@
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
   (transduce identity
              (redux/post-complete
-              (apply col-wise (map fingerprinter fields))
+              fingerprint-fields
               (fn [fingerprints]
                 (reduce (fn [count-info [field fingerprint]]
                           (cond

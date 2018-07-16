@@ -24,7 +24,9 @@ export function precision(a) {
 }
 
 export function decimalCount(a) {
-  if (!isFinite(a)) return 0;
+  if (!isFinite(a)) {
+    return 0;
+  }
   let e = 1,
     p = 0;
   while (Math.round(a * e) / e !== a) {

@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import cx from "classnames";
 import { Link } from "react-router";
+import colors from "metabase/lib/colors";
 
 export default class NewQueryOption extends Component {
   props: {
@@ -24,8 +25,8 @@ export default class NewQueryOption extends Component {
         style={{
           boxSizing: "border-box",
           boxShadow: hover
-            ? "0 3px 8px 0 rgba(220,220,220,0.50)"
-            : "0 1px 3px 0 rgba(220,220,220,0.50)",
+            ? `0 3px 8px 0 ${colors["text-light"]}`
+            : `0 1px 3px 0 ${colors["text-light"]}`,
           height: 340,
         }}
         onMouseOver={() => this.setState({ hover: true })}

@@ -331,10 +331,11 @@ describe("public/embedded", () => {
       }
 
       it("should allow seeing an embedded question", async () => {
-        if (!embedUrl)
+        if (!embedUrl) {
           throw new Error(
             "This test fails because previous tests didn't produce an embed url.",
           );
+        }
         const embedUrlTestStore = await createTestStore({ embedApp: true });
         await runSharedQuestionTests(
           embedUrlTestStore,
@@ -344,10 +345,11 @@ describe("public/embedded", () => {
       });
 
       it("should allow seeing a public question", async () => {
-        if (!publicUrl)
+        if (!publicUrl) {
           throw new Error(
             "This test fails because previous tests didn't produce a public url.",
           );
+        }
         const publicUrlTestStore = await createTestStore({ publicApp: true });
         await runSharedQuestionTests(
           publicUrlTestStore,
@@ -567,20 +569,22 @@ describe("public/embedded", () => {
       }
 
       it("should handle parameters in public Dashboards correctly", async () => {
-        if (!publicDashUrl)
+        if (!publicDashUrl) {
           throw new Error(
             "This test fails because test setup code didn't produce a public Dashboard URL.",
           );
+        }
 
         const publicUrlTestStore = await createTestStore({ publicApp: true });
         await runSharedDashboardTests(publicUrlTestStore, publicDashUrl);
       });
 
       it("should handle parameters in embedded Dashboards correctly", async () => {
-        if (!embedDashUrl)
+        if (!embedDashUrl) {
           throw new Error(
             "This test fails because test setup code didn't produce a embedded Dashboard URL.",
           );
+        }
 
         const embedUrlTestStore = await createTestStore({ embedApp: true });
         await runSharedDashboardTests(embedUrlTestStore, embedDashUrl);
