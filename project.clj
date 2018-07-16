@@ -54,6 +54,7 @@
                  [com.jcraft/jsch "0.1.54"]                           ; SSH client for tunnels
                  [com.h2database/h2 "1.4.194"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
+                 [net.sourceforge.jtds/jtds "1.3.1"]                  ; jTDS driver for Sybase
                  [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
                  [com.microsoft.sqlserver/mssql-jdbc "6.2.1.jre7"]    ; SQLServer JDBC driver. TODO - Switch this to `.jre8` once we officially switch to Java 8
                  [com.novemberain/monger "3.1.0"]                     ; MongoDB Driver

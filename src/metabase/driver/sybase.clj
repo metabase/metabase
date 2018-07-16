@@ -1,0 +1,227 @@
+(ns metabase.driver.sybase
+  "Driver for ASE Sybase databases. Uses the jTDS driver under the hood."
+  (:require [honeysql.core :as hsql]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]])
+  (:import java.sql.Time))
+
+(defrecord SybaseDriver []
+  clojure.lang.Named
+  (getName [_] "Sybase"))
+
+(defn- column->base-type
+  "Mappings for SQLServer types to Metabase types.
+   See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types"
+  [column-type]
+  ({:bigint           :type/BigInteger
+    :binary           :type/*
+    :bit              :type/Boolean ; actually this is 1 / 0 instead of true / false ...
+    :char             :type/Text
+    :cursor           :type/*
+    :date             :type/Date
+    :datetime         :type/DateTime
+    :datetime2        :type/DateTime
+    :datetimeoffset   :type/DateTime
+    :decimal          :type/Decimal
+    :float            :type/Float
+    :geography        :type/*
+    :geometry         :type/*
+    :hierarchyid      :type/*
+    :image            :type/*
+    :int              :type/Integer
+    :money            :type/Decimal
+    :nchar            :type/Text
+    :ntext            :type/Text
+    :numeric          :type/Decimal
+    :nvarchar         :type/Text
+    :real             :type/Float
+    :smalldatetime    :type/DateTime
+    :smallint         :type/Integer
+    :smallmoney       :type/Decimal
+    :sql_variant      :type/*
+    :table            :type/*
+    :text             :type/Text
+    :time             :type/Time
+    :timestamp        :type/* ; not a standard SQL timestamp, see https://msdn.microsoft.com/en-us/library/ms182776.aspx
+    :tinyint          :type/Integer
+    :uniqueidentifier :type/UUID
+    :varbinary        :type/*
+    :varchar          :type/Text
+    :xml              :type/*
+    (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
+
+
+(defn- connection-details->spec
+  "Build the connection spec for a Sybase database from the DETAILS set in the admin panel."
+  [{:keys [user password db host port instance domain ssl]
+    :or   {user "dbuser", password "dbpassword", db "", host "localhost", port 1433}
+    :as   details}]
+  (-> {:applicationName config/mb-app-id-string
+       :classname       "net.sourceforge.jtds.jdbc.Driver"
+       :subprotocol     "jtds:sybase"
+       ;; it looks like the only thing that actually needs to be passed as the `subname` is the host; everything else
+       ;; can be passed as part of the Properties
+       :subname         (str "//" host ":" port "/" db)
+       ;; everything else gets passed as `java.util.Properties` to the JDBC connection.  (passing these as Properties
+       ;; instead of part of the `:subname` is preferable because they support things like passwords with special
+       ;; characters)
+       :user         user
+       :password     password
+       :instance     instance
+       :domain       domain
+       :useNTLMv2    (boolean domain)
+       :ssl          (if ssl
+                       "require"
+                       "off")}
+      (sql/handle-additional-options details, :seperator-style :semicolon)))
+
+
+(defn- date-part [unit expr]
+  (hsql/call :datepart (hsql/raw (name unit)) expr))
+
+(defn- date-add [unit & exprs]
+  (apply hsql/call :dateadd (hsql/raw (name unit)) exprs))
+
+(defn- date
+  "Wrap a HoneySQL datetime EXPRession in appropriate forms to cast/bucket it as UNIT.
+  See [this page](https://msdn.microsoft.com/en-us/library/ms187752.aspx) for details on the functions we're using."
+  [unit expr]
+  (case unit
+    :default         expr
+    :minute          (hx/cast :smalldatetime expr)
+    :minute-of-hour  (date-part :minute expr)
+    :hour            (hx/->datetime (hx/format "yyyy-MM-dd HH:00:00" expr))
+    :hour-of-day     (date-part :hour expr)
+    ;; jTDS is retarded; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates like
+    ;; every other SQL DB we support. Work around that by casting to DATE for truncation then back to DATETIME so we
+    ;; get the type we want.
+    ;; TODO - I'm not sure we still need to do this now that we're using the official Microsoft JDBC driver. Maybe we
+    ;; can simplify this now?
+    :day             (hx/->datetime (hx/->date expr))
+    :day-of-week     (date-part :weekday expr)
+    :day-of-month    (date-part :day expr)
+    :day-of-year     (date-part :dayofyear expr)
+    ;; Subtract the number of days needed to bring us to the first day of the week, then convert to date
+    ;; The equivalent SQL looks like:
+    ;;     CAST(DATEADD(day, 1 - DATEPART(weekday, %s), CAST(%s AS DATE)) AS DATETIME)
+    :week            (hx/->datetime
+                      (date-add :day
+                                (hx/- 1 (date-part :weekday expr))
+                                (hx/->date expr)))
+    :week-of-year    (date-part :iso_week expr)
+    :month           (hx/->datetime (hx/format "yyyy-MM-01" expr))
+    :month-of-year   (date-part :month expr)
+    ;; Format date as yyyy-01-01 then add the appropriate number of quarter
+    ;; Equivalent SQL:
+    ;;     DATEADD(quarter, DATEPART(quarter, %s) - 1, FORMAT(%s, 'yyyy-01-01'))
+    :quarter         (date-add :quarter
+                               (hx/dec (date-part :quarter expr))
+                               (hx/format "yyyy-01-01" expr))
+    :quarter-of-year (date-part :quarter expr)
+    :year            (date-part :year expr)))
+
+(defn- date-interval [unit amount]
+  (date-add unit amount :%getutcdate))
+
+(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
+  (case seconds-or-milliseconds
+    ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
+    ;; integer overflow errors (especially for millisecond timestamps).
+    ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
+    :seconds      (date-add :minute (hx// expr 60) (hx/literal "1970-01-01"))
+    :milliseconds (recur (hx// expr 1000) :seconds)))
+
+(defn- apply-limit [honeysql-form {value :limit}]
+  (assoc honeysql-form :modifiers [(format "TOP %d" value)]))
+
+(defn- apply-page [honeysql-form {{:keys [items page]} :page}]
+  (assoc honeysql-form :offset (hsql/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
+                                                 (* items (dec page))
+                                                 items))))
+
+;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
+(defmethod sqlqp/->honeysql [SybaseDriver Boolean]
+  [_ bool]
+  (if bool 1 0))
+
+(defmethod sqlqp/->honeysql [SybaseDriver Time]
+  [_ time-value]
+  (hx/->time time-value))
+
+(defn- string-length-fn [field-key]
+  (hsql/call :len (hx/cast :VARCHAR field-key)))
+
+
+(def ^:private sqlserver-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
+(def ^:private sqlserver-db-time-query "select CONVERT(nvarchar(30), SYSDATETIMEOFFSET(), 127)")
+
+(u/strict-extend SybaseDriver
+  driver/IDriver
+  (merge
+   (sql/IDriverSQLDefaultsMixin)
+   {:date-interval  (u/drop-first-arg date-interval)
+    :details-fields (constantly (ssh/with-tunnel-config
+                                  [{:name         "host"
+                                    :display-name "Host"
+                                    :default      "localhost"}
+                                   {:name         "port"
+                                    :display-name "Port"
+                                    :type         :integer
+                                    :default      1433}
+                                   {:name         "db"
+                                    :display-name "Database name"
+                                    :placeholder  "BirdsOfTheWorld"
+                                    :required     true}
+                                   {:name         "instance"
+                                    :display-name "Database instance name"
+                                    :placeholder  "N/A"}
+                                   {:name         "domain"
+                                    :display-name "Windows domain"
+                                    :placeholder  "N/A"}
+                                   {:name         "user"
+                                    :display-name "Database username"
+                                    :placeholder  "What username do you use to login to the database?"
+                                    :required     true}
+                                   {:name         "password"
+                                    :display-name "Database password"
+                                    :type         :password
+                                    :placeholder  "*******"}
+                                   {:name         "ssl"
+                                    :display-name "Use a secure connection (SSL)?"
+                                    :type         :boolean
+                                    :default      false}
+                                   {:name         "additional-options"
+                                    :display-name "Additional JDBC connection string options"
+                                    :placeholder  "trustServerCertificate=false"}]))
+    :current-db-time (driver/make-current-db-time-fn sqlserver-db-time-query sqlserver-date-formatters)
+    :features        (fn [this]
+                       ;; SQLServer LIKE clauses are case-sensitive or not based on whether the collation of the
+                       ;; server and the columns themselves. Since this isn't something we can really change in the
+                       ;; query itself don't present the option to the users in the UI
+                       (conj (sql/features this) :no-case-sensitivity-string-filter-options))})
+
+  sql/ISQLDriver
+  (merge
+   (sql/ISQLDriverDefaultsMixin)
+   {:apply-limit               (u/drop-first-arg apply-limit)
+    :apply-page                (u/drop-first-arg apply-page)
+    :column->base-type         (u/drop-first-arg column->base-type)
+    :connection-details->spec  (u/drop-first-arg connection-details->spec)
+    :current-datetime-fn       (constantly :%getutcdate)
+    :date                      (u/drop-first-arg date)
+    :excluded-schemas          (constantly #{"sys" "INFORMATION_SCHEMA"})
+    :stddev-fn                 (constantly :stdev)
+    :string-length-fn          (u/drop-first-arg string-length-fn)
+    :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
+
+(defn -init-driver
+  "Register the Sybase driver"
+  []
+  (driver/register-driver! :sybase (SybaseDriver.)))
