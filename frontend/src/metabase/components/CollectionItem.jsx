@@ -6,10 +6,16 @@ import Link from "metabase/components/Link";
 
 import colors from "metabase/lib/colors";
 
-const CollectionItem = ({ collection, color, iconName = "all" }) => (
+const CollectionItem = ({
+  collection,
+  color,
+  iconName = "all",
+  highlighted,
+  hovered,
+}) => (
   <Link
     to={`collection/${collection.id}`}
-    bg={colors["bg-medium"]}
+    bg={hovered ? "green" : highlighted ? "red" : colors["bg-medium"]}
     className="block rounded relative text-brand-hover text-medium"
     hover={{
       backgroundColor: colors["bg-medium"],
