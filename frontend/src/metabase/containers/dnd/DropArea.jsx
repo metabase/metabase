@@ -24,8 +24,7 @@ const DropTargetBackgroundAndBorder = ({
       right: -marginRight,
       zIndex: -1,
       boxSizing: "border-box",
-      border: "2px solid transparent",
-      borderColor: hovered & !noDrop ? normal.blue : "transparent",
+      outline: `2px solid ${hovered & !noDrop ? normal.blue : "transparent"}`,
     }}
   />
 );
