@@ -229,14 +229,15 @@
 
 ;; test that we save a transient dashboard
 (expect
-  8
   (tu/with-model-cleanup ['Card 'Dashboard 'DashboardCard 'Collection]
     (binding [api/*current-user-id*              (users/user->id :rasta)
               api/*current-user-permissions-set* (-> :rasta
                                                      users/user->id
                                                      user/permissions-set
                                                      atom)]
-      (->> (magic/automagic-analysis (Table (id :venues)) {})
-           save-transient-dashboard!
-           :id
-           (db/count 'DashboardCard :dashboard_id)))))
+      (let [dashboard (magic/automagic-analysis (Table (id :venues)) {})]
+        (->> dashboard
+             save-transient-dashboard!
+             :id
+             (db/count 'DashboardCard :dashboard_id)
+             (= (-> dashboard :ordered_cards count)))))))
