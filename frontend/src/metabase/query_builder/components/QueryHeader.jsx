@@ -546,7 +546,9 @@ export default class QueryHeader extends Component {
           buttons={this.getHeaderButtons()}
           setItemAttributeFn={this.props.onSetCardAttribute}
           badge={
-            <CollectionBadge collectionId={this.props.card.collection_id} />
+            this.props.card.id && (
+              <CollectionBadge collectionId={this.props.card.collection_id} />
+            )
           }
         />
 
