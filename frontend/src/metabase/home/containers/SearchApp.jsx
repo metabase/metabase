@@ -27,7 +27,7 @@ export default class SearchApp extends React.Component {
         </Flex>
         <ItemTypeFilterBar
           filters={FILTERS.concat({
-            name: t`'Collections`,
+            name: t`Collections`,
             filter: "collection",
             icon: "all",
           })}

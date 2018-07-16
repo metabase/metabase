@@ -62,7 +62,7 @@ class Overworld extends React.Component {
           <MetabotLogo />
           <Box ml={2}>
             <Subhead>{Greeting.sayHello(this.props.user.first_name)}</Subhead>
-            <p className="text-paragraph m0 text-grey-3">{t`Don't tell anyone but you're my favorite`}</p>
+            <p className="text-paragraph m0 text-grey-3">{t`Don't tell anyone, but you're my favorite.`}</p>
           </Box>
         </Flex>
         <CollectionItemsLoader collectionId="root">
@@ -177,7 +177,7 @@ class Overworld extends React.Component {
                           <Box p={3} bg={colors["bg-medium"]}>
                             <Icon
                               name="database"
-                              color={normal.green}
+                              color={normal.purple}
                               mb={3}
                               size={28}
                             />
