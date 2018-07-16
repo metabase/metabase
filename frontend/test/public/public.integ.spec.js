@@ -223,7 +223,6 @@ describe("public/embedded", () => {
           .first()
           .find("a"),
       );
-      await store.waitForActions([Collections.actions.fetchList]);
 
       setInputValue(
         app.find(SaveQuestionModal).find("input[name='name']"),
