@@ -1,19 +1,17 @@
 import { alpha, getColorScale } from "metabase/lib/colors";
 import _ from "underscore";
-import d3 from "d3";
 
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
 const GRADIENT_ALPHA = 0.75;
 
-export function makeCellBackgroundGetter(data, settings) {
-  const { rows, cols } = data;
+export function makeCellBackgroundGetter(rows, cols, settings) {
   const formats = settings["table.column_formatting"];
   const pivot = settings["table.pivot"];
   let formatters = {};
   let rowFormatters = [];
   try {
-    const columnExtents = computeColumnExtents(formats, data);
+    const columnExtents = computeColumnExtents(formats, rows, cols);
     formatters = compileFormatters(formats, columnExtents);
     rowFormatters = compileRowFormatters(formats, columnExtents);
   } catch (e) {
@@ -107,14 +105,32 @@ function compileFormatter(
   }
 }
 
-function computeColumnExtents(formats, data) {
+// NOTE: implement `extent` like this rather than using d3.extent since rows may
+// be a Java `List` rather than a JavaScript Array when used in Pulse formatting
+function extent(rows, colIndex) {
+  let min = Infinity;
+  let max = -Infinity;
+  const length = rows.length;
+  for (let i = 0; i < length; i++) {
+    const value = rows[i][colIndex];
+    if (value < min) {
+      min = value;
+    }
+    if (value > max) {
+      max = value;
+    }
+  }
+  return [min, max];
+}
+
+function computeColumnExtents(formats, rows, cols) {
   return _.chain(formats)
     .map(format => format.columns)
     .flatten()
     .uniq()
     .map(columnName => {
-      const colIndex = _.findIndex(data.cols, col => col.name === columnName);
-      return [columnName, d3.extent(data.rows, row => row[colIndex])];
+      const colIndex = _.findIndex(cols, col => col.name === columnName);
+      return [columnName, extent(rows, colIndex)];
     })
     .object()
     .value();

@@ -373,7 +373,9 @@
   create."
   [color-selector column-names header+rows]
   (let [{bar-width :bar-width :as header} (first header+rows)]
-    [:table {:style (style {:max-width (str "100%"), :white-space :nowrap, :padding-bottom :8px, :border-collapse :collapse})}
+    [:table {:style (style {:max-width (str "100%"), :white-space :nowrap, :padding-bottom :8px, :border-collapse :collapse})
+             :cellpadding "0"
+             :cellspacing "0"}
      [:thead
       [:tr
        (for [header-cell (:row header)]

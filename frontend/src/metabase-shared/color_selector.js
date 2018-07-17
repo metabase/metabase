@@ -8,16 +8,22 @@ global.console = {
   error: print,
 };
 
-global.makeCellBackgroundGetter = function(data, settings) {
-  data = JSON.parse(data);
-  settings = JSON.parse(settings);
+global.makeCellBackgroundGetter = function(
+  rowsJavaList,
+  colsJSON,
+  settingsJSON,
+) {
+  const rows = rowsJavaList;
+  const cols = JSON.parse(colsJSON);
+  const settings = JSON.parse(settingsJSON);
   try {
-    const getter = makeCellBackgroundGetter(data, settings);
+    const getter = makeCellBackgroundGetter(rows, cols, settings);
     return (value, rowIndex, colName) => {
       const color = getter(value, rowIndex, colName);
       if (color) {
         return roundColor(color);
       }
+      return null;
     };
   } catch (e) {
     print("ERROR", e);

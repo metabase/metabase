@@ -109,8 +109,8 @@ export default class Table extends Component {
       readDependencies: ["table.pivot"],
     },
     "table._cell_background_getter": {
-      getValue([{ data }], settings) {
-        return makeCellBackgroundGetter(data, settings);
+      getValue([{ data: { rows, cols } }], settings) {
+        return makeCellBackgroundGetter(rows, cols, settings);
       },
       readDependencies: ["table.column_formatting", "table.pivot"],
     },

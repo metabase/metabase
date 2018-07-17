@@ -14322,16 +14322,18 @@ global.console = {
   error: print
 };
 
-global.makeCellBackgroundGetter = function (data, settings) {
-  data = JSON.parse(data);
-  settings = JSON.parse(settings);
+global.makeCellBackgroundGetter = function (rowsJavaList, colsJSON, settingsJSON) {
+  var rows = rowsJavaList;
+  var cols = JSON.parse(colsJSON);
+  var settings = JSON.parse(settingsJSON);
   try {
-    var getter = (0, _table_format.makeCellBackgroundGetter)(data, settings);
+    var getter = (0, _table_format.makeCellBackgroundGetter)(rows, cols, settings);
     return function (value, rowIndex, colName) {
       var color = getter(value, rowIndex, colName);
       if (color) {
         return roundColor(color);
       }
+      return null;
     };
   } catch (e) {
     print("ERROR", e);
@@ -19673,10 +19675,6 @@ var _underscore = __webpack_require__(342);
 
 var _underscore2 = _interopRequireDefault(_underscore);
 
-var _d = __webpack_require__(125);
-
-var _d2 = _interopRequireDefault(_d);
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
@@ -19685,16 +19683,13 @@ var CELL_ALPHA = 0.65;
 var ROW_ALPHA = 0.2;
 var GRADIENT_ALPHA = 0.75;
 
-function makeCellBackgroundGetter(data, settings) {
-  var rows = data.rows,
-      cols = data.cols;
-
+function makeCellBackgroundGetter(rows, cols, settings) {
   var formats = settings["table.column_formatting"];
   var pivot = settings["table.pivot"];
   var formatters = {};
   var rowFormatters = [];
   try {
-    var columnExtents = computeColumnExtents(formats, data);
+    var columnExtents = computeColumnExtents(formats, rows, cols);
     formatters = compileFormatters(formats, columnExtents);
     rowFormatters = compileRowFormatters(formats, columnExtents);
   } catch (e) {
@@ -19841,16 +19836,32 @@ function compileFormatter(format, columnName, columnExtents) {
   }
 }
 
-function computeColumnExtents(formats, data) {
+// NOTE: implement `extent` like this rather than using d3.extent since rows may
+// be a Java `List` rather than a JavaScript Array when used in Pulse formatting
+function extent(rows, colIndex) {
+  var min = Infinity;
+  var max = -Infinity;
+  var length = rows.length;
+  for (var i = 0; i < length; i++) {
+    var value = rows[i][colIndex];
+    if (value < min) {
+      min = value;
+    }
+    if (value > max) {
+      max = value;
+    }
+  }
+  return [min, max];
+}
+
+function computeColumnExtents(formats, rows, cols) {
   return _underscore2.default.chain(formats).map(function (format) {
     return format.columns;
   }).flatten().uniq().map(function (columnName) {
-    var colIndex = _underscore2.default.findIndex(data.cols, function (col) {
+    var colIndex = _underscore2.default.findIndex(cols, function (col) {
       return col.name === columnName;
     });
-    return [columnName, _d2.default.extent(data.rows, function (row) {
-      return row[colIndex];
-    })];
+    return [columnName, extent(rows, colIndex)];
   }).object().value();
 }
 
