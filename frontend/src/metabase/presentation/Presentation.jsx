@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import { connect } from "react-redux";
 import { t } from "c-3po";
 import moment from "moment";
+import Link from "metabase/components/Link";
 
 import fitViewPort from "metabase/hoc/FitViewPort";
 
@@ -54,6 +55,14 @@ const SlideControls = ({ nextSlide, previousSlide }) => (
     <Icon name="chevronleft" mx={2} onClick={previousSlide} />
     <Icon name="chevronright" onClick={nextSlide} />
   </Flex>
+);
+
+const PresentationControls = ({ dashboardId }) => (
+  <Box className="absolute top right hover-child z3" p={2}>
+    <Link to={Urls.dashboard(dashboardId)}>
+      <Icon name="close" />
+    </Link>
+  </Box>
 );
 
 class DataSlide extends React.Component {
@@ -136,6 +145,7 @@ class Presentation extends React.Component {
         p={5}
         className="full-height relative hover-parent hover--visibility"
       >
+        <PresentationControls dashboardId={params.dashboardId} />
         {params.slideIndex ? (
           currentSlide.card.name ? (
             <DataSlide card={currentSlide.card} />
