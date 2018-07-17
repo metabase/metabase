@@ -27,6 +27,7 @@ import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
 import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashboardApp";
 
+import Presentation from "metabase/presentation/Presentation";
 import {
   BrowseApp,
   DatabaseBrowser,
@@ -219,6 +220,9 @@ export const getRoutes = store => (
         >
           <ModalRoute path="history" modal={DashboardHistoryModal} />
           <ModalRoute path="move" modal={DashboardMoveModal} />
+        </Route>
+        <Route path="dashboard/:dashboardId/present" component={Presentation}>
+          <Route path=":slideIndex" component={Presentation} />
         </Route>
 
         <Route path="/question">
