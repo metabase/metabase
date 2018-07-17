@@ -393,7 +393,6 @@ export default class TableInteractive extends Component {
     const { dragColIndex, columnPositions } = this.state;
     const { cols } = this.props.data;
     const indexes = cols.map((col, index) => index);
-    // $FlowFixMe: inner indexes.splice should always return an index
     indexes.splice(dragColNewIndex, 0, indexes.splice(dragColIndex, 1)[0]);
     let left = 0;
     const lefts = indexes.map(index => {
@@ -416,7 +415,6 @@ export default class TableInteractive extends Component {
 
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
     const { sort, isPivoted } = this.props;
-    // $FlowFixMe: not sure why flow has a problem with this
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 
