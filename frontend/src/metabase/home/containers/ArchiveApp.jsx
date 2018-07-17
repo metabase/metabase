@@ -44,29 +44,34 @@ export default class ArchiveApp extends Component {
     } = this.props;
     return (
       <Box mx={4}>
-        <Box pt={2}>
+        <Box mt={2} py={2}>
           <PageHeading>{t`Archive`}</PageHeading>
         </Box>
         <Box w={2 / 3}>
-          <Card style={{ height: ROW_HEIGHT * list.length }}>
-            <VirtualizedList
-              items={list}
-              rowHeight={ROW_HEIGHT}
-              renderItem={({ item, index }) => (
-                <ArchivedItem
-                  type={item.type}
-                  name={item.getName()}
-                  icon={item.getIcon()}
-                  color={item.getColor()}
-                  isAdmin={isAdmin}
-                  onUnarchive={
-                    item.setArchived
-                      ? async () => {
-                          await item.setArchived(false);
-                          reload();
-                        }
-                      : null
-                  }
+          <Card
+            style={{
+              height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",
+            }}
+          >
+            {list.length > 0 ? (
+              <VirtualizedList
+                items={list}
+                rowHeight={ROW_HEIGHT}
+                renderItem={({ item, index }) => (
+                  <ArchivedItem
+                    type={item.type}
+                    name={item.getName()}
+                    icon={item.getIcon()}
+                    color={item.getColor()}
+                    isAdmin={isAdmin}
+                    onUnarchive={
+                      item.setArchived
+                        ? async () => {
+                            await item.setArchived(false);
+                            reload();
+                          }
+                        : null
+                    }
                   onDelete={
                     item.delete
                       ? async () => {
@@ -75,12 +80,17 @@ export default class ArchiveApp extends Component {
                         }
                       : null
                   }
-                  selected={selection.has(item)}
-                  onToggleSelected={() => onToggleSelected(item)}
-                  showSelect={selected.length > 0}
-                />
-              )}
-            />
+                    selected={selection.has(item)}
+                    onToggleSelected={() => onToggleSelected(item)}
+                    showSelect={selected.length > 0}
+                  />
+                )}
+              />
+            ) : (
+              <Flex p={5} align="center" justify="center">
+                <h2>{t`Items you archive will appear here.`}</h2>
+              </Flex>
+            )}
           </Card>
         </Box>
         <BulkActionBar showing={selected.length > 0}>
