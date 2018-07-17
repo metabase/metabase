@@ -11,6 +11,7 @@ import Icon from "metabase/components/Icon";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
+import * as Urls from "metabase/lib/urls";
 
 import { getDashboardActions } from "./DashboardActions";
 
@@ -240,6 +241,14 @@ export default class DashboardHeader extends Component {
         </ModalWithTrigger>,
       );
     }
+
+    buttons.push(
+      <Tooltip tooltip="Present this dashboard">
+        <Link to={Urls.presentationStart(dashboard.id)}>
+          <Icon name="present" size={22} />
+        </Link>
+      </Tooltip>,
+    );
 
     if (isEditing) {
       // Parameters
