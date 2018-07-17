@@ -2,12 +2,15 @@ import React from "react";
 import { Box, Flex } from "grid-styled";
 import { push } from "react-router-redux";
 import { connect } from "react-redux";
+import { t } from "c-3po";
+import moment from "moment";
 
 import fitViewPort from "metabase/hoc/FitViewPort";
 
 import QuestionAndResultLoader from "metabase/containers/QuestionAndResultLoader";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import Visualization from "metabase/visualizations/components/Visualization";
+import LogoIcon from "metabase/components/LogoIcon";
 
 import colors from "metabase/lib/colors";
 
@@ -38,7 +41,7 @@ const SlideTitle = ({ children }) => (
   </Box>
 );
 
-const Controls = ({ nextSlide, previousSlide }) => (
+const SlideControls = ({ nextSlide, previousSlide }) => (
   <Flex
     align="center"
     className="absolute bottom right hover-child"
@@ -71,6 +74,27 @@ class DataSlide extends React.Component {
   }
 }
 
+@connect(state => ({ user: state.currentUser }), null)
+class TitleSlide extends React.Component {
+  render() {
+    const { children, user } = this.props;
+    const presentationTime = moment().format("MM/DD/YYYY");
+    return (
+      <Box mt="auto">
+        <Box mb={2}>
+          <LogoIcon size={56} />
+        </Box>
+        <TextSlide>{children}</TextSlide>
+        <p className="text-body">
+          {t`Presented by ${user.common_name}`}
+          <span className="mx1">•</span>
+          {presentationTime}
+        </p>
+      </Box>
+    );
+  }
+}
+
 @entityObjectLoader({
   entityType: "dashboards",
   entityId: (state, props) => props.params.dashboardId,
@@ -91,7 +115,11 @@ class Presentation extends React.Component {
   };
   previousSlide = () => {
     const { dashboardId, slideIndex } = this.props.params;
-    this.props.push(
+    const prev = parseInt(slideIndex) - 1;
+    if (prev < 0) {
+      return this.props.push(Urls.presentationStart(dashboardId));
+    }
+    return this.props.push(
       Urls.presentationSlide(dashboardId, parseInt(slideIndex) - 1),
     );
   };
@@ -113,9 +141,9 @@ class Presentation extends React.Component {
             <TextSlide>{currentSlide.visualization_settings.text}</TextSlide>
           )
         ) : (
-          <TextSlide>{object.name}</TextSlide>
+          <TitleSlide>{object.name}</TitleSlide>
         )}
-        <Controls
+        <SlideControls
           nextSlide={() => this.nextSlide()}
           previousSlide={() => this.previousSlide()}
         />
