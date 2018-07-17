@@ -8,7 +8,6 @@ import ArchivedItem from "../../components/ArchivedItem";
 import Button from "metabase/components/Button";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Card from "metabase/components/Card";
-import HeaderWithBack from "metabase/components/HeaderWithBack";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 import VirtualizedList from "metabase/components/VirtualizedList";
 
@@ -45,7 +44,7 @@ export default class ArchiveApp extends Component {
     return (
       <Box mx={4}>
         <Flex align="center" mb={2} py={3}>
-          <HeaderWithBack name={t`Archive`} />
+          <h1>{t`Archive`}</h1>
         </Flex>
         <Box w={2 / 3}>
           <Card style={{ height: ROW_HEIGHT * list.length }}>
