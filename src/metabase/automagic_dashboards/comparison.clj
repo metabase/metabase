@@ -3,7 +3,7 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
-             [core :refer [->root ->field automagic-analysis ->related-entity]]
+             [core :refer [->root ->field automagic-analysis ->related-entity cell-title source-name capitalize-first]]
              [filters :as filters]
              [populate :as populate]]
             [metabase.models
@@ -171,8 +171,7 @@
 
 (defn- segment-constituents
   [segment]
-  (->> segment
-       :query-filter
+  (->> (filters/inject-refinement (:query-filter segment) (:cell-query segment))
        segment-parse-filter
        filters/collect-field-references
        (map filters/field-reference->id)
@@ -204,6 +203,11 @@
                                                  (:full-name root))
                                :description ""})})))
 
+(defn- part-vs-whole-comparison?
+  [left right]
+  (and ((some-fn :cell-query :query-filter) left)
+       (not ((some-fn :cell-query :query-filter) right))))
+
 (defn comparison-dashboard
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
    the dataset defined by segments `left` and `right`."
@@ -214,6 +218,19 @@
         right              (-> right
                                ->root
                                (merge (:right opts)))
+        left               (cond-> left
+                             (-> opts :left :cell-query) (assoc :full-name (->> opts
+                                                                                :left
+                                                                                :cell-query
+                                                                                (cell-title left)
+                                                                                capitalize-first)))
+        right              (cond-> right
+                             (part-vs-whole-comparison? left right)
+                             (assoc :full-name (condp instance? (:entity right)
+                                                 (type Table) (tru "All {0}" (:short-name right))
+                                                 (tru "{0}, all {1}"
+                                                      (:full-name right)
+                                                      (source-name right)))))
         segment-dashboards (->> (concat (segment-constituents left)
                                         (segment-constituents right))
                                 distinct
@@ -221,11 +238,10 @@
                                                              :rules-prefix ["comparison"]})))]
     (assert (= (:source left) (:source right)))
     (->> (concat segment-dashboards [dashboard])
-         (apply populate/merge-dashboards)
+         (reduce #(populate/merge-dashboards %1 %2 {:skip-titles? true}))
          dashboard->cards
-      ;   (m/distinct-by :dataset_query)
-         (transduce (comp ;(filter :display)
-                          (mapcat unroll-multiseries))
+         (m/distinct-by (some-fn :dataset_query hash))
+         (transduce (mapcat unroll-multiseries)
                     (fn
                       ([]
                        (let [title (tru "Comparison of {0} and {1}"

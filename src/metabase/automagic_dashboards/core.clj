@@ -59,7 +59,8 @@
           field/map->FieldInstance
           (classify/run-classifiers {})))))
 
-(def ^:private ^{:arglists '([root])} source-name
+(def ^{:arglists '([root])} source-name
+  "Return the (display) name of the soruce of a given root object."
   (comp (some-fn :display_name :name) :source))
 
 (def ^:private op->name
@@ -530,7 +531,8 @@
            (u/update-when :graph.metrics metric->name)
            (u/update-when :graph.dimensions dimension->name))]))
 
-(defn- capitalize-first
+(defn capitalize-first
+  "Capitalize only the first letter in a given string."
   [s]
   (str (str/upper-case (subs s 0 1)) (subs s 1)))
 
@@ -1068,7 +1070,8 @@
        (map (partial humanize-filter-value root))
        join-enumeration))
 
-(defn- cell-title
+(defn cell-title
+  "Return a cell title given a root object and a cell query."
   [root cell-query]
   (str/join " " [(->> (qp.util/get-in-normalized (-> root :entity) [:dataset_query :query :aggregation])
                       (metric->description root))
@@ -1088,11 +1091,11 @@
                                    :rules-prefix ["table"]}))
               opts))
       (let [opts (assoc opts :show :all)]
-        (cond-> (apply populate/merge-dashboards
-                       (automagic-dashboard (merge (cond-> root
-                                                     cell-query (assoc :url cell-url))
-                                                   opts))
-                       (decompose-question root card opts))
+        (cond-> (reduce populate/merge-dashboards
+                        (automagic-dashboard (merge (cond-> root
+                                                      cell-query (assoc :url cell-url))
+                                                    opts))
+                        (decompose-question root card opts))
           cell-query (merge (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
                               {:transient_name  title
                                :name            title})))))))
@@ -1111,10 +1114,10 @@
                                    :rules-prefix ["table"]}))
               opts))
       (let [opts (assoc opts :show :all)]
-        (cond-> (apply populate/merge-dashboards
-                       (automagic-dashboard (merge (cond-> root
-                                                     cell-query (assoc :url cell-url))
-                                                   opts))
+        (cond-> (reduce populate/merge-dashboards
+                        (automagic-dashboard (merge (cond-> root
+                                                      cell-query (assoc :url cell-url))
+                                                    opts))
                        (decompose-question root query opts))
           cell-query (merge (let [title (tru "A closer look at the {0}" (cell-title root cell-query))]
                               {:transient_name  title
