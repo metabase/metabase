@@ -149,7 +149,7 @@ export default class UserStep extends Component {
     let { activeStep, setActiveStep, stepNumber, userDetails } = this.props;
     let { formError, passwordError, valid } = this.state;
 
-    const passwordComplexityDesc = MetabaseSettings.passwordComplexity();
+    const passwordComplexityDesc = MetabaseSettings.passwordComplexityDescription();
     const stepText =
       activeStep <= stepNumber
         ? t`What should we call you?`
