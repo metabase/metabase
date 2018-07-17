@@ -78,5 +78,5 @@ Pulses act a bit differently with regard to permissions. When a user creates a n
 
 ---
 
-## Next: custom segments and metrics
-Learn how to create collections of questions to organize things and decide who gets to see what in the [next section](06-collections.md).
+## Next: managing collections
+Learn how to create collections of questions to organize things and decide who gets to see what and even who may help you curate it in the [next section](06-collections.md).
