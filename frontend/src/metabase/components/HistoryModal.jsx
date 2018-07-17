@@ -74,55 +74,53 @@ export default class HistoryModal extends Component {
   }
 
   render() {
-    let { revisions } = this.props;
+    const { revisions } = this.props;
+    const cellClassName = "p1 border-bottom";
+
     return (
       <ModalContent
         title={t`Revision history`}
         onClose={() => this.props.onClose()}
       >
-        <LoadingAndErrorWrapper
-          className="flex flex-full flex-basis-auto"
-          loading={!revisions}
-          error={this.state.error}
-        >
+        <LoadingAndErrorWrapper loading={!revisions} error={this.state.error}>
           {() => (
-            <div className="pb4 flex-full">
-              <div className="border-bottom flex px4 py1 text-uppercase text-grey-3 text-bold h5">
-                <span className="flex-half">{t`When`}</span>
-                <span className="flex-half">{t`Who`}</span>
-                <span className="flex-full">{t`What`}</span>
-              </div>
-              <div className="px2 scroll-y">
+            <table className="full">
+              <thead>
+                <tr>
+                  <th className={cellClassName}>{t`When`}</th>
+                  <th className={cellClassName}>{t`Who`}</th>
+                  <th className={cellClassName}>{t`What`}</th>
+                  <th className={cellClassName} />
+                </tr>
+              </thead>
+              <tbody>
                 {revisions.map((revision, index) => (
-                  <div
-                    key={revision.id}
-                    className="border-row-divider flex py1 px2"
-                  >
-                    <span className="flex-half">
+                  <tr key={revision.id}>
+                    <td className={cellClassName}>
                       {formatDate(revision.timestamp)}
-                    </span>
-                    <span className="flex-half">
+                    </td>
+                    <td className={cellClassName}>
                       {revision.user.common_name}
-                    </span>
-                    <span className="flex-full flex">
+                    </td>
+                    <td className={cellClassName}>
                       <span>{this.revisionDescription(revision)}</span>
-                      {index !== 0 ? (
-                        <div className="flex-align-right pl1">
-                          <ActionButton
-                            actionFn={() => this.revert(revision)}
-                            className="Button Button--small Button--danger text-uppercase"
-                            normalText={t`Revert`}
-                            activeText={t`Reverting…`}
-                            failedText={t`Revert failed`}
-                            successText={t`Reverted`}
-                          />
-                        </div>
-                      ) : null}
-                    </span>
-                  </div>
+                    </td>
+                    <td className={cellClassName}>
+                      {index !== 0 && (
+                        <ActionButton
+                          actionFn={() => this.revert(revision)}
+                          className="Button Button--small Button--danger text-uppercase"
+                          normalText={t`Revert`}
+                          activeText={t`Reverting…`}
+                          failedText={t`Revert failed`}
+                          successText={t`Reverted`}
+                        />
+                      )}
+                    </td>
+                  </tr>
                 ))}
-              </div>
-            </div>
+              </tbody>
+            </table>
           )}
         </LoadingAndErrorWrapper>
       </ModalContent>
