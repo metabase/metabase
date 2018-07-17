@@ -16,6 +16,7 @@ import App from "metabase/App.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp";
 
 // auth containers
+import AuthApp from "metabase/auth/AuthApp";
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
 import LoginApp from "metabase/auth/containers/LoginApp.jsx";
 import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
@@ -177,7 +178,7 @@ export const getRoutes = store => (
       }}
     >
       {/* AUTH */}
-      <Route path="/auth">
+      <Route path="/auth" component={AuthApp}>
         <IndexRedirect to="/auth/login" />
         <Route component={IsNotAuthenticated}>
           <Route path="login" title={t`Login`} component={LoginApp} />

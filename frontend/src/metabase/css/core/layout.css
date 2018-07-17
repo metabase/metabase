@@ -33,11 +33,6 @@
   height: 100%;
 }
 
-/* set height to that of the viewport */
-.viewport-height {
-  height: 100vh;
-}
-
 /* display utilities */
 .block,
 :local(.block) {
