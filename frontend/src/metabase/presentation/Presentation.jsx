@@ -24,6 +24,9 @@ const fullscreen = WrappedComponent =>
     componentWillMount() {
       document.querySelector("body").classList.add("fullscreen");
     }
+    componentWillUnmount() {
+      document.querySelector("body").classList.remove("fullscreen");
+    }
     render() {
       return <WrappedComponent {...this.props} />;
     }
@@ -56,7 +59,6 @@ const SlideControls = ({ nextSlide, previousSlide }) => (
 class DataSlide extends React.Component {
   render() {
     const { card } = this.props;
-    console.log(card);
     return (
       <Box p={5} className="absolute top left bottom right" w="100%">
         <SlideTitle>{card.name}</SlideTitle>
@@ -128,7 +130,7 @@ class Presentation extends React.Component {
     if (!object) {
       return <Box>Loading...</Box>;
     }
-    const currentSlide = object.ordered_cards[params.slideIndex];
+    const currentSlide = object && object.ordered_cards[params.slideIndex];
     return (
       <Flex
         p={5}
