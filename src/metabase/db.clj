@@ -1,5 +1,5 @@
 (ns metabase.db
-  "Database definition and helper functions for interacting with the database."
+  "Application database definition, and setup logic, and helper functions for interacting with it."
   (:require [clojure
              [string :as s]
              [walk :as walk]]
@@ -11,6 +11,7 @@
              [config :as config]
              [util :as u]]
             [metabase.db.spec :as dbspec]
+            [puppetlabs.i18n.core :refer [trs]]
             [ring.util.codec :as codec]
             [toucan.db :as db])
   (:import com.mchange.v2.c3p0.ComboPooledDataSource
@@ -45,8 +46,9 @@
                                   [(System/getProperty "user.dir") "/" db-file-name options]))))))
 
 (defn- parse-connection-string
-  "Parse a DB connection URI like `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory`
-  and return a broken-out map."
+  "Parse a DB connection URI like
+  `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and
+  return a broken-out map."
   [uri]
   (when-let [[_ protocol user pass host port db query] (re-matches #"^([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$" uri)]
     (merge {:type     (case (keyword protocol)
@@ -73,8 +75,8 @@
       (config/config-kw :mb-db-type)))
 
 (def db-connection-details
-  "Connection details that can be used when pretending the Metabase DB is itself a `Database`
-   (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
+  "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
+  SQL driver functions on the Metabase DB itself)."
   (delay (or @connection-string-details
              (case (db-type)
                :h2       {:type     :h2                               ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
@@ -112,19 +114,19 @@
 (def ^:private ^:const ^String changelog-file "liquibase.yaml")
 
 (defn- migrations-sql
-  "Return a string of SQL containing the DDL statements needed to perform unrun LIQUIBASE migrations."
+  "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations."
   ^String [^Liquibase liquibase]
   (let [writer (StringWriter.)]
     (.update liquibase "" writer)
     (.toString writer)))
 
 (defn- migrations-lines
-  "Return a sequnce of DDL statements that should be used to perform migrations for LIQUIBASE.
+  "Return a sequnce of DDL statements that should be used to perform migrations for `liquibase`.
 
-   MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run
-   one statement at a time; Liquibase puts each DDL statement on its own line automatically so just split by lines and
-   filter out blank / comment lines. Even though this is not neccesary for H2 or Postgres go ahead and do it anyway
-   because it keeps the code simple and doesn't make a significant performance difference."
+  MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run
+  one statement at a time; Liquibase puts each DDL statement on its own line automatically so just split by lines and
+  filter out blank / comment lines. Even though this is not neccesary for H2 or Postgres go ahead and do it anyway
+  because it keeps the code simple and doesn't make a significant performance difference."
   [^Liquibase liquibase]
   (for [line  (s/split-lines (migrations-sql liquibase))
         :when (not (or (s/blank? line)
@@ -132,57 +134,67 @@
     line))
 
 (defn- has-unrun-migrations?
-  "Does LIQUIBASE have migration change sets that haven't been run yet?
+  "Does `liquibase` have migration change sets that haven't been run yet?
 
-   It's a good idea to Check to make sure there's actually something to do before running `(migrate :up)` because
-   `migrations-sql` will always contain SQL to create and release migration locks, which is both slightly dangerous
-   and a waste of time when we won't be using them."
+  It's a good idea to Check to make sure there's actually something to do before running `(migrate :up)` because
+  `migrations-sql` will always contain SQL to create and release migration locks, which is both slightly dangerous and
+  a waste of time when we won't be using them."
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listUnrunChangeSets liquibase nil))))
 
-(defn- has-migration-lock?
+(defn- migration-lock-exists?
   "Is a migration lock in place for LIQUIBASE?"
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listLocks liquibase))))
 
 (defn- wait-for-migration-lock-to-be-cleared
-  "Check and make sure the database isn't locked. If it is, sleep for 2 seconds and then retry several times.
-   There's a chance the lock will end up clearing up so we can run migrations normally."
+  "Check and make sure the database isn't locked. If it is, sleep for 2 seconds and then retry several times. There's a
+  chance the lock will end up clearing up so we can run migrations normally."
   [^Liquibase liquibase]
   (u/auto-retry 5
-    (when (has-migration-lock? liquibase)
+    (when (migration-lock-exists? liquibase)
       (Thread/sleep 2000)
-      (throw (Exception. (str "Database has migration lock; cannot run migrations. You can force-release these locks "
-                              "by running `java -jar metabase.jar migrate release-locks`."))))))
+      (throw
+       (Exception.
+        (str
+         (trs "Database has migration lock; cannot run migrations.")
+         " "
+         (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))))
 
 (defn- migrate-up-if-needed!
-  "Run any unrun LIQUIBASE migrations, if needed.
+  "Run any unrun `liquibase` migrations, if needed.
 
-   This creates SQL for the migrations to be performed, then executes each DDL statement.
-   Running `.update` directly doesn't seem to work as we'd expect; it ends up commiting the changes made and they
-   can't be rolled back at the end of the transaction block. Converting the migration to SQL string and running that
-   via `jdbc/execute!` seems to do the trick."
+  This creates SQL for the migrations to be performed, then executes each DDL statement. Running `.update` directly
+  doesn't seem to work as we'd expect; it ends up commiting the changes made and they can't be rolled back at the end
+  of the transaction block. Converting the migration to SQL string and running that via `jdbc/execute!` seems to do
+  the trick."
   [conn, ^Liquibase liquibase]
-  (log/info "Checking if Database has unrun migrations...")
+  (log/info (trs "Checking if Database has unrun migrations..."))
   (when (has-unrun-migrations? liquibase)
-    (log/info "Database has unrun migrations. Waiting for migration lock to be cleared...")
+    (log/info (trs "Database has unrun migrations. Waiting for migration lock to be cleared..."))
     (wait-for-migration-lock-to-be-cleared liquibase)
-    (log/info "Migration lock is cleared. Running migrations...")
-    (doseq [line (migrations-lines liquibase)]
-      (jdbc/execute! conn [line]))))
+    ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
+    ;; sure something still needs to be done...
+    (if (has-unrun-migrations? liquibase)
+      (do
+        (log/info (trs "Migration lock is cleared. Running migrations..."))
+        (doseq [line (migrations-lines liquibase)]
+          (jdbc/execute! conn [line])))
+      (log/info
+       (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
 
 (defn- force-migrate-up-if-needed!
   "Force migrating up. This does two things differently from `migrate-up-if-needed!`:
 
-   1.  This doesn't check to make sure the DB locks are cleared
-   2.  Any DDL statements that fail are ignored
+  1.  This doesn't check to make sure the DB locks are cleared
+  2.  Any DDL statements that fail are ignored
 
-   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in
-   #3295.
+  It can be used to fix situations where the database got into a weird state, as was common before the fixes made in
+  #3295.
 
-   Each DDL statement is ran inside a nested transaction; that way if the nested transaction fails we can roll it back
-   without rolling back the entirety of changes that were made. (If a single statement in a transaction fails you
-   can't do anything futher until you clear the error state by doing something like calling `.rollback`.)"
+  Each DDL statement is ran inside a nested transaction; that way if the nested transaction fails we can roll it back
+  without rolling back the entirety of changes that were made. (If a single statement in a transaction fails you can't
+  do anything futher until you clear the error state by doing something like calling `.rollback`.)"
   [conn, ^Liquibase liquibase]
   (.clearCheckSums liquibase)
   (when (has-unrun-migrations? liquibase)
@@ -197,7 +209,7 @@
 
 (def ^{:arglists '([])} ^DatabaseFactory database-factory
   "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because
-   otherwise it adds 2 seconds to startup time."
+  otherwise it adds 2 seconds to startup time."
   (partial deref (future (DatabaseFactory/getInstance))))
 
 (defn- conn->liquibase
@@ -222,7 +234,8 @@
                                 "DATABASECHANGELOG"
                                 "databasechangelog")
         fresh-install? (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install
-                         (empty? (jdbc/metadata-query (.getTables meta nil nil liquibases-table-name (into-array String ["TABLE"])))))
+                         (empty? (jdbc/metadata-query
+                                  (.getTables meta nil nil liquibases-table-name (into-array String ["TABLE"])))))
         query (format "UPDATE %s SET FILENAME = ?" liquibases-table-name)]
     (when-not fresh-install?
       (jdbc/execute! conn [query "migrations/000_migrations.yaml"]))))
@@ -252,11 +265,11 @@
      ;; Disable auto-commit. This should already be off but set it just to be safe
      (.setAutoCommit (jdbc/get-connection conn) false)
      ;; Set up liquibase and let it do its thing
-     (log/info "Setting up Liquibase...")
+     (log/info (trs "Setting up Liquibase..."))
      (try
        (let [liquibase (conn->liquibase conn)]
          (consolidate-liquibase-changesets conn)
-         (log/info "Liquibase is ready.")
+         (log/info (trs "Liquibase is ready."))
          (case direction
            :up            (migrate-up-if-needed! conn liquibase)
            :force         (force-migrate-up-if-needed! conn liquibase)
@@ -279,7 +292,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn connection-pool
-  "Create a C3P0 connection pool for the given database SPEC."
+  "Create a C3P0 connection pool for the given database `spec`."
   [{:keys [subprotocol subname classname minimum-pool-size idle-connection-test-period excess-timeout]
     :or   {minimum-pool-size           3
            idle-connection-test-period 0
@@ -348,12 +361,12 @@
    (verify-db-connection (:type db-details) db-details))
   ([engine details]
    {:pre [(keyword? engine) (map? details)]}
-   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name engine)))
+   (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name engine))))
    (assert (binding [*allow-potentailly-unsafe-connections* true]
              (require 'metabase.driver)
              ((resolve 'metabase.driver/can-connect-with-details?) engine details))
      (format "Unable to connect to Metabase %s DB." (name engine)))
-   (log/info "Verify Database Connection ... " (u/emoji "✅"))))
+   (log/info (trs "Verify Database Connection ... ") (u/emoji "✅"))))
 
 
 (def ^:dynamic ^Boolean *disable-data-migrations*
@@ -379,11 +392,24 @@
 (defn- run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
   [auto-migrate? db-details]
-  (log/info "Running Database Migrations...")
+  (log/info (trs "Running Database Migrations..."))
   (if auto-migrate?
-    (migrate! db-details :up)
+    ;; There is a weird situation where running the migrations can cause a race condition: if two (or more) instances
+    ;; in a horizontal cluster are started at the exact same time, they can all start running migrations (and all
+    ;; acquire a lock) at the exact same moment. Since they all acquire a lock at the same time, none of them would
+    ;; have been blocked from starting by the lock being in place. (Yes, this not working sort of defeats the whole
+    ;; purpose of the lock in the first place, but this *is* Liquibase.)
+    ;;
+    ;; So what happens is one instance will ultimately end up commiting the transaction first (and succeed), while the
+    ;; others will fail due to duplicate tables or the like and have their transactions rolled back.
+    ;;
+    ;; However, we don't want to have that instance killed because its migrations failed for that reason, so retry a
+    ;; second time; this time, it will either run into the lock, or see that there are no migrations to run in the
+    ;; first place, and launch normally.
+    (u/auto-retry 1
+      (migrate! db-details :up))
     (print-migrations-and-quit! db-details))
-  (log/info "Database Migrations Current ... " (u/emoji "✅")))
+  (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
 
 (defn- run-data-migrations!
   "Do any custom code-based migrations now that the db structure is up to date."

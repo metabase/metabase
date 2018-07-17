@@ -282,68 +282,70 @@ class DefaultLanding extends React.Component {
                       />
                     </Box>
                   </GridItem>
-                  <GridItem w={itemWidth}>
-                    <Box>
-                      <ItemTypeFilterBar />
-                      <Card mt={1} className="relative">
-                        {unpinnedItems.length > 0 ? (
-                          <PinDropTarget pinIndex={null} margin={8}>
-                            <Box
-                              style={{
-                                position: "relative",
-                                height: ROW_HEIGHT * unpinnedItems.length,
-                              }}
-                            >
-                              <VirtualizedList
-                                items={unpinnedItems}
-                                rowHeight={ROW_HEIGHT}
-                                renderItem={({ item, index }) => (
-                                  <Box className="relative">
-                                    <ItemDragSource
-                                      item={item}
-                                      selection={selection}
-                                    >
-                                      <NormalItem
-                                        key={`${item.type}:${item.id}`}
+                  {unpinned.length > 0 && (
+                    <GridItem w={itemWidth}>
+                      <Box>
+                        <ItemTypeFilterBar />
+                        <Card mt={1} className="relative">
+                          {unpinnedItems.length > 0 ? (
+                            <PinDropTarget pinIndex={null} margin={8}>
+                              <Box
+                                style={{
+                                  position: "relative",
+                                  height: ROW_HEIGHT * unpinnedItems.length,
+                                }}
+                              >
+                                <VirtualizedList
+                                  items={unpinnedItems}
+                                  rowHeight={ROW_HEIGHT}
+                                  renderItem={({ item, index }) => (
+                                    <Box className="relative">
+                                      <ItemDragSource
                                         item={item}
-                                        collection={collection}
                                         selection={selection}
-                                        onToggleSelected={onToggleSelected}
-                                        onMove={moveItems =>
-                                          this.setState({ moveItems })
-                                        }
-                                      />
-                                    </ItemDragSource>
-                                  </Box>
-                                )}
-                              />
-                            </Box>
-                          </PinDropTarget>
-                        ) : (
-                          <Box>
-                            {location.query.type &&
-                              EMPTY_STATES[location.query.type]}
-                            <PinDropTarget
-                              pinIndex={null}
-                              hideUntilDrag
-                              margin={10}
-                            >
-                              {({ hovered }) => (
-                                <div
-                                  className={cx(
-                                    "m2 flex layout-centered",
-                                    hovered ? "text-brand" : "text-grey-2",
+                                      >
+                                        <NormalItem
+                                          key={`${item.type}:${item.id}`}
+                                          item={item}
+                                          collection={collection}
+                                          selection={selection}
+                                          onToggleSelected={onToggleSelected}
+                                          onMove={moveItems =>
+                                            this.setState({ moveItems })
+                                          }
+                                        />
+                                      </ItemDragSource>
+                                    </Box>
                                   )}
-                                >
-                                  {t`Drag here to un-pin`}
-                                </div>
-                              )}
+                                />
+                              </Box>
                             </PinDropTarget>
-                          </Box>
-                        )}
-                      </Card>
-                    </Box>
-                  </GridItem>
+                          ) : (
+                            <Box>
+                              {location.query.type &&
+                                EMPTY_STATES[location.query.type]}
+                              <PinDropTarget
+                                pinIndex={null}
+                                hideUntilDrag
+                                margin={10}
+                              >
+                                {({ hovered }) => (
+                                  <div
+                                    className={cx(
+                                      "m2 flex layout-centered",
+                                      hovered ? "text-brand" : "text-grey-2",
+                                    )}
+                                  >
+                                    {t`Drag here to un-pin`}
+                                  </div>
+                                )}
+                              </PinDropTarget>
+                            </Box>
+                          )}
+                        </Card>
+                      </Box>
+                    </GridItem>
+                  )}
                 </Grid>
               </Box>
             </Box>

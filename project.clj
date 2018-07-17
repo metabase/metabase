@@ -83,7 +83,7 @@
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
-                 [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
+                 [org.liquibase/liquibase-core "3.6.2"]               ; migration management (Java lib)
                  [org.postgresql/postgresql "42.2.2"]                 ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
@@ -96,7 +96,7 @@
                  [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
-                 [toucan "1.1.7"                                      ; Model layer, hydration, and DB utilities
+                 [toucan "1.1.9"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
                  ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]

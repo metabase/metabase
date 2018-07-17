@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
 import { connect } from "react-redux";
 import { t } from "c-3po";
 import QueryModeButton from "./QueryModeButton.jsx";
@@ -17,14 +16,13 @@ import QuestionSavedModal from "metabase/components/QuestionSavedModal.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal.jsx";
 import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
+import CollectionBadge from "metabase/questions/components/CollectionBadge";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal.jsx";
 
 import { clearRequestState } from "metabase/redux/requests";
 
 import { RevisionApi } from "metabase/services";
-
-import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -523,22 +521,8 @@ export default class QueryHeader extends Component {
           buttons={this.getHeaderButtons()}
           setItemAttributeFn={this.props.onSetCardAttribute}
           badge={
-            this.props.card.collection && (
-              <Link
-                to={Urls.collection(this.props.card.collection.id)}
-                className="text-uppercase flex align-center no-decoration"
-                style={{
-                  color: this.props.card.collection.color,
-                  fontSize: 12,
-                }}
-              >
-                <Icon
-                  name="collection"
-                  size={12}
-                  style={{ marginRight: "0.5em" }}
-                />
-                {this.props.card.collection.name}
-              </Link>
+            this.props.card.id && (
+              <CollectionBadge collectionId={this.props.card.collection_id} />
             )
           }
         />
