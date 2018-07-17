@@ -22,8 +22,6 @@ import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_form
 
 import _ from "underscore";
 import cx from "classnames";
-import Color from "color";
-import { getColorScale } from "metabase/lib/colors";
 
 import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";

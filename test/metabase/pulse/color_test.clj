@@ -6,7 +6,9 @@
 (def ^:private green "#00ff00")
 
 (def ^:private ^String test-script
-  "function makeCellBackgroundGetter(rows, cols, settings) {
+  "function makeCellBackgroundGetter(rows, colsJSON, settingsJSON) {
+     cols = JSON.parse(colsJSON);
+     settings = JSON.parse(settingsJSON);
      cols.map(function (a) { return a; });
      return function(value, rowIndex, columnName) {
         if(rowIndex % 2 == 0){
@@ -44,24 +46,3 @@
                                               {:even red, :odd  green})]
       (for [row-index (range 0 4)]
         (get-background-color color-selector "any value" "any column" row-index)))))
-
-(def ^:private ^String test-conversion-script
-  "function addTestNumbers(data) {
-     var total = 0;
-     data.map(function (m){
-                total = total + m[\"test\"];
-              });
-     return total;
-   }")
-
-;; Test the conversion of clojure data to JS data. This just adds up all of the `"test"` values to ensure we can map
-;; over the arrays and access keys in the map like we would any other JS array/map
-;;
-;; Passing in a vector without convert it will cause this test to fail as the Java objects that get passed in don't
-;; support `map`
-(expect
-  10.0
-  (with-test-js-engine test-conversion-script
-    (.invokeFunction (deref (var-get #'color/js-engine))
-           "addTestNumbers"
-           (object-array [(#'color/convert-to-js-data (vec (repeat 10 {"test" 1, "not-test" 2})))]))))
