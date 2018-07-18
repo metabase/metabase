@@ -157,7 +157,6 @@ export default class Funnel extends Component {
           )}
           <LegendHeader
             className="flex-no-shrink"
-            // $FlowFixMe
             series={series._raw || series}
             actionButtons={!hasTitle && actionButtons}
             onChangeCardAndRun={onChangeCardAndRun}

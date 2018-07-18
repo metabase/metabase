@@ -1,7 +1,22 @@
 databaseChangeLog:
+# The quoting strategy decides when things like column names should be quoted.
+# This is in place to deal with Liquibase not knowing about all of the new
+# reserved words in MySQL 8+. Using a column name that is a reserved word
+# causes a failure. Quoting all objects breaks H2 support though as it will
+# quote table names but not quote that same table name in a foreign key reference
+# which will cause a failure when trying to initially setup the database.
+  - property:
+      name: quote_strategy
+      value: QUOTE_ALL_OBJECTS
+      dbms: mysql,mariadb
+  - property:
+      name: quote_strategy
+      value: LEGACY
+      dbms: postgresql,h2
   - changeSet:
       id: '1'
       author: agilliland
+      objectQuotingStrategy: ${quote_strategy}
       changes:
       - createTable:
           columns:
@@ -1449,6 +1464,8 @@ databaseChangeLog:
   - changeSet:
       id: 10
       author: cammsaul
+      validCheckSum: 7:97fec69516d0dfe424ea7365f51bb87e
+      validCheckSum: 7:3b90e2fe0ac8e617a1f30ef95d39319b
       changes:
         - createTable:
             tableName: revision
@@ -1509,7 +1526,7 @@ databaseChangeLog:
               replace: WITHOUT
               with: WITH
         - modifySql:
-            dbms: mysql
+            dbms: mysql,mariadb
             replace:
               replace: object VARCHAR
               with: object TEXT
@@ -1552,6 +1569,8 @@ databaseChangeLog:
   - changeSet:
       id: 13
       author: agilliland
+      validCheckSum: 7:f27286894439bef33ff93761f9b32bc4
+      validCheckSum: 7:1bc8ccc9b1803cda5651f144029be40c
       changes:
         - createTable:
             tableName: activity
@@ -1636,7 +1655,7 @@ databaseChangeLog:
               replace: WITHOUT
               with: WITH
         - modifySql:
-            dbms: mysql
+            dbms: mysql,mariadb
             replace:
               replace: details VARCHAR
               with: details TEXT
@@ -1698,6 +1717,7 @@ databaseChangeLog:
   - changeSet:
       id: 15
       author: agilliland
+      objectQuotingStrategy: ${quote_strategy}
       changes:
         - addColumn:
             tableName: revision
@@ -2060,6 +2080,7 @@ databaseChangeLog:
   - changeSet:
       id: 23
       author: agilliland
+      objectQuotingStrategy: ${quote_strategy}
       changes:
         - modifyDataType:
             tableName: metabase_table
@@ -3186,6 +3207,7 @@ databaseChangeLog:
   - changeSet:
       id: 46
       author: camsaul
+      objectQuotingStrategy: ${quote_strategy}
       changes:
         - addNotNullConstraint:
             tableName: report_dashboardcard
@@ -3501,7 +3523,7 @@ databaseChangeLog:
   - property:
         name: blob.type
         value: blob
-        dbms: mysql,h2
+        dbms: mysql,h2,mariadb
   - property:
       name: blob.type
       value: bytea
@@ -4272,7 +4294,7 @@ databaseChangeLog:
             dbms: postgresql,h2
             sql: "COMMENT ON COLUMN collection.name IS 'The user-facing name of this Collection.'"
         - sql:
-            dbms: mysql
+            dbms: mysql,mariadb
             sql: "ALTER TABLE `collection` CHANGE `name` `name` TEXT NOT NULL COMMENT 'The user-facing name of this Collection.'"
 
 # In 0.30.0 we finally removed the long-deprecated native read permissions. Since they're no longer considered valid by

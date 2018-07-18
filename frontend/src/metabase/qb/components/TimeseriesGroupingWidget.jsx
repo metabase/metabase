@@ -4,7 +4,7 @@ import React, { Component } from "react";
 
 import TimeGroupingPopover from "metabase/query_builder/components/TimeGroupingPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { SelectButton } from "metabase/components/Select";
+import SelectButton from "metabase/components/SelectButton";
 
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";

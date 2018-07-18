@@ -9,16 +9,14 @@ export default class CollectionCreate extends Component {
   render() {
     const { params } = this.props;
     const collectionId =
-      params && params.collectionId && parseFloat(params.collectionId);
+      params && params.collectionId != null && params.collectionId !== "root"
+        ? parseInt(params.collectionId)
+        : null;
     return (
       <CollectionForm
-        collection={
-          collectionId != null
-            ? {
-                parent_id: collectionId,
-              }
-            : null
-        }
+        collection={{
+          parent_id: collectionId,
+        }}
         onSaved={() => this.props.goBack()}
         onClose={this.props.goBack}
       />

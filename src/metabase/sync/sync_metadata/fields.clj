@@ -74,7 +74,7 @@
         {:table_id      (u/get-id table)
          :name          field-name
          :display_name  (humanization/name->human-readable-name field-name)
-         :database_type database-type
+         :database_type (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
          :base_type     base-type
          :special_type  (special-type field)
          :parent_id     parent-id}))))
