@@ -1,5 +1,5 @@
 @rest
-Feature: Uninstall Discovery _
+Feature: Uninstall Discovery
 
   Background: Initial setup
     Given I open a ssh connection to '${BOOTSTRAP_IP}' with user '${REMOTE_USER:-operador}' using pem file 'src/test/resources/credentials/${PEM_FILE:-key.pem}'
@@ -13,7 +13,7 @@ Feature: Uninstall Discovery _
     Given I run 'dcos marathon app remove ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos task | grep ${DISCOVERY_SERVICE_NAME:-discovery} | wc -l' contains '0'
 
-  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT||DISC_VERSION=0.29.0-d524010)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0)
   Scenario: [Uninstallation Discovery][01] Uninstall Discovery
     Given I run 'dcos marathon app remove /${DISCOVERY_SERVICE_FOLDER:-discovery}/${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos task | grep ${DISCOVERY_SERVICE_NAME:-discovery} | wc -l' contains '0'

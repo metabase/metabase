@@ -10,7 +10,7 @@ public class DISC_install_postgres_IT extends BaseTest {
 
     public DISC_install_postgres_IT() {}
 
-    @Test(enabled = true, groups = {"install_postgres"})
+    @Test(enabled = true, groups = {"config_postgres"})
     public void DISC_install_postgres() throws Exception {
         new CucumberRunner(this.getClass()).runCukes();
     }

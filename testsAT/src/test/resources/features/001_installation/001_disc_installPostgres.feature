@@ -23,7 +23,7 @@ Feature: Install Postgres for Discovery
     And in less than '600' seconds, checking each '20' seconds, I send a 'GET' request to '/service/${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc}/v1/service/status' so that the response contains '"pg-0002","role":"sync_slave","status":"RUNNING"'
     And in less than '600' seconds, checking each '20' seconds, I send a 'GET' request to '/service/${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc}/v1/service/status' so that the response contains '"pg-0003","role":"async_slave","status":"RUNNING"'
 
-  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT||DISC_VERSION=0.29.0-d524010)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0)
   Scenario: [Basic Installation Postgres Dependencies][01] Check PostgresTLS
     Given I open a ssh connection to '${DCOS_CLI_HOST:-dcos-cli.demo.stratio.com}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
     Then in less than '600' seconds, checking each '20' seconds, the command output 'dcos task | grep ${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls} | grep R | wc -l' contains '1'
@@ -46,15 +46,17 @@ Feature: Install Postgres for Discovery
     And I save element in position '0' in '$.status[?(@.role == "master")].ports[0]' in environment variable 'postgresMD5_Port'
     And I wait '5' seconds
 
-  @runOnEnv(DISC_VERSION=0.29.0-SNAPSHOT||DISC_VERSION=0.29.0-d524010)
+  @runOnEnv(DISC_VERSION=0.29.0)
   Scenario: [Basic Installation Postgres Dependencies][02] Create database for Discovery on Postgrestls
-    Given I securely send requests to '${BOOTSTRAP_IP}:443'
+#    Given I securely send requests to '${BOOTSTRAP_IP}:443'
+    Given I set sso token using host '${CLUSTER_SSO:-nightly.labs.stratio.com}' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
+    And I securely send requests to '${CLUSTER_SSO:-nightly.labs.stratio.com}:443'
     When in less than '300' seconds, checking each '20' seconds, I send a 'GET' request to '/exhibitor/exhibitor/v1/explorer/node-data?key=%2Fdatastore%2Fcommunity%2F${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls}%2Fplan-v2-json&_=' so that the response contains 'str'
     And the service response status must be '200'
     And I save element '$.str' in environment variable 'exhibitor_answer'
     And I save ''!{exhibitor_answer}'' in variable 'parsed_answer'
-    And I run 'echo !{parsed_answer} | jq '.phases[0]' | jq '."0001".steps[0]'| jq '."0"'.agent_hostname | sed 's/^.\|.$//g'' in the ssh connection with exit status '0' and save the value in environment variable 'pgIP'
-    And I run 'echo !{pgIP}' in the ssh connection
+    And I run 'echo !{parsed_answer} | jq '.phases[0]' | jq '."0001".steps[0]'| jq '."0"'.agent_hostname | sed 's/^.\|.$//g'' locally with exit status '0' and save the value in environment variable 'pgIP'
+    And I run 'echo !{pgIP}' locally
     Then I wait '10' seconds
     When in less than '300' seconds, checking each '20' seconds, I send a 'GET' request to '/service/${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls}/v1/service/status' so that the response contains 'status'
     Then the service response status must be '200'
@@ -66,6 +68,28 @@ Feature: Install Postgres for Discovery
     Then the command output contains 'CREATE DATABASE'
     When I run 'docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U postgres -c "CREATE ROLE \"${DISCOVERY_TENANT_NAME:-crossdata-1}\" with password '${DISCOVERY_DATASTORE_PASSWORD:-stratio}' SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS LOGIN"' in the ssh connection
     Then the command output contains 'CREATE ROLE'
+
+  @runOnEnv(DISC_VERSION=0.30.0)
+  Scenario: [Basic Installation Postgres Dependencies][02] Create database for Discovery on Postgrestls
+    Given I set sso token using host '${CLUSTER_SSO:-nightly.labs.stratio.com}' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
+    And I securely send requests to '${CLUSTER_SSO:-nightly.labs.stratio.com}:443'
+#    Given I securely send requests to '${BOOTSTRAP_IP}:443'
+    When in less than '300' seconds, checking each '20' seconds, I send a 'GET' request to '/exhibitor/exhibitor/v1/explorer/node-data?key=%2Fdatastore%2Fcommunity%2F${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls}%2Fplan-v2-json&_=' so that the response contains 'str'
+    And the service response status must be '200'
+    And I save element '$.str' in environment variable 'exhibitor_answer'
+    And I save ''!{exhibitor_answer}'' in variable 'parsed_answer'
+    And I run 'echo !{parsed_answer} | jq '.phases[0]' | jq '."0001".steps[0]'| jq '."0"'.agent_hostname | sed 's/^.\|.$//g'' locally with exit status '0' and save the value in environment variable 'pgIP'
+    And I run 'echo !{pgIP}' locally
+    Then I wait '10' seconds
+    When in less than '300' seconds, checking each '20' seconds, I send a 'GET' request to '/service/${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls}/v1/service/status' so that the response contains 'status'
+    Then the service response status must be '200'
+    And I save element in position '0' in '$.status[?(@.role == "master")].assignedHost' in environment variable 'pgIPCalico'
+    And I save element in position '0' in '$.status[?(@.role == "master")].ports[0]' in environment variable 'pgPortCalico'
+    Given I open a ssh connection to '!{pgIP}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
+    When I run 'docker ps -q | xargs -n 1 docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}} {{ .Name }}' | sed 's/ \// /'| grep !{pgIPCalico} | awk '{print $2}'' in the ssh connection and save the value in environment variable 'postgresDocker'
+    When I run 'docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U postgres -c "CREATE DATABASE ${DISCOVERY_DATASTORE_DB:-discovery}"' in the ssh connection
+    Then the command output contains 'CREATE DATABASE'
+    And I wait '30' seconds
 
   @runOnEnv(DISC_VERSION=0.28.9)
   Scenario: [Basic Installation Postgres Dependencies][03] Create database for Discovery on PostgresMD5

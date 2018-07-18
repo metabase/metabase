@@ -4,3 +4,4 @@
 *.iml
 target/
 pnf-*/
+test-perf/

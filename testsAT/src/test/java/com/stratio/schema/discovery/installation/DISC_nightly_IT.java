@@ -10,6 +10,7 @@ import org.testng.annotations.Factory;
 
 
 @CucumberOptions(features = {
+        "src/test/resources/features/001_installation/000_disc_createPolicies.feature",
         "src/test/resources/features/001_installation/001_disc_installPostgres.feature",
         "src/test/resources/features/001_installation/002_disc_installDiscovery.feature",
         //"src/test/resources/features/002_settings/005_disc_loginUser.feature",
@@ -19,9 +20,9 @@ import org.testng.annotations.Factory;
         //"src/test/resources/features/003_configbbdd/010_disc_configbbddPostgressMD5.feature",
         //"src/test/resources/features/003_configbbdd/011_disc_configbbddPostgressTLS.feature",
         //"src/test/resources/features/003_configbbdd/012_disc_configbbddCrossdata.feature",
-        "src/test/resources/features/099_uninstall/003_disc_uninstallDiscovery.feature",
-        "src/test/resources/features/099_uninstall/004_disc_uninstallPostgres.feature"
-
+        "src/test/resources/features/099_uninstall/001_disc_uninstallDiscovery.feature",
+        "src/test/resources/features/099_uninstall/002_disc_deletePolicies.feature",
+        "src/test/resources/features/099_uninstall/003_disc_uninstallPostgres.feature"
 })
 public class DISC_nightly_IT extends BaseTest {
 
