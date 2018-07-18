@@ -15,13 +15,19 @@ const CollectionItem = ({
 }) => (
   <Link
     to={`collection/${collection.id}`}
-    bg={hovered ? colors["brand"] : highlighted ? colors["bg-light"] : colors["bg-medium"]}
-    color={hovered ? 'white' : colors["text-medium"]}
+    bg={
+      hovered
+        ? colors["brand"]
+        : highlighted ? colors["bg-light"] : colors["bg-medium"]
+    }
+    color={hovered ? "white" : colors["text-medium"]}
     className="block rounded relative text-brand-hover"
     style={{
       borderSize: 1,
-      borderColor: hovered ? colors["brand"] : highlighted ? colors["bg-medium"] : "transparent",
-      borderStyle: hovered ? "solid" : highlighted ? "dotted" : "solid"
+      borderColor: hovered
+        ? colors["brand"]
+        : highlighted ? colors["bg-medium"] : "transparent",
+      borderStyle: hovered ? "solid" : highlighted ? "dotted" : "solid",
     }}
     p={[1, 2]}
   >
