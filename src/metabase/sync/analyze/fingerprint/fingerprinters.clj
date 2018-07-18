@@ -1,6 +1,5 @@
 (ns metabase.sync.analyze.fingerprint.fingerprinters
-  "Analysis sub-step that takes a sample of values for a Field and saving a non-identifying fingerprint
-   used for classification. This fingerprint is saved as a column on the Field it belongs to."
+  "Non-identifying fingerprinters for various field types."
   (:require [cheshire.core :as json]
             [clj-time
              [coerce :as t.coerce]
@@ -62,7 +61,7 @@
 (defmulti
   ^{:doc "Return a fingerprinter transducer for a given field based on the field's type."
     :arglists '([field])}
-  fingerprinter (juxt :base_type :special_type))
+  fingerprinter (juxt :base_type (some-fn :special_type (constantly :type/*))))
 
 (def ^:private global-fingerprinter
   (redux/fuse {:distinct-count cardinality}))
@@ -88,47 +87,45 @@
      {:global global-fingerprint
       :type   {prefix type-fingerprint}})))
 
+(defmacro ^:private with-reduced-error
+  [msg & body]
+  `(let [result# (sync-util/with-error-handling ~msg ~@body)]
+     (if (instance? Exception result#)
+       (reduced result#)
+       result#)))
+
 (defn- with-error-handling
   [rf msg]
   (fn
-    ([]
-     (let [result (sync-util/with-error-handling msg (rf))]
-       (if (instance? Exception result)
-         (reduced result)
-         result)))
-    ([acc]
-     (let [result (sync-util/with-error-handling msg (rf acc))]
-       (if (instance? Exception result)
-         (reduced result)
-         result)))
-    ([acc e]
-     (let [result (sync-util/with-error-handling msg (rf acc e))]
-       (if (instance? Exception result)
-         (reduced result)
-         result)))))
+    ([] (with-reduced-error msg (rf)))
+    ([acc] (with-reduced-error msg (rf acc)))
+    ([acc e] (with-reduced-error msg (rf acc e)))))
 
 (defmacro ^:private deffingerprinter
   [type transducer]
-  `(defmethod fingerprinter ~type
-     [field#]
-     (with-error-handling
-       (with-global-fingerprinter (first ~type) ~transducer)
-       (format "Error generating fingerprint for %s" (sync-util/name-for-logging field#)))))
+  (let [type (if (vector? type)
+               type
+               [type :type/*])]
+    `(defmethod fingerprinter ~type
+       [field#]
+       (with-error-handling
+         (with-global-fingerprinter (first ~type) ~transducer)
+         (format "Error generating fingerprint for %s" (sync-util/name-for-logging field#))))))
 
-(deffingerprinter [:type/DateTime :type/*]
+(deffingerprinter :type/DateTime
   ((keep du/str->date-time)
    (redux/post-complete
     (redux/fuse {:earliest (monoid t/min-date (t.coerce/from-long Long/MAX_VALUE))
                  :latest   (monoid t/max-date (t.coerce/from-long 0))})
     (partial m/map-vals str))))
 
-(deffingerprinter [:type/Number :type/*]
+(deffingerprinter :type/Number
   ((remove nil?)
    (redux/fuse {:min (monoid min Double/POSITIVE_INFINITY)
                 :max (monoid max Double/NEGATIVE_INFINITY)
                 :avg stats/mean})))
 
-(defn valid-serialized-json?
+(defn- valid-serialized-json?
   "True if X is a serialized JSON dictionary or array."
   [x]
   (boolean
@@ -136,7 +133,7 @@
      (or (map? parsed-json)
          (sequential? parsed-json)))))
 
-(deffingerprinter [:type/Text :type/*]
+(deffingerprinter :type/Text
   (redux/fuse {:percent-json   (share valid-serialized-json?)
                :percent-url    (share u/url?)
                :percent-email  (share u/email?)
