@@ -62,7 +62,7 @@ class Overworld extends React.Component {
           <MetabotLogo />
           <Box ml={2}>
             <Subhead>{Greeting.sayHello(this.props.user.first_name)}</Subhead>
-            <p className="text-paragraph m0 text-grey-3">{t`Don't tell anyone but you're my favorite`}</p>
+            <p className="text-paragraph m0 text-grey-3">{t`Don't tell anyone, but you're my favorite.`}</p>
           </Box>
         </Flex>
         <CollectionItemsLoader collectionId="root">
@@ -109,7 +109,10 @@ class Overworld extends React.Component {
                 <Grid>
                   {pinnedDashboards.map(pin => {
                     return (
-                      <GridItem w={[1, 1 / 2, 1 / 3]}>
+                      <GridItem
+                        w={[1, 1 / 2, 1 / 3]}
+                        key={`${pin.model}-${pin.id}`}
+                      >
                         <Link
                           to={Urls.dashboard(pin.id)}
                           hover={{ color: normal.blue }}
@@ -146,10 +149,10 @@ class Overworld extends React.Component {
               color={normal.grey2}
               className="text-brand-hover"
             >
-              <Flex bg={colors["bg-light"]} p={2} mb={1} align="center">
+              <Flex bg={colors["bg-light"]} p={2} my={1} align="center">
                 <Box ml="auto" mr="auto">
                   <Flex align="center">
-                    <h3>{t`Browse all items`}</h3>
+                    <h4>{t`Browse all items`}</h4>
                     <Icon name="chevronright" size={14} ml={1} />
                   </Flex>
                 </Box>
@@ -166,7 +169,7 @@ class Overworld extends React.Component {
                 return (
                   <Grid>
                     {databases.map(database => (
-                      <GridItem w={[1, 1 / 3]}>
+                      <GridItem w={[1, 1 / 3]} key={database.id}>
                         <Link
                           to={`browse/${database.id}`}
                           hover={{ color: normal.blue }}
@@ -174,7 +177,7 @@ class Overworld extends React.Component {
                           <Box p={3} bg={colors["bg-medium"]}>
                             <Icon
                               name="database"
-                              color={normal.green}
+                              color={normal.purple}
                               mb={3}
                               size={28}
                             />

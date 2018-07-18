@@ -37,7 +37,8 @@
              [dataset-definitions :as defs]]
             [toucan.db :as db]
             [toucan.util.test :as test])
-  (:import java.util.TimeZone
+  (:import com.mchange.v2.c3p0.PooledDataSource
+           java.util.TimeZone
            org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
@@ -451,7 +452,7 @@
   timezone. That causes problems for tests that we can determine the database's timezone. This function will reset the
   connections in the connection pool for `db` to ensure that we get fresh session with no timezone specified"
   [db]
-  (when-let [conn-pool (:datasource (sql/db->pooled-connection-spec db))]
+  (when-let [^PooledDataSource conn-pool (:datasource (sql/db->pooled-connection-spec db))]
     (.softResetAllUsers conn-pool)))
 
 (defn db-timezone-id

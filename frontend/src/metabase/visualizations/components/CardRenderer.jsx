@@ -32,9 +32,7 @@ export default class CardRenderer extends Component {
   shouldComponentUpdate(nextProps: Props) {
     // a chart only needs re-rendering when the result itself changes OR the chart type is different
     let sameSize =
-      // $FlowFixMe: width/height provided by ExplicitSize
       this.props.width === nextProps.width &&
-      // $FlowFixMe: width/height provided by ExplicitSize
       this.props.height === nextProps.height;
     let sameSeries = isSameSeries(this.props.series, nextProps.series);
     return !(sameSize && sameSeries);
@@ -61,7 +59,6 @@ export default class CardRenderer extends Component {
   }
 
   renderChart() {
-    // $FlowFixMe: width/height provided by ExplicitSize
     if (this.props.width == null || this.props.height == null) {
       return;
     }

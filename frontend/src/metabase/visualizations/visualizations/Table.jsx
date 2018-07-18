@@ -6,14 +6,12 @@ import TableInteractive from "../components/TableInteractive.jsx";
 import TableSimple from "../components/TableSimple.jsx";
 import { t } from "c-3po";
 import * as DataGrid from "metabase/lib/data_grid";
+import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 
 import Query from "metabase/lib/query";
 import { isMetric, isDimension } from "metabase/lib/schema_metadata";
-import {
-  columnsAreValid,
-  getFriendlyName,
-} from "metabase/visualizations/lib/utils";
-import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
+import { columnsAreValid } from "metabase/visualizations/lib/utils";
+import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx";
 import ChartSettingsTableFormatting, {
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx";
@@ -72,8 +70,8 @@ export default class Table extends Component {
     },
     "table.columns": {
       section: "Data",
-      title: t`Fields to include`,
-      widget: ChartSettingOrderedFields,
+      title: t`Visible fields`,
+      widget: ChartSettingOrderedColumns,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
       isValid: ([{ card, data }]) =>
         card.visualization_settings["table.columns"] &&
@@ -87,10 +85,7 @@ export default class Table extends Component {
           enabled: col.visibility_type !== "details-only",
         })),
       getProps: ([{ data: { cols } }]) => ({
-        columnNames: cols.reduce(
-          (o, col) => ({ ...o, [col.name]: getFriendlyName(col) }),
-          {},
-        ),
+        columns: cols,
       }),
     },
     "table.column_widths": {},
@@ -149,10 +144,13 @@ export default class Table extends Component {
       });
     } else {
       const { cols, rows, columns } = data;
-      const columnIndexes = settings["table.columns"]
-        .filter(f => f.enabled)
-        .map(f => _.findIndex(cols, c => c.name === f.name))
-        .filter(i => i >= 0 && i < cols.length);
+      const columnSettings = settings["table.columns"];
+      const columnIndexes = columnSettings
+        .filter(columnSetting => columnSetting.enabled)
+        .map(columnSetting =>
+          findColumnIndexForColumnSetting(cols, columnSetting),
+        )
+        .filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
 
       this.setState({
         data: {

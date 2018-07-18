@@ -14,82 +14,68 @@ import Logs from "metabase/components/Logs";
 import LogoIcon from "metabase/components/LogoIcon";
 import EntityMenu from "metabase/components/EntityMenu";
 
+// generate the proper set of list items for the current user
+// based on whether they're an admin or not
 export default class ProfileLink extends Component {
-  constructor(props, context) {
-    super(props, context);
-
-    this.state = {
-      dropdownOpen: false,
-      modalOpen: null,
-    };
-
-    _.bindAll(
-      this,
-      "toggleDropdown",
-      "closeDropdown",
-      "openModal",
-      "closeModal",
-    );
-  }
+  state = {
+    dropdownOpen: false,
+  };
 
   static propTypes = {
     user: PropTypes.object.isRequired,
     context: PropTypes.string.isRequired,
   };
 
-  toggleDropdown() {
-    this.setState({ dropdownOpen: !this.state.dropdownOpen });
-  }
-
-  closeDropdown() {
-    this.setState({ dropdownOpen: false });
-  }
-
-  openModal(modalName) {
+  openModal = modalName => {
     this.setState({ dropdownOpen: false, modalOpen: modalName });
-  }
+  };
 
-  closeModal() {
+  closeModal = () => {
     this.setState({ modalOpen: null });
-  }
+  };
+
+  generateOptionsForUser = () => {
+    const admin = this.props.user.is_superuser;
+    const adminContext = this.props.context === "admin";
+    return [
+      {
+        title: t`Account settings`,
+        icon: null,
+        link: Urls.accountSettings(),
+      },
+      ...(admin && [
+        {
+          title: adminContext ? t`Exit admin` : t`Admin`,
+          icon: null,
+          link: adminContext ? "/" : "/admin",
+        },
+      ]),
+      ...(admin && [
+        {
+          title: t`Logs`,
+          icon: null,
+          action: () => this.openModal("logs"),
+        },
+      ]),
+      {
+        title: t`About Metabase`,
+        icon: null,
+        action: () => this.openModal("about"),
+      },
+      {
+        title: t`Sign out`,
+        icon: null,
+        link: "auth/logout",
+      },
+    ];
+  };
 
   render() {
-    const { context } = this.props;
     const { modalOpen } = this.state;
     const { tag, date, ...versionExtra } = MetabaseSettings.get("version");
-    const admin = context === "admin";
     return (
       <Box>
-        <EntityMenu
-          items={[
-            {
-              title: t`Account settings`,
-              icon: null,
-              link: Urls.accountSettings(),
-            },
-            {
-              title: admin ? t`Exit admin` : t`Admin`,
-              icon: null,
-              link: admin ? "/" : "/admin",
-            },
-            {
-              title: t`Logs`,
-              icon: null,
-              action: () => this.openModal("logs"),
-            },
-            {
-              title: t`About Metabase`,
-              icon: null,
-              action: () => this.openModal("about"),
-            },
-            {
-              title: t`Sign out`,
-              icon: null,
-              link: "auth/logout",
-            },
-          ]}
-          triggerIcon="gear"
-        />
+        <EntityMenu items={this.generateOptionsForUser()} triggerIcon="gear" />
         {modalOpen === "about" ? (
           <Modal small onClose={this.closeModal}>
             <div className="px4 pt4 pb2 text-centered relative">

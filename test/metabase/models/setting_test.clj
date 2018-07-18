@@ -49,6 +49,10 @@
   (test-setting-2 setting-2-value))
 
 
+(expect
+  String
+  (:tag (meta #'test-setting-1)))
+
 ;; ## GETTERS
 ;; Test defsetting getter fn. Should return the value from env var MB_TEST_SETTING_1
 (expect "ABCDEFG"
@@ -220,6 +224,10 @@
 ;;; ------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------
 
 (expect
+  Boolean
+  (:tag (meta #'test-boolean-setting)))
+
+(expect
   {:value nil, :is_env_setting false, :env_name "MB_TEST_BOOLEAN_SETTING", :default nil}
   (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil nil))
 
@@ -293,6 +301,10 @@
     ;; ok, make sure the setting was set
     (toucan-name)))
 
+(expect
+  String
+  (:tag (meta #'toucan-name)))
+
 
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
@@ -321,6 +333,23 @@
   (encryption-test/with-secret-key nil
     (toucan-name "Sad Can")
     (actual-value-in-db :toucan-name)))
+
+
+;;; ----------------------------------------------- TIMESTAMP SETTINGS -----------------------------------------------
+
+(defsetting ^:private test-timestamp-setting
+  "Test timestamp setting"
+  :type :timestamp)
+
+(expect
+  java.sql.Timestamp
+  (:tag (meta #'test-timestamp-setting)))
+
+;; make sure we can set & fetch the value and that it gets serialized/deserialized correctly
+(expect
+  #inst "2018-07-11T09:32:00.000Z"
+  (do (test-timestamp-setting #inst "2018-07-11T09:32:00.000Z")
+      (test-timestamp-setting)))
 
 
 ;;; --------------------------------------------- Cache Synchronization ----------------------------------------------
@@ -444,3 +473,34 @@
     ;; detect a cache out-of-date situation and flush the cache as appropriate, giving us the updated value when we
     ;; call! :wow:
     (toucan-name)))
+
+
+;;; ----------------------------------------------- Uncached Settings ------------------------------------------------
+
+(defsetting ^:private uncached-setting
+  "A test setting that should *not* be cached."
+  :cache? false)
+
+;; make sure uncached setting still saves to the DB
+(expect
+  "ABCDEF"
+  (encryption-test/with-secret-key nil
+    (uncached-setting "ABCDEF")
+    (actual-value-in-db "uncached-setting")))
+
+;; make sure that fetching the Setting always fetches the latest value from the DB
+(expect
+  "123456"
+  (encryption-test/with-secret-key nil
+    (uncached-setting "ABCDEF")
+    (db/update-where! Setting {:key "uncached-setting"}
+      :value "123456")
+    (uncached-setting)))
+
+;; make sure that updating the setting doesn't update the last-updated timestamp in the cache $$
+(expect
+  nil
+  (encryption-test/with-secret-key nil
+    (clear-settings-last-updated-value-in-db!)
+    (uncached-setting "abcdef")
+    (settings-last-updated-value-in-db)))

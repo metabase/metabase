@@ -296,6 +296,12 @@
     []
     (filter i/can-read? (ancestors collection))))
 
+(s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
+  "Get the immediate parent `collection` id, if set."
+  {:hydrate :parent_id}
+  [{:keys [location]} :- CollectionWithLocationOrRoot]
+  (if location (location-path->parent-id location)))
+
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
   Collection.
@@ -1002,7 +1008,12 @@
   {:batched-hydrate :personal_collection_id}
   [users]
   (when (seq users)
+    ;; efficiently create a map of user ID -> personal collection ID
     (let [user-id->collection-id (db/select-field->id :personal_owner_id Collection
                                    :personal_owner_id [:in (set (map u/get-id users))])]
+      ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
+      ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
+      ;; as a side-effect. This will ensure this property never comes back as `nil`
       (for [user users]
-        (assoc user :personal_collection_id (user-id->collection-id (u/get-id user)))))))
+        (assoc user :personal_collection_id (or (user-id->collection-id (u/get-id user))
+                                                (user->personal-collection-id (u/get-id user))))))))

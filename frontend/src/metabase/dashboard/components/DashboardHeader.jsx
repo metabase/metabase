@@ -207,7 +207,6 @@ export default class DashboardHeader extends Component {
     if (!isFullscreen && canEdit) {
       buttons.push(
         <ModalWithTrigger
-          full
           key="add"
           ref="addQuestionModal"
           triggerElement={

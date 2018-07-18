@@ -3,6 +3,7 @@
 import { createEntity } from "metabase/lib/entities";
 import { fetchData, createThunkAction } from "metabase/lib/redux";
 import { normalize } from "normalizr";
+import _ from "underscore";
 
 import { MetabaseApi } from "metabase/services";
 import { DatabaseSchema } from "metabase/schema";
@@ -11,7 +12,7 @@ import { DatabaseSchema } from "metabase/schema";
 export const FETCH_DATABASE_METADATA =
   "metabase/entities/database/FETCH_DATABASE_METADATA";
 
-export default createEntity({
+const Databases = createEntity({
   name: "databases",
   path: "/api/database",
   schema: DatabaseSchema,
@@ -37,6 +38,11 @@ export default createEntity({
     ),
   },
 
+  selectors: {
+    getHasSampleDataset: state =>
+      _.any(Databases.selectors.getList(state), db => db.is_sample),
+  },
+
   // FORM
   form: {
     fields: (values = {}) => [
@@ -46,6 +52,8 @@ export default createEntity({
     ],
   },
 });
+
+export default Databases;
 
 // TODO: use the info returned by the backend
 const FIELDS_BY_ENGINE = {

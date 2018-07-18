@@ -14,6 +14,7 @@ import type {
   ExpressionClause,
   ExpressionName,
   Expression,
+  FieldsClause,
 } from "metabase/meta/types/Query";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
@@ -94,6 +95,9 @@ export const removeOrderBy = (query: SQ, index: number) =>
 export const clearOrderBy = (query: SQ) =>
   setOrderByClause(query, O.clearOrderBy(query.order_by));
 
+// FIELD
+export const clearFields = (query: SQ) => setFieldsClause(query, null);
+
 // LIMIT
 
 export const getLimit = (query: SQ) => L.getLimit(query.limit);
@@ -140,13 +144,14 @@ function setAggregationClause(
 ): SQ {
   let wasBareRows = A.isBareRows(query.aggregation);
   let isBareRows = A.isBareRows(aggregationClause);
-  // when switching to or from bare rows clear out any sorting clauses
+  // when switching to or from bare rows clear out any sorting and fields clauses
   if (isBareRows !== wasBareRows) {
-    clearOrderBy(query);
+    query = clearFields(query);
+    query = clearOrderBy(query);
   }
   // for bare rows we always clear out any dimensions because they don't make sense
   if (isBareRows) {
-    clearBreakouts(query);
+    query = clearBreakouts(query);
   }
   return setClause("aggregation", query, aggregationClause);
 }
@@ -158,6 +163,8 @@ function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
       query = removeOrderBy(query, index);
     }
   }
+  // clear fields when changing breakouts
+  query = clearFields(query);
   return setClause("breakout", query, breakoutClause);
 }
 function setFilterClause(query: SQ, filterClause: ?FilterClause): SQ {
@@ -165,6 +172,9 @@ function setFilterClause(query: SQ, filterClause: ?FilterClause): SQ {
 }
 function setOrderByClause(query: SQ, orderByClause: ?OrderByClause): SQ {
   return setClause("order_by", query, orderByClause);
+}
+function setFieldsClause(query: SQ, fieldsClause: ?FieldsClause): SQ {
+  return setClause("fields", query, fieldsClause);
 }
 function setLimitClause(query: SQ, limitClause: ?LimitClause): SQ {
   return setClause("limit", query, limitClause);
@@ -185,7 +195,9 @@ type FilterClauseName =
   | "breakout"
   | "order_by"
   | "limit"
-  | "expressions";
+  | "expressions"
+  | "fields";
+
 function setClause(clauseName: FilterClauseName, query: SQ, clause: ?any): SQ {
   query = { ...query };
   if (clause == null) {

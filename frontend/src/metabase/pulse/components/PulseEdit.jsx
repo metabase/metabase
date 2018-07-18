@@ -155,7 +155,11 @@ export default class PulseEdit extends Component {
           <PulseEditCollection
             {...this.props}
             setPulse={this.setPulse}
-            initialCollectionId={location.query.collectionId}
+            initialCollectionId={
+              location.query.collectionId != null
+                ? parseInt(location.query.collectionId)
+                : undefined
+            }
           />
           <PulseEditCards
             {...this.props}

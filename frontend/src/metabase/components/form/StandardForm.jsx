@@ -19,7 +19,7 @@ const StandardForm = ({
   handleSubmit,
   resetForm,
 
-  form,
+  formDef: form,
   className,
   resetButton = false,
   newForm = true,

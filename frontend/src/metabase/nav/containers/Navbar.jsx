@@ -125,7 +125,7 @@ class SearchBar extends React.Component {
             pr={2}
             pl={1}
             value={this.state.searchText}
-            placeholder="Search for anything..."
+            placeholder="Search…"
             onClick={() => this.setState({ active: true })}
             onChange={e => this.setState({ searchText: e.target.value })}
             onKeyPress={e => {
@@ -270,10 +270,11 @@ export default class Navbar extends Component {
           </Box>
         </Flex>
         <Flex ml="auto" align="center" className="relative z2">
-          <Link to={Urls.newQuestion()} mx={2}>
+          <Link to={Urls.newQuestion()} mx={2} className="hide sm-show">
             <Button medium>{t`Ask a question`}</Button>
           </Link>
           <EntityMenu
+            className="hide sm-show"
             triggerIcon="add"
             items={[
               {

@@ -663,6 +663,7 @@ export const getDatabasesPermissionsGrid = createSelector(
 import Collections from "metabase/entities/collections";
 
 const getCollectionId = (state, props) => props && props.collectionId;
+
 const getSingleCollectionPermissionsMode = (state, props) =>
   (props && props.singleCollectionMode) || false;
 
@@ -675,10 +676,14 @@ const getCollections = createSelector(
   (collectionsById, collectionId, singleMode) => {
     if (collectionId && collectionsById[collectionId]) {
       if (singleMode) {
+        // pass the `singleCollectionMode=true` prop when we just want to show permissions for the provided collection, and not it's subcollections
         return [collectionsById[collectionId]];
       } else {
-        return collectionsById[collectionId].children;
+        return collectionsById[collectionId].children.filter(
+          collection => !collection.is_personal,
+        );
       }
+      // default to root collection
     } else if (collectionsById["root"]) {
       return [collectionsById["root"]];
     } else {
