@@ -1,14 +1,16 @@
+/* @flow weak */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import title from "metabase/hoc/Title";
 import cx from "classnames";
+import { t } from "c-3po";
 
 import MetabaseSettings from "metabase/lib/settings";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
 import DatabaseEditForms from "../components/DatabaseEditForms.jsx";
 import DatabaseSchedulingForm from "../components/DatabaseSchedulingForm";
-import { t } from "c-3po";
 import ActionButton from "metabase/components/ActionButton.jsx";
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
@@ -85,6 +87,10 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
+  state: {
+    currentTab: "connection" | "scheduling",
+  };
+
   constructor(props, context) {
     super(props, context);
 

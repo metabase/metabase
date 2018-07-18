@@ -23,7 +23,7 @@ import Parameters from "metabase/parameters/components/Parameters";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { DashboardApi } from "metabase/services";
+import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -42,7 +42,11 @@ const mapStateToProps = (state, props) => ({
   dashboardId: getDashboardId(state, props),
 });
 
-@connect(mapStateToProps)
+const mapDispatchToProps = {
+  saveDashboard: Dashboards.actions.save,
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 @DashboardData
 @withToast
 @title(({ dashboard }) => dashboard && dashboard.name)
@@ -59,9 +63,11 @@ class AutomaticDashboardApp extends React.Component {
   }
 
   save = async () => {
-    const { dashboard, triggerToast } = this.props;
+    const { dashboard, triggerToast, saveDashboard } = this.props;
     // remove the transient id before trying to save
-    const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
+    const { payload: newDashboard } = await saveDashboard(
+      dissoc(dashboard, "id"),
+    );
     triggerToast(
       <div className="flex align-center">
         <Icon

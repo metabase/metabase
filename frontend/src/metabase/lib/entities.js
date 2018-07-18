@@ -185,6 +185,9 @@ export function createEntity(def: EntityDefinition): Entity {
   const UPDATE_ACTION = `metabase/entities/${entity.name}/UPDATE`;
   const DELETE_ACTION = `metabase/entities/${entity.name}/DELETE`;
   const FETCH_LIST_ACTION = `metabase/entities/${entity.name}/FETCH_LIST`;
+  const INVALIDATE_LISTS_ACTION = `metabase/entities/${
+    entity.name
+  }/INVALIDATE_LISTS_ACTION`;
 
   entity.actionTypes = {
     CREATE: CREATE_ACTION,
@@ -192,6 +195,7 @@ export function createEntity(def: EntityDefinition): Entity {
     UPDATE: UPDATE_ACTION,
     DELETE: DELETE_ACTION,
     FETCH_LIST: FETCH_LIST_ACTION,
+    INVALIDATE_LISTS_ACTION: INVALIDATE_LISTS_ACTION,
     ...(entity.actionTypes || {}),
   };
 
@@ -480,7 +484,8 @@ export function createEntity(def: EntityDefinition): Entity {
     entity.actionShouldInvalidateLists = action =>
       action.type === CREATE_ACTION ||
       action.type === DELETE_ACTION ||
-      action.type === UPDATE_ACTION;
+      action.type === UPDATE_ACTION ||
+      action.type === INVALIDATE_LISTS_ACTION;
   }
 
   entity.requestsReducer = (state, action) => {
