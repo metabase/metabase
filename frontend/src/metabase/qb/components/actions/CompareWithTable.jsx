@@ -22,20 +22,24 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
   }
 
   const tableId = query.tableId();
-  return [
-    {
-      name: "xray-card",
-      title: t`Compare this with all rows in the table`,
-      icon: "beaker",
+  if (tableId) {
+    return [
+      {
+        name: "xray-card",
+        title: t`Compare this with all rows in the table`,
+        icon: "beaker",
 
-      url: () =>
-        question.card().id
-          ? `/auto/dashboard/table/${tableId}/compare/question/${
-              question.card().id
-            }`
-          : `/auto/dashboard/table/${tableId}/compare/adhoc/${utf8_to_b64url(
-              JSON.stringify(question.card().dataset_query),
-            )}`,
-    },
-  ];
+        url: () =>
+          question.card().id
+            ? `/auto/dashboard/table/${tableId}/compare/question/${
+                question.card().id
+              }`
+            : `/auto/dashboard/table/${tableId}/compare/adhoc/${utf8_to_b64url(
+                JSON.stringify(question.card().dataset_query),
+              )}`,
+      },
+    ];
+  } else {
+    return [];
+  }
 };
