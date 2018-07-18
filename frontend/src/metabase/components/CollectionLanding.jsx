@@ -347,19 +347,23 @@ class DefaultLanding extends React.Component {
                     </GridItem>
                   )}
                 </Grid>
-                <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
-                  {({ hovered }) => (
-                    <Flex
-                      align="center"
-                      justify="center"
-                      py={2}
-                      m={2}
-                      color={hovered ? colors["brand"] : colors["text-medium"]}
-                    >
-                      {t`Drag here to un-pin`}
-                    </Flex>
-                  )}
-                </PinDropTarget>
+                {unpinned.length === 0 && (
+                  <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
+                    {({ hovered }) => (
+                      <Flex
+                        align="center"
+                        justify="center"
+                        py={2}
+                        m={2}
+                        color={
+                          hovered ? colors["brand"] : colors["text-medium"]
+                        }
+                      >
+                        {t`Drag here to un-pin`}
+                      </Flex>
+                    )}
+                  </PinDropTarget>
+                )}
               </Box>
             </Box>
             <BulkActionBar showing={selected.length > 0}>
