@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Link } from "react-router";
+import { Box, Flex } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
 import MetabotLogo from "metabase/components/MetabotLogo";
@@ -89,10 +90,8 @@ export class ExplorePane extends React.Component {
         )}
         {schemaNames &&
           schemaNames.length > 1 && (
-            <div className="px4 inline-block mb4">
-              <div className="pb1 text-paragraph">
-                Here's the schema I looked at:
-              </div>
+            <div className="flex align-center ml-auto">
+              <Box mr={1}>{t`Based on the schema`}</Box>
               <Select
                 value={schemaName}
                 onChange={e =>
