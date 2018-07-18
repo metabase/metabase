@@ -8,6 +8,7 @@ import { t } from "c-3po";
 import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import SelectButton from "./SelectButton";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -206,27 +207,6 @@ class BrowserSelect extends Component {
     );
   }
 }
-
-export const SelectButton = ({ hasValue, children }) => (
-  <div
-    className={
-      "AdminSelect border-med flex align-center " +
-      (!hasValue ? " text-grey-3" : "")
-    }
-  >
-    <span className="AdminSelect-content mr1">{children}</span>
-    <Icon
-      className="AdminSelect-chevron flex-align-right"
-      name="chevrondown"
-      size={12}
-    />
-  </div>
-);
-
-SelectButton.propTypes = {
-  hasValue: PropTypes.bool,
-  children: PropTypes.any,
-};
 
 export class Option extends Component {
   static propTypes = {
