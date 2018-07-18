@@ -35,12 +35,14 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/home/selectors";
+import { getUserDefaultCollectionId } from "metabase/selectors/user";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 const mapStateToProps = (state, props) => ({
   questionAlerts: getQuestionAlerts(state),
   visualizationSettings: getVisualizationSettings(state),
   user: getUser(state),
+  defaultCollectionId: getUserDefaultCollectionId(state)
 });
 
 const mapDispatchToProps = {
@@ -198,6 +200,7 @@ export default class QueryHeader extends Component {
             saveFn={card => this.onSave(card, false)}
             createFn={this.onCreate}
             onClose={() => this.refs.saveModal && this.refs.saveModal.toggle()}
+            defaultCollectionId={this.props.defaultCollectionId}
           />
         </ModalWithTrigger>,
       ]);
@@ -359,6 +362,7 @@ export default class QueryHeader extends Component {
               }}
               onClose={() => this.refs.addToDashSaveModal.toggle()}
               multiStep
+              defaultCollectionId={this.props.defaultCollectionId}
             />
           </ModalWithTrigger>
         </Tooltip>,
@@ -585,6 +589,7 @@ export default class QueryHeader extends Component {
               this.setState({ modal: null })
             }
             multiStep
+            defaultCollectionId={this.props.defaultCollectionId}
           />
         </Modal>
       </div>

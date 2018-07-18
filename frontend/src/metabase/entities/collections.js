@@ -9,10 +9,26 @@ import { getUser } from "metabase/selectors/user";
 
 import { t } from "c-3po";
 
+import { GET } from "metabase/lib/api";
+
 const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
   schema: CollectionSchema,
+
+  api: {
+    list: async () => {
+      const [list, root] = await Promise.all([
+        GET("/api/collection")(),
+        GET("/api/collection/root")(),
+      ]);
+      list.unshift({
+        location: "",
+        ...root,
+      });
+      return list;
+    },
+  },
 
   objectActions: {
     setArchived: ({ id }, archived, opts) =>
@@ -111,7 +127,7 @@ export const PERSONAL_COLLECTION = {
   name: t`My personal collection`,
   location: "/",
   path: ["root"],
-  can_edit: true,
+  can_write: true,
 };
 
 // fake collection for admins that contains all other user's collections
@@ -120,7 +136,7 @@ export const PERSONAL_COLLECTIONS = {
   name: t`Personal Collections`,
   location: "/",
   path: ["root"],
-  can_edit: false,
+  can_write: false,
 };
 
 type UserId = number;
@@ -202,7 +218,8 @@ function getExpandedCollectionsById(
   // a child of itself
   for (const { id } of collections) {
     const c = collectionsById[id];
-    if (c.path) {
+    // don't add root as parent of itself
+    if (c.path && c.id !== ROOT_COLLECTION.id) {
       let parentId;
       // move personal collections into PERSONAL_COLLECTIONS fake collection
       if (c.personal_owner_id != null) {
@@ -225,9 +242,13 @@ function getExpandedCollectionsById(
     }
   }
 
-  // remove PERSONAL_COLLECTIONS collection if there are none
-  if (collectionsById[PERSONAL_COLLECTIONS.id].children.length === 0) {
+  // remove PERSONAL_COLLECTIONS collection if there are none or just one (the user's own)
+  console.log(collectionsById[PERSONAL_COLLECTIONS.id].children.length);
+  if (collectionsById[PERSONAL_COLLECTIONS.id].children.length <= 1) {
     delete collectionsById[PERSONAL_COLLECTIONS.id];
+    collectionsById[ROOT_COLLECTION.id].children = collectionsById[
+      ROOT_COLLECTION.id
+    ].children.filter(c => c.id !== PERSONAL_COLLECTIONS.id);
   }
 
   return collectionsById;
