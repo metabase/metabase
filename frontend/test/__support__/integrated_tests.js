@@ -1,3 +1,27 @@
+console.log("INIT!", new Error().stack);
+
+const _close = window.close;
+window.close = function() {
+  console.log("CLOSE!", new Error().stack);
+  return _close.apply(this, arguments);
+};
+
+const _setTimeout = window.setTimeout;
+window.setTimeout = function(fn, ...args) {
+  if (typeof fn === "function") {
+    const stack = new Error().stack;
+    const _fn = fn;
+    fn = function() {
+      if (!window.document) {
+        console.log("WINDOW CLOSED, SKIPPING TIMEOUT", stack);
+        // return;
+      }
+      return _fn.apply(this, arguments);
+    };
+  }
+  return _setTimeout.call(this, fn, ...args);
+};
+
 /* global process, jasmine */
 
 /**
