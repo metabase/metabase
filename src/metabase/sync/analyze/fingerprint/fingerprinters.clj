@@ -9,6 +9,7 @@
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util.date :as du]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]
             [redux.core :as redux])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
 
@@ -102,15 +103,15 @@
     ([acc e] (with-reduced-error msg (rf acc e)))))
 
 (defmacro ^:private deffingerprinter
-  [type transducer]
-  (let [type (if (vector? type)
-               type
-               [type :type/*])]
-    `(defmethod fingerprinter ~type
+  [field-type transducer]
+  (let [field-type (if (vector? field-type)
+                     field-type
+                     [field-type :type/*])]
+    `(defmethod fingerprinter ~field-type
        [field#]
        (with-error-handling
-         (with-global-fingerprinter (first ~type) ~transducer)
-         (format "Error generating fingerprint for %s" (sync-util/name-for-logging field#))))))
+         (with-global-fingerprinter (first ~field-type) ~transducer)
+         (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
 (deffingerprinter :type/DateTime
   ((keep du/str->date-time)
