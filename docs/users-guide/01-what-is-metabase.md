@@ -13,7 +13,7 @@ So, you've [gotten Metabase up and running](../operations-guide/start.md) and [c
 
 Fresh out of the box, Metabase will show you a few things on the home page:
 * Some [automatic explorations](14-x-rays.md) of your tables that you can look at and save as a dashboard if you like any of them.
-* An area where collections you create will show up, along with a link to see all the dashboards, questions, and pulses you have.
+* An area where things you or your teammates create will show up, along with a link to see all the dashboards, questions, and pulses you have.
 * A list of the databases you've connected to Metabase.
 
 Once you've created some [dashboards](07-dashboards.md), any of them that you pin will show up on the homepage for all of your teammates, so that when they log in to Metabase they'll know right where to go.
