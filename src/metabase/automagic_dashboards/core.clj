@@ -1073,8 +1073,9 @@
 (defn cell-title
   "Return a cell title given a root object and a cell query."
   [root cell-query]
-  (str/join " " [(->> (qp.util/get-in-normalized (-> root :entity) [:dataset_query :query :aggregation])
-                      (metric->description root))
+  (str/join " " [(if-let [aggregation (qp.util/get-in-normalized (-> root :entity) [:dataset_query :query :aggregation])]
+                   (metric->description root aggregation)
+                   (:full-name root))
                  (tru "where {0}" (humanize-filter-value root cell-query))]))
 
 (defmethod automagic-analysis (type Card)

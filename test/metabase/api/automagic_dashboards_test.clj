@@ -147,6 +147,6 @@
                      :type :query
                      :database (data/id)}
                     (#'magic/encode-base64-json))
-               (->> [:> [:field-id (data/id :venues :price)] 5]
+               (->> [:= [:field-id (data/id :venues :price)] 15]
                     (#'magic/encode-base64-json))
                segment-id])))
