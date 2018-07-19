@@ -9,26 +9,10 @@ import { getUser, getUserDefaultCollectionId } from "metabase/selectors/user";
 
 import { t } from "c-3po";
 
-import { GET } from "metabase/lib/api";
-
 const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
   schema: CollectionSchema,
-
-  api: {
-    list: async () => {
-      const [list, root] = await Promise.all([
-        GET("/api/collection")(),
-        GET("/api/collection/root")(),
-      ]);
-      list.unshift({
-        location: "",
-        ...root,
-      });
-      return list;
-    },
-  },
 
   objectActions: {
     setArchived: ({ id }, archived, opts) =>
