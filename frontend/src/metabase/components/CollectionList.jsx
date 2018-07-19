@@ -32,9 +32,15 @@ class CollectionList extends React.Component {
             .map(collection => (
               <GridItem w={w} key={collection.id}>
                 <CollectionDropTarget collection={collection}>
-                  <ItemDragSource item={collection}>
-                    <CollectionItem collection={collection} />
-                  </ItemDragSource>
+                  {({ highlighted, hovered }) => (
+                    <ItemDragSource item={collection}>
+                      <CollectionItem
+                        collection={collection}
+                        highlighted={highlighted}
+                        hovered={hovered}
+                      />
+                    </ItemDragSource>
+                  )}
                 </CollectionDropTarget>
               </GridItem>
             ))}
@@ -43,13 +49,17 @@ class CollectionList extends React.Component {
               <CollectionDropTarget
                 collection={{ id: currentUser.personal_collection_id }}
               >
-                <CollectionItem
-                  collection={{
-                    name: t`My personal collection`,
-                    id: currentUser.personal_collection_id,
-                  }}
-                  iconName="star"
-                />
+                {({ highlighted, hovered }) => (
+                  <CollectionItem
+                    collection={{
+                      name: t`My personal collection`,
+                      id: currentUser.personal_collection_id,
+                    }}
+                    iconName="star"
+                    highlighted={highlighted}
+                    hovered={hovered}
+                  />
+                )}
               </CollectionDropTarget>
             </GridItem>
           )}
