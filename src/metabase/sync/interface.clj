@@ -57,9 +57,10 @@
 ;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
 ;; validations to these, e.g. requiring that a Field have a base_type
 
-(def DatabaseInstance "Schema for a valid instance of a Metabase Database." (class Database))
-(def TableInstance    "Schema for a valid instance of a Metabase Table."    (class Table))
-(def FieldInstance    "Schema for a valid instance of a Metabase Field."    (class Field))
+(def DatabaseInstance             "Schema for a valid instance of a Metabase Database." (class Database))
+(def TableInstance                "Schema for a valid instance of a Metabase Table."    (class Table))
+(def FieldInstance                "Schema for a valid instance of a Metabase Field."    (class Field))
+(def ResultColumnMetadataInstance "Schema for a valid instance of a Metabase Field."    (class {}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

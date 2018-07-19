@@ -71,6 +71,7 @@
 ;; SELECT *
 ;; FROM metabase_field
 ;; WHERE active = true
+;;   AND (special_type <> 'type/PK' OR special_type IS NULL)
 ;;   AND preview_display = true
 ;;   AND visibility_type <> 'retired'
 ;;   AND table_id = 1
@@ -131,7 +132,9 @@
   ([]
    {:where [:and
             [:= :active true]
-            [:not= :special_type "type/PK"]
+            [:or
+             [:not= :special_type "type/PK"]
+             [:= :special_type nil]]
             [:not= :visibility_type "retired"]
             (cons :or (versions-clauses))]})
 

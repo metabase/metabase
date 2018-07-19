@@ -38,6 +38,14 @@
     ([acc] (f acc))
     ([acc x] (f acc x))))
 
+(defn constant-fingerprinter
+  "Constantly return init."
+  [init]
+  (fn
+    ([] (reduced init))
+    ([acc] init)
+    ([acc x] (reduced init))))
+
 (defn- share
   [pred]
   (fn
@@ -45,7 +53,7 @@
      {:match 0
       :total 0})
     ([{:keys [match total]}]
-     (/ match (max total 1)))
+     (double (/ match (max total 1))))
     ([{:keys [match total]} e]
      {:match (cond-> match
                (pred e) inc)
@@ -76,8 +84,14 @@
   [_]
   (redux/post-complete global-fingerprinter (partial hash-map :global)))
 
+(defmethod fingerprinter [:type/* :type/PK]
+  [_]
+  (constant-fingerprinter nil))
+
 (prefer-method fingerprinter [:type/* :type/FK] [:type/Number :type/*])
 (prefer-method fingerprinter [:type/* :type/FK] [:type/Text :type/*])
+(prefer-method fingerprinter [:type/* :type/PK] [:type/Number :type/*])
+(prefer-method fingerprinter [:type/* :type/PK] [:type/Text :type/*])
 
 (defn- with-global-fingerprinter
   [prefix fingerprinter]
@@ -131,9 +145,10 @@
   "True if X is a serialized JSON dictionary or array."
   [x]
   (boolean
-   (when-let [parsed-json (json/parse-string x)]
-     (or (map? parsed-json)
-         (sequential? parsed-json)))))
+   (u/ignore-exceptions
+     (let [parsed-json (json/parse-string x)]
+       (or (map? parsed-json)
+           (sequential? parsed-json))))))
 
 (deffingerprinter :type/Text
   (redux/fuse {:percent-json   (share valid-serialized-json?)

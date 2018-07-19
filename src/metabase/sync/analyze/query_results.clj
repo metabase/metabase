@@ -4,10 +4,10 @@
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
   (:require [metabase.models.humanization :as humanization]
-            [metabase.query-processor.interface :as i]
+            [metabase.query-processor.interface :as qp.i]
+            [metabase.sync.interface :as i]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
-            [metabase.sync.interface :as si]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [redux.core :as redux]
@@ -16,8 +16,7 @@
 (def ^:private DateTimeUnitKeywordOrString
   "Schema for a valid datetime unit string like \"default\" or \"minute-of-hour\"."
   (s/constrained su/KeywordOrString
-                 (fn [unit]
-                   (contains? i/datetime-field-units (keyword unit)))
+                 qp.i/datetime-field-unit?
                  "Valid field datetime unit keyword or string"))
 
 (def ^:private ResultColumnMetadata
@@ -28,7 +27,7 @@
    :base_type                     su/FieldTypeKeywordOrString
    (s/optional-key :special_type) (s/maybe su/FieldTypeKeywordOrString)
    (s/optional-key :unit)         (s/maybe DateTimeUnitKeywordOrString)
-   (s/optional-key :fingerprint)  (s/maybe si/Fingerprint)})
+   (s/optional-key :fingerprint)  (s/maybe i/Fingerprint)})
 
 (def ResultsMetadata
   "Schema for valid values of the `result_metadata` column."
@@ -79,7 +78,7 @@
                                     (if (and (seq (:name metadata))
                                              (nil? (:fingerprint metadata)))
                                       (f/fingerprinter metadata)
-                                      (constantly (reduced (:fingerprint metadata))))))
+                                      (f/constant-fingerprinter (:fingerprint metadata)))))
                 (fn [fingerprints]
                   ;; Rarely certain queries will return columns with no names. For example
                   ;; `SELECT COUNT(*)` in SQL Server seems to come back with no name. Since we

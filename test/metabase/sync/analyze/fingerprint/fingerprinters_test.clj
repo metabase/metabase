@@ -20,3 +20,13 @@
   (transduce identity
              (fingerprinter (field/map->FieldInstance {:base_type :type/Number}))
              [1.0 2.0 3.0]))
+
+(expect
+  {:global {:distinct-count 5}
+   :type   {:type/Text {:percent-json 0.2,
+                        :percent-url 0.0,
+                        :percent-email 0.0,
+                        :average-length 6.4}}}
+  (transduce identity
+             (fingerprinter (field/map->FieldInstance {:base_type :type/Text}))
+             ["metabase" "more" "like" "metabae" "[1, 2, 3]"]))
