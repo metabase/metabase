@@ -618,6 +618,7 @@ cleanup.fn = action => cleanup.actions.push(action);
 cleanup.metric = metric => cleanup.fn(() => deleteMetric(metric));
 cleanup.segment = segment => cleanup.fn(() => deleteSegment(segment));
 cleanup.question = question => cleanup.fn(() => deleteQuestion(question));
+cleanup.collection = c => cleanup.fn(() => deleteCollection(c));
 
 export const deleteQuestion = question =>
   CardApi.delete({ cardId: getId(question) });
@@ -625,6 +626,8 @@ export const deleteSegment = segment =>
   SegmentApi.delete({ segmentId: getId(segment), revision_message: "Please" });
 export const deleteMetric = metric =>
   MetricApi.delete({ metricId: getId(metric), revision_message: "Please" });
+export const deleteCollection = collection =>
+  CollectionsApi.update({ id: getId(collection), archived: true });
 
 const getId = o =>
   typeof o === "object" && o != null

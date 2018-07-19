@@ -5,7 +5,7 @@ import colors from "metabase/lib/colors";
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
-import { getUser } from "metabase/selectors/user";
+import { getUser, getUserDefaultCollectionId } from "metabase/selectors/user";
 
 import { t } from "c-3po";
 
@@ -58,6 +58,24 @@ const Collections = createEntity({
           collectionsIds.map(id => collections[id]),
           user && user.personal_collection_id,
         ),
+    ),
+    getInitialCollectionId: createSelector(
+      [
+        // these are listed in order of priority
+        (state, { collectionId }) => collectionId,
+        (state, { params }) => (params ? params.collectionId : undefined),
+        (state, { location }) =>
+          location && location.query ? location.query.collectionId : undefined,
+        getUserDefaultCollectionId,
+      ],
+      (...collectionIds) => {
+        for (const collectionId of collectionIds) {
+          if (collectionId !== undefined) {
+            return canonicalCollectionId(collectionId);
+          }
+        }
+        return null;
+      },
     ),
   },
 
@@ -243,7 +261,6 @@ function getExpandedCollectionsById(
   }
 
   // remove PERSONAL_COLLECTIONS collection if there are none or just one (the user's own)
-  console.log(collectionsById[PERSONAL_COLLECTIONS.id].children.length);
   if (collectionsById[PERSONAL_COLLECTIONS.id].children.length <= 1) {
     delete collectionsById[PERSONAL_COLLECTIONS.id];
     collectionsById[ROOT_COLLECTION.id].children = collectionsById[
