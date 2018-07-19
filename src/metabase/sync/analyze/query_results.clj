@@ -84,8 +84,10 @@
                   ;; `SELECT COUNT(*)` in SQL Server seems to come back with no name. Since we
                   ;; can't use those as field literals in subsequent queries just filter them out
                   (->> (map (fn [fingerprint metadata]
-                              (when (and (seq (:name metadata))
-                                         (not (instance? Exception fingerprint)))
+                              (cond
+                                (instance? Exception fingerprint) metadata
+                                (empty? (:name metadata))         nil
+                                :else
                                 (assoc metadata :fingerprint fingerprint)))
                             fingerprints
                             result-metadata)

@@ -146,7 +146,8 @@
                        message
                        (or (.getMessage e) (class e))
                        (u/pprint-to-str (or (seq (u/filtered-stacktrace e))
-                                            (.getStackTrace e)))))))))
+                                            (.getStackTrace e)))))
+          e))))
 
 (defmacro with-error-handling
   "Execute BODY in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so.

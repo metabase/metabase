@@ -27,13 +27,6 @@
          (reduced results)
          results)))))
 
-(defn- monoid
-  [f init]
-  (fn
-    ([] init)
-    ([acc] (f acc))
-    ([acc x] (f acc x))))
-
 (defn constant-fingerprinter
   "Constantly return init."
   [init]
@@ -41,19 +34,6 @@
     ([] (reduced init))
     ([acc] init)
     ([acc x] (reduced init))))
-
-(defn- share
-  [pred]
-  (fn
-    ([]
-     {:match 0
-      :total 0})
-    ([{:keys [match total]}]
-     (double (/ match (max total 1))))
-    ([{:keys [match total]} e]
-     {:match (cond-> match
-               (pred e) inc)
-      :total (inc total)})))
 
 (defn- cardinality
   "Transducer that sketches cardinality using HyperLogLog++.
@@ -102,7 +82,7 @@
 (defmacro ^:private with-reduced-error
   [msg & body]
   `(let [result# (sync-util/with-error-handling ~msg ~@body)]
-     (if (instance? Exception result#)
+     (if (instance? Throwable result#)
        (reduced result#)
        result#)))
 
@@ -110,7 +90,7 @@
   [rf msg]
   (fn
     ([] (with-reduced-error msg (rf)))
-    ([acc] (with-reduced-error msg (rf acc)))
+    ([acc] (unreduced (with-reduced-error msg (rf acc))))
     ([acc e] (with-reduced-error msg (rf acc e)))))
 
 (defmacro ^:private deffingerprinter
@@ -150,8 +130,8 @@
 
 (deffingerprinter :type/Number
   ((remove nil?)
-   (redux/fuse {:min (monoid min Double/POSITIVE_INFINITY)
-                :max (monoid max Double/NEGATIVE_INFINITY)
+   (redux/fuse {:min stats/min
+                :max stats/max
                 :avg stats/mean})))
 
 (defn- valid-serialized-json?
@@ -164,9 +144,9 @@
            (sequential? parsed-json))))))
 
 (deffingerprinter :type/Text
-  (redux/fuse {:percent-json   (share valid-serialized-json?)
-               :percent-url    (share u/url?)
-               :percent-email  (share u/email?)
+  (redux/fuse {:percent-json   (stats/share valid-serialized-json?)
+               :percent-url    (stats/share u/url?)
+               :percent-email  (stats/share u/email?)
                :average-length ((map (comp count str)) stats/mean)}))
 
 (defn fingerprint-fields

@@ -50,7 +50,7 @@
                                       :percent-email 0.0, :average-length 15.63}}}
    :id          nil
    :price       {:global {:distinct-count 4},
-                 :type   {:type/Number {:min 1, :max 4, :avg 2.03}}}
+                 :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03}}}
    :latitude    {:global {:distinct-count 94},
                  :type   {:type/Number {:min 10.06, :max 40.78, :avg 35.51}}}
    :category_id {:global {:distinct-count 28}}

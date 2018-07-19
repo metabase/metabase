@@ -70,9 +70,8 @@
                  [io.forward/yaml "1.0.6"                             ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
                   :exclusions [org.clojure/clojure
                                org.yaml/snakeyaml]]
-                 [kixi/stats "0.3.10"                                 ; Various statistic measures implemented as transducers
-                  :exclusions [org.clojure/test.check                 ; test.check and AVL trees are used in kixi.stats.random. Remove exlusion if using.
-                               org.clojure/data.avl]]
+                 [kixi/stats "0.4.1"                                  ; Various statistic measures implemented as transducers
+                  :exclusions [org.clojure/data.avl]]
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms

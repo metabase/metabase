@@ -117,7 +117,7 @@
     :name         "count"
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 3},
-                   :type {:type/Number {:min 235, :max 498, :avg 333.33}}}}]
+                   :type {:type/Number {:min 235.0, :max 498.0, :avg 333.33}}}}]
   (tt/with-temp Card [card]
     (qp/process-query {:database (data/id)
                        :type     :query
