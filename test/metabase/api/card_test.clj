@@ -322,7 +322,7 @@
     :name         "count"
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 1},
-                   :type   {:type/Number {:min 100, :max 100, :avg 100.0}}}}]
+                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
   (let [metadata  [{:base_type    :type/Integer
                     :display_name "Count Chocula"
                     :name         "count_chocula"
@@ -525,7 +525,7 @@
     :name         "count"
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 1},
-                   :type   {:type/Number {:min 100, :max 100, :avg 100.0}}}}]
+                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
   (let [metadata [{:base_type    :type/Integer
                    :display_name "Count Chocula"
                    :name         "count_chocula"

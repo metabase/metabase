@@ -50,7 +50,7 @@
   (fn [{{:keys [card-id nested?]} :info, :as query}]
     (let [results (qp query)]
       (try
-        (let [metadata (seq (qr/results->column-metadata results))]
+        (let [metadata (seq (qr/results->column-metadata results {:skip-fingerprinting? (-> query :middleware :skip-fingerprinting?)}))]
           ;; At the very least we can skip the Extra DB call to update this Card's metadata results
           ;; if its DB doesn't support nested queries in the first place
           (when (i/driver-supports? :nested-queries)

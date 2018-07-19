@@ -28,12 +28,12 @@
          results)))))
 
 (defn constant-fingerprinter
-  "Constantly return init."
+  "Constantly return `init`."
   [init]
   (fn
     ([] (reduced init))
-    ([acc] init)
-    ([acc x] (reduced init))))
+    ([_] init)
+    ([_ _] (reduced init))))
 
 (defn- cardinality
   "Transducer that sketches cardinality using HyperLogLog++.
