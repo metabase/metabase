@@ -6,11 +6,11 @@
 
 (expect
   {:global {:distinct-count 3}
-   :type {:type/DateTime {:earliest (str (du/str->date-time "2013"))
-                          :latest   (str (du/str->date-time "2018"))}}}
+   :type {:type/DateTime {:earliest (du/date->iso-8601 #inst "2013")
+                          :latest   (du/date->iso-8601 #inst "2018")}}}
   (transduce identity
              (fingerprinter (field/map->FieldInstance {:base_type :type/DateTime}))
-             ["2013" "2018" "2015"]))
+             [#inst "2013" #inst "2018" #inst "2015"]))
 
 (expect
   {:global {:distinct-count 3}

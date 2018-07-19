@@ -79,7 +79,6 @@
 
 (expect false (values-are-valid-emails? ["helper@metabase.com", "1111IsNot!An....email", "help@nope.com"]))
 (expect false (values-are-valid-emails? ["\"A string should not cause a Field to be marked as email\""]))
-(expect false (values-are-valid-emails? [100]))
 (expect false (values-are-valid-emails? ["true"]))
 (expect false (values-are-valid-emails? ["false"]))
 

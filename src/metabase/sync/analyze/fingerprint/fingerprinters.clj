@@ -1,9 +1,6 @@
 (ns metabase.sync.analyze.fingerprint.fingerprinters
   "Non-identifying fingerprinters for various field types."
   (:require [cheshire.core :as json]
-            [clj-time
-             [coerce :as t.coerce]
-             [core :as t]]
             [kixi.stats.core :as stats]
             [medley.core :as m]
             [metabase.sync.util :as sync-util]
@@ -128,12 +125,29 @@
          (with-global-fingerprinter (first ~field-type) ~transducer)
          (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
+(defn- earliest
+  ([] (java.util.Date. Long/MAX_VALUE))
+  ([acc] (du/date->iso-8601 acc))
+  ([^java.util.Date acc dt]
+   (if dt
+     (if (.before ^java.util.Date dt acc)
+       dt
+       acc)
+     acc)))
+
+(defn- latest
+  ([] (java.util.Date. 0))
+  ([acc] (du/date->iso-8601 acc))
+  ([^java.util.Date acc dt]
+   (if dt
+     (if (.after ^java.util.Date dt acc)
+       dt
+       acc)
+     acc)))
+
 (deffingerprinter :type/DateTime
-  ((keep du/str->date-time)
-   (redux/post-complete
-    (redux/fuse {:earliest (monoid t/min-date (t.coerce/from-long Long/MAX_VALUE))
-                 :latest   (monoid t/max-date (t.coerce/from-long 0))})
-    (partial m/map-vals str))))
+  (redux/fuse {:earliest earliest
+               :latest   latest}))
 
 (deffingerprinter :type/Number
   ((remove nil?)
