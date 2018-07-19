@@ -107,14 +107,6 @@ const EntityItem = ({
       </h3>
 
       <Flex ml="auto" align="center" onClick={e => e.preventDefault()}>
-        {(onFavorite || isFavorite) && (
-          <Icon
-            name={isFavorite ? "star" : "staroutline"}
-            mr={1}
-            className={isFavorite ? "text-gold" : "hover-child"}
-            onClick={onFavorite}
-          />
-        )}
         {actions.length > 0 && (
           <EntityMenu
             className="hover-child"

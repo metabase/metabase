@@ -117,9 +117,14 @@ const EntityHeader = ({
   isLast,
 }) => (
   <div className="flex flex-column">
-    <div className={cx("relative flex", { "align-self-center mb1": isColumn })}>
+    <div
+      className={cx("relative flex", {
+        "align-self-center mb1": isColumn,
+        "align-center": !isColumn,
+      })}
+    >
       <Icon name={icon} className="mr1" />
-      <div className="flex-full">
+      <div>
         <h4>{entity.name}</h4>
         {entity.subtitle && (
           <div className="mt1 h5 text-monospace text-normal text-grey-2 text-uppercase">
