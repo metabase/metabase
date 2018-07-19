@@ -80,7 +80,7 @@ const QuestionEmptyState = () => (
     <Box>
       <Icon name="beaker" size={32} />
     </Box>
-    <h3>{t`Quesitons are a saved look at your data.`}</h3>
+    <h3>{t`Questions are a saved look at your data.`}</h3>
   </EmptyStateWrapper>
 );
 
