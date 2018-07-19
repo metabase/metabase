@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Link } from "react-router";
-import { Box, Flex } from "grid-styled";
+import { Box } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
 import MetabotLogo from "metabase/components/MetabotLogo";
