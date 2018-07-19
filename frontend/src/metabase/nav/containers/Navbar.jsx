@@ -6,6 +6,7 @@ import { Box, Flex } from "grid-styled";
 import styled from "styled-components";
 import { space, width } from "styled-system";
 import colors from "metabase/lib/colors";
+import color from "color";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -52,8 +53,12 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
-const DefaultSearchColor = colors.brand;
-const ActiveSearchColor = colors.brand;
+const DefaultSearchColor = color(colors.brand)
+  .lighten(0.07)
+  .string();
+const ActiveSearchColor = color(colors.brand)
+  .lighten(0.1)
+  .string();
 
 const SearchWrapper = Flex.extend`
   ${width} background-color: ${props =>
@@ -61,7 +66,6 @@ const SearchWrapper = Flex.extend`
   border-radius: 6px;
   align-items: center;
   color: white;
-  border: 1px solid ${props => (props.active ? colors.brand : "transparent")};
   transition: background 300ms ease-in;
   &:hover {
     background-color: ${ActiveSearchColor};
@@ -117,9 +121,11 @@ class SearchBar extends React.Component {
           <Icon name="search" ml={2} />
           <SearchInput
             w={1}
-            p={2}
+            py={2}
+            pr={2}
+            pl={1}
             value={this.state.searchText}
-            placeholder="Search for anything..."
+            placeholder="Search…"
             onClick={() => this.setState({ active: true })}
             onChange={e => this.setState({ searchText: e.target.value })}
             onKeyPress={e => {
@@ -264,10 +270,11 @@ export default class Navbar extends Component {
           </Box>
         </Flex>
         <Flex ml="auto" align="center" className="relative z2">
-          <Link to={Urls.newQuestion()} mx={2}>
+          <Link to={Urls.newQuestion()} mx={2} className="hide sm-show">
             <Button medium>{t`Ask a question`}</Button>
           </Link>
           <EntityMenu
+            className="hide sm-show"
             triggerIcon="add"
             items={[
               {

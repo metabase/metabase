@@ -1,3 +1,27 @@
+console.log("INIT!", new Error().stack);
+
+const _close = window.close;
+window.close = function() {
+  console.log("CLOSE!", new Error().stack);
+  return _close.apply(this, arguments);
+};
+
+const _setTimeout = window.setTimeout;
+window.setTimeout = function(fn, ...args) {
+  if (typeof fn === "function") {
+    const stack = new Error().stack;
+    const _fn = fn;
+    fn = function() {
+      if (!window.document) {
+        console.log("WINDOW CLOSED, SKIPPING TIMEOUT", stack);
+        // return;
+      }
+      return _fn.apply(this, arguments);
+    };
+  }
+  return _setTimeout.call(this, fn, ...args);
+};
+
 /* global process, jasmine */
 
 /**
@@ -644,6 +668,14 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
       ? { status: 0, responseText: "" }
       : await fetch(api.basename + url, fetchOptions);
 
+    if (!window.document) {
+      console.warn(
+        "API request completed after test ended. Ignoring result.",
+        url,
+      );
+      return;
+    }
+
     if (isCancelled) {
       throw { status: 0, data: "", isCancelled: true };
     }
@@ -686,6 +718,16 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
 
       throw error;
     }
+  } catch (e) {
+    if (!window.document) {
+      console.warn(
+        "API request failed after test ended. Ignoring result.",
+        url,
+        e,
+      );
+      return;
+    }
+    throw e;
   } finally {
     pendingRequests--;
     if (pendingRequests === 0 && pendingRequestsDeferred) {

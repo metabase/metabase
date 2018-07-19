@@ -110,8 +110,9 @@
   (tu/obj->json->obj
     [{:id                  (u/get-id card)
       :name                (:name card)
-      :description         nil
       :collection_position nil
+      :display            "table"
+      :description         nil
       :favorite            false
       :model               "card"}])
   (tu/obj->json->obj
@@ -139,7 +140,7 @@
 
 ;; check that you get to see the children as appropriate
 (expect
-  (map default-item [{:name "Birthday Card", :description nil, :favorite false, :model "card"}
+  (map default-item [{:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"}
                      {:name "Dine & Dashboard", :description nil, :model "dashboard"}
                      {:name "Electro-Magnetic Pulse", :model "pulse"}])
   (tt/with-temp Collection [collection {:name "Debt Collection"}]
@@ -179,6 +180,7 @@
    :personal_owner_id   (user->id :lucky)
    :effective_ancestors ()
    :effective_location  "/"
+   :parent_id           nil
    :id                  (u/get-id (collection/user->personal-collection (user->id :lucky)))
    :location            "/"})
 
@@ -335,13 +337,14 @@
    :id                  "root"
    :can_write           true
    :effective_location  nil
-   :effective_ancestors []}
+   :effective_ancestors []
+   :parent_id           nil}
   (with-some-children-of-collection nil
     ((user->client :crowberto) :get 200 "collection/root")))
 
 ;; Make sure you can see everything for Users that can see everything
 (expect
-  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card"})
+  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
    (collection-item "Crowberto Corv's Personal Collection")
    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
    (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
@@ -357,7 +360,7 @@
 
 ;; ...but if they have read perms for the Root Collection they should get to see them
 (expect
-  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card"})
+  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
    (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
    (collection-item "Rasta Toucan's Personal Collection")]
@@ -405,6 +408,7 @@
   [{:name                "Business Card"
     :description         nil
     :collection_position nil
+    :display             "table"
     :favorite            false
     :model               "card"}]
   (tt/with-temp Card [card {:name "Business Card", :archived true}]

@@ -6,6 +6,7 @@ import _ from "underscore";
 import listSelect from "metabase/hoc/ListSelect";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import cx from "classnames";
+import { withRouter } from "react-router";
 
 import * as Urls from "metabase/lib/urls";
 import colors, { normal } from "metabase/lib/colors";
@@ -18,10 +19,11 @@ import EntityItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
 import VirtualizedList from "metabase/components/VirtualizedList";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
+import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar";
+import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
@@ -38,6 +40,55 @@ import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 
 const ROW_HEIGHT = 72;
+const PAGE_PADDING = [2, 3, 4];
+
+const EmptyStateWrapper = ({ children }) => (
+  <Flex
+    align="center"
+    justify="center"
+    py={3}
+    flexDirection="column"
+    w={1}
+    h={"200px"}
+    className="text-medium"
+  >
+    {children}
+  </Flex>
+);
+
+const DashboardEmptyState = () => (
+  <EmptyStateWrapper>
+    <Box>
+      <Icon name="dashboard" size={32} />
+    </Box>
+    <h3>{t`Dashboards let you collect and share data in one place.`}</h3>
+  </EmptyStateWrapper>
+);
+
+const PulseEmptyState = () => (
+  <EmptyStateWrapper>
+    <Box>
+      <Icon name="pulse" size={32} />
+    </Box>
+    <h3
+    >{t`Pulses let you send out the latest data to your team on a schedule via email or slack.`}</h3>
+  </EmptyStateWrapper>
+);
+
+const QuestionEmptyState = () => (
+  <EmptyStateWrapper>
+    <Box>
+      <Icon name="beaker" size={32} />
+    </Box>
+    <h3>{t`Questions are a saved look at your data.`}</h3>
+  </EmptyStateWrapper>
+);
+
+const EMPTY_STATES = {
+  dashboard: <DashboardEmptyState />,
+  pulse: <PulseEmptyState />,
+  card: <QuestionEmptyState />,
+};
 
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
@@ -65,6 +116,7 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
   listProp: "unpinned",
   keyForItem: item => `${item.model}:${item.id}`,
 })
+@withRouter
 class DefaultLanding extends React.Component {
   state = {
     moveItems: null,
@@ -72,6 +124,7 @@ class DefaultLanding extends React.Component {
 
   render() {
     const {
+      ancestors,
       collection,
       collectionId,
 
@@ -79,10 +132,12 @@ class DefaultLanding extends React.Component {
       pinned,
       unpinned,
 
+      isRoot,
       selected,
       selection,
       onToggleSelected,
       onSelectNone,
+      location,
     } = this.props;
     const { moveItems } = this.state;
 
@@ -94,13 +149,68 @@ class DefaultLanding extends React.Component {
       onSelectNone();
     };
 
+    const collectionWidth = unpinned.length > 0 ? [1, 1 / 3] : 1;
+    const itemWidth = unpinned.length > 0 ? [1, 2 / 3] : 0;
+    const collectionGridSize = unpinned.length > 0 ? 1 : [1, 1 / 4];
+
+    let unpinnedItems = unpinned;
+
+    if (location.query.type) {
+      unpinnedItems = unpinned.filter(u => u.model === location.query.type);
+    }
+
+    const collectionIsEmpty = !unpinned.length > 0 && !collections.length > 0;
+    const collectionHasPins = pinned.length > 0;
+    const collectionHasItems = unpinned.length > 0;
+
     return (
       <Box>
         <Box>
+          <Flex
+            align="center"
+            pt={2}
+            pb={3}
+            px={4}
+            bg={pinned.length ? colors["bg-medium"] : null}
+          >
+            <Box>
+              <Box mb={1}>
+                <BrowserCrumbs
+                  crumbs={[
+                    ...ancestors.map(({ id, name }) => ({
+                      title: (
+                        <CollectionDropTarget collection={{ id }} margin={8}>
+                          {name}
+                        </CollectionDropTarget>
+                      ),
+                      to: Urls.collection(id),
+                    })),
+                  ]}
+                />
+              </Box>
+              <h1 style={{ fontWeight: 900 }}>{collection.name}</h1>
+            </Box>
+
+            <Flex ml="auto">
+              {collection &&
+                collection.can_write &&
+                !collection.personal_owner_id && (
+                  <Box ml={1}>
+                    <CollectionEditMenu
+                      collectionId={collectionId}
+                      isRoot={isRoot}
+                    />
+                  </Box>
+                )}
+              <Box ml={1}>
+                <CollectionBurgerMenu />
+              </Box>
+            </Flex>
+          </Flex>
           <Box>
             <Box>
-              {pinned.length > 0 ? (
-                <Box mx={4} mt={2} mb={3}>
+              {collectionHasPins ? (
+                <Box px={PAGE_PADDING} pt={2} pb={3} bg={colors["bg-medium"]}>
                   <CollectionSectionHeading>{t`Pins`}</CollectionSectionHeading>
                   <PinDropTarget
                     pinIndex={pinned[pinned.length - 1].collection_position + 1}
@@ -110,7 +220,11 @@ class DefaultLanding extends React.Component {
                   >
                     <Grid>
                       {pinned.map((item, index) => (
-                        <GridItem w={1 / 3} className="relative">
+                        <GridItem
+                          w={[1, 1 / 3]}
+                          className="relative"
+                          key={index}
+                        >
                           <ItemDragSource item={item}>
                             <PinnedItem
                               key={`${item.type}:${item.id}`}
@@ -156,75 +270,113 @@ class DefaultLanding extends React.Component {
                   )}
                 </PinDropTarget>
               )}
-              <Box pt={2} px={4} bg="white">
-                <Box py={2}>
-                  <CollectionSectionHeading>
-                    {t`Collections`}
-                  </CollectionSectionHeading>
-                </Box>
-
-                <CollectionList
-                  currentCollection={collection}
-                  collections={collections}
-                  isRoot={collectionId === "root"}
-                />
-                <Box>
-                  <Box align="center" mb={1} mt={3}>
-                    <CollectionSectionHeading>
-                      {t`Dashboards questions and pulses`}
-                    </CollectionSectionHeading>
-                    {unpinned.length === 0 && (
-                      <Box pb={4}>
-                        <CollectionEmptyState />
+              <Box pt={[1, 2]} px={[2, 4]}>
+                <Grid>
+                  <GridItem w={collectionWidth}>
+                    {!collectionIsEmpty && (
+                      <Box pr={2} className="relative">
+                        <Box py={2}>
+                          <CollectionSectionHeading>
+                            {t`Collections`}
+                          </CollectionSectionHeading>
+                        </Box>
+                        <CollectionList
+                          currentCollection={collection}
+                          collections={collections}
+                          isRoot={collectionId === "root"}
+                          w={collectionGridSize}
+                        />
                       </Box>
                     )}
-                  </Box>
-                  {unpinned.length > 0 ? (
-                    <PinDropTarget pinIndex={null} margin={8}>
+                  </GridItem>
+                  {collectionHasItems && (
+                    <GridItem w={itemWidth}>
                       <Box>
-                        <Box
-                          mb={selected.length > 0 ? 5 : 2}
-                          style={{
-                            position: "relative",
-                            height: ROW_HEIGHT * unpinned.length,
-                          }}
-                        >
-                          <VirtualizedList
-                            items={unpinned}
-                            rowHeight={ROW_HEIGHT}
-                            renderItem={({ item, index }) => (
-                              <ItemDragSource item={item} selection={selection}>
-                                <NormalItem
-                                  key={`${item.type}:${item.id}`}
-                                  item={item}
-                                  collection={collection}
-                                  selection={selection}
-                                  onToggleSelected={onToggleSelected}
-                                  onMove={moveItems =>
-                                    this.setState({ moveItems })
-                                  }
+                        <ItemTypeFilterBar />
+                        <Card mt={1} className="relative">
+                          {unpinnedItems.length > 0 ? (
+                            <PinDropTarget pinIndex={null} margin={8}>
+                              <Box
+                                style={{
+                                  position: "relative",
+                                  height: ROW_HEIGHT * unpinnedItems.length,
+                                }}
+                              >
+                                <VirtualizedList
+                                  items={unpinnedItems}
+                                  rowHeight={ROW_HEIGHT}
+                                  renderItem={({ item, index }) => (
+                                    <Box className="relative">
+                                      <ItemDragSource
+                                        item={item}
+                                        selection={selection}
+                                      >
+                                        <NormalItem
+                                          key={`${item.type}:${item.id}`}
+                                          item={item}
+                                          collection={collection}
+                                          selection={selection}
+                                          onToggleSelected={onToggleSelected}
+                                          onMove={moveItems =>
+                                            this.setState({ moveItems })
+                                          }
+                                        />
+                                      </ItemDragSource>
+                                    </Box>
+                                  )}
                                 />
-                              </ItemDragSource>
-                            )}
-                          />
-                        </Box>
-                      </Box>
-                    </PinDropTarget>
-                  ) : (
-                    <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
-                      {({ hovered }) => (
-                        <div
-                          className={cx(
-                            "m2 flex layout-centered",
-                            hovered ? "text-brand" : "text-grey-2",
+                              </Box>
+                            </PinDropTarget>
+                          ) : (
+                            <Box>
+                              {location.query.type &&
+                                EMPTY_STATES[location.query.type]}
+                              <PinDropTarget
+                                pinIndex={null}
+                                hideUntilDrag
+                                margin={10}
+                              >
+                                {({ hovered }) => (
+                                  <div
+                                    className={cx(
+                                      "m2 flex layout-centered",
+                                      hovered ? "text-brand" : "text-grey-2",
+                                    )}
+                                  >
+                                    {t`Drag here to un-pin`}
+                                  </div>
+                                )}
+                              </PinDropTarget>
+                            </Box>
                           )}
-                        >
-                          {t`Drag here to un-pin`}
-                        </div>
-                      )}
-                    </PinDropTarget>
+                        </Card>
+                      </Box>
+                    </GridItem>
                   )}
-                </Box>
+                </Grid>
+                {unpinned.length === 0 && (
+                  <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
+                    {({ hovered }) => (
+                      <Flex
+                        align="center"
+                        justify="center"
+                        py={2}
+                        m={2}
+                        color={
+                          hovered ? colors["brand"] : colors["text-medium"]
+                        }
+                      >
+                        {t`Drag here to un-pin`}
+                      </Flex>
+                    )}
+                  </PinDropTarget>
+                )}
+
+                {collectionIsEmpty && (
+                  <Flex align="center" justify="center" w={1}>
+                    <CollectionEmptyState />
+                  </Flex>
+                )}
               </Box>
             </Box>
             <BulkActionBar showing={selected.length > 0}>
@@ -297,6 +449,7 @@ export const NormalItem = ({
 }) => (
   <Link to={item.getUrl()}>
     <EntityItem
+      variant="list"
       showSelect={selection.size > 0}
       selectable
       item={item}
@@ -400,53 +553,16 @@ class CollectionLanding extends React.Component {
 
     return (
       <Box>
-        <Box>
-          <Flex align="center" mt={2} mb={3} mx={4}>
-            <Box>
-              <Box mb={1}>
-                <BrowserCrumbs
-                  crumbs={[
-                    ...ancestors.map(({ id, name }) => ({
-                      title: (
-                        <CollectionDropTarget collection={{ id }} margin={8}>
-                          {name}
-                        </CollectionDropTarget>
-                      ),
-                      to: Urls.collection(id),
-                    })),
-                  ]}
-                />
-              </Box>
-              <h1 style={{ fontWeight: 900 }}>{currentCollection.name}</h1>
-            </Box>
-
-            <Flex ml="auto">
-              {currentCollection &&
-                currentCollection.can_write &&
-                !currentCollection.personal_owner_id && (
-                  <Box ml={1}>
-                    <CollectionEditMenu
-                      collectionId={collectionId}
-                      isRoot={isRoot}
-                    />
-                  </Box>
-                )}
-              <Box ml={1}>
-                <CollectionBurgerMenu />
-              </Box>
-            </Flex>
-          </Flex>
-        </Box>
-        <Box>
-          <DefaultLanding
-            collection={currentCollection}
-            collectionId={collectionId}
-          />
-          {
-            // Need to have this here so the child modals will show up
-            this.props.children
-          }
-        </Box>
+        <DefaultLanding
+          isRoot={isRoot}
+          ancestors={ancestors}
+          collection={currentCollection}
+          collectionId={collectionId}
+        />
+        {
+          // Need to have this here so the child modals will show up
+          this.props.children
+        }
       </Box>
     );
   }
@@ -469,7 +585,7 @@ const CollectionEditMenu = ({ isRoot, collectionId }) => (
             {
               title: t`Edit this collection`,
               icon: "editdocument",
-              link: `/collections/${collectionId}`,
+              link: `/collection/${collectionId}/edit`,
             },
           ]
         : []),

@@ -243,6 +243,9 @@ export default class AccordianList extends Component {
     const sectionIsTogglable = sectionIndex =>
       alwaysTogglable || sections.length > 1;
 
+    // if any section is searchable just enable a global search
+    let globalSearch = false;
+
     const rows = [];
     for (const [sectionIndex, section] of sections.entries()) {
       const isLastSection = sectionIndex === sections.length - 1;
@@ -265,7 +268,11 @@ export default class AccordianList extends Component {
         section.items &&
         section.items.length > 0
       ) {
-        rows.push({ type: "search", section, sectionIndex, isLastSection });
+        if (alwaysExpanded) {
+          globalSearch = true;
+        } else {
+          rows.push({ type: "search", section, sectionIndex, isLastSection });
+        }
       }
       if (
         sectionIsExpanded(sectionIndex) &&
@@ -293,6 +300,15 @@ export default class AccordianList extends Component {
           }
         }
       }
+    }
+
+    if (globalSearch) {
+      rows.unshift({
+        type: "search",
+        section: {},
+        sectionIndex: 0,
+        isLastSection: false,
+      });
     }
 
     const maxHeight =

@@ -53,7 +53,7 @@
 
 (defmethod fetch-collection-children :card
   [_ collection {:keys [archived?]}]
-  (-> (db/select [Card :id :name :description :collection_position]
+  (-> (db/select [Card :id :name :description :collection_position :display]
         :collection_id (:id collection)
         :archived      archived?)
       (hydrate :favorite)))
@@ -95,7 +95,7 @@
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
-      (hydrate :effective_location :effective_ancestors :can_write)))
+      (hydrate :parent_id :effective_location :effective_ancestors :can_write)))
 
 (s/defn ^:private collection-items
   "Return items in the Collection, restricted by `children-options`.

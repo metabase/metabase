@@ -23,12 +23,23 @@ const Widget = ({
   value,
   onChange,
   props,
+  // NOTE: special props to support adding additional fields
+  question,
+  addField,
 }) => {
   const W = widget;
   return (
     <div className={cx("mb2", { hide: hidden, disable: disabled })}>
       {title && <h4 className="mb1">{title}</h4>}
-      {W && <W value={value} onChange={onChange} {...props} />}
+      {W && (
+        <W
+          value={value}
+          onChange={onChange}
+          question={question}
+          addField={addField}
+          {...props}
+        />
+      )}
     </div>
   );
 };
@@ -44,17 +55,14 @@ class ChartSettings extends Component {
     };
   }
 
-  getChartTypeName() {
-    let { CardVisualization } = getVisualizationTransformed(this.props.series);
-    switch (CardVisualization.identifier) {
-      case "table":
-        return "table";
-      case "scalar":
-        return "number";
-      case "funnel":
-        return "funnel";
-      default:
-        return "chart";
+  componentWillReceiveProps(nextProps) {
+    if (this.props.series !== nextProps.series) {
+      this.setState({
+        series: this._getSeries(
+          nextProps.series,
+          nextProps.series[0].card.visualization_settings,
+        ),
+      });
     }
   }
 
@@ -102,7 +110,7 @@ class ChartSettings extends Component {
   };
 
   render() {
-    const { isDashboard } = this.props;
+    const { isDashboard, question, addField } = this.props;
     const { series } = this.state;
 
     const tabs = {};
@@ -152,7 +160,12 @@ class ChartSettings extends Component {
             <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right p4">
               {widgets &&
                 widgets.map(widget => (
-                  <Widget key={`${widget.id}`} {...widget} />
+                  <Widget
+                    key={`${widget.id}`}
+                    question={question}
+                    addField={addField}
+                    {...widget}
+                  />
                 ))}
             </div>
             <div className="Grid-cell flex flex-column pt2">

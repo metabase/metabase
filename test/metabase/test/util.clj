@@ -29,6 +29,7 @@
              [setting :as setting]
              [table :refer [Table]]
              [user :refer [User]]]
+            [metabase.query-processor.util :as qputil]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data
@@ -36,7 +37,8 @@
              [dataset-definitions :as defs]]
             [toucan.db :as db]
             [toucan.util.test :as test])
-  (:import java.util.TimeZone
+  (:import com.mchange.v2.c3p0.PooledDataSource
+           java.util.TimeZone
            org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
@@ -379,6 +381,13 @@
                           [:cols])]
     (update-in query-results maybe-data-cols #(map round-fingerprint %))))
 
+(defn round-all-decimals
+  "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"
+  [decimal-place data]
+  (qputil/postwalk-pred double?
+                        #(u/round-to-decimals decimal-place %)
+                        data))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   SCHEDULER                                                    |
@@ -443,7 +452,7 @@
   timezone. That causes problems for tests that we can determine the database's timezone. This function will reset the
   connections in the connection pool for `db` to ensure that we get fresh session with no timezone specified"
   [db]
-  (when-let [conn-pool (:datasource (sql/db->pooled-connection-spec db))]
+  (when-let [^PooledDataSource conn-pool (:datasource (sql/db->pooled-connection-spec db))]
     (.softResetAllUsers conn-pool)))
 
 (defn db-timezone-id
@@ -558,3 +567,11 @@
          ;; This releases the fake query function so it finishes
          (deliver pause-query true)
          true)])))
+
+(defmacro throw-if-called
+  "Redefines `fn-var` with a function that throws an exception if it's called"
+  {:style/indent 1}
+  [fn-var & body]
+  `(with-redefs [~fn-var (fn [& args#]
+                           (throw (RuntimeException. "Should not be called!")))]
+     ~@body))

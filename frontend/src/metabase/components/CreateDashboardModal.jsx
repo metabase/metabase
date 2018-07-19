@@ -3,6 +3,9 @@ import PropTypes from "prop-types";
 import { t } from "c-3po";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
+import { push } from "react-router-redux";
+
+import * as Urls from "metabase/lib/urls";
 
 import FormField from "metabase/components/form/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -14,6 +17,7 @@ import Dashboards from "metabase/entities/dashboards";
 
 const mapDispatchToProps = {
   createDashboard: Dashboards.actions.create,
+  push,
 };
 
 @connect(null, mapDispatchToProps)
@@ -21,18 +25,18 @@ const mapDispatchToProps = {
 export default class CreateDashboardModal extends Component {
   constructor(props, context) {
     super(props, context);
-    this.createNewDash = this.createNewDash.bind(this);
-    this.setDescription = this.setDescription.bind(this);
-    this.setName = this.setName.bind(this);
 
-    console.log(props.params);
     this.state = {
       name: null,
       description: null,
       errors: null,
-      // collectionId in the url starts off as a string, but the select will
-      // compare it to the integer ID on colleciton objects
-      collection_id: parseInt(props.params.collectionId),
+      collection_id:
+        props.collectionId != null
+          ? props.collectionId
+          : props.params.collectionId != null &&
+            props.params.collectionId !== "root"
+            ? parseInt(props.params.collectionId)
+            : null,
     };
   }
 
@@ -41,15 +45,15 @@ export default class CreateDashboardModal extends Component {
     onClose: PropTypes.func,
   };
 
-  setName(event) {
+  setName = event => {
     this.setState({ name: event.target.value });
-  }
+  };
 
-  setDescription(event) {
+  setDescription = event => {
     this.setState({ description: event.target.value });
-  }
+  };
 
-  createNewDash(event) {
+  createNewDash = async event => {
     event.preventDefault();
 
     let name = this.state.name && this.state.name.trim();
@@ -62,9 +66,10 @@ export default class CreateDashboardModal extends Component {
       collection_id: this.state.collection_id,
     };
 
-    this.props.createDashboard(newDash, { redirect: true });
+    const { payload } = await this.props.createDashboard(newDash);
+    this.props.push(Urls.dashboard(payload.result));
     this.props.onClose();
-  }
+  };
 
   render() {
     let formError;

@@ -16,6 +16,7 @@ import App from "metabase/App.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp";
 
 // auth containers
+import AuthApp from "metabase/auth/AuthApp";
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
 import LoginApp from "metabase/auth/containers/LoginApp.jsx";
 import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
@@ -177,7 +178,7 @@ export const getRoutes = store => (
       }}
     >
       {/* AUTH */}
-      <Route path="/auth">
+      <Route path="/auth" component={AuthApp}>
         <IndexRedirect to="/auth/login" />
         <Route component={IsNotAuthenticated}>
           <Route path="login" title={t`Login`} component={LoginApp} />
@@ -204,6 +205,7 @@ export const getRoutes = store => (
         </Route>
 
         <Route path="collection/:collectionId" component={CollectionLanding}>
+          <ModalRoute path="edit" modal={CollectionEdit} />
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
           <ModalRoute path="new_collection" modal={CollectionCreate} />
           <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
@@ -252,7 +254,6 @@ export const getRoutes = store => (
       <Route path="/collections">
         <Route path="create" component={CollectionCreate} />
         <Route path="permissions" component={CollectionPermissions} />
-        <Route path=":collectionId" component={CollectionEdit} />
       </Route>
 
       {/* REFERENCE */}

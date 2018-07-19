@@ -198,7 +198,7 @@ export default class SaveQuestionModal extends Component {
         ]}
         onClose={this.props.onClose}
       >
-        <form className="Form-inputs" onSubmit={this.formSubmitted}>
+        <form onSubmit={this.formSubmitted}>
           {saveOrUpdate}
           <CSSTransitionGroup
             transitionName="saveQuestionModalFields"

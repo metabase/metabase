@@ -21,6 +21,9 @@ export const DatabaseListLoader = props => (
   <EntityListLoader entityType="databases" {...props} />
 );
 
+const PAGE_PADDING = [1, 2, 4];
+const ITEM_WIDTHS = [1, 1 / 2, 1 / 3];
+
 const SchemaListLoader = ({ dbId, ...props }) => (
   <EntityListLoader entityType="schemas" entityQuery={{ dbId }} {...props} />
 );
@@ -63,27 +66,19 @@ export class SchemaBrowser extends React.Component {
                 </Box>
                 <Grid>
                   {schemas.map(schema => (
-                    <GridItem w={1 / 3}>
+                    <GridItem w={ITEM_WIDTHS}>
                       <Link
                         to={`/browse/${dbId}/schema/${schema.name}`}
                         mb={1}
                         hover={{ color: normal.purple }}
                       >
                         <Card hoverable px={1}>
-                          <Flex align="center">
-                            <EntityItem
-                              name={schema.name}
-                              iconName="folder"
-                              iconColor={normal.purple}
-                              item={schema}
-                            />
-                            <Box ml="auto">
-                              <Icon name="reference" />
-                              <Tooltip tooltip={t`X-ray this schema`}>
-                                <Icon name="bolt" mx={1} />
-                              </Tooltip>
-                            </Box>
-                          </Flex>
+                          <EntityItem
+                            name={schema.name}
+                            iconName="folder"
+                            iconColor={normal.purple}
+                            item={schema}
+                          />
                         </Card>
                       </Link>
                     </GridItem>
@@ -109,7 +104,7 @@ export class TableBrowser extends React.Component {
           {({ tables, loading, error }) => {
             return (
               <Box>
-                <Box my={2}>
+                <Box mt={3} mb={2}>
                   <BrowserCrumbs
                     crumbs={[
                       { title: t`Our data`, to: "browse" },
@@ -129,7 +124,7 @@ export class TableBrowser extends React.Component {
                     }).getUrl();
 
                     return (
-                      <GridItem w={1 / 3}>
+                      <GridItem w={ITEM_WIDTHS}>
                         <Card
                           hoverable
                           px={1}
@@ -191,7 +186,7 @@ export class TableBrowser extends React.Component {
 
 export class BrowseApp extends React.Component {
   render() {
-    return <Box mx={4}>{this.props.children}</Box>;
+    return <Box mx={PAGE_PADDING}>{this.props.children}</Box>;
   }
 }
 
@@ -207,7 +202,7 @@ export class DatabaseBrowser extends React.Component {
             return (
               <Grid>
                 {databases.map(database => (
-                  <GridItem>
+                  <GridItem w={ITEM_WIDTHS}>
                     <Link to={`browse/${database.id}`}>
                       <Card p={3} hover={{ color: normal.blue }}>
                         <Icon name="database" color={normal.grey2} mb={3} />
