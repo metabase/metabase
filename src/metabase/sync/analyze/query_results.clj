@@ -85,7 +85,7 @@
                   ;; can't use those as field literals in subsequent queries just filter them out
                   (->> (map (fn [fingerprint metadata]
                               (cond
-                                (instance? Exception fingerprint) metadata
+                                (instance? Throwable fingerprint) metadata
                                 (empty? (:name metadata))         nil
                                 :else
                                 (assoc metadata :fingerprint fingerprint)))

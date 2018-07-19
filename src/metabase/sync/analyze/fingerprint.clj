@@ -46,7 +46,7 @@
               (fn [fingerprints]
                 (reduce (fn [count-info [field fingerprint]]
                           (cond
-                            (instance? Exception fingerprint)
+                            (instance? Throwable fingerprint)
                             (update count-info :failed-fingerprints inc)
 
                             (some-> fingerprint :global :distinct-count zero?)

@@ -90,7 +90,12 @@
   [rf msg]
   (fn
     ([] (with-reduced-error msg (rf)))
-    ([acc] (unreduced (with-reduced-error msg (rf acc))))
+    ([acc]
+     (unreduced
+      (if (or (reduced? acc)
+              (instance? Throwable acc))
+        acc
+        (with-reduced-error msg (rf acc)))))
     ([acc e] (with-reduced-error msg (rf acc e)))))
 
 (defmacro ^:private deffingerprinter

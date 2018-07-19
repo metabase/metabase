@@ -257,19 +257,19 @@
 (extend-protocol INameForLogging
   i/DatabaseInstance
   (name-for-logging [{database-name :name, id :id, engine :engine,}]
-    (trs "{0} Database {1} '{2}'" (name engine) (or id "") database-name))
+    (trs "{0} Database {1} ''{2}''" (name engine) (or id "") database-name))
 
   i/TableInstance
   (name-for-logging [{schema :schema, id :id, table-name :name}]
-    (trs "Table {0} '{1}'" (or id "") (str (when (seq schema) (str schema ".")) table-name)))
+    (trs "Table {0} ''{1}''" (or id "") (str (when (seq schema) (str schema ".")) table-name)))
 
   i/FieldInstance
   (name-for-logging [{field-name :name, id :id}]
-    (trs "Field {0} '{1}'" (or id "") field-name))
+    (trs "Field {0} ''{1}''" (or id "") field-name))
 
   i/ResultColumnMetadataInstance
   (name-for-logging [{field-name :name}]
-    (trs "Field '{0}'" field-name)))
+    (trs "Field ''{0}''" field-name)))
 
 (defn calculate-hash
   "Calculate a cryptographic hash on `clj-data` and return that hash as a string"
