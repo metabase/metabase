@@ -19,7 +19,7 @@ If your Metabase administrator has enabled [public sharing](../administration-gu
 ### Organizing and finding your saved questions
 After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions. Metabase has several ways to help you organize things and find what you’re looking for.
 
-![ FIX ME ]( NEW IMAGE HERE)
+![Our analytics](images/our-analytics-page.png)
 
 #### Collections
 Collections are the main way to organize questions, as well as dashboards and pulses. Administrators can give you different kinds of access to each collection:
@@ -31,7 +31,9 @@ Collections are the main way to organize questions, as well as dashboards and pu
 If you're an administrator of your Metabase instance, here are [instructions for creating collections and managing permissions](../administration-guide/06-collections.md).
 
 #### Your personal collection
-In addition to the collections you and your teammates have made, you'll also always have your own personal collection that only you and administrators can see. To find it, click on the "browse all items" button on the homepage and click on "my personal collection" in the list of collections. You can use your personal collection as a scratch space to put experiments and explorations that you don't think would be particularly interesting to the rest of your team, or as a work-in-progress space where you can work on things and then move them to a shared place once they're ready.
+In addition to the collections you and your teammates have made, you'll also always have your own personal collection that only you and administrators can see. To find it, click on the "browse all items" button on the homepage and click on "my personal collection" in the list of collections.
+
+You can use your personal collection as a scratch space to put experiments and explorations that you don't think would be particularly interesting to the rest of your team, or as a work-in-progress space where you can work on things and then move them to a shared place once they're ready.
 
 #### Pinned items
 In each collection, you can pin important or useful dashboards or questions to make them stick to the top of the screen. Pinned items will also be displayed as large cards to make them stand out well. If you have Curate permissions for a collection, you can pin and un-pin things, and drag and drop pins to change their order.
