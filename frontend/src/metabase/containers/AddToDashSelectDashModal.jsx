@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 import { t } from "c-3po";
 
+import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import DashboardForm from "metabase/containers/DashboardForm.jsx";
 import DashboardPicker from "metabase/containers/DashboardPicker";
@@ -48,11 +49,12 @@ export default class AddToDashSelectDashModal extends Component {
           onClose={this.props.onClose}
         >
           <DashboardPicker onChange={this.addToDashboard} />
-          <button
+          <Button
+            mt={1}
             onClick={() => this.setState({ shouldCreateDashboard: true })}
           >
-            Create New Dashboard
-          </button>
+            {t`Create New Dashboard`}
+          </Button>
         </ModalContent>
       );
     }
