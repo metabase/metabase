@@ -145,7 +145,7 @@ class Overworld extends React.Component {
           <Box mb={2}>
             <h4>{t`Our analytics`}</h4>
           </Box>
-          <Card p={[2, 3]}>
+          <Card p={[1, 2]}>
             {this.props.collections.filter(
               c => c.id !== user.personal_collection_id,
             ).length > 0 ? (
@@ -156,9 +156,12 @@ class Overworld extends React.Component {
                   src="app/img/empty.png"
                   className="block ml-auto mr-auto"
                 />
-                <h2>
-                  {t`Access dashboards, questions, and collections in "Our Analytics"`}
-                </h2>
+                <h3>
+                  { user.is_superuser
+                      ? t`Save  dashboards, questions, and collections in "Our Analytics"`
+                      : t`Access dashboards, questions, and collections in "Our Analytics"`
+                  }
+                </h3>
               </Box>
             )}
             <Link
