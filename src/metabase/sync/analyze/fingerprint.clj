@@ -42,7 +42,7 @@
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
   (transduce identity
              (redux/post-complete
-              f/fingerprint-fields
+              (f/fingerprint-fields fields)
               (fn [fingerprints]
                 (reduce (fn [count-info [field fingerprint]]
                           (cond
