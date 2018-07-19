@@ -2,7 +2,6 @@
   "Non-identifying fingerprinters for various field types."
   (:require [cheshire.core :as json]
             [kixi.stats.core :as stats]
-            [medley.core :as m]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util.date :as du]
