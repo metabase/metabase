@@ -17,18 +17,19 @@
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
   [& rfs]
   (fn
-    ([]
-     (mapv (fn [rf]
-             (rf))
-           rfs))
-    ([acc]
-     (mapv (fn [rf acc]
-             (rf acc))
-           rfs acc))
-    ([acc e]
-     (mapv (fn [rf acc e]
-             (rf acc e))
-           rfs acc e))))
+    ([] (mapv (fn [rf] (rf)) rfs))
+    ([accs] (mapv (fn [rf acc] (rf (unreduced acc))) rfs accs))
+    ([accs row]
+     (let [all-reduced? (volatile! true)
+           results      (mapv (fn [rf acc x]
+                                (if-not (reduced? acc)
+                                  (do (vreset! all-reduced? false)
+                                      (rf acc x))
+                                  acc))
+                              rfs accs row)]
+       (if @all-reduced?
+         (reduced results)
+         results)))))
 
 (defn- monoid
   [f init]

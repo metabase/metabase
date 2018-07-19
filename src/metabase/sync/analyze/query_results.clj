@@ -84,10 +84,11 @@
                   ;; Rarely certain queries will return columns with no names. For example
                   ;; `SELECT COUNT(*)` in SQL Server seems to come back with no name. Since we
                   ;; can't use those as field literals in subsequent queries just filter them out
-                  (keep (fn [fingerprint metadata]
-                          (when (and (seq (:name metadata))
-                                     (not (instance? Exception fingerprint)))
-                            (assoc metadata :fingerprint fingerprint)))
-                        fingerprints
-                        result-metadata)))
+                  (->> (map (fn [fingerprint metadata]
+                              (when (and (seq (:name metadata))
+                                         (not (instance? Exception fingerprint)))
+                                (assoc metadata :fingerprint fingerprint)))
+                            fingerprints
+                            result-metadata)
+                       (remove nil?))))
                (:rows results))))
