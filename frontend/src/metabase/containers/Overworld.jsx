@@ -157,9 +157,7 @@ class Overworld extends React.Component {
                   className="block ml-auto mr-auto"
                 />
                 <h2>
-                  {user.is_superuser
-                    ? t`Once you create collections they'll show up here.`
-                    : t``}
+                  {t`Access dashboards, questions, and collections in "Our Analytics"`}
                 </h2>
               </Box>
             )}
