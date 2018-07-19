@@ -122,6 +122,38 @@ class DefaultLanding extends React.Component {
     moveItems: null,
   };
 
+  handleBulkArchive = async () => {
+    try {
+      await Promise.all(
+        this.props.selected.map(item => item.setArchived(true)),
+      );
+    } finally {
+      this.handleBulkActionSuccess();
+    }
+  };
+
+  handleBulkMoveStart = () => {
+    this.setState({ moveItems: this.props.selected });
+  };
+
+  handleBulkMove = async collection => {
+    try {
+      await Promise.all(
+        this.state.moveItems.map(item => item.setCollection(collection)),
+      );
+      this.setState({ moveItems: null });
+    } finally {
+      this.handleBulkActionSuccess();
+    }
+  };
+
+  handleBulkActionSuccess = () => {
+    // Clear the selection in listSelect
+    // Fixes an issue where things were staying selected when moving between
+    // different collection pages
+    this.props.onSelectNone();
+  };
+
   render() {
     const {
       ancestors,
@@ -140,14 +172,6 @@ class DefaultLanding extends React.Component {
       location,
     } = this.props;
     const { moveItems } = this.state;
-
-    // Call this when finishing a bulk action
-    const onBulkActionSuccess = () => {
-      // Clear the selection in listSelect
-      // Fixes an issue where things were staying selected when moving between
-      // different collection pages
-      onSelectNone();
-    };
 
     const collectionWidth = unpinned.length > 0 ? [1, 1 / 3] : 1;
     const itemWidth = unpinned.length > 0 ? [1, 2 / 3] : 0;
@@ -386,22 +410,12 @@ class DefaultLanding extends React.Component {
                   <BulkActionControls
                     onArchive={
                       _.all(selected, item => item.setArchived)
-                        ? async () => {
-                            try {
-                              await Promise.all(
-                                selected.map(item => item.setArchived(true)),
-                              );
-                            } finally {
-                              onBulkActionSuccess();
-                            }
-                          }
+                        ? this.handleBulkArchive
                         : null
                     }
                     onMove={
                       _.all(selected, item => item.setCollection)
-                        ? () => {
-                            this.setState({ moveItems: selected });
-                          }
+                        ? this.handleBulkMoveStart
                         : null
                     }
                   />
@@ -411,29 +425,19 @@ class DefaultLanding extends React.Component {
             </BulkActionBar>
           </Box>
         </Box>
-        {moveItems &&
-          moveItems.length > 0 && (
-            <Modal>
-              <CollectionMoveModal
-                title={
-                  moveItems.length > 1
-                    ? t`Move ${moveItems.length} items?`
-                    : `Move "${moveItems[0].getName()}"?`
-                }
-                onClose={() => this.setState({ moveItems: null })}
-                onMove={async collection => {
-                  try {
-                    await Promise.all(
-                      moveItems.map(item => item.setCollection(collection)),
-                    );
-                    this.setState({ moveItems: null });
-                  } finally {
-                    onBulkActionSuccess();
-                  }
-                }}
-              />
-            </Modal>
-          )}
+        {!_.isEmpty(moveItems) && (
+          <Modal>
+            <CollectionMoveModal
+              title={
+                moveItems.length > 1
+                  ? t`Move ${moveItems.length} items?`
+                  : t`Move "${moveItems[0].getName()}"?`
+              }
+              onClose={() => this.setState({ moveItems: null })}
+              onMove={this.handleBulkMove}
+            />
+          </Modal>
+        )}
         <ItemsDragLayer selected={selected} />
       </Box>
     );
