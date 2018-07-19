@@ -24,7 +24,6 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
 
 
   if(query.query) {
-    console.log(fields)
     const fieldsNorm = fields instanceof Array ? fields.reduce((acc, p) => ({...acc, [p.id] : p}), {}) : fields;
     const metadata = {fields: fieldsNorm || {}};
     const filters = (parameters || []).map(datasetParameter => parameterToMBQLFilter(datasetParameter, metadata)).reduce((acc, p) => (acc && ['AND', acc, p]) || p, query.query.filter);

@@ -31,21 +31,6 @@ const RESIZE_HANDLE_WIDTH = 5;
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-function pickRowsToMeasure(rows, columnIndex, count = 10) {
-  const rowIndexes = [];
-  // measure up to 10 non-nil cells
-  for (
-    let rowIndex = 0;
-    rowIndex < rows.length && rowIndexes.length < count;
-    rowIndex++
-  ) {
-    if (rows[rowIndex][columnIndex] != null) {
-      rowIndexes.push(rowIndex);
-    }
-  }
-  return rowIndexes;
-}
-
 type Props = VisualizationProps & {
   width: number,
   height: number,
@@ -165,37 +150,41 @@ export default class TableInteractiveSummary extends Component {
   }
 
   _measure() {
-    const { data: { cols, rows } } = this.props;
+    let { data: { cols, rows, probeRows, probeCols, valueColsLen } } = this.props;
+    //todo: benchmark
+    // probeCols = cols;
+    // valueColsLen = 0;
 
     ReactDOM.render(
-      <div style={{ display: "flex" }}>
-        {cols.map((column, columnIndex) => (
-          <div className="fake-column" key={"column-" + columnIndex}>
+      <div style={{display: "flex"}}>
+        {probeCols.map((column, columnIndex) => (
+          <div className="fake-column" key={"column1-" + columnIndex}>
             {this.tableLowerHeaderRenderer({
               columnIndex,
               rowIndex: 0,
               key: "header",
               style: {},
             })}
-            {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
-              this.cellRenderer({visibleRowIndices : { start: 0, stop : 100}, visibleColumnIndices: { start: 0, stop : columnIndex}}, {
-                rowIndex,
-                columnIndex,
-                key: "row-" + rowIndex,
-                style: {},
-              }),
-            )}
+            {probeRows.map((probeRow, ri) => this.renderCell(probeRow, column, columnIndex, { start: 0, stop : rows.length}, "column-" + columnIndex + " row1-" + ri, 0, true, {}
+              ))}
           </div>
         ))}
       </div>,
       this._div,
       () => {
-        const contentWidths = [].map.call(
+        let contentWidths = [].map.call(
           this._div.getElementsByClassName("fake-column"),
           columnElement => columnElement.offsetWidth,
         );
 
-        const columnWidths: number[] = cols.map((col, index) => {
+        const diff = cols.length - probeCols.length;
+        if(diff > 0){
+          const toDuplicate = contentWidths.slice(contentWidths.length-valueColsLen);
+          const rep = [...Array(diff).keys()];
+          contentWidths = [...contentWidths,...rep.map(p => p % valueColsLen).map(p => toDuplicate[p])]
+        }
+
+        let columnWidths: number[] = cols.map((col, index) => {
           if (this.columnNeedsResize) {
             if (
               this.columnNeedsResize[index] &&
@@ -252,7 +241,7 @@ export default class TableInteractiveSummary extends Component {
   }
 
 
-  cellRenderer = ({visibleRowIndices, visibleColumnIndices}: CellRangeProps, { key, style, rowIndex, columnIndex }: CellRendererProps) => {
+  cellRenderer = ({visibleRowIndices, visibleColumnIndices, aa}: CellRangeProps, { key, style, rowIndex, columnIndex }: CellRendererProps) => {
     const groupingManager = this.props.data;
 
     if(!groupingManager.isVisible(rowIndex, columnIndex, visibleRowIndices)) {
@@ -260,15 +249,21 @@ export default class TableInteractiveSummary extends Component {
     }
     const {
       data,
-      isPivoted,
       onVisualizationClick,
       visualizationIsClickable,
     } = this.props;
     const { rows, cols } = data;
     const column = cols[columnIndex];
     const row = rows[rowIndex];
-    let value = column.getValue(row);
     const isGrandTotal = row.isTotalColumnIndex === 0 && groupingManager.rows.length-1 === rowIndex;
+    return this.renderCell(row, column, columnIndex, visibleRowIndices, key, rowIndex, isGrandTotal, style, onVisualizationClick,visualizationIsClickable);
+
+  };
+
+  renderCell = (row, column,columnIndex, visibleRowIndices, key, rowIndex, isGrandTotal, style, onVisualizationClick, visualizationIsClickable ) =>{
+    const groupingManager = this.props.data;
+    let value = column.getValue(row);
+
 
     if (isGrandTotal && columnIndex === 0)
       value = 'Grand totals';
@@ -280,13 +275,13 @@ export default class TableInteractiveSummary extends Component {
       mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', 'font-weight':'bold' };
 
     if(groupingManager.isGrouped(columnIndex))
-      key = (columnIndex + '-' + [...Array(columnIndex+1).keys()].map(i => row[i] || 'dd').join('-')) + (row.isTotalColumnIndex || '');
+      key = key + (columnIndex + '-' + [...Array(columnIndex+1).keys()].map(i => row[i] || 'dd').join('-')) + (row.isTotalColumnIndex || '');
 
     const clicked = getTableCellClickedObject(
-      data,
+      this.props.data,
       rowIndex,
       columnIndex,
-      isPivoted,
+      false,
     );
     const isClickable =
       onVisualizationClick && visualizationIsClickable(clicked);
@@ -309,7 +304,7 @@ export default class TableInteractiveSummary extends Component {
         className={cx("TableInteractive-cellWrapper", {
           "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
           "TableInteractive-cellWrapper--lastColumn":
-            columnIndex === cols.length - 1,
+          columnIndex === this.props.data.cols.length - 1,
           "cursor-pointer": isClickable,
           "justify-end": isColumnRightAligned(column),
           link: isClickable && isID(column),
@@ -317,8 +312,8 @@ export default class TableInteractiveSummary extends Component {
         onMouseUp={
           isClickable
             ? e => {
-                onVisualizationClick({ ...clicked, element: e.currentTarget });
-              }
+              onVisualizationClick({ ...clicked, element: e.currentTarget });
+            }
             : undefined
         }
       >
@@ -330,7 +325,7 @@ export default class TableInteractiveSummary extends Component {
         </div>
       </div>
     );
-  };
+  }
 
   tableUpperHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps, group) => {
     const {
@@ -447,6 +442,7 @@ export default class TableInteractiveSummary extends Component {
       sort && sort[0] && sort[0][0] && sort[0][0][1] === column.id;
     const isAscending = sort && sort[0] && sort[0][1] === "ascending";
 
+
     return (
       <div
         key={key}
@@ -528,7 +524,6 @@ export default class TableInteractiveSummary extends Component {
 
   render() {
     const { width, height, data: { cols, rows }, className } = this.props;
-
     if (!width || !height) {
       return <div className={className} />;
     }
@@ -565,7 +560,7 @@ export default class TableInteractiveSummary extends Component {
               height={height}
             />
             <Grid
-              ref={ref => (this.header = ref)}
+              ref={ref => (this.headerUpper = ref)}
               style={{
                 top: 0,
                 left: 0,
