@@ -152,17 +152,16 @@ class Overworld extends React.Component {
               <CollectionList collections={this.props.collections} />
             ) : (
               <Box className="text-centered">
-                <Box style={{ opacity: 0.5}}>
+                <Box style={{ opacity: 0.5 }}>
                   <RetinaImage
                     src="app/img/empty.png"
                     className="block ml-auto mr-auto"
                   />
                 </Box>
                 <h3 className="text-medium">
-                  { user.is_superuser
-                      ? t`Save  dashboards, questions, and collections in "Our Analytics"`
-                      : t`Access dashboards, questions, and collections in "Our Analytics"`
-                  }
+                  {user.is_superuser
+                    ? t`Save  dashboards, questions, and collections in "Our Analytics"`
+                    : t`Access dashboards, questions, and collections in "Our Analytics"`}
                 </h3>
               </Box>
             )}
