@@ -29,11 +29,7 @@ const BulkActionBar = ({ children, showing }) => (
           transform: `translateY(${translateY}px)`,
         }}
       >
-        <Card>
-          <Flex align="center" py={2} px={4}>
-            {children}
-          </Flex>
-        </Card>
+        <Card>{children}</Card>
       </FixedBottomBar>
     )}
   </Motion>

@@ -1,12 +1,13 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import { t } from "c-3po";
+import { t, msgid, ngettext } from "c-3po";
 import { connect } from "react-redux";
+import { withRouter } from "react-router";
 import _ from "underscore";
+import cx from "classnames";
+
 import listSelect from "metabase/hoc/ListSelect";
 import BulkActionBar from "metabase/components/BulkActionBar";
-import cx from "classnames";
-import { withRouter } from "react-router";
 
 import * as Urls from "metabase/lib/urls";
 import colors, { normal } from "metabase/lib/colors";
@@ -404,24 +405,37 @@ class DefaultLanding extends React.Component {
               </Box>
             </Box>
             <BulkActionBar showing={selected.length > 0}>
-              <Flex align="center">
-                <Flex align="center">
-                  <SelectionControls {...this.props} />
-                  <BulkActionControls
-                    onArchive={
-                      _.all(selected, item => item.setArchived)
-                        ? this.handleBulkArchive
-                        : null
-                    }
-                    onMove={
-                      _.all(selected, item => item.setCollection)
-                        ? this.handleBulkMoveStart
-                        : null
-                    }
-                  />
-                  <Box ml="auto">{t`${selected.length} items selected`}</Box>
-                </Flex>
-              </Flex>
+              {/* NOTE: these padding and grid sizes must be carefully matched
+                   to the main content above to ensure the bulk checkbox lines up */}
+              <Box px={[2, 4]} py={1}>
+                <Grid>
+                  <GridItem w={collectionWidth} />
+                  <GridItem w={itemWidth} px={[1, 2]}>
+                    <Flex align="center" justify="center" px={2}>
+                      <SelectionControls {...this.props} />
+                      <BulkActionControls
+                        onArchive={
+                          _.all(selected, item => item.setArchived)
+                            ? this.handleBulkArchive
+                            : null
+                        }
+                        onMove={
+                          _.all(selected, item => item.setCollection)
+                            ? this.handleBulkMoveStart
+                            : null
+                        }
+                      />
+                      <Box ml="auto">
+                        {ngettext(
+                          msgid`${selected.length} item selected`,
+                          `${selected.length} items selected`,
+                          selected.length,
+                        )}
+                      </Box>
+                    </Flex>
+                  </GridItem>
+                </Grid>
+              </Box>
             </BulkActionBar>
           </Box>
         </Box>
@@ -531,13 +545,14 @@ const SelectionControls = ({
   deselected,
   onSelectAll,
   onSelectNone,
+  size = 18,
 }) =>
   deselected.length === 0 ? (
-    <StackedCheckBox checked onChange={onSelectNone} />
+    <StackedCheckBox checked onChange={onSelectNone} size={size} />
   ) : selected.length === 0 ? (
-    <StackedCheckBox onChange={onSelectAll} />
+    <StackedCheckBox onChange={onSelectAll} size={size} />
   ) : (
-    <StackedCheckBox checked indeterminate onChange={onSelectAll} />
+    <StackedCheckBox checked indeterminate onChange={onSelectAll} size={size} />
   );
 
 @entityObjectLoader({
