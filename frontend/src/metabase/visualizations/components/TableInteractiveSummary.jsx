@@ -151,9 +151,9 @@ export default class TableInteractiveSummary extends Component {
 
   _measure() {
     let { data: { cols, rows, probeRows, probeCols, valueColsLen } } = this.props;
-    //todo: benchmark
-    // probeCols = cols;
-    // valueColsLen = 0;
+    //todo: benchmark it
+    probeCols = cols;
+    valueColsLen = 0;
 
     ReactDOM.render(
       <div style={{display: "flex"}}>
