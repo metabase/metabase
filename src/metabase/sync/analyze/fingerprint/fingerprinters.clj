@@ -149,10 +149,10 @@
            (sequential? parsed-json))))))
 
 (deffingerprinter :type/Text
-  (redux/fuse {:percent-json   (stats/share valid-serialized-json?)
-               :percent-url    (stats/share u/url?)
-               :percent-email  (stats/share u/email?)
-               :average-length ((map (comp count str)) stats/mean)}))
+  ((map u/jdbc-clob->str) (redux/fuse {:percent-json   (stats/share valid-serialized-json?)
+                                       :percent-url    (stats/share u/url?)
+                                       :percent-email  (stats/share u/email?)
+                                       :average-length ((map (comp count str)) stats/mean)})))
 
 (defn fingerprint-fields
   "Return a transducer for fingerprinting a resultset with fields `fields`."

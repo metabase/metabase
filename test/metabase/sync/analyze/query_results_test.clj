@@ -72,7 +72,7 @@
 ;; Native queries don't know what the associated Fields are for the results, we need to compute the fingerprints, but
 ;; they should sill be the same except for some of the optimizations we do when we have all the information.
 (expect
-  (update mutil/venue-fingerprints :category_id assoc :type {:type/Number {:min 2, :max 74, :avg 29.98}})
+  (update mutil/venue-fingerprints :category_id assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}})
   (tt/with-temp Card [card {:dataset_query   {:database (data/id)
                                               :type     :native
                                               :native   {:query "select * from venues"}}}]

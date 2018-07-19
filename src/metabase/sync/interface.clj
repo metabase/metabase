@@ -96,15 +96,15 @@
 
 (def NumberFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Number`."
-  {(s/optional-key :min) s/Num
-   (s/optional-key :max) s/Num
-   (s/optional-key :avg) s/Num})
+  {(s/optional-key :min) (s/maybe s/Num)
+   (s/optional-key :max) (s/maybe s/Num)
+   (s/optional-key :avg) (s/maybe s/Num)})
 
 (def TextFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Text`."
-  {(s/optional-key :percent-json)   Percent
-   (s/optional-key :percent-url)    Percent
-   (s/optional-key :percent-email)  Percent
+  {(s/optional-key :percent-json)   (s/maybe Percent)
+   (s/optional-key :percent-url)    (s/maybe Percent)
+   (s/optional-key :percent-email)  (s/maybe Percent)
    (s/optional-key :average-length) su/PositiveNum})
 
 (def DateTimeFingerprint
