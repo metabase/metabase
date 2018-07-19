@@ -1,6 +1,5 @@
 import React from "react";
 import cx from "classnames";
-import { normal } from "metabase/lib/colors";
 
 const DropTargetBackgroundAndBorder = ({
   highlighted,
@@ -24,8 +23,6 @@ const DropTargetBackgroundAndBorder = ({
       right: -marginRight,
       zIndex: -1,
       boxSizing: "border-box",
-      border: "2px solid transparent",
-      borderColor: hovered & !noDrop ? normal.blue : "transparent",
     }}
   />
 );

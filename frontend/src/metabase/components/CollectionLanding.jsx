@@ -23,6 +23,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import VirtualizedList from "metabase/components/VirtualizedList";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar";
+import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
@@ -79,7 +80,7 @@ const QuestionEmptyState = () => (
     <Box>
       <Icon name="beaker" size={32} />
     </Box>
-    <h3>{t`Quesitons are a saved look at your data.`}</h3>
+    <h3>{t`Questions are a saved look at your data.`}</h3>
   </EmptyStateWrapper>
 );
 
@@ -158,6 +159,10 @@ class DefaultLanding extends React.Component {
       unpinnedItems = unpinned.filter(u => u.model === location.query.type);
     }
 
+    const collectionIsEmpty = !unpinned.length > 0 && !collections.length > 0;
+    const collectionHasPins = pinned.length > 0;
+    const collectionHasItems = unpinned.length > 0;
+
     return (
       <Box>
         <Box>
@@ -204,7 +209,7 @@ class DefaultLanding extends React.Component {
           </Flex>
           <Box>
             <Box>
-              {pinned.length > 0 ? (
+              {collectionHasPins ? (
                 <Box px={PAGE_PADDING} pt={2} pb={3} bg={colors["bg-medium"]}>
                   <CollectionSectionHeading>{t`Pins`}</CollectionSectionHeading>
                   <PinDropTarget
@@ -268,21 +273,23 @@ class DefaultLanding extends React.Component {
               <Box pt={[1, 2]} px={[2, 4]}>
                 <Grid>
                   <GridItem w={collectionWidth}>
-                    <Box pr={2} className="relative">
-                      <Box py={2}>
-                        <CollectionSectionHeading>
-                          {t`Collections`}
-                        </CollectionSectionHeading>
+                    {!collectionIsEmpty && (
+                      <Box pr={2} className="relative">
+                        <Box py={2}>
+                          <CollectionSectionHeading>
+                            {t`Collections`}
+                          </CollectionSectionHeading>
+                        </Box>
+                        <CollectionList
+                          currentCollection={collection}
+                          collections={collections}
+                          isRoot={collectionId === "root"}
+                          w={collectionGridSize}
+                        />
                       </Box>
-                      <CollectionList
-                        currentCollection={collection}
-                        collections={collections}
-                        isRoot={collectionId === "root"}
-                        w={collectionGridSize}
-                      />
-                    </Box>
+                    )}
                   </GridItem>
-                  {unpinned.length > 0 && (
+                  {collectionHasItems && (
                     <GridItem w={itemWidth}>
                       <Box>
                         <ItemTypeFilterBar />
@@ -347,6 +354,29 @@ class DefaultLanding extends React.Component {
                     </GridItem>
                   )}
                 </Grid>
+                {unpinned.length === 0 && (
+                  <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
+                    {({ hovered }) => (
+                      <Flex
+                        align="center"
+                        justify="center"
+                        py={2}
+                        m={2}
+                        color={
+                          hovered ? colors["brand"] : colors["text-medium"]
+                        }
+                      >
+                        {t`Drag here to un-pin`}
+                      </Flex>
+                    )}
+                  </PinDropTarget>
+                )}
+
+                {collectionIsEmpty && (
+                  <Flex align="center" justify="center" w={1}>
+                    <CollectionEmptyState />
+                  </Flex>
+                )}
               </Box>
             </Box>
             <BulkActionBar showing={selected.length > 0}>

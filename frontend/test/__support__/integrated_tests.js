@@ -668,6 +668,14 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
       ? { status: 0, responseText: "" }
       : await fetch(api.basename + url, fetchOptions);
 
+    if (!window.document) {
+      console.warn(
+        "API request completed after test ended. Ignoring result.",
+        url,
+      );
+      return;
+    }
+
     if (isCancelled) {
       throw { status: 0, data: "", isCancelled: true };
     }
@@ -710,6 +718,16 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
 
       throw error;
     }
+  } catch (e) {
+    if (!window.document) {
+      console.warn(
+        "API request failed after test ended. Ignoring result.",
+        url,
+        e,
+      );
+      return;
+    }
+    throw e;
   } finally {
     pendingRequests--;
     if (pendingRequests === 0 && pendingRequestsDeferred) {
