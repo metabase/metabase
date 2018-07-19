@@ -70,12 +70,6 @@ class AutomaticDashboardApp extends React.Component {
     );
     triggerToast(
       <div className="flex align-center">
-        <Icon
-          name="dashboard"
-          size={22}
-          className="mr2"
-          color={colors["text-medium"]}
-        />
         {t`Your dashboard was saved`}
         <Link
           className="link text-bold ml1"
@@ -84,6 +78,7 @@ class AutomaticDashboardApp extends React.Component {
           {t`See it`}
         </Link>
       </div>,
+      { icon: "dashboard" },
     );
 
     this.setState({ savedDashboardId: newDashboard.id });
@@ -93,7 +88,7 @@ class AutomaticDashboardApp extends React.Component {
   componentWillReceiveProps(nextProps) {
     // clear savedDashboardId if changing to a different dashboard
     if (this.props.location.pathname !== nextProps.location.pathname) {
-        this.setState({ savedDashboardId: null });
+      this.setState({ savedDashboardId: null });
     }
   }
 
