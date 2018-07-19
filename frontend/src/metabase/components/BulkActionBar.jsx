@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex } from "grid-styled";
+import { Box } from "grid-styled";
 import Card from "metabase/components/Card";
 import { Motion, spring } from "react-motion";
 

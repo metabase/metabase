@@ -169,7 +169,6 @@ class DefaultLanding extends React.Component {
       selected,
       selection,
       onToggleSelected,
-      onSelectNone,
       location,
     } = this.props;
     const { moveItems } = this.state;
