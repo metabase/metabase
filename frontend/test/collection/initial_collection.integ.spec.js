@@ -32,8 +32,8 @@ describe("initial collection id", () => {
 
     describe("a new collection", () => {
       it("should be the parent collection", async () => {
-        store.pushPath("/collection/root/new_collection");
-        await assertInitialCollection(app, ROOT_COLLECTION_NAME);
+        store.pushPath(`/collection/${collection.id}/new_collection`);
+        await assertInitialCollection(app, collection.name);
       });
     });
     describe("a new pulse", () => {
