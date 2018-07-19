@@ -48,8 +48,9 @@ let MetabaseUtils = {
   generatePassword: function(complexity) {
     complexity =
       complexity || MetabaseSettings.passwordComplexityRequirements() || {};
-    // fall back to length of 14 if the password_complexity Setting isn't set or total isn't passed in
-    const len = complexity.total || 14;
+    // generated password must be at least `complexity.total`, but can be longer
+    // so hard code a minimum of 14
+    const len = Math.max(complexity.total || 0, 14);
 
     let password = "";
     let tries = 0;
