@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -e
+set -x
+
+# This script runs the maven build, including unit tests, assembles a fat jar with
+# embedded web server, and packages the resulting thing in a Docker image that runs
+# the server on startup. The image is tagged with the string passed in as the first argument.
+
+# This script is invoked during CI build with the following arguments:
+target_image_name=$1
+app_name=$2
+app_version=$3
+
+docker build -t ${target_image_name} .
