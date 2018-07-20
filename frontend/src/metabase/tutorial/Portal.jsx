@@ -70,7 +70,7 @@ export default class Portal extends Component {
     return {
       position: "absolute",
       boxSizing: "content-box",
-      border: `10000px solid ${colors["accent2"]}`,
+      border: `10000px solid ${colors["text-dark"]}`,
       boxShadow: `inset 0px 0px 8px ${colors["shadow"]}`,
       transform: "translate(-10000px, -10000px)",
       borderRadius: "10010px",
