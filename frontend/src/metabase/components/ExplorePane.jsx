@@ -117,7 +117,7 @@ export class ExplorePane extends React.Component {
         )}
         {hasMore && (
           <div
-            className="border-top cursor-pointer text-brand-hover flex layout-centered text-grey-2 px2 pt2 mt4"
+            className="border-top cursor-pointer text-brand-hover flex layout-centered text-light px2 pt2 mt4"
             onClick={() => this.setState({ visibleItems: visibleItems + 4 })}
           >
             <Icon name="chevrondown" size={20} />
@@ -156,7 +156,7 @@ export const ExploreList = ({
 export const ExploreOption = ({ option }: { option: Candidate }) => (
   <Link
     to={option.url}
-    className="flex align-center text-bold no-decoration text-grey-5 text-brand-hover bg-light p2 py3"
+    className="flex align-center text-bold no-decoration text-medium text-brand-hover bg-light p2 py3"
   >
     <Icon
       name="bolt"

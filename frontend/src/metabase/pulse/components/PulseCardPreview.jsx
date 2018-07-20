@@ -75,7 +75,7 @@ export default class PulseCardPreview extends Component {
         }}
       >
         <div
-          className="absolute p2 text-grey-2"
+          className="absolute p2 text-light"
           style={{
             top: 2,
             right: 2,
@@ -198,7 +198,7 @@ RenderedPulseCardPreviewHeader.propTypes = {
 };
 
 const RenderedPulseCardPreviewMessage = ({ children }) => (
-  <div className="text-grey-4">{children}</div>
+  <div className="text-medium">{children}</div>
 );
 
 RenderedPulseCardPreviewMessage.propTypes = {

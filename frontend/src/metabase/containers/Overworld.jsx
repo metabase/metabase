@@ -64,7 +64,7 @@ class Overworld extends React.Component {
           <MetabotLogo />
           <Box ml={2}>
             <Subhead>{Greeting.sayHello(user.first_name)}</Subhead>
-            <p className="text-paragraph m0 text-grey-3">{t`Don't tell anyone, but you're my favorite.`}</p>
+            <p className="text-paragraph m0 text-medium">{t`Don't tell anyone, but you're my favorite.`}</p>
           </Box>
         </Flex>
         <CollectionItemsLoader collectionId="root">

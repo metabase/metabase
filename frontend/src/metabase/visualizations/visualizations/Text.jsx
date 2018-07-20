@@ -212,7 +212,7 @@ const TextActionButtons = ({
         <a
           data-metabase-event={"Dashboard;Text;edit"}
           className={cx(" cursor-pointer h3 flex-no-shrink relative mr1", {
-            "text-grey-2 text-grey-4-hover": isShowingRenderedOutput,
+            "text-light text-medium-hover": isShowingRenderedOutput,
             "text-brand": !isShowingRenderedOutput,
           })}
           onClick={onEdit}
@@ -232,7 +232,7 @@ const TextActionButtons = ({
         <a
           data-metabase-event={"Dashboard;Text;preview"}
           className={cx(" cursor-pointer h3 flex-no-shrink relative mr1", {
-            "text-grey-2 text-grey-4-hover": !isShowingRenderedOutput,
+            "text-light text-medium-hover": !isShowingRenderedOutput,
             "text-brand": isShowingRenderedOutput,
           })}
           onClick={onPreview}

@@ -89,13 +89,13 @@ export default class ProfileLink extends Component {
                 <h3 className="text-dark mb1">
                   {t`You're on version`} {tag}
                 </h3>
-                <p className="text-grey-3 text-bold">
+                <p className="text-medium text-bold">
                   {t`Built on`} {date}
                 </p>
                 {!/^v\d+\.\d+\.\d+$/.test(tag) && (
                   <div>
                     {_.map(versionExtra, (value, key) => (
-                      <p key={key} className="text-grey-3 text-bold">
+                      <p key={key} className="text-medium text-bold">
                         {capitalize(key)}: {value}
                       </p>
                     ))}
@@ -105,7 +105,7 @@ export default class ProfileLink extends Component {
             </div>
             <div
               style={{ borderWidth: "2px" }}
-              className="p2 h5 text-centered text-grey-3 border-top"
+              className="p2 h5 text-centered text-medium border-top"
             >
               <span className="block">
                 <span className="text-bold">Metabase</span>{" "}

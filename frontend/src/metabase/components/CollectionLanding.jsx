@@ -285,7 +285,7 @@ class DefaultLanding extends React.Component {
                     <div
                       className={cx(
                         "p2 flex layout-centered",
-                        hovered ? "text-brand" : "text-grey-2",
+                        hovered ? "text-brand" : "text-light",
                       )}
                     >
                       <Icon name="pin" mr={1} />
@@ -364,7 +364,7 @@ class DefaultLanding extends React.Component {
                                   <div
                                     className={cx(
                                       "m2 flex layout-centered",
-                                      hovered ? "text-brand" : "text-grey-2",
+                                      hovered ? "text-brand" : "text-light",
                                     )}
                                   >
                                     {t`Drag here to un-pin`}

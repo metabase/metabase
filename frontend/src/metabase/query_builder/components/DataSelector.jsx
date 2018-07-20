@@ -54,7 +54,7 @@ export const SchemaAndSegmentTriggerContent = ({
     );
   } else {
     return (
-      <span className="text-grey-4 no-decoration">{t`Pick a segment or table`}</span>
+      <span className="text-medium no-decoration">{t`Pick a segment or table`}</span>
     );
   }
 };
@@ -70,7 +70,7 @@ export const DatabaseTriggerContent = ({ selectedDatabase }) =>
   selectedDatabase ? (
     <span className="text-grey no-decoration">{selectedDatabase.name}</span>
   ) : (
-    <span className="text-grey-4 no-decoration">{t`Select a database`}</span>
+    <span className="text-medium no-decoration">{t`Select a database`}</span>
   );
 
 export const SchemaTableAndFieldDataSelector = props => (
@@ -85,7 +85,7 @@ export const SchemaTableAndFieldDataSelector = props => (
 export const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
   if (!selectedField || !selectedField.table) {
     return (
-      <span className="flex-full text-grey-4 no-decoration">{t`Select...`}</span>
+      <span className="flex-full text-medium no-decoration">{t`Select...`}</span>
     );
   } else {
     const hasMultipleSchemas =
@@ -93,7 +93,7 @@ export const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
       _.uniq(selectedDatabase.tables, t => t.schema).length > 1;
     return (
       <div className="flex-full cursor-pointer">
-        <div className="h6 text-bold text-uppercase text-grey-2">
+        <div className="h6 text-bold text-uppercase text-light">
           {hasMultipleSchemas && selectedField.table.schema + " > "}
           {selectedField.table.display_name}
         </div>
@@ -125,7 +125,7 @@ export const TableTriggerContent = ({ selectedTable }) =>
       {selectedTable.display_name || selectedTable.name}
     </span>
   ) : (
-    <span className="text-grey-4 no-decoration">{t`Select a table`}</span>
+    <span className="text-medium no-decoration">{t`Select a table`}</span>
   );
 
 @connect(state => ({ metadata: getMetadata(state) }), { fetchTableMetadata })

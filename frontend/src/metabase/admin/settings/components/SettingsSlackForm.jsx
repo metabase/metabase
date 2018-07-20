@@ -239,7 +239,7 @@ export default class SettingsSlackForm extends Component {
             />
             Slack
           </h1>
-          <h3 className="text-grey-1">{t`Answers sent right to your Slack #channels`}</h3>
+          <h3 className="text-light">{t`Answers sent right to your Slack #channels`}</h3>
 
           <div className="pt3">
             <a
