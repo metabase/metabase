@@ -98,7 +98,7 @@
                                                    :table-name         "VENUES"
                                                    :values             price-field-values
                                                    :fingerprint        {:global {:distinct-count 4}
-                                                                        :type   {:type/Number {:min 1, :max 4, :avg 2.03}}}})
+                                                                        :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03}}}})
                               :value       {:value 1
                                             :field (merge field-defaults
                                                           {:field-id           true
@@ -112,7 +112,7 @@
                                                            :table-name         "VENUES"
                                                            :values             price-field-values
                                                            :fingerprint        {:global {:distinct-count 4}
-                                                                                :type   {:type/Number {:min 1, :max 4, :avg 2.03}}}})}}
+                                                                                :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03}}}})}}
 
 
                :join-tables nil}
@@ -309,7 +309,7 @@
                                                              :table-name         "VENUES__via__VENUE_ID"
                                                              :values             price-field-values
                                                              :fingerprint        {:global {:distinct-count 4}
-                                                                                  :type   {:type/Number {:min 1, :max 4, :avg 2.03}}}})}]
+                                                                                  :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03}}}})}]
                    :breakout     [{:field (merge field-defaults
                                                  {:database-type      "DATE"
                                                   :base-type          :type/Date
