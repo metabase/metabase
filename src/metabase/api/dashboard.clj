@@ -399,11 +399,12 @@
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
-(api/defendpoint POST "/save"
+(api/defendpoint POST "/save/collection/:collection-id"
   "Save a denormalized description of dashboard."
-  [:as {dashboard :body}]
+  [collection-id :as {dashboard :body}]
   (api/check-superuser)
-  (->> (dashboard/save-transient-dashboard! dashboard)
+  (collection/check-write-perms-for-collection collection-id)
+  (->> (dashboard/save-transient-dashboard! dashboard collection-id)
        (events/publish-event! :dashboard-create)))
 
 

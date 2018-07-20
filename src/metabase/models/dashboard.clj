@@ -251,20 +251,22 @@
 
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
-  [dashboard]
+  [dashboard parent-collection-id]
   (let [dashcards  (:ordered_cards dashboard)
+        collection (magic.populate/create-collection!
+                    (ensure-unique-collection-name (:name dashboard))
+                    (rand-nth magic.populate/colors)
+                    "Automatically generated cards."
+                    parent-collection-id)
         dashboard  (db/insert! Dashboard
                      (-> dashboard
                          (dissoc :ordered_cards :rule :related :transient_name
                                  :transient_filters :param_fields :more)
-                         (assoc :description (->> dashboard
-                                                  :transient_filters
-                                                  applied-filters-blurb))))
-        collection (magic.populate/create-collection!
-                    (ensure-unique-collection-name
-                     (format "Questions for the dashboard \"%s\"" (:name dashboard)))
-                    (rand-nth magic.populate/colors)
-                    "Automatically generated cards.")]
+                         (assoc :description         (->> dashboard
+                                                          :transient_filters
+                                                          applied-filters-blurb)
+                                :collection_id       (:id collection)
+                                :collection_position 1)))]
     (doseq [dashcard dashcards]
       (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
             series   (some->> dashcard :series (map (fn [card]
