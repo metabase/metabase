@@ -127,7 +127,7 @@ export default class PublicLinksListing extends Component {
                         >
                           <Icon
                             name="close"
-                            className="text-light text-grey-4-hover cursor-pointer"
+                            className="text-light text-medium-hover cursor-pointer"
                           />
                         </Confirm>
                       </td>

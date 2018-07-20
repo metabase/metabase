@@ -71,7 +71,7 @@ const PermissionsHeader = ({ permissions, isFirst, isLast }) => (
         }}
       >
         {permission.header && (
-          <h5 className="my1 text-centered text-grey-3 text-uppercase text-light">
+          <h5 className="my1 text-centered text-medium text-uppercase text-light">
             {permission.header}
           </h5>
         )}

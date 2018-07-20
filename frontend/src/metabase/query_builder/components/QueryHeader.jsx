@@ -193,7 +193,7 @@ export default class QueryHeader extends Component {
           form
           key="save"
           ref="saveModal"
-          triggerClasses="h4 text-grey-4 text-brand-hover text-uppercase"
+          triggerClasses="h4 text-medium text-brand-hover text-uppercase"
           triggerElement={t`Save`}
         >
           <SaveQuestionModal
@@ -245,7 +245,7 @@ export default class QueryHeader extends Component {
           <ActionButton
             key="save"
             actionFn={() => this.onSave(this.props.card, false)}
-            className="cursor-pointer text-brand-hover bg-white text-grey-4 text-uppercase"
+            className="cursor-pointer text-brand-hover bg-white text-medium text-uppercase"
             normalText={t`SAVE CHANGES`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}
@@ -257,7 +257,7 @@ export default class QueryHeader extends Component {
         buttonSections.push([
           <a
             key="cancel"
-            className="cursor-pointer text-brand-hover text-grey-4 text-uppercase"
+            className="cursor-pointer text-brand-hover text-medium text-uppercase"
             onClick={this.onCancel}
           >
             {t`CANCEL`}

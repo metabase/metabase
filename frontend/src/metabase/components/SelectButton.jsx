@@ -10,7 +10,7 @@ const SelectButton = ({ className, style, children, hasValue = true }) => (
   <div
     style={style}
     className={cx(className, "AdminSelect flex align-center", {
-      "text-grey-3": !hasValue,
+      "text-medium": !hasValue,
     })}
   >
     <span className="AdminSelect-content mr1">{children}</span>

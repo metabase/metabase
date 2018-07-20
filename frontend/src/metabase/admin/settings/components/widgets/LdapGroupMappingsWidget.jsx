@@ -278,7 +278,7 @@ class MappingGroupSelect extends React.Component {
         ref="popover"
         triggerElement={
           <div className="flex align-center">
-            <span className="mr1 text-grey-4">
+            <span className="mr1 text-medium">
               <GroupSummary groups={groups} selectedGroups={selected} />
             </span>
             <Icon className="text-light" name="chevrondown" size={10} />

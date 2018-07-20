@@ -196,38 +196,21 @@
   background-color: var(--color-bg-light);
 }
 
-/* grey */
-
 .text-light,
+:local(.text-light),
 .text-light-hover:hover {
   color: var(--color-text-light);
 }
 
-/*
-.text-grey-3,
-:local(.text-grey-3),
-.text-grey-3-hover:hover {
-  color: var(--color-text-medium);
-}
-
-.text-grey-4,
-.text-grey-4-hover:hover {
-  color: var(--color-text-medium);
-}
-
-.text-grey-5,
-.text-grey-5-hover:hover {
-  color: var(--color-text-medium);
-}
-*/
-
 .text-medium,
+:local(.text-medium),
 .text-medium-hover:hover {
   color: var(--color-text-medium);
 }
 
 .text-dark,
-:local(.text-dark) {
+:local(.text-dark),
+.text-dark-hover {
   color: var(--color-text-dark);
 }
 

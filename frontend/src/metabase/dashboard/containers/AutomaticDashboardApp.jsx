@@ -188,7 +188,7 @@ const TransientTitle = ({ dashboard }) =>
   ) : null;
 
 const TransientFilters = ({ filter, metadata }) => (
-  <div className="mt1 flex align-center text-grey-4 text-bold">
+  <div className="mt1 flex align-center text-medium text-bold">
     {/* $FlowFixMe */}
     {Q.getFilters({ filter }).map((f, index) => (
       <TransientFilter key={index} filter={f} metadata={metadata} />
@@ -246,7 +246,7 @@ const SuggestionsList = ({ suggestions, section }) => (
           </div>
           <div>
             <h3 className="m0 mb1 ml1">{s.title}</h3>
-            <p className="text-grey-4 ml1 mt0 mb0">{s.description}</p>
+            <p className="text-medium ml1 mt0 mb0">{s.description}</p>
           </div>
         </Link>
       </li>
@@ -257,7 +257,7 @@ const SuggestionsList = ({ suggestions, section }) => (
 const SuggestionsSidebar = ({ related }) => (
   <div className="flex flex-column bg-medium full-height">
     <div className="py2 text-centered my3">
-      <h3 className="text-grey-3">More X-rays</h3>
+      <h3 className="text-medium">More X-rays</h3>
     </div>
     {Object.entries(related).map(([section, suggestions]) => (
       <SuggestionsList section={section} suggestions={suggestions} />

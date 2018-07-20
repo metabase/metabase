@@ -156,7 +156,7 @@ export const ExploreList = ({
 export const ExploreOption = ({ option }: { option: Candidate }) => (
   <Link
     to={option.url}
-    className="flex align-center text-bold no-decoration text-grey-5 text-brand-hover bg-light p2 py3"
+    className="flex align-center text-bold no-decoration text-medium text-brand-hover bg-light p2 py3"
   >
     <Icon
       name="bolt"

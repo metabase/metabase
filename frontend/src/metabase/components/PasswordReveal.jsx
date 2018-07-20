@@ -23,7 +23,7 @@ const styles = {
 
 const Label = () => (
   <div style={{ top: -12 }} className="absolute text-centered left right">
-    <span className="px1 bg-white h6 text-bold text-grey-3 text-uppercase">
+    <span className="px1 bg-white h6 text-bold text-medium text-uppercase">
       {t`Temporary Password`}
     </span>
   </div>

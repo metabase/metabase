@@ -138,7 +138,7 @@ export default class DashCard extends Component {
       >
         <Visualization
           className="flex-full"
-          classNameWidgets={isEmbed && "text-light text-grey-4-hover"}
+          classNameWidgets={isEmbed && "text-light text-medium-hover"}
           error={errorMessage}
           errorIcon={errorIcon}
           isSlow={isSlow}
@@ -234,7 +234,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
     triggerElement={
       <Icon name="gear" size={HEADER_ICON_SIZE} style={HEADER_ACTION_STYLE} />
     }
-    triggerClasses="text-light text-grey-4-hover cursor-pointer flex align-center flex-no-shrink mr1"
+    triggerClasses="text-light text-medium-hover cursor-pointer flex align-center flex-no-shrink mr1"
   >
     <ChartSettings
       series={series}
@@ -246,7 +246,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
 
 const RemoveButton = ({ onRemove }) => (
   <a
-    className="text-light text-grey-4-hover "
+    className="text-light text-medium-hover "
     data-metabase-event="Dashboard;Remove Card Modal"
     onClick={onRemove}
     style={HEADER_ACTION_STYLE}
@@ -258,7 +258,7 @@ const RemoveButton = ({ onRemove }) => (
 const AddSeriesButton = ({ series, onAddSeries }) => (
   <a
     data-metabase-event={"Dashboard;Edit Series Modal;open"}
-    className="text-light text-grey-4-hover cursor-pointer h3 flex-no-shrink relative mr1"
+    className="text-light text-medium-hover cursor-pointer h3 flex-no-shrink relative mr1"
     onClick={onAddSeries}
     style={HEADER_ACTION_STYLE}
   >

@@ -235,8 +235,8 @@ export default class EntitySearch extends Component {
                 <EmptyState
                   message={
                     <div className="mt4">
-                      <h3 className="text-grey-5">{t`No results found`}</h3>
-                      <p className="text-grey-4">{t`Try adjusting your filter to find what you’re looking for.`}</p>
+                      <h3 className="text-medium">{t`No results found`}</h3>
+                      <p className="text-medium">{t`Try adjusting your filter to find what you’re looking for.`}</p>
                     </div>
                   }
                   image="app/img/empty_question"
@@ -287,7 +287,7 @@ export class SearchGroupingOption extends Component {
       <li
         className={cx(
           "my2 cursor-pointer text-uppercase text-small text-green-saturated-hover",
-          { "text-grey-4": !active },
+          { "text-medium": !active },
           { "text-green-saturated": active },
         )}
         onClick={this.onSetGrouping}

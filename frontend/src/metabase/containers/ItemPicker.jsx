@@ -119,7 +119,7 @@ export default class ItemPicker extends React.Component {
               />
               <Icon
                 name="close"
-                className="ml-auto pl2 text-light text-grey-4-hover cursor-pointer"
+                className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
                 onClick={() =>
                   this.setState({ searchMode: null, searchString: null })
                 }
@@ -130,7 +130,7 @@ export default class ItemPicker extends React.Component {
               <Breadcrumbs crumbs={crumbs} />
               <Icon
                 name="search"
-                className="ml-auto pl2 text-light text-grey-4-hover cursor-pointer"
+                className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
                 onClick={() => this.setState({ searchMode: true })}
               />
             </Box>

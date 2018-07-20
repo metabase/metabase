@@ -125,7 +125,7 @@ export default class TagEditorParam extends Component {
           <InputBlurChange
             type="text"
             value={tag.display_name}
-            className="AdminSelect p1 text-bold text-grey-4 bordered border-med rounded full"
+            className="AdminSelect p1 text-bold text-medium bordered border-med rounded full"
             onBlurChange={e =>
               this.setParameterAttribute("display_name", e.target.value)
             }
@@ -216,7 +216,7 @@ export default class TagEditorParam extends Component {
               }}
               value={tag.default}
               setValue={value => this.setParameterAttribute("default", value)}
-              className="AdminSelect p1 text-bold text-grey-4 bordered border-med rounded bg-white"
+              className="AdminSelect p1 text-bold text-medium bordered border-med rounded bg-white"
               isEditing
               commitImmediately
             />

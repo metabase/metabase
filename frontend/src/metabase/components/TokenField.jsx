@@ -563,7 +563,7 @@ export default class TokenField extends Component {
             <span className="text-bold">{valueRenderer(v)}</span>
             {multi && (
               <a
-                className="text-grey-3 text-default-hover px1"
+                className="text-medium text-default-hover px1"
                 onClick={e => {
                   this.removeValue(v);
                   e.preventDefault();

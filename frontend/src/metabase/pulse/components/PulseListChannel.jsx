@@ -70,7 +70,7 @@ export default class PulseListChannel extends Component {
     }
 
     return (
-      <div className="h4 text-grey-4 py2 flex align-center">
+      <div className="h4 text-medium py2 flex align-center">
         {channelIcon && <Icon className="mr1" name={channelIcon} size={24} />}
         <span>
           {channelVerb + " "}

@@ -121,7 +121,7 @@ export default class TablePane extends Component {
                 >
                   {fk.origin.table.display_name}
                   {fkCountsByTable[fk.origin.table.id] > 1 ? (
-                    <span className="text-grey-3 text-light h5">
+                    <span className="text-medium text-light h5">
                       {" "}
                       via {fk.origin.display_name}
                     </span>
@@ -145,7 +145,7 @@ export default class TablePane extends Component {
           </ul>
         );
       } else {
-        const descriptionClasses = cx({ "text-grey-3": !table.description });
+        const descriptionClasses = cx({ "text-medium": !table.description });
         description = (
           <p className={descriptionClasses}>
             {table.description || t`No description set.`}

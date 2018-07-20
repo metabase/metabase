@@ -255,9 +255,9 @@ const SettingContainer = ({
 }) => (
   <div className={className}>
     {name && (
-      <div className="text-grey-4 text-bold text-uppercase my1">{name}</div>
+      <div className="text-medium text-bold text-uppercase my1">{name}</div>
     )}
-    {description && <div className="text-grey-4 my1">{description}</div>}
+    {description && <div className="text-medium my1">{description}</div>}
     {children}
   </div>
 );

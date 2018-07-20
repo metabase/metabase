@@ -192,7 +192,7 @@ export class AlertListItem extends Component {
 
     return (
       <li
-        className={cx("flex p3 text-grey-4 border-bottom", {
+        className={cx("flex p3 text-medium border-bottom", {
           "bg-light-blue": highlight,
         })}
       >

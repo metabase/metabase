@@ -198,7 +198,7 @@ RenderedPulseCardPreviewHeader.propTypes = {
 };
 
 const RenderedPulseCardPreviewMessage = ({ children }) => (
-  <div className="text-grey-4">{children}</div>
+  <div className="text-medium">{children}</div>
 );
 
 RenderedPulseCardPreviewMessage.propTypes = {
