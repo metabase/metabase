@@ -1,4 +1,6 @@
-.Nav { z-index: 4; }
+.Nav {
+  z-index: 4;
+}
 
 .QuestionCircle {
   display: inline-block;
@@ -40,4 +42,3 @@
   line-height: 1;
   text-transform: uppercase;
 }
-
