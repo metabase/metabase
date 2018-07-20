@@ -8,7 +8,7 @@ Feature: Uninstall Postgres instances
     And I securely send requests to '${DCOS_IP}:443'
     When in less than '180' seconds, checking each '10' seconds, I send a 'POST' request to '/service/${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc}/v1/service/teardown' so that the response contains '"status":"ok"'
 
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
   Scenario: [Uninstallation Postgres][01] Delete database for Discovery on Postgrestls
     Given I set sso token using host '${CLUSTER_SSO:-nightly.labs.stratio.com}' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
     And I securely send requests to '${CLUSTER_SSO:-nightly.labs.stratio.com}:443'

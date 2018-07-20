@@ -16,7 +16,7 @@ Feature: Install Discovery for Discovery
     And I save element in position '0' in '$.status[?(@.role == "master")].ports[0]' in environment variable 'postgresMD5_Port'
     And I wait '5' seconds
 
-  @runOnEnv(DISC_VERSION=0.28.9||DISC_VERSION=0.29.0||DISC_VERSION=0.30.0)
+  @runOnEnv(DISC_VERSION=0.28.9||DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
   Scenario: [Basic Installation Discovery][02] Obtain postgreSQL ip and port
     Given I send a 'GET' request to '/service/${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls}/v1/service/status'
     Then the service response status must be '200'
@@ -24,14 +24,14 @@ Feature: Install Discovery for Discovery
     And I save element in position '0' in '$.status[?(@.role == "master")].ports[0]' in environment variable 'postgresTLS_Port'
     And I wait '5' seconds
 
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
   Scenario: [Basic Installation Discovery][03] Check Crossdata is running
     Given I run 'dcos marathon task list ${DISCOVERY_TENANT_NAME:-crossdata-1} | awk '{print $5}' | grep ${DISCOVERY_TENANT_NAME:-crossdata-1}' in the ssh connection and save the value in environment variable 'crossdataTaskId'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{crossdataTaskId} | grep '"state": "TASK_RUNNING"' | wc -l' contains '1'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{crossdataTaskId} | grep 'healthCheckResults' | wc -l' contains '1'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{crossdataTaskId} | grep '"alive": true' | wc -l' contains '2'
 
-  @runOnEnv(DISC_VERSION=0.28.9||DISC_VERSION=0.29.0||DISC_VERSION=0.30.0)
+  @runOnEnv(DISC_VERSION=0.28.9||DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
   Scenario: [Basic Installation Discovery][04] Create config file
     Given I create file 'config_discovery_${DISC_VERSION}.json' based on 'schemas/config_discovery_0.28.9.json' as 'json' with:
       | $.Service.cpus                        | REPLACE | ${DISCOVERY_SERVICE_CPUS:-1}                                             | number  |
@@ -63,7 +63,7 @@ Feature: Install Discovery for Discovery
       | $.Datastore.host                      | UPDATE  | !{postgresMD5_IP}                                                        | n/a     |
       | $.Datastore.port                      | REPLACE | !{postgresMD5_Port}                                                      | number  |
 
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
   Scenario: [Basic Installation Discovery][05] Modify info to connect to postgrestls
     Given I create file 'config_discovery_${DISC_VERSION}.json' based on 'config_discovery_${DISC_VERSION}.json' as 'json' with:
       | $.Service.folder                                             | ADD     | ${DISCOVERY_SERVICE_FOLDER:-discovery}                                 | string  |
@@ -101,7 +101,7 @@ Feature: Install Discovery for Discovery
     Given I run 'dcos marathon task list ${DISCOVERY_SERVICE_NAME:-discovery} | awk '{print $5}' | grep ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection and save the value in environment variable 'discoveryTaskId'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{discoveryTaskId} | grep TASK_RUNNING | wc -l' contains '1'
 
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
   Scenario: [Basic Installation Discovery][07] Check Discovery installation
     Given I run 'dcos marathon task list ${DISCOVERY_SERVICE_FOLDER:-discovery}/${DISCOVERY_SERVICE_NAME:-discovery} | awk '{print $5}' | grep ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection and save the value in environment variable 'discoveryTaskId'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{discoveryTaskId} | grep TASK_RUNNING | wc -l' contains '1'

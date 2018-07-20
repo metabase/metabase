@@ -29,7 +29,7 @@ hose {
                                       'DCOS_USER=admin',
                                       'DCOS_PASSWORD=1234',
                                       'CLI_BOOTSTRAP_USER=root',
-                        				      'CLI_BOOTSTRAP_PASSWORD=stratio'],
+                        	      'CLI_BOOTSTRAP_PASSWORD=stratio'],
                            'sleep':  120,
                            'healthcheck': 5000]]
         ]
@@ -38,11 +38,11 @@ hose {
         | -DDCOS_CLI_HOST=%%DCOSCLI#0
         | -DDCOS_CLI_USER=root
         | -DDCOS_CLI_PASSWORD=stratio
-	      | -DCLUSTER_SSO=nightly.labs.stratio.com
+        | -DCLUSTER_SSO=nightly.labs.stratio.com
         | -DDCOS_IP=10.200.0.156
         | -DBOOTSTRAP_IP=10.200.0.155
         | -DREMOTE_USER=operador
-        | -DDISC_VERSION=0.30.0
+        | -DDISC_VERSION=0.31.0-SNAPSHOT
         | -Dquietasdefault=false
         | """.stripMargin().stripIndent()
 
