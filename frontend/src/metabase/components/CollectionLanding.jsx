@@ -557,6 +557,7 @@ const SelectionControls = ({
 @entityObjectLoader({
   entityType: "collections",
   entityId: (state, props) => props.params.collectionId,
+  reload: true,
 })
 class CollectionLanding extends React.Component {
   render() {
