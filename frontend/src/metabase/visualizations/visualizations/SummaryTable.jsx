@@ -89,6 +89,7 @@ export default class SummaryTable extends Component {
           {},
         ),
       }),},
+    "summaryTable.column_widths": {},
   };
 
   constructor(props: Props) {
