@@ -47,7 +47,7 @@ const EmptyStateWrapper = ({ children }) => (
   <Flex
     align="center"
     justify="center"
-    py={3}
+    p={5}
     flexDirection="column"
     w={1}
     h={"200px"}
