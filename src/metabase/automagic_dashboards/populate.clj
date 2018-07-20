@@ -27,15 +27,14 @@
 (defn create-collection!
   "Create a new collection."
   [title color description parent-collection-id]
-  (when api/*is-superuser?*
-    (db/insert! 'Collection
-      (merge
-       {:name        title
-        :color       color
-        :description description}
-       (when parent-collection-id
-         {:location (collection/children-location (db/select-one ['Collection :location :id]
-                                                    :id parent-collection-id))})))))
+  (db/insert! 'Collection
+    (merge
+     {:name        title
+      :color       color
+      :description description}
+     (when parent-collection-id
+       {:location (collection/children-location (db/select-one ['Collection :location :id]
+                                                  :id parent-collection-id))}))))
 
 (def colors
   "Colors used for coloring charts and collections."
