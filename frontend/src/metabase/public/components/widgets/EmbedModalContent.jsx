@@ -188,7 +188,7 @@ export default class EmbedModalContent extends Component {
             />
           </h2>
           <Icon
-            className="text-grey-2 text-grey-4-hover cursor-pointer p2 ml-auto"
+            className="text-light text-grey-4-hover cursor-pointer p2 ml-auto"
             name="close"
             size={24}
             onClick={() => {

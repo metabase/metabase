@@ -31,7 +31,7 @@
 }
 
 :local(.schemaSeparator) {
-  composes: text-grey-2 mt2 from "style";
+  composes: text-light mt2 from "style";
   margin-left: var(--icon-width);
   font-size: 18px;
 }

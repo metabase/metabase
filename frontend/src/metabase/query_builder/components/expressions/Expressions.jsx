@@ -51,7 +51,7 @@ export default class Expressions extends Component {
 
         <a
           data-metabase-event={"QueryBuilder;Show Add Custom Field"}
-          className="text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color"
+          className="text-light text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color"
           onClick={() => onAddExpression()}
         >
           <IconBorder borderRadius="3px">

@@ -115,7 +115,7 @@ export default class ChartSettingOrderedColumns extends Component {
             helperClass="z5"
           />
         ) : (
-          <div className="my2 p2 flex layout-centered bg-grey-0 text-grey-1 text-bold rounded">
+          <div className="my2 p2 flex layout-centered bg-grey-0 text-light text-bold rounded">
             {t`Add fields from the list below`}
           </div>
         )}
@@ -170,7 +170,7 @@ const ColumnItem = ({ title, onAdd, onRemove }) => (
         {onAdd && (
           <Icon
             name="add"
-            className="cursor-pointer text-grey-1 text-grey-4-hover"
+            className="cursor-pointer text-light text-grey-4-hover"
             onClick={e => {
               e.stopPropagation();
               onAdd();
@@ -180,7 +180,7 @@ const ColumnItem = ({ title, onAdd, onRemove }) => (
         {onRemove && (
           <Icon
             name="close"
-            className="cursor-pointer text-grey-1 text-grey-4-hover"
+            className="cursor-pointer text-light text-grey-4-hover"
             onClick={e => {
               e.stopPropagation();
               onRemove();

@@ -281,7 +281,7 @@ class MappingGroupSelect extends React.Component {
             <span className="mr1 text-grey-4">
               <GroupSummary groups={groups} selectedGroups={selected} />
             </span>
-            <Icon className="text-grey-2" name="chevrondown" size={10} />
+            <Icon className="text-light" name="chevrondown" size={10} />
           </div>
         }
         triggerClasses="AdminSelectBorderless py1"

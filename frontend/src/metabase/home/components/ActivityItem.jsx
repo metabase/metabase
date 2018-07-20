@@ -36,7 +36,7 @@ export default class ActivityItem extends Component {
             <span className="text-dark">{description.userName}</span>&nbsp;
             {description.summary}
           </div>
-          <div className="flex-align-right text-right text-grey-2">
+          <div className="flex-align-right text-right text-light">
             {description.timeSince}
           </div>
         </div>

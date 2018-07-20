@@ -289,7 +289,7 @@ export default class QueryVisualization extends Component {
 }
 
 export const VisualizationEmptyState = ({ showTutorialLink }) => (
-  <div className="flex full layout-centered text-grey-1 flex-column">
+  <div className="flex full layout-centered text-light flex-column">
     <h1
     >{t`If you give me some data I can show you something cool. Run a Query!`}</h1>
     {showTutorialLink && (

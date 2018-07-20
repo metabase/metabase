@@ -197,18 +197,13 @@
 }
 
 /* grey */
-.text-grey-1,
-:local(.text-grey-1),
-.text-grey-1-hover:hover {
+
+.text-light,
+.text-light-hover:hover {
   color: var(--color-text-light);
 }
 
-.text-grey-2,
-:local(.text-grey-2),
-.text-grey-2-hover:hover {
-  color: var(--color-text-light);
-}
-
+/*
 .text-grey-3,
 :local(.text-grey-3),
 .text-grey-3-hover:hover {
@@ -222,6 +217,12 @@
 
 .text-grey-5,
 .text-grey-5-hover:hover {
+  color: var(--color-text-medium);
+}
+*/
+
+.text-medium,
+.text-medium-hover:hover {
   color: var(--color-text-medium);
 }
 

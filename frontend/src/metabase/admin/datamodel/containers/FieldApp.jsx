@@ -727,7 +727,7 @@ export class FieldRemapping extends Component {
                 {fkMappingField ? (
                   fkMappingField.display_name
                 ) : (
-                  <span className="text-grey-1">{t`Choose a field`}</span>
+                  <span className="text-light">{t`Choose a field`}</span>
                 )}
               </SelectButton>
             }

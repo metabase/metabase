@@ -341,7 +341,7 @@ const EditMap = ({
             )}
           </LoadingAndErrorWrapper>
         ) : (
-          <div className="flex-full flex layout-centered text-bold text-grey-1 text-centered">
+          <div className="flex-full flex layout-centered text-bold text-light text-centered">
             {t`Load a GeoJSON file to see a preview`}
           </div>
         )}

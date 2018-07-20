@@ -105,7 +105,7 @@ export default class PulseListChannel extends Component {
                   channel.channel_type
                 }`}</div>
                 <Icon
-                  className="p2 text-grey-1 text-white-hover cursor-pointer"
+                  className="p2 text-light text-white-hover cursor-pointer"
                   name="close"
                   size={12}
                   onClick={this.unsubscribe}

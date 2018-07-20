@@ -97,7 +97,7 @@ export class ObjectDetail extends Component {
       isLink = false;
     } else {
       if (value === null || value === undefined || value === "") {
-        cellValue = <span className="text-grey-2">{t`Empty`}</span>;
+        cellValue = <span className="text-light">{t`Empty`}</span>;
       } else if (isa(column.special_type, TYPE.SerializedJSON)) {
         let formattedJson = JSON.stringify(JSON.parse(value), null, 2);
         cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;

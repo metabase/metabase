@@ -117,7 +117,7 @@ export class ExplorePane extends React.Component {
         )}
         {hasMore && (
           <div
-            className="border-top cursor-pointer text-brand-hover flex layout-centered text-grey-2 px2 pt2 mt4"
+            className="border-top cursor-pointer text-brand-hover flex layout-centered text-light px2 pt2 mt4"
             onClick={() => this.setState({ visibleItems: visibleItems + 4 })}
           >
             <Icon name="chevrondown" size={20} />

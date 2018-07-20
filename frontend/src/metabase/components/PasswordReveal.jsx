@@ -48,7 +48,7 @@ export default class PasswordReveal extends Component {
           <input
             ref="input"
             style={styles.input}
-            className="text-grey-2 text-normal mr3 borderless"
+            className="text-light text-normal mr3 borderless"
             value={password}
             onClick={({ target }) =>
               target.setSelectionRange(0, target.value.length)

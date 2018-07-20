@@ -127,7 +127,7 @@ const EntityHeader = ({
       <div>
         <h4>{entity.name}</h4>
         {entity.subtitle && (
-          <div className="mt1 h5 text-monospace text-normal text-grey-2 text-uppercase">
+          <div className="mt1 h5 text-monospace text-normal text-light text-uppercase">
             {entity.subtitle}
           </div>
         )}

@@ -206,7 +206,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         </span>
         <Icon
           name="close"
-          className="cursor-pointer text-grey-2 text-grey-4-hover"
+          className="cursor-pointer text-light text-grey-4-hover"
           onClick={e => {
             e.stopPropagation();
             onRemove();

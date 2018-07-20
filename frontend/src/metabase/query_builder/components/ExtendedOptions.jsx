@@ -212,7 +212,7 @@ export default class ExtendedOptions extends Component {
     return (
       <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center">
         <span
-          className={cx("EllipsisButton no-decoration text-grey-1 px1", {
+          className={cx("EllipsisButton no-decoration text-light px1", {
             "cursor-pointer": onClick,
           })}
           onClick={onClick}

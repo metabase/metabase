@@ -147,7 +147,7 @@ const UserRow = ({ user, showRemoveButton, onRemoveUserClicked }) => (
         className="text-right cursor-pointer"
         onClick={onRemoveUserClicked.bind(null, user)}
       >
-        <Icon name="close" className="text-grey-1" size={16} />
+        <Icon name="close" className="text-light" size={16} />
       </td>
     ) : null}
   </tr>

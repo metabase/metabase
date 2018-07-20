@@ -498,7 +498,7 @@ class SearchResultsList extends Component {
           className={cx(
             "mx1 flex align-center justify-center rounded",
             { "cursor-pointer bg-medium text-white": !isInBeginning },
-            { "bg-light text-grey-1": isInBeginning },
+            { "bg-light text-light": isInBeginning },
           )}
           style={{ width: "22px", height: "22px" }}
           onClick={() =>
@@ -511,7 +511,7 @@ class SearchResultsList extends Component {
           className={cx(
             "flex align-center justify-center rounded",
             { "cursor-pointer bg-medium text-white": !isInEnd },
-            { "bg-light text-grey-2": isInEnd },
+            { "bg-light text-light": isInEnd },
           )}
           style={{ width: "22px", height: "22px" }}
           onClick={() => !isInEnd && setCurrentPage(entities, currentPage + 1)}

@@ -28,7 +28,7 @@ const SearchHeader = ({
       searchText !== "" && (
         <Icon
           name="close"
-          className="cursor-pointer text-grey-2"
+          className="cursor-pointer text-light"
           size={18}
           onClick={resetSearchText}
         />

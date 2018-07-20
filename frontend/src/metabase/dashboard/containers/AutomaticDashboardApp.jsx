@@ -242,7 +242,7 @@ const SuggestionsList = ({ suggestions, section }) => (
             className="bg-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
             style={{ width: 48, height: 48 }}
           >
-            <Icon name="bolt" className="Icon text-grey-1" size={22} />
+            <Icon name="bolt" className="Icon text-light" size={22} />
           </div>
           <div>
             <h3 className="m0 mb1 ml1">{s.title}</h3>

@@ -93,7 +93,7 @@ export const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
       _.uniq(selectedDatabase.tables, t => t.schema).length > 1;
     return (
       <div className="flex-full cursor-pointer">
-        <div className="h6 text-bold text-uppercase text-grey-2">
+        <div className="h6 text-bold text-uppercase text-light">
           {hasMultipleSchemas && selectedField.table.schema + " > "}
           {selectedField.table.display_name}
         </div>
