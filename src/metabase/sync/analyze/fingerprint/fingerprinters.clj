@@ -70,14 +70,14 @@
 (prefer-method fingerprinter [:type/* :type/PK] [:type/Text :type/*])
 
 (defn- with-global-fingerprinter
-  [prefix fingerprinter]
+  [fingerprinter]
   (redux/post-complete
    (redux/juxt
     fingerprinter
     global-fingerprinter)
    (fn [[type-fingerprint global-fingerprint]]
-     {:global global-fingerprint
-      :type   {prefix type-fingerprint}})))
+     (merge {:global global-fingerprint}
+            type-fingerprint))))
 
 (defmacro ^:private with-reduced-error
   [msg & body]
@@ -106,7 +106,11 @@
     `(defmethod fingerprinter ~field-type
        [field#]
        (with-error-handling
-         (with-global-fingerprinter (first ~field-type) ~transducer)
+         (with-global-fingerprinter
+           (redux/post-complete
+            ~transducer
+            (fn [fingerprint#]
+              {:type {~(first field-type) fingerprint#}})))
          (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
 (defn- earliest
@@ -149,10 +153,11 @@
            (sequential? parsed-json))))))
 
 (deffingerprinter :type/Text
-  ((map u/jdbc-clob->str) (redux/fuse {:percent-json   (stats/share valid-serialized-json?)
-                                       :percent-url    (stats/share u/url?)
-                                       :percent-email  (stats/share u/email?)
-                                       :average-length ((map (comp count str)) stats/mean)})))
+  ((map (comp str u/jdbc-clob->str))
+   (redux/fuse {:percent-json   (stats/share valid-serialized-json?)
+                :percent-url    (stats/share u/url?)
+                :percent-email  (stats/share u/email?)
+                :average-length ((map count) stats/mean)})))
 
 (defn fingerprint-fields
   "Return a transducer for fingerprinting a resultset with fields `fields`."
