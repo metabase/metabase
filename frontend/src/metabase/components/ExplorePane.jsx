@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Link } from "react-router";
-import { Box } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
 import MetabotLogo from "metabase/components/MetabotLogo";
@@ -91,7 +90,7 @@ export class ExplorePane extends React.Component {
         {schemaNames &&
           schemaNames.length > 1 && (
             <div className="flex align-center ml-auto">
-              <Box mr={1}>{t`Based on the schema`}</Box>
+              <div className="mr1">{t`Based on the schema`}</div>
               <Select
                 value={schemaName}
                 onChange={e =>
