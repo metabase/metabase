@@ -33,6 +33,7 @@ export const fetchPulses = createThunkAction(FETCH_PULSES, function() {
 
 export const setEditingPulse = createThunkAction(SET_EDITING_PULSE, function(
   id,
+  initialCollectionId = null,
 ) {
   return async function(dispatch, getState) {
     if (id != null) {
@@ -50,6 +51,7 @@ export const setEditingPulse = createThunkAction(SET_EDITING_PULSE, function(
       cards: [],
       channels: defaultChannelSpec ? [createChannel(defaultChannelSpec)] : [],
       skip_if_empty: false,
+      collection_id: initialCollectionId,
     };
   };
 });

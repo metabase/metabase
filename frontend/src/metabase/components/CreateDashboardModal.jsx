@@ -14,14 +14,22 @@ import Button from "metabase/components/Button.jsx";
 import CollectionSelect from "metabase/containers/CollectionSelect.jsx";
 
 import Dashboards from "metabase/entities/dashboards";
+import Collections from "metabase/entities/collections";
+
+const mapStateToProps = (state, props) => ({
+  initialCollectionId: Collections.selectors.getInitialCollectionId(
+    state,
+    props,
+  ),
+});
 
 const mapDispatchToProps = {
   createDashboard: Dashboards.actions.create,
   push,
 };
 
-@connect(null, mapDispatchToProps)
 @withRouter
+@connect(mapStateToProps, mapDispatchToProps)
 export default class CreateDashboardModal extends Component {
   constructor(props, context) {
     super(props, context);
@@ -30,13 +38,7 @@ export default class CreateDashboardModal extends Component {
       name: null,
       description: null,
       errors: null,
-      collection_id:
-        props.collectionId != null
-          ? props.collectionId
-          : props.params.collectionId != null &&
-            props.params.collectionId !== "root"
-            ? parseInt(props.params.collectionId)
-            : null,
+      collection_id: props.initialCollectionId,
     };
   }
 
