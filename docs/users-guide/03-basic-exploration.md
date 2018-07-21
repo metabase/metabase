@@ -1,10 +1,19 @@
 ### Exploring in Metabase
+
+#### See what your teammates have made
 As long as you're not the very first user in your team's Metabase, the easiest way to start exploring your data is by looking at dashboards, charts, and lists that your teammates have already created. The best place to start is by checking out any dashboards that might be pinned on your home page or in the collections you have access to.
 
+#### Browse your data
 Alternatively, you can dive right in to exploring the data in Metabase by clicking on one of the databases at the bottom of the home page, and then clicking on a table to see it. You can also click on the bolt icon on any table to see an automatic exploration of its data. Give it a try!
 
+![Browse data](./images/browse-data.png)
+
 #### Exploring collections
-Collections in Metabase are a lot like folders. They're where all your team's dashboards and charts are kept. To explore a collection just click on one in the "Our analytics" section of the home page, or just click on `Browse all items` to see everything. If your teammates are cool, they'll have pinned some important dashboards or questions within your collections; if so, those important or useful items will show up nice and large at the top of a collection. Collections also have a list of any other items that are saved within them, as well as a list of other collections that are saved inside the current one.
+Collections in Metabase are a lot like folders. They're where all your team's dashboards and charts are kept. To explore a collection just click on one in the "Our analytics" section of the home page, or click on `Browse all items` to see everything.
+
+![A collection](./images/collection-detail.png)
+
+If your teammates are cool, they'll have pinned some important dashboards or questions within your collections; if so, those important or useful items will show up nice and large at the top of a collection. Collections also have a list of any other items that are saved within them, as well as a list of other collections that are saved inside the current one.
 
 #### Exploring dashboards
 Dashboards are simply collections of charts and numbers that you want to be able to refer back to regularly. You can learn more about dashboards [here](07-dashboards.md).

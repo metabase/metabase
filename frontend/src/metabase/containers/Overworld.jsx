@@ -8,6 +8,7 @@ import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
 import CandidateListLoader from "metabase/containers/CandidateListLoader";
 import { DatabaseListLoader } from "metabase/components/BrowseApp";
 import ExplorePane from "metabase/components/ExplorePane";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import * as Urls from "metabase/lib/urls";
 import colors, { normal } from "metabase/lib/colors";
