@@ -400,12 +400,23 @@
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
 (api/defendpoint POST "/save/collection/:parent-collection-id"
-  "Save a denormalized description of dashboard."
+  "Save a denormalized description of dashboard into collection with ID `:parent-collection-id`."
   [parent-collection-id :as {dashboard :body}]
   (api/check-superuser)
   (collection/check-write-perms-for-collection parent-collection-id)
   (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
        (events/publish-event! :dashboard-create)))
+
+(api/defendpoint POST "/save"
+  "Save a denormalized description of dashboard."
+  [:as {dashboard :body}]
+  (api/check-superuser)
+  (let [parent-collection-id (if api/*is-superuser?*
+                               (:id collection/root-collection)
+                               (db/select-one-field :id 'Collection
+                                 :personal_owner_id api/*current-user-id*))]
+    (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
+         (events/publish-event! :dashboard-create))))
 
 
 (api/define-routes)
