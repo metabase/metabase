@@ -38,15 +38,17 @@ Additionally, the question detail page has an Explore button in the bottom-right
 ![Action menu](images/drill-through/actions.png)
 
 Here's a list of all the actions:
-* Table actions
+* **Table actions**
+  - `X-ray this` will show you an automatic exploration and summary of the data in this table. [Learn more about x-rays](14-x-rays.md)
   - `Count of rows by time` lets you see how many rows there were in this table over time.
   - `Summarize this segment` gives you options of various summarization functions (sum, average, maximum, etc.) you can use on this table to arrive at a number.
-* Chart and pivot table actions
+* **Chart and pivot table actions**
   - `Break outs` will be listed depending on the question, and include the option to break out by a category, location, or time. For example, if you're looking at the count of total orders over time, you might be able to further break that out by customer gender, if that information is present.
   - `View this as a table` does what it says. Every chart has a table behind it that is providing the data for the chart, and this action lets you see that table.
   - `View the underlying records` shows you the un-summarized list of records underlying the chart or number you're currently viewing.
+  - `X-ray this question` will show you an automatic [x-ray]((14-x-rays.md)) exploration of this question's results.
 
 ---
 
-## Next: Asking new questions
+## Next: Asking custom questions
 So what do you do if you can't find an existing dashboard or question that's exactly what you're looking for? Let's learn about [asking our own new questions](04-asking-questions.md)
