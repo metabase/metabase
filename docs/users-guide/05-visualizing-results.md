@@ -39,7 +39,17 @@ Progress bars are for comparing a single number result to a goal value that you 
 ![Progress bar](images/visualizations/progress.png)
 
 #### Tables
-The Table option is good for looking at tabular data (duh), or for lists of things like users. The options allow you to hide and rearrange fields in the table you're looking at.
+The Table option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at.
+
+##### Adding or hiding fields
+
+![Additional fields](images/visualizations/add-fields.png)
+
+Open up the visualization options and you'll see the Data tab, which displays all the fields currently being shown in the table, as well as more fields from linked tables that you can add to the current table view.
+
+To hide a field, click the X icon on it; that'll send it down to the "More fields" area in case you want to bring it back. To add a linked field, just click the + icon on it, which will bring it to the "Visible fields" section. Click and drag any of the fields listed there to rearrange the order in which they appear.
+
+**Note:** changing these options doesn't change the actual table itself; it just creates a custom view of it that you can save as a "question" in Metabase and refer back to later, share with others, or add to a dashboard.
 
 ##### Conditional formatting
 Sometimes is helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the `Formatting` tab.
