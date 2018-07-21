@@ -1,156 +1,5 @@
-:root {
-  --search-bar-color: var(--color-brand);
-  --search-bar-active-color: var(--color-brand);
-  --search-bar-active-border-color: var(--color-brand);
-}
-
 .Nav {
   z-index: 4;
-}
-
-/* temporary css for the navbar and search */
-.search-bar {
-  background-color: color(var(--color-bg-white) alpha(-90%));
-  border-color: transparent;
-  color: white;
-}
-
-.search-bar--active {
-  background-color: color(var(--color-bg-white) alpha(-75%));
-  border-color: var(--color-brand);
-}
-
-.NavItem.NavItem--selected {
-  background-color: color(var(--color-bg-black) alpha(-80%));
-}
-
-.NavItem {
-  justify-content: center;
-}
-
-.NavItem > .Icon {
-  padding-left: 1em;
-  padding-right: 1em;
-  padding-top: 0.5em;
-  padding-bottom: 0.5em;
-}
-
-@media screen and (--breakpoint-min-sm) {
-  .NavItem {
-    border-radius: 8px;
-  }
-  .NavItem:hover,
-  .NavItem.NavItem--selected {
-    background-color: color(var(--color-bg-white) alpha(-92%));
-  }
-}
-
-.NavNewQuestion {
-  box-shadow: 0px 2px 2px 0px var(--color-shadow);
-}
-.NavNewQuestion:hover {
-  box-shadow: 0px 3px 2px 2px var(--color-shadow);
-  color: var(--color-brand);
-}
-
-.Greeting {
-  padding-top: 2rem;
-  padding-bottom: 3rem;
-}
-
-@media screen and (--breakpoint-min-xl) {
-  .Greeting {
-    padding-top: 6em;
-    padding-bottom: 6em;
-  }
-}
-
-.bullet {
-  position: relative;
-  margin-left: 1.2em;
-}
-.bullet:before {
-  content: "\2022";
-  color: var(--color-brand);
-  position: absolute;
-  top: 0;
-  margin-top: 16px;
-  left: -0.85em;
-}
-
-.NavDropdown {
-  position: relative;
-}
-.NavDropdown.open {
-  z-index: 100;
-}
-.NavDropdown .NavDropdown-content {
-  display: none;
-}
-.NavDropdown.open .NavDropdown-content {
-  display: inherit;
-}
-.NavDropdown .NavDropdown-button {
-  position: relative;
-  border-radius: 8px;
-}
-.NavDropdown .NavDropdown-content {
-  position: absolute;
-  border-radius: 4px;
-  top: 38px;
-  min-width: 200px;
-}
-
-.NavDropdown .NavDropdown-content.NavDropdown-content--dashboards {
-  top: 33px;
-}
-
-.NavDropdown .NavDropdown-button:before,
-.NavDropdown .NavDropdown-content:before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  box-shadow: 0 0 4px var(--color-shadow);
-  background-clip: padding-box;
-}
-
-.NavDropdown .NavDropdown-content:before {
-  z-index: -2;
-  border-radius: 4px;
-}
-.NavDropdown .NavDropdown-button:before {
-  z-index: -1;
-  opacity: 0;
-  border-radius: 8px;
-}
-.NavDropdown.open .NavDropdown-button:before {
-  opacity: 1;
-}
-.NavDropdown .NavDropdown-content-layer {
-  position: relative;
-  z-index: 1;
-  overflow: hidden;
-}
-.NavDropdown .NavDropdown-button-layer {
-  position: relative;
-  z-index: 2;
-}
-
-.NavDropdown.open .NavDropdown-button,
-.NavDropdown .NavDropdown-content-layer {
-  background-color: var(--color-brand);
-}
-
-.NavDropdown .NavDropdown-content-layer {
-  padding-top: 10px;
-  border-radius: 4px;
-}
-
-.NavDropdown .DashboardList {
-  min-width: 332px;
 }
 
 .QuestionCircle {
@@ -163,39 +12,6 @@
   text-align: center;
 }
 
-.IconCircle {
-  line-height: 0;
-  padding: var(--padding-1);
-  border-radius: 99px;
-  border: 1px solid currentcolor;
-}
-
-@keyframes pop {
-  0% {
-    transform: scale(0.75);
-  }
-  75% {
-    transform: scale(1.0625);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.animate-pop {
-  animation-name: popin;
-  animation-duration: 0.15s;
-  animation-timing-function: ease-out;
-}
-
-.AdminLink {
-  opacity: 0.435;
-}
-
-.AdminLink:hover {
-  opacity: 1;
-}
-
 .break-word {
   word-wrap: break-word;
 }
@@ -206,11 +22,6 @@
   border-radius: 2px;
   box-shadow: 1px 1px 1px var(--color-shadow);
   color: var(--color-text-light);
-}
-
-.TableDescription {
-  max-width: 42rem;
-  line-height: 1.4;
 }
 
 .Layout-sidebar {
@@ -230,39 +41,4 @@
   letter-spacing: 0.5px;
   line-height: 1;
   text-transform: uppercase;
-}
-
-@media screen and (--breakpoint-min-md) {
-  .HomepageGreeting {
-    margin-right: 346px;
-  }
-}
-
-/* there are 5 mav items on mobile, so distribute the items evenly */
-.Nav ul li {
-  flex: 0 20%;
-}
-
-/* on larger screens, things should just flow naturally */
-@media screen and (--breakpoint-min-md) {
-  .Nav ul li {
-    flex: unset;
-  }
-}
-
-/* the logo nav item needs a little bit of additional padding so that it
- * matches up with the other nav items which have 16px icons and 0.75em padding.
- * Since the logo is 32px we cut the padding in half to get 0.375
- * */
-.LogoNavItem {
-  padding-top: 0.375em;
-  padding-bottom: 0.375em;
-}
-
-/* we want to unset the above when we no longer need the nav item to fill the space */
-@media screen and (--breakpoint-min-md) {
-  .LogoNavItem {
-    padding-top: 0;
-    padding-bottom: 0;
-  }
 }

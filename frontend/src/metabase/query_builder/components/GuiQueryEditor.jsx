@@ -91,7 +91,7 @@ export default class GuiQueryEditor extends Component {
 
   renderAdd(text: ?string, onClick: ?() => void, targetRefName?: string) {
     let className =
-      "AddButton text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color";
+      "AddButton text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
     if (onClick) {
       return (
         <a className={className} onClick={onClick}>

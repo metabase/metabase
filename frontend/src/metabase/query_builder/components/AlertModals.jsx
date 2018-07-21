@@ -652,7 +652,7 @@ export class RawDataAlertTip extends Component {
 
     return (
       <div className="border-row-divider p3 flex align-center">
-        <div className="circle flex align-center justify-center bg-light p2 mr2 text-grey-3">
+        <div className="circle flex align-center justify-center bg-light p2 mr2 text-medium">
           <Icon name="lightbulb" size="20" />
         </div>
         {showMultiSeriesGoalAlert ? (

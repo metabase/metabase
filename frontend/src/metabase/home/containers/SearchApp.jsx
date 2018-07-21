@@ -65,7 +65,7 @@ export default class SearchApp extends React.Component {
                 <Box>
                   {types.dashboard && (
                     <Box mt={2} mb={3}>
-                      <div className="text-uppercase text-grey-4 text-small text-bold my1">
+                      <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Dashboards`}
                       </div>
                       <Card px={2}>
@@ -83,7 +83,7 @@ export default class SearchApp extends React.Component {
                   )}
                   {types.collection && (
                     <Box mt={2} mb={3}>
-                      <div className="text-uppercase text-grey-4 text-small text-bold my1">
+                      <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Collections`}
                       </div>
                       <Card px={2}>
@@ -101,7 +101,7 @@ export default class SearchApp extends React.Component {
                   )}
                   {types.card && (
                     <Box mt={2} mb={3}>
-                      <div className="text-uppercase text-grey-4 text-small text-bold my1">
+                      <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Questions`}
                       </div>
                       <Card px={2}>
@@ -119,7 +119,7 @@ export default class SearchApp extends React.Component {
                   )}
                   {types.pulse && (
                     <Box mt={2} mb={3}>
-                      <div className="text-uppercase text-grey-4 text-small text-bold my1">
+                      <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Pulse`}
                       </div>
                       <Card px={2}>

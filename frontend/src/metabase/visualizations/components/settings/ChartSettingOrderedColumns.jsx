@@ -115,7 +115,7 @@ export default class ChartSettingOrderedColumns extends Component {
             helperClass="z5"
           />
         ) : (
-          <div className="my2 p2 flex layout-centered bg-grey-0 text-grey-1 text-bold rounded">
+          <div className="my2 p2 flex layout-centered bg-grey-0 text-light text-bold rounded">
             {t`Add fields from the list below`}
           </div>
         )}
@@ -140,7 +140,7 @@ export default class ChartSettingOrderedColumns extends Component {
             ))}
             {additionalFieldOptions.fks.map(fk => (
               <div>
-                <div className="my2 text-grey-4 text-bold text-uppercase text-small">
+                <div className="my2 text-medium text-bold text-uppercase text-small">
                   {fk.field.target.table.display_name}
                 </div>
                 {fk.dimensions.map((dimension, index) => (
@@ -170,7 +170,7 @@ const ColumnItem = ({ title, onAdd, onRemove }) => (
         {onAdd && (
           <Icon
             name="add"
-            className="cursor-pointer text-grey-1 text-grey-4-hover"
+            className="cursor-pointer text-light text-medium-hover"
             onClick={e => {
               e.stopPropagation();
               onAdd();
@@ -180,7 +180,7 @@ const ColumnItem = ({ title, onAdd, onRemove }) => (
         {onRemove && (
           <Icon
             name="close"
-            className="cursor-pointer text-grey-1 text-grey-4-hover"
+            className="cursor-pointer text-light text-medium-hover"
             onClick={e => {
               e.stopPropagation();
               onRemove();

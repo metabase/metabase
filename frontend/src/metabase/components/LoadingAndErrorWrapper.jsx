@@ -115,7 +115,7 @@ export default class LoadingAndErrorWrapper extends Component {
       <div className={this.props.className} style={this.props.style}>
         {error ? (
           <div className={contentClassName}>
-            <h2 className="text-normal text-grey-2 ie-wrap-content-fix">
+            <h2 className="text-normal text-light ie-wrap-content-fix">
               {this.getErrorMessage()}
             </h2>
           </div>
@@ -123,7 +123,7 @@ export default class LoadingAndErrorWrapper extends Component {
           <div className={contentClassName}>
             {loadingScenes && loadingScenes[sceneIndex]}
             {!loadingScenes && showSpinner && <LoadingSpinner />}
-            <h2 className="text-normal text-grey-2 mt1">
+            <h2 className="text-normal text-light mt1">
               {loadingMessages[messageIndex]}
             </h2>
           </div>

@@ -313,7 +313,7 @@ class LegacySelect extends Component {
       <div
         className={cx(
           "flex align-center",
-          !value && (!values || values.length === 0) ? " text-grey-2" : "",
+          !value && (!values || values.length === 0) ? " text-light" : "",
         )}
       >
         {values && values.length !== 0 ? (

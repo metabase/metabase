@@ -39,7 +39,7 @@ export default class MetadataSchema extends Component {
           </div>
         </div>
         <table className="mt2 full">
-          <thead className="text-uppercase text-grey-3 py1">
+          <thead className="text-uppercase text-medium py1">
             <tr>
               <th className={tdClassName}>{t`Column`}</th>
               <th className={tdClassName}>{t`Data Type`}</th>

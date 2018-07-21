@@ -67,7 +67,7 @@ export default class UserActionsSelect extends Component {
         ref="popover"
         className="block"
         triggerElement={
-          <span className="text-grey-1">
+          <span className="text-light">
             <Icon name={"ellipsis"} />
           </span>
         }
