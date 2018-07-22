@@ -52,7 +52,7 @@ To send via Slack, you’ll need to choose which channel you want to post the pu
 Once you’re done, just click `Create pulse` and you’ll see your new pulse in the collection where you chose to save it
 
 ### Editing and deleting a pulse
-If you ever need to make changes to a pulse, just navigate to it or search for it and click on it.
+If you ever need to make changes to a pulse, just navigate to the collection where it's saved and click on it, or search for it in the big search bar at the top of Metabase.
 
 If you want to delete a pulse, you can find that option at the bottom of the edit screen. Just remember: if you delete a pulse, no one will receive it anymore.
 
