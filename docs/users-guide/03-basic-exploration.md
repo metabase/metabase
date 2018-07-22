@@ -23,9 +23,9 @@ If you click on a part of a chart, such as a bar in a bar chart, or a dot on a l
 ![Drill through](images/drill-through/drill-through.png)
 
 In this example of pie orders by type over time, clicking on a dot on this line chart gives us the ability to:
-- Zoom in — i.e., see just the banana cream pie orders in June 2017 over time
-- View these Orders — which lets us see a list of banana cream pie orders in June 2017
-- Break out by a category — this lets us do things like see the banana cream pie orders in June 2017 broken out by the status of the customer (e.g., `new` or `VIP`, etc.) or other different aspects of the order. Different charts will have different break out options, such as Location and Time.
+- **Zoom in** — i.e., see just the banana cream pie orders in June 2017 over time
+- **View these Orders** — which lets us see a list of banana cream pie orders in June 2017
+- **Break out by a category** — this lets us do things like see the banana cream pie orders in June 2017 broken out by the status of the customer (e.g., `new` or `VIP`, etc.) or other different aspects of the order. Different charts will have different break out options, such as Location and Time.
 
 **Note that charts created with SQL don't currently have these action options.**
 
