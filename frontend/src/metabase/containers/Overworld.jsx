@@ -203,18 +203,28 @@ class Overworld extends React.Component {
                               mb={3}
                               size={28}
                             />
-                            <Flex align='center'>
+                            <Flex align="center">
                               <h3>{database.name}</h3>
-                              <Box ml='auto' mr={1} className="hover-child">
-                                <Flex align='center'>
+                              <Box ml="auto" mr={1} className="hover-child">
+                                <Flex align="center">
                                   <Tooltip tooltip={t`X-ray this table`}>
                                     <Link to={`explore/${database.id}/`}>
-                                      <Icon name="bolt" mx={1} color={normal.yellow} size={20} />
+                                      <Icon
+                                        name="bolt"
+                                        mx={1}
+                                        color={normal.yellow}
+                                        size={20}
+                                      />
                                     </Link>
                                   </Tooltip>
                                   <Tooltip tooltip={t`Learn about this table`}>
-                                    <Link to={`reference/databases/${database.id}`}>
-                                      <Icon name="reference" color={normal.grey1} />
+                                    <Link
+                                      to={`reference/databases/${database.id}`}
+                                    >
+                                      <Icon
+                                        name="reference"
+                                        color={normal.grey1}
+                                      />
                                     </Link>
                                   </Tooltip>
                                 </Flex>
