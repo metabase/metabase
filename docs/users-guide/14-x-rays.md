@@ -67,5 +67,10 @@ If you come across an x-ray that's particularly interesting, you can save it as 
 
 We're reworking the way we do things like time series growth analysis, which was present in past versions of x-rays. In the meantime, we've removed those previous x-rays, and will bring those features back in a more elegant and streamlined way in a future version of Metabase.
 
-## Need help?
+### Need help?
 If you still have questions about x-rays or comparisons, you can head over to our [discussion forum](http://discourse.metabase.com/). See you there!
+
+---
+
+## Next: setting up alerts
+Learn how to get notified when one of your questions meets or goal or has results with [alerts](15-alerts.md).
