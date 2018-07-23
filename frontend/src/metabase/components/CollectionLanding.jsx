@@ -317,7 +317,9 @@ class DefaultLanding extends React.Component {
                   {collectionHasItems && (
                     <GridItem w={itemWidth}>
                       <Box>
-                        <ItemTypeFilterBar />
+                        <ItemTypeFilterBar
+                          analyticsContext={`Collection Landing`}
+                        />
                         <Card mt={1} className="relative">
                           {unpinnedItems.length > 0 ? (
                             <PinDropTarget pinIndex={null} margin={8}>

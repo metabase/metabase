@@ -26,6 +26,7 @@ export default class SearchApp extends React.Component {
           <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
         </Flex>
         <ItemTypeFilterBar
+          analyticsContext={`Search Results`}
           filters={FILTERS.concat({
             name: t`Collections`,
             filter: "collection",
