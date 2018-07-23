@@ -70,7 +70,8 @@ export default class TableInteractiveSummary extends Component {
   columnNeedsResize: { [key: number]: boolean };
   _div: HTMLElement;
 
-  header: GridComponent;
+  lowerHeader: GridComponent;
+  upperHeader: GridComponent;
   grid: GridComponent;
 
   constructor(props: Props) {
@@ -145,7 +146,7 @@ export default class TableInteractiveSummary extends Component {
     });
     this.columnHasResized = {};
     this.props.onUpdateVisualizationSettings({
-      "table.column_widths": undefined,
+      "summaryTable.column_widths": undefined,
     });
   }
 
@@ -162,7 +163,7 @@ export default class TableInteractiveSummary extends Component {
             {this.tableLowerHeaderRenderer({
               columnIndex,
               rowIndex: 0,
-              key: "header",
+              key: "lowerHeader",
               style: {},
             })}
             {probeRows.map((probeRow, ri) => this.renderCell(probeRow, column, columnIndex, { start: 0, stop : rows.length}, "column-" + columnIndex + " row1-" + ri, 0, true, {}
@@ -212,8 +213,9 @@ export default class TableInteractiveSummary extends Component {
   }
 
   recomputeGridSize = () => {
-    if (this.header && this.grid) {
-      this.header.recomputeGridSize();
+    if (this.lowerHeader && this.upperHeader && this.grid) {
+      this.lowerHeader.recomputeGridSize();
+      this.upperHeader.recomputeGridSize();
       this.grid.recomputeGridSize();
     }
   };
@@ -230,12 +232,12 @@ export default class TableInteractiveSummary extends Component {
 
   onColumnResize(columnIndex: number, width: number) {
     const { settings } = this.props;
-    let columnWidthsSetting = settings["table.column_widths"]
-      ? settings["table.column_widths"].slice()
+    let columnWidthsSetting = settings["summaryTable.column_widths"]
+      ? settings["summaryTable.column_widths"].slice()
       : [];
     columnWidthsSetting[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
     this.props.onUpdateVisualizationSettings({
-      "table.column_widths": columnWidthsSetting,
+      "summaryTable.column_widths": columnWidthsSetting,
     });
     setTimeout(() => this.recomputeGridSize(), 1);
   }
@@ -516,7 +518,7 @@ export default class TableInteractiveSummary extends Component {
   getColumnWidth = ({ index }: { index: number }) => {
     const { settings } = this.props;
     const { columnWidths } = this.state;
-    const columnWidthsSetting = settings["table.column_widths"] || [];
+    const columnWidthsSetting = settings["summaryTable.column_widths"] || [];
     return (
       columnWidthsSetting[index] || columnWidths[index] || MIN_COLUMN_WIDTH
     );
@@ -560,7 +562,7 @@ export default class TableInteractiveSummary extends Component {
               height={height}
             />
             <Grid
-              ref={ref => (this.headerUpper = ref)}
+              ref={ref => (this.upperHeader = ref)}
               style={{
                 top: 0,
                 left: 0,
@@ -600,7 +602,7 @@ export default class TableInteractiveSummary extends Component {
               tabIndex={null}
             />
             <Grid
-              ref={ref => (this.header = ref)}
+              ref={ref => (this.lowerHeader = ref)}
               style={{
                 top: HEADER_HEIGHT,
                 left: 0,
