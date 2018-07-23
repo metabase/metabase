@@ -1,3 +1,5 @@
+/* @flow */
+
 // NOTE: this file is used on the frontend and backend and there are some
 // limitations. See frontend/src/metabase-shared/color_selector for details
 
@@ -7,7 +9,61 @@ const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
 const GRADIENT_ALPHA = 0.75;
 
-export function makeCellBackgroundGetter(rows, cols, settings) {
+import type { Column } from "metabase/meta/types/Dataset";
+// for simplicity wheb typing assume all values are numbers, since you can only pick numeric columns
+type Value = number;
+type Row = Value[];
+
+type ColumnName = string;
+type Color = string;
+
+type SingleFormat = {
+  type: "single",
+  columns: ColumnName[],
+  color: Color,
+  operator: "<" | ">" | "<=" | ">=" | "=" | "!=",
+  value: number,
+  highlight_row: boolean,
+};
+
+type RangeFormat = {
+  type: "range",
+  columns: ColumnName[],
+  colors: Color[],
+  min_type: null | "all" | "custom",
+  min_value: number,
+  max_type: null | "all" | "custom",
+  max_value: number,
+};
+
+type Format = SingleFormat | RangeFormat;
+
+type Settings = {
+  "table.column_formatting": Format[],
+  "table.pivot"?: boolean,
+};
+
+type Formatter = (value: number) => ?Color;
+type RowFormatter = (row: number[], colIndexes: ColumnIndexes) => ?Color;
+
+type BackgroundGetter = (
+  value: number,
+  rowIndex: number,
+  colName: ColumnName,
+) => ?Color;
+
+type ColumnIndexes = {
+  [key: ColumnName]: number,
+};
+type ColumnExtents = {
+  [key: ColumnName]: [number, number],
+};
+
+export function makeCellBackgroundGetter(
+  rows: Row[],
+  cols: Column[],
+  settings: Settings,
+): BackgroundGetter {
   const formats = settings["table.column_formatting"];
   const pivot = settings["table.pivot"];
   let formatters = {};
@@ -23,7 +79,7 @@ export function makeCellBackgroundGetter(rows, cols, settings) {
   if (Object.keys(formatters).length === 0 && rowFormatters.length === 0) {
     return () => null;
   } else {
-    return function(value, rowIndex, colName) {
+    return function(value: Value, rowIndex: number, colName: ColumnName) {
       if (formatters[colName]) {
         // const value = rows[rowIndex][colIndexes[colName]];
         for (let i = 0; i < formatters[colName].length; i++) {
@@ -61,7 +117,7 @@ function compileFormatter(
   columnName,
   columnExtents,
   isRowFormatter = false,
-) {
+): ?Formatter {
   if (format.type === "single") {
     let { operator, value, color } = format;
     if (isRowFormatter) {
@@ -85,21 +141,25 @@ function compileFormatter(
     }
   } else if (format.type === "range") {
     const columnMin = name =>
+      // $FlowFixMe
       columnExtents && columnExtents[name] && columnExtents[name][0];
     const columnMax = name =>
+      // $FlowFixMe
       columnExtents && columnExtents[name] && columnExtents[name][1];
 
     const min =
       format.min_type === "custom"
         ? format.min_value
         : format.min_type === "all"
-          ? Math.min(...format.columns.map(columnMin))
+          ? // $FlowFixMe
+            Math.min(...format.columns.map(columnMin))
           : columnMin(columnName);
     const max =
       format.max_type === "custom"
         ? format.max_value
         : format.max_type === "all"
-          ? Math.max(...format.columns.map(columnMax))
+          ? // $FlowFixMe
+            Math.max(...format.columns.map(columnMax))
           : columnMax(columnName);
 
     if (typeof max !== "number" || typeof min !== "number") {
@@ -119,7 +179,7 @@ function compileFormatter(
 
 // NOTE: implement `extent` like this rather than using d3.extent since rows may
 // be a Java `List` rather than a JavaScript Array when used in Pulse formatting
-function extent(rows, colIndex) {
+function extent(rows: Row[], colIndex: number) {
   let min = Infinity;
   let max = -Infinity;
   const length = rows.length;
@@ -148,7 +208,7 @@ function computeColumnExtents(formats, rows, colIndexes) {
   return columnExtents;
 }
 
-function compileFormatters(formats, columnExtents) {
+function compileFormatters(formats: Format[], columnExtents: ColumnExtents) {
   const formatters = {};
   formats.forEach(format => {
     format.columns.forEach(columnName => {
@@ -161,7 +221,7 @@ function compileFormatters(formats, columnExtents) {
   return formatters;
 }
 
-function compileRowFormatters(formats) {
+function compileRowFormatters(formats: Format[]): RowFormatter[] {
   const rowFormatters = [];
   formats
     .filter(format => format.type === "single" && format.highlight_row)

@@ -4271,13 +4271,15 @@ exports.makeCellBackgroundGetter = makeCellBackgroundGetter;
 
 var _colors = __webpack_require__(59);
 
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } } // NOTE: this file is used on the frontend and backend and there are some
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+// NOTE: this file is used on the frontend and backend and there are some
 // limitations. See frontend/src/metabase-shared/color_selector for details
 
 var CELL_ALPHA = 0.65;
 var ROW_ALPHA = 0.2;
 var GRADIENT_ALPHA = 0.75;
-
+// for simplicity wheb typing assume all values are numbers, since you can only pick numeric columns
 function makeCellBackgroundGetter(rows, cols, settings) {
   var formats = settings["table.column_formatting"];
   var pivot = settings["table.pivot"];
@@ -4301,9 +4303,9 @@ function makeCellBackgroundGetter(rows, cols, settings) {
         // const value = rows[rowIndex][colIndexes[colName]];
         for (var i = 0; i < formatters[colName].length; i++) {
           var formatter = formatters[colName][i];
-          var color = formatter(value);
-          if (color != null) {
-            return color;
+          var _color = formatter(value);
+          if (_color != null) {
+            return _color;
           }
         }
       }
@@ -4311,9 +4313,9 @@ function makeCellBackgroundGetter(rows, cols, settings) {
       if (!pivot) {
         for (var _i = 0; _i < rowFormatters.length; _i++) {
           var rowFormatter = rowFormatters[_i];
-          var _color = rowFormatter(rows[rowIndex], colIndexes);
-          if (_color != null) {
-            return _color;
+          var _color2 = rowFormatter(rows[rowIndex], colIndexes);
+          if (_color2 != null) {
+            return _color2;
           }
         }
       }
@@ -4333,51 +4335,59 @@ function compileFormatter(format, columnName, columnExtents) {
   var isRowFormatter = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
 
   if (format.type === "single") {
-    var operator = format.operator,
-        value = format.value,
-        color = format.color;
+    var _operator = format.operator,
+        _value = format.value,
+        _color3 = format.color;
 
     if (isRowFormatter) {
-      color = (0, _colors.alpha)(color, ROW_ALPHA);
+      _color3 = (0, _colors.alpha)(_color3, ROW_ALPHA);
     } else {
-      color = (0, _colors.alpha)(color, CELL_ALPHA);
+      _color3 = (0, _colors.alpha)(_color3, CELL_ALPHA);
     }
-    switch (operator) {
+    switch (_operator) {
       case "<":
         return function (v) {
-          return v < value ? color : null;
+          return v < _value ? _color3 : null;
         };
       case "<=":
         return function (v) {
-          return v <= value ? color : null;
+          return v <= _value ? _color3 : null;
         };
       case ">=":
         return function (v) {
-          return v >= value ? color : null;
+          return v >= _value ? _color3 : null;
         };
       case ">":
         return function (v) {
-          return v > value ? color : null;
+          return v > _value ? _color3 : null;
         };
       case "=":
         return function (v) {
-          return v === value ? color : null;
+          return v === _value ? _color3 : null;
         };
       case "!=":
         return function (v) {
-          return v !== value ? color : null;
+          return v !== _value ? _color3 : null;
         };
     }
   } else if (format.type === "range") {
     var columnMin = function columnMin(name) {
-      return columnExtents && columnExtents[name] && columnExtents[name][0];
+      return (
+        // $FlowFixMe
+        columnExtents && columnExtents[name] && columnExtents[name][0]
+      );
     };
     var columnMax = function columnMax(name) {
-      return columnExtents && columnExtents[name] && columnExtents[name][1];
+      return (
+        // $FlowFixMe
+        columnExtents && columnExtents[name] && columnExtents[name][1]
+      );
     };
 
-    var min = format.min_type === "custom" ? format.min_value : format.min_type === "all" ? Math.min.apply(Math, _toConsumableArray(format.columns.map(columnMin))) : columnMin(columnName);
-    var max = format.max_type === "custom" ? format.max_value : format.max_type === "all" ? Math.max.apply(Math, _toConsumableArray(format.columns.map(columnMax))) : columnMax(columnName);
+    var min = format.min_type === "custom" ? format.min_value : format.min_type === "all" ? // $FlowFixMe
+    Math.min.apply(Math, _toConsumableArray(format.columns.map(columnMin))) : columnMin(columnName);
+    var max = format.max_type === "custom" ? format.max_value : format.max_type === "all" ? // $FlowFixMe
+    Math.max.apply(Math, _toConsumableArray(format.columns.map(columnMax))) : columnMax(columnName);
 
     if (typeof max !== "number" || typeof min !== "number") {
       console.warn("Invalid range min/max", min, max);
@@ -4404,12 +4414,12 @@ function extent(rows, colIndex) {
   var max = -Infinity;
   var length = rows.length;
   for (var i = 0; i < length; i++) {
-    var value = rows[i][colIndex];
-    if (value < min) {
-      min = value;
+    var _value2 = rows[i][colIndex];
+    if (_value2 < min) {
+      min = _value2;
     }
-    if (value > max) {
-      max = value;
+    if (_value2 > max) {
+      max = _value2;
     }
   }
   return [min, max];

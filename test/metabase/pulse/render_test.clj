@@ -329,14 +329,27 @@
 ;; we should find some similar basic values that can rely on. The goal isn't to test out the javascript choosing in
 ;; the color (that should be done in javascript) but to verify that the pieces are all connecting correctly
 (expect
-  (zipmap (map str (range 1 7))
-          (repeat "#ff0000"))
-  (let [viz-settings  {:visualization_settings {}}
-        query-results {:cols [{:name "a"} {:name "b"}]
-                       :rows [[1 2]
-                              [3 4]
-                              [5 6]]}]
+   {"1" "",                     "2" "",                     "3" "rgba(0, 255, 0, 0.75)"
+    "4" "",                     "5" "",                     "6" "rgba(0, 128, 128, 0.75)"
+    "7" "rgba(255, 0, 0, 0.65)" "8" "rgba(255, 0, 0, 0.2)"  "9" "rgba(0, 0, 255, 0.75)"}
+  (let [viz-settings  {"table.column_formatting" [{:columns       ["a"]
+                                                   :type          :single
+                                                   :operator      ">"
+                                                   :value         5
+                                                   :color         "#ff0000"
+                                                   :highlight_row true}
+                                                  {:columns       ["c"]
+                                                   :type          "range"
+                                                   :min_type      "custom"
+                                                   :min_value     3
+                                                   :max_type      "custom"
+                                                   :max_value     9
+                                                   :colors        ["#00ff00" "#0000ff"]}]}
+        query-results {:cols [{:name "a"} {:name "b"} {:name "c"}]
+                       :rows [[1 2 3]
+                              [4 5 6]
+                              [7 8 9]]}]
     (-> (color/make-color-selector query-results viz-settings)
-        (#'render/render-table ["a" "b"] (query-results->header+rows query-results))
+        (#'render/render-table ["a" "b" "c"] (query-results->header+rows query-results))
         find-table-body
         cell-value->background-color)))
