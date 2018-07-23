@@ -71,7 +71,11 @@ export default class SearchApp extends React.Component {
                       </div>
                       <Card px={2}>
                         {types.dashboard.map(item => (
-                          <Link to={item.getUrl()} key={item.id}>
+                          <Link
+                            to={item.getUrl()}
+                            key={item.id}
+                            data-metabase-event="Search Results;Item Click;Dashboard"
+                          >
                             <EntityItem
                               name={item.getName()}
                               iconName={item.getIcon()}
@@ -89,7 +93,11 @@ export default class SearchApp extends React.Component {
                       </div>
                       <Card px={2}>
                         {types.collection.map(item => (
-                          <Link to={item.getUrl()} key={item.id}>
+                          <Link
+                            to={item.getUrl()}
+                            key={item.id}
+                            data-metabase-event="Search Results;Item Click;Collection"
+                          >
                             <EntityItem
                               name={item.getName()}
                               iconName={item.getIcon()}
@@ -107,7 +115,11 @@ export default class SearchApp extends React.Component {
                       </div>
                       <Card px={2}>
                         {types.card.map(item => (
-                          <Link to={item.getUrl()} key={item.id}>
+                          <Link
+                            to={item.getUrl()}
+                            key={item.id}
+                            data-metabase-event="Search Results;Item Click;Question"
+                          >
                             <EntityItem
                               name={item.getName()}
                               iconName={item.getIcon()}
@@ -125,7 +137,11 @@ export default class SearchApp extends React.Component {
                       </div>
                       <Card px={2}>
                         {types.pulse.map(item => (
-                          <Link to={item.getUrl()} key={item.id}>
+                          <Link
+                            to={item.getUrl()}
+                            key={item.id}
+                            data-metabase-event="Search Results;Item Click;Pulse"
+                          >
                             <EntityItem
                               name={item.getName()}
                               iconName={item.getIcon()}
