@@ -24,6 +24,7 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import { Grid, ScrollSync, defaultCellRangeRenderer } from "react-virtualized";
 import Draggable from "react-draggable";
 
+const SINGLE_HEADER_HEIGHT = 36;
 const HEADER_HEIGHT = 30;
 const ROW_HEIGHT = 30;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
@@ -532,13 +533,17 @@ export default class TableInteractiveSummary extends Component {
 
     let groups = cols.filter( c => c.parentName ).map( ({parentName}) => ({name: parentName[0], indexFrom: 0, indexTo: parentName[1], columnInfo: parentName[2]}));
 
+    let isUpperHeaderEmpty ="";
     let idx= 0;
     for( let i in groups ) {
       let g = groups[i];
       g.indexFrom = idx;
       idx += g.indexTo;
       g.indexTo = idx;
+      isUpperHeaderEmpty += g.name;
     }
+
+    isUpperHeaderEmpty = isUpperHeaderEmpty == "";
 
     return (
       <ScrollSync>
@@ -570,6 +575,7 @@ export default class TableInteractiveSummary extends Component {
                 height: HEADER_HEIGHT,
                 position: "absolute",
                 overflow: "hidden",
+                visibility: isUpperHeaderEmpty ? "hidden" : "normal",
               }}
               className="scroll-hide-all"
               width={width || 0}
@@ -604,18 +610,18 @@ export default class TableInteractiveSummary extends Component {
             <Grid
               ref={ref => (this.lowerHeader = ref)}
               style={{
-                top: HEADER_HEIGHT,
+                top: isUpperHeaderEmpty ? 0 : HEADER_HEIGHT,
                 left: 0,
                 right: 0,
-                height: HEADER_HEIGHT,
+                height: isUpperHeaderEmpty ? SINGLE_HEADER_HEIGHT : HEADER_HEIGHT,
                 position: "absolute",
                 overflow: "hidden",
               }}
               className="TableInteractive-header scroll-hide-all"
               width={width || 0}
-              height={HEADER_HEIGHT}
+              height={isUpperHeaderEmpty ? SINGLE_HEADER_HEIGHT : HEADER_HEIGHT}
               rowCount={1}
-              rowHeight={HEADER_HEIGHT}
+              rowHeight={isUpperHeaderEmpty ? SINGLE_HEADER_HEIGHT : HEADER_HEIGHT}
               // HACK: there might be a better way to do this, but add a phantom padding cell at the end to ensure scroll stays synced if main content scrollbars are visible
               columnCount={cols.length + 1}
               columnWidth={props =>
@@ -633,7 +639,7 @@ export default class TableInteractiveSummary extends Component {
             <Grid
               ref={ref => (this.grid = ref)}
               style={{
-                top: HEADER_HEIGHT*2,
+                top: isUpperHeaderEmpty ? SINGLE_HEADER_HEIGHT : HEADER_HEIGHT*2,
                 left: 0,
                 right: 0,
                 bottom: 0,
@@ -641,7 +647,7 @@ export default class TableInteractiveSummary extends Component {
               }}
               className=""
               width={width}
-              height={height - 2*HEADER_HEIGHT}
+              height={height - (isUpperHeaderEmpty ? SINGLE_HEADER_HEIGHT : 2*HEADER_HEIGHT)}
               columnCount={cols.length}
               columnWidth={this.getColumnWidth}
               rowCount={rows.length}
