@@ -305,6 +305,7 @@ class DefaultLanding extends React.Component {
                           </CollectionSectionHeading>
                         </Box>
                         <CollectionList
+                          analyticsContext="Collection Landing"
                           currentCollection={collection}
                           collections={collections}
                           isRoot={collectionId === "root"}

@@ -158,7 +158,10 @@ class Overworld extends React.Component {
             {this.props.collections.filter(
               c => c.id !== user.personal_collection_id,
             ).length > 0 ? (
-              <CollectionList collections={this.props.collections} />
+              <CollectionList
+                collections={this.props.collections}
+                analyticsContext="Homepage"
+              />
             ) : (
               <Box className="text-centered">
                 <Box style={{ opacity: 0.5 }}>
