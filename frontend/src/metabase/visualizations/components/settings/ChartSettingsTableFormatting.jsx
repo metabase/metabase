@@ -28,16 +28,16 @@ const OPERATOR_NAMES = {
   "!=": t`not equal to`,
 };
 
-import { desaturated as colors, getColorScale } from "metabase/lib/colors";
+import colors, { desaturated, getColorScale } from "metabase/lib/colors";
 
-const COLORS = Object.values(colors);
+const COLORS = Object.values(desaturated);
 const COLOR_RANGES = [].concat(
   ...COLORS.map(color => [["white", color], [color, "white"]]),
   [
-    [colors.red, "white", colors.green],
-    [colors.green, "white", colors.red],
-    [colors.red, colors.yellow, colors.green],
-    [colors.green, colors.yellow, colors.red],
+    [colors.error, "white", colors.success],
+    [colors.success, "white", colors.error],
+    [colors.error, colors.warning, colors.success],
+    [colors.success, colors.warning, colors.error],
   ],
 );
 
@@ -188,7 +188,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
     className="my2 bordered rounded shadowed cursor-pointer overflow-hidden bg-white"
     onClick={onClick}
   >
-    <div className="p1 border-bottom relative bg-grey-0">
+    <div className="p1 border-bottom relative bg-light">
       <div className="px1 flex align-center relative">
         <span className="h4 flex-full text-dark">
           {rule.columns.length > 0 ? (
@@ -206,7 +206,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         </span>
         <Icon
           name="close"
-          className="cursor-pointer text-grey-2 text-grey-4-hover"
+          className="cursor-pointer text-light text-medium-hover"
           onClick={e => {
             e.stopPropagation();
             onRemove();
@@ -217,10 +217,9 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
     <div className="p2 flex align-center">
       <RuleBackground
         rule={rule}
-        className={cx(
-          "mr2 flex-no-shrink rounded overflow-hidden border-grey-1",
-          { bordered: rule.type === "range" },
-        )}
+        className={cx("mr2 flex-no-shrink rounded overflow-hidden", {
+          bordered: rule.type === "range",
+        })}
         style={{ width: 40, height: 40 }}
       />
       <RuleDescription rule={rule} />

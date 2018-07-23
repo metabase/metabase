@@ -145,7 +145,6 @@ function createSharedResource(
         };
         entriesByKey.set(entry.key, entry);
         entriesByResource.set(entry.resource, entry);
-      } else {
       }
       ++entry.references;
       return entry.resource;

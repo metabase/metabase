@@ -1,3 +1,27 @@
+console.log("INIT!", new Error().stack);
+
+const _close = window.close;
+window.close = function() {
+  console.log("CLOSE!", new Error().stack);
+  return _close.apply(this, arguments);
+};
+
+const _setTimeout = window.setTimeout;
+window.setTimeout = function(fn, ...args) {
+  if (typeof fn === "function") {
+    const stack = new Error().stack;
+    const _fn = fn;
+    fn = function() {
+      if (!window.document) {
+        console.log("WINDOW CLOSED, SKIPPING TIMEOUT", stack);
+        // return;
+      }
+      return _fn.apply(this, arguments);
+    };
+  }
+  return _setTimeout.call(this, fn, ...args);
+};
+
 /* global process, jasmine */
 
 /**
@@ -231,7 +255,9 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
           actionWithTimestamp,
         );
 
-        if (store._onActionDispatched) store._onActionDispatched();
+        if (store._onActionDispatched) {
+          store._onActionDispatched();
+        }
         return result;
       },
 
@@ -592,6 +618,7 @@ cleanup.fn = action => cleanup.actions.push(action);
 cleanup.metric = metric => cleanup.fn(() => deleteMetric(metric));
 cleanup.segment = segment => cleanup.fn(() => deleteSegment(segment));
 cleanup.question = question => cleanup.fn(() => deleteQuestion(question));
+cleanup.collection = c => cleanup.fn(() => deleteCollection(c));
 
 export const deleteQuestion = question =>
   CardApi.delete({ cardId: getId(question) });
@@ -599,6 +626,8 @@ export const deleteSegment = segment =>
   SegmentApi.delete({ segmentId: getId(segment), revision_message: "Please" });
 export const deleteMetric = metric =>
   MetricApi.delete({ metricId: getId(metric), revision_message: "Please" });
+export const deleteCollection = collection =>
+  CollectionsApi.update({ id: getId(collection), archived: true });
 
 const getId = o =>
   typeof o === "object" && o != null
@@ -642,6 +671,14 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
       ? { status: 0, responseText: "" }
       : await fetch(api.basename + url, fetchOptions);
 
+    if (!window.document) {
+      console.warn(
+        "API request completed after test ended. Ignoring result.",
+        url,
+      );
+      return;
+    }
+
     if (isCancelled) {
       throw { status: 0, data: "", isCancelled: true };
     }
@@ -677,11 +714,23 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
         );
         console.log(error, { depth: null });
         console.log(`The original request: ${method} ${url}`);
-        if (requestBody) console.log(`Original payload: ${requestBody}`);
+        if (requestBody) {
+          console.log(`Original payload: ${requestBody}`);
+        }
       }
 
       throw error;
     }
+  } catch (e) {
+    if (!window.document) {
+      console.warn(
+        "API request failed after test ended. Ignoring result.",
+        url,
+        e,
+      );
+      return;
+    }
+    throw e;
   } finally {
     pendingRequests--;
     if (pendingRequests === 0 && pendingRequestsDeferred) {

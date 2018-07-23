@@ -12,7 +12,7 @@ import PulseEditSkip from "./PulseEditSkip.jsx";
 import WhatsAPulse from "./WhatsAPulse.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
-import Link from "metabase/components/Link";
+import Button from "metabase/components/Button";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -23,7 +23,23 @@ import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 import cx from "classnames";
+import { connect } from "react-redux";
+import { goBack } from "react-router-redux";
 
+import Collections from "metabase/entities/collections";
+
+const mapStateToProps = (state, props) => ({
+  initialCollectionId: Collections.selectors.getInitialCollectionId(
+    state,
+    props,
+  ),
+});
+
+const mapDispatchToProps = {
+  goBack,
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 @withRouter
 export default class PulseEdit extends Component {
   constructor(props) {
@@ -44,11 +60,15 @@ export default class PulseEdit extends Component {
     saveEditingPulse: PropTypes.func.isRequired,
     deletePulse: PropTypes.func.isRequired,
     onChangeLocation: PropTypes.func.isRequired,
-    location: PropTypes.object,
+    goBack: PropTypes.func,
+    initialCollectionId: PropTypes.number,
   };
 
   componentDidMount() {
-    this.props.setEditingPulse(this.props.pulseId);
+    this.props.setEditingPulse(
+      this.props.pulseId,
+      this.props.initialCollectionId,
+    );
     this.props.fetchCards();
     this.props.fetchUsers();
     this.props.fetchPulseFormInput();
@@ -119,7 +139,7 @@ export default class PulseEdit extends Component {
   }
 
   render() {
-    const { pulse, formInput, location } = this.props;
+    const { pulse, formInput } = this.props;
     const isValid = pulseIsValid(pulse, formInput.channels);
     const attachmentsEnabled = emailIsEnabled(pulse);
     return (
@@ -148,11 +168,7 @@ export default class PulseEdit extends Component {
         </div>
         <div className="PulseEdit-content pt2 pb4">
           <PulseEditName {...this.props} setPulse={this.setPulse} />
-          <PulseEditCollection
-            {...this.props}
-            setPulse={this.setPulse}
-            initialCollectionId={location.query.collectionId}
-          />
+          <PulseEditCollection {...this.props} setPulse={this.setPulse} />
           <PulseEditCards
             {...this.props}
             setPulse={this.setPulse}
@@ -207,10 +223,9 @@ export default class PulseEdit extends Component {
             failedText={t`Save failed`}
             successText={t`Saved`}
           />
-          <Link
-            to={Urls.collection(location.query.collectionId)}
-            className="Button ml2"
-          >{t`Cancel`}</Link>
+          <Button onClick={() => this.props.goBack()} ml={2}>
+            {t`Cancel`}
+          </Button>
         </div>
       </div>
     );

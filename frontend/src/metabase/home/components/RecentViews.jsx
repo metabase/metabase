@@ -65,9 +65,9 @@ export default class RecentViews extends Component {
             })}
           </ul>
         ) : (
-          <div className="flex flex-column layout-centered text-normal text-grey-2">
+          <div className="flex flex-column layout-centered text-normal text-light">
             <p
-              className="p3 text-centered text-grey-2"
+              className="p3 text-centered text-light"
               style={{ maxWidth: "100%" }}
             >
               {t`You haven't looked at any dashboards or questions recently`}

@@ -89,10 +89,8 @@ export class ExplorePane extends React.Component {
         )}
         {schemaNames &&
           schemaNames.length > 1 && (
-            <div className="px4 inline-block mb4">
-              <div className="pb1 text-paragraph">
-                Here's the schema I looked at:
-              </div>
+            <div className="flex align-center ml-auto">
+              <div className="mr1">{t`Based on the schema`}</div>
               <Select
                 value={schemaName}
                 onChange={e =>
@@ -119,7 +117,7 @@ export class ExplorePane extends React.Component {
         )}
         {hasMore && (
           <div
-            className="border-top cursor-pointer text-brand-hover flex layout-centered text-grey-2 px2 pt2 mt4"
+            className="border-top cursor-pointer text-brand-hover flex layout-centered text-light px2 pt2 mt4"
             onClick={() => this.setState({ visibleItems: visibleItems + 4 })}
           >
             <Icon name="chevrondown" size={20} />
@@ -156,20 +154,17 @@ export const ExploreList = ({
 );
 
 export const ExploreOption = ({ option }: { option: Candidate }) => (
-  <Link to={option.url} className="flex align-center text-bold no-decoration">
-    <div
-      className="bg-grey-0 flex align-center rounded mr2 p2 justify-center text-gold"
-      style={{ width: 48, height: 48 }}
-    >
-      <Icon name="bolt" size={24} className="flex-no-shrink" />
-    </div>
+  <Link
+    to={option.url}
+    className="flex align-center text-bold no-decoration text-medium text-brand-hover bg-light p2 py3"
+  >
+    <Icon
+      name="bolt"
+      size={20}
+      className="flex-no-shrink mr1 justify-center text-gold"
+    />
     <div>
-      <div className="link">{option.title}</div>
-      {option.description && (
-        <div className="text-grey-4 text-small" style={{ marginTop: "0.25em" }}>
-          {option.description}
-        </div>
-      )}
+      <span className="text-normal">{t`A look at your`}</span> {option.title}
     </div>
   </Link>
 );

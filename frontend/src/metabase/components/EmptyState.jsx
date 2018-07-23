@@ -53,7 +53,7 @@ const EmptyState = ({
     )}
     <div className="flex justify-center">
       <h2
-        className={cx("text-grey-2 text-normal mt2 mb4", {
+        className={cx("text-light text-normal mt2 mb4", {
           "text-paragraph": smallDescription,
         })}
         style={{ lineHeight: "1.5em" }}

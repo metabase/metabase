@@ -18,6 +18,7 @@ const Dashboards = createEntity({
   api: {
     favorite: POST("/api/dashboard/:id/favorite"),
     unfavorite: DELETE("/api/dashboard/:id/favorite"),
+    save: POST("/api/dashboard/save"),
   },
 
   objectActions: {
@@ -53,6 +54,17 @@ const Dashboards = createEntity({
         await Dashboards.api.unfavorite({ id });
         return { type: UNFAVORITE_ACTION, payload: id };
       }
+    },
+  },
+
+  actions: {
+    save: dashboard => async dispatch => {
+      const savedDashboard = await Dashboards.api.save(dashboard);
+      dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
+      return {
+        type: "metabase/entities/dashboards/SAVE_DASHBOARD",
+        payload: savedDashboard,
+      };
     },
   },
 

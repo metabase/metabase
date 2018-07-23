@@ -20,13 +20,14 @@
                  [org.clojure/java.jdbc "0.7.6"]                      ; basic JDBC access from Clojure
                  [org.clojure/math.combinatorics "0.1.4"]             ; combinatorics functions
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
-                 [org.clojure/tools.logging "0.3.1"]                  ; logging framework
+                 [org.clojure/tools.logging "0.4.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
                  [amalloy/ring-buffer "1.2.1"
                   :exclusions [org.clojure/clojure
                                org.clojure/clojurescript]]            ; fixed length queue implementation, used in log buffering
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
-                 [aleph "0.4.5-alpha2"]                               ; Async HTTP library; WebSockets
+                 [aleph "0.4.5-alpha2"                                ; Async HTTP library; WebSockets
+                  :exclusions [org.clojure/tools.logging]]
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
@@ -83,7 +84,8 @@
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
-                 [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
+                 [org.liquibase/liquibase-core "3.6.2"                ; migration management (Java lib)
+                  :exclusions [ch.qos.logback/logback-classic]]
                  [org.postgresql/postgresql "42.2.2"]                 ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
@@ -96,7 +98,7 @@
                  [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
-                 [toucan "1.1.7"                                      ; Model layer, hydration, and DB utilities
+                 [toucan "1.1.9"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
                  ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
@@ -134,7 +136,7 @@
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
                                 #"^metabase\.http-client$"]}
-  :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]              ; unit tests
+  :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]        ; unit tests
                                   [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
                    :plugins [[docstring-checker "1.0.2"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
                              [jonase/eastwood "0.2.6"
@@ -146,8 +148,9 @@
                                            org.clojure/tools.namespace]]]
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"]
-                   ;; Log appender class needs to be compiled for log4j to use it,
-                   :aot [metabase.logger]}
+                   ;; Log appender class needs to be compiled for log4j to use it. Same with the Quartz class load helper
+                   :aot [metabase.logger
+                         metabase.task.DynamicClassLoadHelper]}
              :ci {:jvm-opts ["-Xmx2500m"]}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup  ; for test setup stuff

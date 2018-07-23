@@ -107,6 +107,7 @@ export default ComposedComponent =>
         triggerClasses,
         triggerStyle,
         triggerClassesOpen,
+        triggerClassesClose,
       } = this.props;
       const { isOpen } = this.state;
 
@@ -142,6 +143,7 @@ export default ComposedComponent =>
           className={cx(
             triggerClasses,
             isOpen && triggerClassesOpen,
+            !isOpen && triggerClassesClose,
             "no-decoration",
             {
               "cursor-default": this.props.disabled,

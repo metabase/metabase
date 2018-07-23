@@ -24,11 +24,11 @@ import {
 } from "metabase/lib/card";
 import { formatSQL } from "metabase/lib/formatting";
 import Query, { createQuery } from "metabase/lib/query";
+import { syncQueryFields, getExistingFields } from "metabase/lib/dataset";
 import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
-import { addUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
@@ -65,6 +65,8 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { getPersistableDefaultSettings } from "metabase/visualizations/lib/settings";
 import { clearRequestState } from "metabase/redux/requests";
+
+import Questions from "metabase/entities/questions";
 
 type UiControls = {
   isEditing?: boolean,
@@ -446,7 +448,9 @@ export const loadMetadataForCard = createThunkAction(
   card => {
     return async (dispatch, getState) => {
       // Short-circuit if we're in a weird state where the card isn't completely loaded
-      if (!card && !card.dataset_query) return;
+      if (!card && !card.dataset_query) {
+        return;
+      }
 
       const query = card && new Question(getMetadata(getState()), card).query();
 
@@ -518,7 +522,13 @@ export const loadDatabaseFields = createThunkAction(
   },
 );
 
-function updateVisualizationSettings(card, isEditing, display, vizSettings) {
+function updateVisualizationSettings(
+  card,
+  isEditing,
+  display,
+  vizSettings,
+  result,
+) {
   // don't need to store undefined
   vizSettings = Utils.copy(vizSettings);
   for (const name in vizSettings) {
@@ -531,8 +541,9 @@ function updateVisualizationSettings(card, isEditing, display, vizSettings) {
   if (
     card.display === display &&
     _.isEqual(card.visualization_settings, vizSettings)
-  )
+  ) {
     return card;
+  }
 
   let updatedCard = Utils.copy(card);
 
@@ -545,6 +556,10 @@ function updateVisualizationSettings(card, isEditing, display, vizSettings) {
 
   updatedCard.display = display;
   updatedCard.visualization_settings = vizSettings;
+
+  if (result && result.data && result.data.cols) {
+    syncQueryFields(updatedCard, result.data.cols);
+  }
 
   return updatedCard;
 }
@@ -566,6 +581,7 @@ export const setCardVisualization = createThunkAction(
         uiControls.isEditing,
         display,
         card.visualization_settings,
+        getFirstQueryResult(getState()),
       );
       dispatch(updateUrl(updatedCard, { dirty: true }));
       return updatedCard;
@@ -585,6 +601,7 @@ export const updateCardVisualizationSettings = createThunkAction(
         uiControls.isEditing,
         card.display,
         { ...card.visualization_settings, ...settings },
+        getFirstQueryResult(getState()),
       );
       dispatch(updateUrl(updatedCard, { dirty: true }));
       return updatedCard;
@@ -604,6 +621,7 @@ export const replaceAllCardVisualizationSettings = createThunkAction(
         uiControls.isEditing,
         card.display,
         settings,
+        getFirstQueryResult(getState()),
       );
       dispatch(updateUrl(updatedCard, { dirty: true }));
       return updatedCard;
@@ -772,7 +790,7 @@ export const apiCreateQuestion = question => {
     const createdQuestion = await questionWithVizSettings
       .setQuery(question.query().clean())
       .setResultsMetadata(resultsMetadata)
-      .apiCreate();
+      .reduxCreate(dispatch);
 
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
@@ -805,7 +823,7 @@ export const apiUpdateQuestion = question => {
     const updatedQuestion = await questionWithVizSettings
       .setQuery(question.query().clean())
       .setResultsMetadata(resultsMetadata)
-      .apiUpdate();
+      .reduxUpdate(dispatch);
 
     // reload the question alerts for the current question
     // (some of the old alerts might be removed during update)
@@ -983,7 +1001,9 @@ export const setQueryDatabase = createThunkAction(
           let database = databases[databaseId],
             tables = database ? database.tables : [],
             table = tables.length > 0 ? tables[0] : null;
-          if (table) updatedCard.dataset_query.native.collection = table.name;
+          if (table) {
+            updatedCard.dataset_query.native.collection = table.name;
+          }
         }
 
         dispatch(loadMetadataForCard(updatedCard));
@@ -1324,7 +1344,9 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     const { qb: { card } } = getState();
     const queryResult = getFirstQueryResult(getState());
 
-    if (!queryResult || !fk) return false;
+    if (!queryResult || !fk) {
+      return false;
+    }
 
     // extract the value we will use to filter our new query
     let originValue;
@@ -1417,27 +1439,45 @@ export const loadObjectDetailFKReferences = createThunkAction(
   },
 );
 
+const ADD_FIELD = "metabase/qb/ADD_FIELD";
+export const addField = createThunkAction(
+  ADD_FIELD,
+  (field, run = true) => (dispatch, getState) => {
+    const { qb: { card } } = getState();
+    const queryResult = getFirstQueryResult(getState());
+    if (
+      card.dataset_query.type === "query" &&
+      queryResult &&
+      queryResult.data
+    ) {
+      dispatch(
+        setDatasetQuery(
+          {
+            ...card.dataset_query,
+            query: {
+              ...card.dataset_query.query,
+              fields: getExistingFields(card, queryResult.data.cols).concat([
+                field,
+              ]),
+            },
+          },
+          true,
+        ),
+      );
+    }
+  },
+);
+
 // DEPRECATED: use metabase/entities/questions
 export const ARCHIVE_QUESTION = "metabase/qb/ARCHIVE_QUESTION";
 export const archiveQuestion = createThunkAction(
   ARCHIVE_QUESTION,
   (questionId, archived = true) => async (dispatch, getState) => {
-    let card = {
-      ...getState().qb.card, // grab the current card
-      archived,
-    };
-    let response = await CardApi.update(card);
+    let card = getState().qb.card;
 
-    dispatch(
-      addUndo({
-        verb: archived ? "archived" : "unarchived",
-        subject: "question",
-        action: archiveQuestion(card.id, !archived),
-      }),
-    );
+    await dispatch(Questions.actions.setArchived({ id: card.id }, archived));
 
     dispatch(push(Urls.collection(card.collection_id)));
-    return response;
   },
 );
 
