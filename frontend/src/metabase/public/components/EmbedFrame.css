@@ -31,7 +31,7 @@
 
 .Theme--night.EmbedFrame .DashCard .Card {
   background-color: var(--color-bg-black);
-  border: 1px solid var(--color-accent2);
+  border: 1px solid var(--color-bg-dark);
 }
 
 .Theme--night.EmbedFrame .enable-dots-onhover .dc-tooltip circle.dot:hover,

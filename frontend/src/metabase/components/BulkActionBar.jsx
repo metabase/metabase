@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex } from "grid-styled";
+import { Box } from "grid-styled";
 import Card from "metabase/components/Card";
 import { Motion, spring } from "react-motion";
 
@@ -29,11 +29,7 @@ const BulkActionBar = ({ children, showing }) => (
           transform: `translateY(${translateY}px)`,
         }}
       >
-        <Card>
-          <Flex align="center" py={2} px={4}>
-            {children}
-          </Flex>
-        </Card>
+        <Card>{children}</Card>
       </FixedBottomBar>
     )}
   </Motion>

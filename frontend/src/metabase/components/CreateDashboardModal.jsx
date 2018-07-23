@@ -14,28 +14,31 @@ import Button from "metabase/components/Button.jsx";
 import CollectionSelect from "metabase/containers/CollectionSelect.jsx";
 
 import Dashboards from "metabase/entities/dashboards";
+import Collections from "metabase/entities/collections";
+
+const mapStateToProps = (state, props) => ({
+  initialCollectionId: Collections.selectors.getInitialCollectionId(
+    state,
+    props,
+  ),
+});
 
 const mapDispatchToProps = {
   createDashboard: Dashboards.actions.create,
   push,
 };
 
-@connect(null, mapDispatchToProps)
 @withRouter
+@connect(mapStateToProps, mapDispatchToProps)
 export default class CreateDashboardModal extends Component {
   constructor(props, context) {
     super(props, context);
-    this.createNewDash = this.createNewDash.bind(this);
-    this.setDescription = this.setDescription.bind(this);
-    this.setName = this.setName.bind(this);
 
     this.state = {
       name: null,
       description: null,
       errors: null,
-      // collectionId in the url starts off as a string, but the select will
-      // compare it to the integer ID on colleciton objects
-      collection_id: parseInt(props.params.collectionId),
+      collection_id: props.initialCollectionId,
     };
   }
 
@@ -44,15 +47,15 @@ export default class CreateDashboardModal extends Component {
     onClose: PropTypes.func,
   };
 
-  setName(event) {
+  setName = event => {
     this.setState({ name: event.target.value });
-  }
+  };
 
-  setDescription(event) {
+  setDescription = event => {
     this.setState({ description: event.target.value });
-  }
+  };
 
-  async createNewDash(event) {
+  createNewDash = async event => {
     event.preventDefault();
 
     let name = this.state.name && this.state.name.trim();
@@ -68,7 +71,7 @@ export default class CreateDashboardModal extends Component {
     const { payload } = await this.props.createDashboard(newDash);
     this.props.push(Urls.dashboard(payload.result));
     this.props.onClose();
-  }
+  };
 
   render() {
     let formError;

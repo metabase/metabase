@@ -48,16 +48,13 @@ export default class ComponentsApp extends Component {
             ))}
           </ul>
         </nav>
-        <div
-          className="bg-slate-extra-light flex-full"
-          style={{ flex: "66.66%" }}
-        >
+        <div className="bg-light flex-full bg-white" style={{ flex: "66.66%" }}>
           <div className="p4">
             {COMPONENTS.filter(
               ({ component, description, examples }) =>
                 !componentName || componentName === slugify(component.name),
-            ).map(({ component, description, examples }) => (
-              <div id={component.name}>
+            ).map(({ component, description, examples }, index) => (
+              <div id={component.name} key={index}>
                 <h2>
                   <Link
                     to={`_internal/components/${slugify(component.name)}`}

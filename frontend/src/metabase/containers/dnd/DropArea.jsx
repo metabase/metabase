@@ -1,6 +1,5 @@
 import React from "react";
 import cx from "classnames";
-import { normal } from "metabase/lib/colors";
 
 const DropTargetBackgroundAndBorder = ({
   highlighted,
@@ -15,7 +14,7 @@ const DropTargetBackgroundAndBorder = ({
   <div
     className={cx("absolute rounded", {
       "pointer-events-none": !highlighted,
-      "bg-slate-almost-extra-light": highlighted,
+      "bg-medium": highlighted,
     })}
     style={{
       top: -marginTop,
@@ -24,8 +23,6 @@ const DropTargetBackgroundAndBorder = ({
       right: -marginRight,
       zIndex: -1,
       boxSizing: "border-box",
-      border: "2px solid transparent",
-      borderColor: hovered & !noDrop ? normal.blue : "transparent",
     }}
   />
 );

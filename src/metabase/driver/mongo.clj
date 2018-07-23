@@ -23,9 +23,9 @@
 
 (defn- can-connect? [details]
   (with-mongo-connection [^DB conn, details]
-    (= (-> (cmd/db-stats conn)
-           (conv/from-db-object :keywordize)
-           :ok)
+    (= (float (-> (cmd/db-stats conn)
+                  (conv/from-db-object :keywordize)
+                  :ok))
        1.0)))
 
 (defn- humanize-connection-error-message [message]
@@ -116,7 +116,7 @@
 (defn- describe-table-field [field-kw field-info]
   (let [most-common-object-type (most-common-object-type (vec (:types field-info)))]
     (cond-> {:name          (name field-kw)
-             :database-type (.getName most-common-object-type)
+             :database-type (some-> most-common-object-type .getName)
              :base-type     (driver/class->base-type most-common-object-type)}
       (= :_id field-kw)           (assoc :pk? true)
       (:special-types field-info) (assoc :special-type (->> (vec (:special-types field-info))

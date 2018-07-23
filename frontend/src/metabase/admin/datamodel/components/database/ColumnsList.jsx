@@ -15,7 +15,7 @@ export default class ColumnsList extends Component {
     return (
       <div id="ColumnsList" className="my3">
         <h2 className="px1 text-orange">{t`Columns`}</h2>
-        <div className="text-uppercase text-grey-3 py1">
+        <div className="text-uppercase text-medium py1">
           <div
             style={{ minWidth: 420 }}
             className="float-left px1"

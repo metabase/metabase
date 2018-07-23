@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.automagic-dashboards.populate :as populate]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :as i18n :refer [trs]]
@@ -119,8 +120,7 @@
   (mapcat (comp k val first) cards))
 
 (def ^:private DimensionForm
-  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword)
-                         (comp #{"dimension"} str/lower-case name))
+  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword) (comp #{:dimension} qp.util/normalize-token))
           "dimension")
    (s/one s/Str "identifier")
    su/Map])

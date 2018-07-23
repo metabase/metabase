@@ -24,7 +24,7 @@
        :tag     TimeZone}
   *data-timezone*)
 
-(defprotocol ITimeZoneCoercible
+(defprotocol ^:private ITimeZoneCoercible
   "Coerce object to `java.util.TimeZone`"
   (coerce-to-timezone ^TimeZone [this]
     "Coerce `this` to `java.util.TimeZone`"))
@@ -41,7 +41,8 @@
   "UTC TimeZone"
   (coerce-to-timezone "UTC"))
 
-(def ^:private jvm-timezone
+(def jvm-timezone
+  "Machine time zone"
   (delay (coerce-to-timezone (System/getProperty "user.timezone"))))
 
 (defn- warn-on-timezone-conflict
@@ -85,7 +86,7 @@
   [db & body]
   `(call-with-effective-timezone ~db (fn [] ~@body)))
 
-(defprotocol ITimestampCoercible
+(defprotocol ^:private ITimestampCoercible
   "Coerce object to a `java.sql.Timestamp`."
   (coerce-to-timestamp ^java.sql.Timestamp [this] [this timezone-coercible]
     "Coerce this object to a `java.sql.Timestamp`. Strings are parsed as ISO-8601."))
@@ -110,7 +111,12 @@
 
 (defn ^Timestamp ->Timestamp
   "Converts `coercible-to-ts` to a `java.util.Timestamp`. Requires a `coercible-to-tz` if converting a string. Leans
-  on clj-time to ensure correct conversions between the various types"
+  on clj-time to ensure correct conversions between the various types
+
+  NOTE: This function requires you to pass in a timezone or bind `*report-timezone*`, probably to make sure you're not
+  doing something dumb by forgetting it. For cases where you'd just like to parse an ISO-8601-encoded String in peace
+  without specifying a timezone, pass in `:no-timezone` as the second param to explicitly have things parsed without
+  one. (Keep in mind that if your string does not specify a timezone, it will be parsed as UTC by default.)"
   ([coercible-to-ts]
    {:pre [(or (not (string? coercible-to-ts))
               (and (string? coercible-to-ts) (bound? #'*report-timezone*)))]}
@@ -119,10 +125,11 @@
    {:pre [(or (not (string? coercible-to-ts))
               (and (string? coercible-to-ts) timezone))]}
    (if (string? coercible-to-ts)
-     (coerce-to-timestamp (str->date-time coercible-to-ts (coerce-to-timezone timezone)))
+     (coerce-to-timestamp (str->date-time coercible-to-ts (when-not (= timezone :no-timezone)
+                                                            (coerce-to-timezone timezone))))
      (coerce-to-timestamp coercible-to-ts))))
 
-(defprotocol IDateTimeFormatterCoercible
+(defprotocol ^:private IDateTimeFormatterCoercible
   "Protocol for converting objects to `DateTimeFormatters`."
   (->DateTimeFormatter ^org.joda.time.format.DateTimeFormatter [this]
     "Coerce object to a `DateTimeFormatter`."))
@@ -139,15 +146,15 @@
 
 
 (defn parse-date
-  "Parse a datetime string S with a custom DATE-FORMAT, which can be a format string, clj-time formatter keyword, or
+  "Parse a datetime string `s` with a custom `date-format`, which can be a format string, clj-time formatter keyword, or
   anything else that can be coerced to a `DateTimeFormatter`.
 
-     (parse-date \"yyyyMMdd\" \"20160201\") -> #inst \"2016-02-01\"
-     (parse-date :date-time \"2016-02-01T00:00:00.000Z\") -> #inst \"2016-02-01\""
+    (parse-date \"yyyyMMdd\" \"20160201\") -> #inst \"2016-02-01\"
+    (parse-date :date-time \"2016-02-01T00:00:00.000Z\") -> #inst \"2016-02-01\""
   ^java.sql.Timestamp [date-format, ^String s]
   (->Timestamp (time/parse (->DateTimeFormatter date-format) s)))
 
-(defprotocol ISO8601
+(defprotocol ^:private ISO8601
   "Protocol for converting objects to ISO8601 formatted strings."
   (->iso-8601-datetime ^String [this timezone-id]
     "Coerce object to an ISO8601 date-time string such as \"2015-11-18T23:55:03.841Z\" with a given TIMEZONE."))
@@ -174,12 +181,12 @@
                (time/formatters :time)))))
 
 (defn format-time
-  "Returns a string representation of the time found in `T`"
+  "Returns a string representation of the time found in `t`"
   [t time-zone-id]
   (time/unparse (time-formatter time-zone-id) (coerce/to-date-time t)))
 
 (defn is-time?
-  "Returns true if `V` is a Time object"
+  "Returns true if `v` is a Time object"
   [v]
   (and v (instance? Time v)))
 
@@ -198,13 +205,13 @@
   (->Timestamp (System/currentTimeMillis)))
 
 (defn format-date
-  "Format DATE using a given DATE-FORMAT. NOTE: This will create a date string in the JVM's timezone, not the report
+  "Format `date` using a given `date-format`. NOTE: This will create a date string in the JVM's timezone, not the report
   timezone.
 
-   DATE is anything that can coerced to a `Timestamp` via `->Timestamp`, such as a `Date`, `Timestamp`,
-   `Long` (ms since the epoch), or an ISO-8601 `String`. DATE defaults to the current moment in time.
+   `date` is anything that can coerced to a `Timestamp` via `->Timestamp`, such as a `Date`, `Timestamp`,
+   `Long` (ms since the epoch), or an ISO-8601 `String`. `date` defaults to the current moment in time.
 
-   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, such as `String`
+   `date-format` is anything that can be passed to `->DateTimeFormatter`, such as `String`
    (using [the usual date format args](http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html)),
    `Keyword`, or `DateTimeFormatter`.
 
@@ -218,7 +225,7 @@
    (time/unparse (->DateTimeFormatter date-format) (coerce/from-sql-time (->Timestamp date)))))
 
 (def ^{:arglists '([] [date])} date->iso-8601
-  "Format DATE a an ISO-8601 string."
+  "Format `date` a an ISO-8601 string."
   (partial format-date :date-time))
 
 (defn date-string?
@@ -231,14 +238,14 @@
                (->Timestamp s utc)))))
 
 (defn ->Date
-  "Coerece DATE to a `java.util.Date`."
+  "Coerece `date` to a `java.util.Date`."
   (^java.util.Date []
    (java.util.Date.))
   (^java.util.Date [date]
    (java.util.Date. (.getTime (->Timestamp date)))))
 
 (defn ->Calendar
-  "Coerce DATE to a `java.util.Calendar`."
+  "Coerce `date` to a `java.util.Calendar`."
   (^java.util.Calendar []
    (doto (Calendar/getInstance)
      (.setTimeZone (TimeZone/getTimeZone "UTC"))))
@@ -250,7 +257,7 @@
      (.setTimeZone (TimeZone/getTimeZone timezone-id)))))
 
 (defn relative-date
-  "Return a new `Timestamp` relative to the current time using a relative date UNIT.
+  "Return a new Timestamp relative to the current time using a relative date `unit`.
 
      (relative-date :year -1) -> #inst 2014-11-12 ..."
   (^java.sql.Timestamp [unit amount]
@@ -275,7 +282,7 @@
     :year})
 
 (defn date-extract
-  "Extract UNIT from DATE. DATE defaults to now.
+  "Extract `unit` from `date`. `date` defaults to now.
 
      (date-extract :year) -> 2015"
   ([unit]
@@ -324,7 +331,7 @@
     (format "%d-%02d-01'T'ZZ" year month)))
 
 (defn date-trunc
-  "Truncate DATE to UNIT. DATE defaults to now.
+  "Truncate `date` to `unit`. `date` defaults to now.
 
      (date-trunc :month).
      ;; -> #inst \"2015-11-01T00:00:00\""
@@ -344,7 +351,7 @@
      :year    (trunc-with-format "yyyy-01-01'T'ZZ" date timezone-id))))
 
 (defn date-trunc-or-extract
-  "Apply date bucketing with UNIT to DATE. DATE defaults to now."
+  "Apply date bucketing with `unit` to `date`. `date` defaults to now."
   ([unit]
    (date-trunc-or-extract unit (System/currentTimeMillis) "UTC"))
   ([unit date]
@@ -369,9 +376,25 @@
       (recur (/ n divisor) more)
       (format "%.0f %s" (double n) (name unit)))))
 
+(defn format-microseconds
+  "Format a time interval in microseconds into something more readable."
+  ^String [microseconds]
+  (format-nanoseconds (* 1000.0 microseconds)))
+
+(defn format-milliseconds
+  "Format a time interval in milliseconds into something more readable."
+  ^String [milliseconds]
+  (format-microseconds (* 1000.0 milliseconds)))
+
+(defn format-seconds
+  "Format a time interval in seconds into something more readable."
+  ^String [seconds]
+  (format-milliseconds (* 1000.0 seconds)))
+
+;; TODO - Not sure this belongs in the datetime util namespace
 (defmacro profile
-  "Like `clojure.core/time`, but lets you specify a MESSAGE that gets printed with the total time,
-   and formats the time nicely using `format-nanoseconds`."
+  "Like `clojure.core/time`, but lets you specify a `message` that gets printed with the total time, and formats the
+  time nicely using `format-nanoseconds`."
   {:style/indent 1}
   ([form]
    `(profile ~(str form) ~form))
@@ -383,8 +406,8 @@
                    (format-nanoseconds (- (System/nanoTime) start-time#))))))))
 
 (defn- str->date-time-with-formatters
-  "Attempt to parse `DATE-STR` using `FORMATTERS`. First successful
-  parse is returned, or nil"
+  "Attempt to parse `date-str` using `formatters`. First successful parse is returned, or `nil` if it cannot be
+  successfully parsed."
   ([formatters date-str]
    (str->date-time-with-formatters formatters date-str nil))
   ([formatters ^String date-str ^TimeZone tz]
@@ -401,9 +424,9 @@
   (->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
 
 (def ^:private ordered-date-parsers
-  "When using clj-time.format/parse without a formatter, it tries all default formatters, but not ordered by how
-  likely the date formatters will succeed. This leads to very slow parsing as many attempts fail before the right one
-  is found. Using this retains that flexibility but improves performance by trying the most likely ones first"
+  "When using clj-time.format/parse without a formatter, it tries all default formatters, but not ordered by how likely
+  the date formatters will succeed. This leads to very slow parsing as many attempts fail before the right one is
+  found. Using this retains that flexibility but improves performance by trying the most likely ones first"
   (let [most-likely-default-formatters [:mysql :date-hour-minute-second :date-time :date
                                         :basic-date-time :basic-date-time-no-ms
                                         :date-time :date-time-no-ms]]
@@ -412,7 +435,7 @@
             (vals (apply dissoc time/formatters most-likely-default-formatters)))))
 
 (defn str->date-time
-  "Like clj-time.format/parse but uses an ordered list of parsers to be faster. Returns the parsed date or nil if it
+  "Like clj-time.format/parse but uses an ordered list of parsers to be faster. Returns the parsed date, or `nil` if it
   was unable to be parsed."
   (^org.joda.time.DateTime [^String date-str]
    (str->date-time date-str nil))
@@ -425,8 +448,7 @@
             [(time/formatter "HH:mmZ") (time/formatter "HH:mm:SSZ") (time/formatter "HH:mm:SS.SSSZ")])))
 
 (defn str->time
-  "Parse `TIME-STR` and return a `java.sql.Time` instance. Returns nil
-  if `TIME-STR` can't be parsed."
+  "Parse `time-str` and return a `java.sql.Time` instance. Returns `nil` if `time-str` can't be parsed."
   ([^String date-str]
    (str->time date-str nil))
   ([^String date-str ^TimeZone tz]

@@ -160,10 +160,7 @@ export default class PeopleListingApp extends Component {
       });
     } else {
       // generate a password
-      const password = MetabaseUtils.generatePassword(
-        14,
-        MetabaseSettings.get("password_complexity"),
-      );
+      const password = MetabaseUtils.generatePassword();
 
       // trigger the reset
       this.props.resetPasswordManually(user, password);
@@ -517,7 +514,7 @@ export default class PeopleListingApp extends Component {
                               <Tooltip tooltip={t`Reactivate this account`}>
                                 <Icon
                                   name="refresh"
-                                  className="text-grey-1 text-brand-hover cursor-pointer"
+                                  className="text-light text-brand-hover cursor-pointer"
                                   size={20}
                                   onClick={() =>
                                     this.props.showModal({

@@ -20,6 +20,8 @@
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
+(declare root-collection)
+
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
@@ -28,10 +30,18 @@
   `?archived=true`."
   [archived]
   {archived (s/maybe su/BooleanString)}
-  (as-> (db/select Collection :archived (Boolean/parseBoolean archived)
-                   {:order-by [[:%lower.name :asc]]}) collections
-    (filter mi/can-read? collections)
-    (hydrate collections :can_write)))
+  (let [archived? (Boolean/parseBoolean archived)]
+    (as-> (db/select Collection :archived archived?
+                     {:order-by [[:%lower.name :asc]]}) collections
+      (filter mi/can-read? collections)
+      ;; include Root Collection at beginning or results if archived isn't `true`
+      (if archived?
+        collections
+        (cons (root-collection) collections))
+      (hydrate collections :can_write)
+      ;; remove the :metabase.models.collection/is-root? tag since FE doesn't need it
+      (for [collection collections]
+        (dissoc collection ::collection/is-root?)))))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -95,7 +105,7 @@
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
-      (hydrate :effective_location :effective_ancestors :can_write)))
+      (hydrate :parent_id :effective_location :effective_ancestors :can_write)))
 
 (s/defn ^:private collection-items
   "Return items in the Collection, restricted by `children-options`.
@@ -121,18 +131,20 @@
     {:model     (keyword model)
      :archived? (Boolean/parseBoolean archived)}))
 
+
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
+
+(defn- root-collection []
+  ;; add in some things for the FE to display since the 'Root' Collection isn't real and wouldn't normally have
+  ;; these things
+  (assoc (collection-detail collection/root-collection)
+    :name (tru "Our analytics")
+    :id   "root"))
 
 (api/defendpoint GET "/root"
   "Return the 'Root' Collection object with standard details added"
   []
-  (-> (collection-detail collection/root-collection)
-      ;; add in some things for the FE to display since the 'Root' Collection isn't real and wouldn't normally have
-      ;; these things
-      (assoc
-          :name (tru "Our analytics")
-          :id   "root")
-      (dissoc ::collection/is-root?)))
+  (dissoc (root-collection) ::collection/is-root?))
 
 (api/defendpoint GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection

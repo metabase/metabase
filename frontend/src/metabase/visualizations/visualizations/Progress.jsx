@@ -152,7 +152,7 @@ export default class Progress extends Component {
         >
           <div
             ref="container"
-            className="relative text-bold text-grey-4"
+            className="relative text-bold text-medium"
             style={{ height: 20 }}
           >
             <div ref="label" style={{ position: "absolute" }}>

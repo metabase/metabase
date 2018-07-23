@@ -14,7 +14,10 @@ export default class FormField extends Component {
 
     hidden: PropTypes.bool,
     displayName: PropTypes.string,
-    children: PropTypes.element,
+    children: PropTypes.oneOfType([
+      PropTypes.arrayOf(PropTypes.node),
+      PropTypes.node,
+    ]),
 
     // legacy
     fieldName: PropTypes.string,
