@@ -464,7 +464,7 @@ export const NormalItem = ({
   onToggleSelected,
   onMove,
 }) => (
-  <Link to={item.getUrl()}>
+  <Link to={item.getUrl()} data-metabase-event={`CollectionPage;${item.type};Click`}>
     <EntityItem
       variant="list"
       showSelect={selection.size > 0}
@@ -504,6 +504,7 @@ const PinnedItem = ({ item, index, collection }) => (
     to={item.getUrl()}
     className="hover-parent hover--visibility"
     hover={{ color: normal.blue }}
+    data-metabase-event={`CollectionPage;${item.type};Click`}
   >
     <Card hoverable p={3}>
       <Icon name={item.getIcon()} color={item.getColor()} size={28} mb={2} />
