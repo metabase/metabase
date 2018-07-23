@@ -11,6 +11,9 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import {WrappedQuery, wrapQuery} from "metabase-lib/lib/queries/WrappedQuery";
 import {parameterToMBQLFilter} from "metabase/meta/Parameter";
 import {updateIn} from "icepick";
+import type {NativeQuery} from "metabase/meta/types/Query";
+import {NativeDatasetQuery} from "metabase/meta/types/Card";
+import type {DatabaseId} from "metabase/meta/types/Database";
 
 
 export const getAdditionalQueries = (visualizationSettings) => (card:Card, fields) => (
@@ -22,6 +25,16 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
   if(card.display !== SummaryTable.identifier || !isOk(settings))
     return [];
 
+  if(query.type === 'native')
+  {
+    query = {
+      type: "query",
+      database: query.database,
+      query: {
+        source_table : 'card__' + card.id
+      }
+    };
+  }
 
   if(query.query) {
     const fieldsNorm = fields instanceof Array ? fields.reduce((acc, p) => ({...acc, [p.id] : p}), {}) : fields;
