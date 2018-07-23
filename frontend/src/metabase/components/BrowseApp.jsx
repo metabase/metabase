@@ -71,6 +71,7 @@ export class SchemaBrowser extends React.Component {
                         to={`/browse/${dbId}/schema/${schema.name}`}
                         mb={1}
                         hover={{ color: normal.purple }}
+                        data-metabase-event={`Data Browse;Schema Click`}
                       >
                         <Card hoverable px={1}>
                           <EntityItem
@@ -135,6 +136,7 @@ export class TableBrowser extends React.Component {
                               to={link}
                               ml={1}
                               hover={{ color: normal.purple }}
+                              data-metabase-event={`Data Browse;Table Click`}
                             >
                               <EntityItem
                                 item={table}
@@ -146,7 +148,10 @@ export class TableBrowser extends React.Component {
                             <Box ml="auto" mr={1} className="hover-child">
                               <Flex align="center">
                                 <Tooltip tooltip={t`X-ray this table`}>
-                                  <Link to={`auto/dashboard/table/${table.id}`}>
+                                  <Link
+                                    to={`auto/dashboard/table/${table.id}`}
+                                    data-metabase-event={`Data Browse;Table Item;X-ray Click`}
+                                  >
                                     <Icon
                                       name="bolt"
                                       mx={1}
@@ -160,6 +165,7 @@ export class TableBrowser extends React.Component {
                                     to={`reference/databases/${dbId}/tables/${
                                       table.id
                                     }`}
+                                    data-metabase-event={`Data Browse;Table Item;Reference Click`}
                                   >
                                     <Icon
                                       name="reference"
@@ -203,7 +209,10 @@ export class DatabaseBrowser extends React.Component {
               <Grid>
                 {databases.map(database => (
                   <GridItem w={ITEM_WIDTHS} key={database.id}>
-                    <Link to={`browse/${database.id}`}>
+                    <Link
+                      to={`browse/${database.id}`}
+                      data-metabase-event={`Data Browse;Database Click`}
+                    >
                       <Card p={3} hover={{ color: normal.blue }}>
                         <Icon name="database" color={normal.grey2} mb={3} />
                         <Subhead>{database.name}</Subhead>
