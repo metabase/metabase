@@ -7,6 +7,7 @@ import cx from "classnames";
 import { t } from "c-3po";
 import AuthScene from "../components/AuthScene.jsx";
 import SSOLoginButton from "../components/SSOLoginButton.jsx";
+import Button from "metabase/components/Button.jsx";
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
@@ -34,6 +35,7 @@ export default class LoginApp extends Component {
     this.state = {
       credentials: {},
       valid: false,
+      adminLogin: false,
     };
   }
 
@@ -107,8 +109,14 @@ export default class LoginApp extends Component {
     login(credentials, location.query.redirect);
   }
 
+  onClickSSOLoginButton() {
+    const { location, loginSSO } = this.props;
+    loginSSO(location.query.redirect);
+  }
+
   render() {
     const { loginError } = this.props;
+    const { adminLogin } = this.state;
     const ldapEnabled = Settings.ldapEnabled();
 
     return (
@@ -138,95 +146,118 @@ export default class LoginApp extends Component {
                 </div>
               )}
 
-              <FormMessage
-                formError={
-                  loginError && loginError.data.message ? loginError : null
-                }
-              />
+              {Settings.get("sso_configured") && !adminLogin ? (
+                <div className="mx4 mb1 py3 border-bottom relative">
+                  <Button
+                    type="button"
+                    primary
+                    onClick={this.onClickSSOLoginButton.bind(this)}
+                  >
+                    {t`Sign in`}
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <FormMessage
+                    formError={
+                      loginError && loginError.data.message ? loginError : null
+                    }
+                  />
 
-              <FormField
-                key="username"
-                fieldName="username"
-                formError={loginError}
-              >
-                <FormLabel
-                  title={
-                    Settings.ldapEnabled()
-                      ? t`Username or email address`
-                      : t`Email address`
-                  }
-                  fieldName={"username"}
-                  formError={loginError}
-                />
-                <input
-                  className="Form-input Form-offset full py1"
-                  name="username"
-                  placeholder="youlooknicetoday@email.com"
-                  type={
-                    /*
-                     * if a user has ldap enabled, use a text input to allow for
-                     * ldap username && schemes. if not and they're using built
-                     * in auth, set the input type to email so we get built in
-                     * validation in modern browsers
-                     * */
-                    ldapEnabled ? "text" : "email"
-                  }
-                  onChange={e => this.onChange("username", e.target.value)}
-                  autoFocus
-                />
-                <span className="Form-charm" />
-              </FormField>
+                  <FormField
+                    key="username"
+                    fieldName="username"
+                    formError={loginError}
+                  >
+                    <FormLabel
+                      title={
+                        Settings.ldapEnabled()
+                          ? t`Username or email address`
+                          : t`Email address`
+                      }
+                      fieldName={"username"}
+                      formError={loginError}
+                    />
+                    <input
+                      className="Form-input Form-offset full py1"
+                      name="username"
+                      placeholder="youlooknicetoday@email.com"
+                      type={
+                        /*
+                         * if a user has ldap enabled, use a text input to allow for
+                         * ldap username && schemes. if not and they're using built
+                         * in auth, set the input type to email so we get built in
+                         * validation in modern browsers
+                         **/
+                        ldapEnabled ? "text" : "email"
+                      }
+                      onChange={e => this.onChange("username", e.target.value)}
+                      autoFocus
+                    />
+                    <span className="Form-charm" />
+                  </FormField>
 
-              <FormField
-                key="password"
-                fieldName="password"
-                formError={loginError}
-              >
-                <FormLabel
-                  title={t`Password`}
-                  fieldName={"password"}
-                  formError={loginError}
-                />
-                <input
-                  className="Form-input Form-offset full py1"
-                  name="password"
-                  placeholder="Shh..."
-                  type="password"
-                  onChange={e => this.onChange("password", e.target.value)}
-                />
-                <span className="Form-charm" />
-              </FormField>
+                  <FormField
+                    key="password"
+                    fieldName="password"
+                    formError={loginError}
+                  >
+                    <FormLabel
+                      title={t`Password`}
+                      fieldName={"password"}
+                      formError={loginError}
+                    />
+                    <input
+                      className="Form-input Form-offset full py1"
+                      name="password"
+                      placeholder="Shh..."
+                      type="password"
+                      onChange={e => this.onChange("password", e.target.value)}
+                    />
+                    <span className="Form-charm" />
+                  </FormField>
 
-              <div className="Form-field">
-                <ul className="Form-offset">
-                  <input name="remember" type="checkbox" defaultChecked />{" "}
-                  <label className="inline-block">{t`Remember Me:`}</label>
-                </ul>
-              </div>
+                  <div className="Form-field">
+                    <ul className="Form-offset">
+                      <input name="remember" type="checkbox" defaultChecked />{" "}
+                      <label className="inline-block">{t`Remember Me:`}</label>
+                    </ul>
+                  </div>
 
-              <div className="Form-actions p2 Grid Grid--full md-Grid--1of2">
-                <button
-                  className={cx("Button Grid-cell", {
-                    "Button--primary": this.state.valid,
-                  })}
-                  disabled={!this.state.valid}
-                >
-                  {t`Sign in`}
-                </button>
-                <Link
-                  to={
-                    "/auth/forgot_password" +
-                    (Utils.validEmail(this.state.credentials.username)
-                      ? "?email=" + this.state.credentials.username
-                      : "")
-                  }
-                  className="Grid-cell py2 sm-py0 text-medium md-text-right text-centered flex-full link"
-                  onClick={e => {
-                    window.OSX ? window.OSX.resetPassword() : null;
-                  }}
-                >{t`I seem to have forgotten my password`}</Link>
-              </div>
+                  <div className="Form-actions p2 Grid Grid--full md-Grid--1of2">
+                    <button
+                      className={cx("Button Grid-cell", {
+                        "Button--primary": this.state.valid,
+                      })}
+                      disabled={!this.state.valid}
+                    >
+                      {t`Sign in`}
+                    </button>
+                    <Link
+                      to={
+                        "/auth/forgot_password" +
+                        (Utils.validEmail(this.state.credentials.username)
+                          ? "?email=" + this.state.credentials.username
+                          : "")
+                      }
+                      className="Grid-cell py2 sm-py0 text-medium md-text-right text-centered flex-full link"
+                      onClick={e => {
+                        window.OSX ? window.OSX.resetPassword() : null;
+                      }}
+                    >{t`I seem to have forgotten my password`}</Link>
+                  </div>
+                </div>
+              )}
             </form>
+            {Settings.get("sso_configured") &&
+              !adminLogin && (
+                <div
+                  className="mt2 px2 cursor-pointer text-grey-1 text-right"
+                  onClick={() => this.setState({ adminLogin: true })}
+                >
+                  Admin backup login
+                </div>
+              )}
           </div>
         </div>
         <AuthScene />

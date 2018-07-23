@@ -138,15 +138,30 @@ export default class SettingsBatchForm extends Component {
     }
   }
 
-  handleChangeEvent(key, value) {
-    this.setState(previousState => ({
-      dirty: true,
-      formData: {
+  handleChangeEvent = (key, value) => {
+    this.setState(previousState => {
+      const settingsValues = {
         ...previousState.formData,
-        [key]: MetabaseUtils.isEmpty(value) ? null : value,
-      },
-    }));
-  }
+        [key]: value,
+      };
+
+      // support "onChanged"
+      const setting = _.findWhere(this.props.elements, { key });
+      if (setting && setting.onChanged) {
+        setting.onChanged(
+          previousState.formData[key],
+          settingsValues[key],
+          settingsValues,
+          this.handleChangeEvent,
+        );
+      }
+
+      return {
+        dirty: true,
+        formData: settingsValues,
+      };
+    });
+  };
 
   handleFormErrors(error) {
     // parse and format

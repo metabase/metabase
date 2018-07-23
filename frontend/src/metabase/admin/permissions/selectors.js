@@ -238,6 +238,10 @@ const OPTION_RED = {
   iconColor: colors["error"],
   bgColor: alpha(colors["error"], BG_ALPHA),
 };
+// const OPTION_BLUE = {
+//   iconColor: colors["brand"],
+//   bgColor: alpha(colors["brand"], BG_ALPHA),
+// };
 
 const OPTION_ALL = {
   ...OPTION_GREEN,

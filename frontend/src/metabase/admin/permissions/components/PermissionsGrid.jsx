@@ -1,6 +1,7 @@
 /* eslint-disable react/display-name */
 
 import React, { Component } from "react";
+import { connect } from "react-redux";
 
 import { Link } from "react-router";
 
@@ -195,6 +196,16 @@ const PermissionsCell = ({
   </div>
 );
 
+const ActionsList = connect()(({ actions, dispatch }) => (
+  <ul className="py1 border-bottom">
+    {actions.map(action => (
+      <li>
+        <AccessOption option={action} onChange={dispatch} />
+      </li>
+    ))}
+  </ul>
+));
+
 class GroupPermissionCell extends Component {
   constructor(props, context) {
     super(props, context);
@@ -230,6 +241,8 @@ class GroupPermissionCell extends Component {
     const { confirmations } = this.state;
 
     const value = permission.getter(group.id, entity.id);
+    const actions =
+      permission.actions && permission.actions(group.id, entity.id);
     const options = permission.options(group.id, entity.id);
     const warning =
       permission.warning && permission.warning(group.id, entity.id);
@@ -306,6 +319,9 @@ class GroupPermissionCell extends Component {
           </Tooltip>
         }
       >
+        {actions && actions.length > 0 ? (
+          <ActionsList actions={actions} />
+        ) : null}
         <AccessOptionList
           value={value}
           options={options}
