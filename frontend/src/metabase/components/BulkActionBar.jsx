@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex } from "grid-styled";
+import { Box } from "grid-styled";
 import Card from "metabase/components/Card";
 import { Motion, spring } from "react-motion";
 
@@ -22,18 +22,14 @@ const BulkActionBar = ({ children, showing }) => (
     }}
   >
     {({ opacity, translateY }) => (
-      <FixedBottomBar>
-        <Card
-          style={{
-            borderRadius: 0,
-            opacity,
-            transform: `translateY(${translateY}px)`,
-          }}
-        >
-          <Flex align="center" py={2} px={4}>
-            {children}
-          </Flex>
-        </Card>
+      <FixedBottomBar
+        style={{
+          borderRadius: 0,
+          opacity,
+          transform: `translateY(${translateY}px)`,
+        }}
+      >
+        <Card>{children}</Card>
       </FixedBottomBar>
     )}
   </Motion>

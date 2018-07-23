@@ -1,16 +1,5 @@
 :root {
   --default-button-border-radius: 4px;
-  --default-button-border-color: #b9b9b9;
-  --default-button-background-color: #fff;
-
-  --primary-button-border-color: #509ee3;
-  --primary-button-bg-color: #509ee3;
-  --warning-button-border-color: #ef8c8c;
-  --warning-button-bg-color: #ef8c8c;
-  --danger-button-bg-color: #ef8c8c;
-  --selected-button-bg-color: #f4f6f8;
-
-  --success-button-color: var(--success-color);
 }
 
 .Button {
@@ -18,9 +7,9 @@
   box-sizing: border-box;
   text-decoration: none;
   padding: 0.5rem 0.75rem;
-  background: #fbfcfd;
-  border: 1px solid #ddd;
-  color: var(--default-font-color);
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-dark);
   cursor: pointer;
   text-decoration: none;
   font-weight: bold;
@@ -28,7 +17,7 @@
   border-radius: var(--default-button-border-radius);
 }
 .Button:hover {
-  color: var(--brand-color);
+  color: var(--color-brand);
 }
 
 @media screen and (--breakpoint-min-lg) {
@@ -67,27 +56,27 @@
 }
 
 .Button--primary {
-  color: #fff;
-  background: var(--primary-button-bg-color);
-  border: 1px solid var(--primary-button-border-color);
+  color: var(--color-text-white);
+  background: var(--color-brand);
+  border: 1px solid var(--color-brand);
 }
 
 .Button--primary:hover {
-  color: #fff;
-  border-color: color(var(--primary-button-border-color) shade(10%));
-  background-color: color(var(--primary-button-bg-color) shade(10%));
+  color: var(--color-text-white);
+  border-color: var(--color-brand);
+  background-color: var(--color-brand);
 }
 
 .Button--warning {
-  color: #fff;
-  background: var(--warning-button-bg-color);
-  border: 1px solid var(--warning-button-border-color);
+  color: var(--color-text-white);
+  background: var(--color-error);
+  border: 1px solid var(--color-error);
 }
 
 .Button--warning:hover {
-  color: #fff;
-  border-color: color(var(--warning-button-border-color) shade(10%));
-  background-color: color(var(--warning-button-bg-color) shade(10%));
+  color: var(--color-text-white);
+  border-color: var(--color-error);
+  background-color: var(--color-error);
 }
 
 .Button--cancel {
@@ -96,42 +85,42 @@
 
 .Button--white {
   background-color: white;
-  color: color(var(--base-grey) shade(30%));
-  border-color: color(var(--base-grey) shade(30%));
+  color: var(--color-text-medium);
+  border-color: var(--color-border);
 }
 
 .Button--purple {
   color: white;
-  background-color: #a989c5;
-  border: 1px solid #a989c5;
+  background-color: var(--color-accent2);
+  border: 1px solid var(--color-accent2);
 }
 
 .Button--purple:hover {
   color: white;
-  background-color: #885ab1;
-  border-color: #885ab1;
+  background-color: var(--color-accent2);
+  border-color: var(--color-accent2);
 }
 
 .Button--borderless {
   border: none;
   background: transparent;
-  color: color(var(--base-grey) shade(40%));
+  color: var(--color-text-medium);
 }
 .Button--borderless:hover {
-  color: color(var(--base-grey) shade(50%));
+  color: var(--color-text-medium);
 }
 
 .Button--onlyIcon {
   border: none;
   background: transparent;
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
   padding: 0;
 }
 
 .Button-group {
   display: inline-block;
   border-radius: var(--default-button-border-radius);
-  border: 1px solid var(--default-button-border-color);
+  border: 1px solid var(--color-border);
   overflow: hidden;
   clear: both;
 }
@@ -147,8 +136,8 @@
 }
 
 .Button-group .Button--active {
-  background-color: var(--success-color);
-  color: #fff;
+  background-color: var(--color-success);
+  color: var(--color-text-white);
 }
 
 .Button-group .Button:first-child {
@@ -156,16 +145,16 @@
 }
 
 .Button-group--blue {
-  border-color: rgb(194, 216, 242);
+  border-color: var(--color-border);
 }
 
 .Button-group--blue .Button {
-  color: rgb(147, 155, 178);
+  color: var(--color-text-medium);
 }
 
 .Button-group--blue .Button--active {
-  background-color: rgb(227, 238, 250);
-  color: rgb(74, 144, 226);
+  background-color: var(--color-bg-medium);
+  color: var(--color-brand);
 }
 
 .Button-group--brand {
@@ -174,12 +163,12 @@
 
 .Button-group--brand .Button {
   border-color: white;
-  color: var(--brand-color);
-  background-color: #e5e5e5;
+  color: var(--color-brand);
+  background-color: var(--color-bg-medium);
 }
 
 .Button-group--brand .Button--active {
-  background-color: var(--brand-color);
+  background-color: var(--color-brand);
   color: white;
 }
 
@@ -190,67 +179,31 @@
 
 .Button--selected,
 .Button--selected:hover {
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.12);
-  background-color: var(--selected-button-bg-color);
+  box-shadow: inset 0 1px 1px var(--color-shadow);
+  background-color: var(--color-bg-light);
 }
 
 .Button--danger {
-  background-color: var(--danger-button-bg-color);
-  border-color: var(--danger-button-bg-color);
-  color: #fff;
+  background-color: var(--color-error);
+  border-color: var(--color-error);
+  color: var(--color-text-white);
 }
 
 .Button--danger:hover {
   color: white;
-  background-color: color(var(--danger-button-bg-color) shade(10%));
-  border-color: color(var(--danger-button-bg-color) shade(10%));
+  background-color: var(--color-error);
+  border-color: var(--color-error);
 }
 
 .Button--success {
-  background-color: var(--success-button-color);
-  border-color: var(--success-button-color);
-  color: #fff;
+  background-color: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--color-text-white);
 }
 .Button--success:hover {
-  background-color: var(--green-saturated-color);
-  border-color: var(--green-saturated-color);
-  color: #fff;
-}
-
-/* toggle button */
-.Button-toggle {
-  color: var(--grey-text-color);
-  display: flex;
-  line-height: 1;
-  border: 1px solid #ddd;
-  border-radius: 40px;
-  width: 3rem;
-  transition: background 0.2s linear 0.2s, border 0.2s linear 0.2s;
-}
-
-.Button-toggleIndicator {
-  margin-left: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.25rem;
-  border: 1px solid #ddd;
-  border-radius: 99px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  transition: margin 0.3s linear;
-  background-color: #fff;
-}
-
-.Button-toggle.Button--toggled .Button-toggleIndicator {
-  margin-left: 50%;
-  transition: margin 0.3s linear;
-}
-
-.Button-toggle.Button--toggled {
-  color: var(--brand-color);
-  background-color: var(--brand-color);
-  border-color: var(--brand-color);
-  transition: background 0.2s linear 0.2s, border 0.2s linear 0.2s;
+  background-color: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--color-text-white);
 }
 
 .Button--withIcon {

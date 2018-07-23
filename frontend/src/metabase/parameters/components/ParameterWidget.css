@@ -1,7 +1,7 @@
 :local(.container) {
   composes: flex align-center from "style";
   transition: opacity 500ms linear;
-  border: 2px solid var(--grey-1);
+  border: 2px solid var(--color-border);
   margin-right: 0.85em;
   margin-bottom: 0.5em;
   padding: 0.25em 1em 0.25em 1em;
@@ -28,14 +28,14 @@
   font-weight: 600;
   min-height: 30px;
   min-width: 150px;
-  color: var(--grey-4);
+  color: var(--color-text-medium);
 }
 
 :local(.nameInput) {
   composes: flex align-center from "style";
   min-height: 30px;
   min-width: 150px;
-  color: var(--grey-4);
+  color: var(--color-text-medium);
   border: none;
   font-size: 1em;
   font-weight: 600;
@@ -58,8 +58,8 @@
 
 :local(.parameter.selected) {
   font-weight: bold;
-  color: var(--brand-color);
-  border-color: var(--brand-color);
+  color: var(--color-brand);
+  border-color: var(--color-brand);
 }
 
 :local(.parameter.noPopover) input {
@@ -78,25 +78,25 @@
 :local(.parameter.noPopover.selected) input {
   width: 127px;
   font-weight: bold;
-  color: var(--brand-color);
+  color: var(--color-brand);
 }
 
 :local(.parameter.noPopover) input:focus {
   outline: none;
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
   width: 127px;
 }
 :local(.parameter.noPopover) input::-webkit-input-placeholder {
-  color: var(--grey-4);
+  color: var(--color-text-medium);
 }
 :local(.parameter.noPopover) input:-moz-placeholder {
-  color: var(--grey-4);
+  color: var(--color-text-medium);
 }
 :local(.parameter.noPopover) input::-moz-placeholder {
-  color: var(--grey-4);
+  color: var(--color-text-medium);
 }
 :local(.parameter.noPopover) input:-ms-input-placeholder {
-  color: var(--grey-4);
+  color: var(--color-text-medium);
 }
 
 :local(.input) {
@@ -111,7 +111,7 @@
   composes: mr1 from "style";
   font-size: 16px;
   font-weight: bold;
-  color: var(--grey-4);
+  color: var(--color-text-medium);
 }
 
 :local(.parameterButtons) {
@@ -126,11 +126,11 @@
 }
 
 :local(.editButton:hover) {
-  color: var(--brand-color);
+  color: var(--color-brand);
 }
 
 :local(.removeButton:hover) {
-  color: var(--error-color);
+  color: var(--color-error);
 }
 
 :local(.editNameIconContainer) {

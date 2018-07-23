@@ -11,12 +11,14 @@
              [datasets :as datasets]
              [interface :as i]]
             [metabase.util :as u]
-            [metabase.util.date :as du]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s])
   (:import com.google.api.client.util.DateTime
            com.google.api.services.bigquery.Bigquery
-           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest
+            TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema]
            java.sql.Time
            metabase.driver.bigquery.BigQueryDriver))
 
@@ -143,7 +145,7 @@
    :type/Time           :TIME})
 
 (defn- fielddefs->field-name->base-type
-  "Convert FIELD-DEFINITIONS to a format appropriate for passing to `create-table!`."
+  "Convert `field-definitions` to a format appropriate for passing to `create-table!`."
   [field-definitions]
   (into
    {"id" :INTEGER}
@@ -153,15 +155,14 @@
                      (throw (Exception. (format "Don't know what BigQuery type to use for base type: %s" base-type))))})))
 
 (defn- time->string
-  "Coerces `T` to a Joda DateTime object and returns it's String
-  representation."
+  "Coerces `t` to a Joda DateTime object and returns it's String representation."
   [t]
   (->> t
        tcoerce/to-date-time
        (tformat/unparse #'bigquery/bigquery-time-format)))
 
 (defn- tabledef->prepared-rows
-  "Convert TABLE-DEFINITION to a format approprate for passing to `insert-data!`."
+  "Convert `table-definition` to a format approprate for passing to `insert-data!`."
   [{:keys [field-definitions rows]}]
   {:pre [(every? map? field-definitions) (sequential? rows) (seq rows)]}
   (let [field-names (map :field-name field-definitions)]

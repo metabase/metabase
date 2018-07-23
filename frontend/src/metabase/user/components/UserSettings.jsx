@@ -51,7 +51,7 @@ export default class UserSettings extends Component {
       <div>
         <div className="py4 border-bottom">
           <div className="wrapper wrapper--trim">
-            <h2 className="text-grey-4">{t`Account settings`}</h2>
+            <h2 className="text-medium">{t`Account settings`}</h2>
           </div>
         </div>
         <div className="mt2 md-mt4 wrapper wrapper--trim">

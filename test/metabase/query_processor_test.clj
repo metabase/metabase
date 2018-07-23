@@ -32,11 +32,13 @@
   (set/difference datasets/all-valid-engines timeseries-engines))
 
 (defn non-timeseries-engines-with-feature
-  "Set of engines that support a given FEATURE."
-  [feature]
-  (set (for [engine non-timeseries-engines
-             :when  (contains? (driver/features (driver/engine->driver engine)) feature)]
-         engine)))
+  "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
+  supported."
+  [feature & more-features]
+  (let [features (set (cons feature more-features))]
+    (set (for [engine non-timeseries-engines
+               :when  (set/subset? features (driver/features (driver/engine->driver engine)))]
+           engine))))
 
 (defn non-timeseries-engines-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
@@ -314,7 +316,8 @@
    (format-rows-by format-fns (not :format-nil-values?) rows))
   ([format-fns format-nil-values? rows]
    (cond
-     (= (:status rows) :failed) (throw (ex-info (:error rows) rows))
+     (= (:status rows) :failed) (do (println "Error running query:" (u/pprint-to-str 'red rows))
+                                    (throw (ex-info (:error rows) rows)))
 
      (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
      (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))

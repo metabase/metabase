@@ -7,7 +7,9 @@ const PinDropTarget = DropTarget(
   PinnableDragTypes,
   {
     drop(props, monitor, component) {
-      return { pinIndex: props.pinIndex };
+      if (!props.noDrop) {
+        return { pinIndex: props.pinIndex };
+      }
     },
     canDrop(props, monitor) {
       const { item } = monitor.getItem();

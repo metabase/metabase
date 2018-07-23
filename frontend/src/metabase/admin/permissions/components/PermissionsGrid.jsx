@@ -18,8 +18,10 @@ import { capitalize, pluralize } from "metabase/lib/formatting";
 import cx from "classnames";
 import _ from "underscore";
 
-const LIGHT_BORDER = "rgb(225, 226, 227)";
-const DARK_BORDER = "rgb(161, 163, 169)";
+import colors from "metabase/lib/colors";
+
+const LIGHT_BORDER = colors["text-light"];
+const DARK_BORDER = colors["text-medium"];
 const BORDER_RADIUS = 4;
 
 const getBorderStyles = ({
@@ -46,8 +48,8 @@ const HEADER_WIDTH = 240;
 
 const DEFAULT_OPTION = {
   icon: "unknown",
-  iconColor: "#9BA5B1",
-  bgColor: "#DFE8EA",
+  iconColor: colors["text-medium"],
+  bgColor: colors["bg-medium"],
 };
 
 const PermissionsHeader = ({ permissions, isFirst, isLast }) => (
@@ -69,7 +71,7 @@ const PermissionsHeader = ({ permissions, isFirst, isLast }) => (
         }}
       >
         {permission.header && (
-          <h5 className="my1 text-centered text-grey-3 text-uppercase text-light">
+          <h5 className="my1 text-centered text-medium text-uppercase text-light">
             {permission.header}
           </h5>
         )}
@@ -115,12 +117,17 @@ const EntityHeader = ({
   isLast,
 }) => (
   <div className="flex flex-column">
-    <div className={cx("relative flex", { "align-self-center mb1": isColumn })}>
+    <div
+      className={cx("relative flex", {
+        "align-self-center mb1": isColumn,
+        "align-center": !isColumn,
+      })}
+    >
       <Icon name={icon} className="mr1" />
-      <div className="flex-full">
+      <div>
         <h4>{entity.name}</h4>
         {entity.subtitle && (
-          <div className="mt1 h5 text-monospace text-normal text-grey-2 text-uppercase">
+          <div className="mt1 h5 text-monospace text-normal text-light text-uppercase">
             {entity.subtitle}
           </div>
         )}
@@ -258,7 +265,9 @@ class GroupPermissionCell extends Component {
                 name={option.icon}
                 size={28}
                 style={{
-                  color: this.state.hovered ? "#fff" : option.iconColor,
+                  color: this.state.hovered
+                    ? colors["text-white"]
+                    : option.iconColor,
                 }}
               />
               {confirmations &&

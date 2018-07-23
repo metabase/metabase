@@ -76,9 +76,11 @@ export default class ArchiveApp extends Component {
           </Card>
         </Box>
         <BulkActionBar showing={selected.length > 0}>
-          <SelectionControls {...this.props} />
-          <BulkActionControls {...this.props} />
-          <Box ml="auto">{t`${selected.length} items selected`}</Box>
+          <Flex align="center" py={2} px={4}>
+            <SelectionControls {...this.props} />
+            <BulkActionControls {...this.props} />
+            <Box ml="auto">{t`${selected.length} items selected`}</Box>
+          </Flex>
         </BulkActionBar>
       </Box>
     );

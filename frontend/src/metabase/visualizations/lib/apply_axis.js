@@ -48,7 +48,9 @@ function averageStringLengthOfValues(values) {
   values = values.slice(0, MAX_VALUES_TO_MEASURE);
 
   let totalLength = 0;
-  for (let value of values) totalLength += String(value).length;
+  for (let value of values) {
+    totalLength += String(value).length;
+  }
 
   return Math.round(totalLength / values.length);
 }
@@ -73,7 +75,9 @@ function adjustXAxisTicksIfNeeded(axis, chartWidthPixels, xValues) {
   const maxTicks = Math.floor(chartWidthPixels / tickAverageWidthPixels);
 
   // finally, if the chart is currently showing more ticks than we think it can show, adjust it down
-  if (getNumTicks(axis) > maxTicks) axis.ticks(maxTicks);
+  if (getNumTicks(axis) > maxTicks) {
+    axis.ticks(maxTicks);
+  }
 }
 
 export function applyChartTimeseriesXAxis(

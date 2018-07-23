@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "c-3po";
 import Icon from "metabase/components/Icon.jsx";
+import colors from "metabase/lib/colors";
 
 export default class NewsletterForm extends Component {
   constructor(props, context) {
@@ -18,7 +19,7 @@ export default class NewsletterForm extends Component {
 
       input: {
         fontSize: "1.1rem",
-        color: "#676C72",
+        color: colors["text-dark"],
         width: "350px",
       },
 
@@ -62,7 +63,7 @@ export default class NewsletterForm extends Component {
           style={this.styles.label}
           className="absolute text-centered left right"
         >
-          <div className="px3 bg-white h5 text-bold text-grey-4 text-uppercase inline-block">
+          <div className="px3 bg-white h5 text-bold text-medium text-uppercase inline-block">
             <Icon className="mr1 float-left" name="mail" size={16} />
             <span
               className="inline-block"
@@ -73,7 +74,10 @@ export default class NewsletterForm extends Component {
 
         <div className="MB-Newsletter sm-float-right">
           <div>
-            <div style={{ color: "#878E95" }} className="text-grey-4 h3 pb3">
+            <div
+              style={{ color: colors["text-medium"] }}
+              className="text-medium h3 pb3"
+            >
               {t`Get infrequent emails about new releases and feature updates.`}
             </div>
 

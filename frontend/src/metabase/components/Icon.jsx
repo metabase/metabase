@@ -7,6 +7,7 @@ import { color, space, hover } from "styled-system";
 import cx from "classnames";
 
 import { loadIcon } from "metabase/icon_paths";
+import { stripLayoutProps } from "metabase/lib/utils";
 
 import Tooltipify from "metabase/hoc/Tooltipify";
 
@@ -56,7 +57,7 @@ class BaseIcon extends Component {
       return <svg {...props} dangerouslySetInnerHTML={{ __html: icon.svg }} />;
     } else {
       return (
-        <svg {...props}>
+        <svg {...stripLayoutProps(props)}>
           <path d={icon.path} />
         </svg>
       );
