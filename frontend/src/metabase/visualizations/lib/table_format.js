@@ -1,5 +1,7 @@
+// NOTE: this file is used on the frontend and backend and there are some
+// limitations. See frontend/src/metabase-shared/color_selector for details
+
 import { alpha, getColorScale } from "metabase/lib/colors";
-import _ from "underscore";
 
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
@@ -10,21 +12,22 @@ export function makeCellBackgroundGetter(rows, cols, settings) {
   const pivot = settings["table.pivot"];
   let formatters = {};
   let rowFormatters = [];
+  const colIndexes = getColumnIndexesByName(cols);
   try {
-    const columnExtents = computeColumnExtents(formats, rows, cols);
+    const columnExtents = computeColumnExtents(formats, rows, colIndexes);
     formatters = compileFormatters(formats, columnExtents);
     rowFormatters = compileRowFormatters(formats, columnExtents);
   } catch (e) {
     console.error(e);
   }
-  const colIndexes = _.object(cols.map((col, index) => [col.name, index]));
-  if (Object.values(formatters).length === 0 && rowFormatters.length === 0) {
+  if (Object.keys(formatters).length === 0 && rowFormatters.length === 0) {
     return () => null;
   } else {
     return function(value, rowIndex, colName) {
       if (formatters[colName]) {
         // const value = rows[rowIndex][colIndexes[colName]];
-        for (const formatter of formatters[colName]) {
+        for (let i = 0; i < formatters[colName].length; i++) {
+          const formatter = formatters[colName][i];
           const color = formatter(value);
           if (color != null) {
             return color;
@@ -33,7 +36,8 @@ export function makeCellBackgroundGetter(rows, cols, settings) {
       }
       // don't highlight row for pivoted tables
       if (!pivot) {
-        for (const rowFormatter of rowFormatters) {
+        for (let i = 0; i < rowFormatters.length; i++) {
+          const rowFormatter = rowFormatters[i];
           const color = rowFormatter(rows[rowIndex], colIndexes);
           if (color != null) {
             return color;
@@ -42,6 +46,14 @@ export function makeCellBackgroundGetter(rows, cols, settings) {
       }
     };
   }
+}
+
+function getColumnIndexesByName(cols) {
+  const colIndexes = {};
+  for (let i = 0; i < cols.length; i++) {
+    colIndexes[cols[i].name] = i;
+  }
+  return colIndexes;
 }
 
 function compileFormatter(
@@ -123,45 +135,45 @@ function extent(rows, colIndex) {
   return [min, max];
 }
 
-function computeColumnExtents(formats, rows, cols) {
-  return _.chain(formats)
-    .map(format => format.columns)
-    .flatten()
-    .uniq()
-    .map(columnName => {
-      const colIndex = _.findIndex(cols, col => col.name === columnName);
-      return [columnName, extent(rows, colIndex)];
-    })
-    .object()
-    .value();
+function computeColumnExtents(formats, rows, colIndexes) {
+  const columnExtents = {};
+  formats.forEach(format => {
+    format.columns.forEach(columnName => {
+      if (!columnExtents[columnName]) {
+        const colIndex = colIndexes[columnName];
+        columnExtents[columnName] = extent(rows, colIndex);
+      }
+    });
+  });
+  return columnExtents;
 }
 
 function compileFormatters(formats, columnExtents) {
   const formatters = {};
-  for (const format of formats) {
-    for (const columnName of format.columns) {
+  formats.forEach(format => {
+    format.columns.forEach(columnName => {
       formatters[columnName] = formatters[columnName] || [];
       formatters[columnName].push(
         compileFormatter(format, columnName, columnExtents, false),
       );
-    }
-  }
+    });
+  });
   return formatters;
 }
 
 function compileRowFormatters(formats) {
   const rowFormatters = [];
-  for (const format of formats.filter(
-    format => format.type === "single" && format.highlight_row,
-  )) {
-    const formatter = compileFormatter(format, null, null, true);
-    if (formatter) {
-      for (const colName of format.columns) {
-        rowFormatters.push((row, colIndexes) =>
-          formatter(row[colIndexes[colName]]),
-        );
+  formats
+    .filter(format => format.type === "single" && format.highlight_row)
+    .forEach(format => {
+      const formatter = compileFormatter(format, null, null, true);
+      if (formatter) {
+        format.columns.forEach(columnName => {
+          rowFormatters.push((row, colIndexes) =>
+            formatter(row[colIndexes[columnName]]),
+          );
+        });
       }
-    }
-  }
+    });
   return rowFormatters;
 }

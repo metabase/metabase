@@ -44,6 +44,8 @@
   particular cell value, others affect the row, so it's necessary to call this once for the resultset and then
   `get-background-color` on each cell."
   [{:keys [cols rows]} :- QueryResults, viz-settings]
+  ;; NOTE: for development it is useful to replace the following line with this one so it reload each time:
+  ; (let [^Invocable engine (make-js-engine-with-script (slurp "resources/frontend_shared/color_selector.js"))
   (let [^Invocable engine @js-engine
         ;; Ideally we'd convert everything to JS data before invoking the function below, but converting rows would be
         ;; expensive. The JS code is written to deal with `rows` in it's native Nashorn format but since `cols` and
