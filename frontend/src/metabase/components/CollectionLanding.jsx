@@ -464,7 +464,10 @@ export const NormalItem = ({
   onToggleSelected,
   onMove,
 }) => (
-  <Link to={item.getUrl()} data-metabase-event={`CollectionPage;${item.type};Click`}>
+  <Link
+    to={item.getUrl()}
+    data-metabase-event={`CollectionPage;${item.type};Click`}
+  >
     <EntityItem
       variant="list"
       showSelect={selection.size > 0}

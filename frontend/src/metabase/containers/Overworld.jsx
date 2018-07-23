@@ -125,7 +125,9 @@ class Overworld extends React.Component {
                         key={`${pin.model}-${pin.id}`}
                       >
                         <Link
-                          data-metabase-event={`Homepage;Pinned Item Click;Pin Type ${pin.model}`}
+                          data-metabase-event={`Homepage;Pinned Item Click;Pin Type ${
+                            pin.model
+                          }`}
                           to={Urls.dashboard(pin.id)}
                           hover={{ color: normal.blue }}
                         >
@@ -202,7 +204,9 @@ class Overworld extends React.Component {
                         <Link
                           to={`browse/${database.id}`}
                           hover={{ color: normal.blue }}
-                          data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${database.engine}`}
+                          data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${
+                            database.engine
+                          }`}
                         >
                           <Box p={3} bg={colors["bg-medium"]}>
                             <Icon
