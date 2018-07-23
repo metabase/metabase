@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="270px" height="267px" viewBox="0 0 270 267" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-    <!-- Generator: Sketch 50 (54983) - http://www.bohemiancoding.com/sketch -->
+<svg width="198px" height="202px" viewBox="0 0 198 202" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 50.2 (55047) - http://www.bohemiancoding.com/sketch -->
     <title>Artboard</title>
     <desc>Created with Sketch.</desc>
     <defs></defs>
     <g id="Artboard" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
         <g id="Group-3" transform="translate(2.000000, 2.000000)">
-            <ellipse id="Oval-2" fill="#F9FBFC" style="mix-blend-mode: multiply;" opacity="0.699999988" cx="143" cy="123" rx="122" ry="123"></ellipse>
-            <g id="Group-5" transform="translate(10.000000, 62.000000)">
+            <g id="Group-5" transform="translate(10.000000, 0.000000)">
                 <path d="M113.382413,151.888668 L140.161554,198.409543" id="Path-6" stroke="#DCE1E4" stroke-width="3.97614314"></path>
                 <rect id="Rectangle-6" stroke="#DCE1E4" stroke-width="1.19284294" fill="#F8F9FA" x="-0.281493046" y="18.0914513" width="174.959714" height="118.88668" rx="1.59045726"></rect>
                 <polygon id="Triangle-Copy-3" fill="#EDF0F1" transform="translate(164.335086, 83.335086) rotate(-135.000000) translate(-164.335086, -83.335086) " points="164.335086 81.2732123 166.989737 85.3969602 161.680436 85.3969602"></polygon>
@@ -27,9 +26,9 @@
                 <rect id="Rectangle-10-Copy" fill="#DCE1E4" x="62.601227" y="13.1332008" width="49.194274" height="18.6878728" rx="2.38568588"></rect>
                 <rect id="Rectangle-10" stroke="#DCE1E4" stroke-width="1.19284294" fill="#F8F9FA" x="62.0048055" y="10.5367793" width="50.387117" height="19.8807157" rx="2.38568588"></rect>
             </g>
-            <rect id="Rectangle-7" stroke="#DCE1E4" stroke-width="1.19284294" fill="#F8F9FA" x="-0.596421471" y="197.785288" width="195.192843" height="19.0854871" rx="0.795228628"></rect>
-            <path d="M78.5,77.5 L93.5332964,77.5" id="Line-2" stroke="#DCE1E4" stroke-width="2" stroke-linecap="square"></path>
-            <path d="M97.125,77.5 L100.883324,77.5" id="Line-2-Copy" stroke="#DCE1E4" stroke-width="2" stroke-linecap="square"></path>
+            <rect id="Rectangle-7" stroke="#DCE1E4" stroke-width="1.19284294" fill="#F8F9FA" x="-0.596421471" y="135.785288" width="195.192843" height="19.0854871" rx="0.795228628"></rect>
+            <path d="M78.5,15.5 L93.5332964,15.5" id="Line-2" stroke="#DCE1E4" stroke-width="2" stroke-linecap="square"></path>
+            <path d="M97.125,15.5 L100.883324,15.5" id="Line-2-Copy" stroke="#DCE1E4" stroke-width="2" stroke-linecap="square"></path>
         </g>
     </g>
 </svg>
