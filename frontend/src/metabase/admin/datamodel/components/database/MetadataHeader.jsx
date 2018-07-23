@@ -84,7 +84,7 @@ export default class MetadataHeader extends Component {
     return (
       <div className="MetadataEditor-header flex align-center flex-no-shrink">
         <div className="MetadataEditor-headerSection py2 h2">
-          <span className="text-grey-4">{t`Current database:`}</span>{" "}
+          <span className="text-medium">{t`Current database:`}</span>{" "}
           {this.renderDbSelector()}
         </div>
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">

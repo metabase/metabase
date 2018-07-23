@@ -113,7 +113,7 @@ export default class LegendHeader extends Component {
             index > 0 && (
               <Icon
                 name="close"
-                className="text-grey-2 flex-no-shrink mr1 cursor-pointer"
+                className="text-light flex-no-shrink mr1 cursor-pointer"
                 width={12}
                 height={12}
                 onClick={() => onRemoveSeries(s.card)}

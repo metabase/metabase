@@ -4,7 +4,7 @@
 }
 
 :local(.guideEditSectionDisabled) {
-  composes: text-grey-3 from "style";
+  composes: text-medium from "style";
 }
 
 :local(.guideEditSectionCollapsedIcon) {

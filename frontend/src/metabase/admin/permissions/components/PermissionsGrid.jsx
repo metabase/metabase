@@ -71,7 +71,7 @@ const PermissionsHeader = ({ permissions, isFirst, isLast }) => (
         }}
       >
         {permission.header && (
-          <h5 className="my1 text-centered text-grey-3 text-uppercase text-light">
+          <h5 className="my1 text-centered text-medium text-uppercase text-light">
             {permission.header}
           </h5>
         )}
@@ -117,12 +117,17 @@ const EntityHeader = ({
   isLast,
 }) => (
   <div className="flex flex-column">
-    <div className={cx("relative flex", { "align-self-center mb1": isColumn })}>
+    <div
+      className={cx("relative flex", {
+        "align-self-center mb1": isColumn,
+        "align-center": !isColumn,
+      })}
+    >
       <Icon name={icon} className="mr1" />
-      <div className="flex-full">
+      <div>
         <h4>{entity.name}</h4>
         {entity.subtitle && (
-          <div className="mt1 h5 text-monospace text-normal text-grey-2 text-uppercase">
+          <div className="mt1 h5 text-monospace text-normal text-light text-uppercase">
             {entity.subtitle}
           </div>
         )}

@@ -1,12 +1,13 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import { t } from "c-3po";
+import { t, msgid, ngettext } from "c-3po";
 import { connect } from "react-redux";
+import { withRouter } from "react-router";
 import _ from "underscore";
+import cx from "classnames";
+
 import listSelect from "metabase/hoc/ListSelect";
 import BulkActionBar from "metabase/components/BulkActionBar";
-import cx from "classnames";
-import { withRouter } from "react-router";
 
 import * as Urls from "metabase/lib/urls";
 import colors, { normal } from "metabase/lib/colors";
@@ -23,6 +24,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import VirtualizedList from "metabase/components/VirtualizedList";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar";
+import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
@@ -45,7 +47,7 @@ const EmptyStateWrapper = ({ children }) => (
   <Flex
     align="center"
     justify="center"
-    py={3}
+    p={5}
     flexDirection="column"
     w={1}
     h={"200px"}
@@ -79,7 +81,7 @@ const QuestionEmptyState = () => (
     <Box>
       <Icon name="beaker" size={32} />
     </Box>
-    <h3>{t`Quesitons are a saved look at your data.`}</h3>
+    <h3>{t`Questions are a saved look at your data.`}</h3>
   </EmptyStateWrapper>
 );
 
@@ -121,6 +123,38 @@ class DefaultLanding extends React.Component {
     moveItems: null,
   };
 
+  handleBulkArchive = async () => {
+    try {
+      await Promise.all(
+        this.props.selected.map(item => item.setArchived(true)),
+      );
+    } finally {
+      this.handleBulkActionSuccess();
+    }
+  };
+
+  handleBulkMoveStart = () => {
+    this.setState({ moveItems: this.props.selected });
+  };
+
+  handleBulkMove = async collection => {
+    try {
+      await Promise.all(
+        this.state.moveItems.map(item => item.setCollection(collection)),
+      );
+      this.setState({ moveItems: null });
+    } finally {
+      this.handleBulkActionSuccess();
+    }
+  };
+
+  handleBulkActionSuccess = () => {
+    // Clear the selection in listSelect
+    // Fixes an issue where things were staying selected when moving between
+    // different collection pages
+    this.props.onSelectNone();
+  };
+
   render() {
     const {
       ancestors,
@@ -135,18 +169,9 @@ class DefaultLanding extends React.Component {
       selected,
       selection,
       onToggleSelected,
-      onSelectNone,
       location,
     } = this.props;
     const { moveItems } = this.state;
-
-    // Call this when finishing a bulk action
-    const onBulkActionSuccess = () => {
-      // Clear the selection in listSelect
-      // Fixes an issue where things were staying selected when moving between
-      // different collection pages
-      onSelectNone();
-    };
 
     const collectionWidth = unpinned.length > 0 ? [1, 1 / 3] : 1;
     const itemWidth = unpinned.length > 0 ? [1, 2 / 3] : 0;
@@ -157,6 +182,10 @@ class DefaultLanding extends React.Component {
     if (location.query.type) {
       unpinnedItems = unpinned.filter(u => u.model === location.query.type);
     }
+
+    const collectionIsEmpty = !unpinned.length > 0 && !collections.length > 0;
+    const collectionHasPins = pinned.length > 0;
+    const collectionHasItems = unpinned.length > 0;
 
     return (
       <Box>
@@ -204,7 +233,7 @@ class DefaultLanding extends React.Component {
           </Flex>
           <Box>
             <Box>
-              {pinned.length > 0 ? (
+              {collectionHasPins ? (
                 <Box px={PAGE_PADDING} pt={2} pb={3} bg={colors["bg-medium"]}>
                   <CollectionSectionHeading>{t`Pins`}</CollectionSectionHeading>
                   <PinDropTarget
@@ -256,7 +285,7 @@ class DefaultLanding extends React.Component {
                     <div
                       className={cx(
                         "p2 flex layout-centered",
-                        hovered ? "text-brand" : "text-grey-2",
+                        hovered ? "text-brand" : "text-light",
                       )}
                     >
                       <Icon name="pin" mr={1} />
@@ -268,21 +297,23 @@ class DefaultLanding extends React.Component {
               <Box pt={[1, 2]} px={[2, 4]}>
                 <Grid>
                   <GridItem w={collectionWidth}>
-                    <Box pr={2} className="relative">
-                      <Box py={2}>
-                        <CollectionSectionHeading>
-                          {t`Collections`}
-                        </CollectionSectionHeading>
+                    {!collectionIsEmpty && (
+                      <Box pr={2} className="relative">
+                        <Box py={2}>
+                          <CollectionSectionHeading>
+                            {t`Collections`}
+                          </CollectionSectionHeading>
+                        </Box>
+                        <CollectionList
+                          currentCollection={collection}
+                          collections={collections}
+                          isRoot={collectionId === "root"}
+                          w={collectionGridSize}
+                        />
                       </Box>
-                      <CollectionList
-                        currentCollection={collection}
-                        collections={collections}
-                        isRoot={collectionId === "root"}
-                        w={collectionGridSize}
-                      />
-                    </Box>
+                    )}
                   </GridItem>
-                  {unpinned.length > 0 && (
+                  {collectionHasItems && (
                     <GridItem w={itemWidth}>
                       <Box>
                         <ItemTypeFilterBar />
@@ -333,7 +364,7 @@ class DefaultLanding extends React.Component {
                                   <div
                                     className={cx(
                                       "m2 flex layout-centered",
-                                      hovered ? "text-brand" : "text-grey-2",
+                                      hovered ? "text-brand" : "text-light",
                                     )}
                                   >
                                     {t`Drag here to un-pin`}
@@ -347,63 +378,79 @@ class DefaultLanding extends React.Component {
                     </GridItem>
                   )}
                 </Grid>
+                {unpinned.length === 0 && (
+                  <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
+                    {({ hovered }) => (
+                      <Flex
+                        align="center"
+                        justify="center"
+                        py={2}
+                        m={2}
+                        color={
+                          hovered ? colors["brand"] : colors["text-medium"]
+                        }
+                      >
+                        {t`Drag here to un-pin`}
+                      </Flex>
+                    )}
+                  </PinDropTarget>
+                )}
+
+                {collectionIsEmpty && (
+                  <Flex align="center" justify="center" w={1}>
+                    <CollectionEmptyState />
+                  </Flex>
+                )}
               </Box>
             </Box>
             <BulkActionBar showing={selected.length > 0}>
-              <Flex align="center">
-                <Flex align="center">
-                  <SelectionControls {...this.props} />
-                  <BulkActionControls
-                    onArchive={
-                      _.all(selected, item => item.setArchived)
-                        ? async () => {
-                            try {
-                              await Promise.all(
-                                selected.map(item => item.setArchived(true)),
-                              );
-                            } finally {
-                              onBulkActionSuccess();
-                            }
-                          }
-                        : null
-                    }
-                    onMove={
-                      _.all(selected, item => item.setCollection)
-                        ? () => {
-                            this.setState({ moveItems: selected });
-                          }
-                        : null
-                    }
-                  />
-                  <Box ml="auto">{t`${selected.length} items selected`}</Box>
-                </Flex>
-              </Flex>
+              {/* NOTE: these padding and grid sizes must be carefully matched
+                   to the main content above to ensure the bulk checkbox lines up */}
+              <Box px={[2, 4]} py={1}>
+                <Grid>
+                  <GridItem w={collectionWidth} />
+                  <GridItem w={itemWidth} px={[1, 2]}>
+                    <Flex align="center" justify="center" px={2}>
+                      <SelectionControls {...this.props} />
+                      <BulkActionControls
+                        onArchive={
+                          _.all(selected, item => item.setArchived)
+                            ? this.handleBulkArchive
+                            : null
+                        }
+                        onMove={
+                          _.all(selected, item => item.setCollection)
+                            ? this.handleBulkMoveStart
+                            : null
+                        }
+                      />
+                      <Box ml="auto">
+                        {ngettext(
+                          msgid`${selected.length} item selected`,
+                          `${selected.length} items selected`,
+                          selected.length,
+                        )}
+                      </Box>
+                    </Flex>
+                  </GridItem>
+                </Grid>
+              </Box>
             </BulkActionBar>
           </Box>
         </Box>
-        {moveItems &&
-          moveItems.length > 0 && (
-            <Modal>
-              <CollectionMoveModal
-                title={
-                  moveItems.length > 1
-                    ? t`Move ${moveItems.length} items?`
-                    : `Move "${moveItems[0].getName()}"?`
-                }
-                onClose={() => this.setState({ moveItems: null })}
-                onMove={async collection => {
-                  try {
-                    await Promise.all(
-                      moveItems.map(item => item.setCollection(collection)),
-                    );
-                    this.setState({ moveItems: null });
-                  } finally {
-                    onBulkActionSuccess();
-                  }
-                }}
-              />
-            </Modal>
-          )}
+        {!_.isEmpty(moveItems) && (
+          <Modal>
+            <CollectionMoveModal
+              title={
+                moveItems.length > 1
+                  ? t`Move ${moveItems.length} items?`
+                  : t`Move "${moveItems[0].getName()}"?`
+              }
+              onClose={() => this.setState({ moveItems: null })}
+              onMove={this.handleBulkMove}
+            />
+          </Modal>
+        )}
         <ItemsDragLayer selected={selected} />
       </Box>
     );
@@ -497,18 +544,20 @@ const SelectionControls = ({
   deselected,
   onSelectAll,
   onSelectNone,
+  size = 18,
 }) =>
   deselected.length === 0 ? (
-    <StackedCheckBox checked onChange={onSelectNone} />
+    <StackedCheckBox checked onChange={onSelectNone} size={size} />
   ) : selected.length === 0 ? (
-    <StackedCheckBox onChange={onSelectAll} />
+    <StackedCheckBox onChange={onSelectAll} size={size} />
   ) : (
-    <StackedCheckBox checked indeterminate onChange={onSelectAll} />
+    <StackedCheckBox checked indeterminate onChange={onSelectAll} size={size} />
   );
 
 @entityObjectLoader({
   entityType: "collections",
   entityId: (state, props) => props.params.collectionId,
+  reload: true,
 })
 class CollectionLanding extends React.Component {
   render() {

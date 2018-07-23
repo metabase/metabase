@@ -66,7 +66,7 @@ export class SchemaBrowser extends React.Component {
                 </Box>
                 <Grid>
                   {schemas.map(schema => (
-                    <GridItem w={ITEM_WIDTHS}>
+                    <GridItem w={ITEM_WIDTHS} key={schema.id}>
                       <Link
                         to={`/browse/${dbId}/schema/${schema.name}`}
                         mb={1}
@@ -124,7 +124,7 @@ export class TableBrowser extends React.Component {
                     }).getUrl();
 
                     return (
-                      <GridItem w={ITEM_WIDTHS}>
+                      <GridItem w={ITEM_WIDTHS} key={table.id}>
                         <Card
                           hoverable
                           px={1}
@@ -202,7 +202,7 @@ export class DatabaseBrowser extends React.Component {
             return (
               <Grid>
                 {databases.map(database => (
-                  <GridItem w={ITEM_WIDTHS}>
+                  <GridItem w={ITEM_WIDTHS} key={database.id}>
                     <Link to={`browse/${database.id}`}>
                       <Card p={3} hover={{ color: normal.blue }}>
                         <Icon name="database" color={normal.grey2} mb={3} />

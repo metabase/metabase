@@ -190,7 +190,7 @@ export default class ActionsWidget extends Component {
             >
               {PopoverComponent ? (
                 <div>
-                  <div className="flex align-center text-grey-4 p1 px2">
+                  <div className="flex align-center text-medium p1 px2">
                     <Icon
                       name="chevronleft"
                       className="cursor-pointer"
@@ -225,7 +225,7 @@ export default class ActionsWidget extends Component {
                 actions.map((action, index) => (
                   <div
                     key={index}
-                    className="p2 flex align-center text-grey-4 brand-hover cursor-pointer"
+                    className="p2 flex align-center text-medium brand-hover cursor-pointer"
                     onClick={() => this.handleActionClick(index)}
                   >
                     {action.icon && (

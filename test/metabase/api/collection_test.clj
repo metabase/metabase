@@ -28,14 +28,16 @@
 ;; check that we can get a basic list of collections
 ;; (for the purposes of test purposes remove the personal collections)
 (tt/expect-with-temp [Collection [collection]]
-  [(assoc (into {} collection) :can_write true)]
+  [{:parent_id nil, :effective_location nil, :effective_ancestors (), :can_write true, :name "Our analytics", :id "root"}
+   (assoc (into {} collection) :can_write true)]
   (for [collection ((user->client :crowberto) :get 200 "collection")
         :when (not (:personal_owner_id collection))]
     collection))
 
 ;; We should only see our own Personal Collections!
 (expect
-  ["Lucky Pigeon's Personal Collection"]
+  ["Our analytics"
+   "Lucky Pigeon's Personal Collection"]
   (do
     (collection-test/force-create-personal-collections!)
     ;; now fetch those Collections as the Lucky bird
@@ -43,7 +45,8 @@
 
 ;; ...unless we are *admins*
 (expect
-  ["Crowberto Corv's Personal Collection"
+  ["Our analytics"
+   "Crowberto Corv's Personal Collection"
    "Lucky Pigeon's Personal Collection"
    "Rasta Toucan's Personal Collection"
    "Trash Bird's Personal Collection"]
@@ -54,7 +57,8 @@
 
 ;; check that we don't see collections if we don't have permissions for them
 (expect
-  ["Collection 1"
+  ["Our analytics"
+   "Collection 1"
    "Rasta Toucan's Personal Collection"]
   (tt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
                   Collection [collection-2 {:name "Collection 2"}]]
@@ -64,7 +68,8 @@
 
 ;; check that we don't see collections if they're archived
 (expect
-  ["Rasta Toucan's Personal Collection"
+  ["Our analytics"
+   "Rasta Toucan's Personal Collection"
    "Regular Collection"]
   (tt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
                   Collection [collection-2 {:name "Regular Collection"}]]
