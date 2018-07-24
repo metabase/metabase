@@ -4,6 +4,7 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.helpers :as h]
+            [metabase.db :as mdb]
             [metabase.driver :as driver]
             [metabase.models.field :refer [Field]]
             [metabase.sync
@@ -70,7 +71,7 @@
 ;; SELECT *
 ;; FROM metabase_field
 ;; WHERE active = true
-;;   AND (special_type <> 'type/PK' OR special_type IS NULL)
+;;   AND (special_type NOT IN ('type/PK') OR special_type IS NULL)
 ;;   AND preview_display = true
 ;;   AND visibility_type <> 'retired'
 ;;   AND table_id = 1
@@ -132,7 +133,7 @@
    {:where [:and
             [:= :active true]
             [:or
-             [:not= :special_type "type/PK"]
+             [:not (mdb/isa :special_type :type/PK)]
              [:= :special_type nil]]
             [:not= :visibility_type "retired"]
             (cons :or (versions-clauses))]})

@@ -2,6 +2,7 @@
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
   (:require [expectations :refer :all]
             [metabase.driver :as driver]
+            [metabase.db :as mdb]
             [metabase.models
              [field :as field :refer [Field]]
              [table :refer [Table]]]
@@ -37,7 +38,7 @@
    [:and
     [:= :active true]
     [:or
-     [:not= :special_type "type/PK"]
+     [:not (mdb/isa :special_type :type/PK)]
      [:= :special_type nil]]
     [:not= :visibility_type "retired"]
     [:or
@@ -52,7 +53,7 @@
    [:and
     [:= :active true]
     [:or
-     [:not= :special_type "type/PK"]
+     [:not (mdb/isa :special_type :type/PK)]
      [:= :special_type nil]]
     [:not= :visibility_type "retired"]
     [:or
@@ -73,7 +74,7 @@
    [:and
     [:= :active true]
     [:or
-     [:not= :special_type "type/PK"]
+     [:not (mdb/isa :special_type :type/PK)]
      [:= :special_type nil]]
     [:not= :visibility_type "retired"]
     [:or
@@ -94,7 +95,7 @@
    [:and
     [:= :active true]
     [:or
-     [:not= :special_type "type/PK"]
+     [:not (mdb/isa :special_type :type/PK)]
      [:= :special_type nil]]
     [:not= :visibility_type "retired"]
     [:or
