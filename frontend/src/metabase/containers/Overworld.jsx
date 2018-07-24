@@ -30,31 +30,42 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 
 const PAGE_PADDING = [1, 2, 4];
 
+import { createSelector } from "reselect";
+
+// use reselect select to avoid re-render if list doesn't change
+const getParitionedCollections = createSelector(
+  [(state, props) => props.list],
+  list => {
+    const [collections, items] = _.partition(
+      list,
+      item => item.model === "collection",
+    );
+    const [pinned, unpinned] = _.partition(
+      items,
+      item => item.collection_position != null,
+    );
+
+    // sort the pinned items by collection_position
+    pinned.sort((a, b) => a.collection_position - b.collection_position);
+    return {
+      collections,
+      pinned,
+      unpinned,
+    };
+  },
+);
+
 //class Overworld extends Zelda
 @entityListLoader({
   entityType: "search",
-  entityQuery: (state, props) => ({ collection: "root" }),
+  entityQuery: { collection: "root" },
   wrapped: true,
 })
-@connect((state, props) => {
+@connect((state, props) => ({
   // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
-  const [collections, items] = _.partition(
-    props.list,
-    item => item.model === "collection",
-  );
-  const [pinned, unpinned] = _.partition(
-    items,
-    item => item.collection_position != null,
-  );
-  // sort the pinned items by collection_position
-  pinned.sort((a, b) => a.collection_position - b.collection_position);
-  return {
-    collections,
-    pinned,
-    unpinned,
-    user: getUser(state),
-  };
-})
+  ...getParitionedCollections(state, props),
+  user: getUser(state, props),
+}))
 class Overworld extends React.Component {
   render() {
     const { user } = this.props;

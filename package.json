@@ -34,6 +34,7 @@
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
     "leaflet.heat": "^0.2.0",
+    "lodash.memoize": "^4.1.2",
     "moment": "2.19.3",
     "node-libs-browser": "^2.0.0",
     "normalizr": "^3.0.2",
