@@ -30,7 +30,7 @@ const CollectionEmptyState = ({ params }) => {
           className="link text-bold"
           mt={2}
           to={Urls.newCollection(params.collectionId)}
-        >{t`Create a sub collection`}</Link>
+        >{t`Create another collection`}</Link>
       </Box>
     </Box>
   );
