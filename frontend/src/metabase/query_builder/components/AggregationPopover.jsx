@@ -201,7 +201,7 @@ export default class AggregationPopover extends Component {
         tableMetadata.metrics &&
         tableMetadata.metrics.filter(
           mtrc =>
-            mtrc.archived === false ||
+            !mtrc.archived ||
             (selectedAggregation && selectedAggregation.id === mtrc.id),
         );
       if (metrics && metrics.length > 0) {
