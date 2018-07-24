@@ -50,15 +50,17 @@
   fingerprinter (juxt :base_type (some-fn :special_type (constantly :type/*))))
 
 (def ^:private global-fingerprinter
-  (redux/fuse {:distinct-count cardinality}))
+  (redux/post-complete
+   (redux/fuse {:distinct-count cardinality})
+   (partial hash-map :global)))
 
 (defmethod fingerprinter :default
   [_]
-  (redux/post-complete global-fingerprinter (partial hash-map :global)))
+  global-fingerprinter)
 
 (defmethod fingerprinter [:type/* :type/FK]
   [_]
-  (redux/post-complete global-fingerprinter (partial hash-map :global)))
+  global-fingerprinter)
 
 (defmethod fingerprinter [:type/* :type/PK]
   [_]
@@ -76,7 +78,7 @@
     fingerprinter
     global-fingerprinter)
    (fn [[type-fingerprint global-fingerprint]]
-     (merge {:global global-fingerprint}
+     (merge global-fingerprint
             type-fingerprint))))
 
 (defmacro ^:private with-reduced-error
