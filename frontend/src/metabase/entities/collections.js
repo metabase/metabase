@@ -98,7 +98,7 @@ const Collections = createEntity({
       },
       {
         name: "parent_id",
-        title: "Parent collection",
+        title: "Collection it's saved in",
         type: "collection",
       },
     ],

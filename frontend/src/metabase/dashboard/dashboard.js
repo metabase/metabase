@@ -53,6 +53,7 @@ import {
 } from "metabase/services";
 
 import { getDashboard, getDashboardComplete } from "./selectors";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
 const DATASET_SLOW_TIMEOUT = 15 * 1000;
@@ -785,7 +786,7 @@ const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardFromDashboard = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
   ({ nextCard, previousCard, dashcard }) => (dispatch, getState) => {
-    const { metadata } = getState();
+    const metadata = getMetadata(getState());
     const { dashboardId, dashboards, parameterValues } = getState().dashboard;
     const dashboard = dashboards[dashboardId];
     const cardIsDirty = !_.isEqual(
