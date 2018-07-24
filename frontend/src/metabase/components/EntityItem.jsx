@@ -22,6 +22,7 @@ const EntityItemWrapper = Flex.extend`
 `;
 
 const EntityItem = ({
+  analyticsContext,
   name,
   iconName,
   iconColor,
@@ -34,12 +35,14 @@ const EntityItem = ({
   onToggleSelected,
   selectable,
   variant,
+  item,
 }) => {
   const actions = [
     onPin && {
       title: t`Pin this item`,
       icon: "pin",
       action: onPin,
+      event: `${analyticsContext};Entity Item;${item.model};Pin Item`,
     },
     onMove && {
       title: t`Move this item`,

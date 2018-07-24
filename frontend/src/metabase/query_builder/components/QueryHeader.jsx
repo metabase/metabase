@@ -530,7 +530,10 @@ export default class QueryHeader extends Component {
           setItemAttributeFn={this.props.onSetCardAttribute}
           badge={
             this.props.card.id && (
-              <CollectionBadge collectionId={this.props.card.collection_id} />
+              <CollectionBadge
+                collectionId={this.props.card.collection_id}
+                analyticsContext="QueryBuilder"
+              />
             )
           }
         />

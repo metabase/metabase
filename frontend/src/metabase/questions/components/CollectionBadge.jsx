@@ -16,9 +16,13 @@ import cx from "classnames";
 })
 class CollectionBadge extends React.Component {
   render() {
-    const { object } = this.props;
+    const { analyticsContext, object } = this.props;
     return (
-      <Link to={Urls.collection(object.id)} className={cx("inline-block link")}>
+      <Link
+        to={Urls.collection(object.id)}
+        className={cx("inline-block link")}
+        data-metabase-event={`${analyticsContext};Collection Badge Click`}
+      >
         <Flex align="center">
           <Icon name={object.getIcon()} mr={1} />
           <h5 className="text-uppercase" style={{ fontWeight: 900 }}>
