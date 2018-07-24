@@ -156,8 +156,8 @@ export default class Header extends Component {
           }
           ref="header"
         >
-          <div className="Entity py3 mb1">
-            {titleAndDescription}
+          <div className="Entity py3">
+            <span className="inline-block mb1">{titleAndDescription}</span>
             {attribution}
             {!this.props.isEditingInfo && (
               <CollectionBadge collectionId={item.collection_id} />
