@@ -144,16 +144,15 @@
                 :avg stats/mean})))
 
 (defn- valid-serialized-json?
-  "True if X is a serialized JSON dictionary or array."
+  "Is x a serialized JSON dictionary or array."
   [x]
-  (boolean
-   (u/ignore-exceptions
-     (let [parsed-json (json/parse-string x)]
-       (or (map? parsed-json)
-           (sequential? parsed-json))))))
+  (u/ignore-exceptions
+    ((some-fn map? sequential?) (json/parse-string x))))
 
 (deffingerprinter :type/Text
-  ((map (comp str u/jdbc-clob->str))
+  ((map (comp str u/jdbc-clob->str)) ; we cast to str to support `field-literal` type overwriting:
+                                     ; `[:field-literal "A_NUMBER" :type/Text]` (which still
+                                     ; returns numbers in the result set)
    (redux/fuse {:percent-json   (stats/share valid-serialized-json?)
                 :percent-url    (stats/share u/url?)
                 :percent-email  (stats/share u/email?)
