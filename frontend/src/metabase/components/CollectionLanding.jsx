@@ -43,6 +43,8 @@ import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 const ROW_HEIGHT = 72;
 const PAGE_PADDING = [2, 3, 4];
 
+const ANALYTICS_CONTEXT = "Collection Landing";
+
 const EmptyStateWrapper = ({ children }) => (
   <Flex
     align="center"
@@ -305,7 +307,7 @@ class DefaultLanding extends React.Component {
                           </CollectionSectionHeading>
                         </Box>
                         <CollectionList
-                          analyticsContext="Collection Landing"
+                          analyticsContext={ANALYTICS_CONTEXT}
                           currentCollection={collection}
                           collections={collections}
                           isRoot={collectionId === "root"}
@@ -318,7 +320,7 @@ class DefaultLanding extends React.Component {
                     <GridItem w={itemWidth}>
                       <Box>
                         <ItemTypeFilterBar
-                          analyticsContext={`Collection Landing`}
+                          analyticsContext={ANALYTICS_CONTEXT}
                         />
                         <Card mt={1} className="relative">
                           {unpinnedItems.length > 0 ? (
@@ -469,7 +471,7 @@ export const NormalItem = ({
 }) => (
   <Link
     to={item.getUrl()}
-    data-metabase-event={`CollectionPage;${item.type};Click`}
+    data-metabase-event={`${ANALYTICS_CONTEXT};${item.type};Click`}
   >
     <EntityItem
       variant="list"
@@ -510,7 +512,7 @@ const PinnedItem = ({ item, index, collection }) => (
     to={item.getUrl()}
     className="hover-parent hover--visibility"
     hover={{ color: normal.blue }}
-    data-metabase-event={`CollectionPage;${item.type};Click`}
+    data-metabase-event={`${ANALYTICS_CONTEXT};${item.type};Click`}
   >
     <Card hoverable p={3}>
       <Icon name={item.getIcon()} color={item.getColor()} size={28} mb={2} />
@@ -541,8 +543,15 @@ const BulkActionControls = ({ onArchive, onMove }) => (
       medium
       disabled={!onArchive}
       onClick={onArchive}
+      data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Archive Items`}
     >{t`Archive`}</Button>
-    <Button ml={1} medium disabled={!onMove} onClick={onMove}>{t`Move`}</Button>
+    <Button
+      ml={1}
+      medium
+      disabled={!onMove}
+      onClick={onMove}
+      data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Move Items`}
+    >{t`Move`}</Button>
   </Box>
 );
 
@@ -612,6 +621,7 @@ const CollectionEditMenu = ({ isRoot, collectionId }) => (
               title: t`Edit this collection`,
               icon: "editdocument",
               link: `/collection/${collectionId}/edit`,
+              event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Collection Click`,
             },
           ]
         : []),
@@ -619,6 +629,7 @@ const CollectionEditMenu = ({ isRoot, collectionId }) => (
         title: t`Edit permissions`,
         icon: "lock",
         link: `/collection/${collectionId}/permissions`,
+        event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Permissions Click`,
       },
       ...(!isRoot
         ? [
@@ -626,6 +637,7 @@ const CollectionEditMenu = ({ isRoot, collectionId }) => (
               title: t`Archive this collection`,
               icon: "viewArchive",
               link: `/collection/${collectionId}/archive`,
+              event: `${ANALYTICS_CONTEXT};Edit Menu;Archive Collection`,
             },
           ]
         : []),
@@ -641,6 +653,7 @@ const CollectionBurgerMenu = () => (
         title: t`View the archive`,
         icon: "viewArchive",
         link: `/archive`,
+        event: `${ANALYTICS_CONTEXT};Burger Menu;View Archive Click`,
       },
     ]}
     triggerIcon="burger"
