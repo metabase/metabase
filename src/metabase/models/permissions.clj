@@ -103,7 +103,9 @@
   (s/cond-pre su/Map su/IntGreaterThanZero))
 
 (s/defn object-path :- ObjectPath
-  "Return the permissions path for a Database, schema, or Table."
+  "Return the [readwrite] permissions path for a Database, schema, or Table. (At the time of this writing, DBs and
+  schemas don't have separate `read/` and write permissions; you either have 'data access' permissions for them, or
+  you don't. Tables, however, have separate read and write perms.)"
   ([database-or-id :- MapOrID]
    (str "/db/" (u/get-id database-or-id) "/"))
   ([database-or-id :- MapOrID, schema-name :- (s/maybe s/Str)]
@@ -123,7 +125,7 @@
   (str (object-path database-or-id) "schema/"))
 
 (s/defn collection-readwrite-path :- ObjectPath
-  "Return the permissions path for *readwrite* access for a COLLECTION-OR-ID."
+  "Return the permissions path for *readwrite* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
   (str "/collection/"
        (if (get collection-or-id :metabase.models.collection/is-root?)
@@ -132,7 +134,7 @@
        "/"))
 
 (s/defn collection-read-path :- ObjectPath
-  "Return the permissions path for *read* access for a COLLECTION-OR-ID."
+  "Return the permissions path for *read* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
   (str (collection-readwrite-path collection-or-id) "read/"))
 
@@ -362,11 +364,26 @@
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
-;; TODO - why does this take a PATH when everything else takes PATH-COMPONENTS or IDs?
-(s/defn delete-related-permissions!
-  "Delete all permissions for `group-or-id` for ancestors or descendant objects of object with `path`.
-   You can optionally include `other-conditions`, which are anded into the filter clause, to further restrict what is
-   deleted."
+(s/defn ^:private delete-related-permissions!
+  "This is somewhat hard to explain, but I will do my best:
+
+  Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
+  This includes *both* ancestor and descendant paths. For example:
+
+  Suppose we asked this functions to delete related permssions for `/db/1/schema/PUBLIC/`. Dependning on the
+  permissions the group has, it could end up doing something like:
+
+    *  deleting `/db/1/` permissions (because the ancestor perms implicity grant you full perms for `schema/PUBLIC`)
+    *  deleting perms for `/db/1/schema/PUBLIC/table/2/` (because Table 2 is a descendant of `schema/PUBLIC`)
+
+  In short, it will delete any permissions that contain `/db/1/schema/` as a prefix, or that themeselves are prefixes
+  for `/db/1/schema/`.
+
+  You can optionally include `other-conditions`, which are anded into the filter clause, to further restrict what is
+  deleted.
+
+  NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
+  `revoke-permissions!` elsewhere instead of calling this directly."
   {:style/indent 2}
   [group-or-id :- (s/cond-pre su/Map su/IntGreaterThanZero), path :- ObjectPath, & other-conditions]
   (let [where {:where (apply list
@@ -381,12 +398,19 @@
       (db/delete! Permissions where))))
 
 (defn revoke-permissions!
-  "Revoke all permissions for GROUP-OR-ID to object with PATH-COMPONENTS, *including* related permissions."
+  "Revoke all permissions for `group-or-id` to object with `path-components`, *including* related permissions (i.e,
+  permissions that grant full or partial access to the object in question).
+
+
+    (revoke-permissions! my-group my-db)"
+  {:arglists '([group-id database-or-id]
+               [group-id database-or-id schema-name]
+               [group-id database-or-id schema-name table-or-id])}
   [group-or-id & path-components]
   (delete-related-permissions! group-or-id (apply object-path path-components)))
 
 (defn grant-permissions!
-  "Grant permissions to GROUP-OR-ID to an object."
+  "Grant permissions to `group-or-id` to an object."
   ([group-or-id db-id schema & more]
    (grant-permissions! group-or-id (apply object-path db-id schema more)))
   ([group-or-id path]
@@ -399,12 +423,12 @@
        (log/error (u/format-color 'red "Failed to grant permissions: %s" (.getMessage e)))))))
 
 (defn revoke-native-permissions!
-  "Revoke all native query permissions for GROUP-OR-ID to database with DATABASE-ID."
+  "Revoke all native query permissions for `group-or-id` to database with `database-id`."
   [group-or-id database-id]
   (delete-related-permissions! group-or-id (adhoc-native-query-path database-id)))
 
 (defn grant-native-readwrite-permissions!
-  "Grant full readwrite permissions for GROUP-OR-ID to database with DATABASE-ID."
+  "Grant full readwrite permissions for `group-or-id` to database with `database-id`."
   [group-or-id database-id]
   (grant-permissions! group-or-id (adhoc-native-query-path database-id)))
 
