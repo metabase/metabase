@@ -88,33 +88,19 @@
                        :padding-bottom  :5px}))
 
 (defn- bar-td-style []
-  (merge (font-style) {:font-size     :16px
-                       :font-weight   400
-                       :text-align    :left
-                       :padding-right :1em
-                       :padding-top   :8px}))
-
-;; TO-DO for @senior: apply this style to headings of numeric columns
-(defn- bar-th-numeric-style []
-  (merge (font-style) {:text-align      :right
-                       :font-size       :14.22px
-                       :font-weight     700
-                       :color           color-gray-4
-                       :border-bottom   (str "1px solid " color-row-border)
-                       :padding-top     :20px
-                       :padding-bottom  :5px}))
-
-;; TO-DO for @senior: apply this style to numeric cells
-(defn- bar-td-style-numeric []
   (merge (font-style) {:font-size      :14.22px
                        :font-weight    400
-                       :color          color-dark-gray
-                       :text-align     :right
-                       :padding-right  :1em
-                       :padding-top    :2px
-                       :padding-bottom :1px
-                       :font-family    "Courier, Monospace"
-                       :border-bottom  (str "1px solid " color-row-border)}))
+                       :text-align     :left
+                       :padding-right  :0.5em
+                       :padding-left   :0.5em
+                       :padding-top    :4px
+                       :padding-bottom :4px}))
+
+(defn- bar-th-style-numeric []
+  (merge (font-style) (bar-th-style) {:text-align :right}))
+
+(defn- bar-td-style-numeric []
+  (merge (font-style) (bar-td-style) {:text-align :right}))
 
 (def ^:private RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"
@@ -357,7 +343,7 @@
 (defn- heading-style-for-type
   [cell]
   (if (instance? NumericWrapper cell)
-    (bar-th-numeric-style)
+    (bar-th-style-numeric)
     (bar-th-style)))
 
 (defn- row-style-for-type
