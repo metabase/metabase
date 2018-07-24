@@ -36,6 +36,14 @@
        {:location (collection/children-location (db/select-one ['Collection :location :id]
                                                   :id parent-collection-id))}))))
 
+(defn get-or-create-root-container-collection
+  "Get or create container collection for automagic dashboards in the root collection."
+  []
+  (or (db/select-one 'Collection
+        :name     "Automatically Generated Dashboards"
+        :location "/")
+      (create-collection! "Automatically Generated Dashboards" "#509EE3" nil nil)))
+
 (def colors
   "Colors used for coloring charts and collections."
   ["#509EE3" "#9CC177" "#A989C5" "#EF8C8C" "#f9d45c" "#F1B556" "#A6E7F3" "#7172AD"])

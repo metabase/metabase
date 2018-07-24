@@ -2,6 +2,7 @@
   "/api/dashboard endpoints."
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
+            [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase
              [events :as events]
              [query-processor :as qp]
@@ -412,7 +413,7 @@
   [:as {dashboard :body}]
   (api/check-superuser)
   (let [parent-collection-id (if api/*is-superuser?*
-                               (:id collection/root-collection)
+                               (:id (magic.populate/get-or-create-root-container-collection))
                                (db/select-one-field :id 'Collection
                                  :personal_owner_id api/*current-user-id*))]
     (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
