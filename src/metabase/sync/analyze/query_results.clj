@@ -66,7 +66,7 @@
       :unit      nil})))
 
 (s/defn results->column-metadata :- ResultsMetadata
-  "Return the desired storage format for the column metadata coming back from RESULTS, or `nil` if no columns were returned."
+  "Return the desired storage format for the column metadata coming back from RESULTS."
   ([results] (results->column-metadata results {}))
   ([results {:keys [skip-fingerprinting?]}]
    (let [result-metadata (for [col (:cols results)]
