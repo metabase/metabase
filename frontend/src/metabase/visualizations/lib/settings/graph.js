@@ -324,6 +324,7 @@ export const GRAPH_AXIS_SETTINGS = {
         { name: t`Compact`, value: "compact" },
         { name: t`Rotate 45°`, value: "rotate-45" },
         { name: t`Rotate 90°`, value: "rotate-90" },
+        // { name: t`Always`, value: "always" }
       ],
     },
     default: true,

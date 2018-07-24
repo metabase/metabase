@@ -620,13 +620,10 @@ exports[`Radio should render "vertical" correctly 1`] = `
 exports[`Select should render "Default" correctly 1`] = `
 <a
   className="no-decoration"
-  id={undefined}
   onClick={[Function]}
-  style={undefined}
 >
   <div
     className="AdminSelect flex align-center"
-    style={undefined}
   >
     <span
       className="AdminSelect-content mr1"
@@ -654,13 +651,10 @@ exports[`Select should render "Default" correctly 1`] = `
 exports[`Select should render "With search" correctly 1`] = `
 <a
   className="no-decoration"
-  id={undefined}
   onClick={[Function]}
-  style={undefined}
 >
   <div
     className="AdminSelect flex align-center"
-    style={undefined}
   >
     <span
       className="AdminSelect-content mr1"
@@ -957,7 +951,6 @@ exports[`TokenField should render "" correctly 1`] = `
   <ul
     className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y xj"
     onMouseDownCapture={[Function]}
-    style={undefined}
   >
     <li
       className="flex-full mr1 py1 pl1 mt1 bg-white"
@@ -970,7 +963,6 @@ exports[`TokenField should render "" correctly 1`] = `
         onFocus={[Function]}
         onKeyDown={[Function]}
         onPaste={[Function]}
-        placeholder={undefined}
         size={10}
         value=""
       />
@@ -1047,7 +1039,6 @@ exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
   <ul
     className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y xj"
     onMouseDownCapture={[Function]}
-    style={undefined}
   >
     <li
       className="flex-full mr1 py1 pl1 mt1 bg-white"
@@ -1060,7 +1051,6 @@ exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
         onFocus={[Function]}
         onKeyDown={[Function]}
         onPaste={[Function]}
-        placeholder={undefined}
         size={10}
         value=""
       />
