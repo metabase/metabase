@@ -303,7 +303,7 @@
 (defn- style-map->background-color
   "Finds the background color in the style string of a Hiccup style map"
   [{:keys [style]}]
-  (let [[_ color-str] (re-find #".*background-color: (.*);" style)]
+  (let [[_ color-str] (re-find #".*background-color: ([^;]*);" style)]
     color-str))
 
 (defn- cell-value->background-color
