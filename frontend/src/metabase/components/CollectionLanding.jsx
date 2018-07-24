@@ -202,6 +202,7 @@ class DefaultLanding extends React.Component {
             <Box>
               <Box mb={1}>
                 <BrowserCrumbs
+                  analyticsContext={ANALYTICS_CONTEXT}
                   crumbs={[
                     ...ancestors.map(({ id, name }) => ({
                       title: (

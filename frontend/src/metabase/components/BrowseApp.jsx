@@ -23,6 +23,7 @@ export const DatabaseListLoader = props => (
 
 const PAGE_PADDING = [1, 2, 4];
 const ITEM_WIDTHS = [1, 1 / 2, 1 / 3];
+const ANALYTICS_CONTEXT = "Data Browse";
 
 const SchemaListLoader = ({ dbId, ...props }) => (
   <EntityListLoader entityType="schemas" entityQuery={{ dbId }} {...props} />
@@ -58,6 +59,7 @@ export class SchemaBrowser extends React.Component {
               <Box>
                 <Box my={2}>
                   <BrowserCrumbs
+                    analyticsContext={ANALYTICS_CONTEXT}
                     crumbs={[
                       { title: t`Our data`, to: "browse" },
                       { title: <DatabaseName dbId={dbId} /> },
@@ -71,7 +73,7 @@ export class SchemaBrowser extends React.Component {
                         to={`/browse/${dbId}/schema/${schema.name}`}
                         mb={1}
                         hover={{ color: normal.purple }}
-                        data-metabase-event={`Data Browse;Schema Click`}
+                        data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
                       >
                         <Card hoverable px={1}>
                           <EntityItem
@@ -107,6 +109,7 @@ export class TableBrowser extends React.Component {
               <Box>
                 <Box mt={3} mb={2}>
                   <BrowserCrumbs
+                    analyticsContext={ANALYTICS_CONTEXT}
                     crumbs={[
                       { title: t`Our data`, to: "browse" },
                       {
@@ -201,7 +204,10 @@ export class DatabaseBrowser extends React.Component {
     return (
       <Box>
         <Box my={2}>
-          <BrowserCrumbs crumbs={[{ title: t`Our data` }]} />
+          <BrowserCrumbs
+            crumbs={[{ title: t`Our data` }]}
+            analyticsContext={ANALYTICS_CONTEXT}
+          />
         </Box>
         <DatabaseListLoader>
           {({ databases, loading, error }) => {
@@ -211,7 +217,7 @@ export class DatabaseBrowser extends React.Component {
                   <GridItem w={ITEM_WIDTHS} key={database.id}>
                     <Link
                       to={`browse/${database.id}`}
-                      data-metabase-event={`Data Browse;Database Click`}
+                      data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
                     >
                       <Card p={3} hover={{ color: normal.blue }}>
                         <Icon name="database" color={normal.grey2} mb={3} />
