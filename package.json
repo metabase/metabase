@@ -26,7 +26,7 @@
     "grid-styled": "^4.1.0",
     "history": "3",
     "humanize-plus": "^1.8.1",
-    "icepick": "2",
+    "icepick": "2.3.0",
     "iframe-resizer": "^3.5.11",
     "inflection": "^1.7.1",
     "isomorphic-fetch": "^2.2.1",
