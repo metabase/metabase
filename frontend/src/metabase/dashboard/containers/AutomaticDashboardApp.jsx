@@ -252,7 +252,7 @@ const SuggestionsList = ({ suggestions, section }) => (
                   />
                   <h4>{item.title}</h4>
                   <Box ml="auto" className="hover-child">
-                    <Tooltip tooltip={t`Anyone know what goes here?`}>
+                    <Tooltip tooltip={item.description}>
                       <Icon name="question" color={colors["bg-dark"]} />
                     </Tooltip>
                   </Box>
