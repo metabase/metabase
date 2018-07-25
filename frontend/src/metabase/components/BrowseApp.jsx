@@ -139,7 +139,7 @@ export class TableBrowser extends React.Component {
                               to={link}
                               ml={1}
                               hover={{ color: normal.purple }}
-                              data-metabase-event={`Data Browse;Table Click`}
+                              data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
                             >
                               <EntityItem
                                 item={table}
@@ -153,7 +153,7 @@ export class TableBrowser extends React.Component {
                                 <Tooltip tooltip={t`X-ray this table`}>
                                   <Link
                                     to={`auto/dashboard/table/${table.id}`}
-                                    data-metabase-event={`Data Browse;Table Item;X-ray Click`}
+                                    data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
                                   >
                                     <Icon
                                       name="bolt"
@@ -168,7 +168,7 @@ export class TableBrowser extends React.Component {
                                     to={`reference/databases/${dbId}/tables/${
                                       table.id
                                     }`}
-                                    data-metabase-event={`Data Browse;Table Item;Reference Click`}
+                                    data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
                                   >
                                     <Icon
                                       name="reference"
