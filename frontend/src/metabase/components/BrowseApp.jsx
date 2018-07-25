@@ -17,6 +17,35 @@ import Link from "metabase/components/Link";
 import Subhead from "metabase/components/Subhead";
 import Tooltip from "metabase/components/Tooltip";
 
+import _ from "underscore";
+
+/** Returns a default Question instance for the provided table */
+function getDefaultQuestionForTable(table) {
+  if (table.entity_type === "entity/GoogleAnalyticsTable") {
+    const dateField = _.findWhere(table.fields, { name: "ga:date" });
+    if (dateField) {
+      return Question.create()
+        .setDatasetQuery({
+          database: table.db_id,
+          type: "query",
+          query: {
+            source_table: table.id,
+            aggregation: [["METRIC", "ga:users"], ["METRIC", "ga:pageviews"]],
+            breakout: [
+              ["datetime-field", ["field-id", dateField.id], "as", "week"],
+            ],
+            filter: ["time-interval", ["field-id", dateField.id], -365, "day"],
+          },
+        })
+        .setDisplay("line");
+    }
+  }
+  return Question.create({
+    databaseId: table.db_id,
+    tableId: table.id,
+  });
+}
+
 export const DatabaseListLoader = props => (
   <EntityListLoader entityType="databases" {...props} />
 );
@@ -122,11 +151,7 @@ export class TableBrowser extends React.Component {
                 </Box>
                 <Grid>
                   {tables.map(table => {
-                    const link = Question.create({
-                      databaseId: parseInt(dbId),
-                      tableId: table.id,
-                    }).getUrl();
-
+                    const link = getDefaultQuestionForTable(table).getUrl();
                     return (
                       <GridItem w={ITEM_WIDTHS} key={table.id}>
                         <Card
