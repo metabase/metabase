@@ -10,6 +10,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
 import { computeTimeseriesTicksInterval } from "./timeseries";
+import { isMultipleOf, getModuloScaleFactor } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
 
@@ -207,13 +208,14 @@ export function applyChartQuantitativeXAxis(
     );
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    const moduloMultiplier = Math.max(
-      1,
-      Math.pow(10, Math.ceil(Math.log10(1 / xInterval))),
-    );
+    // if xInterval is less than 1 we need to scale the values before doing
+    // modulo comparison. isMultipleOf will compute it for us but we can do it
+    // once here as an optimization
+    const modulorScale = getModuloScaleFactor(xInterval);
+
     chart.xAxis().tickFormat(d => {
-      // don't show ticks that aren't (approximately) multiples of xInterval
-      if ((d * moduloMultiplier) % (xInterval * moduloMultiplier) === 0) {
+      // don't show ticks that aren't multiples of xInterval
+      if (isMultipleOf(d, xInterval, modulorScale)) {
         return formatValue(d, {
           column: dimensionColumn,
           type: "axis",
