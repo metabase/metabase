@@ -1,6 +1,11 @@
 /* @flow weak */
 
 import "babel-polyfill";
+
+// Use of classList.add and .remove in Background and FitViewPort Hocs requires
+// this polyfill so that those work in older browsers
+import "classlist-polyfill";
+
 import "number-to-locale-string";
 
 // If enabled this monkeypatches `t` and `jt` to return blacked out

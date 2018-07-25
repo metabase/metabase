@@ -4,6 +4,7 @@ import React from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { createSelector } from "reselect";
+import { createMemoizedSelector } from "metabase/lib/redux";
 
 import entityType from "./EntityType";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -25,11 +26,24 @@ export type RenderProps = {
   reload: () => void,
 };
 
+const getEntityQuery = (state, props) =>
+  typeof props.entityQuery === "function"
+    ? props.entityQuery(state, props)
+    : props.entityQuery;
+
+// NOTE: Memoize entityQuery so we don't re-render even if a new but identical
+// object is created. This works because entityQuery must be JSON serializable
+// NOTE: Technically leaks a small amount of memory because it uses an unbounded
+// memoization cache, but that's probably ok.
+const getMemoizedEntityQuery = createMemoizedSelector(
+  [getEntityQuery],
+  entityQuery => entityQuery,
+);
+
 @entityType()
-@connect((state, { entityDef, entityQuery, ...props }) => {
-  if (typeof entityQuery === "function") {
-    entityQuery = entityQuery(state, props);
-  }
+@connect((state, props) => {
+  const { entityDef } = props;
+  const entityQuery = getMemoizedEntityQuery(state, props);
   return {
     entityQuery,
     list: entityDef.selectors.getList(state, { entityQuery }),

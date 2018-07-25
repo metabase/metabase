@@ -271,7 +271,12 @@ export default class Navbar extends Component {
           </Box>
         </Flex>
         <Flex ml="auto" align="center" className="relative z2">
-          <Link to={Urls.newQuestion()} mx={2} className="hide sm-show">
+          <Link
+            to={Urls.newQuestion()}
+            mx={2}
+            className="hide sm-show"
+            data-metabase-event={`NavBar;New Question`}
+          >
             <Button medium>{t`Ask a question`}</Button>
           </Link>
           <EntityMenu
@@ -282,21 +287,27 @@ export default class Navbar extends Component {
                 title: t`New dashboard`,
                 icon: `dashboard`,
                 action: () => this.setModal(MODAL_NEW_DASHBOARD),
+                event: `NavBar;New Dashboard Click;`,
               },
               {
                 title: t`New pulse`,
                 icon: `pulse`,
                 link: Urls.newPulse(),
+                event: `NavBar;New Pulse Click;`,
               },
             ]}
           />
           <Tooltip tooltip={t`Reference`}>
-            <Link to="reference" mx={2}>
+            <Link
+              to="reference"
+              mx={2}
+              data-metabase-event={`NavBar;Reference`}
+            >
               <Icon name="reference" />
             </Link>
           </Tooltip>
           <Tooltip tooltip={t`Activity`}>
-            <Link to="activity" mx={2}>
+            <Link to="activity" mx={2} data-metabase-event={`NavBar;Activity`}>
               <Icon name="bell" />
             </Link>
           </Tooltip>
