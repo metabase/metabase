@@ -48,11 +48,13 @@ const EntityItem = ({
       title: t`Move this item`,
       icon: "move",
       action: onMove,
+      event: `${analyticsContext};Entity Item;${item.model};Move Item`,
     },
     onArchive && {
       title: t`Archive`,
       icon: "archive",
       action: onArchive,
+      event: `${analyticsContext};Entity Item;${item.model};Archive Item`,
     },
   ].filter(action => action);
 
