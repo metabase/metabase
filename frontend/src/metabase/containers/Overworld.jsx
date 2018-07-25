@@ -79,10 +79,9 @@ class Overworld extends React.Component {
                   {({ candidates, sampleCandidates, isSample }) => {
                     return (
                       <Box mx={PAGE_PADDING} mt={2}>
-                        <Box mb={1}>
-                          <h4
-                          >{t`Not sure where to start? Try these x-rays based on your data.`}</h4>
-                        </Box>
+                        <SectionHeading>
+                          {t`Not sure where to start? Try these x-rays based on your data.`}
+                        </SectionHeading>
                         <Card px={3} pb={1}>
                           <ExplorePane
                             candidates={candidates}
@@ -105,10 +104,8 @@ class Overworld extends React.Component {
             }
 
             return (
-              <Box px={PAGE_PADDING}>
-                <Box mt={3} mb={1}>
-                  <h4>{t`Start here`}</h4>
-                </Box>
+              <Box px={PAGE_PADDING} mt={2}>
+                <SectionHeading>{t`Start here`}</SectionHeading>
                 <Grid>
                   {pinnedDashboards.map(pin => {
                     return (
@@ -142,10 +139,8 @@ class Overworld extends React.Component {
         </CollectionItemsLoader>
 
         <Box px={PAGE_PADDING} my={3}>
-          <Box mb={2}>
-            <h4>{t`Our analytics`}</h4>
-          </Box>
-          <Card p={[1, 2]}>
+          <SectionHeading>{t`Our analytics`}</SectionHeading>
+          <Card p={[1, 2]} mt={2}>
             {this.props.collections.filter(
               c => c.id !== user.personal_collection_id,
             ).length > 0 ? (
@@ -183,8 +178,8 @@ class Overworld extends React.Component {
         </Box>
 
         <Box pt={2} px={PAGE_PADDING}>
-          <h4>{t`Our data`}</h4>
-          <Box mt={2} mb={4}>
+          <SectionHeading>{t`Our data`}</SectionHeading>
+          <Box mb={4}>
             <DatabaseListLoader>
               {({ databases }) => {
                 return (
@@ -217,5 +212,16 @@ class Overworld extends React.Component {
     );
   }
 }
+
+const SectionHeading = ({ children }) => (
+  <Box mb={1}>
+    <h5
+      className="text-uppercase"
+      style={{ color: colors["text-medium"], fontWeight: 900 }}
+    >
+      {children}
+    </h5>
+  </Box>
+);
 
 export default Overworld;
