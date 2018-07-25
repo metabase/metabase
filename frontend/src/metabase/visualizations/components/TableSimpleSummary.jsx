@@ -72,10 +72,10 @@ export default class TableSimpleSummary extends Component {
       this.refs.header,
     ).getBoundingClientRect().height;
     let footerHeight = this.refs.footer
-      ? ReactDOM.findDOMNode(this.refs.footer).getBoundingClientRect().height
+      ? (ReactDOM.findDOMNode(this.refs.footer || this.refs.header) || headerHeight).getBoundingClientRect().height
       : 0;
     let rowHeight =
-      ReactDOM.findDOMNode(this.refs.firstRow).getBoundingClientRect().height +
+      (ReactDOM.findDOMNode(this.refs.firstRow || this.refs.header) || headerHeight).getBoundingClientRect().height +
       1;
     let pageSize = Math.max(
       1,

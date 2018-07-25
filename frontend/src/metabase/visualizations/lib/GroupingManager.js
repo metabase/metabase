@@ -27,7 +27,7 @@ export class GroupingManager {
     const datas = rawSeries.map(p => p.data);
     const summaryTableSettings = settings[COLUMNS_SETTINGS];
 
-    const isPivoted = (settings[COLUMNS_SETTINGS].columnsSource || []).length >= 1;
+    const isPivoted = settings[COLUMNS_SETTINGS].columnsSource;
 
 
     let mappedRows = undefined;
@@ -68,7 +68,7 @@ export class GroupingManager {
     const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length).keys()];
     const sortOrderMethod = columnsIndexesForGrouping.map(funGen);
 
-    const fooBar = ([...(settings[COLUMNS_SETTINGS][GROUPS_SOURCES] || []),...settings[COLUMNS_SETTINGS][COLUMNS_SOURCE] || []]).map((p, index) => [(settings[COLUMNS_SETTINGS].columnNameToMetadata[p] || {}).showTotals,index]).filter(p => p[0]).map(p => p[1]).reverse();
+    const fooBar = ([...(settings[COLUMNS_SETTINGS][GROUPS_SOURCES] || []),...(settings[COLUMNS_SETTINGS][COLUMNS_SOURCE] ? [settings[COLUMNS_SETTINGS][COLUMNS_SOURCE]] : [])]).map((p, index) => [(settings[COLUMNS_SETTINGS].columnNameToMetadata[p] || {}).showTotals,index]).filter(p => p[0]).map(p => p[1]).reverse();
 
     mappedRows = mappedRows.map((rs, index) => rs.map(r => ({__proto__ : r, isTotalColumnIndex :fooBar[index - 1]})));
 
@@ -242,7 +242,7 @@ const normalizeRows = (settings, { cols, rows }) => {
 
 
 const pivotRows = (rows, cmp) =>{
-  const rowsOrdered = _.orderBy(rows, cmp);
+  const rowsOrdered = _.sortBy(rows, cmp);
 
   const foo = getFirstInGroupMap(rowsOrdered);
   const res = [...cmp.keys()].map(foo).map(p => p.firstInGroupIndexes);
