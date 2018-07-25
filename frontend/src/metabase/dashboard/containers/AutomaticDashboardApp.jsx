@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import cxs from "cxs";
 import { t } from "c-3po";
 import { connect } from "react-redux";
 
@@ -16,6 +15,7 @@ import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Filter from "metabase/query_builder/components/Filter";
 import Link from "metabase/components/Link";
+import Tooltip from "metabase/components/Tooltip";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import Parameters from "metabase/parameters/components/Parameters";
@@ -226,10 +226,12 @@ const RELATED_CONTENT = {
 };
 
 const SuggestionsList = ({ suggestions, section }) => (
-  <ol>
+  <Box is="ol" my={1}>
     {Object.keys(suggestions).map((s, i) => (
-      <li key={i}>
-        {RELATED_CONTENT[s].title}
+      <li key={i} className="my2">
+        <SuggetsionSectionHeading>
+          {RELATED_CONTENT[s].title}
+        </SuggetsionSectionHeading>
         {suggestions[s].length > 0 &&
           suggestions[s].map((item, itemIndex) => (
             <Link
@@ -244,12 +246,15 @@ const SuggestionsList = ({ suggestions, section }) => (
                 <Flex align="center">
                   <Icon
                     name={RELATED_CONTENT[s].icon}
-                    color={colors["accent"]}
+                    color={colors["accent4"]}
                     mr={1}
+                    size={22}
                   />
                   <h4>{item.title}</h4>
                   <Box ml="auto" className="hover-child">
-                    <Icon name="question" />
+                    <Tooltip tooltip={t`Anyone know what goes here?`}>
+                      <Icon name="question" color={colors["bg-dark"]} />
+                    </Tooltip>
                   </Box>
                 </Flex>
               </Card>
@@ -257,13 +262,25 @@ const SuggestionsList = ({ suggestions, section }) => (
           ))}
       </li>
     ))}
-  </ol>
+  </Box>
 );
 
+const SuggetsionSectionHeading = ({ children }) => (
+  <h5
+    style={{
+      fontWeight: 900,
+      textTransform: "uppercase",
+      color: colors["text-medium"],
+    }}
+    className="mb1"
+  >
+    {children}
+  </h5>
+);
 const SuggestionsSidebar = ({ related }) => (
-  <Flex flexDirection="column" p={2}>
-    <Box py={2}>
-      <h2>More X-rays</h2>
+  <Flex flexDirection="column" py={2} px={3}>
+    <Box is="h2" py={1}>
+      {t`More X-rays`}
     </Box>
     <SuggestionsList suggestions={related} />
   </Flex>
