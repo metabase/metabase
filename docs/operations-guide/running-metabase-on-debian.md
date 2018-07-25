@@ -205,12 +205,14 @@ You have to create a file /etc/systemd/system/metabase.service and paste the fol
     [Install]
     WantedBy=multi-user.target
 
-
 #### That's it!
 
 Now, whenever you need to start, stop, or restart Metabase, all you need to do is:
 
-    $ sudo systemctl metabase start
-    $ sudo systemctl metabase stop
-    $ sudo systemctl metabase restart
+    $ sudo systemctl start metabase.service
+    $ sudo systemctl stop metabase.service
+    $ sudo systemctl restart metabase.service
 
+Also, to start metabase on boot you should execute:
+
+    $ sudo systemctl enable metabse.service
