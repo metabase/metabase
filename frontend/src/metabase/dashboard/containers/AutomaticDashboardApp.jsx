@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import React from "react";
-import { Box, Flex } from "grid-styled"
+import { Box, Flex } from "grid-styled";
 import cxs from "cxs";
 import { t } from "c-3po";
 import { connect } from "react-redux";
@@ -12,11 +12,10 @@ import DashboardData from "metabase/dashboard/hoc/DashboardData";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
-import Card from "metabase/components/Card"
+import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Filter from "metabase/query_builder/components/Filter";
 import Link from "metabase/components/Link";
-
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import Parameters from "metabase/parameters/components/Parameters";
@@ -207,88 +206,66 @@ const getIconForFilter = (filter, metadata) => {
   }
 };
 
-const suggestionClasses = cxs({
-  ":hover h3": {
-    color: colors["brand"],
-  },
-  ":hover .Icon": {
-    color: colors["warning"],
-  },
-});
-
 const RELATED_CONTENT = {
-  'compare': {
+  compare: {
     title: t`Compare`,
-    icon: 'compare'
+    icon: "compare",
   },
-  'zoom-in': {
+  "zoom-in": {
     title: t`Zoom in`,
-    icon: 'zoom'
+    icon: "zoom-in",
   },
-  'zoom-out': {
+  "zoom-out": {
     title: t`Zoom out`,
-    icon: 'zoom'
+    icon: "zoom-out",
   },
-  'related': {
+  related: {
     title: t`Related`,
-    icon: 'connections'
-  }
-}
+    icon: "connections",
+  },
+};
 
 const SuggestionsList = ({ suggestions, section }) => (
   <ol>
     {Object.keys(suggestions).map((s, i) => (
-      <li key={i} className={suggestionClasses}>
-        { RELATED_CONTENT[s].title }
-        { suggestions[s].length > 0 && suggestions[s].map((item, itemIndex) =>
-          <Link hover={{ color: colors["brand"] }} key={itemIndex} to={item.url} className="block hover-parent" data-metabase-event={`Auto Dashboard;Click Related;${s}`} mb={1}>
-            <Card p={2} hoverable>
-              <Flex align='center'>
-                <Icon name={RELATED_CONTENT[s].icon} color={colors["accent"]} mr={1} />
-                <h4>{item.title}</h4>
-                <Box ml='auto' className="hover-child">
-                  <Icon name="question" />
-                </Box>
-              </Flex>
-            </Card>
-          </Link>
-        )}
+      <li key={i}>
+        {RELATED_CONTENT[s].title}
+        {suggestions[s].length > 0 &&
+          suggestions[s].map((item, itemIndex) => (
+            <Link
+              hover={{ color: colors["brand"] }}
+              key={itemIndex}
+              to={item.url}
+              className="block hover-parent hover--visibility"
+              data-metabase-event={`Auto Dashboard;Click Related;${s}`}
+              mb={1}
+            >
+              <Card p={2} hoverable>
+                <Flex align="center">
+                  <Icon
+                    name={RELATED_CONTENT[s].icon}
+                    color={colors["accent"]}
+                    mr={1}
+                  />
+                  <h4>{item.title}</h4>
+                  <Box ml="auto" className="hover-child">
+                    <Icon name="question" />
+                  </Box>
+                </Flex>
+              </Card>
+            </Link>
+          ))}
       </li>
     ))}
   </ol>
 );
 
-{ /*
-        <Link
-          to={s.url}
-          className="bordered rounded bg-white shadowed mb2 p2 flex no-decoration"
-          onClick={() =>
-            MetabaseAnalytics.trackEvent(
-              "AutoDashboard",
-              "ClickRelated",
-              section,
-            )
-          }
-        >
-          <div
-            className="bg-slate-extra-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
-            style={{ width: 48, height: 48 }}
-          >
-            <Icon name="bolt" className="Icon text-grey-1" size={22} />
-          </div>
-          <div>
-            <h3 className="m0 mb1 ml1">{s.title}</h3>
-            <p className="text-grey-4 ml1 mt0 mb0">{s.description}</p>
-          </div>
-        </Link>
-        */}
-
 const SuggestionsSidebar = ({ related }) => (
-  <Flex flexDirection='column' p={2}>
+  <Flex flexDirection="column" p={2}>
     <Box py={2}>
       <h2>More X-rays</h2>
     </Box>
-    <SuggestionsList section="related" suggestions={related} />
+    <SuggestionsList suggestions={related} />
   </Flex>
 );
 
