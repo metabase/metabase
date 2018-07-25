@@ -148,14 +148,15 @@
 (defmethod ->root (type Segment)
   [segment]
   (let [table (-> segment :table_id Table)]
-    {:entity       segment
-     :full-name    (tru "{0} in the {1} segment" (:display_name table) (:name segment))
-     :short-name   (:display_name table)
-     :source       table
-     :database     (:db_id table)
-     :query-filter [:SEGMENT (u/get-id segment)]
-     :url          (format "%ssegment/%s" public-endpoint (u/get-id segment))
-     :rules-prefix ["table"]}))
+    {:entity          segment
+     :full-name       (tru "{0} in the {1} segment" (:display_name table) (:name segment))
+     :short-name      (:display_name table)
+     :comparison-name (tru "{0} segment" (:name segment))
+     :source          table
+     :database        (:db_id table)
+     :query-filter    [:SEGMENT (u/get-id segment)]
+     :url             (format "%ssegment/%s" public-endpoint (u/get-id segment))
+     :rules-prefix    ["table"]}))
 
 (defmethod ->root (type Metric)
   [metric]

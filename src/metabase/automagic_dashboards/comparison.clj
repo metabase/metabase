@@ -15,6 +15,9 @@
             [metabase.util :as u]
             [puppetlabs.i18n.core :as i18n :refer [tru]]))
 
+(def ^:private ^{:arglists '([root])} comparison-name
+  (some-fn :comparison-name :full-name))
+
 (defn- dashboard->cards
   [dashboard]
   (->> dashboard
@@ -69,9 +72,9 @@
       (if (overlay-comparison? card)
         (let [card   (-> card-left
                          (assoc-in [:visualization_settings :graph.colors] [color-left color-right])
-                         (update :name #(format "%s (%s)" % (:full-name left))))
+                         (update :name #(format "%s (%s)" % (comparison-name left))))
               series (-> card-right
-                         (update :name #(format "%s (%s)" % (:full-name right)))
+                         (update :name #(format "%s (%s)" % (comparison-name right)))
                          vector)]
           (update dashboard :ordered_cards conj {:col                    0
                                                  :row                    row
@@ -80,10 +83,7 @@
                                                  :card                   card
                                                  :card_id                (:id card)
                                                  :series                 series
-                                                 :visualization_settings
-                                                 (cond-> {}
-                                                   (-> card-left display-type (= :bar))
-                                                   (assoc :graph.y_axis.auto_split false))
+                                                 :visualization_settings {:graph.y_axis.auto_split false}
                                                  :id                     (gensym)}))
         (let [width        (/ populate/grid-width 2)
               series-left  (map clone-card (:series card-left))
@@ -140,10 +140,10 @@
 (defn- add-title-row
   [dashboard left right]
   (let [[dashboard height-left]  (add-col-title dashboard
-                                                (:full-name left)
+                                                (comparison-name left)
                                                 (-> left :entity :description) 0)
         [dashboard height-right] (add-col-title dashboard
-                                                (:full-name right)
+                                                (comparison-name right)
                                                 (-> right :entity :description)
                                                 (/ populate/grid-width 2))]
     [dashboard (max height-left height-right)]))
@@ -190,8 +190,8 @@
                                                   (:url root)
                                                   (-> segment :entity u/get-id))
                              :title       (tru "Compare {0} with {1}"
-                                               (:full-name root)
-                                               (:full-name segment))
+                                               (comparison-name root)
+                                               (comparison-name segment))
                              :description ""}))}
     (not-any? (comp (partial instance? (type Table)) :entity) entities)
     (merge {:source         [(-> entities first :source ->related-entity)]
@@ -200,7 +200,7 @@
                                                     (:url root)
                                                     (-> root :source u/get-id))
                                :title       (tru "Compare {0} with the entire dataset"
-                                                 (:full-name root))
+                                                 (comparison-name root))
                                :description ""})})))
 
 (defn- part-vs-whole-comparison?
@@ -219,18 +219,21 @@
                                ->root
                                (merge (:right opts)))
         left               (cond-> left
-                             (-> opts :left :cell-query) (assoc :full-name (->> opts
-                                                                                :left
-                                                                                :cell-query
-                                                                                (cell-title left)
-                                                                                capitalize-first)))
+                             (-> opts :left :cell-query)
+                             (assoc :comparison-name (->> opts
+                                                          :left
+                                                          :cell-query
+                                                          (cell-title left)
+                                                          capitalize-first)))
         right              (cond-> right
                              (part-vs-whole-comparison? left right)
-                             (assoc :full-name (condp instance? (:entity right)
-                                                 (type Table) (tru "All {0}" (:short-name right))
-                                                 (tru "{0}, all {1}"
-                                                      (:full-name right)
-                                                      (source-name right)))))
+                             (assoc :comparison-name (condp instance? (:entity right)
+                                                       (type Table)
+                                                       (tru "All {0}" (:short-name right))
+
+                                                       (tru "{0}, all {1}"
+                                                            (comparison-name right)
+                                                            (source-name right)))))
         segment-dashboards (->> (concat (segment-constituents left)
                                         (segment-constituents right))
                                 distinct
@@ -245,15 +248,15 @@
                     (fn
                       ([]
                        (let [title (tru "Comparison of {0} and {1}"
-                                        (:full-name left)
-                                        (:full-name right))]
+                                        (comparison-name left)
+                                        (comparison-name right))]
                          (-> {:name              title
                               :transient_name    title
                               :transient_filters nil
                               :param_fields      nil
                               :description       (tru "Automatically generated comparison dashboard comparing {0} and {1}"
-                                                      (:full-name left)
-                                                      (:full-name right))
+                                                      (comparison-name left)
+                                                      (comparison-name right))
                               :creator_id        api/*current-user-id*
                               :parameters        []
                               :related           (related left right)}
