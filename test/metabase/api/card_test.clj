@@ -409,10 +409,10 @@
 (expect
   "You don't have permissions to do that."
   (tt/with-temp* [Database [db]
-                  Table    [table    {:db_id (u/get-id db)}]
-                  Card     [card              {:dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
+                  Table    [table {:db_id (u/get-id db)}]
+                  Card     [card  {:dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
     ;; revoke permissions for default group to this database
-    (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path (u/get-id db)))
+    (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
     ;; now a non-admin user shouldn't be able to fetch this card
     ((user->client :rasta) :get 403 (str "card/" (u/get-id card)))))
 
