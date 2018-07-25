@@ -18,6 +18,7 @@ import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 class CollectionList extends React.Component {
   render() {
     const {
+      analyticsContext,
       collections,
       currentUser,
       currentCollection,
@@ -38,6 +39,7 @@ class CollectionList extends React.Component {
                         collection={collection}
                         highlighted={highlighted}
                         hovered={hovered}
+                        event={`${analyticsContext};Collection List;Collection click`}
                       />
                     </ItemDragSource>
                   )}
@@ -58,6 +60,7 @@ class CollectionList extends React.Component {
                     iconName="star"
                     highlighted={highlighted}
                     hovered={hovered}
+                    event={`${analyticsContext};Collection List;Personal collection click`}
                   />
                 )}
               </CollectionDropTarget>
@@ -75,6 +78,7 @@ class CollectionList extends React.Component {
                     id: "users",
                   }}
                   iconName="person"
+                  event={`${analyticsContext};Collection List;All user collecetions click`}
                 />
               </GridItem>
             )}
@@ -86,6 +90,7 @@ class CollectionList extends React.Component {
                   color={normal.grey2}
                   hover={{ color: normal.blue }}
                   p={w === 1 ? [1, 2] : 0}
+                  data-metabase-event={`${analyticsContext};Collection List; New Collection Click`}
                 >
                   <Flex align="center" py={1}>
                     <Icon name="add" mr={1} bordered />

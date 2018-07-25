@@ -125,6 +125,9 @@ class Overworld extends React.Component {
                         key={`${pin.model}-${pin.id}`}
                       >
                         <Link
+                          data-metabase-event={`Homepage;Pinned Item Click;Pin Type ${
+                            pin.model
+                          }`}
                           to={Urls.dashboard(pin.id)}
                           hover={{ color: normal.blue }}
                         >
@@ -155,7 +158,10 @@ class Overworld extends React.Component {
             {this.props.collections.filter(
               c => c.id !== user.personal_collection_id,
             ).length > 0 ? (
-              <CollectionList collections={this.props.collections} />
+              <CollectionList
+                collections={this.props.collections}
+                analyticsContext="Homepage"
+              />
             ) : (
               <Box className="text-centered">
                 <Box style={{ opacity: 0.5 }}>
@@ -175,6 +181,7 @@ class Overworld extends React.Component {
               to="/collection/root"
               color={normal.grey2}
               className="text-brand-hover"
+              data-metabase-event={`Homepage;Browse Items Clicked;`}
             >
               <Flex color={colors["brand"]} p={2} my={1} align="center">
                 <Box ml="auto" mr="auto">
@@ -200,6 +207,9 @@ class Overworld extends React.Component {
                         <Link
                           to={`browse/${database.id}`}
                           hover={{ color: normal.blue }}
+                          data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${
+                            database.engine
+                          }`}
                         >
                           <Box p={3} bg={colors["bg-medium"]}>
                             <Icon

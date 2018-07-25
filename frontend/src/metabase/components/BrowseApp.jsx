@@ -23,6 +23,7 @@ export const DatabaseListLoader = props => (
 
 const PAGE_PADDING = [1, 2, 4];
 const ITEM_WIDTHS = [1, 1 / 2, 1 / 3];
+const ANALYTICS_CONTEXT = "Data Browse";
 
 const SchemaListLoader = ({ dbId, ...props }) => (
   <EntityListLoader entityType="schemas" entityQuery={{ dbId }} {...props} />
@@ -58,6 +59,7 @@ export class SchemaBrowser extends React.Component {
               <Box>
                 <Box my={2}>
                   <BrowserCrumbs
+                    analyticsContext={ANALYTICS_CONTEXT}
                     crumbs={[
                       { title: t`Our data`, to: "browse" },
                       { title: <DatabaseName dbId={dbId} /> },
@@ -71,6 +73,7 @@ export class SchemaBrowser extends React.Component {
                         to={`/browse/${dbId}/schema/${schema.name}`}
                         mb={1}
                         hover={{ color: normal.purple }}
+                        data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
                       >
                         <Card hoverable px={1}>
                           <EntityItem
@@ -106,6 +109,7 @@ export class TableBrowser extends React.Component {
               <Box>
                 <Box mt={3} mb={2}>
                   <BrowserCrumbs
+                    analyticsContext={ANALYTICS_CONTEXT}
                     crumbs={[
                       { title: t`Our data`, to: "browse" },
                       {
@@ -135,6 +139,7 @@ export class TableBrowser extends React.Component {
                               to={link}
                               ml={1}
                               hover={{ color: normal.purple }}
+                              data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
                             >
                               <EntityItem
                                 item={table}
@@ -146,7 +151,10 @@ export class TableBrowser extends React.Component {
                             <Box ml="auto" mr={1} className="hover-child">
                               <Flex align="center">
                                 <Tooltip tooltip={t`X-ray this table`}>
-                                  <Link to={`auto/dashboard/table/${table.id}`}>
+                                  <Link
+                                    to={`auto/dashboard/table/${table.id}`}
+                                    data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
+                                  >
                                     <Icon
                                       name="bolt"
                                       mx={1}
@@ -160,6 +168,7 @@ export class TableBrowser extends React.Component {
                                     to={`reference/databases/${dbId}/tables/${
                                       table.id
                                     }`}
+                                    data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
                                   >
                                     <Icon
                                       name="reference"
@@ -195,7 +204,10 @@ export class DatabaseBrowser extends React.Component {
     return (
       <Box>
         <Box my={2}>
-          <BrowserCrumbs crumbs={[{ title: t`Our data` }]} />
+          <BrowserCrumbs
+            crumbs={[{ title: t`Our data` }]}
+            analyticsContext={ANALYTICS_CONTEXT}
+          />
         </Box>
         <DatabaseListLoader>
           {({ databases, loading, error }) => {
@@ -203,7 +215,10 @@ export class DatabaseBrowser extends React.Component {
               <Grid>
                 {databases.map(database => (
                   <GridItem w={ITEM_WIDTHS} key={database.id}>
-                    <Link to={`browse/${database.id}`}>
+                    <Link
+                      to={`browse/${database.id}`}
+                      data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
+                    >
                       <Card p={3} hover={{ color: normal.blue }}>
                         <Icon name="database" color={normal.grey2} mb={3} />
                         <Subhead>{database.name}</Subhead>

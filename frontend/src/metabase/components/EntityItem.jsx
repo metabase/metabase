@@ -22,6 +22,7 @@ const EntityItemWrapper = Flex.extend`
 `;
 
 const EntityItem = ({
+  analyticsContext,
   name,
   iconName,
   iconColor,
@@ -34,22 +35,26 @@ const EntityItem = ({
   onToggleSelected,
   selectable,
   variant,
+  item,
 }) => {
   const actions = [
     onPin && {
       title: t`Pin this item`,
       icon: "pin",
       action: onPin,
+      event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
     },
     onMove && {
       title: t`Move this item`,
       icon: "move",
       action: onMove,
+      event: `${analyticsContext};Entity Item;Move Item;${item.model}`,
     },
     onArchive && {
       title: t`Archive`,
       icon: "archive",
       action: onArchive,
+      event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
     },
   ].filter(action => action);
 
