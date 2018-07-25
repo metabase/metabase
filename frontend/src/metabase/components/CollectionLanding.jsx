@@ -472,9 +472,10 @@ export const NormalItem = ({
 }) => (
   <Link
     to={item.getUrl()}
-    data-metabase-event={`${ANALYTICS_CONTEXT};${item.type};Click`}
+    data-metabase-event={`${ANALYTICS_CONTEXT};Item Click;${item.model}`}
   >
     <EntityItem
+      analyticsContext={ANALYTICS_CONTEXT}
       variant="list"
       showSelect={selection.size > 0}
       selectable
@@ -513,7 +514,7 @@ const PinnedItem = ({ item, index, collection }) => (
     to={item.getUrl()}
     className="hover-parent hover--visibility"
     hover={{ color: normal.blue }}
-    data-metabase-event={`${ANALYTICS_CONTEXT};${item.type};Click`}
+    data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`}
   >
     <Card hoverable p={3}>
       <Icon name={item.getIcon()} color={item.getColor()} size={28} mb={2} />
@@ -524,6 +525,9 @@ const PinnedItem = ({ item, index, collection }) => (
             <Box
               ml="auto"
               className="hover-child"
+              data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${
+                item.model
+              }`}
               onClick={ev => {
                 ev.preventDefault();
                 item.setPinned(false);

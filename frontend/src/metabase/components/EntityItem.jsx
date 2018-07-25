@@ -42,19 +42,19 @@ const EntityItem = ({
       title: t`Pin this item`,
       icon: "pin",
       action: onPin,
-      event: `${analyticsContext};Entity Item;${item.model};Pin Item`,
+      event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
     },
     onMove && {
       title: t`Move this item`,
       icon: "move",
       action: onMove,
-      event: `${analyticsContext};Entity Item;${item.model};Move Item`,
+      event: `${analyticsContext};Entity Item;Move Item;${item.model}`,
     },
     onArchive && {
       title: t`Archive`,
       icon: "archive",
       action: onArchive,
-      event: `${analyticsContext};Entity Item;${item.model};Archive Item`,
+      event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
     },
   ].filter(action => action);
 
