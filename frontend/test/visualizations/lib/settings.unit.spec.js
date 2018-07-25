@@ -25,17 +25,19 @@ describe("visualization_settings", () => {
       });
     });
     describe("graph.x_axis._is_histogram", () => {
-      const HISTOGRAM_UNITS = [
+      // NOTE: currently datetimes with unit are never considered histograms
+      const HISTOGRAM_UNITS = [];
+      const NON_HISTOGRAM_UNITS = [
+        // definitely not histogram
+        "day-of-week",
+        "month-of-year",
+        "quarter-of-year",
+        // arguably histogram but diabled for now
         "minute-of-hour",
         "hour-of-day",
         "day-of-month",
         "day-of-year",
         "week-of-year",
-      ];
-      const NON_HISTOGRAM_UNITS = [
-        "day-of-week",
-        "month-of-year",
-        "quarter-of-year",
       ];
       describe("non-histgram units", () =>
         NON_HISTOGRAM_UNITS.map(unit =>
