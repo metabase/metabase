@@ -215,4 +215,4 @@ Now, whenever you need to start, stop, or restart Metabase, all you need to do i
 
 Also, to start metabase on boot you should execute:
 
-    $ sudo systemctl enable metabse.service
+    $ sudo systemctl enable metabase.service
