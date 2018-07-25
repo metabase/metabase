@@ -631,8 +631,6 @@ export default class TableInteractive extends Component {
                   ? this.tableHeaderRenderer(props)
                   : null
               }
-              onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
-              scrollLeft={scrollLeft}
               tabIndex={null}
             />
             <Grid
