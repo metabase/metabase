@@ -65,7 +65,6 @@
   [{:keys [user password db host port instance domain ssl]
     :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
     :as   details}]
-  (println "port:" port) ; NOCOMMIT
   (-> {:applicationName config/mb-app-id-string
        :classname       "com.microsoft.sqlserver.jdbc.SQLServerDriver"
        :subprotocol     "sqlserver"
