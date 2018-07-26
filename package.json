@@ -14,18 +14,20 @@
     "babel-polyfill": "^6.6.1",
     "c-3po": "^0.7.3",
     "chevrotain": "0.21.0",
+    "classlist-polyfill": "^1.2.0",
     "classnames": "^2.1.3",
     "color": "^3.0.0",
     "color-harmony": "^0.3.0",
     "crossfilter": "^1.3.12",
     "cxs": "^5.0.0",
     "d3": "^3.5.17",
+    "d3-scale": "^2.1.0",
     "dc": "^2.0.0",
     "diff": "^3.2.0",
     "grid-styled": "^4.1.0",
     "history": "3",
     "humanize-plus": "^1.8.1",
-    "icepick": "2",
+    "icepick": "2.3.0",
     "iframe-resizer": "^3.5.11",
     "inflection": "^1.7.1",
     "isomorphic-fetch": "^2.2.1",
@@ -34,6 +36,7 @@
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
     "leaflet.heat": "^0.2.0",
+    "lodash.memoize": "^4.1.2",
     "moment": "2.19.3",
     "node-libs-browser": "^2.0.0",
     "normalizr": "^3.0.2",
@@ -159,39 +162,38 @@
     "webpack-postcss-tools": "^1.1.2"
   },
   "scripts": {
-    "dev":
-      "concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn build-hot'",
+    "dev": "concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn build-hot'",
     "lint": "yarn lint-eslint && yarn lint-prettier",
-    "lint-eslint":
-      "yarn && eslint --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 frontend/src frontend/test",
-    "lint-prettier":
-      "yarn && prettier -l 'frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
+    "lint-eslint": "yarn && eslint --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 frontend/src frontend/test",
+    "lint-prettier": "yarn && prettier -l 'frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
     "flow": "yarn && flow check",
     "test": "yarn test-unit && yarn test-integrated && yarn test-karma",
     "test-integrated": "./bin/build-for-test && yarn test-integrated-no-build",
     "test-integrated-watch": "yarn test-integrated --watch",
-    "test-integrated-no-build":
-      "yarn && babel-node ./frontend/test/__runner__/run_integrated_tests.js",
+    "test-integrated-no-build": "yarn && babel-node ./frontend/test/__runner__/run_integrated_tests.js",
     "test-unit": "yarn && jest --maxWorkers=8 --config jest.unit.conf.json",
     "test-unit-watch": "yarn test-unit --watch",
     "test-unit-update-snapshot": "yarn test-unit --updateSnapshot",
-    "test-karma":
-      "yarn && karma start frontend/test/karma.conf.js --single-run",
-    "test-karma-watch":
-      "yarn && karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
+    "test-karma": "yarn && karma start frontend/test/karma.conf.js --single-run",
+    "test-karma-watch": "yarn && karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
     "build": "yarn && webpack --bail",
     "build-watch": "yarn && webpack --watch",
     "build-hot": "yarn && NODE_ENV=hot webpack-dev-server --progress",
     "build-stats": "yarn && webpack --json > stats.json",
+    "build-shared": "yarn && webpack --config webpack.shared.config.js",
     "start": "yarn build && lein ring server",
     "precommit": "lint-staged",
-    "preinstall":
-      "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
+    "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write 'frontend/**/*.{js,jsx,css}'",
-    "docs":
-      "documentation build -f html -o frontend/docs frontend/src/metabase-lib/lib/**"
+    "docs": "documentation build -f html -o frontend/docs frontend/src/metabase-lib/lib/**",
+    "ci": "yarn ci-frontend && yarn ci-backend",
+    "ci-frontend": "yarn lint && yarn flow && yarn test",
+    "ci-backend": "lein docstring-checker && lein bikeshed && lein eastwood && lein test"
   },
   "lint-staged": {
-    "frontend/**/*.{js,jsx,css}": ["prettier --write", "git add"]
+    "frontend/**/*.{js,jsx,css}": [
+      "prettier --write",
+      "git add"
+    ]
   }
 }

@@ -89,10 +89,8 @@ export class ExplorePane extends React.Component {
         )}
         {schemaNames &&
           schemaNames.length > 1 && (
-            <div className="px4 inline-block mb4">
-              <div className="pb1 text-paragraph">
-                Here's the schema I looked at:
-              </div>
+            <div className="flex align-center ml-auto">
+              <div className="mr1">{t`Based on the schema`}</div>
               <Select
                 value={schemaName}
                 onChange={e =>
@@ -119,7 +117,7 @@ export class ExplorePane extends React.Component {
         )}
         {hasMore && (
           <div
-            className="border-top cursor-pointer text-brand-hover flex layout-centered text-grey-2 px2 pt2 mt4"
+            className="border-top cursor-pointer text-brand-hover flex layout-centered text-light px2 pt2 mt4"
             onClick={() => this.setState({ visibleItems: visibleItems + 4 })}
           >
             <Icon name="chevrondown" size={20} />
@@ -158,7 +156,7 @@ export const ExploreList = ({
 export const ExploreOption = ({ option }: { option: Candidate }) => (
   <Link
     to={option.url}
-    className="flex align-center text-bold no-decoration text-grey-5 text-brand-hover bg-grey-0 p2 py3"
+    className="flex align-center text-bold no-decoration text-medium text-brand-hover bg-light p2 py3"
   >
     <Icon
       name="bolt"

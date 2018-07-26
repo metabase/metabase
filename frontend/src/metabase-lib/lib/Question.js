@@ -40,6 +40,8 @@ import type {
 } from "metabase/meta/types/Card";
 
 import { MetabaseApi, CardApi } from "metabase/services";
+import Questions from "metabase/entities/questions";
+
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 import type { Dataset } from "metabase/meta/types/Dataset";
@@ -496,14 +498,28 @@ export default class Question {
     }
   }
 
+  // NOTE: prefer `reduxCreate` so the store is automatically updated
   async apiCreate() {
-    const createdCard = await CardApi.create(this.card());
+    const createdCard = await Questions.api.create(this.card());
     return this.setCard(createdCard);
   }
 
+  // NOTE: prefer `reduxUpdate` so the store is automatically updated
   async apiUpdate() {
-    const updatedCard = await CardApi.update(this.card());
+    const updatedCard = await Questions.api.update(this.card());
     return this.setCard(updatedCard);
+  }
+
+  async reduxCreate(dispatch) {
+    const { payload } = await dispatch(Questions.actions.create(this.card()));
+    return this.setCard(payload.entities.questions[payload.result]);
+  }
+
+  async reduxUpdate(dispatch) {
+    const { payload } = await dispatch(
+      Questions.actions.update({ id: this.id() }, this.card()),
+    );
+    return this.setCard(payload.entities.questions[payload.result]);
   }
 
   // TODO: Fix incorrect Flow signature

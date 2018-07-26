@@ -32,6 +32,7 @@
             [metabase.query-processor.middleware
              [cache :as cache]
              [results-metadata :as results-metadata]]
+            [metabase.sync.analyze.query-results :as qr]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :refer [trs]]
             [schema.core :as s]
@@ -180,7 +181,7 @@
 ;; we'll also pass a simple checksum and have the frontend pass it back to us.  See the QP `results-metadata`
 ;; middleware namespace for more details
 
-(s/defn ^:private result-metadata-for-query :- results-metadata/ResultsMetadata
+(s/defn ^:private result-metadata-for-query :- qr/ResultsMetadata
   "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return.
    This is obviously a bit wasteful so hopefully we can avoid having to do this."
   [query]
@@ -191,12 +192,12 @@
                    (u/pprint-to-str 'red results))
         (get-in results [:data :results_metadata :columns])))))
 
-(s/defn ^:private result-metadata :- (s/maybe results-metadata/ResultsMetadata)
+(s/defn ^:private result-metadata :- (s/maybe qr/ResultsMetadata)
   "Get the right results metadata for this CARD. We'll check to see whether the METADATA passed in seems valid;
    otherwise we'll run the query ourselves to get the right values."
   [query metadata checksum]
   (let [valid-metadata? (and (results-metadata/valid-checksum? metadata checksum)
-                             (s/validate results-metadata/ResultsMetadata metadata))]
+                             (s/validate qr/ResultsMetadata metadata))]
     (log/info (str "Card results metadata passed in to API is "
                    (cond
                      valid-metadata? "VALID. Thanks!"
@@ -216,7 +217,7 @@
    visualization_settings su/Map
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
-   result_metadata        (s/maybe results-metadata/ResultsMetadata)
+   result_metadata        (s/maybe qr/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)}
   ;; check that we have permissions to run the query that we're trying to save
   (api/check-403 (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
@@ -395,7 +396,7 @@
    embedding_params       (s/maybe su/EmbeddingParams)
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
-   result_metadata        (s/maybe results-metadata/ResultsMetadata)
+   result_metadata        (s/maybe qr/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)}
   (let [card-before-update (api/write-check Card id)]
     ;; Do various permissions checks

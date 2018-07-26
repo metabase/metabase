@@ -23,8 +23,7 @@ import Parameters from "metabase/parameters/components/Parameters";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { DashboardApi } from "metabase/services";
-
+import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import * as Q from "metabase/lib/query/query";
@@ -42,7 +41,11 @@ const mapStateToProps = (state, props) => ({
   dashboardId: getDashboardId(state, props),
 });
 
-@connect(mapStateToProps)
+const mapDispatchToProps = {
+  saveDashboard: Dashboards.actions.save,
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 @DashboardData
 @withToast
 @title(({ dashboard }) => dashboard && dashboard.name)
@@ -59,17 +62,13 @@ class AutomaticDashboardApp extends React.Component {
   }
 
   save = async () => {
-    const { dashboard, triggerToast } = this.props;
+    const { dashboard, triggerToast, saveDashboard } = this.props;
     // remove the transient id before trying to save
-    const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
+    const { payload: newDashboard } = await saveDashboard(
+      dissoc(dashboard, "id"),
+    );
     triggerToast(
       <div className="flex align-center">
-        <Icon
-          name="dashboard"
-          size={22}
-          className="mr2"
-          color={colors["text-medium"]}
-        />
         {t`Your dashboard was saved`}
         <Link
           className="link text-bold ml1"
@@ -78,11 +77,19 @@ class AutomaticDashboardApp extends React.Component {
           {t`See it`}
         </Link>
       </div>,
+      { icon: "dashboard" },
     );
 
     this.setState({ savedDashboardId: newDashboard.id });
     MetabaseAnalytics.trackEvent("AutoDashboard", "Save");
   };
+
+  componentWillReceiveProps(nextProps) {
+    // clear savedDashboardId if changing to a different dashboard
+    if (this.props.location.pathname !== nextProps.location.pathname) {
+      this.setState({ savedDashboardId: null });
+    }
+  }
 
   render() {
     const {
@@ -97,6 +104,7 @@ class AutomaticDashboardApp extends React.Component {
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
     const more = dashboard && dashboard.more;
     const related = dashboard && dashboard.related;
+
     const hasSidebar = related && Object.keys(related).length > 0;
 
     return (
@@ -180,7 +188,7 @@ const TransientTitle = ({ dashboard }) =>
   ) : null;
 
 const TransientFilters = ({ filter, metadata }) => (
-  <div className="mt1 flex align-center text-grey-4 text-bold">
+  <div className="mt1 flex align-center text-medium text-bold">
     {/* $FlowFixMe */}
     {Q.getFilters({ filter }).map((f, index) => (
       <TransientFilter key={index} filter={f} metadata={metadata} />

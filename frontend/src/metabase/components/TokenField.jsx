@@ -556,14 +556,14 @@ export default class TokenField extends Component {
           <li
             key={index}
             className={cx(
-              `mt1 ml1 py1 pl2 rounded bg-grey-05`,
+              `mt1 ml1 py1 pl2 rounded bg-medium`,
               multi ? "pr1" : "pr2",
             )}
           >
             <span className="text-bold">{valueRenderer(v)}</span>
             {multi && (
               <a
-                className="text-grey-3 text-default-hover px1"
+                className="text-medium text-default-hover px1"
                 onClick={e => {
                   this.removeValue(v);
                   e.preventDefault();
@@ -612,9 +612,9 @@ export default class TokenField extends Component {
                 }
                 className={cx(
                   `py1 pl1 pr2 block rounded text-bold text-${color}-hover inline-block full cursor-pointer`,
-                  `bg-grey-0-hover`,
+                  `bg-light-hover`,
                   {
-                    [`text-${color} bg-grey-0`]:
+                    [`text-${color} bg-light`]:
                       !this.state.listIsHovered &&
                       this._valueIsEqual(
                         selectedOptionValue,

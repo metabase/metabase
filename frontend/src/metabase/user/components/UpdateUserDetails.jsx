@@ -144,7 +144,7 @@ export default class UpdateUserDetails extends Component {
               ref="email"
               className={cx("Form-offset full", {
                 "Form-input": !managed,
-                "text-grey-2 h1 borderless mt1": managed,
+                "text-light h1 borderless mt1": managed,
               })}
               name="email"
               defaultValue={user ? user.email : null}

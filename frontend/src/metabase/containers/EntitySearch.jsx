@@ -185,7 +185,7 @@ export default class EntitySearch extends Component {
       filteredEntities.length > 0;
 
     return (
-      <div className="bg-slate-extra-light full Entity-search">
+      <div className="bg-light full Entity-search">
         <div className="wrapper wrapper--small pt4 pb4">
           <div className="flex mb4 align-center" style={{ height: "50px" }}>
             <div
@@ -235,8 +235,8 @@ export default class EntitySearch extends Component {
                 <EmptyState
                   message={
                     <div className="mt4">
-                      <h3 className="text-grey-5">{t`No results found`}</h3>
-                      <p className="text-grey-4">{t`Try adjusting your filter to find what you’re looking for.`}</p>
+                      <h3 className="text-medium">{t`No results found`}</h3>
+                      <p className="text-medium">{t`Try adjusting your filter to find what you’re looking for.`}</p>
                     </div>
                   }
                   image="app/img/empty_question"
@@ -287,7 +287,7 @@ export class SearchGroupingOption extends Component {
       <li
         className={cx(
           "my2 cursor-pointer text-uppercase text-small text-green-saturated-hover",
-          { "text-grey-4": !active },
+          { "text-medium": !active },
           { "text-green-saturated": active },
         )}
         onClick={this.onSetGrouping}
@@ -449,7 +449,7 @@ export const SearchResultsGroup = ({
 }) => (
   <div>
     {groupName !== null && (
-      <div className="flex align-center bg-slate-almost-extra-light bordered mt3 px3 py2">
+      <div className="flex align-center bg-medium bordered mt3 px3 py2">
         <Icon
           className="mr1"
           style={{ color: colors["text-light"] }}
@@ -497,8 +497,8 @@ class SearchResultsList extends Component {
         <span
           className={cx(
             "mx1 flex align-center justify-center rounded",
-            { "cursor-pointer bg-grey-2 text-white": !isInBeginning },
-            { "bg-grey-0 text-grey-1": isInBeginning },
+            { "cursor-pointer bg-medium text-white": !isInBeginning },
+            { "bg-light text-light": isInBeginning },
           )}
           style={{ width: "22px", height: "22px" }}
           onClick={() =>
@@ -510,8 +510,8 @@ class SearchResultsList extends Component {
         <span
           className={cx(
             "flex align-center justify-center rounded",
-            { "cursor-pointer bg-grey-2 text-white": !isInEnd },
-            { "bg-grey-0 text-grey-2": isInEnd },
+            { "cursor-pointer bg-medium text-white": !isInEnd },
+            { "bg-light text-light": isInEnd },
           )}
           style={{ width: "22px", height: "22px" }}
           onClick={() => !isInEnd && setCurrentPage(entities, currentPage + 1)}
@@ -587,8 +587,8 @@ export class SearchResultListItem extends Component {
       <li>
         <Link
           className={cx(
-            "no-decoration flex py2 px3 cursor-pointer bg-slate-extra-light-hover border-bottom",
-            { "bg-grey-0": highlight },
+            "no-decoration flex py2 px3 cursor-pointer bg-light-hover border-bottom",
+            { "bg-light": highlight },
           )}
           to={getUrlForEntity(entity)}
         >

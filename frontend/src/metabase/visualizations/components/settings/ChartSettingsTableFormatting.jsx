@@ -12,6 +12,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { SortableContainer, SortableElement } from "react-sortable-hoc";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import { formatNumber, capitalize } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 
@@ -116,13 +117,23 @@ export default class ChartSettingsTableFormatting extends React.Component {
             ]);
             this.setState({ editingRule: 0, editingRuleIsNew: true });
           }}
-          onRemove={index =>
-            onChange([...value.slice(0, index), ...value.slice(index + 1)])
-          }
+          onRemove={index => {
+            onChange([...value.slice(0, index), ...value.slice(index + 1)]);
+            MetabaseAnalytics.trackEvent(
+              "Chart Settings",
+              "Table Formatting",
+              "Remove Rule",
+            );
+          }}
           onMove={(from, to) => {
             const newValue = [...value];
             newValue.splice(to, 0, newValue.splice(from, 1)[0]);
             onChange(newValue);
+            MetabaseAnalytics.trackEvent(
+              "Chart Settings",
+              "Table Formatting",
+              "Move Rule",
+            );
           }}
         />
       );
@@ -161,7 +172,12 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
     they meet certain conditions.`}
     </div>
     <div className="mt2">
-      <Button borderless icon="add" onClick={onAdd}>
+      <Button
+        borderless
+        icon="add"
+        onClick={onAdd}
+        data-metabase-event={`Chart Settings;Table Formatting;Add Rule`}
+      >
         {t`Add a rule`}
       </Button>
     </div>
@@ -188,7 +204,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
     className="my2 bordered rounded shadowed cursor-pointer overflow-hidden bg-white"
     onClick={onClick}
   >
-    <div className="p1 border-bottom relative bg-grey-0">
+    <div className="p1 border-bottom relative bg-light">
       <div className="px1 flex align-center relative">
         <span className="h4 flex-full text-dark">
           {rule.columns.length > 0 ? (
@@ -206,7 +222,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         </span>
         <Icon
           name="close"
-          className="cursor-pointer text-grey-2 text-grey-4-hover"
+          className="cursor-pointer text-light text-medium-hover"
           onClick={e => {
             e.stopPropagation();
             onRemove();
@@ -373,11 +389,21 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => (
     ) : null}
     <div className="mt4">
       {rule.columns.length === 0 ? (
-        <Button primary onClick={onRemove}>
+        <Button
+          primary
+          onClick={onRemove}
+          data-metabase-event={`Chart Settings;Table Formatting;`}
+        >
           {isNew ? t`Cancel` : t`Delete`}
         </Button>
       ) : (
-        <Button primary onClick={onDone}>
+        <Button
+          primary
+          onClick={onDone}
+          data-metabase-event={`Chart Setttings;Table Formatting;${
+            isNew ? "Add Rule" : "Update Rule"
+          };Rule Type ${rule.type} Color`}
+        >
           {isNew ? t`Add rule` : t`Update rule`}
         </Button>
       )}
@@ -403,6 +429,12 @@ const ColorRangePicker = ({ colors, onChange, className, style }) => (
               colors={range}
               onClick={() => {
                 onChange(range);
+                MetabaseAnalytics.trackEvent(
+                  "Chart Settings",
+                  "Table Formatting",
+                  "Select Range  Colors",
+                  range,
+                );
                 onClose();
               }}
               className={cx("bordered rounded overflow-hidden cursor-pointer")}
@@ -420,6 +452,6 @@ const NumericInput = ({ value, onChange }) => (
     className="AdminSelect input mt1 full"
     type="number"
     value={value}
-    onChange={e => onChange(parseFloat(e.target.value))}
+    onChange={e => onChange(e.target.value)}
   />
 );

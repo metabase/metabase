@@ -5,7 +5,7 @@ import colors from "metabase/lib/colors";
 
 const DirectionalButton = ({ direction = "back", onClick }) => (
   <div
-    className="shadowed cursor-pointer text-brand-hover text-grey-4 flex align-center circle p2 bg-white transition-background transition-color"
+    className="shadowed cursor-pointer text-brand-hover text-medium flex align-center circle p2 bg-white transition-background transition-color"
     onClick={onClick}
     style={{
       border: `1px solid ${colors["border"]}`,

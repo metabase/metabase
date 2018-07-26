@@ -11,18 +11,32 @@ import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import Subhead from "metabase/components/Subhead";
+import ItemTypeFilterBar, {
+  FILTERS,
+} from "metabase/components/ItemTypeFilterBar";
+
+const PAGE_PADDING = [1, 2, 4];
 
 export default class SearchApp extends React.Component {
   render() {
+    const { location } = this.props;
     return (
-      <Box mx={4}>
-        <Flex align="center" mb={2} py={3}>
-          <Subhead>{jt`Results for "${this.props.location.query.q}"`}</Subhead>
+      <Box mx={PAGE_PADDING}>
+        <Flex align="center" mb={2} py={[2, 3]}>
+          <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
         </Flex>
-        <Box w={2 / 3}>
+        <ItemTypeFilterBar
+          analyticsContext={`Search Results`}
+          filters={FILTERS.concat({
+            name: t`Collections`,
+            filter: "collection",
+            icon: "all",
+          })}
+        />
+        <Box w={[1, 2 / 3]}>
           <EntityListLoader
             entityType="search"
-            entityQuery={this.props.location.query}
+            entityQuery={location.query}
             wrapped
           >
             {({ list }) => {
@@ -39,7 +53,12 @@ export default class SearchApp extends React.Component {
                   </Flex>
                 );
               }
-              const types = _.chain(list)
+
+              const types = _.chain(
+                location.query.type
+                  ? list.filter(l => l.model === location.query.type)
+                  : list,
+              )
                 .groupBy("model")
                 .value();
 
@@ -47,12 +66,16 @@ export default class SearchApp extends React.Component {
                 <Box>
                   {types.dashboard && (
                     <Box mt={2} mb={3}>
-                      <div className="text-uppercase text-grey-4 text-small text-bold my1">
+                      <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Dashboards`}
                       </div>
                       <Card px={2}>
                         {types.dashboard.map(item => (
-                          <Link to={item.getUrl()}>
+                          <Link
+                            to={item.getUrl()}
+                            key={item.id}
+                            data-metabase-event="Search Results;Item Click;Dashboard"
+                          >
                             <EntityItem
                               name={item.getName()}
                               iconName={item.getIcon()}
@@ -65,12 +88,16 @@ export default class SearchApp extends React.Component {
                   )}
                   {types.collection && (
                     <Box mt={2} mb={3}>
-                      <div className="text-uppercase text-grey-4 text-small text-bold my1">
+                      <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Collections`}
                       </div>
                       <Card px={2}>
                         {types.collection.map(item => (
-                          <Link to={item.getUrl()}>
+                          <Link
+                            to={item.getUrl()}
+                            key={item.id}
+                            data-metabase-event="Search Results;Item Click;Collection"
+                          >
                             <EntityItem
                               name={item.getName()}
                               iconName={item.getIcon()}
@@ -83,12 +110,16 @@ export default class SearchApp extends React.Component {
                   )}
                   {types.card && (
                     <Box mt={2} mb={3}>
-                      <div className="text-uppercase text-grey-4 text-small text-bold my1">
+                      <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Questions`}
                       </div>
                       <Card px={2}>
                         {types.card.map(item => (
-                          <Link to={item.getUrl()}>
+                          <Link
+                            to={item.getUrl()}
+                            key={item.id}
+                            data-metabase-event="Search Results;Item Click;Question"
+                          >
                             <EntityItem
                               name={item.getName()}
                               iconName={item.getIcon()}
@@ -101,12 +132,16 @@ export default class SearchApp extends React.Component {
                   )}
                   {types.pulse && (
                     <Box mt={2} mb={3}>
-                      <div className="text-uppercase text-grey-4 text-small text-bold my1">
+                      <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Pulse`}
                       </div>
                       <Card px={2}>
                         {types.pulse.map(item => (
-                          <Link to={item.getUrl()}>
+                          <Link
+                            to={item.getUrl()}
+                            key={item.id}
+                            data-metabase-event="Search Results;Item Click;Pulse"
+                          >
                             <EntityItem
                               name={item.getName()}
                               iconName={item.getIcon()}

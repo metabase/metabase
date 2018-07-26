@@ -1,12 +1,11 @@
-/* @flow weak */
+/* @flow */
 
 import { createEntity, undo } from "metabase/lib/entities";
-import { normal, getRandomColor } from "metabase/lib/colors";
+import colors from "metabase/lib/colors";
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
-import React from "react";
-import CollectionSelect from "metabase/containers/CollectionSelect";
+import { getUser, getUserDefaultCollectionId } from "metabase/selectors/user";
 
 import { t } from "c-3po";
 
@@ -33,8 +32,34 @@ const Collections = createEntity({
 
   selectors: {
     getExpandedCollectionsById: createSelector(
-      [state => state.entities.collections],
-      collections => getExpandedCollectionsById(Object.values(collections)),
+      [
+        state => state.entities.collections,
+        state => state.entities.collections_list[null] || [],
+        getUser,
+      ],
+      (collections, collectionsIds, user) =>
+        getExpandedCollectionsById(
+          collectionsIds.map(id => collections[id]),
+          user && user.personal_collection_id,
+        ),
+    ),
+    getInitialCollectionId: createSelector(
+      [
+        // these are listed in order of priority
+        (state, { collectionId }) => collectionId,
+        (state, { params }) => (params ? params.collectionId : undefined),
+        (state, { location }) =>
+          location && location.query ? location.query.collectionId : undefined,
+        getUserDefaultCollectionId,
+      ],
+      (...collectionIds) => {
+        for (const collectionId of collectionIds) {
+          if (collectionId !== undefined) {
+            return canonicalCollectionId(collectionId);
+          }
+        }
+        return null;
+      },
     ),
   },
 
@@ -47,7 +72,11 @@ const Collections = createEntity({
   },
 
   form: {
-    fields: (values = {}) => [
+    fields: (
+      values = {
+        color: colors.brand,
+      },
+    ) => [
       {
         name: "name",
         placeholder: "My new fantastic collection",
@@ -63,17 +92,14 @@ const Collections = createEntity({
       },
       {
         name: "color",
-        type: "color",
-        initial: () => getRandomColor(normal),
+        type: "hidden",
+        initial: () => colors.brand,
         validate: color => !color && t`Color is required`,
       },
       {
         name: "parent_id",
-        title: "Parent collection",
-        // eslint-disable-next-line react/display-name
-        type: ({ field }) => (
-          <CollectionSelect {...field} collectionId={values.id} />
-        ),
+        title: "Collection it's saved in",
+        type: "collection",
       },
     ],
   },
@@ -83,23 +109,68 @@ export default Collections;
 
 // API requires items in "root" collection be persisted with a "null" collection ID
 // Also ensure it's parsed as a number
-export const canonicalCollectionId = collectionId =>
+export const canonicalCollectionId = (
+  collectionId: PseudoCollectionId,
+): CollectionId | null =>
   collectionId == null || collectionId === "root"
     ? null
     : parseInt(collectionId, 10);
 
 export const ROOT_COLLECTION = {
   id: "root",
-  name: "Our analytics",
+  name: t`Our analytics`,
   location: "",
   path: [],
+};
+
+// the user's personal collection
+export const PERSONAL_COLLECTION = {
+  id: undefined, // to be filled in by getExpandedCollectionsById
+  name: t`My personal collection`,
+  location: "/",
+  path: ["root"],
+  can_write: true,
+};
+
+// fake collection for admins that contains all other user's collections
+export const PERSONAL_COLLECTIONS = {
+  id: "personal", // placeholder id
+  name: t`Personal Collections`,
+  location: "/",
+  path: ["root"],
+  can_write: false,
+};
+
+type UserId = number;
+
+// a "real" collection
+type CollectionId = number;
+
+type Collection = {
+  id: CollectionId,
+  location?: string,
+  personal_owner_id?: UserId,
+};
+
+// includes "root" and "personal" pseudo collection IDs
+type PseudoCollectionId = CollectionId | "root" | "personal";
+
+type ExpandedCollection = {
+  id: PseudoCollectionId,
+  path: ?(string[]),
+  parent: ?ExpandedCollection,
+  children: ExpandedCollection[],
+  is_personal?: boolean,
 };
 
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
-export function getExpandedCollectionsById(collections) {
-  const collectionsById = {};
+function getExpandedCollectionsById(
+  collections: Collection[],
+  userPersonalCollectionId: ?CollectionId,
+): { [key: PseudoCollectionId]: ExpandedCollection } {
+  const collectionsById: { [key: PseudoCollectionId]: ExpandedCollection } = {};
   for (const c of collections) {
     collectionsById[c.id] = {
       ...c,
@@ -109,31 +180,77 @@ export function getExpandedCollectionsById(collections) {
           : c.location != null
             ? ["root", ...c.location.split("/").filter(l => l)]
             : null,
+      parent: null,
       children: [],
+      is_personal: c.personal_owner_id != null,
     };
   }
 
-  // make sure we have the root collection with all relevant info
+  // "Our Analytics"
   collectionsById[ROOT_COLLECTION.id] = {
-    children: [],
     ...ROOT_COLLECTION,
+    parent: null,
+    children: [],
     ...(collectionsById[ROOT_COLLECTION.id] || {}),
   };
+
+  // "My personal collection"
+  if (userPersonalCollectionId != null) {
+    collectionsById[ROOT_COLLECTION.id].children.push({
+      ...PERSONAL_COLLECTION,
+      id: userPersonalCollectionId,
+      parent: collectionsById[ROOT_COLLECTION.id],
+      children: [],
+      is_personal: true,
+    });
+  }
+
+  // "Personal Collections"
+  collectionsById[PERSONAL_COLLECTIONS.id] = {
+    ...PERSONAL_COLLECTIONS,
+    parent: collectionsById[ROOT_COLLECTION.id],
+    children: [],
+    is_personal: true,
+  };
+  collectionsById[ROOT_COLLECTION.id].children.push(
+    collectionsById[PERSONAL_COLLECTIONS.id],
+  );
 
   // iterate over original collections so we don't include ROOT_COLLECTION as
   // a child of itself
   for (const { id } of collections) {
     const c = collectionsById[id];
-    if (c.path) {
-      const parent = c.path[c.path.length - 1] || "root";
-      c.parent = collectionsById[parent];
+    // don't add root as parent of itself
+    if (c.path && c.id !== ROOT_COLLECTION.id) {
+      let parentId;
+      // move personal collections into PERSONAL_COLLECTIONS fake collection
+      if (c.personal_owner_id != null) {
+        parentId = PERSONAL_COLLECTIONS.id;
+      } else if (c.path[c.path.length - 1]) {
+        parentId = c.path[c.path.length - 1];
+      } else {
+        parentId = ROOT_COLLECTION.id;
+      }
+
+      // $FlowFixMe
+      const parent = parentId == null ? null : collectionsById[parentId];
+      c.parent = parent;
       // need to ensure the parent collection exists, it may have been filtered
       // because we're selecting a collection's parent collection and it can't
       // contain itself
-      if (collectionsById[parent]) {
-        collectionsById[parent].children.push(c);
+      if (parent) {
+        parent.children.push(c);
       }
     }
   }
+
+  // remove PERSONAL_COLLECTIONS collection if there are none or just one (the user's own)
+  if (collectionsById[PERSONAL_COLLECTIONS.id].children.length <= 1) {
+    delete collectionsById[PERSONAL_COLLECTIONS.id];
+    collectionsById[ROOT_COLLECTION.id].children = collectionsById[
+      ROOT_COLLECTION.id
+    ].children.filter(c => c.id !== PERSONAL_COLLECTIONS.id);
+  }
+
   return collectionsById;
 }

@@ -11,7 +11,8 @@
              [datasets :refer [expect-with-engine]]
              [interface :refer [def-database-definition]]]))
 
-;;; ------------------------------------------------------------ VARCHAR(MAX) ------------------------------------------------------------
+;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
+
 ;; Make sure something long doesn't come back as some weird type like `ClobImpl`
 (def ^:private ^:const a-gene
   "Really long string representing a gene like \"GGAGCACCTCCACAAGTGCAGGCTATCCTGTCGAGTAAGGCCT...\""

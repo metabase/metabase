@@ -3,20 +3,21 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
-import ActionButton from "metabase/components/ActionButton.jsx";
-import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.jsx";
-import ArchiveDashboardModal from "./ArchiveDashboardModal.jsx";
-import Header from "metabase/components/Header.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import ActionButton from "metabase/components/ActionButton";
+import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal";
+import ArchiveDashboardModal from "./ArchiveDashboardModal";
+import Header from "metabase/components/Header";
+import Icon from "metabase/components/Icon";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Tooltip from "metabase/components/Tooltip";
 import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
 
 import { getDashboardActions } from "./DashboardActions";
 
-import ParametersPopover from "./ParametersPopover.jsx";
-import Popover from "metabase/components/Popover.jsx";
+import ParametersPopover from "./ParametersPopover";
+import Popover from "metabase/components/Popover";
 
+import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
@@ -144,8 +145,10 @@ export default class DashboardHeader extends Component {
   }
 
   async onArchive() {
-    await this.props.archiveDashboard(this.props.dashboard.id);
-    this.props.onChangeLocation("/dashboards");
+    const { dashboard } = this.props;
+    // TODO - this should use entity action
+    await this.props.archiveDashboard(dashboard.id);
+    this.props.onChangeLocation(Urls.collection(dashboard.collection_id));
   }
 
   getEditingButtons() {
@@ -207,7 +210,6 @@ export default class DashboardHeader extends Component {
     if (!isFullscreen && canEdit) {
       buttons.push(
         <ModalWithTrigger
-          full
           key="add"
           ref="addQuestionModal"
           triggerElement={
@@ -342,6 +344,7 @@ export default class DashboardHeader extends Component {
       <Header
         headerClassName="wrapper"
         objectType="dashboard"
+        analyticsContext="Dashboard"
         item={dashboard}
         isEditing={this.props.isEditing}
         isEditingInfo={this.props.isEditing}

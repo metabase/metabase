@@ -1,7 +1,8 @@
 import React from "react";
 import { t } from "c-3po";
-
+import cx from "classnames";
 import { Flex } from "grid-styled";
+
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
 import IconWrapper from "metabase/components/IconWrapper";
@@ -12,7 +13,7 @@ import Icon from "metabase/components/Icon";
 import colors from "metabase/lib/colors";
 
 const EntityItemWrapper = Flex.extend`
-  border-bottom: 1px solid ${colors["bg-light"]};
+  border-bottom: 1px solid ${colors["bg-medium"]};
   /* TODO - figure out how to use the prop instead of this? */
   align-items: center;
   &:hover {
@@ -21,6 +22,7 @@ const EntityItemWrapper = Flex.extend`
 `;
 
 const EntityItem = ({
+  analyticsContext,
   name,
   iconName,
   iconColor,
@@ -32,30 +34,56 @@ const EntityItem = ({
   selected,
   onToggleSelected,
   selectable,
+  variant,
+  item,
 }) => {
   const actions = [
     onPin && {
       title: t`Pin this item`,
       icon: "pin",
       action: onPin,
+      event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
     },
     onMove && {
       title: t`Move this item`,
       icon: "move",
       action: onMove,
+      event: `${analyticsContext};Entity Item;Move Item;${item.model}`,
     },
     onArchive && {
       title: t`Archive`,
       icon: "archive",
       action: onArchive,
+      event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
     },
   ].filter(action => action);
 
+  let spacing;
+
+  switch (variant) {
+    case "list":
+      spacing = {
+        px: 2,
+        py: 2,
+      };
+      break;
+    default:
+      spacing = {
+        py: 2,
+      };
+      break;
+  }
+
   return (
-    <EntityItemWrapper py={2} className="hover-parent hover--visibility">
+    <EntityItemWrapper
+      {...spacing}
+      className={cx("hover-parent hover--visibility", {
+        "bg-light-hover": variant === "list",
+      })}
+    >
       <IconWrapper
         p={1}
-        mr={1}
+        mr={2}
         align="center"
         justify="center"
         onClick={
@@ -70,11 +98,13 @@ const EntityItem = ({
         {selectable ? (
           <Swapper
             startSwapped={selected}
-            defaultElement={<Icon name={iconName} color={iconColor} />}
-            swappedElement={<CheckBox checked={selected} />}
+            defaultElement={
+              <Icon name={iconName} color={iconColor} size={18} />
+            }
+            swappedElement={<CheckBox checked={selected} size={18} />}
           />
         ) : (
-          <Icon name={iconName} color={iconColor} />
+          <Icon name={iconName} color={iconColor} size={18} />
         )}
       </IconWrapper>
       <h3>
@@ -82,14 +112,6 @@ const EntityItem = ({
       </h3>
 
       <Flex ml="auto" align="center" onClick={e => e.preventDefault()}>
-        {(onFavorite || isFavorite) && (
-          <Icon
-            name={isFavorite ? "star" : "staroutline"}
-            mr={1}
-            className={isFavorite ? "text-gold" : "hover-child"}
-            onClick={onFavorite}
-          />
-        )}
         {actions.length > 0 && (
           <EntityMenu
             className="hover-child"

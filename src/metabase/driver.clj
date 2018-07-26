@@ -392,7 +392,8 @@
              [clojure.lang.IPersistentMap    :type/Dictionary]
              [clojure.lang.IPersistentVector :type/Array]
              [org.bson.types.ObjectId        :type/MongoBSONID]
-             [org.postgresql.util.PGobject   :type/*]])
+             [org.postgresql.util.PGobject   :type/*]
+             [nil                            :type/*]]) ; all-NULL columns in DBs like Mongo w/o explicit types
       (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
       :type/*))
 
@@ -484,10 +485,12 @@
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   [table :- si/TableInstance, fields :- [si/FieldInstance]]
   (let [results ((resolve 'metabase.query-processor/process-query)
-                 {:database (:db_id table)
-                  :type     :query
-                  :query    {:source-table (u/get-id table)
-                             :fields       (vec (for [field fields]
-                                                  [:field-id (u/get-id field)]))
-                             :limit        max-sample-rows}})]
+                 {:database   (:db_id table)
+                  :type       :query
+                  :query      {:source-table (u/get-id table)
+                               :fields       (vec (for [field fields]
+                                                    [:field-id (u/get-id field)]))
+                               :limit        max-sample-rows}
+                  :middleware {:format-rows?           false
+                               :skip-results-metadata? true}})]
     (get-in results [:data :rows])))

@@ -125,7 +125,7 @@ class SearchBar extends React.Component {
             pr={2}
             pl={1}
             value={this.state.searchText}
-            placeholder="Search for anything..."
+            placeholder="Search…"
             onClick={() => this.setState({ active: true })}
             onChange={e => this.setState({ searchText: e.target.value })}
             onKeyPress={e => {
@@ -248,15 +248,16 @@ export default class Navbar extends Component {
         py={1}
         pr={2}
       >
-        <Box>
-          <Link
-            to="/"
-            data-metabase-event={"Navbar;Logo"}
-            className="LogoNavItem NavItem cursor-pointer relative z2 flex align-center transition-background justify-center"
-          >
-            <LogoIcon dark />
-          </Link>
-        </Box>
+        <Link
+          to="/"
+          data-metabase-event={"Navbar;Logo"}
+          className="relative cursor-pointer z2 rounded flex justify-center transition-background"
+          p={1}
+          mx={1}
+          hover={{ backgroundColor: DefaultSearchColor }}
+        >
+          <LogoIcon dark />
+        </Link>
         <Flex
           className="absolute top left right bottom z1"
           px={4}
@@ -270,31 +271,43 @@ export default class Navbar extends Component {
           </Box>
         </Flex>
         <Flex ml="auto" align="center" className="relative z2">
-          <Link to={Urls.newQuestion()} mx={2}>
+          <Link
+            to={Urls.newQuestion()}
+            mx={2}
+            className="hide sm-show"
+            data-metabase-event={`NavBar;New Question`}
+          >
             <Button medium>{t`Ask a question`}</Button>
           </Link>
           <EntityMenu
+            className="hide sm-show"
             triggerIcon="add"
             items={[
               {
                 title: t`New dashboard`,
                 icon: `dashboard`,
                 action: () => this.setModal(MODAL_NEW_DASHBOARD),
+                event: `NavBar;New Dashboard Click;`,
               },
               {
                 title: t`New pulse`,
                 icon: `pulse`,
                 link: Urls.newPulse(),
+                event: `NavBar;New Pulse Click;`,
               },
             ]}
           />
           <Tooltip tooltip={t`Reference`}>
-            <Link to="reference" mx={2}>
+            <Link
+              to="reference"
+              mx={2}
+              data-metabase-event={`NavBar;Reference`}
+            >
               <Icon name="reference" />
             </Link>
           </Tooltip>
           <Tooltip tooltip={t`Activity`}>
-            <Link to="activity" mx={2}>
+            <Link to="activity" mx={2} data-metabase-event={`NavBar;Activity`}>
               <Icon name="bell" />
             </Link>
           </Tooltip>

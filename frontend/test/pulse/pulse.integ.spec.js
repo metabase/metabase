@@ -14,7 +14,7 @@ import Question from "metabase-lib/lib/Question";
 import PulseListApp from "metabase/pulse/containers/PulseListApp";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import PulseListItem from "metabase/pulse/components/PulseListItem";
-import CardPicker from "metabase/pulse/components/CardPicker";
+import QuestionSelect from "metabase/containers/QuestionSelect";
 import PulseCardPreview from "metabase/pulse/components/PulseCardPreview";
 import Toggle from "metabase/components/Toggle";
 
@@ -113,7 +113,7 @@ describe("Pulse", () => {
 
     // add count card
     app
-      .find(CardPicker)
+      .find(QuestionSelect)
       .first()
       .props()
       .onChange(questionCount.id());
@@ -121,7 +121,7 @@ describe("Pulse", () => {
 
     // add raw card
     app
-      .find(CardPicker)
+      .find(QuestionSelect)
       .first()
       .props()
       .onChange(questionRaw.id());

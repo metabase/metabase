@@ -164,7 +164,7 @@ export default class ChartClickActions extends Component {
         {popover ? (
           popover
         ) : (
-          <div className="text-bold text-grey-3">
+          <div className="text-bold text-medium">
             {sections.map(([key, actions]) => (
               <div
                 key={key}

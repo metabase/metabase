@@ -298,7 +298,8 @@
 (expect
   {:field {:name      "DATE"
            :parent_id nil
-           :table_id  (data/id :checkins)}
+           :table_id  (data/id :checkins)
+           :base_type :type/Date}
    :param {:type   "date/range"
            :target ["dimension" ["template-tag" "checkin_date"]]
            :value  "2015-04-01~2015-05-01"}}
@@ -309,7 +310,8 @@
 (expect
   {:field {:name      "DATE"
            :parent_id nil
-           :table_id  (data/id :checkins)}
+           :table_id  (data/id :checkins)
+           :base_type :type/Date}
    :param nil}
   (into {} (#'sql/value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
                                 nil)))
@@ -318,7 +320,8 @@
 (expect
   {:field {:name      "DATE"
            :parent_id nil
-           :table_id  (data/id :checkins)}
+           :table_id  (data/id :checkins)
+           :base_type :type/Date}
    :param [{:type   "date/range"
             :target ["dimension" ["template-tag" "checkin_date"]]
             :value  "2015-01-01~2016-09-01"}
@@ -701,7 +704,7 @@
 
 ;; Make sure defaults values get picked up for field filter clauses
 (expect
-  {:field {:name "DATE", :parent_id nil, :table_id (data/id :checkins)}
+  {:field {:name "DATE", :parent_id nil, :table_id (data/id :checkins), :base_type :type/Date}
    :param {:type   "date/all-options"
            :target ["dimension" ["template-tag" "checkin_date"]]
            :value  "past5days"}}

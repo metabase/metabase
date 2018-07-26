@@ -23,7 +23,7 @@
          (and (some? ((test-users/user->client :rasta) :get 200 api-endpoint))
               (try
                 (do
-                  (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path (data/id)))
+                  (perms/revoke-permissions! (perms-group/all-users) (data/id))
                   (revoke-fn)
                   (= ((test-users/user->client :rasta) :get 403 api-endpoint)
                      "You don't have permissions to do that."))

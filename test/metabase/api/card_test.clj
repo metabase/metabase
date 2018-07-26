@@ -320,11 +320,13 @@
   [{:base_type    "type/Integer"
     :display_name "count"
     :name         "count"
-    :special_type "type/Number"}]
-  (let [metadata [{:base_type    :type/Integer
-                   :display_name "Count Chocula"
-                   :name         "count_chocula"
-                   :special_type :type/Number}]
+    :special_type "type/Quantity"
+    :fingerprint  {:global {:distinct-count 1},
+                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
+  (let [metadata  [{:base_type    :type/Integer
+                    :display_name "Count Chocula"
+                    :name         "count_chocula"
+                    :special_type :type/Quantity}]
         card-name (tu/random-name)]
     (tt/with-temp Collection [collection]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -407,10 +409,10 @@
 (expect
   "You don't have permissions to do that."
   (tt/with-temp* [Database [db]
-                  Table    [table    {:db_id (u/get-id db)}]
-                  Card     [card              {:dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
+                  Table    [table {:db_id (u/get-id db)}]
+                  Card     [card  {:dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
     ;; revoke permissions for default group to this database
-    (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path (u/get-id db)))
+    (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
     ;; now a non-admin user shouldn't be able to fetch this card
     ((user->client :rasta) :get 403 (str "card/" (u/get-id card)))))
 
@@ -521,11 +523,13 @@
   [{:base_type    "type/Integer"
     :display_name "count"
     :name         "count"
-    :special_type "type/Number"}]
+    :special_type "type/Quantity"
+    :fingerprint  {:global {:distinct-count 1},
+                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
   (let [metadata [{:base_type    :type/Integer
                    :display_name "Count Chocula"
                    :name         "count_chocula"
-                   :special_type :type/Number}]]
+                   :special_type :type/Quantity}]]
     (tt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
