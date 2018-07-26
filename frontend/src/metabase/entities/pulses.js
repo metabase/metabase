@@ -9,8 +9,12 @@ const Pulses = createEntity({
   path: "/api/pulse",
 
   objectActions: {
-    // FIXME: not implemented in backend
-    // setArchived: ({ id }, archived) => Pulses.actions.update({ id, archived }),
+    setArchived: ({ id }, archived, opts) =>
+      Pulses.actions.update(
+        { id },
+        { archived },
+        undo(opts, "pulse", archived ? "archived" : "unarchived"),
+      ),
 
     setCollection: ({ id }, collection, opts) =>
       Pulses.actions.update(
