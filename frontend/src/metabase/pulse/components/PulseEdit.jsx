@@ -36,7 +36,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  archivePulse: id => Pulses.actions.setArchived({ id }, true),
+  setPulseArchived: Pulses.actions.setArchived,
   goBack,
 };
 
@@ -89,13 +89,20 @@ export default class PulseEdit extends Component {
   };
 
   handleArchive = async () => {
-    await this.props.archivePulse(this.props.pulse.id);
+    await this.props.setPulseArchived(this.props.pulse, true);
 
     MetabaseAnalytics.trackEvent("PulseArchive", "Complete");
 
     this.props.onChangeLocation(
       Urls.collection(this.props.pulse.collection_id),
     );
+  };
+
+  handleUnarchive = async () => {
+    await this.props.setPulseArchived(this.props.pulse, false);
+    this.setPulse({ ...this.props.pulse, archived: false });
+
+    MetabaseAnalytics.trackEvent("PulseUnarchive", "Complete");
   };
 
   setPulse = pulse => {
@@ -182,34 +189,48 @@ export default class PulseEdit extends Component {
           <PulseEditSkip {...this.props} setPulse={this.setPulse} />
         </div>
         <div className="PulseEdit-footer flex align-center border-top py3">
-          <ActionButton
-            actionFn={this.handleSave}
-            className={cx("Button Button--primary", { disabled: !isValid })}
-            normalText={pulse.id != null ? t`Save changes` : t`Create pulse`}
-            activeText={t`Saving…`}
-            failedText={t`Save failed`}
-            successText={t`Saved`}
-          />
+          {pulse.archived ? (
+            <ActionButton
+              key="unarchive"
+              actionFn={this.handleUnarchive}
+              className={cx("Button Button--danger")}
+              normalText={t`Unarchive`}
+              activeText={t`Unarchiving…`}
+              failedText={t`Unarchive failed`}
+              successText={t`Unarchived`}
+            />
+          ) : (
+            <ActionButton
+              key="save"
+              actionFn={this.handleSave}
+              className={cx("Button Button--primary", { disabled: !isValid })}
+              normalText={pulse.id != null ? t`Save changes` : t`Create pulse`}
+              activeText={t`Saving…`}
+              failedText={t`Save failed`}
+              successText={t`Saved`}
+            />
+          )}
           <Button onClick={() => this.props.goBack()} ml={2}>
             {t`Cancel`}
           </Button>
-          {pulse.id != null && (
-            <ModalWithTrigger
-              triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
-              triggerElement={t`Archive`}
-            >
-              {({ onClose }) => (
-                <DeleteModalWithConfirm
-                  objectType="pulse"
-                  title={t`Archive` + ' "' + pulse.name + '"?'}
-                  buttonText={t`Archive`}
-                  confirmItems={this.getConfirmItems()}
-                  onClose={onClose}
-                  onDelete={this.handleArchive}
-                />
-              )}
-            </ModalWithTrigger>
-          )}
+          {pulse.id != null &&
+            !pulse.archived && (
+              <ModalWithTrigger
+                triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
+                triggerElement={t`Archive`}
+              >
+                {({ onClose }) => (
+                  <DeleteModalWithConfirm
+                    objectType="pulse"
+                    title={t`Archive` + ' "' + pulse.name + '"?'}
+                    buttonText={t`Archive`}
+                    confirmItems={this.getConfirmItems()}
+                    onClose={onClose}
+                    onDelete={this.handleArchive}
+                  />
+                )}
+              </ModalWithTrigger>
+            )}
         </div>
       </div>
     );
