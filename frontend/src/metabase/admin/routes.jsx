@@ -6,6 +6,9 @@ import { t } from "c-3po";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
+import NewUserModal from "metabase/admin/people/containers/NewUserModal";
+import EditUserModal from "metabase/admin/people/containers/EditUserModal";
+
 // Settings
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
 
@@ -73,6 +76,8 @@ const getRoutes = (store, IsAdmin) => (
     {/* PEOPLE */}
     <Route path="people" title={t`People`} component={AdminPeopleApp}>
       <IndexRoute component={PeopleListingApp} />
+      <ModalRoute path="new" modal={NewUserModal} />
+      <ModalRoute path=":userId/edit" modal={EditUserModal} />
       <Route path="groups" title={t`Groups`}>
         <IndexRoute component={GroupsListingApp} />
         <Route path=":groupId" component={GroupDetailApp} />

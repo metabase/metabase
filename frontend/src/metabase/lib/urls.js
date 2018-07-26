@@ -132,3 +132,11 @@ export function userCollection(userCollectionId) {
 export function accountSettings() {
   return `/user/edit_current`;
 }
+
+export function editUser(userId) {
+  return `admin/people/${userId}/edit`;
+}
+
+export function resetPassword(userId) {
+  return `admin/people/${userId}/reset`;
+}

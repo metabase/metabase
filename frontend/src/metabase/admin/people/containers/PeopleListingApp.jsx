@@ -1,10 +1,15 @@
+/* @flow */
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
+import { t, jt } from "c-3po";
+import _ from "underscore";
+import moment from "moment";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import * as Urls from "metabase/lib/urls";
+
 import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
@@ -15,10 +20,10 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import Button from "metabase/components/Button.jsx";
 import Radio from "metabase/components/Radio";
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
-import { t, jt } from "c-3po";
-import _ from "underscore";
-import moment from "moment";
+import EntityMenu from "metabase/components/EntityMenu";
+
 import EditUserForm from "../components/EditUserForm.jsx";
 import UserActionsSelect from "../components/UserActionsSelect.jsx";
 import UserGroupSelect from "../components/UserGroupSelect.jsx";
@@ -53,7 +58,7 @@ import {
 
 const mapStateToProps = (state, props) => {
   return {
-    users: getSortedUsers(state, props),
+    users: props.list,
     modal: getModal(state, props),
     user: state.currentUser,
     groups: getGroups(state, props),
@@ -76,17 +81,16 @@ const mapDispatchToProps = {
   deleteMembership,
 };
 
+@entityListLoader({
+  entityType: "users",
+})
 @connect(mapStateToProps, mapDispatchToProps)
 export default class PeopleListingApp extends Component {
-  constructor(props, context) {
-    super(props, context);
-
-    this.state = { error: null };
-  }
+  state = {};
 
   static propTypes = {
     user: PropTypes.object.isRequired,
-    users: PropTypes.object,
+    users: PropTypes.array,
     groups: PropTypes.array,
     modal: PropTypes.object,
     createUser: PropTypes.func.isRequired,
@@ -107,13 +111,10 @@ export default class PeopleListingApp extends Component {
   async componentDidMount() {
     try {
       await Promise.all([
-        this.props.fetchUsers(),
         this.props.loadGroups(),
         this.props.loadMemberships(),
       ]);
-    } catch (error) {
-      this.setState({ error });
-    }
+    } catch (error) {}
   }
 
   onAddPerson = async user => {
@@ -360,12 +361,7 @@ export default class PeopleListingApp extends Component {
       <Modal
         small
         title={t`${user.first_name}'s password has been reset`}
-        footer={
-          <button
-            className="Button Button--primary"
-            onClick={this.onCloseModal}
-          >{t`Done`}</button>
-        }
+        footer={<Button primary onClick={this.onCloseModal}>{t`Done`}</Button>}
         onClose={this.onCloseModal}
       >
         <span className="pb3 block">{t`Here’s a temporary password they can use to log in and then change their password.`}</span>
@@ -419,7 +415,7 @@ export default class PeopleListingApp extends Component {
 
   render() {
     let { modal, users, groups } = this.props;
-    let { error, showDeactivated } = this.state;
+    let { showDeactivated } = this.state;
 
     users = _.values(users).sort((a, b) => b.date_joined - a.date_joined);
 
@@ -452,116 +448,117 @@ export default class PeopleListingApp extends Component {
     }
 
     return (
-      <LoadingAndErrorWrapper loading={!users} error={error}>
-        {() => (
-          <AdminPaneLayout
-            title={title}
-            buttonText={showDeactivated ? null : t`Add someone`}
-            buttonAction={() =>
-              this.props.showModal({ type: MODAL_ADD_PERSON })
-            }
-          >
-            <section className="pb4">
-              <table className="ContentTable">
-                <thead>
-                  <tr>
-                    <th>{t`Name`}</th>
-                    <th />
-                    <th>{t`Email`}</th>
-                    {showDeactivated
-                      ? [
-                          <th key="deactivated_at">{t`Deactivated`}</th>,
-                          <th key="actions" />,
-                        ]
-                      : [
-                          <th key="groups">{t`Groups`}</th>,
-                          <th key="last_login">{t`Last Login`}</th>,
-                          <th key="actions" />,
-                        ]}
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map(user => (
-                    <tr key={user.id}>
-                      <td>
-                        <span className="text-white inline-block">
-                          <UserAvatar
-                            background={
-                              user.is_superuser ? "bg-purple" : "bg-brand"
-                            }
+      <AdminPaneLayout
+        title={title}
+        buttonText={showDeactivated ? null : t`Add someone`}
+        buttonAction={() => this.props.showModal({ type: MODAL_ADD_PERSON })}
+      >
+        <section className="pb4">
+          <table className="ContentTable">
+            <thead>
+              <tr>
+                <th>{t`Name`}</th>
+                <th />
+                <th>{t`Email`}</th>
+                {showDeactivated
+                  ? [
+                      <th key="deactivated_at">{t`Deactivated`}</th>,
+                      <th key="actions" />,
+                    ]
+                  : [
+                      <th key="groups">{t`Groups`}</th>,
+                      <th key="last_login">{t`Last Login`}</th>,
+                      <th key="actions" />,
+                    ]}
+              </tr>
+            </thead>
+            <tbody>
+              {users.map(user => (
+                <tr key={user.id}>
+                  <td>
+                    <span className="text-white inline-block">
+                      <UserAvatar
+                        background={
+                          user.is_superuser ? "bg-purple" : "bg-brand"
+                        }
+                        user={user}
+                      />
+                    </span>{" "}
+                    <span className="ml2 text-bold">{user.common_name}</span>
+                  </td>
+                  <td>
+                    {user.google_auth ? (
+                      <Tooltip tooltip={t`Signed up via Google`}>
+                        <Icon name="google" />
+                      </Tooltip>
+                    ) : null}
+                    {user.ldap_auth ? (
+                      <Tooltip tooltip={t`Signed up via LDAP`}>
+                        <Icon name="ldap" />
+                      </Tooltip>
+                    ) : null}
+                  </td>
+                  <td>{user.email}</td>
+                  {showDeactivated
+                    ? [
+                        <td key="deactivated_at">
+                          {moment(user.updated_at).fromNow()}
+                        </td>,
+                        <td key="actions">
+                          <Tooltip tooltip={t`Reactivate this account`}>
+                            <Icon
+                              name="refresh"
+                              className="text-light text-brand-hover cursor-pointer"
+                              size={20}
+                              onClick={() =>
+                                this.props.showModal({
+                                  type: MODAL_REACTIVATE_USER,
+                                  details: { user },
+                                })
+                              }
+                            />
+                          </Tooltip>
+                        </td>,
+                      ]
+                    : [
+                        <td key="groups">
+                          <UserGroupSelect
                             user={user}
+                            groups={groups}
+                            createMembership={this.props.createMembership}
+                            deleteMembership={this.props.deleteMembership}
                           />
-                        </span>{" "}
-                        <span className="ml2 text-bold">
-                          {user.common_name}
-                        </span>
-                      </td>
-                      <td>
-                        {user.google_auth ? (
-                          <Tooltip tooltip={t`Signed up via Google`}>
-                            <Icon name="google" />
-                          </Tooltip>
-                        ) : null}
-                        {user.ldap_auth ? (
-                          <Tooltip tooltip={t`Signed up via LDAP`}>
-                            <Icon name="ldap" />
-                          </Tooltip>
-                        ) : null}
-                      </td>
-                      <td>{user.email}</td>
-                      {showDeactivated
-                        ? [
-                            <td key="deactivated_at">
-                              {moment(user.updated_at).fromNow()}
-                            </td>,
-                            <td key="actions">
-                              <Tooltip tooltip={t`Reactivate this account`}>
-                                <Icon
-                                  name="refresh"
-                                  className="text-light text-brand-hover cursor-pointer"
-                                  size={20}
-                                  onClick={() =>
-                                    this.props.showModal({
-                                      type: MODAL_REACTIVATE_USER,
-                                      details: { user },
-                                    })
-                                  }
-                                />
-                              </Tooltip>
-                            </td>,
-                          ]
-                        : [
-                            <td key="groups">
-                              <UserGroupSelect
-                                user={user}
-                                groups={groups}
-                                createMembership={this.props.createMembership}
-                                deleteMembership={this.props.deleteMembership}
-                              />
-                            </td>,
-                            <td key="last_login">
-                              {user.last_login
-                                ? moment(user.last_login).fromNow()
-                                : t`Never`}
-                            </td>,
-                            <td key="actions" className="text-right">
-                              <UserActionsSelect
-                                user={user}
-                                showModal={this.props.showModal}
-                                resendInvite={this.props.resendInvite}
-                                isActiveUser={this.props.user.id === user.id}
-                              />
-                            </td>,
-                          ]}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-            {modal ? this.renderModal(modal.type, modal.details) : null}
-          </AdminPaneLayout>
-        )}
-      </LoadingAndErrorWrapper>
+                        </td>,
+                        <td key="last_login">
+                          {user.last_login
+                            ? moment(user.last_login).fromNow()
+                            : t`Never`}
+                        </td>,
+                        <td key="actions" className="text-right">
+                          <EntityMenu
+                            triggerIcon="ellipsis"
+                            items={[
+                              {
+                                title: t`Edit user`,
+                                icon: null,
+                                link: Urls.editUser(user.id),
+                              },
+                              {
+                                title: t`Reset password`,
+                                icon: null,
+                                link: Urls.resetPassword(user.id),
+                              },
+                            ]}
+                          />
+                        </td>,
+                      ]}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+        {modal ? this.renderModal(modal.type, modal.details) : null}
+      </AdminPaneLayout>
     );
   }
 }
