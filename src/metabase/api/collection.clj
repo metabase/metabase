@@ -76,12 +76,11 @@
 
 (defmethod fetch-collection-children :pulse
   [_ collection {:keys [archived?]}]
-  ;; Pulses currently cannot be archived -- so if it's specified don't fetch Pulses for now
-  (when-not archived?
-    (db/select [Pulse :id :name :collection_position]
-      :collection_id   (:id collection)
-      ;; exclude Alerts
-      :alert_condition nil)))
+  (db/select [Pulse :id :name :collection_position]
+    :collection_id   (:id collection)
+    :archived        archived?
+    ;; exclude Alerts
+    :alert_condition nil))
 
 (defmethod fetch-collection-children :collection
   [_ collection {:keys [archived?]}]
