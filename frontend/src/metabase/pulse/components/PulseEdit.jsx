@@ -21,12 +21,12 @@ import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm.j
 import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
 import * as Urls from "metabase/lib/urls";
 
-import _ from "underscore";
 import cx from "classnames";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 
 import Collections from "metabase/entities/collections";
+import Pulses from "metabase/entities/pulses";
 
 const mapStateToProps = (state, props) => ({
   initialCollectionId: Collections.selectors.getInitialCollectionId(
@@ -36,18 +36,13 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
+  setPulseArchived: Pulses.actions.setArchived,
   goBack,
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
 @withRouter
 export default class PulseEdit extends Component {
-  constructor(props) {
-    super(props);
-
-    _.bindAll(this, "save", "delete", "setPulse");
-  }
-
   static propTypes = {
     pulse: PropTypes.object.isRequired,
     pulseId: PropTypes.number,
@@ -79,7 +74,7 @@ export default class PulseEdit extends Component {
     );
   }
 
-  async save() {
+  handleSave = async () => {
     let pulse = cleanPulse(this.props.pulse, this.props.formInput.channels);
     await this.props.updateEditingPulse(pulse);
     await this.props.saveEditingPulse();
@@ -91,19 +86,28 @@ export default class PulseEdit extends Component {
     );
 
     this.props.onChangeLocation(Urls.collection(pulse.collection_id));
-  }
+  };
 
-  async delete() {
-    await this.props.deletePulse(this.props.pulse.id);
+  handleArchive = async () => {
+    await this.props.setPulseArchived(this.props.pulse, true);
 
-    MetabaseAnalytics.trackEvent("PulseDelete", "Complete");
+    MetabaseAnalytics.trackEvent("PulseArchive", "Complete");
 
-    this.props.onChangeLocation("/pulse");
-  }
+    this.props.onChangeLocation(
+      Urls.collection(this.props.pulse.collection_id),
+    );
+  };
 
-  setPulse(pulse) {
+  handleUnarchive = async () => {
+    await this.props.setPulseArchived(this.props.pulse, false);
+    this.setPulse({ ...this.props.pulse, archived: false });
+
+    MetabaseAnalytics.trackEvent("PulseUnarchive", "Complete");
+  };
+
+  setPulse = pulse => {
     this.props.updateEditingPulse(pulse);
-  }
+  };
 
   getConfirmItems() {
     return this.props.pulse.channels.map(
@@ -183,49 +187,50 @@ export default class PulseEdit extends Component {
             />
           </div>
           <PulseEditSkip {...this.props} setPulse={this.setPulse} />
-          {pulse &&
-            pulse.id != null && (
-              <div className="DangerZone mb2 p3 rounded bordered relative">
-                <h3
-                  className="text-error absolute top bg-white px1"
-                  style={{ marginTop: "-12px" }}
-                >{t`Danger Zone`}</h3>
-                <div className="ml1">
-                  <h4 className="text-bold mb1">{t`Delete this pulse`}</h4>
-                  <div className="flex">
-                    <p className="h4 pr2">{t`Stop delivery and delete this pulse. There's no undo, so be careful.`}</p>
-                    <ModalWithTrigger
-                      ref={"deleteModal" + pulse.id}
-                      triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
-                      triggerElement={t`Delete this Pulse`}
-                    >
-                      <DeleteModalWithConfirm
-                        objectType="pulse"
-                        title={t`Delete` + ' "' + pulse.name + '"?'}
-                        confirmItems={this.getConfirmItems()}
-                        onClose={() =>
-                          this.refs["deleteModal" + pulse.id].close()
-                        }
-                        onDelete={this.delete}
-                      />
-                    </ModalWithTrigger>
-                  </div>
-                </div>
-              </div>
-            )}
         </div>
         <div className="PulseEdit-footer flex align-center border-top py3">
-          <ActionButton
-            actionFn={this.save}
-            className={cx("Button Button--primary", { disabled: !isValid })}
-            normalText={pulse.id != null ? t`Save changes` : t`Create pulse`}
-            activeText={t`Saving…`}
-            failedText={t`Save failed`}
-            successText={t`Saved`}
-          />
+          {pulse.archived ? (
+            <ActionButton
+              key="unarchive"
+              actionFn={this.handleUnarchive}
+              className={cx("Button Button--danger")}
+              normalText={t`Unarchive`}
+              activeText={t`Unarchiving…`}
+              failedText={t`Unarchive failed`}
+              successText={t`Unarchived`}
+            />
+          ) : (
+            <ActionButton
+              key="save"
+              actionFn={this.handleSave}
+              className={cx("Button Button--primary", { disabled: !isValid })}
+              normalText={pulse.id != null ? t`Save changes` : t`Create pulse`}
+              activeText={t`Saving…`}
+              failedText={t`Save failed`}
+              successText={t`Saved`}
+            />
+          )}
           <Button onClick={() => this.props.goBack()} ml={2}>
             {t`Cancel`}
           </Button>
+          {pulse.id != null &&
+            !pulse.archived && (
+              <ModalWithTrigger
+                triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
+                triggerElement={t`Archive`}
+              >
+                {({ onClose }) => (
+                  <DeleteModalWithConfirm
+                    objectType="pulse"
+                    title={t`Archive` + ' "' + pulse.name + '"?'}
+                    buttonText={t`Archive`}
+                    confirmItems={this.getConfirmItems()}
+                    onClose={onClose}
+                    onDelete={this.handleArchive}
+                  />
+                )}
+              </ModalWithTrigger>
+            )}
         </div>
       </div>
     );

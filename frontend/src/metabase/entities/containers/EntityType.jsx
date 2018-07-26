@@ -34,16 +34,6 @@ export default (entityType?: string) => (
         }
       }
 
-      shouldComponentUpdate(nextProps, nextState) {
-        if (
-          nextProps.entityDef !== this.props.entityDef ||
-          nextProps.dispatch !== this.props.dispatch
-        ) {
-          return true;
-        }
-        return false;
-      }
-
       _bindActionCreators({ entityDef, dispatch }) {
         this._boundActionCreators = bindActionCreators(
           entityDef.actions,

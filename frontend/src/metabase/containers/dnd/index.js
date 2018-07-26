@@ -10,7 +10,11 @@ export const DragTypes = {
   PULSE: "pulse",
 };
 
-export const PinnableDragTypes = [DragTypes.QUESTION, DragTypes.DASHBOARD];
+export const PinnableDragTypes = [
+  DragTypes.QUESTION,
+  DragTypes.DASHBOARD,
+  DragTypes.PULSE,
+];
 
 export const MoveableDragTypes = [
   DragTypes.QUESTION,
