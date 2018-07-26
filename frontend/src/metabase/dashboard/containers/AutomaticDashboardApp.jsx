@@ -125,7 +125,7 @@ class AutomaticDashboardApp extends React.Component {
               </div>
               {savedDashboardId != null ? (
                 <Button className="ml-auto" disabled>{t`Saved`}</Button>
-              ) : isAdmin ? (
+              ) : (
                 <ActionButton
                   className="ml-auto"
                   success
@@ -134,7 +134,7 @@ class AutomaticDashboardApp extends React.Component {
                 >
                   {t`Save this`}
                 </ActionButton>
-              ) : null}
+              )}
             </div>
           </div>
 
