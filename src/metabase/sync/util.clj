@@ -327,8 +327,8 @@
   ([step-name sync-fn]
    (create-sync-step step-name sync-fn nil))
   ([step-name sync-fn log-summary-fn]
-   {:sync-fn sync-fn
-    :step-name step-name
+   {:sync-fn        sync-fn
+    :step-name      step-name
     :log-summary-fn log-summary-fn}))
 
 (defn- datetime->str [datetime]
@@ -399,7 +399,7 @@
 (defn sum-numbers
   "Similar to a 2-arg call to `map`, but will add all numbers that result from the invocations of `f`"
   [f coll]
-  (apply + (for [item coll
-                 :let [result (f item)]
-                 :when (number? result)]
-             result)))
+  (reduce + (for [item coll
+                  :let [result (f item)]
+                  :when (number? result)]
+              result)))
