@@ -70,7 +70,7 @@
 ;;; |                                                    METRICS                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- ga-metric?
+(defn ga-metric?
   "Is this metric clause not a Metabase Metric, but rather a GA one? E.g. something like [metric ga:users]. We want to
    ignore those because they're not the same thing at all as MB Metrics and don't correspond to objects in our
    application DB."

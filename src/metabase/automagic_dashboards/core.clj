@@ -27,7 +27,7 @@
              [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses]]
+            [metabase.query-processor.middleware.expand-macros :as qp.expand]
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
             [metabase.sync.analyze.classify :as classify]
@@ -86,9 +86,10 @@
 (defn- metric-name
   [[op & args :as metric]]
   (cond
-    (adhoc-metric? metric) (-> op qp.util/normalize-token op->name)
-    (saved-metric? metric) (-> args first Metric :name)
-    :else                  (second args)))
+    (qp.expand/ga-metric? metric) (-> args first str (subs 3) str/capitalize)
+    (adhoc-metric? metric)        (-> op qp.util/normalize-token op->name)
+    (saved-metric? metric)        (-> args first Metric :name)
+    :else                         (second args)))
 
 (defn- join-enumeration
   [xs]
@@ -485,7 +486,7 @@
                  (not-empty filters)
                  (assoc :filter (->> filters
                                      (map :filter)
-                                     (apply merge-filter-clauses)))
+                                     (apply qp.expand/merge-filter-clauses)))
 
                  (not-empty dimensions)
                  (assoc :breakout dimensions)
