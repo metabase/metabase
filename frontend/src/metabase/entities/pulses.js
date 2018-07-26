@@ -18,6 +18,16 @@ const Pulses = createEntity({
         { collection_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "pulse", "moved"),
       ),
+
+    setPinned: ({ id }, pinned, opts) =>
+      Pulses.actions.update(
+        { id },
+        {
+          collection_position:
+            typeof pinned === "number" ? pinned : pinned ? 1 : null,
+        },
+        opts,
+      ),
   },
 
   objectSelectors: {
