@@ -63,7 +63,7 @@
   "Build the connection spec for a SQL Server database from the DETAILS set in the admin panel.
    Check out the full list of options here: `https://technet.microsoft.com/en-us/library/ms378988(v=sql.105).aspx`"
   [{:keys [user password db host port instance domain ssl]
-    :or   {user "dbuser", password "dbpassword", db "", host "localhost", port 1433}
+    :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
     :as   details}]
   (-> {:applicationName config/mb-app-id-string
        :classname       "com.microsoft.sqlserver.jdbc.SQLServerDriver"
@@ -75,7 +75,6 @@
        ;; instead of part of the `:subname` is preferable because they support things like passwords with special
        ;; characters)
        :database        db
-       :port            port
        :password        password
        ;; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
        :loginTimeout    10
@@ -86,6 +85,9 @@
                              user)
        :instanceName    instance
        :encrypt         (boolean ssl)}
+      ;; only include `port` if it is specified; leave out for dynamic port: see
+      ;; https://github.com/metabase/metabase/issues/7597
+      (merge (when port {:port port}))
       (sql/handle-additional-options details, :seperator-style :semicolon)))
 
 
@@ -179,8 +181,8 @@
                                     :default      "localhost"}
                                    {:name         "port"
                                     :display-name "Port"
-                                    :type         :integer
-                                    :default      1433}
+                                    :placeholder  "1433"
+                                    :type         :integer}
                                    {:name         "db"
                                     :display-name "Database name"
                                     :placeholder  "BirdsOfTheWorld"
