@@ -1,6 +1,7 @@
 (ns metabase.api.alert
   "/api/alert endpoints"
   (:require [clojure.data :as data]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
             [metabase
@@ -14,32 +15,31 @@
              [interface :as mi]
              [pulse :as pulse :refer [Pulse]]]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
-            [toucan.db :as db]))
-
-(defn- add-read-only-flag [alerts]
-  (for [alert alerts
-        :let  [can-read?  (mi/can-read? alert)
-               can-write? (mi/can-write? alert)]
-        :when (or can-read?
-                  can-write?)]
-    (assoc alert :read_only (not can-write?))))
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 (api/defendpoint GET "/"
   "Fetch all alerts"
-  []
-  (add-read-only-flag (pulse/retrieve-alerts)))
+  [archived]
+  {archived (s/maybe su/BooleanString)}
+  (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)}) <>
+    (filter mi/can-read? <>)
+    (hydrate <> :read_only)))
 
 (api/defendpoint GET "/question/:id"
   "Fetch all questions for the given question (`Card`) id"
   [id]
-  (add-read-only-flag (if api/*is-superuser?*
-                        (pulse/retrieve-alerts-for-cards id)
-                        (pulse/retrieve-user-alerts-for-card id api/*current-user-id*))))
+  (-> (if api/*is-superuser?*
+        (pulse/retrieve-alerts-for-cards id)
+        (pulse/retrieve-user-alerts-for-card id api/*current-user-id*))
+      (hydrate :read_only)))
 
 (defn- only-alert-keys [request]
   (u/select-keys-when request
-    :present [:alert_condition :alert_first_only :alert_above_goal]))
+    :present [:alert_condition :alert_first_only :alert_above_goal :archived]))
 
 (defn- email-channel [alert]
   (m/find-first #(= :email (:channel_type %)) (:channels alert)))
@@ -134,13 +134,14 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Alert` with ID."
-  [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels]
+  [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels archived]
             :as alert-updates} :body}]
   {alert_condition     (s/maybe pulse/AlertConditions)
    alert_first_only    (s/maybe s/Bool)
    alert_above_goal    (s/maybe s/Bool)
    card                (s/maybe pulse/CardRef)
-   channels            (s/maybe (su/non-empty [su/Map]))}
+   channels            (s/maybe (su/non-empty [su/Map]))
+   archived            (s/maybe s/Bool)}
   ;; fethc the existing Alert in the DB
   (let [alert-before-update (api/check-404 (pulse/retrieve-alert id))]
     ;; check permissions as needed.
@@ -213,17 +214,14 @@
         (messages/send-admin-deleted-your-alert! alert creator @api/*current-user*)))))
 
 (api/defendpoint DELETE "/:id"
-  "Remove an alert"
+  "Delete an Alert. (DEPRECATED -- don't delete a Alert anymore -- archive it instead.)"
   [id]
+  (log/warn (tru "DELETE /api/alert/:id is deprecated. Instead, change its `archived` value via PUT /api/alert/:id."))
   (api/let-404 [alert (pulse/retrieve-alert id)]
-    (api/check-superuser)
-
+    (api/write-check Pulse id)
     (db/delete! Pulse :id id)
-
     (events/publish-event! :alert-delete (assoc alert :actor_id api/*current-user-id*))
-
-    (notify-on-delete-if-needed! alert)
-
-    api/generic-204-no-content))
+    (notify-on-delete-if-needed! alert))
+  api/generic-204-no-content)
 
 (api/define-routes)
