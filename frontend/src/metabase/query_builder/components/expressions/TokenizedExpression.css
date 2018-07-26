@@ -25,13 +25,13 @@
 
 .Expression-aggregation,
 .Expression-metric {
-  border: 1px solid #9cc177;
-  background-color: #e4f7d1;
+  border: 1px solid var(--color-accent1);
+  background-color: var(--color-bg-white);
 }
 
 .Expression-field {
-  border: 1px solid #509ee3;
-  background-color: #c7e3fb;
+  border: 1px solid var(--color-brand);
+  background-color: var(--color-bg-medium);
 }
 
 .Expression-selected.Expression-aggregation,
@@ -39,11 +39,11 @@
 .Expression-selected .Expression-aggregation,
 .Expression-selected .Expression-metric {
   color: white;
-  background-color: #9cc177;
+  background-color: var(--color-accent1);
 }
 
 .Expression-selected.Expression-field,
 .Expression-selected .Expression-field {
   color: white;
-  background-color: #509ee3;
+  background-color: var(--color-brand);
 }

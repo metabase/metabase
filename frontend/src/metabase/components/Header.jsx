@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
+import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import HeaderModal from "metabase/components/HeaderModal.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
@@ -77,6 +78,7 @@ export default class Header extends Component {
   }
 
   render() {
+    const { item } = this.props;
     let titleAndDescription;
     if (this.props.isEditingInfo) {
       titleAndDescription = (
@@ -155,8 +157,14 @@ export default class Header extends Component {
           ref="header"
         >
           <div className="Entity py3">
-            {titleAndDescription}
+            <span className="inline-block mb1">{titleAndDescription}</span>
             {attribution}
+            {!this.props.isEditingInfo && (
+              <CollectionBadge
+                collectionId={item.collection_id}
+                analyticsContext={this.props.analyticsContext}
+              />
+            )}
           </div>
 
           <div className="flex align-center flex-align-right">

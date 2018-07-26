@@ -38,11 +38,14 @@ groups:
   - Overview:
       title: Overview
   - Breakdowns:
-      title: How [[this]] is distributed across categories
+      title: How the [[this]] is distributed across categories
+      comparison_title: How they compare by distribution
   - Seasonality:
-      title: How [[this]] changes with time
+      title: How the [[this]] changes with time
+      comparison_title: How they compare across time
   - Geographical:
-      title: How [[this]] is distributed geographically
+      title: How the [[this]] is distributed geographically
+      comparison_title: How they compare acrosss location
 cards:
   - Count:
       title: Count
@@ -75,7 +78,7 @@ cards:
       group: Overview
       width: 9
   - Distribution:
-      title: How [[this]] is distributed
+      title: How the [[this]] is distributed
       visualization: bar
       metrics: Count
       dimensions:

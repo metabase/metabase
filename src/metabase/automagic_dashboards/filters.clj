@@ -11,7 +11,7 @@
   [(s/one (s/constrained su/KeywordOrString
                          (comp #{:field-id :fk-> :field-literal} qp.util/normalize-token))
           "head")
-   s/Any])
+   (s/cond-pre s/Int su/KeywordOrString)])
 
 (def ^:private ^{:arglists '([form])} field-reference?
   "Is given form an MBQL field reference?"
@@ -25,7 +25,7 @@
 (defmethod field-reference->id :field-id
   [[_ id]]
   (if (sequential? id)
-    (second id)
+    (field-reference->id id)
     id))
 
 (defmethod field-reference->id :fk->
@@ -44,12 +44,14 @@
        (tree-seq (some-fn sequential? map?) identity)
        (filter field-reference?)))
 
-(def ^:private ^{:arglists '([field])} periodic-datetime?
+(def ^{:arglists '([field])} periodic-datetime?
+  "Is `field` a periodic datetime (eg. day of month)?"
   (comp #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year
           :month-of-year :quarter-of-year}
         :unit))
 
-(defn- datetime?
+(defn datetime?
+  "Is `field` a datetime?"
   [field]
   (and (not (periodic-datetime? field))
        (or (isa? (:base_type field) :type/DateTime)
@@ -154,10 +156,10 @@
           remove-unqualified
           (sort-by interestingness >)
           (take max-filters)
-          (map #(assoc % :fk-map (build-fk-map fks %)))
           (reduce
            (fn [dashboard candidate]
-             (let [filter-id     (-> candidate hash str)
+             (let [filter-id     (-> candidate ((juxt :id :name :unit)) hash str)
+                   candidate     (assoc candidate :fk-map (build-fk-map fks candidate))
                    dashcards     (:ordered_cards dashboard)
                    dashcards-new (map #(add-filter % filter-id candidate) dashcards)]
                ;; Only add filters that apply to all cards.
@@ -170,17 +172,6 @@
                                                :slug (:name candidate)}))
                  dashboard)))
            dashboard)))))
-
-
-(defn filter-referenced-fields
-  "Return a map of fields referenced in filter cluase."
-  [filter-clause]
-  (->> filter-clause
-       collect-field-references
-       (mapcat (fn [[_ & ids]]
-                 (for [id ids]
-                   [id (Field id)])))
-       (into {})))
 
 
 (defn- flatten-filter-clause
@@ -208,4 +199,4 @@
     (->> filter-clause
          flatten-filter-clause
          (remove (comp in-refinement? collect-field-references))
-         (reduce merge-filter-clauses refinement))))
+         (apply merge-filter-clauses refinement))))

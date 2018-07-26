@@ -1,11 +1,18 @@
 /* @flow weak */
 
 import "babel-polyfill";
+
+// Use of classList.add and .remove in Background and FitViewPort Hocs requires
+// this polyfill so that those work in older browsers
+import "classlist-polyfill";
+
 import "number-to-locale-string";
 
 // If enabled this monkeypatches `t` and `jt` to return blacked out
 // strings/elements to assist in finding untranslated strings.
 import "metabase/lib/i18n-debug";
+
+import "metabase/lib/colors";
 
 // make the i18n function "t" global so we don't have to import it in basically every file
 import { t, jt } from "c-3po";

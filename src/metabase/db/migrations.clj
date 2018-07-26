@@ -6,7 +6,8 @@
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cemerick.friend.credentials :as creds]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
@@ -33,7 +34,8 @@
             [metabase.util.date :as du]
             [toucan
              [db :as db]
-             [models :as models]]))
+             [models :as models]])
+  (:import java.util.UUID))
 
 ;;; # Migration Helpers
 
@@ -367,3 +369,34 @@
                            :special_type     (mdb/isa :type/Category)
                            :active           true}
     :has_field_values "list"))
+
+;; In v0.30.0 we switiched to making standard SQL the default for BigQuery; up until that point we had been using
+;; BigQuery legacy SQL. For a while, we've supported standard SQL if you specified the case-insensitive `#standardSQL`
+;; directive at the beginning of your query, and similarly allowed you to specify legacy SQL with the `#legacySQL`
+;; directive (although this was already the default). Since we're now defaulting to standard SQL, we'll need to go in
+;; and add a `#legacySQL` directive to all existing BigQuery SQL queries that don't have a directive, so they'll
+;; continue to run as legacy SQL.
+(defmigration ^{:author "camsaul", :added "0.30.0"} add-legacy-sql-directive-to-bigquery-sql-cards
+  ;; For each BigQuery database...
+  (doseq [database-id (db/select-ids Database :engine "bigquery")]
+    ;; For each Card belonging to that BigQuery database...
+    (doseq [{query :dataset_query, card-id :id} (db/select [Card :id :dataset_query] :database_id database-id)]
+      ;; If the Card isn't native, ignore it
+      (when (= (:type query) "native")
+        (let [sql (get-in query [:native :query])]
+          ;; if the Card already contains a #standardSQL or #legacySQL (both are case-insenstive) directive, ignore it
+          (when-not (re-find #"(?i)#(standard|legacy)sql" sql)
+            ;; if it doesn't have a directive it would have (under old behavior) defaulted to legacy SQL, so give it a
+            ;; #legacySQL directive...
+            (let [updated-sql (str "#legacySQL\n" sql)]
+              ;; and save the updated dataset_query map
+              (db/update! Card (u/get-id card-id)
+                :dataset_query (assoc-in query [:native :query] updated-sql)))))))))
+
+;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
+;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
+;; disable passwords for Google authenticated users
+(defmigration ^{:author "senior", :added "0.30.0"} clear-ldap-user-local-passwords
+  (db/transaction
+    (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
+      (db/update! User (u/get-id user) :password (creds/hash-bcrypt (str (:password_salt user) (UUID/randomUUID)))))))

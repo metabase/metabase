@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
+import colors from "metabase/lib/colors";
 
 export default class ActivityStory extends Component {
   constructor(props, context) {
@@ -8,7 +9,7 @@ export default class ActivityStory extends Component {
 
     this.styles = {
       borderWidth: "2px",
-      borderColor: "#DFE8EA",
+      borderColor: colors["border"],
     };
   }
 
@@ -29,7 +30,7 @@ export default class ActivityStory extends Component {
         style={{
           borderWidth: "3px",
           marginLeft: "22px",
-          borderColor: "#F2F5F6",
+          borderColor: colors["border"],
         }}
       >
         <div className="flex full ml4 bordered rounded p2" style={this.styles}>

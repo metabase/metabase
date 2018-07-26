@@ -38,7 +38,8 @@ groups:
   - Overview:
       title: Overview
   - Breakdowns:
-      title: How [[this]] are distributed
+      title: How the [[this]] is distributed
+      comparison_title: How they compare by distribution
 cards:
   - Count:
       title: Count

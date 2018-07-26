@@ -53,7 +53,8 @@ class ArchiveQuestionModal extends Component {
           >{t`Archive`}</Button>,
         ]}
       >
-        <div className="px4 pb4">{t`This question will be removed from any dashboards or pulses using it.`}</div>
+        <div
+        >{t`This question will be removed from any dashboards or pulses using it.`}</div>
       </ModalWithTrigger>
     );
   }

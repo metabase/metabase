@@ -5,16 +5,25 @@ import { t } from "c-3po";
 import { Box, Flex } from "grid-styled";
 import styled from "styled-components";
 import { space, width } from "styled-system";
+import colors from "metabase/lib/colors";
+import color from "color";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+
+import * as Urls from "metabase/lib/urls";
 
 import Button from "metabase/components/Button.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import Tooltip from "metabase/components/Tooltip";
+import EntityMenu from "metabase/components/EntityMenu";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
+
+import Modal from "metabase/components/Modal";
+
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
@@ -44,11 +53,23 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
+const DefaultSearchColor = color(colors.brand)
+  .lighten(0.07)
+  .string();
+const ActiveSearchColor = color(colors.brand)
+  .lighten(0.1)
+  .string();
+
 const SearchWrapper = Flex.extend`
-  ${width} border-radius: 6px;
+  ${width} background-color: ${props =>
+      props.active ? ActiveSearchColor : DefaultSearchColor};
+  border-radius: 6px;
   align-items: center;
-  border: 1px solid transparent;
+  color: white;
   transition: background 300ms ease-in;
+  &:hover {
+    background-color: ${ActiveSearchColor};
+  }
 `;
 
 const SearchInput = styled.input`
@@ -61,7 +82,7 @@ const SearchInput = styled.input`
     outline: none;
   }
   &::placeholder {
-    color: rgba(255, 255, 255, 0.85);
+    color: ${colors["text-white"]};
   }
 `;
 
@@ -94,18 +115,17 @@ class SearchBar extends React.Component {
         handleDismissal={() => this.setState({ active: false })}
       >
         <SearchWrapper
-          className={cx("search-bar", {
-            "search-bar--active": this.state.active,
-          })}
           onClick={() => this.setState({ active: true })}
           active={this.state.active}
         >
           <Icon name="search" ml={2} />
           <SearchInput
             w={1}
-            p={2}
+            py={2}
+            pr={2}
+            pl={1}
             value={this.state.searchText}
-            placeholder="Search for anything..."
+            placeholder="Search…"
             onClick={() => this.setState({ active: true })}
             onChange={e => this.setState({ searchText: e.target.value })}
             onKeyPress={e => {
@@ -122,6 +142,8 @@ class SearchBar extends React.Component {
     );
   }
 }
+
+const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
@@ -194,6 +216,7 @@ export default class Navbar extends Component {
 
           <ProfileLink {...this.props} />
         </div>
+        {this.renderModal()}
       </nav>
     );
   }
@@ -212,22 +235,29 @@ export default class Navbar extends Component {
             </Link>
           </li>
         </ul>
+        {this.renderModal()}
       </nav>
     );
   }
 
   renderMainNav() {
     return (
-      <Flex className="Nav relative bg-brand text-white z4" align="center">
-        <Box>
-          <Link
-            to="/"
-            data-metabase-event={"Navbar;Logo"}
-            className="LogoNavItem NavItem cursor-pointer relative z2 flex align-center transition-background justify-center"
-          >
-            <LogoIcon dark />
-          </Link>
-        </Box>
+      <Flex
+        className="relative bg-brand text-white z3"
+        align="center"
+        py={1}
+        pr={2}
+      >
+        <Link
+          to="/"
+          data-metabase-event={"Navbar;Logo"}
+          className="relative cursor-pointer z2 rounded flex justify-center transition-background"
+          p={1}
+          mx={1}
+          hover={{ backgroundColor: DefaultSearchColor }}
+        >
+          <LogoIcon dark />
+        </Link>
         <Flex
           className="absolute top left right bottom z1"
           px={4}
@@ -240,31 +270,70 @@ export default class Navbar extends Component {
             />
           </Box>
         </Flex>
-        <Flex align="center" ml="auto" className="z4">
-          <Link to="question/new" mx={1}>
-            <Button medium color="#509ee3">
-              New question
-            </Button>
+        <Flex ml="auto" align="center" className="relative z2">
+          <Link
+            to={Urls.newQuestion()}
+            mx={2}
+            className="hide sm-show"
+            data-metabase-event={`NavBar;New Question`}
+          >
+            <Button medium>{t`Ask a question`}</Button>
           </Link>
-          <Link to="collection/root" mx={1}>
-            <Box p={1} bg="#69ABE6" className="text-bold rounded">
-              Saved items
-            </Box>
-          </Link>
+          <EntityMenu
+            className="hide sm-show"
+            triggerIcon="add"
+            items={[
+              {
+                title: t`New dashboard`,
+                icon: `dashboard`,
+                action: () => this.setModal(MODAL_NEW_DASHBOARD),
+                event: `NavBar;New Dashboard Click;`,
+              },
+              {
+                title: t`New pulse`,
+                icon: `pulse`,
+                link: Urls.newPulse(),
+                event: `NavBar;New Pulse Click;`,
+              },
+            ]}
+          />
           <Tooltip tooltip={t`Reference`}>
-            <Link to="reference" mx={1}>
+            <Link
+              to="reference"
+              mx={2}
+              data-metabase-event={`NavBar;Reference`}
+            >
               <Icon name="reference" />
             </Link>
           </Tooltip>
           <Tooltip tooltip={t`Activity`}>
-            <Link to="activity" mx={1}>
-              <Icon name="alert" />
+            <Link to="activity" mx={2} data-metabase-event={`NavBar;Activity`}>
+              <Icon name="bell" />
             </Link>
           </Tooltip>
           <ProfileLink {...this.props} />
         </Flex>
+        {this.renderModal()}
       </Flex>
     );
+  }
+
+  renderModal() {
+    const { modal } = this.state;
+    if (modal) {
+      return (
+        <Modal onClose={() => this.setState({ modal: null })}>
+          {modal === MODAL_NEW_DASHBOARD ? (
+            <CreateDashboardModal
+              createDashboard={this.props.createDashboard}
+              onClose={() => this.setState({ modal: null })}
+            />
+          ) : null}
+        </Modal>
+      );
+    } else {
+      return null;
+    }
   }
 
   render() {

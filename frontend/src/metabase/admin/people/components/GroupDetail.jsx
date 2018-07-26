@@ -115,10 +115,10 @@ const AddUserRow = ({
         onCancel={onCancel}
       >
         {selectedUsers.map(user => (
-          <div className="bg-slate-light p1 px2 mr1 rounded flex align-center">
+          <div className="bg-medium p1 px2 mr1 rounded flex align-center">
             {user.common_name}
             <Icon
-              className="pl1 cursor-pointer text-slate text-grey-4-hover"
+              className="pl1 cursor-pointer text-slate text-medium-hover"
               name="close"
               onClick={() => onRemoveUserFromSelection(user)}
             />
@@ -147,7 +147,7 @@ const UserRow = ({ user, showRemoveButton, onRemoveUserClicked }) => (
         className="text-right cursor-pointer"
         onClick={onRemoveUserClicked.bind(null, user)}
       >
-        <Icon name="close" className="text-grey-1" size={16} />
+        <Icon name="close" className="text-light" size={16} />
       </td>
     ) : null}
   </tr>

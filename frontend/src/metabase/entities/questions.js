@@ -1,12 +1,11 @@
 /* @flow */
 
-import React from "react";
+import { assocIn } from "icepick";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-import { assocIn } from "icepick";
+import colors from "metabase/lib/colors";
 
-import CollectionSelect from "metabase/containers/CollectionSelect";
 import { canonicalCollectionId } from "metabase/entities/collections";
 
 import { POST, DELETE } from "metabase/lib/api";
@@ -62,8 +61,10 @@ const Questions = createEntity({
   objectSelectors: {
     getName: question => question && question.name,
     getUrl: question => question && Urls.question(question.id),
-    getColor: () => "#93B3C9",
-    getIcon: question => "beaker",
+    getColor: () => colors["text-medium"],
+    getIcon: question =>
+      (require("metabase/visualizations").default.get(question.display) || {})
+        .iconName || "beaker",
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -82,11 +83,26 @@ const Questions = createEntity({
       {
         name: "collection_id",
         title: "Collection",
-        // eslint-disable-next-line react/display-name
-        type: ({ field }) => <CollectionSelect {...field} />,
+        type: "collection",
       },
     ],
   },
+
+  // NOTE: keep in sync with src/metabase/api/card.clj
+  writableProperties: [
+    "name",
+    "dataset_query",
+    "display",
+    "description",
+    "visualization_settings",
+    "archived",
+    "enable_embedding",
+    "embedding_params",
+    "collection_id",
+    "collection_position",
+    "result_metadata",
+    "metadata_checksum",
+  ],
 });
 
 export default Questions;

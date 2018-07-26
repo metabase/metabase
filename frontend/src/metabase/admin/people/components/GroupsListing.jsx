@@ -79,7 +79,7 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
   return (
     <PopoverWithTrigger
       className="block"
-      triggerElement={<Icon className="text-grey-1" name="ellipsis" />}
+      triggerElement={<Icon className="text-light" name="ellipsis" />}
     >
       <ul className="UserActionsSelect">
         <li

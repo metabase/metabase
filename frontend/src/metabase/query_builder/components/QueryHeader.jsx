@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
 import { connect } from "react-redux";
 import { t } from "c-3po";
 import QueryModeButton from "./QueryModeButton.jsx";
@@ -17,15 +16,13 @@ import QuestionSavedModal from "metabase/components/QuestionSavedModal.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal.jsx";
 import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
+import CollectionBadge from "metabase/questions/components/CollectionBadge";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal.jsx";
 
 import { clearRequestState } from "metabase/redux/requests";
 
-import { CardApi, RevisionApi } from "metabase/services";
-
-import MetabaseAnalytics from "metabase/lib/analytics";
-import * as Urls from "metabase/lib/urls";
+import { RevisionApi } from "metabase/services";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -40,10 +37,16 @@ import {
 import { getUser } from "metabase/home/selectors";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
+import Collections from "metabase/entities/collections";
+
 const mapStateToProps = (state, props) => ({
   questionAlerts: getQuestionAlerts(state),
   visualizationSettings: getVisualizationSettings(state),
   user: getUser(state),
+  initialCollectionId: Collections.selectors.getInitialCollectionId(
+    state,
+    props,
+  ),
 });
 
 const mapDispatchToProps = {
@@ -62,21 +65,6 @@ export default class QueryHeader extends Component {
       modal: null,
       revisions: null,
     };
-
-    _.bindAll(
-      this,
-      "resetStateOnTimeout",
-      "onCreate",
-      "onSave",
-      "onBeginEditing",
-      "onCancel",
-      "onDelete",
-      "onFollowBreadcrumb",
-      "onToggleDataReference",
-      "onFetchRevisions",
-      "onRevertToRevision",
-      "onRevertedRevision",
-    );
   }
 
   static propTypes = {
@@ -98,14 +86,14 @@ export default class QueryHeader extends Component {
     clearTimeout(this.timeout);
   }
 
-  resetStateOnTimeout() {
+  resetStateOnTimeout = () => {
     // clear any previously set timeouts then start a new one
     clearTimeout(this.timeout);
     this.timeout = setTimeout(
       () => this.setState({ recentlySaved: null }),
       5000,
     );
-  }
+  };
 
   onCreate = async (card, showSavedModal = true) => {
     const { question, apiCreateQuestion } = this.props;
@@ -140,52 +128,45 @@ export default class QueryHeader extends Component {
     );
   };
 
-  onBeginEditing() {
+  onBeginEditing = () => {
     this.props.onBeginEditing();
-  }
+  };
 
-  async onCancel() {
+  onCancel = async () => {
     if (this.props.fromUrl) {
       this.onGoBack();
     } else {
       this.props.onCancelEditing();
     }
-  }
+  };
 
-  async onDelete() {
-    // TODO: reduxify
-    await CardApi.delete({ cardId: this.props.card.id });
-    this.onGoBack();
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Delete");
-  }
-
-  onFollowBreadcrumb() {
+  onFollowBreadcrumb = () => {
     this.props.onRestoreOriginalQuery();
-  }
+  };
 
-  onToggleDataReference() {
+  onToggleDataReference = () => {
     this.props.toggleDataReferenceFn();
-  }
+  };
 
-  onGoBack() {
+  onGoBack = () => {
     this.props.onChangeLocation(this.props.fromUrl || "/");
-  }
+  };
 
-  async onFetchRevisions({ entity, id }) {
+  onFetchRevisions = async ({ entity, id }) => {
     // TODO: reduxify
     let revisions = await RevisionApi.list({ entity, id });
     this.setState({ revisions });
-  }
+  };
 
-  onRevertToRevision({ entity, id, revision_id }) {
+  onRevertToRevision = ({ entity, id, revision_id }) => {
     // TODO: reduxify
     return RevisionApi.revert({ entity, id, revision_id });
-  }
+  };
 
-  onRevertedRevision() {
+  onRevertedRevision = () => {
     this.props.reloadCardFn();
     this.refs.cardHistory.toggle();
-  }
+  };
 
   getHeaderButtons() {
     const {
@@ -212,7 +193,7 @@ export default class QueryHeader extends Component {
           form
           key="save"
           ref="saveModal"
-          triggerClasses="h4 text-grey-4 text-brand-hover text-uppercase"
+          triggerClasses="h4 text-medium text-brand-hover text-uppercase"
           triggerElement={t`Save`}
         >
           <SaveQuestionModal
@@ -223,6 +204,7 @@ export default class QueryHeader extends Component {
             saveFn={card => this.onSave(card, false)}
             createFn={this.onCreate}
             onClose={() => this.refs.saveModal && this.refs.saveModal.toggle()}
+            initialCollectionId={this.props.initialCollectionId}
           />
         </ModalWithTrigger>,
       ]);
@@ -263,7 +245,7 @@ export default class QueryHeader extends Component {
           <ActionButton
             key="save"
             actionFn={() => this.onSave(this.props.card, false)}
-            className="cursor-pointer text-brand-hover bg-white text-grey-4 text-uppercase"
+            className="cursor-pointer text-brand-hover bg-white text-medium text-uppercase"
             normalText={t`SAVE CHANGES`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}
@@ -275,7 +257,7 @@ export default class QueryHeader extends Component {
         buttonSections.push([
           <a
             key="cancel"
-            className="cursor-pointer text-brand-hover text-grey-4 text-uppercase"
+            className="cursor-pointer text-brand-hover text-medium text-uppercase"
             onClick={this.onCancel}
           >
             {t`CANCEL`}
@@ -304,7 +286,6 @@ export default class QueryHeader extends Component {
                 }
                 onClose={onClose}
                 onMove={collection => {
-                  this.props.onSetCardAttribute("collection", collection);
                   this.props.onSetCardAttribute(
                     "collection_id",
                     collection && collection.id,
@@ -385,6 +366,7 @@ export default class QueryHeader extends Component {
               }}
               onClose={() => this.refs.addToDashSaveModal.toggle()}
               multiStep
+              initiCollectionId={this.props.initiCollectionId}
             />
           </ModalWithTrigger>
         </Tooltip>,
@@ -547,22 +529,11 @@ export default class QueryHeader extends Component {
           buttons={this.getHeaderButtons()}
           setItemAttributeFn={this.props.onSetCardAttribute}
           badge={
-            this.props.card.collection && (
-              <Link
-                to={Urls.collection(this.props.card.collection.id)}
-                className="text-uppercase flex align-center no-decoration"
-                style={{
-                  color: this.props.card.collection.color,
-                  fontSize: 12,
-                }}
-              >
-                <Icon
-                  name="collection"
-                  size={12}
-                  style={{ marginRight: "0.5em" }}
-                />
-                {this.props.card.collection.name}
-              </Link>
+            this.props.card.id && (
+              <CollectionBadge
+                collectionId={this.props.card.collection_id}
+                analyticsContext="QueryBuilder"
+              />
             )
           }
         />
@@ -625,6 +596,7 @@ export default class QueryHeader extends Component {
               this.setState({ modal: null })
             }
             multiStep
+            initiCollectionId={this.props.initiCollectionId}
           />
         </Modal>
       </div>

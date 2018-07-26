@@ -1,4 +1,5 @@
 (ns metabase.util.password
+  "Utility functions for checking passwords against hashes and for making sure passwords match complexity requirements."
   (:require [cemerick.friend.credentials :as creds]
             [metabase
              [config :as config]

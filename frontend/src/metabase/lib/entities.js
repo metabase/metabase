@@ -58,6 +58,9 @@ type EntityDefinition = {
   wrapEntity?: (object: EntityObject) => any,
   form?: any,
   actionShouldInvalidateLists?: (action: Action) => boolean,
+
+  // list of properties for this object which should be persisted
+  writableProperties?: string[],
 };
 
 type EntityObject = any;
@@ -136,6 +139,8 @@ export type Entity = {
 
   requestsReducer: Reducer,
   actionShouldInvalidateLists: (action: Action) => boolean,
+
+  writableProperties?: string[],
 };
 
 export function createEntity(def: EntityDefinition): Entity {
@@ -169,12 +174,20 @@ export function createEntity(def: EntityDefinition): Entity {
   const getListStatePath = entityQuery =>
     ["entities", entity.name + "_list"].concat(getIdForQuery(entityQuery));
 
+  const getWritableProperties = object =>
+    entity.writableProperties != null
+      ? _.pick(object, "id", ...entity.writableProperties)
+      : object;
+
   // ACTION TYPES
   const CREATE_ACTION = `metabase/entities/${entity.name}/CREATE`;
   const FETCH_ACTION = `metabase/entities/${entity.name}/FETCH`;
   const UPDATE_ACTION = `metabase/entities/${entity.name}/UPDATE`;
   const DELETE_ACTION = `metabase/entities/${entity.name}/DELETE`;
   const FETCH_LIST_ACTION = `metabase/entities/${entity.name}/FETCH_LIST`;
+  const INVALIDATE_LISTS_ACTION = `metabase/entities/${
+    entity.name
+  }/INVALIDATE_LISTS_ACTION`;
 
   entity.actionTypes = {
     CREATE: CREATE_ACTION,
@@ -182,6 +195,7 @@ export function createEntity(def: EntityDefinition): Entity {
     UPDATE: UPDATE_ACTION,
     DELETE: DELETE_ACTION,
     FETCH_LIST: FETCH_LIST_ACTION,
+    INVALIDATE_LISTS_ACTION: INVALIDATE_LISTS_ACTION,
     ...(entity.actionTypes || {}),
   };
 
@@ -193,7 +207,7 @@ export function createEntity(def: EntityDefinition): Entity {
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
-            await entity.api.create(entityObject),
+            await entity.api.create(getWritableProperties(entityObject)),
             entity.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));
@@ -248,7 +262,7 @@ export function createEntity(def: EntityDefinition): Entity {
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
-            await entity.api.update(entityObject),
+            await entity.api.update(getWritableProperties(entityObject)),
             entity.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));
@@ -470,7 +484,8 @@ export function createEntity(def: EntityDefinition): Entity {
     entity.actionShouldInvalidateLists = action =>
       action.type === CREATE_ACTION ||
       action.type === DELETE_ACTION ||
-      action.type === UPDATE_ACTION;
+      action.type === UPDATE_ACTION ||
+      action.type === INVALIDATE_LISTS_ACTION;
   }
 
   entity.requestsReducer = (state, action) => {

@@ -32,9 +32,11 @@ groups:
   - Overview:
       title: Overview
   - Breakdowns:
-      title: How [[this]] is distributed
+      title: How the [[this]] is distributed
+      comparison_title: How they compare by distribution
   - Seasonality:
-      title: Seasonal patterns in [[this]]
+      title: Seasonal patterns in the [[this]]
+      comparison_title: How they compare by seasonality
 cards:
   - Count:
       title: Count

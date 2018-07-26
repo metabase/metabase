@@ -38,6 +38,8 @@ export type FormattingOptions = {
   comma?: boolean,
   compact?: boolean,
   round?: boolean,
+  // always format as the start value rather than the range, e.x. for bar histogram
+  noRange?: boolean,
 };
 
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
@@ -225,10 +227,10 @@ export function formatTimeWithUnit(
     case "day": // January 1, 2015
       return m.format(`${getMonthFormat(options)} D, YYYY`);
     case "week": // 1st - 2015
-      if (options.type === "tooltip") {
+      if (options.type === "tooltip" && !options.noRange) {
         // tooltip show range like "January 1 - 7, 2017"
         return formatTimeRangeWithUnit(value, unit, options);
-      } else if (options.type === "cell") {
+      } else if (options.type === "cell" && !options.noRange) {
         // table cells show range like "Jan 1, 2017 - Jan 7, 2017"
         return formatTimeRangeWithUnit(value, unit, options);
       } else if (options.type === "axis") {
@@ -371,7 +373,7 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
   } else if (typeof value === "number") {
     const formatter = isCoordinate(column) ? formatCoordinate : formatNumber;
     const range = rangeForValue(value, options.column);
-    if (range) {
+    if (range && !options.noRange) {
       return formatRange(range, formatter, options);
     } else {
       return formatter(value, options);
@@ -467,7 +469,7 @@ export function assignUserColors(
     "bg-error",
     "bg-green",
     "bg-gold",
-    "bg-grey-2",
+    "bg-medium",
   ],
 ) {
   let assignments = {};

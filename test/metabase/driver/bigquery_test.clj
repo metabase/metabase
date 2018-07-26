@@ -1,5 +1,6 @@
 (ns metabase.driver.bigquery-test
   (:require [expectations :refer :all]
+            [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -13,7 +14,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :refer [expect-with-engine do-with-engine]]))
+            [metabase.test.data.datasets :refer [expect-with-engine]]))
 
 (def ^:private col-defaults
   {:remapped_to nil, :remapped_from nil})
@@ -23,9 +24,9 @@
   [[100]
    [99]]
   (get-in (qp/process-query
-            {:native   {:query (str "SELECT [test_data.venues.id] "
-                                    "FROM [test_data.venues] "
-                                    "ORDER BY [test_data.venues.id] DESC "
+            {:native   {:query (str "SELECT `test_data.venues`.`id` "
+                                    "FROM `test_data.venues` "
+                                    "ORDER BY `test_data.venues`.`id` DESC "
                                     "LIMIT 2;")}
              :type     :native
              :database (data/id)})
@@ -54,10 +55,10 @@
                    {:name "checkins_id", :display_name "Checkins ID", :base_type :type/Integer}])}
 
   (select-keys (:data (qp/process-query
-                        {:native   {:query (str "SELECT [test_data.checkins.venue_id] AS [venue_id], "
-                                                "       [test_data.checkins.user_id] AS [user_id], "
-                                                "       [test_data.checkins.id] AS [checkins_id] "
-                                                "FROM [test_data.checkins] "
+                        {:native   {:query (str "SELECT `test_data.checkins`.`venue_id` AS `venue_id`, "
+                                                "       `test_data.checkins`.`user_id` AS `user_id`, "
+                                                "       `test_data.checkins`.`id` AS `checkins_id` "
+                                                "FROM `test_data.checkins` "
                                                 "LIMIT 2")}
                          :type     :native
                          :database (data/id)}))
@@ -134,17 +135,17 @@
   (tu/db-timezone-id))
 
 
-;; make sure that BigQuery properly aliases the names generated for Join Tables. It's important to include the name of
-;; the dataset along, e.g. `test_data.categories__via__category_id` rather than just
-;; `categories__via__category_id`, which is what the other SQL databases do. (#4218)
+;; make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use the right
+;; alias, e.g. something like `categories__via__category_id`, which is considerably different from what other SQL
+;; databases do. (#4218)
 (expect-with-engine :bigquery
-  (str "SELECT count(*) AS [count],"
-       " [test_data.categories__via__category_id.name] AS [test_data.categories__via__category_id.name] "
-       "FROM [test_data.venues] "
-       "LEFT JOIN [test_data.categories] [test_data.categories__via__category_id]"
-       " ON [test_data.venues.category_id] = [test_data.categories__via__category_id.id] "
-       "GROUP BY [test_data.categories__via__category_id.name] "
-       "ORDER BY [test_data.categories__via__category_id.name] ASC")
+  (str "SELECT count(*) AS `count`,"
+       " `test_data.categories__via__category_id`.`name` AS `categories__via__category_id___name` "
+       "FROM `test_data.venues` "
+       "LEFT JOIN `test_data.categories` `test_data.categories__via__category_id`"
+       " ON `test_data.venues`.`category_id` = `test_data.categories__via__category_id`.`id` "
+       "GROUP BY `categories__via__category_id___name` "
+       "ORDER BY `categories__via__category_id___name` ASC")
   ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks that and
   ;; make it return `true` so this test proceeds as expected
   (with-redefs [qpi/driver-supports? (constantly true)]
@@ -157,3 +158,13 @@
                                  :aggregation  [:count]
                                  :breakout     [[:fk-> (data/id :venues :category_id) (data/id :categories :name)]]}})]
         (get-in results [:data :native_form :query] results)))))
+
+;; Make sure the BigQueryIdentifier class works as expected
+(expect
+  ["SELECT `dataset.table`.`field`"]
+  (hsql/format {:select [(#'bigquery/map->BigQueryIdentifier
+                          {:dataset-name "dataset", :table-name "table", :field-name "field"})]}))
+
+(expect
+  ["SELECT `dataset.table`"]
+  (hsql/format {:select [(#'bigquery/map->BigQueryIdentifier {:dataset-name "dataset", :table-name "table"})]}))

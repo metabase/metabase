@@ -1,27 +1,33 @@
-(ns metabase.setup)
+(ns metabase.setup
+  (:require [metabase.models.setting :refer [Setting defsetting]]
+            [toucan.db :as db]))
 
-(defonce ^:private setup-token
-  (atom nil))
+(defsetting ^:private setup-token
+  "A token used to signify that an instance has permissions to create the initial User. This is created upon the first
+  launch of Metabase, by the first instance; once used, it is cleared out, never to be used again."
+  :internal? true)
 
 (defn token-value
   "Return the value of the setup token, if any."
   []
-  @setup-token)
+  (setup-token))
 
 (defn token-match?
   "Function for checking if the supplied string matches our setup token.
-   Returns boolean `true` if supplied token matches `@setup-token`, `false` otherwise."
+   Returns boolean `true` if supplied token matches the setup token, `false` otherwise."
   [token]
   {:pre [(string? token)]}
-  (= token @setup-token))
+  (= token (setup-token)))
 
 (defn create-token!
-  "Create and set a new `@setup-token`.
-   Returns the newly created token."
+  "Create and set a new setup token, if one has not already been created. Returns the newly created token."
   []
-  (reset! setup-token (str (java.util.UUID/randomUUID))))
+  ;; fetch the value directly from the DB; *do not* rely on cached value, in case a different instance came along and
+  ;; already created it
+  (or (db/select-one-field :value Setting :key "setup-token")
+      (setup-token (str (java.util.UUID/randomUUID)))))
 
 (defn clear-token!
-  "Clear the `@setup-token` if it exists and reset it to nil."
+  "Clear the setup token if it exists and reset it to `nil`."
   []
-  (reset! setup-token nil))
+  (setup-token nil))

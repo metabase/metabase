@@ -95,9 +95,9 @@
       dev/check-results-format
       limit/limit
       cumulative-ags/handle-cumulative-aggregations
+      results-metadata/record-and-return-metadata!
       format-rows/format-rows
       binning/update-binning-strategy
-      results-metadata/record-and-return-metadata!
       resolve/resolve-middleware
       add-dim/add-remapping
       implicit-clauses/add-implicit-clauses

@@ -39,6 +39,7 @@ import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 import { rescanFieldValues, discardFieldValues } from "../field";
 
 import { has_field_values_options } from "metabase/lib/core";
+import colors from "metabase/lib/colors";
 
 const SelectClasses =
   "h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold";
@@ -276,14 +277,14 @@ export const BackButton = ({ databaseId, tableId }) => (
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
     className="circle text-white p2 mt3 ml3 flex align-center justify-center  absolute top left"
-    style={{ backgroundColor: "#8091AB" }}
+    style={{ backgroundColor: colors["bg-dark"] }}
   >
     <Icon name="backArrow" />
   </Link>
 );
 
 const SelectSeparator = () => (
-  <Icon name="chevronright" size={12} className="mx2 text-grey-3" />
+  <Icon name="chevronright" size={12} className="mx2 text-medium" />
 );
 
 export class FieldHeader extends Component {
@@ -468,7 +469,7 @@ export const SectionHeader = ({ title, description }) => (
   <div className="border-bottom py2 mb2">
     <h2 className="text-italic">{title}</h2>
     {description && (
-      <p className="mb0 text-grey-4 mt1 text-paragraph text-measure">
+      <p className="mb0 text-medium mt1 text-paragraph text-measure">
         {description}
       </p>
     )}
@@ -726,7 +727,7 @@ export class FieldRemapping extends Component {
                 {fkMappingField ? (
                   fkMappingField.display_name
                 ) : (
-                  <span className="text-grey-1">{t`Choose a field`}</span>
+                  <span className="text-light">{t`Choose a field`}</span>
                 )}
               </SelectButton>
             }

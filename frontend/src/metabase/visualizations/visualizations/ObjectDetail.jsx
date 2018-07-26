@@ -97,7 +97,7 @@ export class ObjectDetail extends Component {
       isLink = false;
     } else {
       if (value === null || value === undefined || value === "") {
-        cellValue = <span className="text-grey-2">{t`Empty`}</span>;
+        cellValue = <span className="text-light">{t`Empty`}</span>;
       } else if (isa(column.special_type, TYPE.SerializedJSON)) {
         let formattedJson = JSON.stringify(JSON.parse(value), null, 2);
         cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
@@ -208,7 +208,7 @@ export class ObjectDetail extends Component {
         );
         const via =
           fkCountsByTable[fk.origin.table.id] > 1 ? (
-            <span className="text-grey-3 text-normal">
+            <span className="text-medium text-normal">
               {" "}
               {t`via ${fk.origin.display_name}`}
             </span>
@@ -226,7 +226,7 @@ export class ObjectDetail extends Component {
         let fkReference;
         const referenceClasses = cx("flex align-center my2 pb2 border-bottom", {
           "text-brand-hover cursor-pointer text-dark": fkClickable,
-          "text-grey-3": !fkClickable,
+          "text-medium": !fkClickable,
         });
 
         if (fkClickable) {
@@ -284,7 +284,7 @@ export class ObjectDetail extends Component {
             </div>
           </div>
           <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
-            <div className="p4 flex align-center text-bold text-grey-3">
+            <div className="p4 flex align-center text-bold text-medium">
               <Icon name="connections" size={17} />
               <div className="ml2">
                 {jt`This ${(

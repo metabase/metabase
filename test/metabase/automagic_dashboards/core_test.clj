@@ -1,39 +1,28 @@
 (ns metabase.automagic-dashboards.core-test
-  (:require [expectations :refer :all]
+  (:require [clj-time
+             [core :as t]
+             [format :as t.format]]
+            [expectations :refer :all]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [core :refer :all :as magic]
              [rules :as rules]]
             [metabase.models
              [card :refer [Card]]
+             [collection :refer [Collection]]
              [database :refer [Database]]
              [field :as field :refer [Field]]
              [metric :refer [Metric]]
+             [permissions :as perms]
+             [permissions-group :as perms-group]
              [query :as query]
-             [table :refer [Table] :as table]
-             [user :as user]]
-            [metabase.query-processor :as qp]
+             [table :refer [Table] :as table]]
             [metabase.test.data :as data]
-            [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
+            [metabase.test.automagic-dashboards :refer :all]
+            [metabase.util.date :as date]
+            [puppetlabs.i18n.core :as i18n :refer [tru]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
-
-(defmacro with-rasta
-  "Execute body with rasta as the current user."
-  [& body]
-  `(binding [api/*current-user-id*              (test-users/user->id :rasta)
-             api/*current-user-permissions-set* (-> :rasta
-                                                    test-users/user->id
-                                                    user/permissions-set
-                                                    atom)]
-     ~@body))
-
-(defmacro ^:private with-dashboard-cleanup
-  [& body]
-  `(tu/with-model-cleanup ['~'Card '~'Dashboard '~'Collection '~'DashboardCard]
-     ~@body))
-
 
 ;;; ------------------- `->reference` -------------------
 
@@ -76,39 +65,28 @@
 
 ;;; ------------------- `automagic-anaysis` -------------------
 
-(defn- collect-urls
-  [dashboard]
-  (->> dashboard
-       (tree-seq (some-fn sequential? map?) identity)
-       (keep (fn [form]
-               (when (map? form)
-                 (:url form))))))
-
-(defn- valid-urls?
-  [dashboard]
-  (->> dashboard
-       collect-urls
-       (every? (fn [url]
-                 ((test-users/user->client :rasta) :get 200 (format "automagic-dashboards/%s"
-                                                                    (subs url 16)))))))
-
-(def ^:private valid-card?
-  (comp qp/expand :dataset_query))
-
-(defn- valid-dashboard?
-  [dashboard]
-  (assert (:name dashboard))
-  (assert (-> dashboard :ordered_cards count pos?))
-  (assert (valid-urls? dashboard))
-  (assert (every? valid-card? (keep :card (:ordered_cards dashboard))))
-  true)
+(defn- test-automagic-analysis
+  ([entity] (test-automagic-analysis entity nil))
+  ([entity cell-query]
+   ;; We want to both generate as many cards as we can to catch all aberrations, but also make sure
+   ;; that size limiting works.
+   (and (valid-dashboard? (automagic-analysis entity {:cell-query cell-query :show :all}))
+        (valid-dashboard? (automagic-analysis entity {:cell-query cell-query :show 1})))))
 
 (expect
   (with-rasta
     (with-dashboard-cleanup
       (->> (db/select Table :db_id (data/id))
-           (keep #(automagic-analysis % {}))
-           (every? valid-dashboard?)))))
+           (every? test-automagic-analysis)))))
+
+(expect
+  (with-rasta
+    (with-dashboard-cleanup
+      (->> (automagic-analysis (Table (data/id :venues)) {:show 1})
+           :ordered_cards
+           (filter :card)
+           count
+           (= 1)))))
 
 (expect
   (with-rasta
@@ -116,28 +94,32 @@
       (->> (db/select Field
              :table_id [:in (db/select-field :id Table :db_id (data/id))]
              :visibility_type "normal")
-           (keep #(automagic-analysis % {}))
-           (every? valid-dashboard?)))))
+           (every? test-automagic-analysis)))))
 
 (expect
   (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
                                            :definition {:query {:aggregation ["count"]}}}]]
     (with-rasta
       (with-dashboard-cleanup
-        (->> (Metric) (keep #(automagic-analysis % {})) (every? valid-dashboard?))))))
+        (->> (Metric) (every? test-automagic-analysis))))))
 
 (expect
-  (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
+  (tt/with-temp* [Collection [{collection-id :id}]
+                  Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :collection_id collection-id
                                        :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                                                                :source_table (data/id :venues)}
                                                        :type :query
                                                        :database (data/id)}}]]
     (with-rasta
       (with-dashboard-cleanup
-        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+        (-> card-id Card test-automagic-analysis)))))
 
 (expect
-  (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
+  (tt/with-temp* [Collection [{collection-id :id}]
+                  Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :collection_id collection-id
                                        :dataset_query {:query {:aggregation [[:count]]
                                                                :breakout [[:field-id (data/id :venues :category_id)]]
                                                                :source_table (data/id :venues)}
@@ -145,80 +127,98 @@
                                                        :database (data/id)}}]]
     (with-rasta
       (with-dashboard-cleanup
-        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
+        (-> card-id Card test-automagic-analysis)))))
 
 (expect
-  (tt/with-temp* [Card [{card-id :id} {:table_id      nil
+  (tt/with-temp* [Collection [{collection-id :id}]
+                  Card [{card-id :id} {:table_id      nil
+                                       :collection_id collection-id
                                        :dataset_query {:native {:query "select * from users"}
                                                        :type :native
                                                        :database (data/id)}}]]
     (with-rasta
       (with-dashboard-cleanup
-        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+        (-> card-id Card test-automagic-analysis)))))
 
 (expect
-  (tt/with-temp* [Card [{source-id :id} {:table_id      (data/id :venues)
+  (tt/with-temp* [Collection [{collection-id :id}]
+                  Card [{source-id :id} {:table_id      (data/id :venues)
+                                         :collection_id collection-id
                                          :dataset_query {:query    {:source_table (data/id :venues)}
                                                          :type     :query
                                                          :database (data/id)}}]
                   Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :collection_id collection-id
                                        :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
                                                                   :source_table (str "card__" source-id)}
                                                        :type     :query
                                                        :database -1337}}]]
     (with-rasta
       (with-dashboard-cleanup
-        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+        (-> card-id Card test-automagic-analysis)))))
 
 (expect
-  (tt/with-temp* [Card [{source-id :id} {:table_id      nil
+  (tt/with-temp* [Collection [{collection-id :id}]
+                  Card [{source-id :id} {:table_id      nil
+                                         :collection_id collection-id
                                          :dataset_query {:native {:query "select * from users"}
                                                          :type :native
                                                          :database (data/id)}}]
                   Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :collection_id collection-id
                                        :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
                                                                   :source_table (str "card__" source-id)}
                                                        :type     :query
                                                        :database -1337}}]]
     (with-rasta
       (with-dashboard-cleanup
-        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+        (-> card-id Card test-automagic-analysis)))))
 
 (expect
-  (tt/with-temp* [Card [{card-id :id} {:table_id      nil
+  (tt/with-temp* [Collection [{collection-id :id}]
+                  Card [{card-id :id} {:table_id      nil
+                                       :collection_id collection-id
                                        :dataset_query {:native {:query "select * from users"}
                                                        :type :native
                                                        :database (data/id)}}]]
     (with-rasta
       (with-dashboard-cleanup
-        (-> card-id Card (automagic-analysis {}) valid-dashboard?)))))
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+        (-> card-id Card test-automagic-analysis)))))
 
 (expect
-  (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
+  (tt/with-temp* [Collection [{collection-id :id}]
+                  Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :collection_id collection-id
                                        :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                                                                :source_table (data/id :venues)}
                                                        :type :query
                                                        :database (data/id)}}]]
     (with-rasta
       (with-dashboard-cleanup
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
         (-> card-id
             Card
-            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id)] 2]})
-            valid-dashboard?)))))
+            (test-automagic-analysis [:= [:field-id (data/id :venues :category_id)] 2]))))))
 
 
 (expect
-  (tt/with-temp* [Card [{card-id :id} {:table_id      (data/id :venues)
+  (tt/with-temp* [Collection [{collection-id :id}]
+                  Card [{card-id :id} {:table_id      (data/id :venues)
+                                       :collection_id collection-id
                                        :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                                                                :source_table (data/id :venues)}
                                                        :type :query
                                                        :database (data/id)}}]]
     (with-rasta
       (with-dashboard-cleanup
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
         (-> card-id
             Card
-            (automagic-analysis {:cell-query [:!= [:field-id (data/id :venues :category_id)] 2]})
-            valid-dashboard?)))))
+            (test-automagic-analysis [:= [:field-id (data/id :venues :category_id)] 2]))))))
 
 
 (expect
@@ -228,7 +228,7 @@
                                           :source_table (data/id :venues)}
                                   :type :query
                                   :database (data/id)})]
-        (-> q (automagic-analysis {}) valid-dashboard?)))))
+        (test-automagic-analysis q)))))
 
 (expect
   (with-rasta
@@ -238,7 +238,7 @@
                                           :source_table (data/id :venues)}
                                   :type :query
                                   :database (data/id)})]
-        (-> q (automagic-analysis {}) valid-dashboard?)))))
+        (test-automagic-analysis q)))))
 
 (expect
   (with-rasta
@@ -248,7 +248,7 @@
                                           :source_table (data/id :checkins)}
                                   :type :query
                                   :database (data/id)})]
-        (-> q (automagic-analysis {}) valid-dashboard?)))))
+        (test-automagic-analysis q)))))
 
 (expect
   (with-rasta
@@ -257,9 +257,7 @@
                                           :source_table (data/id :venues)}
                                   :type :query
                                   :database (data/id)})]
-        (-> q
-            (automagic-analysis {:cell-query [:= [:field-id (data/id :venues :category_id)] 2]})
-            valid-dashboard?)))))
+        (test-automagic-analysis q [:= [:field-id (data/id :venues :category_id)] 2])))))
 
 
 ;;; ------------------- /candidates -------------------
@@ -408,3 +406,60 @@
   (#'magic/optimal-datetime-resolution
    {:fingerprint {:type {:type/DateTime {:earliest "2017-01-01T00:00:00"
                                          :latest   "2017-01-01T00:02:00"}}}}))
+
+
+;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
+
+(let [tz                     (-> date/jvm-timezone deref ^TimeZone .getID)
+      dt                     (t/from-time-zone (t/date-time 1990 9 9 12 30)
+                                               (t/time-zone-for-id tz))
+      unparse-with-formatter (fn [formatter dt]
+                                 (t.format/unparse
+                                  (t.format/formatter formatter (t/time-zone-for-id tz)) dt))]
+  (expect
+    [(tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
+     (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
+     (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
+     (tru "in {0} week - {1}"
+          (#'magic/pluralize (date/date-extract :week-of-year dt tz))
+          (str (date/date-extract :year dt tz)))
+     (tru "in {0}" (unparse-with-formatter "MMMM YYYY" dt))
+     (tru "in Q{0} - {1}"
+          (date/date-extract :quarter-of-year dt tz)
+          (str (date/date-extract :year dt tz)))
+     (unparse-with-formatter "YYYY" dt)
+     (unparse-with-formatter "EEEE" dt)
+     (tru "at {0}" (unparse-with-formatter "h a" dt))
+     (unparse-with-formatter "MMMM" dt)
+     (tru "Q{0}" (date/date-extract :quarter-of-year dt tz))
+     (date/date-extract :minute-of-hour dt tz)
+     (date/date-extract :day-of-month dt tz)
+     (date/date-extract :week-of-year dt tz)]
+    (let [dt (t.format/unparse (t.format/formatters :date-hour-minute-second) dt)]
+      [(#'magic/humanize-datetime dt :minute)
+       (#'magic/humanize-datetime dt :hour)
+       (#'magic/humanize-datetime dt :day)
+       (#'magic/humanize-datetime dt :week)
+       (#'magic/humanize-datetime dt :month)
+       (#'magic/humanize-datetime dt :quarter)
+       (#'magic/humanize-datetime dt :year)
+       (#'magic/humanize-datetime dt :day-of-week)
+       (#'magic/humanize-datetime dt :hour-of-day)
+       (#'magic/humanize-datetime dt :month-of-year)
+       (#'magic/humanize-datetime dt :quarter-of-year)
+       (#'magic/humanize-datetime dt :minute-of-hour)
+       (#'magic/humanize-datetime dt :day-of-month)
+       (#'magic/humanize-datetime dt :week-of-year)])))
+
+(expect
+  [(tru "{0}st" 1)
+   (tru "{0}nd" 22)
+   (tru "{0}rd" 303)
+   (tru "{0}th" 0)
+   (tru "{0}th" 8)]
+  (map #'magic/pluralize [1 22 303 0 8]))
+
+;; Make sure we have handlers for all the units available
+(expect
+  (every? (partial #'magic/humanize-datetime "1990-09-09T12:30:00")
+          (concat (var-get #'date/date-extract-units) (var-get #'date/date-trunc-units))))
