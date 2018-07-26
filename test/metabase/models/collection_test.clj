@@ -1244,23 +1244,21 @@
       (db/update! Collection (u/get-id c) :archived true)
       (db/select-one-field :archived Dashboard :id (u/get-id dashboard)))))
 
-;; Test that archiving *deletes* Pulses (Pulses cannot currently be archived)
-;; Pulse is in E; archiving E should cause Pulse to get deleted
+;; Test that archiving Collections applies to Pulses
+;; Pulse is in E; archiving E should cause Pulse to be archived
 (expect
-  false
   (with-collection-hierarchy [{:keys [e], :as collections}]
     (tt/with-temp Pulse [pulse {:collection_id (u/get-id e)}]
       (db/update! Collection (u/get-id e) :archived true)
-      (db/exists? Pulse :id (u/get-id pulse)))))
+      (db/select-one-field :archived Pulse :id (u/get-id pulse)))))
 
-;; Test that archiving *deletes* Pulses belonging to descendant Collections
+;; Test that archiving works on Pulses belonging to descendant Collections
 ;; Pulse is in E, a descendant of C; archiving C should cause Pulse to be archived
 (expect
-  false
   (with-collection-hierarchy [{:keys [c e], :as collections}]
     (tt/with-temp Pulse [pulse {:collection_id (u/get-id e)}]
       (db/update! Collection (u/get-id c) :archived true)
-      (db/exists? Pulse :id (u/get-id pulse)))))
+      (db/select-one-field :archived Pulse :id (u/get-id pulse)))))
 
 ;; Test that unarchiving applies to Cards
 ;; Card is in E; unarchiving E should cause Card to be unarchived
