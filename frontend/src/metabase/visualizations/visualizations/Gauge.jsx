@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 import { t } from "c-3po";
 import d3 from "d3";
+import cx from "classnames";
 
 import { normal } from "metabase/lib/colors";
 
@@ -10,10 +11,10 @@ import ChartSettingGaugeSegments from "metabase/visualizations/components/settin
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-const OUTER_RADIUS = 50; // within 100px canvas
+const OUTER_RADIUS = 45; // within 100px canvas
 const INNER_RADIUS_RATIO = 4 / 5;
 
-export default class Scalar extends Component {
+export default class Gauge extends Component {
   props: VisualizationProps;
 
   static uiName = t`Gauge`;
@@ -45,7 +46,22 @@ export default class Scalar extends Component {
   };
 
   render() {
-    const { series: [{ data: { rows } }], settings, className } = this.props;
+    const {
+      series: [{ data: { rows } }],
+      settings,
+      className,
+      width,
+      height,
+    } = this.props;
+
+    let svgWidth, svgHeight;
+    if (height / width < 0.5) {
+      svgHeight = height;
+      svgWidth = height * 2;
+    } else {
+      svgWidth = width;
+      svgHeight = width / 2;
+    }
 
     const segments = settings["gauge.segments"];
 
@@ -67,28 +83,33 @@ export default class Scalar extends Component {
       Math.sin(angle(value) - Math.PI / 2) * distance;
 
     return (
-      <div className={className}>
-        <svg viewBox="0 0 100 100">
-          <g transform={`translate(50,50)`}>
-            {segments.slice(0, -1).map((segment, index) => (
+      <div className={cx(className, "flex layout-centered")}>
+        <div
+          className="relative"
+          style={{ width: svgWidth, height: svgHeight }}
+        >
+          <svg viewBox="0 0 100 50">
+            <g transform={`translate(50,50)`}>
+              {segments.slice(0, -1).map((segment, index) => (
+                <path
+                  d={arc({
+                    startAngle: angle(segments[index].value),
+                    endAngle: angle(segments[index + 1].value),
+                  })}
+                  fill={segment.color}
+                />
+              ))}
               <path
-                d={arc({
-                  startAngle: angle(segments[index].value),
-                  endAngle: angle(segments[index + 1].value),
-                })}
-                fill={segment.color}
+                d={`M${dialPosition(
+                  OUTER_RADIUS * INNER_RADIUS_RATIO,
+                )} L${dialPosition(OUTER_RADIUS)} `}
+                strokeWidth={2}
+                strokeLinecap="round"
+                stroke={normal.grey2}
               />
-            ))}
-            <path
-              d={`M${dialPosition(
-                OUTER_RADIUS * INNER_RADIUS_RATIO,
-              )} L${dialPosition(OUTER_RADIUS)} `}
-              strokeWidth={2}
-              strokeLinecap="round"
-              stroke={normal.grey2}
-            />
-          </g>
-        </svg>
+            </g>
+          </svg>
+        </div>
       </div>
     );
   }
