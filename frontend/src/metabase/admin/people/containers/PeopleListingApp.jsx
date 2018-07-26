@@ -25,7 +25,6 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 import EntityMenu from "metabase/components/EntityMenu";
 
 import EditUserForm from "../components/EditUserForm.jsx";
-import UserActionsSelect from "../components/UserActionsSelect.jsx";
 import UserGroupSelect from "../components/UserGroupSelect.jsx";
 
 export const MODAL_ADD_PERSON = "MODAL_ADD_PERSON";
