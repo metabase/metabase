@@ -48,14 +48,12 @@
   {:name        {:global {:distinct-count 100},
                  :type   {:type/Text {:percent-json  0.0, :percent-url    0.0,
                                       :percent-email 0.0, :average-length 15.63}}}
-   :id          {:global {:distinct-count 100},
-                 :type   {:type/Number {:min 1, :max 100, :avg 50.5}}}
+   :id          nil
    :price       {:global {:distinct-count 4},
-                 :type   {:type/Number {:min 1, :max 4, :avg 2.03}}}
+                 :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03}}}
    :latitude    {:global {:distinct-count 94},
                  :type   {:type/Number {:min 10.06, :max 40.78, :avg 35.51}}}
-   :category_id {:global {:distinct-count 28},
-                 :type   {:type/Number {:min 2, :max 74, :avg 29.98}}}
+   :category_id {:global {:distinct-count 28}}
    :longitude   {:global {:distinct-count 84},
                  :type   {:type/Number {:min -165.37, :max -73.95, :avg -116.0}}}})
 

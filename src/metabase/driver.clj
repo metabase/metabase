@@ -485,10 +485,12 @@
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   [table :- si/TableInstance, fields :- [si/FieldInstance]]
   (let [results ((resolve 'metabase.query-processor/process-query)
-                 {:database (:db_id table)
-                  :type     :query
-                  :query    {:source-table (u/get-id table)
-                             :fields       (vec (for [field fields]
-                                                  [:field-id (u/get-id field)]))
-                             :limit        max-sample-rows}})]
+                 {:database   (:db_id table)
+                  :type       :query
+                  :query      {:source-table (u/get-id table)
+                               :fields       (vec (for [field fields]
+                                                    [:field-id (u/get-id field)]))
+                               :limit        max-sample-rows}
+                  :middleware {:format-rows?           false
+                               :skip-results-metadata? true}})]
     (get-in results [:data :rows])))

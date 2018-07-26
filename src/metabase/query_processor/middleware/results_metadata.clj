@@ -45,24 +45,26 @@
           (encryption/maybe-decrypt checksum))))
 
 (defn record-and-return-metadata!
-  "Middleware that records metadata about the columns returned when running the query if it is associated with a Card."
+  "Middleware that records metadata about the columns returned when running the query."
   [qp]
   (fn [{{:keys [card-id nested?]} :info, :as query}]
     (let [results (qp query)]
-      (try
-        (let [metadata (seq (qr/results->column-metadata results))]
-          ;; At the very least we can skip the Extra DB call to update this Card's metadata results
-          ;; if its DB doesn't support nested queries in the first place
-          (when (i/driver-supports? :nested-queries)
-            (when (and card-id
+      (if (-> query :middleware :skip-results-metadata?)
+        results
+        (try
+          (let [metadata (seq (qr/results->column-metadata results))]
+            ;; At the very least we can skip the Extra DB call to update this Card's metadata results
+            ;; if its DB doesn't support nested queries in the first place
+            (when (and (i/driver-supports? :nested-queries)
+                       card-id
                        (not nested?))
-              (record-metadata! card-id metadata)))
-          ;; add the metadata and checksum to the response
-          (assoc results :results_metadata {:checksum (metadata-checksum metadata)
-                                            :columns  metadata}))
-        ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
-        ;; rather than failing the entire query
-        (catch Throwable e
-          (log/error "Error recording results metadata for query:" (.getMessage e) "\n"
-                     (u/pprint-to-str (u/filtered-stacktrace e)))
-          results)))))
+              (record-metadata! card-id metadata))
+            ;; add the metadata and checksum to the response
+            (assoc results :results_metadata {:checksum (metadata-checksum metadata)
+                                              :columns  metadata}))
+          ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
+          ;; rather than failing the entire query
+          (catch Throwable e
+            (log/error "Error recording results metadata for query:" (.getMessage e) "\n"
+                       (u/pprint-to-str (u/filtered-stacktrace e)))
+            results))))))
