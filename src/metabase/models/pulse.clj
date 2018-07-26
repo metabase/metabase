@@ -161,8 +161,8 @@
 
 (s/defn retrieve-notification :- (s/maybe PulseInstance)
   "Fetch an Alert or Pulse, and do the 'standard' hydrations."
-  [notification-or-id]
-  (-> (Pulse (u/get-id notification-or-id))
+  [notification-or-id & additional-condtions]
+  (-> (apply Pulse :id (u/get-id notification-or-id), additional-condtions)
       hydrate-notification))
 
 (s/defn ^:private notification->alert :- PulseInstance
