@@ -17,7 +17,6 @@ import PulseCardPreview from "metabase/pulse/components/PulseCardPreview";
 import Toggle from "metabase/components/Toggle";
 
 import {
-  FETCH_PULSES,
   SET_EDITING_PULSE,
   SAVE_EDITING_PULSE,
   FETCH_CARDS,
@@ -155,5 +154,4 @@ describe("Pulse", () => {
     expect(pulse.channels[0].channel_type).toBe("email");
     expect(pulse.channels[0].enabled).toBe(true);
   });
-
 });
