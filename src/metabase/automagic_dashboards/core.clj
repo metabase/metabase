@@ -129,6 +129,10 @@
 (def ^:private ^{:arglists '([x])} encode-base64-json
   (comp codec/base64-encode codecs/str->bytes json/encode))
 
+(defn- ga-table?
+  [table]
+  (isa? (:entity_type table) :entity/GoogleAnalyticsTable))
+
 (defmulti
   ^{:doc ""
     :arglists '([entity])}
@@ -137,7 +141,7 @@
 (defmethod ->root (type Table)
   [table]
   {:entity       table
-   :full-name    (if (isa? (:entity_type table) :entity/GoogleAnalyticsTable)
+   :full-name    (if (ga-table? table)
                    (:display_name table)
                    (tru "{0} table" (:display_name table)))
    :short-name   (:display_name table)
@@ -788,13 +792,15 @@
 
 (defn- drilldown-fields
   [context]
-  (->> context
-       :dimensions
-       vals
-       (mapcat :matches)
-       filters/interesting-fields
-       (map ->related-entity)
-       (hash-map :drilldown-fields)))
+  (if (-> context :root :entity ga-table?)
+    {:drilldown-fields nil}
+    (->> context
+         :dimensions
+         vals
+         (mapcat :matches)
+         filters/interesting-fields
+         (map ->related-entity)
+         (hash-map :drilldown-fields))))
 
 (defn- fill-related
   "We fill available slots round-robin style. Each selector is a list of fns that are tried against
