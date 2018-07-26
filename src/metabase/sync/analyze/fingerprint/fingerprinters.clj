@@ -140,10 +140,9 @@
                :latest   latest}))
 
 (deffingerprinter :type/Number
-  ((remove nil?)
-   (redux/fuse {:min stats/min
-                :max stats/max
-                :avg stats/mean})))
+  (redux/fuse {:min stats/min
+               :max stats/max
+               :avg stats/mean}))
 
 (defn- valid-serialized-json?
   "Is x a serialized JSON dictionary or array."
