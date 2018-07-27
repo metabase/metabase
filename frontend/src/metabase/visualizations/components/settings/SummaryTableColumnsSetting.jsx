@@ -1,5 +1,7 @@
 /* @flow */
 //todo clean imports and package.json
+//todo rename
+//todo remove {name}.css
 import React, {Component} from "react";
 
 import {t} from "c-3po";
@@ -8,22 +10,18 @@ import {
   columnsAreValid,
 } from "metabase/visualizations/lib/utils";
 
-import CheckBox from "metabase/components/CheckBox.jsx";
 import styles from './SummaryTableColumnsSettings.css';
 import Icon from "metabase/components/Icon.jsx";
-import PropTypes from 'prop-types';
 
 import cx from "classnames";
-import Button from "metabase/components/Button";
 import Toggle from "metabase/components/Toggle";
 import {SortableContainer, SortableElement, arrayMove} from "react-sortable-hoc";
 
 
-//todo: remove consts
+//todo: remove or move consts
 export const GROUPS_SOURCES = 'groupsSources';
 export const COLUMNS_SOURCE = 'columnsSource';
 export const VALUES_SOURCES = 'valuesSources';
-const UNUSED_COLUMNS = 'unusedColumns';
 
 type ValueSerialized = {
   [GROUPS_SOURCES]: string[],
