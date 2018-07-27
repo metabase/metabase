@@ -379,9 +379,11 @@
       :present [:collection_id :collection_position :archived]
       :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty]))
   ;; update Cards if the 'refs' have changed
-  (update-notification-cards-if-changed! notification (map card->ref (:cards notification)))
+  (when (contains? notification :cards)
+    (update-notification-cards-if-changed! notification (map card->ref (:cards notification))))
   ;; update channels as needed
-  (update-notification-channels! notification (:channels notification)))
+  (when (contains? notification :channels)
+    (update-notification-channels! notification (:channels notification))))
 
 (s/defn update-pulse!
   "Update an existing Pulse, including all associated data such as: PulseCards, PulseChannels, and
