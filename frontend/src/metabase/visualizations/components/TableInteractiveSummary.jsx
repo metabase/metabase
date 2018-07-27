@@ -603,8 +603,6 @@ export default class TableInteractiveSummary extends Component {
                   ? this.tableUpperHeaderRenderer(props,groups[props.columnIndex])
                   : null
               }
-              onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
-              scrollLeft={scrollLeft}
               tabIndex={null}
             />
             <Grid
@@ -632,8 +630,6 @@ export default class TableInteractiveSummary extends Component {
                   ? this.tableLowerHeaderRenderer(props)
                   : null
               }
-              onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
-              scrollLeft={scrollLeft}
               tabIndex={null}
             />
             <Grid
