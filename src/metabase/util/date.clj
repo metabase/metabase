@@ -278,6 +278,7 @@
      (->Timestamp cal))))
 
 (def ^:const date-extract-units
+  "Units which return a (numerical, periodic) component of a date"
   #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year
     :year})
 
