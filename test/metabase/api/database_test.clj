@@ -177,7 +177,6 @@
                 :active          $
                 :id              $
                 :db_id           $
-                :raw_table_id    $
                 :created_at      $
                 :fields_hash     $}))
       (update :entity_type (comp (partial str "entity/") name))))
@@ -284,7 +283,6 @@
    (match-$ field
      {:updated_at          $
       :id                  $
-      :raw_column_id       $
       :created_at          $
       :last_analyzed       $
       :fingerprint         $
@@ -330,7 +328,6 @@
                                    :rows         nil
                                    :updated_at   $
                                    :id           (data/id :categories)
-                                   :raw_table_id $
                                    :db_id        (data/id)
                                    :created_at   $
                                    :fields_hash  $}))]}))

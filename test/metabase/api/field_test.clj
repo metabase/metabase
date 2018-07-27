@@ -46,7 +46,6 @@
   (tu/match-$ (Field (data/id :users :name))
     {:description         nil
      :table_id            (data/id :users)
-     :raw_column_id       $
      :fingerprint         $
      :fingerprint_version $
      :table               (tu/match-$ (Table (data/id :users))
@@ -66,7 +65,6 @@
                              :caveats                 nil
                              :points_of_interest      nil
                              :show_in_getting_started false
-                             :raw_table_id            $
                              :created_at              $
                              :fields_hash             $})
      :special_type        "type/Name"

@@ -104,7 +104,6 @@
    :entity_type             :entity/GenericTable
    :id                      true
    :points_of_interest      nil
-   :raw_table_id            false
    :rows                    nil
    :schema                  nil
    :show_in_getting_started false
@@ -127,7 +126,6 @@
    :points_of_interest  nil
    :position            0
    :preview_display     true
-   :raw_column_id       false
    :special_type        nil
    :table_id            true
    :updated_at          true
