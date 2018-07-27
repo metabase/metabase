@@ -570,8 +570,7 @@
                       PulseChannel          [pc   (pulse-channel alert)]
                       PulseChannelRecipient [_    (recipient pc :rasta)]]
   [(-> (default-alert card)
-       ;; The read_only flag is used by the UI to determine what the user is allowed to update
-       (assoc :read_only true)
+       (assoc :can_write false)
        (update-in [:channels 0] merge {:schedule_hour 15, :schedule_type "daily"})
        (assoc-in [:card :collection_id] true))]
   (with-alert-setup
