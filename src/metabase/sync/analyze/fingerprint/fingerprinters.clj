@@ -48,7 +48,11 @@
 (defmulti
   ^{:doc "Return a fingerprinter transducer for a given field based on the field's type."
     :arglists '([field])}
-  fingerprinter (juxt :base_type (some-fn :special_type (constantly :type/*))))
+  fingerprinter (fn [{:keys [base_type special_type unit]}]
+                  [(if (du/date-extract-units unit)
+                     :type/Integer
+                     base_type)
+                   (or special_type :type/*)]))
 
 (def ^:private global-fingerprinter
   (redux/post-complete
@@ -143,9 +147,7 @@
 
 (extend-protocol IDateCoercible
   String                 (->date [this] (-> this du/str->date-time t.coerce/to-date))
-  java.util.Date         (->date [this] this)
-  org.joda.time.DateTime (->date [this] (t.coerce/to-date this))
-  Integer                (->date [this] (java.util.Date. ^Integer this)))
+  java.util.Date         (->date [this] this))
 
 (deffingerprinter :type/DateTime
   ((map ->date)
