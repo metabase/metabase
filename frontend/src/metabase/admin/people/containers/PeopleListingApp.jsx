@@ -514,7 +514,7 @@ export default class PeopleListingApp extends Component {
                               <Tooltip tooltip={t`Reactivate this account`}>
                                 <Icon
                                   name="refresh"
-                                  className="text-grey-1 text-brand-hover cursor-pointer"
+                                  className="text-light text-brand-hover cursor-pointer"
                                   size={20}
                                   onClick={() =>
                                     this.props.showModal({

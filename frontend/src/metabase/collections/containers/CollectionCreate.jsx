@@ -3,22 +3,30 @@ import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 
 import CollectionForm from "metabase/containers/CollectionForm";
+import Collections from "metabase/entities/collections";
 
-@connect(null, { goBack })
+const mapStateToProps = (state, props) => ({
+  initialCollectionId: Collections.selectors.getInitialCollectionId(
+    state,
+    props,
+  ),
+});
+
+const mapDispatchToProps = {
+  goBack,
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class CollectionCreate extends Component {
   render() {
-    const { params } = this.props;
-    const collectionId =
-      params && params.collectionId != null && params.collectionId !== "root"
-        ? parseInt(params.collectionId)
-        : null;
+    const { initialCollectionId, goBack } = this.props;
     return (
       <CollectionForm
         collection={{
-          parent_id: collectionId,
+          parent_id: initialCollectionId,
         }}
-        onSaved={() => this.props.goBack()}
-        onClose={this.props.goBack}
+        onSaved={goBack}
+        onClose={goBack}
       />
     );
   }

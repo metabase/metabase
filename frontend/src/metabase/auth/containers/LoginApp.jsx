@@ -133,7 +133,7 @@ export default class LoginApp extends Component {
                     className="mx1 absolute text-centered left right"
                     style={{ bottom: -8 }}
                   >
-                    <span className="text-bold px3 py2 text-grey-3 bg-white">{t`OR`}</span>
+                    <span className="text-bold px3 py2 text-medium bg-white">{t`OR`}</span>
                   </div>
                 </div>
               )}
@@ -220,7 +220,7 @@ export default class LoginApp extends Component {
                       ? "?email=" + this.state.credentials.username
                       : "")
                   }
-                  className="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link"
+                  className="Grid-cell py2 sm-py0 text-medium md-text-right text-centered flex-full link"
                   onClick={e => {
                     window.OSX ? window.OSX.resetPassword() : null;
                   }}

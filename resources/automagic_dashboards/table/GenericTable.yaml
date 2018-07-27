@@ -90,10 +90,13 @@ groups:
     title: These are the same for all your [[this.short-name]]
 - ByTime:
     title: "These [[this.short-name]] across time"
+    comparison_title: How they compare across time
 - Geographical:
     title: Where your [[this.short-name]] are
+    comparison_title: How they compare acrosss location
 - General:
     title: How these [[this.short-name]] are distributed
+    comparison_title: How they compare by distribution
 dashboard_filters:
 - Timestamp
 - Date

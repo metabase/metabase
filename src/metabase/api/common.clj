@@ -189,7 +189,7 @@
   [400 (tru "Invalid Request.")])
 
 (defn check-400
-  "Throw a `400` if ARG is `false` or `nil`, otherwise return as-is."
+  "Throw a `400` if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg generic-400))
 
@@ -204,7 +204,7 @@
   [404 (tru "Not found.")])
 
 (defn check-404
-  "Throw a `404` if ARG is `false` or `nil`, otherwise return as-is."
+  "Throw a `404` if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg generic-404))
 
@@ -220,7 +220,7 @@
   [403 (tru "You don''t have permissions to do that.")])
 
 (defn check-403
-  "Throw a `403` if ARG is `false` or `nil`, otherwise return as-is."
+  "Throw a `403` (no permissions) if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg generic-403))
 (defmacro let-403
@@ -240,7 +240,7 @@
   [500 (tru "Internal server error.")])
 
 (defn check-500
-  "Throw a `500` if ARG is `false` or `nil`, otherwise return as-is."
+  "Throw a `500` if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg generic-500))
 

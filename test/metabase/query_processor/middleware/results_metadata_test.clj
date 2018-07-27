@@ -45,9 +45,12 @@
    {:name         "LONGITUDE",      :display_name "Longitude", :base_type "type/Float"
     :special_type "type/Longitude", :fingerprint  (:longitude mutil/venue-fingerprints)}])
 
+(def ^:private default-card-results-native
+  (update-in default-card-results [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}}))
+
 ;; test that Card result metadata is saved after running a Card
 (expect
-  default-card-results
+  default-card-results-native
   (tt/with-temp Card [card]
     (qp/process-query (assoc (native-query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES")
                         :info {:card-id    (u/get-id card)
@@ -94,7 +97,7 @@
                     (-> col
                         (update :special_type keyword)
                         (update :base_type keyword)))
-                  default-card-results)}
+                  default-card-results-native)}
   (-> (qp/process-query {:database (data/id)
                          :type     :native
                          :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
@@ -117,7 +120,7 @@
     :name         "count"
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 3},
-                   :type {:type/Number {:min 235, :max 498, :avg 333.33}}}}]
+                   :type {:type/Number {:min 235.0, :max 498.0, :avg 333.33}}}}]
   (tt/with-temp Card [card]
     (qp/process-query {:database (data/id)
                        :type     :query

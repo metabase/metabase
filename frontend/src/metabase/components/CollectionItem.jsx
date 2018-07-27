@@ -12,6 +12,7 @@ const CollectionItem = ({
   iconName = "all",
   highlighted,
   hovered,
+  event,
 }) => (
   <Link
     to={`collection/${collection.id}`}
@@ -22,6 +23,7 @@ const CollectionItem = ({
     }
     color={hovered ? "white" : colors["text-medium"]}
     className="block rounded relative text-brand-hover"
+    data-metabase-event={event}
     style={{
       borderSize: 1,
       borderColor: hovered

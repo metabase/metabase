@@ -1,6 +1,5 @@
 (ns metabase.api.automagic-dashboards-test
   (:require [expectations :refer :all]
-            [metabase.api.common :as api]
             [metabase.api.card-test :refer [with-cards-in-readable-collection]]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models
@@ -9,27 +8,11 @@
              [metric :refer [Metric]]
              [permissions :as perms]
              [permissions-group :as perms-group]
-             [segment :refer [Segment]]
-             [user :as user]]
+             [segment :refer [Segment]]]
+            [metabase.test.automagic-dashboards :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
             [toucan.util.test :as tt]))
-
-(defmacro with-rasta
-  "Execute body with rasta as the current user."
-  [& body]
-  `(binding [api/*current-user-id*              (test-users/user->id :rasta)
-             api/*current-user-permissions-set* (-> :rasta
-                                                    test-users/user->id
-                                                    user/permissions-set
-                                                    atom)]
-     ~@body))
-
-(defmacro ^:private with-dashboard-cleanup
-  [& body]
-  `(tu/with-model-cleanup ['~'Card '~'Dashboard '~'Collection '~'DashboardCard]
-     ~@body))
 
 (defn- api-call
   ([template args] (api-call template args (constantly true)))
@@ -40,12 +23,15 @@
          (and (some? ((test-users/user->client :rasta) :get 200 api-endpoint))
               (try
                 (do
-                  (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path (data/id)))
+                  (perms/revoke-permissions! (perms-group/all-users) (data/id))
                   (revoke-fn)
                   (= ((test-users/user->client :rasta) :get 403 api-endpoint)
                      "You don't have permissions to do that."))
                 (finally
                   (perms/grant-permissions! (perms-group/all-users) (perms/object-path (data/id)))))))))))
+
+
+;;; ------------------- X-ray  -------------------
 
 (expect (api-call "table/%s" [(data/id :venues)]))
 (expect (api-call "table/%s/rule/example/indepth" [(data/id :venues)]))
@@ -136,3 +122,31 @@
                         (#'magic/encode-base64-json))
                    (->> [:> [:field-id (data/id :venues :price)] 5]
                         (#'magic/encode-base64-json))]))
+
+
+;;; ------------------- Comparisons -------------------
+
+(def ^:private segment {:table_id (data/id :venues)
+                        :definition {:filter [:> [:field-id-id (data/id :venues :price)] 10]}})
+
+(expect
+  (tt/with-temp* [Segment [{segment-id :id} segment]]
+    (api-call "table/%s/compare/segment/%s"
+              [(data/id :venues) segment-id])))
+
+(expect
+  (tt/with-temp* [Segment [{segment-id :id} segment]]
+    (api-call "table/%s/rule/example/indepth/compare/segment/%s"
+              [(data/id :venues) segment-id])))
+
+(expect
+  (tt/with-temp* [Segment [{segment-id :id} segment]]
+    (api-call "adhoc/%s/cell/%s/compare/segment/%s"
+              [(->> {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
+                             :source_table (data/id :venues)}
+                     :type :query
+                     :database (data/id)}
+                    (#'magic/encode-base64-json))
+               (->> [:= [:field-id (data/id :venues :price)] 15]
+                    (#'magic/encode-base64-json))
+               segment-id])))

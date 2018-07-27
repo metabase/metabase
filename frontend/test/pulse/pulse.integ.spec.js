@@ -11,15 +11,12 @@ import { mount } from "enzyme";
 import { CardApi, PulseApi } from "metabase/services";
 import Question from "metabase-lib/lib/Question";
 
-import PulseListApp from "metabase/pulse/containers/PulseListApp";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
-import PulseListItem from "metabase/pulse/components/PulseListItem";
 import QuestionSelect from "metabase/containers/QuestionSelect";
 import PulseCardPreview from "metabase/pulse/components/PulseCardPreview";
 import Toggle from "metabase/components/Toggle";
 
 import {
-  FETCH_PULSES,
   SET_EDITING_PULSE,
   SAVE_EDITING_PULSE,
   FETCH_CARDS,
@@ -81,15 +78,6 @@ describe("Pulse", () => {
   let store;
   beforeEach(async () => {
     store = await createTestStore();
-  });
-
-  it("should load pulses", async () => {
-    store.pushPath("/pulse");
-    const app = mount(store.connectContainer(<PulseListApp />));
-    await store.waitForActions([FETCH_PULSES]);
-
-    const items = app.find(PulseListItem);
-    expect(items.length).toBe(0);
   });
 
   it("should load create pulse", async () => {
@@ -165,14 +153,5 @@ describe("Pulse", () => {
     expect(pulse.cards[1].id).toBe(questionRaw.id());
     expect(pulse.channels[0].channel_type).toBe("email");
     expect(pulse.channels[0].enabled).toBe(true);
-  });
-
-  it("should load pulses", async () => {
-    store.pushPath("/pulse");
-    const app = mount(store.connectContainer(<PulseListApp />));
-    await store.waitForActions([FETCH_PULSES]);
-
-    const items = app.find(PulseListItem);
-    expect(items.length).toBe(1);
   });
 });

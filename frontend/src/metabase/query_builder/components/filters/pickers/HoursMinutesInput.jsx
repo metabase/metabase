@@ -52,7 +52,7 @@ const HoursMinutesInput = ({
     </div>
     {onClear && (
       <Icon
-        className="text-grey-2 cursor-pointer text-grey-4-hover ml-auto"
+        className="text-light cursor-pointer text-medium-hover ml-auto"
         name="close"
         onClick={onClear}
       />

@@ -43,11 +43,13 @@ import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 const ROW_HEIGHT = 72;
 const PAGE_PADDING = [2, 3, 4];
 
+const ANALYTICS_CONTEXT = "Collection Landing";
+
 const EmptyStateWrapper = ({ children }) => (
   <Flex
     align="center"
     justify="center"
-    py={3}
+    p={5}
     flexDirection="column"
     w={1}
     h={"200px"}
@@ -200,6 +202,7 @@ class DefaultLanding extends React.Component {
             <Box>
               <Box mb={1}>
                 <BrowserCrumbs
+                  analyticsContext={ANALYTICS_CONTEXT}
                   crumbs={[
                     ...ancestors.map(({ id, name }) => ({
                       title: (
@@ -285,7 +288,7 @@ class DefaultLanding extends React.Component {
                     <div
                       className={cx(
                         "p2 flex layout-centered",
-                        hovered ? "text-brand" : "text-grey-2",
+                        hovered ? "text-brand" : "text-light",
                       )}
                     >
                       <Icon name="pin" mr={1} />
@@ -305,6 +308,7 @@ class DefaultLanding extends React.Component {
                           </CollectionSectionHeading>
                         </Box>
                         <CollectionList
+                          analyticsContext={ANALYTICS_CONTEXT}
                           currentCollection={collection}
                           collections={collections}
                           isRoot={collectionId === "root"}
@@ -316,7 +320,9 @@ class DefaultLanding extends React.Component {
                   {collectionHasItems && (
                     <GridItem w={itemWidth}>
                       <Box>
-                        <ItemTypeFilterBar />
+                        <ItemTypeFilterBar
+                          analyticsContext={ANALYTICS_CONTEXT}
+                        />
                         <Card mt={1} className="relative">
                           {unpinnedItems.length > 0 ? (
                             <PinDropTarget pinIndex={null} margin={8}>
@@ -364,7 +370,7 @@ class DefaultLanding extends React.Component {
                                   <div
                                     className={cx(
                                       "m2 flex layout-centered",
-                                      hovered ? "text-brand" : "text-grey-2",
+                                      hovered ? "text-brand" : "text-light",
                                     )}
                                   >
                                     {t`Drag here to un-pin`}
@@ -464,8 +470,12 @@ export const NormalItem = ({
   onToggleSelected,
   onMove,
 }) => (
-  <Link to={item.getUrl()}>
+  <Link
+    to={item.getUrl()}
+    data-metabase-event={`${ANALYTICS_CONTEXT};Item Click;${item.model}`}
+  >
     <EntityItem
+      analyticsContext={ANALYTICS_CONTEXT}
       variant="list"
       showSelect={selection.size > 0}
       selectable
@@ -504,6 +514,7 @@ const PinnedItem = ({ item, index, collection }) => (
     to={item.getUrl()}
     className="hover-parent hover--visibility"
     hover={{ color: normal.blue }}
+    data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`}
   >
     <Card hoverable p={3}>
       <Icon name={item.getIcon()} color={item.getColor()} size={28} mb={2} />
@@ -514,6 +525,9 @@ const PinnedItem = ({ item, index, collection }) => (
             <Box
               ml="auto"
               className="hover-child"
+              data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${
+                item.model
+              }`}
               onClick={ev => {
                 ev.preventDefault();
                 item.setPinned(false);
@@ -534,8 +548,15 @@ const BulkActionControls = ({ onArchive, onMove }) => (
       medium
       disabled={!onArchive}
       onClick={onArchive}
+      data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Archive Items`}
     >{t`Archive`}</Button>
-    <Button ml={1} medium disabled={!onMove} onClick={onMove}>{t`Move`}</Button>
+    <Button
+      ml={1}
+      medium
+      disabled={!onMove}
+      onClick={onMove}
+      data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Move Items`}
+    >{t`Move`}</Button>
   </Box>
 );
 
@@ -557,6 +578,7 @@ const SelectionControls = ({
 @entityObjectLoader({
   entityType: "collections",
   entityId: (state, props) => props.params.collectionId,
+  reload: true,
 })
 class CollectionLanding extends React.Component {
   render() {
@@ -604,6 +626,7 @@ const CollectionEditMenu = ({ isRoot, collectionId }) => (
               title: t`Edit this collection`,
               icon: "editdocument",
               link: `/collection/${collectionId}/edit`,
+              event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Collection Click`,
             },
           ]
         : []),
@@ -611,6 +634,7 @@ const CollectionEditMenu = ({ isRoot, collectionId }) => (
         title: t`Edit permissions`,
         icon: "lock",
         link: `/collection/${collectionId}/permissions`,
+        event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Permissions Click`,
       },
       ...(!isRoot
         ? [
@@ -618,6 +642,7 @@ const CollectionEditMenu = ({ isRoot, collectionId }) => (
               title: t`Archive this collection`,
               icon: "viewArchive",
               link: `/collection/${collectionId}/archive`,
+              event: `${ANALYTICS_CONTEXT};Edit Menu;Archive Collection`,
             },
           ]
         : []),
@@ -633,6 +658,7 @@ const CollectionBurgerMenu = () => (
         title: t`View the archive`,
         icon: "viewArchive",
         link: `/archive`,
+        event: `${ANALYTICS_CONTEXT};Burger Menu;View Archive Click`,
       },
     ]}
     triggerIcon="burger"

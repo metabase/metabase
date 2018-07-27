@@ -143,7 +143,7 @@ export default class EmbedFrame extends Component {
               <LogoBadge dark={theme} />
             )}
             {actionButtons && (
-              <div className="flex-align-right text-grey-3">
+              <div className="flex-align-right text-medium">
                 {actionButtons}
               </div>
             )}

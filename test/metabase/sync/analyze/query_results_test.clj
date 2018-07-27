@@ -7,9 +7,8 @@
             [metabase.models
              [card :refer [Card]]
              [database :as database]]
-            [metabase.sync.analyze
-             [fingerprint :as fprint]
-             [query-results :as qr :refer :all]]
+            [metabase.sync.analyze.query-results :as qr :refer :all]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as fprint]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.test
              [data :as data]
@@ -36,7 +35,7 @@
   (->> query-map
        qp/process-query
        :data
-       results->column-metadata
+       results->column-metadata+fingerprint
        (tu/round-all-decimals 2)))
 
 (defn- query-for-card [card]
@@ -58,7 +57,7 @@
   (tt/with-temp Card [card {:dataset_query   {:database (data/id)
                                               :type     :query
                                               :query    {:source-table (data/id :venues)}}}]
-    (tu/throw-if-called fprint/fingerprint
+    (tu/throw-if-called fprint/with-global-fingerprinter ; check for a "proper" fingerprinter, fallthrough for PKs is fune.
       (name->fingerprints
        (query->result-metadata (query-for-card card))))))
 
@@ -71,9 +70,9 @@
     (name->special-type (query->result-metadata (query-for-card card)))))
 
 ;; Native queries don't know what the associated Fields are for the results, we need to compute the fingerprints, but
-;; they should sill be the same
+;; they should sill be the same except for some of the optimizations we do when we have all the information.
 (expect
-  mutil/venue-fingerprints
+  (update mutil/venue-fingerprints :category_id assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}})
   (tt/with-temp Card [card {:dataset_query   {:database (data/id)
                                               :type     :native
                                               :native   {:query "select * from venues"}}}]
@@ -97,7 +96,7 @@
   (tt/with-temp Card [card {:dataset_query   {:database (data/id)
                                               :type     :query
                                               :query    {:source-table (data/id :venues)}}}]
-    (tu/throw-if-called fprint/fingerprint
+    (tu/throw-if-called fprint/fingerprinter
       (name->fingerprints
        (query->result-metadata (assoc-in (query-for-card card) [:query :fields] (data/id :venues :longitude)))))))
 

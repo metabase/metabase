@@ -32,7 +32,10 @@ export default class SaveQuestionModal extends Component {
               )
             : "",
         description: props.card.description || "",
-        collection_id: props.card.collection_id || null,
+        collection_id:
+          props.card.collection_id === undefined
+            ? props.initialCollectionId
+            : props.card.collection_id,
         saveType: props.originalCard ? "overwrite" : "create",
       },
     };

@@ -59,6 +59,13 @@
             (concat acc [color (first (drop-while (conj (set acc) color) colors))])))
         [])))
 
+(defn map-to-colors
+  "Map given objects to distinct colors."
+  [objs]
+  (->> objs
+       (map (comp colors #(mod % (count colors)) hash))
+       ensure-distinct-colors))
+
 (defn- colorize
   "Pick the chart colors acording to the following rules:
   * If there is more than one breakout dimension let the frontend do it as presumably
@@ -86,9 +93,7 @@
                               filters/collect-field-references
                               (map filters/field-reference->id))
                          aggregation)]
-        {:graph.colors (->> color-keys
-                            (map (comp colors #(mod % (count colors)) hash))
-                            ensure-distinct-colors)}))))
+        {:graph.colors (map-to-colors color-keys)}))))
 
 (defn- visualization-settings
   [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]
@@ -301,36 +306,36 @@
          distinct)]))
 
 (defn merge-dashboards
-  "Merge dashboards `ds` into dashboard `d`."
-  [& ds]
-  (let [[paramters parameter-mappings] (merge-filters ds)]
-    (reduce
-     (fn [target dashboard]
-       (let [offset (->> target
-                         :ordered_cards
-                         (map #(+ (:row %) (:sizeY %)))
-                         (apply max -1) ; -1 so it neturalizes +1 for spacing if
-                                        ; the target dashboard is empty.
-                         inc)
-             cards  (->> dashboard
-                         :ordered_cards
-                         (map #(-> %
-                                   (update :row + offset group-heading-height)
-                                   (u/update-in-when [:visualization_settings :text]
-                                                     downsize-titles)
-                                   (assoc :parameter_mappings
-                                     (when (:card_id %)
-                                       (for [mapping parameter-mappings]
-                                         (assoc mapping :card_id (:card_id %))))))))]
-         (-> target
-             (add-text-card {:width                  grid-width
-                             :height                 group-heading-height
-                             :text                   (format "# %s" (:name dashboard))
-                             :visualization-settings {:dashcard.background false
-                                                      :text.align_vertical :bottom}}
-                            [offset 0])
-             (update :ordered_cards concat cards))))
-     (-> ds
-         first
-         (assoc :parameters paramters))
-     (rest ds))))
+  "Merge dashboards `dashboard` into dashboard `target`."
+  ([target dashboard] (merge-dashboards target dashboard {}))
+  ([target dashboard {:keys [skip-titles?]}]
+   (let [[paramters parameter-mappings] (merge-filters [target dashboard])
+         offset                         (->> target
+                                             :ordered_cards
+                                             (map #(+ (:row %) (:sizeY %)))
+                                             (apply max -1) ; -1 so it neturalizes +1 for spacing
+                                                            ; if the target dashboard is empty.
+                                             inc)
+         cards                        (->> dashboard
+                                           :ordered_cards
+                                           (map #(-> %
+                                                     (update :row + offset (if skip-titles?
+                                                                             0
+                                                                             group-heading-height))
+                                                     (u/update-in-when [:visualization_settings :text]
+                                                                       downsize-titles)
+                                                     (assoc :parameter_mappings
+                                                       (when-let [card-id (:card_id %)]
+                                                         (for [mapping parameter-mappings]
+                                                           (assoc mapping :card_id card-id)))))))]
+     (-> target
+         (assoc :parameters paramters)
+         (cond->
+           (not skip-titles?)
+           (add-text-card {:width                  grid-width
+                           :height                 group-heading-height
+                           :text                   (format "# %s" (:name dashboard))
+                           :visualization-settings {:dashcard.background false
+                                                    :text.align_vertical :bottom}}
+                          [offset 0]))
+         (update :ordered_cards concat cards)))))

@@ -37,10 +37,16 @@ import {
 import { getUser } from "metabase/home/selectors";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
+import Collections from "metabase/entities/collections";
+
 const mapStateToProps = (state, props) => ({
   questionAlerts: getQuestionAlerts(state),
   visualizationSettings: getVisualizationSettings(state),
   user: getUser(state),
+  initialCollectionId: Collections.selectors.getInitialCollectionId(
+    state,
+    props,
+  ),
 });
 
 const mapDispatchToProps = {
@@ -187,7 +193,7 @@ export default class QueryHeader extends Component {
           form
           key="save"
           ref="saveModal"
-          triggerClasses="h4 text-grey-4 text-brand-hover text-uppercase"
+          triggerClasses="h4 text-medium text-brand-hover text-uppercase"
           triggerElement={t`Save`}
         >
           <SaveQuestionModal
@@ -198,6 +204,7 @@ export default class QueryHeader extends Component {
             saveFn={card => this.onSave(card, false)}
             createFn={this.onCreate}
             onClose={() => this.refs.saveModal && this.refs.saveModal.toggle()}
+            initialCollectionId={this.props.initialCollectionId}
           />
         </ModalWithTrigger>,
       ]);
@@ -238,7 +245,7 @@ export default class QueryHeader extends Component {
           <ActionButton
             key="save"
             actionFn={() => this.onSave(this.props.card, false)}
-            className="cursor-pointer text-brand-hover bg-white text-grey-4 text-uppercase"
+            className="cursor-pointer text-brand-hover bg-white text-medium text-uppercase"
             normalText={t`SAVE CHANGES`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}
@@ -250,7 +257,7 @@ export default class QueryHeader extends Component {
         buttonSections.push([
           <a
             key="cancel"
-            className="cursor-pointer text-brand-hover text-grey-4 text-uppercase"
+            className="cursor-pointer text-brand-hover text-medium text-uppercase"
             onClick={this.onCancel}
           >
             {t`CANCEL`}
@@ -359,6 +366,7 @@ export default class QueryHeader extends Component {
               }}
               onClose={() => this.refs.addToDashSaveModal.toggle()}
               multiStep
+              initiCollectionId={this.props.initiCollectionId}
             />
           </ModalWithTrigger>
         </Tooltip>,
@@ -522,7 +530,10 @@ export default class QueryHeader extends Component {
           setItemAttributeFn={this.props.onSetCardAttribute}
           badge={
             this.props.card.id && (
-              <CollectionBadge collectionId={this.props.card.collection_id} />
+              <CollectionBadge
+                collectionId={this.props.card.collection_id}
+                analyticsContext="QueryBuilder"
+              />
             )
           }
         />
@@ -585,6 +596,7 @@ export default class QueryHeader extends Component {
               this.setState({ modal: null })
             }
             multiStep
+            initiCollectionId={this.props.initiCollectionId}
           />
         </Modal>
       </div>

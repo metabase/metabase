@@ -339,7 +339,7 @@ export default class AddSeriesModal extends Component {
                         tooltip={t`We're not sure if this question is compatible`}
                       >
                         <Icon
-                          className="px1 flex-align-right text-grey-2 text-grey-4-hover cursor-pointer flex-no-shrink"
+                          className="px1 flex-align-right text-light text-medium-hover cursor-pointer flex-no-shrink"
                           name="warning"
                           size={20}
                         />
