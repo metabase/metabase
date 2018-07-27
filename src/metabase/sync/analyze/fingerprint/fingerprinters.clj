@@ -136,11 +136,19 @@
        acc)
      acc)))
 
+(defprotocol ^:private IDateCoercible
+  "Protocol for converting objects to `java.util.Date`"
+  (->date ^java.util.Date [this]
+    "Coerce object to a `java.util.Date`."))
+
+(extend-protocol IDateCoercible
+  String                 (->date [this] (-> this du/str->date-time t.coerce/to-date))
+  java.util.Date         (->date [this] this)
+  org.joda.time.DateTime (->date [this] (t.coerce/to-date this))
+  Integer                (->date [this] (java.util.Date. this)))
+
 (deffingerprinter :type/DateTime
-  ((map (fn [dt]
-          (if (string? dt)
-            (-> dt du/str->date-time t.coerce/to-date-time)
-            dt)))
+  ((map ->date)
    (redux/fuse {:earliest earliest
                 :latest   latest})))
 
