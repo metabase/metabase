@@ -141,6 +141,8 @@ export type Entity = {
   actionShouldInvalidateLists: (action: Action) => boolean,
 
   writableProperties?: string[],
+
+  HACK_getObjectFromAction: (action: Action) => any,
 };
 
 export function createEntity(def: EntityDefinition): Entity {
