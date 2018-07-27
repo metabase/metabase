@@ -1,6 +1,7 @@
 (ns metabase.sync.analyze.fingerprint.fingerprinters
   "Non-identifying fingerprinters for various field types."
   (:require [cheshire.core :as json]
+            [clj-time.coerce :as t.coerce]
             [kixi.stats.core :as stats]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
@@ -136,14 +137,17 @@
      acc)))
 
 (deffingerprinter :type/DateTime
-  (redux/fuse {:earliest earliest
-               :latest   latest}))
+  ((map (fn [dt]
+          (if (string? dt)
+            (-> dt du/str->date-time t.coerce/to-date-time)
+            dt)))
+   (redux/fuse {:earliest earliest
+                :latest   latest})))
 
 (deffingerprinter :type/Number
-  ((remove nil?)
-   (redux/fuse {:min stats/min
-                :max stats/max
-                :avg stats/mean})))
+  (redux/fuse {:min stats/min
+               :max stats/max
+               :avg stats/mean}))
 
 (defn- valid-serialized-json?
   "Is x a serialized JSON dictionary or array."

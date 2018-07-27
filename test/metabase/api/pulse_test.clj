@@ -511,6 +511,21 @@
      {:archived false})
     (db/select-one-field :archived Pulse :id (u/get-id pulse))))
 
+;; Does unarchiving a Pulse affect its Cards & Recipients? It shouldn't. This should behave as a PATCH-style endpoint!
+(expect
+  (tt/with-temp* [Collection            [collection]
+                  Pulse                 [pulse {:collection_id (u/get-id collection)}]
+                  PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
+                  PulseChannelRecipient [pcr   {:pulse_channel_id (u/get-id pc), :user_id (user->id :rasta)}]
+                  Card                  [card]]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "pulse/" (u/get-id pulse))
+     {:archived true})
+    ((user->client :rasta) :put 200 (str "pulse/" (u/get-id pulse))
+     {:archived false})
+    (and (db/exists? PulseChannel :id (u/get-id pc))
+         (db/exists? PulseChannelRecipient :id (u/get-id pcr)))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   UPDATING PULSE COLLECTION POSITIONS                                          |
@@ -706,6 +721,7 @@
                                                          :channels            [daily-email-channel]
                                                          :skip_if_empty       false})
                (card-api-test/get-name->collection-position :rasta coll-id))])))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             DELETE /api/pulse/:id                                              |
