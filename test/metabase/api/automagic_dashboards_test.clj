@@ -1,6 +1,5 @@
 (ns metabase.api.automagic-dashboards-test
   (:require [expectations :refer :all]
-            [metabase.api.card-test :refer [with-cards-in-readable-collection]]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models
              [card :refer [Card]]
@@ -9,8 +8,10 @@
              [permissions :as perms]
              [permissions-group :as perms-group]
              [segment :refer [Segment]]]
-            [metabase.test.automagic-dashboards :refer :all]
-            [metabase.test.data :as data]
+            [metabase.test
+             [automagic-dashboards :refer :all]
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.users :as test-users]
             [toucan.util.test :as tt]))
 
@@ -61,42 +62,45 @@
   (perms/revoke-collection-permissions! (perms-group/all-users) collection-id))
 
 (expect
-  (tt/with-temp* [Collection [{collection-id :id}]
-                  Card [{card-id :id} {:table_id      (data/id :venues)
-                                       :collection_id collection-id
-                                       :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                                                               :source_table (data/id :venues)}
-                                                       :type :query
-                                                       :database (data/id)}}]]
-    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-    (api-call "question/%s" [card-id] #(revoke-collection-permissions! collection-id))))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp* [Collection [{collection-id :id}]
+                    Card [{card-id :id} {:table_id      (data/id :venues)
+                                         :collection_id collection-id
+                                         :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
+                                                                    :source_table (data/id :venues)}
+                                                         :type     :query
+                                                         :database (data/id)}}]]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+      (api-call "question/%s" [card-id] #(revoke-collection-permissions! collection-id)))))
 
 (expect
-  (tt/with-temp* [Collection [{collection-id :id}]
-                  Card [{card-id :id} {:table_id      (data/id :venues)
-                                       :collection_id collection-id
-                                       :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                                                               :source_table (data/id :venues)}
-                                                       :type :query
-                                                       :database (data/id)}}]]
-    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-    (api-call "question/%s/cell/%s" [card-id (->> [:> [:field-id (data/id :venues :price)] 5]
-                                                  (#'magic/encode-base64-json))]
-              #(revoke-collection-permissions! collection-id))))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp* [Collection [{collection-id :id}]
+                    Card [{card-id :id} {:table_id      (data/id :venues)
+                                         :collection_id collection-id
+                                         :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
+                                                                    :source_table (data/id :venues)}
+                                                         :type     :query
+                                                         :database (data/id)}}]]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+      (api-call "question/%s/cell/%s" [card-id (->> [:> [:field-id (data/id :venues :price)] 5]
+                                                    (#'magic/encode-base64-json))]
+                #(revoke-collection-permissions! collection-id)))))
 
 (expect
-  (tt/with-temp* [Collection [{collection-id :id}]
-                  Card [{card-id :id} {:table_id      (data/id :venues)
-                                       :collection_id collection-id
-                                       :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                                                               :source_table (data/id :venues)}
-                                                       :type :query
-                                                       :database (data/id)}}]]
-    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-    (api-call "question/%s/cell/%s/rule/example/indepth"
-              [card-id (->> [:> [:field-id (data/id :venues :price)] 5]
-                            (#'magic/encode-base64-json))]
-              #(revoke-collection-permissions! collection-id))))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp* [Collection [{collection-id :id}]
+                    Card [{card-id :id} {:table_id      (data/id :venues)
+                                         :collection_id collection-id
+                                         :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
+                                                                    :source_table (data/id :venues)}
+                                                         :type     :query
+                                                         :database (data/id)}}]]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+      (api-call "question/%s/cell/%s/rule/example/indepth"
+                [card-id (->> [:> [:field-id (data/id :venues :price)] 5]
+                              (#'magic/encode-base64-json))]
+                #(revoke-collection-permissions! collection-id)))))
 
 
 (expect (api-call "adhoc/%s" [(->> {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
