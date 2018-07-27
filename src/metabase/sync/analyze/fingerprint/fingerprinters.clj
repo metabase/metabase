@@ -145,7 +145,7 @@
   String                 (->date [this] (-> this du/str->date-time t.coerce/to-date))
   java.util.Date         (->date [this] this)
   org.joda.time.DateTime (->date [this] (t.coerce/to-date this))
-  Integer                (->date [this] (java.util.Date. this)))
+  Integer                (->date [this] (java.util.Date. ^Integer this)))
 
 (deffingerprinter :type/DateTime
   ((map ->date)
