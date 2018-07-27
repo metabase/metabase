@@ -12,6 +12,7 @@
             [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.models
              [card :as card :refer [Card]]
+             [collection :as collection]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
              [field-values :as field-values]
              [interface :as i]
@@ -243,18 +244,21 @@
            (str "Filtered by: ")))
 
 (defn- ensure-unique-collection-name
-  [collection]
-  (let [c (db/count 'Collection :name [:like (format "%s%%" collection)])]
+  [collection-name parent-collection-id]
+  (let [c (db/count 'Collection
+            :name     [:like (format "%s%%" collection-name)]
+            :location  (collection/children-location  (db/select-one ['Collection :location :id]
+                                                        :id parent-collection-id)))]
     (if (zero? c)
-      collection
-      (format "%s %s" collection (inc c)))))
+      collection-name
+      (format "%s %s" collection-name (inc c)))))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
   (let [dashcards  (:ordered_cards dashboard)
         collection (magic.populate/create-collection!
-                    (ensure-unique-collection-name (:name dashboard))
+                    (ensure-unique-collection-name (:name dashboard) parent-collection-id)
                     (rand-nth magic.populate/colors)
                     "Automatically generated cards."
                     parent-collection-id)
