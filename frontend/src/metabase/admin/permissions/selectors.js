@@ -738,14 +738,30 @@ export const getCollectionsPermissionsGrid = createSelector(
             ];
           },
           warning(groupId, entityId) {
-            return getPermissionWarning(
-              getCollectionPermission,
-              null,
-              defaultGroup,
+            const collection = _.findWhere(collections, {
+              id: entityId.collectionId,
+            });
+            const collectionPerm = getCollectionPermission(
               permissions,
               groupId,
               entityId,
             );
+            const descendentPerms = getCollectionsPermissionsSet(
+              collection.children,
+              permissions,
+              groupId,
+            );
+            if (
+              collectionPerm === "none" &&
+              (descendentPerms.has("read") || descendentPerms.has("write"))
+            ) {
+              return t`This group has permission to view at least one subcollection.`;
+            } else if (
+              collectionPerm === "read" &&
+              descendentPerms.has("write")
+            ) {
+              return t`This group has permission to edit at least one subcollection.`;
+            }
           },
         },
       },
@@ -765,6 +781,34 @@ export const getCollectionsPermissionsGrid = createSelector(
     };
   },
 );
+
+function getCollectionsPermissionsSet(
+  collections,
+  permissions,
+  groupId,
+  recursive = true,
+) {
+  let perms = collections.map(collection =>
+    getCollectionPermission(permissions, groupId, {
+      collectionId: collection.id,
+    }),
+  );
+  if (recursive) {
+    perms = perms.concat(
+      ...collections.map(collection =>
+        Array.from(
+          getCollectionsPermissionsSet(
+            collection.children,
+            permissions,
+            groupId,
+            recursive,
+          ),
+        ),
+      ),
+    );
+  }
+  return new Set(perms);
+}
 
 export const getDiff = createSelector(
   getMetadata,
