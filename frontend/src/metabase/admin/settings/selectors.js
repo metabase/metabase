@@ -436,6 +436,12 @@ const SECTIONS = [
     */
 ];
 
+for (const section of SECTIONS) {
+  if (section.slug == null) {
+    console.warn("Warning: settings section missing slug:", section.name);
+  }
+}
+
 export const getSettings = createSelector(
   state => state.settings.settings,
   state => state.admin.settings.warnings,

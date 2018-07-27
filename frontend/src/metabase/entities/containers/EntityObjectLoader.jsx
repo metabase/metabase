@@ -23,7 +23,7 @@ export type Props = {
   // When true (default) the children render prop won't be called until loaded
   loadingAndErrorWrapper: boolean,
   // Children render prop
-  children: (props: RenderProps) => ?React$Element<any>,
+  children?: (props: RenderProps) => ?React$Element<any>,
 };
 
 export type RenderProps = {

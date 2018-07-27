@@ -52,8 +52,8 @@ describe("admin/people", () => {
         .closest(Button);
       expect(addButton.props().disabled).toBe(true);
 
-      setInputValue(addUserModal.find("input[name='firstName']"), firstName);
-      setInputValue(addUserModal.find("input[name='lastName']"), lastName);
+      setInputValue(addUserModal.find("input[name='first_name']"), firstName);
+      setInputValue(addUserModal.find("input[name='last_name']"), lastName);
       setInputValue(addUserModal.find("input[name='email']"), email);
 
       expect(addButton.props().disabled).toBe(false);
@@ -109,11 +109,11 @@ describe("admin/people", () => {
       expect(saveButton.props().disabled).toBe(true);
 
       setInputValue(
-        editDetailsModal.find("input[name='firstName']"),
+        editDetailsModal.find("input[name='first_name']"),
         firstName + "x",
       );
       setInputValue(
-        editDetailsModal.find("input[name='lastName']"),
+        editDetailsModal.find("input[name='last_name']"),
         lastName + "x",
       );
       setInputValue(editDetailsModal.find("input[name='email']"), email + "x");

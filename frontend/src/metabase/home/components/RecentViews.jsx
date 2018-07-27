@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon.jsx";
 import SidebarSection from "./SidebarSection.jsx";
 import * as Urls from "metabase/lib/urls";
 
-import { normal } from "metabase/lib/colors";
+import colors, { normal } from "metabase/lib/colors";
 
 export default class RecentViews extends Component {
   static propTypes = {
@@ -48,7 +48,7 @@ export default class RecentViews extends Component {
                     size={18}
                     style={{
                       color:
-                        iconName === "dashboard" ? normal.purple : normal.blue,
+                        iconName === "dashboard" ? normal.purple : colors.brand,
                     }}
                   />
                   <Link
