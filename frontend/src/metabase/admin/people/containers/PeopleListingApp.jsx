@@ -82,7 +82,6 @@ const mapDispatchToProps = {
 };
 
 @entityListLoader({ entityType: "users", })
-@entityListLoader({ entityType: "groups", })
 @connect(mapStateToProps, mapDispatchToProps)
 export default class PeopleListingApp extends Component {
   state = {};
@@ -450,7 +449,7 @@ export default class PeopleListingApp extends Component {
       <AdminPaneLayout
         title={title}
         buttonText={showDeactivated ? null : t`Add someone`}
-        buttonAction={() => this.props.showModal({ type: MODAL_ADD_PERSON })}
+        buttonLink={Urls.newUser()}
       >
         <section className="pb4">
           <table className="ContentTable">

@@ -9,6 +9,6 @@ export default createEntity({
   getName: user => `${user.first_name} ${user.last_name}`,
 
   form: {
-    fields: [{ name: "first_name" }, { name: "last_name" }, { name: "email" }],
+    fields: [{ name: "first_name", placeholder: "Johnny" }, { name: "last_name", placeholder: "Appleseed" }, { name: "email", placeholder: "youlooknicetoday@email.com" }],
   },
 });

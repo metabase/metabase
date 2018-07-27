@@ -124,7 +124,7 @@ export default class EntityListLoader extends React.Component {
     // $FlowFixMe: loading and error missing
     return children({
       ...props,
-      list: list,
+      list,
       // alias the entities name:
       [entityDef.name]: list,
       reload: this.reload,

@@ -133,6 +133,10 @@ export function accountSettings() {
   return `/user/edit_current`;
 }
 
+export function newUser() {
+  return `admin/people/new`;
+}
+
 export function editUser(userId) {
   return `admin/people/${userId}/edit`;
 }
