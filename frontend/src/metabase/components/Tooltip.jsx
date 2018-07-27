@@ -4,6 +4,26 @@ import ReactDOM from "react-dom";
 
 import TooltipPopover from "./TooltipPopover.jsx";
 
+// TOOLTIP_STACK and related functions are to ensure only the most recent tooltip is visible
+
+let TOOLTIP_STACK = [];
+
+function pushTooltip(component) {
+  TOOLTIP_STACK = TOOLTIP_STACK.filter(t => t !== component);
+  TOOLTIP_STACK.filter(t => t.state.isOpen).forEach(t =>
+    t.setState({ isOpen: false }),
+  );
+  TOOLTIP_STACK.push(component);
+}
+
+function popTooltip(component) {
+  TOOLTIP_STACK = TOOLTIP_STACK.filter(t => t !== component);
+  const top = TOOLTIP_STACK[TOOLTIP_STACK.length - 1];
+  if (top && !top.state.isOpen) {
+    top.setState({ isOpen: true });
+  }
+}
+
 export default class Tooltip extends Component {
   constructor(props, context) {
     super(props, context);
@@ -65,6 +85,7 @@ export default class Tooltip extends Component {
   }
 
   componentWillUnmount() {
+    popTooltip(this);
     let elem = ReactDOM.findDOMNode(this);
     elem.removeEventListener("mouseenter", this._onMouseEnter, false);
     elem.removeEventListener("mouseleave", this._onMouseLeave, false);
@@ -75,10 +96,12 @@ export default class Tooltip extends Component {
   }
 
   _onMouseEnter = e => {
+    pushTooltip(this);
     this.setState({ isOpen: true, isHovered: true });
   };
 
   _onMouseLeave = e => {
+    popTooltip(this);
     this.setState({ isOpen: false, isHovered: false });
   };
 
