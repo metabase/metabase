@@ -26,7 +26,7 @@ import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 
 import { GroupingManager } from "../lib/GroupingManager";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import {RawSeries, SingleSeries} from "metabase/meta/types/Visualization";
+import type {RawSeries, SingleSeries} from "metabase/meta/types/Visualization";
 import {GROUPS_SOURCES, VALUES_SOURCES} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
 
 type Props = {

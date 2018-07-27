@@ -15,6 +15,7 @@ import Icon from "metabase/components/Icon.jsx";
 import cx from "classnames";
 import Toggle from "metabase/components/Toggle";
 import {SortableContainer, SortableElement, arrayMove} from "react-sortable-hoc";
+import type {DatasetData} from "metabase/meta/types/Dataset";
 
 
 //todo: remove or move consts and ValueSerialized
@@ -24,52 +25,54 @@ export const VALUES_SOURCES = 'valuesSources';
 
 type ValueSerialized = {
   [GROUPS_SOURCES]: string[],
-  [COLUMNS_SOURCE]: string,
+  [COLUMNS_SOURCE]: ?string | null,
   [VALUES_SOURCES]: string[],
   columnNameToMetadata: { [key: ColumnName]: ColumnMetadata },
 }
 
 type ColumnMetadata = {
-  enabled: Boolean,
-  showTotals: Boolean,
-  isAscSortOrder: Boolean,
+  enabled?: boolean,
+  showTotals?: boolean,
+  isAscSortOrder?: boolean,
 };
 
 type ColumnName = string;
 
 type State = {
-  items : DraggableItem[],
-  columnNameToMetadata: { [key: ColumnName]: ColumnMetadata },
-  isChanging : Boolean
+  items? : DraggableItem[],
+  columnNameToMetadata? : { [key: ColumnName]: ColumnMetadata },
+  isChanging? : boolean
 };
 
 type DraggableItem = {
-  name : string,
-  displayName: String,
+  columnName? : string,
+  displayName: string,
   isDraggable : boolean
 }
 
 type Props = {
   value: ValueSerialized,
-  columnNames: { [key: String]: String }
+  columnNames: { [key: string]: string },
+
+  onChange: ValueSerialized => void
 }
 
 type ItemTypeHelper = {
-  isGroupingColumn : Number => Boolean,
-  isColumnSourceColumn : Number => Boolean,
-  isValueColumn : Number => Boolean,
-  unusedSourceItemIndex : Number,
+  isGroupingColumn : number => boolean,
+  isColumnSourceColumn : number => boolean,
+  isValueColumn : number => boolean,
+  unusedSourceItemIndex : number,
 }
 
 
-export const settingsAreValid = (settings: ValueSerialized, data) =>
+export const settingsAreValid = (settings: ValueSerialized, data: DatasetData) =>
   settings
   && (!settings[COLUMNS_SOURCE] || columnsAreValid([settings[COLUMNS_SOURCE]], data))
   && columnsAreValid(settings[GROUPS_SOURCES] || [], data)
   && columnsAreValid(settings[VALUES_SOURCES] || [], data);
 
 
-const getUnusedColumns = (settings: ValueSerialized, columnNames): String[] => {
+const getUnusedColumns = (settings: ValueSerialized, columnNames): string[] => {
   const allColumns = getColumnsFromSettings(settings);
   return Object.getOwnPropertyNames(columnNames)
     .filter(p => !allColumns.includes(p));
@@ -79,7 +82,7 @@ export const getColumnsFromSettings = (state: ValueSerialized) => [...state[GROU
 
 const emptyStateSerialized: ValueSerialized = ({
   groupsSources: [],
-  columnsSource: undefined,
+  columnsSource: null,
   valuesSources: [],
   columnNameToMetadata: {}
 });
@@ -99,8 +102,8 @@ const convertValueToState = (stateSerialized: ValueSerialized, columnNames) : St
 };
 
 
-const createDraggableColumn = (name: String, displayName: String) : DraggableItem => ({name, displayName, isDraggable : true});
-const createSectionItem = (displayName: String) : DraggableItem => ({displayName, isDraggable : false});
+const createDraggableColumn = (columnName: string, displayName: string) : DraggableItem => ({columnName, displayName, isDraggable : true});
+const createSectionItem = (displayName: string) : DraggableItem => ({displayName, isDraggable : false});
 const groupSourceItem : DraggableItem =createSectionItem(t`Fields to use for the table rows`);
 const columnSourceItem : DraggableItem = createSectionItem(t`Field to use for the table columns`);
 const valueSourceItem : DraggableItem = createSectionItem(t`Fields to use for the table values`);
@@ -117,21 +120,22 @@ const convertStateToValue = (state : State) : ValueSerialized => {
 
 const convertItemsToState = (items : DraggableItem[]) =>{
   const {columnSourceItemIndex, valueSourceItemIndex, unusedSourceItemIndex} = getBorderIndexes(items);
-  const gs = items.slice(0, columnSourceItemIndex).map(p => p.name);
-  const cs = items.slice(columnSourceItemIndex+1, valueSourceItemIndex).map(p => p.name);
-  const vs = items.slice(valueSourceItemIndex+1, unusedSourceItemIndex).map(p => p.name);
+  const gs = items.slice(0, columnSourceItemIndex).map(p => p.columnName);
+  const cs = items.slice(columnSourceItemIndex+1, valueSourceItemIndex).map(p => p.columnName);
+  const vs = items.slice(valueSourceItemIndex+1, unusedSourceItemIndex).map(p => p.columnName);
   return {[GROUPS_SOURCES] : gs, [COLUMNS_SOURCE] : cs[0], [VALUES_SOURCES]: vs};
 };
 
+export default class SummaryTableColumnsSetting extends Component<any, Props, State> {
+  state : State;
 
-export default class SummaryTableColumnsSetting extends Component<Props, State> {
-
-  constructor(props) {
+  constructor(props : Props) {
     super(props);
     this.state = convertValueToState(this.props.value, this.props.columnNames)
+    console.log(this.props.value)
   }
 
-  updateState = async newState => {
+  updateState = async (newState : State) => {
     await this.setState(newState);
     await this.props.onChange(convertStateToValue(this.state));
   };
@@ -146,7 +150,7 @@ export default class SummaryTableColumnsSetting extends Component<Props, State> 
     return (
       <div>
         <div style={{fontSize: '1rem'}}><h2 className="text-bold text-paragraph mb2">{t`Customize this table`}</h2></div>
-        {SectionHeader(groupSourceItem.displayName)}
+        <SectionHeader text={groupSourceItem.displayName}/>
         <SortableList items={items} onSortEnd={this.onSortEnd} onSortStart={this.onSortStart} hideSortableGhost={true}  isChanging={isChanging} itemTypeHelper={itemTypeHelper} updateState={this.updateState}
                       columnNameToMetadata={columnNameToMetadata}
                       distance={10}
@@ -175,13 +179,13 @@ const getBorderIndexes = (items:DraggableItem[]) => {
 
 type SortableElementArg = {
   value : DraggableItem,
-  valueIndex: Number,
+  valueIndex: number,
   columnMetadata : ColumnMetadata,
 
   itemTypeHelper : ItemTypeHelper,
 
 
-  removeItem: (Number) => void,
+  removeItem: (number) => void,
   updateMetadata: ColumnName => ColumnMetadata => void,
 }
 
@@ -189,19 +193,17 @@ const SortableItem = SortableElement(({value, valueIndex, columnMetadata , itemT
   if(value.isDraggable) {
 
     const removeColumn = () => removeItem(valueIndex);
-    const updateMeta = updateMetadata(value.name);
+    const updateMeta = updateMetadata(value.columnName);
 
-    if (itemTypeHelper.isGroupingColumn(valueIndex))
-      return FatColumn(value.displayName, columnMetadata, removeColumn, updateMeta);
-    if (itemTypeHelper.isColumnSourceColumn(valueIndex))
-      return FatColumn(value.displayName, columnMetadata, removeColumn, updateMeta);
+    if (itemTypeHelper.isGroupingColumn(valueIndex) || itemTypeHelper.isColumnSourceColumn(valueIndex))
+      return <FatColumn displayName={value.displayName} columnMetadata={columnMetadata} onRemove={removeColumn}  onChange={updateMeta}/>;
     if (itemTypeHelper.isValueColumn(valueIndex))
-      return ValueColumn(value.displayName, removeColumn);
+      return <ValueColumn displayName={value.displayName} onRemove={removeColumn}/>;
     else
-      return UnusedColumn(value.displayName);
+      return <UnusedColumn displayName={value.displayName}/>;
   }
 
-  return SectionHeader(value.displayName);
+  return <SectionHeader text={value.displayName}/>;
 });
 
 const emptyColumnMetadata : ColumnMetadata = {showTotals : true};
@@ -214,7 +216,7 @@ const SortableList = SortableContainer(({items, isChanging, updateState , itemTy
       {items.map((value, index) => <SortableItem
           class='no-select' key={`item-${index}`} index={index} valueIndex={index} value={value}
           disabled={!isChanging && !value.isDraggable}
-          columnMetadata ={columnNameToMetadata[value.name] || emptyColumnMetadata}
+          columnMetadata ={columnNameToMetadata[value.columnName] || emptyColumnMetadata}
           itemTypeHelper = {itemTypeHelper}
 
           updateMetadata={updateMetadata}
@@ -225,31 +227,31 @@ const SortableList = SortableContainer(({items, isChanging, updateState , itemTy
   );
 });
 
-const updateMetadataBuilder = (columnNameToMetadata, updateState : State => void) => (columnName: ColumnName) => (newMetadata:ColumnMetadata) : void => {
+const updateMetadataBuilder = (columnNameToMetadata, updateState : {} => void) => (columnName: ColumnName) => (newMetadata:ColumnMetadata) : void => {
     const newColumnNameToMetadata = {...columnNameToMetadata, [columnName] : newMetadata};
     const newState = {columnNameToMetadata : newColumnNameToMetadata};
     updateState(newState);
 };
 
-const removeItemBuilder = (items:DraggableItem[],updateState : State => void, itemTypeHelper : ItemTypeHelper) => (oldIndex:Number) : void =>{
+const removeItemBuilder = (items:DraggableItem[],updateState : {} => void, itemTypeHelper : ItemTypeHelper) => (oldIndex:number) : void =>{
   const newIndex = itemTypeHelper.unusedSourceItemIndex ;
   moveItem(updateState)(items, {oldIndex, newIndex});
 };
 
-const moveItem = (updateState : State => void) => (items: DraggableItem[], {oldIndex, newIndex}) => {
+const moveItem = (updateState : State => void) => async (items: DraggableItem[], {oldIndex, newIndex}) => {
   if(oldIndex !== newIndex)
-  updateState({
+  await updateState({
     items: arrayMove(items, oldIndex, newIndex),
     isChanging : false
   });
 };
 
-
-const FatColumn = (displayName: String, columnMetadata : ColumnMetadata, onRemove: void => void, onChange: ColumnMetadata => void): Component =>{
+type FatColumnArgType = {displayName: string, columnMetadata : ColumnMetadata, onRemove: void => void, onChange: ColumnMetadata => void};
+const FatColumn = ({displayName, columnMetadata , onRemove, onChange} : FatColumnArgType) =>{
   const changeOrder = (value) => onChange({...columnMetadata, isAscSortOrder: value});
 
     return <div className={cx("my2 bordered shadowed  cursor-pointer bg-white")}>
-      {RowHeader(displayName, onRemove)}
+      <RowHeader displayName={displayName} onRemove={onRemove}/>
       <div className="py1 px2 border-grey-1">
         <div className="flex align-center justify-between flex-no-shrink">
           <div className={cx(styles.DescriptionText)}>{t`Show totals`}</div>
@@ -275,21 +277,21 @@ const FatColumn = (displayName: String, columnMetadata : ColumnMetadata, onRemov
       </div>
     </div>;};
 
-const ValueColumn = (displayName: String, onRemove: void => void): Component =>
+const ValueColumn = props =>
     <div className="my2 bordered shadowed cursor-pointer overflow-hidden bg-white" >
-      {RowHeader(displayName, onRemove)}
+      <RowHeader {...props}/>
     </div>;
 
 
 
 
-const UnusedColumn = (displayName: String): Component =>
+const UnusedColumn = ({displayName}) =>
     <div className="my2 bordered shadowed cursor-pointer overflow-hidden bg-white" >
-      {RowHeader(displayName)}
+      <RowHeader displayName={displayName}/>
     </div>;
 
-
-const RowHeader = (displayName: String, onRemove) => <div className={cx("p1 border-bottom relative bg-grey-0", !onRemove && "cursor-move")}>
+const RowHeader = ({displayName, onRemove}) =>
+  <div className={cx("p1 border-bottom relative bg-grey-0", !onRemove && "cursor-move")}>
     <div className="px1 flex align-center relative">
       <span className="h4 flex-full text-dark no-select">{displayName}</span>
       {onRemove &&
@@ -306,7 +308,7 @@ const RowHeader = (displayName: String, onRemove) => <div className={cx("p1 bord
   </div>;
 
 
-const SectionHeader = text =>
+const SectionHeader = ({text}) =>
 <div style={{fontSize: '1rem'}}>
   <hr className={styles.charthr}/>
   <h2 className="text-bold text-paragraph mb2 no-select">{text}</h2></div>;
