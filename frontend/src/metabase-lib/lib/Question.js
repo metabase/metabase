@@ -511,15 +511,15 @@ export default class Question {
   }
 
   async reduxCreate(dispatch) {
-    const { payload } = await dispatch(Questions.actions.create(this.card()));
-    return this.setCard(payload.entities.questions[payload.result]);
+    const action = await dispatch(Questions.actions.create(this.card()));
+    return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
 
   async reduxUpdate(dispatch) {
-    const { payload } = await dispatch(
+    const action = await dispatch(
       Questions.actions.update({ id: this.id() }, this.card()),
     );
-    return this.setCard(payload.entities.questions[payload.result]);
+    return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
 
   // TODO: Fix incorrect Flow signature
