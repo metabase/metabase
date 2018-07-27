@@ -34,7 +34,10 @@ class CollectionList extends React.Component {
               <GridItem w={w} key={collection.id}>
                 <CollectionDropTarget collection={collection}>
                   {({ highlighted, hovered }) => (
-                    <ItemDragSource item={collection}>
+                    <ItemDragSource
+                      item={collection}
+                      collection={currentCollection}
+                    >
                       <CollectionItem
                         collection={collection}
                         highlighted={highlighted}

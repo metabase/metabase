@@ -212,13 +212,13 @@ class DefaultLanding extends React.Component {
                 <BrowserCrumbs
                   analyticsContext={ANALYTICS_CONTEXT}
                   crumbs={[
-                    ...ancestors.map(({ id, name }) => ({
+                    ...ancestors.map(ancestor => ({
                       title: (
-                        <CollectionDropTarget collection={{ id }} margin={8}>
-                          {name}
+                        <CollectionDropTarget collection={ancestor} margin={8}>
+                          {ancestor.name}
                         </CollectionDropTarget>
                       ),
-                      to: Urls.collection(id),
+                      to: Urls.collection(ancestor.id),
                     })),
                   ]}
                 />
@@ -261,7 +261,7 @@ class DefaultLanding extends React.Component {
                           className="relative"
                           key={index}
                         >
-                          <ItemDragSource item={item}>
+                          <ItemDragSource item={item} collection={collection}>
                             <PinnedItem
                               key={`${item.type}:${item.id}`}
                               index={index}
@@ -349,6 +349,7 @@ class DefaultLanding extends React.Component {
                                       <ItemDragSource
                                         item={item}
                                         selection={selection}
+                                        collection={collection}
                                       >
                                         <NormalItem
                                           key={`${item.type}:${item.id}`}
