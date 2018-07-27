@@ -1,7 +1,6 @@
 /* @flow */
-//todo clean imports and package.json
 //todo rename
-//todo remove {name}.css
+//todo remove {name}.css (update style using ChartSettingsTableFormatting)
 import React, {Component} from "react";
 
 import {t} from "c-3po";
@@ -18,7 +17,7 @@ import Toggle from "metabase/components/Toggle";
 import {SortableContainer, SortableElement, arrayMove} from "react-sortable-hoc";
 
 
-//todo: remove or move consts
+//todo: remove or move consts and ValueSerialized
 export const GROUPS_SOURCES = 'groupsSources';
 export const COLUMNS_SOURCE = 'columnsSource';
 export const VALUES_SOURCES = 'valuesSources';
@@ -87,13 +86,12 @@ const emptyStateSerialized: ValueSerialized = ({
 
 const convertValueToState = (stateSerialized: ValueSerialized, columnNames) : State => {
   const fatStateSerialized = {...emptyStateSerialized, ...stateSerialized};
-  //todo
   const {groupsSources, columnsSource, valuesSources, columnNameToMetadata} = fatStateSerialized;
   const unusedColumns = getUnusedColumns(fatStateSerialized, columnNames);
-  const columnSoureArray = columnsSource ? [columnsSource] : [];
+  const columnSourceArray = columnsSource ? [columnsSource] : [];
 
   const items = [ ...groupsSources.map(n => createDraggableColumn(n, columnNames[n])),
-                          columnSourceItem, ...columnSoureArray.map(n => createDraggableColumn(n, columnNames[n])),
+                          columnSourceItem, ...columnSourceArray.map(n => createDraggableColumn(n, columnNames[n])),
                           valueSourceItem, ...valuesSources.map(n => createDraggableColumn(n, columnNames[n])),
                           unusedSourceItem, ...unusedColumns.map(n => createDraggableColumn(n, columnNames[n]))];
 
