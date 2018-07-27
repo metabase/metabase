@@ -66,17 +66,12 @@
       :unit      nil})))
 
 (s/defn results->column-metadata :- ResultsMetadata
-  "Return the desired storage format for the column metadata coming back from RESULTS."
-  [results]
-  (for [col (:cols results)]
-    (-> col
-        stored-column-metadata->result-column-metadata
-        (maybe-infer-special-type col))))
-
-(s/defn results->column-metadata+fingerprint :- ResultsMetadata
   "Return the desired storage format for the column metadata coming back from RESULTS and fingerprint the RESULTS."
   [results]
-  (let [result-metadata (results->column-metadata results)]
+  (let [result-metadata (for [col (:cols results)]
+                          (-> col
+                              stored-column-metadata->result-column-metadata
+                              (maybe-infer-special-type col)))]
     (transduce identity
                (redux/post-complete
                 (apply f/col-wise (for [metadata result-metadata]

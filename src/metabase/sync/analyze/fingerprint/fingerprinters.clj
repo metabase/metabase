@@ -3,6 +3,7 @@
   (:require [cheshire.core :as json]
             [clj-time.coerce :as t.coerce]
             [kixi.stats.core :as stats]
+            [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util.date :as du]
@@ -177,4 +178,8 @@
 (defn fingerprint-fields
   "Return a transducer for fingerprinting a resultset with fields `fields`."
   [fields]
-  (apply col-wise (map fingerprinter fields)))
+  (apply col-wise (for [field fields]
+                    (fingerprinter
+                     (cond-> field
+                       (nil? (:special_type field))
+                       (assoc :special_type (classify.name/infer-special-type field)))))))
