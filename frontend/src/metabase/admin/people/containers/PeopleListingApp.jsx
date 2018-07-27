@@ -56,11 +56,12 @@ import {
 } from "../people";
 
 const mapStateToProps = (state, props) => {
+  console.log(props)
   return {
-    users: props.list,
+    users: props.users,
     modal: getModal(state, props),
     user: state.currentUser,
-    groups: getGroups(state, props),
+    groups: props.groups,
   };
 };
 
@@ -80,9 +81,8 @@ const mapDispatchToProps = {
   deleteMembership,
 };
 
-@entityListLoader({
-  entityType: "users",
-})
+@entityListLoader({ entityType: "users", })
+@entityListLoader({ entityType: "groups", })
 @connect(mapStateToProps, mapDispatchToProps)
 export default class PeopleListingApp extends Component {
   state = {};

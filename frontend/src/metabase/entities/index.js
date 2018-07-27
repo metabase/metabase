@@ -12,5 +12,7 @@ export segments from "./segments";
 export tasks from "./tasks";
 
 export users from "./users";
+export groups from "./groups"
 
 export search from "./search";
+
