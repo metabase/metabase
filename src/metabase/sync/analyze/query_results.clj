@@ -41,7 +41,8 @@
   [result-metadata col]
   (update result-metadata :special_type (fn [original-value]
                                           ;; If we already know the special type, becouse it is stored, don't classify again.
-                                          (or original-value
+                                          (or (and (not= original-value :type/Number)
+                                                   original-value)
                                               (classify-name/infer-special-type col)))))
 
 (s/defn ^:private stored-column-metadata->result-column-metadata :- ResultColumnMetadata
