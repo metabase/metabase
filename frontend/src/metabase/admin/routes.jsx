@@ -8,6 +8,7 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import NewUserModal from "metabase/admin/people/containers/NewUserModal";
 import UserSuccessModal from "metabase/admin/people/components/UserSuccessModal";
+import UserPasswordResetModal from "metabase/admin/people/components/UserPasswordResetModal";
 import EditUserModal from "metabase/admin/people/containers/EditUserModal";
 
 // Settings
@@ -78,8 +79,11 @@ const getRoutes = (store, IsAdmin) => (
     <Route path="people" title={t`People`} component={AdminPeopleApp}>
       <IndexRoute component={PeopleListingApp} />
       <ModalRoute path="new" modal={NewUserModal} />
+
       <ModalRoute path=":userId/edit" modal={EditUserModal} />
       <ModalRoute path=":userId/success" modal={UserSuccessModal} />
+      <ModalRoute path=":userId/reset" modal={UserPasswordResetModal} />
+
       <Route path="groups" title={t`Groups`}>
         <IndexRoute component={GroupsListingApp} />
         <Route path=":groupId" component={GroupDetailApp} />

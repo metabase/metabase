@@ -4,6 +4,8 @@ import { createEntity } from "metabase/lib/entities";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 
+import { SessionApi } from "metabase/services";
+
 const User = createEntity({
   name: "users",
   path: "/api/user",
@@ -28,9 +30,13 @@ const User = createEntity({
     },
   },
   objectActions: {
-    deactivateUser: ({ id }, activated) =>
-      User.actions.update({ id }, { activated }),
-    reactivateUser: () => ({}),
+    deactivateUser: ({ id }) => {
+      return User.actions.delete({ id });
+    },
+    reactivateUser: () => {},
+    passwordResetEmail: async ({ email }) => {
+      return await SessionApi.forgot_password({ email });
+    },
   },
 
   form: {
