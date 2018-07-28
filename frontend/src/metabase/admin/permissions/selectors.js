@@ -741,6 +741,9 @@ export const getCollectionsPermissionsGrid = createSelector(
             const collection = _.findWhere(collections, {
               id: entityId.collectionId,
             });
+            if (!collection) {
+              return;
+            }
             const collectionPerm = getCollectionPermission(
               permissions,
               groupId,
@@ -755,12 +758,12 @@ export const getCollectionsPermissionsGrid = createSelector(
               collectionPerm === "none" &&
               (descendentPerms.has("read") || descendentPerms.has("write"))
             ) {
-              return t`This group has permission to view at least one subcollection.`;
+              return t`This group has permission to view at least one subcollection of this collection.`;
             } else if (
               collectionPerm === "read" &&
               descendentPerms.has("write")
             ) {
-              return t`This group has permission to edit at least one subcollection.`;
+              return t`This group has permission to edit at least one subcollection of this collection.`;
             }
           },
         },
