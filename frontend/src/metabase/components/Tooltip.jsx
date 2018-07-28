@@ -9,15 +9,20 @@ import TooltipPopover from "./TooltipPopover.jsx";
 let TOOLTIP_STACK = [];
 
 function pushTooltip(component) {
+  // if for some reason the tooltip is already in the stack (it shouldn't be) remove it and we'll add it again as if it wasn't
   TOOLTIP_STACK = TOOLTIP_STACK.filter(t => t !== component);
+  // close all other tooltips
   TOOLTIP_STACK.filter(t => t.state.isOpen).forEach(t =>
     t.setState({ isOpen: false }),
   );
+  // add this tooltip
   TOOLTIP_STACK.push(component);
 }
 
 function popTooltip(component) {
+  // remove the tooltip from the stack
   TOOLTIP_STACK = TOOLTIP_STACK.filter(t => t !== component);
+  // reopen the top tooltip, if any
   const top = TOOLTIP_STACK[TOOLTIP_STACK.length - 1];
   if (top && !top.state.isOpen) {
     top.setState({ isOpen: true });
