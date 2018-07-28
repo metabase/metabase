@@ -18,7 +18,7 @@
         (ql/filter (ql/and (ql/>  $id    50)
                            (ql/>= $price  4)))
         (ql/order-by (ql/asc $id)))
-      rows formatted-venues-rows))
+      formatted-venues-rows rows))
 
 ;;; FILTER -- "AND", "<", ">", "!="
 (expect-with-non-timeseries-dbs

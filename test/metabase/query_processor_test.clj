@@ -325,7 +325,11 @@
      (= (:status rows) :failed) (do (println "Error running query:" (u/pprint-to-str 'red rows))
                                     (throw (ex-info (:error rows) rows)))
 
-     (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
+     (:data rows) (try
+                    (update-in rows [:data :rows] (partial format-rows-by format-fns))
+                    (catch Throwable e
+                      (printf (:cols rows))
+                      (throw e)))
      (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
      :else        (vec (for [row rows]
                          (vec (for [[f v] (partition 2 (interleave format-fns row))]
