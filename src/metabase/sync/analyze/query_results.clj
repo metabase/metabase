@@ -40,15 +40,9 @@
   special type with a nil special type"
   [result-metadata col]
   (update result-metadata :special_type (fn [original-value]
-                                          ;; If the original special type is a PK or FK, we don't want to use a new
-                                          ;; computed special type because it'll just be confusing as we can't do any
-                                          ;; meaningful binning etc on it. If it's not of that type and we are able to
-                                          ;; compute a special type based on the results, use that
-                                          (if-let [new-special-type (and (not (isa? original-value :type/PK))
-                                                                         (not (isa? original-value :type/FK))
-                                                                         (classify-name/infer-special-type col))]
-                                            new-special-type
-                                            original-value))))
+                                          ;; If we already know the special type, becouse it is stored, don't classify again.
+                                          (or original-value
+                                              (classify-name/infer-special-type col)))))
 
 (s/defn ^:private stored-column-metadata->result-column-metadata :- ResultColumnMetadata
   "The metadata in the column of our resultsets come from the metadata we store in the `Field` associated with the

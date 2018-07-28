@@ -492,5 +492,5 @@
                                                     [:field-id (u/get-id field)]))
                                :limit        max-sample-rows}
                   :middleware {:format-rows?           false
-                               :skip-results-metadata? false}})]
+                               :skip-results-metadata? true}})]
     (get-in results [:data :rows])))
