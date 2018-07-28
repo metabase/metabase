@@ -7,18 +7,6 @@
 
 ;;; ------------------------------------------------ "FILTER" CLAUSE -------------------------------------------------
 
-(expect-with-non-timeseries-dbs
-  [[55 "Dal Rae Restaurant"       67 33.983  -118.096 4]
-   [61 "Lawry's The Prime Rib"    67 34.0677 -118.376 4]
-   [77 "Sushi Nakazawa"           40 40.7318 -74.0045 4]
-   [79 "Sushi Yasuda"             40 40.7514 -73.9736 4]
-   [81 "Tanoshi Sushi & Sake Bar" 40 40.7677 -73.9533 4]]
-  (assert false (-> (data/run-query venues
-                                   (ql/filter (ql/and (ql/>  $id    50)
-                                                      (ql/>= $price  4)))
-                                   (ql/order-by (ql/asc $id)))
-                   :data)))
-
 ;;; FILTER -- "AND", ">", ">="
 (expect-with-non-timeseries-dbs
   [[55 "Dal Rae Restaurant"       67 33.983  -118.096 4]
