@@ -147,6 +147,7 @@
     "Coerce object to a `java.util.Date`."))
 
 (extend-protocol IDateCoercible
+  nil                    (->date [_] nil)
   String                 (->date [this] (-> this du/str->date-time t.coerce/to-date))
   java.util.Date         (->date [this] this))
 
