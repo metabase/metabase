@@ -102,6 +102,10 @@ export type Entity = {
     DELETE: ActionType,
     FETCH_LIST: ActionType,
   },
+  actionDecorators: {
+    pre: Function,
+    post: Function,
+  },
   actions: {
     [name: string]: ActionCreator,
     fetchList: (
@@ -210,6 +214,10 @@ export function createEntity(def: EntityDefinition): Entity {
       entityObject => async (dispatch, getState) => {
         trackAction("create", entityObject, getState);
         const statePath = ["entities", entity.name, "create"];
+        const { pre, post } = entity.actionDecorators.create;
+        if (pre) {
+          entityObject = pre(entityObject);
+        }
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
@@ -217,6 +225,9 @@ export function createEntity(def: EntityDefinition): Entity {
             entity.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));
+          if (post) {
+            return post(result, entityObject);
+          }
           return result;
         } catch (error) {
           console.error(`${CREATE_ACTION} failed:`, error);

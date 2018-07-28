@@ -4,9 +4,7 @@ import {
   handleActions,
   combineReducers,
   momentifyTimestamps,
-  momentifyObjectsTimestamps,
 } from "metabase/lib/redux";
-import { normalize, schema } from "normalizr";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { isMetaBotGroup } from "metabase/lib/groups";
@@ -16,11 +14,6 @@ import { SessionApi, UserApi, PermissionsApi } from "metabase/services";
 import _ from "underscore";
 import { assoc, dissoc } from "icepick";
 
-const user = new schema.Entity("user");
-
-// action constants
-export const CREATE_USER = "metabase/admin/people/CREATE_USER";
-export const FETCH_USERS = "metabase/admin/people/FETCH_USERS";
 export const DEACTIVATE_USER = "metabase/admin/people/DEACTIVATE_USER";
 export const REACTIVATE_USER = "metabase/admin/people/REACTIVATE_USER";
 export const RESEND_INVITE = "metabase/admin/people/RESEND_INVITE";
@@ -84,32 +77,6 @@ export const deleteMembership = createAction(
   },
 );
 
-export const createUser = createThunkAction(
-  CREATE_USER,
-  user => async (dispatch, getState) => {
-    // apply any user defaults here
-    user.is_superuser = false;
-
-    let newUser = await UserApi.create(user);
-
-    if (user.groups) {
-      await Promise.all(
-        user.groups.map(groupId =>
-          dispatch(createMembership({ userId: newUser.id, groupId: groupId })),
-        ),
-      );
-    }
-
-    MetabaseAnalytics.trackEvent(
-      "People Admin",
-      "User Added",
-      user.password !== null ? "password" : "email",
-    );
-
-    return newUser;
-  },
-);
-
 export const deactivateUser = createThunkAction(
   DEACTIVATE_USER,
   user => async () => {
@@ -137,11 +104,6 @@ export const reactivateUser = createThunkAction(
   },
 );
 
-export const fetchUsers = createThunkAction(FETCH_USERS, () => async () => {
-  let users = await UserApi.list({ include_deactivated: true });
-  return normalize(users, [user]);
-});
-
 export const resendInvite = createThunkAction(
   RESEND_INVITE,
   user => async () => {
@@ -166,12 +128,6 @@ export const resetPasswordViaEmail = createThunkAction(
   },
 );
 
-export const updateUser = createThunkAction(UPDATE_USER, user => async () => {
-  MetabaseAnalytics.trackEvent("People Admin", "Update Updated");
-  const newUser = await UserApi.update(user);
-  return newUser;
-});
-
 const modal = handleActions(
   {
     [SHOW_MODAL]: { next: (state, { payload }) => payload },
@@ -188,23 +144,11 @@ const TIMESTAMP_KEYS = [
 
 const users = handleActions(
   {
-    [FETCH_USERS]: {
-      next: (state, { payload }) =>
-        momentifyObjectsTimestamps(payload.entities.user, TIMESTAMP_KEYS),
-    },
-    [CREATE_USER]: {
-      next: (state, { payload: user }) =>
-        assoc(state, user.id, momentifyTimestamps(user, TIMESTAMP_KEYS)),
-    },
     [DEACTIVATE_USER]: {
       next: (state, { payload: user }) =>
         assoc(state, user.id, momentifyTimestamps(user, TIMESTAMP_KEYS)),
     },
     [REACTIVATE_USER]: {
-      next: (state, { payload: user }) =>
-        assoc(state, user.id, momentifyTimestamps(user, TIMESTAMP_KEYS)),
-    },
-    [UPDATE_USER]: {
       next: (state, { payload: user }) =>
         assoc(state, user.id, momentifyTimestamps(user, TIMESTAMP_KEYS)),
     },

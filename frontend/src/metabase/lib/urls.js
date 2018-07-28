@@ -144,3 +144,7 @@ export function editUser(userId) {
 export function resetPassword(userId) {
   return `admin/people/${userId}/reset`;
 }
+
+export function newUserSuccess(userId, pass) {
+  return `admin/people/${userId}/success?p=${pass}`;
+}
