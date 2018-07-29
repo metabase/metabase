@@ -43,7 +43,7 @@
                                           ;; If we already know the special type, becouse it is stored, don't classify again.
                                           ;; Also try to refine special type set upstream for aggregation cols (which comes back as :type/Number)
                                           (case original-value
-                                            [nil :type/Number] (classify-name/infer-special-type col)
+                                            (nil :type/Number) (classify-name/infer-special-type col)
                                             original-value))))
 
 (s/defn ^:private stored-column-metadata->result-column-metadata :- ResultColumnMetadata
