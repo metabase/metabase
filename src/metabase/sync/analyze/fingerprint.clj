@@ -4,7 +4,7 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.helpers :as h]
-            [metabase.db :as mdb]
+        ;    [metabase.db :as mdb]
             [metabase.driver :as driver]
             [metabase.models.field :refer [Field]]
             [metabase.sync
