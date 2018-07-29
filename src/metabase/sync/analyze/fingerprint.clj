@@ -132,9 +132,9 @@
   ([]
    {:where [:and
             [:= :active true]
-              [:or
-              [:not (mdb/isa :special_type :type/PK)]
-              [:= :special_type nil]]
+            [:or
+             [:not (mdb/isa :special_type :type/PK)]
+             [:= :special_type nil]]
             [:not= :visibility_type "retired"]
             (cons :or (versions-clauses))]})
 

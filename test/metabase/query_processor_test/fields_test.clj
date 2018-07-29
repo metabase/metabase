@@ -26,11 +26,3 @@
                   (ql/order-by (ql/asc $id)))
        booleanize-native-form
        (format-rows-by [str int])))
-
-(qp-expect-with-all-engines
-  [:type/PK true nil]
-  {:row_count 0
-   :status :completed
-   :data ((juxt :special_type
-                (comp some? :last_analyzed)
-                :fingerprint) (metabase.models.field/Field (data/id :venues :id)))})

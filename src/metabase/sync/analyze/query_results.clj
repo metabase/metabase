@@ -41,9 +41,10 @@
   [result-metadata col]
   (update result-metadata :special_type (fn [original-value]
                                           ;; If we already know the special type, becouse it is stored, don't classify again.
-                                          (or (and (not= original-value :type/Number) ; aggregation col
-                                                   original-value)
-                                              (classify-name/infer-special-type col)))))
+                                          ;; Also try to refine special type set upstream for aggregation cols (which comes back as :type/Number)
+                                          (case original-value
+                                            [nil :type/Number] (classify-name/infer-special-type col)
+                                            original-value))))
 
 (s/defn ^:private stored-column-metadata->result-column-metadata :- ResultColumnMetadata
   "The metadata in the column of our resultsets come from the metadata we store in the `Field` associated with the
