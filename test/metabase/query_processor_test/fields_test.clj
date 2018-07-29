@@ -28,10 +28,9 @@
        (format-rows-by [str int])))
 
 (qp-expect-with-all-engines
-  [:type/BigInteger :type/FK true nil]
+  [:type/PK true nil]
   {:row_count 0
    :status :completed
-   :data ((juxt :base_type
-                :special_type
+   :data ((juxt :special_type
                 (comp some? :last_analyzed)
                 :fingerprint) (metabase.models.field/Field (data/id :venues :id)))})

@@ -4,7 +4,7 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.helpers :as h]
-        ;    [metabase.db :as mdb]
+            [metabase.db :as mdb]
             [metabase.driver :as driver]
             [metabase.models.field :refer [Field]]
             [metabase.sync
@@ -22,14 +22,15 @@
 (s/defn ^:private save-fingerprint!
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
   ;; don't bother saving fingerprint if it's completely empty
-  (log/debug (format "Saving fingerprint for %s" (sync-util/name-for-logging field)))
-  ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
-  ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
-  ;; latest fingerprints.
-  (db/update! Field (u/get-id field)
-    :fingerprint         fingerprint
-    :fingerprint_version i/latest-fingerprint-version
-    :last_analyzed       nil))
+  (when (seq fingerprint)
+    (log/debug (format "Saving fingerprint for %s" (sync-util/name-for-logging field)))
+    ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
+    ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
+    ;; latest fingerprints.
+    (db/update! Field (u/get-id field)
+      :fingerprint         fingerprint
+      :fingerprint_version i/latest-fingerprint-version
+      :last_analyzed       nil)))
 
 (defn- empty-stats-map [fields-count]
   {:no-data-fingerprints   0
@@ -131,9 +132,9 @@
   ([]
    {:where [:and
             [:= :active true]
-            ;; [:or
-            ;;  [:not (mdb/isa :special_type :type/PK)]
-            ;;  [:= :special_type nil]]
+              [:or
+              [:not (mdb/isa :special_type :type/PK)]
+              [:= :special_type nil]]
             [:not= :visibility_type "retired"]
             (cons :or (versions-clauses))]})
 

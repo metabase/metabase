@@ -302,12 +302,12 @@
 
 ;; TODO - maybe this needs a new name now that it also removes the results_metadata
 (defn booleanize-native-form
-  "Convert `:native_form` attribute to a boolean to make test results comparisons easier. Remove `data.result_metadata`
+  "Convert `:native_form` attribute to a boolean to make test results comparisons easier. Remove `data.results_metadata`
   as well since it just takes a lot of space and the checksum can vary based on whether encryption is enabled."
   [m]
   (-> m
       (update-in [:data :native_form] boolean)
-      (m/dissoc-in [:data :result_metadata])))
+      (m/dissoc-in [:data :results_metadata])))
 
 (defn format-rows-by
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS. ROWS can be a sequence

@@ -60,8 +60,8 @@
                        (not nested?))
               (record-metadata! card-id metadata))
             ;; add the metadata and checksum to the response
-            (assoc results :result_metadata {:checksum (metadata-checksum metadata)
-                                             :columns  metadata}))
+            (assoc results :results_metadata {:checksum (metadata-checksum metadata)
+                                              :columns  metadata}))
           ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
           ;; rather than failing the entire query
           (catch Throwable e
