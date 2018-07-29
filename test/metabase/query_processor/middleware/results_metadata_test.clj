@@ -101,7 +101,7 @@
   (-> (qp/process-query {:database (data/id)
                          :type     :native
                          :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
-      (get-in [:data :results_metadata])
+      (get-in [:data :result_metadata])
       (update :checksum class)
       round-all-decimals'))
 
