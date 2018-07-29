@@ -28,5 +28,6 @@
        (format-rows-by [str int])))
 
 (qp-expect-with-all-engines
+  nil
   (assert (-> (data/id) (metabase.models.database/Database) :engine (not= :presto))
     (toucan.db/select 'Field :table_id (data/id :venues))))
