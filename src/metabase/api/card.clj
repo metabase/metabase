@@ -190,7 +190,7 @@
       (if (= status :failed)
         (log/error (trs "Error running query to determine Card result metadata:")
                    (u/pprint-to-str 'red results))
-        (get-in results [:data :results_metadata :columns])))))
+        (get-in results [:data :result_metadata :columns])))))
 
 (s/defn ^:private result-metadata :- (s/maybe qr/ResultsMetadata)
   "Get the right results metadata for this CARD. We'll check to see whether the METADATA passed in seems valid;

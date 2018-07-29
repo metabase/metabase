@@ -31,7 +31,7 @@
      :common_name  $}))
 
 (defn format-response [m]
-  (into {} (for [[k v] (m/dissoc-in m [:data :results_metadata])]
+  (into {} (for [[k v] (m/dissoc-in m [:data :result_metadata])]
              (cond
                (contains? #{:id :started_at :running_time :hash} k) [k (boolean v)]
                (= :data k) [k (if-not (contains? v :native_form)

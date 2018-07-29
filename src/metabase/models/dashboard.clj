@@ -219,7 +219,7 @@
   "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
   [query]
   (binding [qpi/*disable-qp-logging* true]
-    (get-in (qp/process-query query) [:data :results_metadata :columns])))
+    (get-in (qp/process-query query) [:data :result_metadata :columns])))
 
 (defn- save-card!
   [card]

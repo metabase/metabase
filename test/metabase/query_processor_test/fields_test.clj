@@ -29,7 +29,9 @@
 
 (qp-expect-with-all-engines
   [:type/BigInteger :type/FK true nil]
-  ((juxt :base_type
-         :special_type
-         (comp some? :last_analyzed)
-         :fingerprint) (metabase.models.field/Field (data/id :venues :id))))
+  {:row_count 0
+   :status :completed
+   :data ((juxt :base_type
+                :special_type
+                (comp some? :last_analyzed)
+                :fingerprint) (metabase.models.field/Field (data/id :venues :id)))})
