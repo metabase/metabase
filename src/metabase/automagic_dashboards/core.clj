@@ -50,9 +50,9 @@
   (if (->> root :source (instance? (type Table)))
     (Field id-or-name)
     (when-let [field (->> root
-                     :source
-                     :result_metadata
-                     (m/find-first (comp #{id-or-name} :name)))]
+                          :source
+                          :result_metadata
+                          (m/find-first (comp #{id-or-name} :name)))]
       (-> field
           (update :base_type keyword)
           (update :special_type keyword)
@@ -125,7 +125,8 @@
       (tru "{0} by {1}" aggregations dimensions)
       aggregations)))
 
-(def ^:private ^{:arglists '([x])} encode-base64-json
+(def ^{:arglists '([x])} encode-base64-json
+  "Encode given object as base-64 encoded JSON."
   (comp codec/base64-encode codecs/str->bytes json/encode))
 
 (defmulti
@@ -789,13 +790,14 @@
 
 (defn- drilldown-fields
   [context]
-  (->> context
-       :dimensions
-       vals
-       (mapcat :matches)
-       filters/interesting-fields
-       (map ->related-entity)
-       (hash-map :drilldown-fields)))
+  (when (->> context :root :source (instance? (type Table)))
+    (->> context
+         :dimensions
+         vals
+         (mapcat :matches)
+         filters/interesting-fields
+         (map ->related-entity)
+         (hash-map :drilldown-fields))))
 
 (defn- comparisons
   [root]
@@ -805,7 +807,16 @@
                 :title       (tru "Compare with {0}" (:comparison-name segment))
                 :description ""})
              (when ((some-fn :query-filter :cell-query) root)
-               [{:url         (str (:url root) "/compare/table/" (-> root :source u/get-id))
+               [{:url         (if (->> root :source (instance? (type Table)))
+                                (str (:url root) "/compare/table/" (-> root :source u/get-id))
+                                (str (:url root) "/compare/adhoc/"
+                                     (encode-base64-json
+                                      {:database (:database root)
+                                       :type     :query
+                                       :query    {:source_table (->> root
+                                                                     :source
+                                                                     u/get-id
+                                                                     (str "card__" ))}})))
                  :title       (tru "Compare with entire dataset")
                  :description ""}]))})
 

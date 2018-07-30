@@ -3,7 +3,9 @@
              [core :as t]
              [format :as t.format]]
             [expectations :refer :all]
-            [metabase.api.common :as api]
+            [metabase.api
+             [card :as card.api]
+             [common :as api]]
             [metabase.automagic-dashboards
              [core :refer :all :as magic]
              [rules :as rules]]
@@ -142,40 +144,44 @@
         (-> card-id Card test-automagic-analysis)))))
 
 (expect
-  (tt/with-temp* [Collection [{collection-id :id}]
-                  Card [{source-id :id} {:table_id      (data/id :venues)
+  (let [source-query {:query    {:source_table (data/id :venues)}
+                      :type     :query
+                      :database (data/id)}]
+    (tt/with-temp* [Collection [{collection-id :id}]
+                    Card [{source-id :id} {:table_id      (data/id :venues)
+                                           :collection_id   collection-id
+                                           :dataset_query   source-query
+                                           :result_metadata (#'card.api/result-metadata-for-query source-query)}]
+                    Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id
-                                         :dataset_query {:query    {:source_table (data/id :venues)}
+                                         :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
+                                                                    :source_table (str "card__" source-id)}
                                                          :type     :query
-                                                         :database (data/id)}}]
-                  Card [{card-id :id} {:table_id      (data/id :venues)
-                                       :collection_id collection-id
-                                       :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
-                                                                  :source_table (str "card__" source-id)}
-                                                       :type     :query
-                                                       :database -1337}}]]
-    (with-rasta
-      (with-dashboard-cleanup
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-        (-> card-id Card test-automagic-analysis)))))
+                                                         :database -1337}}]]
+      (with-rasta
+        (with-dashboard-cleanup
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+          (-> card-id Card test-automagic-analysis))))))
 
 (expect
-  (tt/with-temp* [Collection [{collection-id :id}]
-                  Card [{source-id :id} {:table_id      nil
+  (let [source-query {:native   {:query "select * from venues"}
+                      :type     :native
+                      :database (data/id)}]
+    (tt/with-temp* [Collection [{collection-id :id}]
+                    Card [{source-id :id} {:table_id        nil
+                                           :collection_id   collection-id
+                                           :dataset_query   source-query
+                                           :result_metadata (#'card.api/result-metadata-for-query source-query)}]
+                    Card [{card-id :id} {:table_id      nil
                                          :collection_id collection-id
-                                         :dataset_query {:native {:query "select * from users"}
-                                                         :type :native
-                                                         :database (data/id)}}]
-                  Card [{card-id :id} {:table_id      (data/id :venues)
-                                       :collection_id collection-id
-                                       :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
-                                                                  :source_table (str "card__" source-id)}
-                                                       :type     :query
-                                                       :database -1337}}]]
-    (with-rasta
-      (with-dashboard-cleanup
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-        (-> card-id Card test-automagic-analysis)))))
+                                         :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
+                                                                    :source_table (str "card__" source-id)}
+                                                         :type     :query
+                                                         :database -1337}}]]
+      (with-rasta
+        (with-dashboard-cleanup
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+          (-> card-id Card test-automagic-analysis))))))
 
 (expect
   (tt/with-temp* [Collection [{collection-id :id}]
