@@ -32,7 +32,7 @@ Collection permissions are similar to [data access permissions](05-setting-permi
 
 ![Permissions](images/collections/collection-permissions.png)
 
-If you want to see the bigger picture of what permissions your user groups have for all your collections, jut click the link that says `See all collection permissions`. You'll see a table with your user groups along the top and all your collections down along the left. Click the `View collections` link under any collection that contains more collections to zoom in and see its contents:
+If you want to see the bigger picture of what permissions your user groups have for all your collections, just click the link that says `See all collection permissions`. You'll see a table with your user groups along the top and all your collections down along the left. Click the `View collections` link under any collection that contains more collections to zoom in and see its contents:
 
 ![Full permissions grid](images/collections/permission-grid.png)
 
