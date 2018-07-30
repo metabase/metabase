@@ -103,7 +103,7 @@ class Overworld extends React.Component {
                             description={
                               isSample
                                 ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                                : t``
+                                : ``
                             }
                           />
                         </Card>
