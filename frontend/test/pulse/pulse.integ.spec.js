@@ -19,7 +19,6 @@ import Toggle from "metabase/components/Toggle";
 import {
   SET_EDITING_PULSE,
   SAVE_EDITING_PULSE,
-  FETCH_CARDS,
   FETCH_PULSE_CARD_PREVIEW,
 } from "metabase/pulse/actions";
 
@@ -83,7 +82,7 @@ describe("Pulse", () => {
   it("should load create pulse", async () => {
     store.pushPath("/pulse/create");
     const app = mount(store.connectContainer(<PulseEditApp />));
-    await store.waitForActions([SET_EDITING_PULSE, FETCH_CARDS]);
+    await store.waitForActions([SET_EDITING_PULSE]);
 
     // no previews yet
     expect(app.find(PulseCardPreview).length).toBe(0);

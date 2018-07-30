@@ -4,7 +4,9 @@
             [clojure.tools.logging :as log]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.filters :as filters]
-            [metabase.models.card :as card]
+            [metabase.models
+             [card :as card]
+             [collection :as collection]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [puppetlabs.i18n.core :as i18n :refer [trs]]
@@ -24,12 +26,23 @@
 
 (defn create-collection!
   "Create a new collection."
-  [title color description]
-  (when api/*is-superuser?*
-    (db/insert! 'Collection
-      :name        title
+  [title color description parent-collection-id]
+  (db/insert! 'Collection
+    (merge
+     {:name        title
       :color       color
-      :description description)))
+      :description description}
+     (when parent-collection-id
+       {:location (collection/children-location (db/select-one ['Collection :location :id]
+                                                  :id parent-collection-id))}))))
+
+(defn get-or-create-root-container-collection
+  "Get or create container collection for automagic dashboards in the root collection."
+  []
+  (or (db/select-one 'Collection
+        :name     "Automatically Generated Dashboards"
+        :location "/")
+      (create-collection! "Automatically Generated Dashboards" "#509EE3" nil nil)))
 
 (def colors
   "Colors used for coloring charts and collections."

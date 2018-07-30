@@ -10,12 +10,12 @@ Have a few key performance indicators that you want to be able to easily check? 
 You can make as many dashboards as you want. Go nuts.
 
 ### How to create a dashboard
-Once you have a question saved, you can create a dashboard. Click the **Dashboards** link at the top of the screen, then click the plus icon in the top-right to create a new dashboard. Give your new dashboard a name and a description, then click **Create**, and you’ll be taken to your shiny new dashboard.
+Click the plus (+) icon in the top-right of the screen to open the menu to create a new dashboard. Give your new dashboard a name and a description, choose which collection it should be saved in, then click **Create**, and you’ll be taken to your shiny new dashboard.
 
 ![Create Dashboard](images/dashboards/DashboardCreate.png)
 
 ### Adding saved questions to a dashboard
-You can add a newly saved question to a dashboard directly from the window that pops up after you save the question, or by clicking the Add to Dashboard icon in the top-right of a question page. You can also go to one of your dashboards and click the plus icon in the top right to add any of your saved questions to the dashboard.
+You can add a newly saved question to a dashboard directly from the window that pops up after you save the question, or by clicking the Add to Dashboard icon in the top-right of a question page. You can also go to one of your dashboards and click the plus icon in the top right to add any of your saved questions to the dashboard. Dashboards and the questions they contain do not need to be saved in the same collection.
 
 Once you add a question to your dashboard, it’ll look something like this:
 
@@ -57,14 +57,12 @@ Questions in your dashboard will automatically update their display based on the
 ### Archiving a dashboard
 Archiving a dashboard does not archive the individual saved questions on it — it just archives the dashboard. To archive a dashboard while viewing it, click the pencil icon to enter edit mode, then click the Archive button.
 
-You can view all of your archived dashboards by clicking the box icon in the top-right of the Dashboards page. Archived dashboards in this list can be unarchived by clicking the icon of the box with the upward arrow next to that dashboard.
-
-(Note: as of Metabase v0.24, dashboards can no longer be permanently deleted; only archived.)
+You can view all of your archived items by clicking the menu icon in the top-right of any collection page. Archived dashboards in this list can be unarchived by clicking the icon of the box with the upward arrow next to that dashboard.
 
 ### Finding dashboards
-After a while, your team might have a lot of dashboards. To make it a little easier to find dashboards that you look at often, you can mark a dashboard as a favorite by clicking the star icon on it from the dashboards list. You can use the filter dropdown in the top of the list to view only your favorite dashboards, or only the ones that you created yourself.
+After a while, your team might have a lot of dashboards. To make it a little easier to find dashboards that your team looks at often, you can pin them to the top of the collection by clicking and dragging them to the top or by opening the `…` menu and selecting the Pin action.
 
-![Filter list](images/dashboards/FilterDashboards.png)
+You can also search for any dashboard (or question, collection, or pulse) by its title in the big search box at the top of Metabase.
 
 ### Fullscreen dashboards
 

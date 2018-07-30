@@ -2,7 +2,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt, ngettext, msgid } from "c-3po";
-import { withRouter } from "react-router";
 
 import PulseEditName from "./PulseEditName.jsx";
 import PulseEditCollection from "./PulseEditCollection";
@@ -22,38 +21,16 @@ import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
 import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
-import { connect } from "react-redux";
-import { goBack } from "react-router-redux";
 
-import Collections from "metabase/entities/collections";
-import Pulses from "metabase/entities/pulses";
-
-const mapStateToProps = (state, props) => ({
-  initialCollectionId: Collections.selectors.getInitialCollectionId(
-    state,
-    props,
-  ),
-});
-
-const mapDispatchToProps = {
-  setPulseArchived: Pulses.actions.setArchived,
-  goBack,
-};
-
-@connect(mapStateToProps, mapDispatchToProps)
-@withRouter
 export default class PulseEdit extends Component {
   static propTypes = {
     pulse: PropTypes.object.isRequired,
     pulseId: PropTypes.number,
     formInput: PropTypes.object.isRequired,
     setEditingPulse: PropTypes.func.isRequired,
-    fetchCards: PropTypes.func.isRequired,
-    fetchUsers: PropTypes.func.isRequired,
     fetchPulseFormInput: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
     saveEditingPulse: PropTypes.func.isRequired,
-    deletePulse: PropTypes.func.isRequired,
     onChangeLocation: PropTypes.func.isRequired,
     goBack: PropTypes.func,
     initialCollectionId: PropTypes.number,
@@ -64,8 +41,6 @@ export default class PulseEdit extends Component {
       this.props.pulseId,
       this.props.initialCollectionId,
     );
-    this.props.fetchCards();
-    this.props.fetchUsers();
     this.props.fetchPulseFormInput();
 
     MetabaseAnalytics.trackEvent(

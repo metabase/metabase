@@ -113,6 +113,7 @@ class EntityMenu extends Component {
                               <EntityMenuItem
                                 icon={item.icon}
                                 title={item.title}
+                                externalLink={item.externalLink}
                                 action={
                                   item.action &&
                                   (() => {

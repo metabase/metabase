@@ -491,6 +491,6 @@
                                :fields       (vec (for [field fields]
                                                     [:field-id (u/get-id field)]))
                                :limit        max-sample-rows}
-                  :middleware {:format-rows?         false
-                               :skip-fingerprinting? true}})]
+                  :middleware {:format-rows?           false
+                               :skip-results-metadata? true}})]
     (get-in results [:data :rows])))

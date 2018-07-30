@@ -188,6 +188,10 @@ export default class TokenField extends Component {
     return typeof labelKey === "function" ? labelKey(option) : option[labelKey];
   }
 
+  _key(option: Option) {
+    return JSON.stringify(this._value(option));
+  }
+
   _isLastFreeformValue(inputValue: string) {
     const { value, parseFreeformValue, updateOnInputChange } = this.props;
     if (parseFreeformValue && updateOnInputChange) {
@@ -603,7 +607,7 @@ export default class TokenField extends Component {
           onMouseLeave={() => this.setState({ listIsHovered: false })}
         >
           {filteredOptions.map(option => (
-            <li className="mr1" key={this._value(option)}>
+            <li className="mr1" key={this._key(option)}>
               <div
                 ref={
                   this._valueIsEqual(selectedOptionValue, this._value(option))

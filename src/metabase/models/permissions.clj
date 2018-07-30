@@ -420,7 +420,7 @@
        :object   path)
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
-       (log/error (u/format-color 'red "Failed to grant permissions: %s" (.getMessage e)))))))
+       (log/error (u/format-color 'red (tru "Failed to grant permissions: {0}" (.getMessage e))))))))
 
 (defn revoke-native-permissions!
   "Revoke all native query permissions for `group-or-id` to database with `database-id`."
