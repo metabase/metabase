@@ -48,10 +48,11 @@ const itemClasses = cxs({
   },
 });
 
-const LinkMenuItem = ({ children, link, onClose, event }) => (
+const LinkMenuItem = ({ children, link, onClose, event, externalLink }) => (
   <Link
     className={itemClasses}
     to={link}
+    target={externalLink ? "_blank" : null}
     onClick={onClose}
     data-metabase-event={event}
   >
@@ -65,7 +66,15 @@ const ActionMenuItem = ({ children, action, event }) => (
   </div>
 );
 
-const EntityMenuItem = ({ action, title, icon, link, onClose, event }) => {
+const EntityMenuItem = ({
+  action,
+  title,
+  icon,
+  link,
+  onClose,
+  event,
+  externalLink,
+}) => {
   if (link && action) {
     console.warn(
       "EntityMenuItem Error: You cannot specify both action and link props",
@@ -80,7 +89,12 @@ const EntityMenuItem = ({ action, title, icon, link, onClose, event }) => {
 
   if (link) {
     return (
-      <LinkMenuItem link={link} onClose={onClose} event={event}>
+      <LinkMenuItem
+        link={link}
+        externalLink={externalLink}
+        onClose={onClose}
+        event={event}
+      >
         {content}
       </LinkMenuItem>
     );
