@@ -3,7 +3,7 @@
 
 ![Collection detail](images/collections/collection-detail.png)
 
-Collections are a great way to organize your saved questions and decide who gets to see and edit things. Collections could be things like, "Important Metrics," "Product Team," "Marketing KPIs," or "Questions about users." Collections can even contain other collections, allowing you to create an organizational structure that fits your team. You can also choose which user groups should have what level of access to your collections (more on that below).
+Collections are a great way to organize your dashboards, saved questions, and pulses, and to decide who gets to see and edit things. Collections could be things like, "Important Metrics," "Product Team," "Marketing KPIs," or "Questions about users." Collections can even contain other collections, allowing you to create an organizational structure that fits your team. You can also choose which user groups should have what level of access to your collections (more on that below).
 
 Metabase starts out with a default top-level collection which is called "Our analytics," which every other collection is saved inside of.
 
@@ -19,9 +19,9 @@ By default, new collections will have the same permissions settings as the colle
 ### Pinning things in collections
 ![Pins](images/collections/pinned-items.png)
 
-One great new feature in Metabase is that you can now pin the most important couple of items in each of your collections to the top. Pinning a dashboard or question turns it into a big, eye-catching card that will help make sure that folks who are browsing your Metabase instance will always know what's most important.
+One great feature in Metabase is that you can pin the most important couple of items in each of your collections to the top. Pinning an item in a collection turns it into a big, eye-catching card that will help make sure that folks who are browsing your Metabase instance will always know what's most important.
 
-Any user with curate permissions for a collection can pin items in it, making it easy to delegate curation responsibilities to other members of your team. To pin a dashboard or saved question, you can either click and drag it to the top of the page, or click on its menu and choose the pin action. (Note that sub-collections and pulses can't be pinned.)
+Any user with curate permissions for a collection can pin items in it, making it easy to delegate curation responsibilities to other members of your team. To pin something, you can either click and drag it to the top of the page, or click on its menu and choose the pin action. (Note that collections themselves can't be pinned.)
 
 ### Setting permissions for collections
 Collection permissions are similar to [data access permissions](05-setting-permissions.md). Rather than going to the Admin Panel, you set permissions on collections by clicking on the sharing icon in the top-right of the screen while viewing the collection and clicking on `Edit permissions`. Only Administrators can edit collection permissions. Each [user group](05-setting-permissions.md) can have either View, Curate, or No access to a collection:

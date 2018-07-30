@@ -29,11 +29,11 @@ If you connected your database to Metabase during setup, you'll see it listed at
 
 ### Explore your analytics
 
-As long as you're not the first Metabase user on your team, you can browse the dashboards, questions, and collections your teammates have made. [More about exploring](03-basic-exploration.md)
+As you and your team create dashboards and collections, they'll start to show up on the homepage. Click on a collection in the "Our analytics" section to see its contents, or click "browse all items" to see everything you and your team have made. [More about exploring](03-basic-exploration.md)
 
 ### Ask a question or write a query
 
-Click the `Ask a question button` to start a new custom exploration of one of your tables or to write a new SQL or native query if you want to really dig in.
+Click the `Ask a question button` in the top-right of Metabase to start a new custom exploration of one of your tables, or to write a new SQL or native query if you want to really dig in.
 
 ### Make a new dashboard or pulse
 
