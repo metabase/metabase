@@ -78,6 +78,7 @@
 (prefer-method fingerprinter [:type/* :type/FK] [:type/Text :type/*])
 (prefer-method fingerprinter [:type/* :type/PK] [:type/Number :type/*])
 (prefer-method fingerprinter [:type/* :type/PK] [:type/Text :type/*])
+(prefer-method fingerprinter [:type/DateTime :type/*] [:type/* :type/PK])
 
 (defn- with-global-fingerprinter
   [fingerprinter]
