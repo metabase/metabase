@@ -17,10 +17,12 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
 import RetinaImage from "react-retina-image";
 
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+
 // actions
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
 import { apiUpdateQuestion } from "metabase/query_builder/actions";
-import { fetchPulseFormInput, fetchUsers } from "metabase/pulse/actions";
+import { fetchPulseFormInput } from "metabase/pulse/actions";
 
 // selectors
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -29,11 +31,10 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import {
-  formInputSelector,
+  getPulseFormInput,
   hasConfiguredAnyChannelSelector,
   hasConfiguredEmailChannelSelector,
   hasLoadedChannelInfoSelector,
-  userListSelector,
 } from "metabase/pulse/selectors";
 
 // lib
@@ -571,28 +572,28 @@ export class AlertEditSchedule extends Component {
   }
 }
 
+@entityListLoader({ entityType: "users" })
 @connect(
-  state => ({
+  (state, props) => ({
     user: getUser(state),
-    userList: userListSelector(state),
-    formInput: formInputSelector(state),
+    formInput: getPulseFormInput(state),
   }),
-  { fetchPulseFormInput, fetchUsers },
+  {
+    fetchPulseFormInput,
+  },
 )
 export class AlertEditChannels extends Component {
   props: {
     onChannelsChange: any => void,
     user: any,
-    userList: any[],
+    users: any[],
     // this stupidly named property contains different channel options, nothing else
     formInput: any,
-    fetchPulseFormInput: () => void,
-    fetchUsers: () => void,
+    fetchPulseFormInput: () => Promise<void>,
   };
 
   componentDidMount() {
     this.props.fetchPulseFormInput();
-    this.props.fetchUsers();
   }
 
   // Technically pulse definition is equal to alert definition
@@ -610,7 +611,7 @@ export class AlertEditChannels extends Component {
   };
 
   render() {
-    const { alert, user, userList, formInput } = this.props;
+    const { alert, user, users, formInput } = this.props;
     return (
       <div className="mt4 pt2">
         <h3 className="text-dark mb3">{jt`Where do you want to send these alerts?`}</h3>
@@ -621,7 +622,7 @@ export class AlertEditChannels extends Component {
             pulseIsValid={true}
             formInput={formInput}
             user={user}
-            userList={userList}
+            users={users}
             setPulse={this.onSetPulse}
             hideSchedulePicker={true}
             emailRecipientText={t`Email alerts to:`}

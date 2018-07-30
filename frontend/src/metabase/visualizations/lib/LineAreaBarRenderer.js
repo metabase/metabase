@@ -52,7 +52,6 @@ import {
 
 import lineAndBarOnRender from "./LineAreaBarPostRender";
 
-import { formatNumber } from "metabase/lib/formatting";
 import { isStructured } from "metabase/meta/Card";
 
 import {
@@ -138,6 +137,7 @@ function getXAxisProps(props, datas) {
     xValues,
     xDomain: d3.extent(xValues),
     xInterval: getXInterval(props, xValues),
+    isHistogramBar: isHistogramBar(props),
   };
 }
 
@@ -674,11 +674,6 @@ export default function lineAreaBar(
   parent._rangeBandPadding(chartType === "bar" ? BAR_PADDING_RATIO : 1); //
 
   applyXAxisSettings(parent, props.series, xAxisProps);
-
-  // override tick format for bars. ticks are aligned with beginning of bar, so just show the start value
-  if (isHistogramBar(props)) {
-    parent.xAxis().tickFormat(d => formatNumber(d));
-  }
 
   applyYAxisSettings(parent, yAxisProps);
 

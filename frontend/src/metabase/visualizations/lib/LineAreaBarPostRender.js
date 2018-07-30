@@ -10,6 +10,7 @@ const X_LABEL_MIN_SPACING = 2; // minimum space we want to leave between labels
 const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching from 45° to 90°
 const X_LABEL_HIDE_THRESHOLD = 12; // tick width breakpoint for hiding labels entirely
 const X_LABEL_MAX_LABEL_HEIGHT_RATIO = 0.7; // percent rotated labels are allowed to take
+const X_LABEL_DISABLED_SPACING = 6; // spacing to use if the x-axis is disabled completely
 
 // +-------------------------------------------------------------------------------------------------------------------+
 // |                                                ON RENDER FUNCTIONS                                                |
@@ -374,6 +375,9 @@ function rotateSize(size, rotation) {
 }
 
 function computeXAxisMargin(chart) {
+  if (chart.settings["graph.x_axis.axis_enabled"] === false) {
+    return X_LABEL_DISABLED_SPACING;
+  }
   const rotation = getXAxisRotation(chart);
   const maxSize = computeXAxisLabelMaxSize(chart);
   const rotatedMaxSize = rotateSize(maxSize, rotation);

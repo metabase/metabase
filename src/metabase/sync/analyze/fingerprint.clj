@@ -4,48 +4,23 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.helpers :as h]
+            [metabase.db :as mdb]
+            [metabase.driver :as driver]
             [metabase.models.field :refer [Field]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
-            [metabase.sync.analyze.fingerprint
-             [datetime :as datetime]
-             [global :as global]
-             [number :as number]
-             [sample :as sample]
-             [text :as text]]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
              [schema :as su]]
+            [redux.core :as redux]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:private FieldOrColumn
-  {:base_type s/Keyword
-   s/Any      s/Any})
-
-(s/defn ^:private type-specific-fingerprint :- (s/maybe i/TypeSpecificFingerprint)
-  "Return type-specific fingerprint info for FIELD AND. a FieldSample of Values if it has an elligible base type"
-  [field :- FieldOrColumn, values :- i/FieldSample]
-  (condp #(isa? %2 %1) (:base_type field)
-    :type/Text     {:type/Text (text/text-fingerprint values)}
-    :type/Number   {:type/Number (number/number-fingerprint values)}
-    :type/DateTime {:type/DateTime (datetime/datetime-fingerprint values)}
-    nil))
-
-(s/defn fingerprint :- i/Fingerprint
-  "Generate a 'fingerprint' from a FieldSample of VALUES."
-  [field :- FieldOrColumn, values :- i/FieldSample]
-  (merge
-   (when-let [global-fingerprint (global/global-fingerprint values)]
-     {:global global-fingerprint})
-   (when-let [type-specific-fingerprint (type-specific-fingerprint field values)]
-     {:type type-specific-fingerprint})))
-
-
 (s/defn ^:private save-fingerprint!
-  [field :- i/FieldInstance, fingerprint :- i/Fingerprint]
+  [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
   ;; don't bother saving fingerprint if it's completely empty
   (when (seq fingerprint)
     (log/debug (format "Saving fingerprint for %s" (sync-util/name-for-logging field)))
@@ -65,19 +40,25 @@
 
 (s/defn ^:private fingerprint-table!
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
-  (let [fields-to-sample (sample/sample-fields table fields)]
-    (reduce (fn [count-info [field sample]]
-              (if-not sample
-                (update count-info :no-data-fingerprints inc)
-                (let [result (sync-util/with-error-handling (format "Error generating fingerprint for %s"
-                                                                    (sync-util/name-for-logging field))
-                               (save-fingerprint! field (fingerprint field sample)))]
-                  (if (instance? Exception result)
-                    (update count-info :failed-fingerprints inc)
-                    (update count-info :updated-fingerprints inc)))))
-            (empty-stats-map (count fields-to-sample))
-            fields-to-sample)))
+  (transduce identity
+             (redux/post-complete
+              (f/fingerprint-fields fields)
+              (fn [fingerprints]
+                (reduce (fn [count-info [field fingerprint]]
+                          (cond
+                            (instance? Throwable fingerprint)
+                            (update count-info :failed-fingerprints inc)
 
+                            (some-> fingerprint :global :distinct-count zero?)
+                            (update count-info :no-data-fingerprints inc)
+
+                            :else
+                            (do
+                              (save-fingerprint! field fingerprint)
+                              (update count-info :updated-fingerprints inc))))
+                        (empty-stats-map (count fingerprints))
+                        (map vector fields fingerprints))))
+             (driver/table-rows-sample table fields)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
@@ -90,6 +71,7 @@
 ;; SELECT *
 ;; FROM metabase_field
 ;; WHERE active = true
+;;   AND (special_type NOT IN ('type/PK') OR special_type IS NULL)
 ;;   AND preview_display = true
 ;;   AND visibility_type <> 'retired'
 ;;   AND table_id = 1
@@ -150,6 +132,9 @@
   ([]
    {:where [:and
             [:= :active true]
+            [:or
+             [:not (mdb/isa :special_type :type/PK)]
+             [:= :special_type nil]]
             [:not= :visibility_type "retired"]
             (cons :or (versions-clauses))]})
 

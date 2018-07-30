@@ -1,11 +1,13 @@
 (ns metabase.sync.analyze.fingerprint-test
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
   (:require [expectations :refer :all]
+            [metabase.driver :as driver]
+            [metabase.db :as mdb]
             [metabase.models
              [field :as field :refer [Field]]
              [table :refer [Table]]]
             [metabase.sync.analyze.fingerprint :as fingerprint]
-            [metabase.sync.analyze.fingerprint.sample :as sample]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.interface :as i]
             [metabase.test.data :as data]
             [metabase.test.util]
@@ -13,35 +15,6 @@
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
-
-(defn- fingerprint [field]
-  (let [[[_ sample]] (sample/sample-fields (field/table field) [field])]
-    (#'fingerprint/fingerprint field sample)))
-
-;; basic test for a numeric Field
-(expect
-  {:global {:distinct-count 4}
-   :type   {:type/Number {:min 1, :max 4, :avg 2.03}}}
-  (fingerprint (Field (data/id :venues :price))))
-
-;; basic test for a Text Field
-(expect
-  {:global {:distinct-count 100}
-   :type   {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 15.63}}}
-  (fingerprint (Field (data/id :venues :name))))
-
-;; a non-integer numeric Field
-(expect
-  {:global {:distinct-count 94}
-   :type   {:type/Number {:min 10.0646, :max 40.7794, :avg 35.50589199999998}}}
-  (fingerprint (Field (data/id :venues :latitude))))
-
-;; a datetime field
-(expect
-  {:global {:distinct-count 618}
-   :type   {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
-                            :latest   "2015-12-29T00:00:00.000Z"}}}
-  (fingerprint (Field (data/id :checkins :date))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -64,6 +37,9 @@
   {:where
    [:and
     [:= :active true]
+    [:or
+     [:not (mdb/isa :special_type :type/PK)]
+     [:= :special_type nil]]
     [:not= :visibility_type "retired"]
     [:or
      [:and
@@ -76,6 +52,9 @@
   {:where
    [:and
     [:= :active true]
+    [:or
+     [:not (mdb/isa :special_type :type/PK)]
+     [:= :special_type nil]]
     [:not= :visibility_type "retired"]
     [:or
      [:and
@@ -94,6 +73,9 @@
   {:where
    [:and
     [:= :active true]
+    [:or
+     [:not (mdb/isa :special_type :type/PK)]
+     [:= :special_type nil]]
     [:not= :visibility_type "retired"]
     [:or
      [:and
@@ -112,6 +94,9 @@
   {:where
    [:and
     [:= :active true]
+    [:or
+     [:not (mdb/isa :special_type :type/PK)]
+     [:= :special_type nil]]
     [:not= :visibility_type "retired"]
     [:or
      [:and
@@ -134,10 +119,9 @@
 
 ;; Make sure that the above functions are used correctly to determine which Fields get (re-)fingerprinted
 (defn- field-was-fingerprinted? {:style/indent 0} [fingerprint-versions field-properties]
-  (let [fingerprinted? (atom false)
-        fake-field     (field/map->FieldInstance {:name "Fake Field", :base_type :type/Number})]
+  (let [fingerprinted? (atom false)]
     (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted fingerprint-versions
-                  sample/sample-fields                                         (constantly [[fake-field [1 2 3 4 5]]])
+                  driver/table-rows-sample                                     (constantly [[1] [2] [3] [4] [5]])
                   fingerprint/save-fingerprint!                                (fn [& _] (reset! fingerprinted? true))]
       (tt/with-temp* [Table [table]
                       Field [_ (assoc field-properties :table_id (u/get-id table))]]
@@ -228,7 +212,7 @@
                               :fingerprint_version 1
                               :last_analyzed       (du/->Timestamp #inst "2017-08-09")}]
     (with-redefs [i/latest-fingerprint-version 3
-                  sample/sample-fields         (constantly [[field [1 2 3 4 5]]])
-                  fingerprint/fingerprint      (constantly {:experimental {:fake-fingerprint? true}})]
+                  driver/table-rows-sample         (constantly [[1] [2] [3] [4] [5]])
+                  fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
       [(#'fingerprint/fingerprint-table! (Table (data/id :venues)) [field])
        (into {} (db/select-one [Field :fingerprint :fingerprint_version :last_analyzed] :id (u/get-id field)))])))

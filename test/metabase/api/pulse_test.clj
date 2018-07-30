@@ -493,6 +493,40 @@
      {:collection_position nil})
     (db/select-one-field :collection_position Pulse :id (u/get-id pulse))))
 
+;; Can we archive a Pulse?
+(expect
+  (pulse-test/with-pulse-in-collection [_ collection pulse]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "pulse/" (u/get-id pulse))
+     {:archived true})
+    (db/select-one-field :archived Pulse :id (u/get-id pulse))))
+
+;; Can we unarchive a Pulse?
+(expect
+  false
+  (pulse-test/with-pulse-in-collection [_ collection pulse]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    (db/update! Pulse (u/get-id pulse) :archived true)
+    ((user->client :rasta) :put 200 (str "pulse/" (u/get-id pulse))
+     {:archived false})
+    (db/select-one-field :archived Pulse :id (u/get-id pulse))))
+
+;; Does unarchiving a Pulse affect its Cards & Recipients? It shouldn't. This should behave as a PATCH-style endpoint!
+(expect
+  (tt/with-temp* [Collection            [collection]
+                  Pulse                 [pulse {:collection_id (u/get-id collection)}]
+                  PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
+                  PulseChannelRecipient [pcr   {:pulse_channel_id (u/get-id pc), :user_id (user->id :rasta)}]
+                  Card                  [card]]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    ((user->client :rasta) :put 200 (str "pulse/" (u/get-id pulse))
+     {:archived true})
+    ((user->client :rasta) :put 200 (str "pulse/" (u/get-id pulse))
+     {:archived false})
+    (and (db/exists? PulseChannel :id (u/get-id pc))
+         (db/exists? PulseChannelRecipient :id (u/get-id pcr)))))
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   UPDATING PULSE COLLECTION POSITIONS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -688,6 +722,7 @@
                                                          :skip_if_empty       false})
                (card-api-test/get-name->collection-position :rasta coll-id))])))))
 
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             DELETE /api/pulse/:id                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -715,7 +750,7 @@
                   PulseCard [_     {:pulse_id (u/get-id pulse), :card_id (u/get-id card)}]]
     (with-pulses-in-readable-collection [pulse]
       ;; revoke permissions for default group to this database
-      (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path (u/get-id db)))
+      (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
       ;; now a user without permissions to the Card in question should *not* be allowed to delete the pulse
       ((user->client :rasta) :delete 403 (format "pulse/%d" (u/get-id pulse))))))
 
@@ -757,6 +792,22 @@
   (with-pulses-in-readable-collection [pulse-1 pulse-2 pulse-3]
     (for [pulse ((user->client :rasta) :get 200 "pulse")]
       (update pulse :collection_id boolean))))
+
+;; by default, archived Pulses should be excluded
+(expect
+  #{"Not Archived"}
+  (tt/with-temp* [Pulse [not-archived-pulse {:name "Not Archived"}]
+                  Pulse [archived-pulse     {:name "Archived", :archived true}]]
+    (with-pulses-in-readable-collection [not-archived-pulse archived-pulse]
+      (set (map :name ((user->client :rasta) :get 200 "pulse"))))))
+
+;; can we fetch archived Pulses?
+(expect
+  #{"Archived"}
+  (tt/with-temp* [Pulse [not-archived-pulse {:name "Not Archived"}]
+                  Pulse [archived-pulse     {:name "Archived", :archived true}]]
+    (with-pulses-in-readable-collection [not-archived-pulse archived-pulse]
+      (set (map :name ((user->client :rasta) :get 200 "pulse?archived=true"))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

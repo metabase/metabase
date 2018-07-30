@@ -39,6 +39,7 @@ export default class AddToDashSelectDashModal extends Component {
         <DashboardForm
           dashboard={{ collection_id: this.props.card.collection_id }}
           onSaved={dashboard => this.addToDashboard(dashboard.id)}
+          onClose={() => this.setState({ shouldCreateDashboard: false })}
         />
       );
     } else {

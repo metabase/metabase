@@ -30,31 +30,42 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 
 const PAGE_PADDING = [1, 2, 4];
 
+import { createSelector } from "reselect";
+
+// use reselect select to avoid re-render if list doesn't change
+const getParitionedCollections = createSelector(
+  [(state, props) => props.list],
+  list => {
+    const [collections, items] = _.partition(
+      list,
+      item => item.model === "collection",
+    );
+    const [pinned, unpinned] = _.partition(
+      items,
+      item => item.collection_position != null,
+    );
+
+    // sort the pinned items by collection_position
+    pinned.sort((a, b) => a.collection_position - b.collection_position);
+    return {
+      collections,
+      pinned,
+      unpinned,
+    };
+  },
+);
+
 //class Overworld extends Zelda
 @entityListLoader({
   entityType: "search",
-  entityQuery: (state, props) => ({ collection: "root" }),
+  entityQuery: { collection: "root" },
   wrapped: true,
 })
-@connect((state, props) => {
+@connect((state, props) => ({
   // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
-  const [collections, items] = _.partition(
-    props.list,
-    item => item.model === "collection",
-  );
-  const [pinned, unpinned] = _.partition(
-    items,
-    item => item.collection_position != null,
-  );
-  // sort the pinned items by collection_position
-  pinned.sort((a, b) => a.collection_position - b.collection_position);
-  return {
-    collections,
-    pinned,
-    unpinned,
-    user: getUser(state),
-  };
-})
+  ...getParitionedCollections(state, props),
+  user: getUser(state, props),
+}))
 class Overworld extends React.Component {
   render() {
     const { user } = this.props;
@@ -79,10 +90,9 @@ class Overworld extends React.Component {
                   {({ candidates, sampleCandidates, isSample }) => {
                     return (
                       <Box mx={PAGE_PADDING} mt={2}>
-                        <Box mb={1}>
-                          <h4
-                          >{t`Not sure where to start? Try these x-rays based on your data.`}</h4>
-                        </Box>
+                        <SectionHeading>
+                          {t`Not sure where to start? Try these x-rays based on your data.`}
+                        </SectionHeading>
                         <Card px={3} pb={1}>
                           <ExplorePane
                             candidates={candidates}
@@ -105,10 +115,8 @@ class Overworld extends React.Component {
             }
 
             return (
-              <Box px={PAGE_PADDING}>
-                <Box mt={3} mb={1}>
-                  <h4>{t`Start here`}</h4>
-                </Box>
+              <Box px={PAGE_PADDING} mt={2}>
+                <SectionHeading>{t`Start here`}</SectionHeading>
                 <Grid>
                   {pinnedDashboards.map(pin => {
                     return (
@@ -117,6 +125,9 @@ class Overworld extends React.Component {
                         key={`${pin.model}-${pin.id}`}
                       >
                         <Link
+                          data-metabase-event={`Homepage;Pinned Item Click;Pin Type ${
+                            pin.model
+                          }`}
                           to={Urls.dashboard(pin.id)}
                           hover={{ color: normal.blue }}
                         >
@@ -142,14 +153,15 @@ class Overworld extends React.Component {
         </CollectionItemsLoader>
 
         <Box px={PAGE_PADDING} my={3}>
-          <Box mb={2}>
-            <h4>{t`Our analytics`}</h4>
-          </Box>
-          <Card p={[1, 2]}>
+          <SectionHeading>{t`Our analytics`}</SectionHeading>
+          <Card p={[1, 2]} mt={2}>
             {this.props.collections.filter(
               c => c.id !== user.personal_collection_id,
             ).length > 0 ? (
-              <CollectionList collections={this.props.collections} />
+              <CollectionList
+                collections={this.props.collections}
+                analyticsContext="Homepage"
+              />
             ) : (
               <Box className="text-centered">
                 <Box style={{ opacity: 0.5 }}>
@@ -169,6 +181,7 @@ class Overworld extends React.Component {
               to="/collection/root"
               color={normal.grey2}
               className="text-brand-hover"
+              data-metabase-event={`Homepage;Browse Items Clicked;`}
             >
               <Flex color={colors["brand"]} p={2} my={1} align="center">
                 <Box ml="auto" mr="auto">
@@ -183,8 +196,8 @@ class Overworld extends React.Component {
         </Box>
 
         <Box pt={2} px={PAGE_PADDING}>
-          <h4>{t`Our data`}</h4>
-          <Box mt={2} mb={4}>
+          <SectionHeading>{t`Our data`}</SectionHeading>
+          <Box mb={4}>
             <DatabaseListLoader>
               {({ databases }) => {
                 return (
@@ -194,6 +207,9 @@ class Overworld extends React.Component {
                         <Link
                           to={`browse/${database.id}`}
                           hover={{ color: normal.blue }}
+                          data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${
+                            database.engine
+                          }`}
                         >
                           <Box p={3} bg={colors["bg-medium"]}>
                             <Icon
@@ -217,5 +233,16 @@ class Overworld extends React.Component {
     );
   }
 }
+
+const SectionHeading = ({ children }) => (
+  <Box mb={1}>
+    <h5
+      className="text-uppercase"
+      style={{ color: colors["text-medium"], fontWeight: 900 }}
+    >
+      {children}
+    </h5>
+  </Box>
+);
 
 export default Overworld;

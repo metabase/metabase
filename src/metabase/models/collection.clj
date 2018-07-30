@@ -503,11 +503,10 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived false}
         :archived true)
-      (doseq [model '[Card Dashboard]]
+      (doseq [model '[Card Dashboard Pulse]]
         (db/update-where! model {:collection_id [:in affected-collection-ids]
                                  :archived      false}
-          :archived true))
-      (db/delete! 'Pulse :collection_id [:in affected-collection-ids]))))
+          :archived true)))))
 
 (s/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
@@ -518,7 +517,7 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived true}
         :archived false)
-      (doseq [model '[Card Dashboard]]
+      (doseq [model '[Card Dashboard Pulse]]
         (db/update-where! model {:collection_id [:in affected-collection-ids]
                                  :archived      true}
           :archived false)))))

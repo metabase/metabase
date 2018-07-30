@@ -550,21 +550,36 @@
   (delete-all-field-values-for-database! id)
   {:status :ok})
 
+
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
+
+(defn- can-read-schema?
+  "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
+  at least some of its tables?)"
+  [database-id schema-name]
+  (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
+    (perms/object-path database-id schema-name)))
 
 (api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas found for the database `id`"
   [id]
-  (let [db (api/read-check Database id)]
-    (sort (db/select-field :schema Table :db_id id))))
+  (api/read-check Database id)
+  (->> (db/select-field :schema Table :db_id id)
+       (filter (partial can-read-schema? id))
+       sort))
+
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of tables for the given database `id` and `schema`"
   [id schema]
-  (let [db (api/read-check Database id)]
-    (api/let-404 [tables (seq (db/select Table :db_id id :schema schema {:order-by [[:name :asc]]}))]
-      tables)))
+  (api/read-check Database id)
+  (api/check-403 (can-read-schema? id schema))
+  (->> (db/select Table :db_id id, :schema schema, {:order-by [[:name :asc]]})
+       (filter mi/can-read?)
+       seq
+       api/check-404))
+
 
 (api/define-routes)

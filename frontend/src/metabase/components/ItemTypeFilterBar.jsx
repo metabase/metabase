@@ -32,7 +32,7 @@ export const FILTERS = [
 ];
 
 const ItemTypeFilterBar = props => {
-  const { location } = props;
+  const { location, analyticsContext } = props;
   return (
     <Flex align="center" className="border-bottom mt1">
       {props.filters.map(f => {
@@ -56,6 +56,7 @@ const ItemTypeFilterBar = props => {
             mr={[0, 2]}
             key={f.filter}
             py={1}
+            data-metabase-event={`${analyticsContext};Item Filter;${f.name}`}
             style={{
               borderBottom: `2px solid ${
                 isActive ? colors.brand : "transparent"

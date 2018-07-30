@@ -161,7 +161,7 @@
                       Table    [{table-id :id}    {:db_id database-id}]]
   "You don't have permissions to do that."
   (do
-    (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
+    (perms/revoke-permissions! (perms-group/all-users) database-id)
     ((user->client :rasta) :get 403 (str "table/" table-id))))
 
 (defn- default-dimension-options []

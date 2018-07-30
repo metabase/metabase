@@ -44,7 +44,6 @@ import CollectionPermissionsModal from "metabase/admin/permissions/containers/Co
 import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
-import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
 import PulseMoveModal from "metabase/pulse/components/PulseMoveModal";
 import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp.jsx";
@@ -321,7 +320,8 @@ export const getRoutes = store => (
 
       {/* PULSE */}
       <Route path="/pulse" title={t`Pulses`}>
-        <IndexRoute component={PulseListApp} />
+        {/* NOTE: legacy route, not linked to in app */}
+        <IndexRedirect to="/search" query={{ type: "pulse" }} />
         <Route path="create" component={PulseEditApp} />
         <Route path=":pulseId">
           <IndexRoute component={PulseEditApp} />

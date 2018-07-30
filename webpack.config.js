@@ -104,6 +104,10 @@ var config = (module.exports = {
       __support__: TEST_SUPPORT_PATH,
       style: SRC_PATH + "/css/core/index",
       ace: __dirname + "/node_modules/ace-builds/src-min-noconflict",
+      // NOTE @kdoh - 7/24/18
+      // icepick 2.x is es6 by defalt, to maintain backwards compatability
+      // with ie11 point to the minified version
+      icepick: __dirname + "/node_modules/icepick/icepick.min"
     },
   },
 

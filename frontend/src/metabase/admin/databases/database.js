@@ -104,10 +104,10 @@ export const initializeDatabase = function(databaseId) {
   return async function(dispatch, getState) {
     if (databaseId) {
       try {
-        const { payload } = await dispatch(
+        const action = await dispatch(
           Databases.actions.fetch({ id: databaseId }, { reload: true }),
         );
-        const database = payload.entities.databases[databaseId];
+        const database = Databases.HACK_getObjectFromAction(action);
         dispatch.action(INITIALIZE_DATABASE, database);
 
         // If the new scheduling toggle isn't set, run the migration
@@ -191,8 +191,8 @@ export const createDatabase = function(database) {
   return async function(dispatch, getState) {
     try {
       dispatch.action(CREATE_DATABASE_STARTED, {});
-      const { payload } = await dispatch(Databases.actions.create(database));
-      const createdDatabase = payload.entities.databases[payload.result];
+      const action = await dispatch(Databases.actions.create(database));
+      const createdDatabase = Databases.HACK_getObjectFromAction(action);
       MetabaseAnalytics.trackEvent("Databases", "Create", database.engine);
 
       dispatch.action(CREATE_DATABASE);
@@ -213,8 +213,8 @@ export const updateDatabase = function(database) {
   return async function(dispatch, getState) {
     try {
       dispatch.action(UPDATE_DATABASE_STARTED, { database });
-      const { payload } = await dispatch(Databases.actions.update(database));
-      const savedDatabase = payload.entities.databases[payload.result];
+      const action = await dispatch(Databases.actions.update(database));
+      const savedDatabase = Databases.HACK_getObjectFromAction(action);
       MetabaseAnalytics.trackEvent("Databases", "Update", database.engine);
 
       dispatch.action(UPDATE_DATABASE, { database: savedDatabase });

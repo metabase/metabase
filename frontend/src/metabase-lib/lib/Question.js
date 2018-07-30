@@ -413,6 +413,31 @@ export default class Question {
     }
   }
 
+  getComparisonDashboardUrl(filters /*?: Filter[] = []*/) {
+    let cellQuery = "";
+    if (filters.length > 0) {
+      const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
+      cellQuery = `/cell/${Card_DEPRECATED.utf8_to_b64url(
+        JSON.stringify(mbqlFilter),
+      )}`;
+    }
+    const questionId = this.id();
+    const query = this.query();
+    if (query instanceof StructuredQuery) {
+      const tableId = query.tableId();
+      if (tableId) {
+        if (questionId != null && !isTransientId(questionId)) {
+          return `/auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
+        } else {
+          const adHocQuery = Card_DEPRECATED.utf8_to_b64url(
+            JSON.stringify(this.card().dataset_query),
+          );
+          return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
+        }
+      }
+    }
+  }
+
   setResultsMetadata(resultsMetadata) {
     let metadataColumns = resultsMetadata && resultsMetadata.columns;
     let metadataChecksum = resultsMetadata && resultsMetadata.checksum;
@@ -498,15 +523,15 @@ export default class Question {
   }
 
   async reduxCreate(dispatch) {
-    const { payload } = await dispatch(Questions.actions.create(this.card()));
-    return this.setCard(payload.entities.questions[payload.result]);
+    const action = await dispatch(Questions.actions.create(this.card()));
+    return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
 
   async reduxUpdate(dispatch) {
-    const { payload } = await dispatch(
+    const action = await dispatch(
       Questions.actions.update({ id: this.id() }, this.card()),
     );
-    return this.setCard(payload.entities.questions[payload.result]);
+    return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
 
   // TODO: Fix incorrect Flow signature

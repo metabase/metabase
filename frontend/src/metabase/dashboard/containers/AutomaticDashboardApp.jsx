@@ -21,7 +21,6 @@ import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import Parameters from "metabase/parameters/components/Parameters";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUserIsAdmin } from "metabase/selectors/user";
 
 import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
@@ -37,7 +36,6 @@ const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
   `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
 
 const mapStateToProps = (state, props) => ({
-  isAdmin: getUserIsAdmin(state),
   metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
 });
@@ -99,7 +97,6 @@ class AutomaticDashboardApp extends React.Component {
       parameterValues,
       setParameterValue,
       location,
-      isAdmin,
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
@@ -125,7 +122,7 @@ class AutomaticDashboardApp extends React.Component {
               </div>
               {savedDashboardId != null ? (
                 <Button className="ml-auto" disabled>{t`Saved`}</Button>
-              ) : isAdmin ? (
+              ) : (
                 <ActionButton
                   className="ml-auto"
                   success
@@ -134,7 +131,7 @@ class AutomaticDashboardApp extends React.Component {
                 >
                   {t`Save this`}
                 </ActionButton>
-              ) : null}
+              )}
             </div>
           </div>
 

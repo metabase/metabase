@@ -344,6 +344,7 @@ export default class DashboardHeader extends Component {
       <Header
         headerClassName="wrapper"
         objectType="dashboard"
+        analyticsContext="Dashboard"
         item={dashboard}
         isEditing={this.props.isEditing}
         isEditingInfo={this.props.isEditing}
