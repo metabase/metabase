@@ -138,7 +138,11 @@ JAVA_OPTS="$JAVA_OPTS --add-modules=java.xml.bind"      # Enable access to java.
 CURRENT_MEMORY=$MARATHON_APP_RESOURCE_MEM
 PERCENTAGE=0.95
 MAX_HEAP=$(awk '{printf("%.0f\n", $1*$2)}' <<<"$PERCENTAGE $CURRENT_MEMORY")m
-JAVA_OPTS="$JAVA_OPTS -Xmx$MAX_HEAP"
+#JAVA_OPTS="$JAVA_OPTS -Xmx$MAX_HEAP -Xms$MAX_HEAP"
+
+if [ "$JMX" ]; then
+    JAVA_OPTS="$JAVA_OPTS $JMX"
+fi
 
 echo "Using these JAVA_OPTS: ${JAVA_OPTS}"
 
