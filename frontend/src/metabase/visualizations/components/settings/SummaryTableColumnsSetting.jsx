@@ -63,6 +63,7 @@ type ItemTypeHelper = {
   isColumnSourceColumn : number => boolean,
   isValueColumn : number => boolean,
   unusedSourceItemIndex : number,
+  getSortableKey: number => string,
 }
 
 
@@ -159,7 +160,20 @@ const getItemTypeHelper = (items:DraggableItem[]):ItemTypeHelper => {
   const isGroupingColumn = index => index < columnSourceItemIndex;
   const isColumnSourceColumn = index => columnSourceItemIndex < index && index < valueSourceItemIndex;
   const isValueColumn = index =>valueSourceItemIndex < index && index < unusedSourceItemIndex;
-  return {isGroupingColumn, isColumnSourceColumn, isValueColumn, unusedSourceItemIndex};
+
+  const isBorderElem = index => columnSourceItemIndex === index || valueSourceItemIndex === index || unusedSourceItemIndex === index;
+
+  const getSortableKey = index => {
+    const pref = isBorderElem(index) ? 'Border':
+                 isGroupingColumn(index) ? 'Group':
+                 isColumnSourceColumn(index)? 'Column':
+                 isValueColumn(index)? 'Value':
+                 'Unused';
+
+    return `item-${pref}-${index}`
+  };
+
+  return {isGroupingColumn, isColumnSourceColumn, isValueColumn, unusedSourceItemIndex, getSortableKey};
 };
 
 const getBorderIndexes = (items:DraggableItem[]) => {
@@ -208,7 +222,7 @@ const SortableList = SortableContainer(({items, isChanging, updateState , itemTy
   return (
     <ul>
       {items.map((value, index) => <SortableItem
-          class='no-select' key={`item-${index}`} index={index} valueIndex={index} value={value}
+          class='no-select' key={itemTypeHelper.getSortableKey(index)} index={index} valueIndex={index} value={value}
           disabled={!isChanging && !value.isDraggable}
           columnMetadata ={columnNameToMetadata[value.columnName] || emptyColumnMetadata}
           itemTypeHelper = {itemTypeHelper}
