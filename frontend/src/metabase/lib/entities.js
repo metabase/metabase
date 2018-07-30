@@ -141,6 +141,8 @@ export type Entity = {
   actionShouldInvalidateLists: (action: Action) => boolean,
 
   writableProperties?: string[],
+
+  HACK_getObjectFromAction: (action: Action) => any,
 };
 
 export function createEntity(def: EntityDefinition): Entity {
@@ -348,6 +350,37 @@ export function createEntity(def: EntityDefinition): Entity {
     // user defined actions should override defaults
     ...entity.objectActions,
     ...(def.actions || {}),
+  };
+
+  // HACK: the above actions return the normalizr results
+  // (i.e. { entities, result }) rather than the loaded object(s), except
+  // for fetch and fetchList when the data is cached, in which case it returns
+  // the noralized object.
+  //
+  // This is a problem when we use the result of one of the actions as though
+  // though the action creator was an API client.
+  //
+  // For now just use this function until we figure out a cleaner way to do
+  // this. It will make it easy to find instances where we use the result of an
+  // action, and ensures a consistent result
+  //
+  // NOTE: this returns the normalized object(s), nested objects defined in
+  // the schema will be replaced with IDs.
+  //
+  // NOTE: A possible solution is to have an `updateEntities` action which is
+  // dispatched by the actions with the normalized data so that we can return
+  // the denormalized data from the action itself.
+  //
+  entity.HACK_getObjectFromAction = ({ payload }) => {
+    if (payload && "entities" in payload && "result" in payload) {
+      if (Array.isArray(payload.result)) {
+        return payload.result.map(id => payload.entities[entity.name][id]);
+      } else {
+        return payload.entities[entity.name][payload.result];
+      }
+    } else {
+      return payload;
+    }
   };
 
   // SELECTORS

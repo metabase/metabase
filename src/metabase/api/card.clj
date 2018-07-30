@@ -34,7 +34,7 @@
              [results-metadata :as results-metadata]]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs]]
+            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -435,10 +435,9 @@
 ;; TODO - Pretty sure this endpoint is not actually used any more, since Cards are supposed to get archived (via PUT
 ;;        /api/card/:id) instead of deleted.  Should we remove this?
 (api/defendpoint DELETE "/:id"
-  "Delete a `Card`."
+  "Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.)"
   [id]
-  (log/warn (str "DELETE /api/card/:id is deprecated. Instead of deleting a Card, "
-                 "you should change its `archived` value via PUT /api/card/:id."))
+  (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
     (db/delete! Card :id id)
     (events/publish-event! :card-delete (assoc card :actor_id api/*current-user-id*)))

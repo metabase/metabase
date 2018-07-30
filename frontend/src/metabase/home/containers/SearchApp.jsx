@@ -22,9 +22,11 @@ export default class SearchApp extends React.Component {
     const { location } = this.props;
     return (
       <Box mx={PAGE_PADDING}>
-        <Flex align="center" mb={2} py={[2, 3]}>
-          <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
-        </Flex>
+        {location.query.q && (
+          <Flex align="center" mb={2} py={[2, 3]}>
+            <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
+          </Flex>
+        )}
         <ItemTypeFilterBar
           analyticsContext={`Search Results`}
           filters={FILTERS.concat({

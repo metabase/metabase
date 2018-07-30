@@ -27,7 +27,7 @@
              [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses]]
+            [metabase.query-processor.middleware.expand-macros :as qp.expand]
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
             [metabase.sync.analyze.classify :as classify]
@@ -86,9 +86,10 @@
 (defn- metric-name
   [[op & args :as metric]]
   (cond
-    (adhoc-metric? metric) (-> op qp.util/normalize-token op->name)
-    (saved-metric? metric) (-> args first Metric :name)
-    :else                  (second args)))
+    (qp.expand/ga-metric? metric) (-> args first str (subs 3) str/capitalize)
+    (adhoc-metric? metric)        (-> op qp.util/normalize-token op->name)
+    (saved-metric? metric)        (-> args first Metric :name)
+    :else                         (second args)))
 
 (defn- join-enumeration
   [xs]
@@ -129,6 +130,10 @@
   "Encode given object as base-64 encoded JSON."
   (comp codec/base64-encode codecs/str->bytes json/encode))
 
+(defn- ga-table?
+  [table]
+  (isa? (:entity_type table) :entity/GoogleAnalyticsTable))
+
 (defmulti
   ^{:doc ""
     :arglists '([entity])}
@@ -137,7 +142,7 @@
 (defmethod ->root (type Table)
   [table]
   {:entity       table
-   :full-name    (if (isa? (:entity_type table) :entity/GoogleAnalyticsTable)
+   :full-name    (if (ga-table? table)
                    (:display_name table)
                    (tru "{0} table" (:display_name table)))
    :short-name   (:display_name table)
@@ -488,7 +493,7 @@
                  (not-empty filters)
                  (assoc :filter (->> filters
                                      (map :filter)
-                                     (apply merge-filter-clauses)))
+                                     (apply qp.expand/merge-filter-clauses)))
 
                  (not-empty dimensions)
                  (assoc :breakout dimensions)
@@ -790,7 +795,8 @@
 
 (defn- drilldown-fields
   [context]
-  (when (->> context :root :source (instance? (type Table)))
+  (when (and (->> context :root :source (instance? (type Table)))
+             (-> context :root :entity ga-table? not))
     (->> context
          :dimensions
          vals
