@@ -105,12 +105,20 @@ export class SchemaBrowser extends React.Component {
                         data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
                       >
                         <Card hoverable px={1}>
-                          <EntityItem
-                            name={schema.name}
-                            iconName="folder"
-                            iconColor={normal.purple}
-                            item={schema}
-                          />
+                          <Flex align="center">
+                            <EntityItem
+                              name={schema.name}
+                              iconName="folder"
+                              iconColor={normal.purple}
+                              item={schema}
+                            />
+                            <Box ml="auto">
+                              <Icon name="reference" />
+                              <Tooltip tooltip={t`X-ray this schema`}>
+                                <Icon name="bolt" mx={1} />
+                              </Tooltip>
+                            </Box>
+                          </Flex>
                         </Card>
                       </Link>
                     </GridItem>
