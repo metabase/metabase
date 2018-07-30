@@ -8,7 +8,6 @@
    :points_of_interest      nil
    :show_in_getting_started false
    :schema                  nil
-   :raw_table_id            false
    :fields                  []
    :rows                    nil
    :updated_at              true
@@ -30,7 +29,6 @@
    :parent_id          false
    :special_type       nil
    :id                 true
-   :raw_column_id      false
    :last_analyzed      true
    :position           0
    :visibility_type    :normal

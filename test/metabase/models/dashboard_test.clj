@@ -183,15 +183,16 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn do-with-dash-in-collection [f]
-  (tt/with-temp* [Collection    [collection]
-                  Dashboard     [dash  {:collection_id (u/get-id collection)}]
-                  Database      [db    {:engine :h2}]
-                  Table         [table {:db_id (u/get-id db)}]
-                  Card          [card  {:dataset_query {:database (u/get-id db)
-                                                        :type     :query
-                                                        :query    {:source-table (u/get-id table)}}}]
-                  DashboardCard [_ {:dashboard_id (u/get-id dash), :card_id (u/get-id card)}]]
-    (f db collection dash)))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp* [Collection    [collection]
+                    Dashboard     [dash  {:collection_id (u/get-id collection)}]
+                    Database      [db    {:engine :h2}]
+                    Table         [table {:db_id (u/get-id db)}]
+                    Card          [card  {:dataset_query {:database (u/get-id db)
+                                                          :type     :query
+                                                          :query    {:source-table (u/get-id table)}}}]
+                    DashboardCard [_ {:dashboard_id (u/get-id dash), :card_id (u/get-id card)}]]
+      (f db collection dash))))
 
 (defmacro with-dash-in-collection
   "Execute `body` with a Dashboard in a Collection. Dashboard will contain one Card in a Database."

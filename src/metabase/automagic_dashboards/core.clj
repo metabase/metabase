@@ -691,8 +691,8 @@
         engine        (-> source ((some-fn :db_id :database_id)) Database :engine)
         table->fields (if (instance? (type Table) source)
                         (comp (->> (db/select Field
-                                              :table_id        [:in (map u/get-id tables)]
-                                              :visibility_type "normal")
+                                     :table_id        [:in (map u/get-id tables)]
+                                     :visibility_type "normal")
                                    field/with-targets
                                    (map #(assoc % :engine engine))
                                    (group-by :table_id))
