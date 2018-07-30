@@ -33,7 +33,8 @@
 (defn- not-all-empty?
   [fingerprint]
   (or (some-> fingerprint :type :type/Number :min some?)
-      (some-> fingerprint :type :type/Text :average-length pos?)))
+      (some-> fingerprint :type :type/Text :average-length pos?)
+      (nil? (:type fingerprint))))
 
 (s/defn ^:private field-should-be-category? :- (s/maybe s/Bool)
   [fingerprint :- (s/maybe i/Fingerprint), field :- su/Map]
