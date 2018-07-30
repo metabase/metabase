@@ -51,12 +51,10 @@ To send via Slack, you’ll need to choose which channel you want to post the pu
 
 Once you’re done, just click `Create pulse` and you’ll see your new pulse in the collection where you chose to save it
 
-### Editing and deleting a pulse
+### Editing or archiving a pulse
 If you ever need to make changes to a pulse, just navigate to the collection where it's saved and click on it, or search for it in the big search bar at the top of Metabase.
 
-If you want to delete a pulse, you can find that option at the bottom of the edit screen. Just remember: if you delete a pulse, no one will receive it anymore.
-
-![The danger zone](images/pulses/08-delete.png)
+If a pulse has outlived its usefulness you can archive it by clicking on the Archive button at the bottom of the pulse's detail page. Just remember: if you archive a pulse, no one will receive it anymore. You can unarchive a pulse just like you can with questions and dashboards by navigating to the archive from the top-right button while viewing any collection and clicking on the View Archive menu option, then clicking on the `Unarchive this` button on the far right next to the pulse.
 
 ---
 
