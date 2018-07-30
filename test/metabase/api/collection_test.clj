@@ -1,6 +1,7 @@
 (ns metabase.api.collection-test
   "Tests for /api/collection endpoints."
-  (:require [expectations :refer :all]
+  (:require [clojure.string :as str]
+            [expectations :refer :all]
             [metabase
              [email-test :as et]
              [util :as u]]
@@ -142,8 +143,11 @@
   (merge {:id true, :collection_position nil} item-map))
 
 (defn- collection-item [collection-name & {:as extra-keypairs}]
-  (merge {:id true, :description nil,
-          :model "collection", :name collection-name}
+  (merge {:id          true
+          :description nil
+          :can_write   (str/ends-with? collection-name "Personal Collection")
+          :model       "collection"
+          :name        collection-name}
          extra-keypairs))
 
 ;; check that you get to see the children as appropriate
@@ -186,7 +190,7 @@
    :can_write           true
    :name                "Lucky Pigeon's Personal Collection"
    :personal_owner_id   (user->id :lucky)
-   :effective_ancestors ()
+   :effective_ancestors [{:metabase.models.collection/is-root? true, :name "Our analytics", :id "root", :can_write true}]
    :effective_location  "/"
    :parent_id           nil
    :id                  (u/get-id (collection/user->personal-collection (user->id :lucky)))
@@ -218,7 +222,7 @@
   (api-get-lucky-personal-collection :rasta, :expected-status-code 403))
 
 (def ^:private lucky-personal-subcollection-item
-  [(collection-item "Lucky's Personal Sub-Collection")])
+  [(collection-item "Lucky's Personal Sub-Collection" :can_write true)])
 
 (defn- api-get-lucky-personal-collection-with-subcollection [user-kw]
   (tt/with-temp Collection [_ {:name     "Lucky's Personal Sub-Collection"
@@ -277,7 +281,7 @@
 
 ;; ok, does a second-level Collection have its parent and its children?
 (expect
-  [{:effective_ancestors [{:name "A", :id true}]
+  [{:effective_ancestors [{:name "A", :id true, :can_write false}]
     :effective_location  "/A/"}
    (map collection-item ["D" "G"])]
   (with-collection-hierarchy [a b c d g]
@@ -285,8 +289,8 @@
 
 ;; what about a third-level Collection?
 (expect
-  [{:effective_ancestors [{:name "A", :id true}
-                          {:name "C", :id true}]
+  [{:effective_ancestors [{:name "A", :id true, :can_write false}
+                          {:name "C", :id true, :can_write false}]
     :effective_location  "/A/C/"}
    []]
   (with-collection-hierarchy [a b c d g]
@@ -295,7 +299,7 @@
 ;; for D: if we remove perms for C we should only have A as an ancestor; effective_location should lie and say we are
 ;; a child of A
 (expect
-  [{:effective_ancestors [{:name "A", :id true}]
+  [{:effective_ancestors [{:name "A", :id true, :can_write false}]
     :effective_location  "/A/"}
    []]
   (with-collection-hierarchy [a b d g]
@@ -303,7 +307,7 @@
 
 ;; for D: If, on the other hand, we remove A, we should see C as the only ancestor and as a root-level Collection.
 (expect
-  [{:effective_ancestors [{:name "C", :id true}]
+  [{:effective_ancestors [{:name "C", :id true, :can_write false}]
     :effective_location  "/C/"}
    []]
   (with-collection-hierarchy [b c d g]
@@ -311,7 +315,7 @@
 
 ;; for C: if we remove D we should get E and F as effective children
 (expect
-  [{:effective_ancestors [{:name "A", :id true}]
+  [{:effective_ancestors [{:name "A", :id true, :can_write false}]
     :effective_location  "/A/"}
    (map collection-item ["E" "F"])]
   (with-collection-hierarchy [a b c e f g]
@@ -383,7 +387,8 @@
   [{:name        "Rasta Toucan's Personal Collection"
     :id          (u/get-id (collection/user->personal-collection (user->id :rasta)))
     :description nil
-    :model       "collection"}]
+    :model       "collection"
+    :can_write   true}]
   (do
     (collection-test/force-create-personal-collections!)
     ((user->client :rasta) :get 200 "collection/root/items")))
@@ -393,7 +398,8 @@
   [{:name        "Crowberto Corv's Personal Collection"
     :id          (u/get-id (collection/user->personal-collection (user->id :crowberto)))
     :description nil
-    :model       "collection"}]
+    :model       "collection"
+    :can_write   true}]
   (do
     (collection-test/force-create-personal-collections!)
     ((user->client :crowberto) :get 200 "collection/root/items")))
@@ -403,7 +409,8 @@
   [{:name        "Crowberto Corv's Personal Collection"
     :id          (u/get-id (collection/user->personal-collection (user->id :crowberto)))
     :description nil
-    :model       "collection"}]
+    :model       "collection"
+    :can_write   true}]
   (do
     (collection-test/force-create-personal-collections!)
     (tt/with-temp Collection [_ {:name     "Lucky's Sub-Collection"
