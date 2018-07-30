@@ -15,7 +15,6 @@
              [embed :as embed]
              [field :as field]
              [geojson :as geojson]
-             [getting-started :as getting-started]
              [ldap :as ldap]
              [metric :as metric]
              [notify :as notify]
@@ -67,7 +66,6 @@
   (context "/email"                [] (+auth email/routes))
   (context "/embed"                [] (+message-only-exceptions embed/routes))
   (context "/field"                [] (+auth field/routes))
-  (context "/getting_started"      [] (+auth getting-started/routes))
   (context "/geojson"              [] (+auth geojson/routes))
   (context "/ldap"                 [] (+auth ldap/routes))
   (context "/metric"               [] (+auth metric/routes))
