@@ -25,7 +25,6 @@ export type Table = {
 
   // entity_name:          null // unused?
   // entity_type:          null // unused?
-  // raw_table_id:         number, // unused?
 
   fields: Field[],
   segments: Segment[],

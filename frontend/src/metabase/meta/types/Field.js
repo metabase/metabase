@@ -29,8 +29,6 @@ export type Field = {
   position: number,
   parent_id: ?FieldId,
 
-  // raw_column_id:   number // unused?
-
   table_id: TableId,
 
   fk_target_field_id: ?FieldId,
