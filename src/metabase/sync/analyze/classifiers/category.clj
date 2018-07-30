@@ -41,8 +41,7 @@
     ;; Only mark a Field as a Category if it doesn't already have a special type.
     (when (and (nil? (:special_type field))
                (or (not-all-nil? fingerprint)
-                   (isa? (:base_type field) :type/Boolean)
-                   (= (:base_type field) :type/*))
+                   (isa? (:base_type field) :type/Boolean))
                (<= distinct-count field-values/category-cardinality-threshold))
       (log/debug (format "%s has %d distinct values. Since that is less than %d, we're marking it as a category."
                          (sync-util/name-for-logging field)
