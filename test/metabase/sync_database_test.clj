@@ -30,7 +30,8 @@
              :schema "default"
              :fields #{{:name          "id"
                         :database-type "SERIAL"
-                        :base-type     :type/Integer}
+                        :base-type     :type/Integer
+                        :special-type  :type/PK}
                        {:name          "title"
                         :database-type "VARCHAR"
                         :base-type     :type/Text
@@ -143,7 +144,8 @@
                                  {:name          "id"
                                   :display_name  "ID"
                                   :database_type "SERIAL"
-                                  :base_type     :type/Integer})
+                                  :base_type     :type/Integer
+                                  :special_type  :type/PK})
                           (merge field-defaults
                                  {:name               "studio"
                                   :display_name       "Studio"
@@ -190,7 +192,8 @@
                                 {:name          "id"
                                  :display_name  "ID"
                                  :database_type "SERIAL"
-                                 :base_type     :type/Integer})
+                                 :base_type     :type/Integer
+                                 :special_type  :type/PK})
                          (merge field-defaults
                                 {:name          "studio"
                                  :display_name  "Studio"
