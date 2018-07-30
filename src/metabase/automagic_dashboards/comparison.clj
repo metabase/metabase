@@ -3,7 +3,7 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
-             [core :refer [->root ->field automagic-analysis ->related-entity cell-title source-name capitalize-first]]
+             [core :refer [->root ->field automagic-analysis ->related-entity cell-title source-name capitalize-first encode-base64-json]]
              [filters :as filters]
              [populate :as populate]]
             [metabase.models
@@ -178,30 +178,36 @@
        distinct
        (map (partial ->field segment))))
 
-(defn- related
-  [& entities]
-  (cond-> {:x-rays      (map (comp ->related-entity :entity) entities)
-           :comparisons (let [id              (comp (juxt type :id) :entity)
-                              new-comparison? (comp (complement (into #{} (map id) entities)) id)]
-                          (for [root    entities
-                                segment (->> root :entity related/related :segments (map ->root))
-                                :when (new-comparison? segment)]
-                            {:url         (format "%s/compare/segment/%s"
-                                                  (:url root)
-                                                  (-> segment :entity u/get-id))
-                             :title       (tru "Compare {0} with {1}"
-                                               (comparison-name root)
-                                               (comparison-name segment))
-                             :description ""}))}
-    (not-any? (comp (partial instance? (type Table)) :entity) entities)
-    (merge {:source         [(-> entities first :source ->related-entity)]
-            :entire-dataset (for [root entities]
-                              {:url         (format "%s/compare/table/%s"
-                                                    (:url root)
-                                                    (-> root :source u/get-id))
-                               :title       (tru "Compare {0} with the entire dataset"
-                                                 (comparison-name root))
-                               :description ""})})))
+(defn- update-related
+  [related left right]
+  (-> related
+      (update :related (comp distinct conj) (-> right :entity ->related-entity))
+      (assoc :compare (concat
+                       (for [segment (->> left :entity related/related :segments (map ->root))
+                             :when (not= segment right)]
+                         {:url         (str (:url left) "/compare/segment/"
+                                            (-> segment :entity u/get-id))
+                          :title       (tru "Compare with {0}" (:comparison-name segment))
+                          :description ""})
+                       (when (and ((some-fn :query-filter :cell-query) left)
+                                  (not= (:source left) (:entity right)))
+                         [{:url         (if (->> left :source (instance? (type Table)))
+                                          (str (:url left) "/compare/table/"
+                                               (-> left :source u/get-id))
+                                          (str (:url left) "/compare/adhoc/"
+                                               (encode-base64-json
+                                                {:database (:database left)
+                                                 :type     :query
+                                                 :query    {:source_table (->> left
+                                                                               :source
+                                                                               u/get-id
+                                                                               (str "card__" ))}})))
+                           :title       (tru "Compare with entire dataset")
+                           :description ""}])))
+      (as-> related
+          (if (-> related :compare empty?)
+            (dissoc related :compare)
+            related))))
 
 (defn- part-vs-whole-comparison?
   [left right]
@@ -239,7 +245,8 @@
                                 distinct
                                 (map #(automagic-analysis % {:source       (:source left)
                                                              :rules-prefix ["comparison"]})))]
-    (assert (= (:source left) (:source right)))
+    (assert (or (= (:source left) (:source right))
+                (= (-> left :source :table_id) (-> right :source u/get-id))))
     (->> (concat segment-dashboards [dashboard])
          (reduce #(populate/merge-dashboards %1 %2 {:skip-titles? true}))
          dashboard->cards
@@ -259,7 +266,7 @@
                                                       (comparison-name right))
                               :creator_id        api/*current-user-id*
                               :parameters        []
-                              :related           (related left right)}
+                              :related           (update-related (:related dashboard) left right)}
                              (add-title-row left right))))
                       ([[dashboard row]] dashboard)
                       ([[dashboard row] card]
