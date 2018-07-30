@@ -116,11 +116,12 @@
 (s/defn ^:private special-type-for-name-and-base-type :- (s/maybe su/FieldType)
   "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it."
   [field-name :- su/NonBlankString, base-type :- su/FieldType]
-  (some (fn [[name-pattern valid-base-types special-type]]
-          (when (and (some (partial isa? base-type) valid-base-types)
-                     (re-find name-pattern (str/lower-case field-name)))
-            special-type))
-        pattern+base-types+special-type))
+  (let [field-name (str/lower-case field-name)]
+    (some (fn [[name-pattern valid-base-types special-type]]
+            (when (and (some (partial isa? base-type) valid-base-types)
+                       (re-find name-pattern field-name))
+              special-type))
+          pattern+base-types+special-type)))
 
 (def ^:private FieldOrColumn
   "Schema that allows a `metabase.model.field/Field` or a column from a query resultset"
