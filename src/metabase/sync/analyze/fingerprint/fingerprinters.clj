@@ -3,6 +3,7 @@
   (:require [cheshire.core :as json]
             [clj-time.coerce :as t.coerce]
             [kixi.stats.core :as stats]
+            [metabase.models.field :as field]
             [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
@@ -49,10 +50,11 @@
 (defmulti
   ^{:doc "Return a fingerprinter transducer for a given field based on the field's type."
     :arglists '([field])}
-  fingerprinter (fn [{:keys [base_type special_type unit]}]
-                  [(if (du/date-extract-units unit)
-                     :type/Integer
-                     base_type)
+  fingerprinter (fn [{:keys [base_type special_type unit] :as field}]
+                  [(cond
+                     (du/date-extract-units unit)  :type/Integer
+                     (field/unix-timestamp? field) :type/DateTime
+                     :else                         base_type)
                    (or special_type :type/*)]))
 
 (def ^:private global-fingerprinter
@@ -149,7 +151,8 @@
 (extend-protocol IDateCoercible
   nil                    (->date [_] nil)
   String                 (->date [this] (-> this du/str->date-time t.coerce/to-date))
-  java.util.Date         (->date [this] this))
+  java.util.Date         (->date [this] this)
+  Long                   (->date [^Long this] (java.util.Date. this)))
 
 (deffingerprinter :type/DateTime
   ((map ->date)
