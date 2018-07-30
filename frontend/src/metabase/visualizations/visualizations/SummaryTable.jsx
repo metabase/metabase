@@ -12,9 +12,10 @@ import * as DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
 import { isMetric, isDimension } from "metabase/lib/schema_metadata";
 import {
+  columnsAreValid,
   getFriendlyName,
 } from "metabase/visualizations/lib/utils";
-import SummaryTableColumnsSetting, { settingsAreValid, getColumnsFromSettings} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting.jsx";
+import SummaryTableColumnsSetting from "metabase/visualizations/components/settings/SummaryTableColumnsSetting.jsx";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -27,7 +28,30 @@ import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 import { GroupingManager } from "../lib/GroupingManager";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type {RawSeries, SingleSeries} from "metabase/meta/types/Visualization";
-import {GROUPS_SOURCES, VALUES_SOURCES} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
+
+//todo: remove or move consts and ValueSerialized
+export const GROUPS_SOURCES = 'groupsSources';
+export const COLUMNS_SOURCE = 'columnsSource';
+export const VALUES_SOURCES = 'valuesSources';
+
+
+export type ColumnName = string;
+
+
+export const settingsAreValid = (settings: ValueSerialized, data: DatasetData) =>
+  settings
+  && (!settings[COLUMNS_SOURCE] || columnsAreValid([settings[COLUMNS_SOURCE]], data))
+  && columnsAreValid(settings[GROUPS_SOURCES] || [], data)
+  && columnsAreValid(settings[VALUES_SOURCES] || [], data);
+
+export const getColumnsFromSettings = (state: ValueSerialized) => [...state[GROUPS_SOURCES] || [], ...(state[COLUMNS_SOURCE] ? [state[COLUMNS_SOURCE]] : []), ...state[VALUES_SOURCES] || []];
+
+export type ValueSerialized = {
+  [GROUPS_SOURCES]: string[],
+  [COLUMNS_SOURCE]: ?string,
+  [VALUES_SOURCES]: string[],
+  columnNameToMetadata: { [key: ColumnName]: ColumnMetadata },
+}
 
 type Props = {
   card: Card,

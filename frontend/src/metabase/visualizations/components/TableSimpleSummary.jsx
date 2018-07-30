@@ -189,7 +189,7 @@ export default class TableSimpleSummary extends Component {
                             marginRight: 3,
                           }}
                         />
-                        <Ellipsified>{formatColumn(col)}</Ellipsified>
+                        <Ellipsified>{col && formatColumn(col)}</Ellipsified>
                       </div>
                     </th>
                   ))}

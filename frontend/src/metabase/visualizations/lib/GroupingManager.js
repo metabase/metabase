@@ -1,7 +1,11 @@
 import {Row} from "metabase/meta/types/Dataset";
 import _ from 'lodash';
-import {COLUMNS_SETTINGS} from "metabase/visualizations/visualizations/SummaryTable";
-import StateSerialized, {getColumnsFromSettings, GROUPS_SOURCES, COLUMNS_SOURCE, VALUES_SOURCES} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
+import {
+  COLUMNS_SETTINGS,
+  COLUMNS_SOURCE,
+  getColumnsFromSettings,
+  GROUPS_SOURCES
+} from "metabase/visualizations/visualizations/SummaryTable";
 
 type ColumnAcc = {
   prevRow : Row,

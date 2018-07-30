@@ -420,7 +420,7 @@ export default class TableInteractiveSummary extends Component {
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 
-    let columnTitle = formatColumn(column);
+    let columnTitle = column && formatColumn(column);
     if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
       columnTitle = t`Unset`;
     }

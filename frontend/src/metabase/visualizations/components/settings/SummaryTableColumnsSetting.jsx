@@ -15,20 +15,16 @@ import Icon from "metabase/components/Icon.jsx";
 import cx from "classnames";
 import Toggle from "metabase/components/Toggle";
 import {SortableContainer, SortableElement, arrayMove} from "react-sortable-hoc";
-import type {DatasetData} from "metabase/meta/types/Dataset";
+import type {ValueSerialized} from "metabase/visualizations/visualizations/SummaryTable";
+import {
+  COLUMNS_SOURCE,
+  getColumnsFromSettings,
+  GROUPS_SOURCES, VALUES_SOURCES
+} from "metabase/visualizations/visualizations/SummaryTable";
+import type {ColumnName} from "metabase/meta/types/Dataset";
 
 
-//todo: remove or move consts and ValueSerialized
-export const GROUPS_SOURCES = 'groupsSources';
-export const COLUMNS_SOURCE = 'columnsSource';
-export const VALUES_SOURCES = 'valuesSources';
-
-type ValueSerialized = {
-  [GROUPS_SOURCES]: string[],
-  [COLUMNS_SOURCE]: ?string | null,
-  [VALUES_SOURCES]: string[],
-  columnNameToMetadata: { [key: ColumnName]: ColumnMetadata },
-}
+type ArrayMoveArg ={oldIndex : number, newIndex : number};
 
 type ColumnMetadata = {
   enabled?: boolean,
@@ -36,13 +32,18 @@ type ColumnMetadata = {
   isAscSortOrder?: boolean,
 };
 
-type ColumnName = string;
 
 type State = {
+  items : DraggableItem[],
+  columnNameToMetadata : { [key: ColumnName]: ColumnMetadata },
+  isChanging? : boolean
+};
+
+type StateSuperType = {
   items? : DraggableItem[],
   columnNameToMetadata? : { [key: ColumnName]: ColumnMetadata },
   isChanging? : boolean
-};
+}
 
 type DraggableItem = {
   columnName? : string,
@@ -65,12 +66,6 @@ type ItemTypeHelper = {
 }
 
 
-export const settingsAreValid = (settings: ValueSerialized, data: DatasetData) =>
-  settings
-  && (!settings[COLUMNS_SOURCE] || columnsAreValid([settings[COLUMNS_SOURCE]], data))
-  && columnsAreValid(settings[GROUPS_SOURCES] || [], data)
-  && columnsAreValid(settings[VALUES_SOURCES] || [], data);
-
 
 const getUnusedColumns = (settings: ValueSerialized, columnNames): string[] => {
   const allColumns = getColumnsFromSettings(settings);
@@ -78,7 +73,6 @@ const getUnusedColumns = (settings: ValueSerialized, columnNames): string[] => {
     .filter(p => !allColumns.includes(p));
 };
 
-export const getColumnsFromSettings = (state: ValueSerialized) => [...state[GROUPS_SOURCES] || [], ...(state[COLUMNS_SOURCE] ? [state[COLUMNS_SOURCE]] : []), ...state[VALUES_SOURCES] || []];
 
 const emptyStateSerialized: ValueSerialized = ({
   groupsSources: [],
@@ -135,12 +129,12 @@ export default class SummaryTableColumnsSetting extends Component<any, Props, St
     console.log(this.props.value)
   }
 
-  updateState = async (newState : State) => {
+  updateState = async (newState : StateSuperType) => {
     await this.setState(newState);
     await this.props.onChange(convertStateToValue(this.state));
   };
 
-  onSortEnd = ({oldIndex, newIndex}) => moveItem(this.updateState)(this.state.items, {oldIndex, newIndex});
+  onSortEnd = ({oldIndex, newIndex}: ArrayMoveArg) => moveItem(this.updateState)(this.state.items, {oldIndex, newIndex});
 
   onSortStart = () => this.setState({isChanging : true});
 
@@ -186,7 +180,7 @@ type SortableElementArg = {
 
 
   removeItem: (number) => void,
-  updateMetadata: ColumnName => ColumnMetadata => void,
+  updateMetadata: ?ColumnName => ColumnMetadata => void,
 }
 
 const SortableItem = SortableElement(({value, valueIndex, columnMetadata , itemTypeHelper, removeItem, updateMetadata} : SortableElementArg) => {
@@ -227,18 +221,21 @@ const SortableList = SortableContainer(({items, isChanging, updateState , itemTy
   );
 });
 
-const updateMetadataBuilder = (columnNameToMetadata, updateState : {} => void) => (columnName: ColumnName) => (newMetadata:ColumnMetadata) : void => {
+const updateMetadataBuilder = (columnNameToMetadata, updateState : StateSuperType => Promise<*>) => (columnName: ?ColumnName) => (newMetadata:ColumnMetadata) : void => {
+  if(columnName)
+  {
     const newColumnNameToMetadata = {...columnNameToMetadata, [columnName] : newMetadata};
     const newState = {columnNameToMetadata : newColumnNameToMetadata};
     updateState(newState);
+  }
 };
 
-const removeItemBuilder = (items:DraggableItem[],updateState : {} => void, itemTypeHelper : ItemTypeHelper) => (oldIndex:number) : void =>{
+const removeItemBuilder = (items:DraggableItem[],updateState : StateSuperType => Promise<*>, itemTypeHelper : ItemTypeHelper) => (oldIndex:number) : void =>{
   const newIndex = itemTypeHelper.unusedSourceItemIndex ;
   moveItem(updateState)(items, {oldIndex, newIndex});
 };
 
-const moveItem = (updateState : State => void) => async (items: DraggableItem[], {oldIndex, newIndex}) => {
+const moveItem = (updateState : StateSuperType => Promise<*>) => async (items: DraggableItem[], {oldIndex, newIndex} : ArrayMoveArg) : Promise<*> => {
   if(oldIndex !== newIndex)
   await updateState({
     items: arrayMove(items, oldIndex, newIndex),

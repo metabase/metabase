@@ -4,8 +4,11 @@ import Query from './queries/Query';
 import type {Parameter, ParameterValues} from "metabase/meta/types/Parameter";
 import type {Card, DatasetQuery} from "metabase/meta/types/Card";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
-import SummaryTable, {COLUMNS_SETTINGS} from "metabase/visualizations/visualizations/SummaryTable";
-import StateSerialized, {GROUPS_SOURCES, VALUES_SOURCES, COLUMNS_SOURCE} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
+import SummaryTable, {
+  COLUMNS_SETTINGS, COLUMNS_SOURCE,
+  GROUPS_SOURCES,
+  VALUES_SOURCES
+} from "metabase/visualizations/visualizations/SummaryTable";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import {WrappedQuery, wrapQuery} from "metabase-lib/lib/queries/WrappedQuery";
