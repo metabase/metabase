@@ -29,8 +29,6 @@ import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-
 import CollectionList from "metabase/components/CollectionList";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -595,11 +593,8 @@ class CollectionLanding extends React.Component {
     const { object: currentCollection, params: { collectionId } } = this.props;
     const isRoot = collectionId === "root";
 
-    // effective_ancestors doesn't include root collection so add it (unless this is the root collection, of course)
     const ancestors =
-      !isRoot && currentCollection && currentCollection.effective_ancestors
-        ? [ROOT_COLLECTION, ...currentCollection.effective_ancestors]
-        : [];
+      (currentCollection && currentCollection.effective_ancestors) || [];
 
     return (
       <Box>
