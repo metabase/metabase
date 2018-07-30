@@ -41,7 +41,7 @@ In Metabase, dashboards are made up of saved questions that you can arrange and 
 
 To make a dashboard or pulse, click the plus (+) icon in the top-right of the main navigation bar.
 
-![Create menu](create-menu.png)
+![Create menu](./images/create-menu.png)
 
 ### Use search to quickly find things
 
