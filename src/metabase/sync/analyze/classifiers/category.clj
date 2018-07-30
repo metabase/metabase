@@ -30,18 +30,19 @@
       (isa? special-type :type/PK)
       (isa? special-type :type/FK)))
 
-(defn- not-all-empty?
+(defn- not-all-nil?
   [fingerprint]
   (or (some-> fingerprint :type :type/Number :min some?)
-      (some-> fingerprint :type :type/Text :average-length pos?)
-      (nil? (:type fingerprint))))
+      (some-> fingerprint :type :type/Text :average-length pos?)))
 
 (s/defn ^:private field-should-be-category? :- (s/maybe s/Bool)
   [fingerprint :- (s/maybe i/Fingerprint), field :- su/Map]
   (let [distinct-count (get-in fingerprint [:global :distinct-count])]
-    ;; only mark a Field as a Category if it doesn't already have a special type
+    ;; Only mark a Field as a Category if it doesn't already have a special type.
     (when (and (nil? (:special_type field))
-               (not-all-empty? fingerprint)
+               (or (not-all-nil? fingerprint)
+                   (isa? (:base_type field) :type/Boolean)
+                   (= (:base_type field) :type/*))
                (<= distinct-count field-values/category-cardinality-threshold))
       (log/debug (format "%s has %d distinct values. Since that is less than %d, we're marking it as a category."
                          (sync-util/name-for-logging field)
