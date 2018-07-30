@@ -61,11 +61,12 @@
   ["Our analytics"
    "Collection 1"
    "Rasta Toucan's Personal Collection"]
-  (tt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
-                  Collection [collection-2 {:name "Collection 2"}]]
-    (perms/grant-collection-read-permissions! (group/all-users) collection-1)
-    (collection-test/force-create-personal-collections!)
-    (map :name ((user->client :rasta) :get 200 "collection"))))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
+                    Collection [collection-2 {:name "Collection 2"}]]
+      (perms/grant-collection-read-permissions! (group/all-users) collection-1)
+      (collection-test/force-create-personal-collections!)
+      (map :name ((user->client :rasta) :get 200 "collection")))))
 
 ;; check that we don't see collections if they're archived
 (expect
@@ -104,8 +105,9 @@
 ;; check that collections detail properly checks permissions
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp Collection [collection]
-    ((user->client :rasta) :get 403 (str "collection/" (u/get-id collection)))))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp Collection [collection]
+      ((user->client :rasta) :get 403 (str "collection/" (u/get-id collection))))))
 
 
 ;;; ----------------------------------------- Cards, Dashboards, and Pulses ------------------------------------------
@@ -126,12 +128,13 @@
 
 (defn- do-with-some-children-of-collection [collection-or-id-or-nil f]
   (collection-test/force-create-personal-collections!)
-  (let [collection-id-or-nil (when collection-or-id-or-nil
-                               (u/get-id collection-or-id-or-nil))]
-    (tt/with-temp* [Card       [_ {:name "Birthday Card",          :collection_id collection-id-or-nil}]
-                    Dashboard  [_ {:name "Dine & Dashboard",       :collection_id collection-id-or-nil}]
-                    Pulse      [_ {:name "Electro-Magnetic Pulse", :collection_id collection-id-or-nil}]]
-      (f))))
+  (tu/with-all-users-no-root-collection-perms
+    (let [collection-id-or-nil (when collection-or-id-or-nil
+                                 (u/get-id collection-or-id-or-nil))]
+      (tt/with-temp* [Card       [_ {:name "Birthday Card", :collection_id collection-id-or-nil}]
+                      Dashboard  [_ {:name "Dine & Dashboard", :collection_id collection-id-or-nil}]
+                      Pulse      [_ {:name "Electro-Magnetic Pulse", :collection_id collection-id-or-nil}]]
+        (f)))))
 
 (defmacro ^:private with-some-children-of-collection {:style/indent 1} [collection-or-id-or-nil & body]
   `(do-with-some-children-of-collection ~collection-or-id-or-nil (fn [] ~@body)))
@@ -530,9 +533,10 @@
 ;; check that users without write perms aren't allowed to update a Collection
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp Collection [collection]
-    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection))
-     {:name "My Beautiful Collection", :color "#ABCDEF"})))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp Collection [collection]
+      ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection))
+       {:name "My Beautiful Collection", :color "#ABCDEF"}))))
 
 ;; Archiving a collection should delete any alerts associated with questions in the collection
 (expect
@@ -567,9 +571,10 @@
 ;; I shouldn't be allowed to archive a Collection without proper perms
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp Collection [collection]
-    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection))
-     {:archived true})))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp Collection [collection]
+      ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection))
+       {:archived true}))))
 
 ;; Perms checking should be recursive as well...
 ;;
@@ -577,11 +582,12 @@
 ;; also need perms for B
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp* [Collection [collection-a]
-                  Collection [collection-b {:location (collection/children-location collection-a)}]]
-    (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
-    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
-     {:archived true})))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp* [Collection [collection-a]
+                    Collection [collection-b {:location (collection/children-location collection-a)}]]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
+      ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
+       {:archived true}))))
 
 ;; Can I *change* the `location` of a Collection? (i.e. move it into a different parent Colleciton)
 (expect
@@ -603,11 +609,12 @@
 ;; If I want to move A into B, I should need permissions for both A and B
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp* [Collection [collection-a]
-                  Collection [collection-b]]
-    (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
-    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
-     {:parent_id (u/get-id collection-b)})))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp* [Collection [collection-a]
+                    Collection [collection-b]]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
+      ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
+       {:parent_id (u/get-id collection-b)}))))
 
 ;; Perms checking should be recursive as well...
 ;;
@@ -619,13 +626,14 @@
 ;; C
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp* [Collection [collection-a]
-                  Collection [collection-b {:location (collection/children-location collection-a)}]
-                  Collection [collection-c]]
-    (doseq [collection [collection-a collection-b]]
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
-    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
-     {:parent_id (u/get-id collection-c)})))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp* [Collection [collection-a]
+                    Collection [collection-b {:location (collection/children-location collection-a)}]
+                    Collection [collection-c]]
+      (doseq [collection [collection-a collection-b]]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
+      ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
+       {:parent_id (u/get-id collection-c)}))))
 
 
 ;; Create A, B, and C; B is a child of A. Grant perms for A and C. Moving A into C should fail because we need perms
@@ -636,13 +644,14 @@
 ;; C*
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp* [Collection [collection-a]
-                  Collection [collection-b {:location (collection/children-location collection-a)}]
-                  Collection [collection-c]]
-    (doseq [collection [collection-a collection-c]]
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
-    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
-     {:parent_id (u/get-id collection-c)})))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp* [Collection [collection-a]
+                    Collection [collection-b {:location (collection/children-location collection-a)}]
+                    Collection [collection-c]]
+      (doseq [collection [collection-a collection-c]]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
+      ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
+       {:parent_id (u/get-id collection-c)}))))
 
 ;; Create A, B, and C; B is a child of A. Grant perms for B and C. Moving A into C should fail because we need perms
 ;; for A:
@@ -652,10 +661,11 @@
 ;; C*
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp* [Collection [collection-a]
-                  Collection [collection-b {:location (collection/children-location collection-a)}]
-                  Collection [collection-c]]
-    (doseq [collection [collection-b collection-c]]
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
-    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
-     {:parent_id (u/get-id collection-c)})))
+  (tu/with-all-users-no-root-collection-perms
+    (tt/with-temp* [Collection [collection-a]
+                    Collection [collection-b {:location (collection/children-location collection-a)}]
+                    Collection [collection-c]]
+      (doseq [collection [collection-b collection-c]]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
+      ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
+       {:parent_id (u/get-id collection-c)}))))
