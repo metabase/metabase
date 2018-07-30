@@ -190,7 +190,7 @@
    :can_write           true
    :name                "Lucky Pigeon's Personal Collection"
    :personal_owner_id   (user->id :lucky)
-   :effective_ancestors ()
+   :effective_ancestors [{:metabase.models.collection/is-root? true, :name "Our analytics", :id "root", :can_write true}]
    :effective_location  "/"
    :parent_id           nil
    :id                  (u/get-id (collection/user->personal-collection (user->id :lucky)))

@@ -135,11 +135,7 @@
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
 (defn- root-collection []
-  ;; add in some things for the FE to display since the 'Root' Collection isn't real and wouldn't normally have
-  ;; these things
-  (assoc (collection-detail collection/root-collection)
-    :name (tru "Our analytics")
-    :id   "root"))
+  (collection-detail collection/root-collection-with-ui-details))
 
 (api/defendpoint GET "/root"
   "Return the 'Root' Collection object with standard details added"
