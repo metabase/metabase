@@ -27,15 +27,15 @@ export default class SearchApp extends React.Component {
             <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
           </Flex>
         )}
-        <ItemTypeFilterBar
-          analyticsContext={`Search Results`}
-          filters={FILTERS.concat({
-            name: t`Collections`,
-            filter: "collection",
-            icon: "all",
-          })}
-        />
         <Box w={[1, 2 / 3]}>
+          <ItemTypeFilterBar
+            analyticsContext={`Search Results`}
+            filters={FILTERS.concat({
+              name: t`Collections`,
+              filter: "collection",
+              icon: "all",
+            })}
+          />
           <EntityListLoader
             entityType="search"
             entityQuery={location.query}
