@@ -131,7 +131,7 @@ export default class TableSimpleSummary extends Component {
                   if (col.parentName) {
                     return (
                     <th
-                      key={'1'-colIndex}
+                      key={`1-${colIndex}`}
                       className={cx(
                         "TableInteractive-headerCellData cellData text-brand-hover",
                         {
@@ -167,7 +167,7 @@ export default class TableSimpleSummary extends Component {
                 <tr>
                   {cols.map((col, colIndex) => (
                     <th
-                      key={'2'-colIndex}
+                      key={`2-${colIndex}`}
                       className={cx(
                         "TableInteractive-headerCellData cellData text-brand-hover",
                         {

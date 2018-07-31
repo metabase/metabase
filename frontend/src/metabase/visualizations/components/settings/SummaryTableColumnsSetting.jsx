@@ -13,16 +13,14 @@ import Toggle from "metabase/components/Toggle";
 import {SortableContainer, SortableElement, arrayMove} from "react-sortable-hoc";
 import type {ValueSerialized} from "metabase/visualizations/visualizations/SummaryTable";
 import {
-  COLUMNS_SOURCE,
   getColumnsFromSettings,
-  GROUPS_SOURCES, VALUES_SOURCES
 } from "metabase/visualizations/visualizations/SummaryTable";
 import type {ColumnName} from "metabase/meta/types/Dataset";
 
 
 type ArrayMoveArg ={oldIndex : number, newIndex : number};
 
-type ColumnMetadata = {
+export type ColumnMetadata = {
   enabled?: boolean,
   showTotals?: boolean,
   isAscSortOrder?: boolean,
@@ -42,7 +40,7 @@ type StateSuperType = {
 }
 
 type DraggableItem = {
-  columnName? : string,
+  columnName : string,
   displayName: string,
   isDraggable : boolean
 }
@@ -51,7 +49,7 @@ type Props = {
   value: ValueSerialized,
   columnNames: { [key: string]: string },
 
-  onChange: ValueSerialized => void
+  onChange: ValueSerializedSupertype => void
 }
 
 type ItemTypeHelper = {
@@ -62,6 +60,12 @@ type ItemTypeHelper = {
   getSortableKey: number => string,
 }
 
+type ValueSerializedSupertype = {
+  groupsSources?: string[],
+  columnsSource?: string,
+  valuesSources?: string[],
+  columnNameToMetadata?: { [key: ColumnName]: ColumnMetadata },
+}
 
 
 const getUnusedColumns = (settings: ValueSerialized, columnNames): string[] => {
@@ -73,7 +77,6 @@ const getUnusedColumns = (settings: ValueSerialized, columnNames): string[] => {
 
 const emptyStateSerialized: ValueSerialized = ({
   groupsSources: [],
-  columnsSource: null,
   valuesSources: [],
   columnNameToMetadata: {}
 });
@@ -88,20 +91,20 @@ const convertValueToState = (stateSerialized: ValueSerialized, columnNames) : St
                           columnSourceItem, ...columnSourceArray.map(n => createDraggableColumn(n, columnNames[n])),
                           valueSourceItem, ...valuesSources.map(n => createDraggableColumn(n, columnNames[n])),
                           unusedSourceItem, ...unusedColumns.map(n => createDraggableColumn(n, columnNames[n]))];
-
+  
   return {items, columnNameToMetadata};
 };
 
 
 const createDraggableColumn = (columnName: string, displayName: string) : DraggableItem => ({columnName, displayName, isDraggable : true});
-const createSectionItem = (displayName: string) : DraggableItem => ({displayName, isDraggable : false});
+const createSectionItem = (displayName: string) : DraggableItem => ({displayName, isDraggable : false, columnName:'undefined'});
 const groupSourceItem : DraggableItem =createSectionItem(t`Fields to use for the table rows`);
 const columnSourceItem : DraggableItem = createSectionItem(t`Field to use for the table columns`);
 const valueSourceItem : DraggableItem = createSectionItem(t`Fields to use for the table values`);
 const unusedSourceItem : DraggableItem = createSectionItem(t`Unused fields`);
 
 
-const convertStateToValue = (state : State) : ValueSerialized => {
+const convertStateToValue = (state : State) : ValueSerializedSupertype => {
 
   const metadataPart = state.columnNameToMetadata ? {columnNameToMetadata : state.columnNameToMetadata} : {};
   const columnsPart = state.items ? convertItemsToState(state.items) : {};
@@ -109,12 +112,12 @@ const convertStateToValue = (state : State) : ValueSerialized => {
   return {...metadataPart, ...columnsPart};
 };
 
-const convertItemsToState = (items : DraggableItem[]) =>{
+const convertItemsToState = (items : DraggableItem[]) : ValueSerializedSupertype =>{
   const {columnSourceItemIndex, valueSourceItemIndex, unusedSourceItemIndex} = getBorderIndexes(items);
   const gs = items.slice(0, columnSourceItemIndex).map(p => p.columnName);
   const cs = items.slice(columnSourceItemIndex+1, valueSourceItemIndex).map(p => p.columnName);
   const vs = items.slice(valueSourceItemIndex+1, unusedSourceItemIndex).map(p => p.columnName);
-  return {[GROUPS_SOURCES] : gs, [COLUMNS_SOURCE] : cs[0], [VALUES_SOURCES]: vs};
+  return {groupSources : gs, columnSource : cs[0], valuesSources: vs};
 };
 
 export default class SummaryTableColumnsSetting extends Component<any, Props, State> {

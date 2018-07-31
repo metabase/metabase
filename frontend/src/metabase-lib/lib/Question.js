@@ -487,7 +487,7 @@ export default class Question {
 
     let datasetQueries = this.atomicQueries();
 
-    let mainQueryPromise : Promise;
+    let mainQueryPromise : Promise<Dataset>;
 
     if (canUseCardApiEndpoint) {
       const queryParams = {

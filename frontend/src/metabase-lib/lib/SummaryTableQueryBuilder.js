@@ -5,9 +5,7 @@ import type {Parameter, ParameterValues} from "metabase/meta/types/Parameter";
 import type {Card, DatasetQuery} from "metabase/meta/types/Card";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import SummaryTable, {
-  COLUMNS_SETTINGS, COLUMNS_SOURCE,
-  GROUPS_SOURCES,
-  VALUES_SOURCES
+  COLUMNS_SETTINGS
 } from "metabase/visualizations/visualizations/SummaryTable";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -17,13 +15,14 @@ import {updateIn} from "icepick";
 import type {NativeQuery} from "metabase/meta/types/Query";
 import {NativeDatasetQuery} from "metabase/meta/types/Card";
 import type {DatabaseId} from "metabase/meta/types/Database";
+import type {ValueSerialized} from "metabase/visualizations/visualizations/SummaryTable";
 
 
 export const getAdditionalQueries = (visualizationSettings) => (card:Card, fields) => (
   query: DatasetQuery, parameters: Array<Parameter>
                         ) : DatasetQuery[] => {
 
-  const settings : StateSerialized = visualizationSettings[COLUMNS_SETTINGS];
+  const settings : ValueSerialized = visualizationSettings[COLUMNS_SETTINGS];
 
   if(card.display !== SummaryTable.identifier || !isOk(settings))
     return [];
@@ -51,9 +50,9 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
   const createTotal = (name) => ['named', ["sum", createLiteral(name)], name];
   const showTotalsFor = (name) => ((settings.columnNameToMetadata|| {})[name] || {}).showTotals;
 
-  const totals = settings[VALUES_SOURCES].filter(p => canTotalize(nameToTypeMap[p])).map(createTotal);
-  const groupingLiterals = settings[GROUPS_SOURCES].map(createLiteral);
-  const pivotLiteral = settings[COLUMNS_SOURCE] && createLiteral(settings[COLUMNS_SOURCE]);
+  const totals = settings.valuesSources.filter(p => canTotalize(nameToTypeMap[p])).map(createTotal);
+  const groupingLiterals = settings.groupsSources.map(createLiteral);
+  const pivotLiteral = settings.columnsSource && createLiteral(settings.columnsSource);
   const breakouts = pivotLiteral ? [ ... groupingLiterals, pivotLiteral] : [ ... groupingLiterals];
   const breakouts1 = [pivotLiteral, ... groupingLiterals];
 
@@ -82,10 +81,10 @@ const buildQuery = (baseQuery : StructuredQuery, aggregations) : StructuredQuery
   return res;
 };
 
-const isOk = (settings : StateSerialized) : Boolean => {
+const isOk = (settings : ValueSerialized) : Boolean => {
   return settings
-      && isOk2(settings[GROUPS_SOURCES])
-      && isOk2(settings[VALUES_SOURCES])
+      && isOk2(settings.groupsSources)
+      && isOk2(settings.valuesSources)
 };
 
 const isOk2 = (columns : string[]) : Boolean => {

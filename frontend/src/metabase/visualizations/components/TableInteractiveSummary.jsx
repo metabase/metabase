@@ -31,6 +31,7 @@ const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type {Row, Column} from "metabase/meta/types/Dataset";
 
 type Props = VisualizationProps & {
   width: number,
@@ -57,6 +58,13 @@ type CellRangeProps ={
 };
 
 type Range = {start : Number, stop: Number};
+
+type RenderCellType = {
+  row : Row,
+  column: Column,columnIndex : number, visibleRowIndices:Range, key:string, rowIndex:number, isGrandTotal:boolean,   style: { [key: string]: any },
+  onVisualizationClick : Function,
+  visualizationIsClickable : Function,
+}
 
 type GridComponent = Component<void, void, void> & {
   recomputeGridSize: () => void,
@@ -151,7 +159,7 @@ export default class TableInteractiveSummary extends Component {
     });
   }
 
-  _measure() {
+  _measure = () => {
     let { data: { cols, rows, probeRows, probeCols, valueColsLen } } = this.props;
     //todo: benchmark it
     probeCols = cols;
@@ -182,8 +190,7 @@ export default class TableInteractiveSummary extends Component {
         const diff = cols.length - probeCols.length;
         if(diff > 0){
           const toDuplicate = contentWidths.slice(contentWidths.length-valueColsLen);
-          const rep = [...Array(diff).keys()];
-          contentWidths = [...contentWidths,...rep.map(p => p % valueColsLen).map(p => toDuplicate[p])]
+          contentWidths = [...contentWidths,...Array.from(Array(diff).keys()).map(p => p % valueColsLen).map(p => toDuplicate[p])]
         }
 
         let columnWidths: number[] = cols.map((col, index) => {
@@ -263,7 +270,9 @@ export default class TableInteractiveSummary extends Component {
 
   };
 
-  renderCell = (row, column,columnIndex, visibleRowIndices, key, rowIndex, isGrandTotal, style, onVisualizationClick, visualizationIsClickable ) =>{
+
+
+  renderCell = (row, column,columnIndex, visibleRowIndices, key, rowIndex, isGrandTotal, style, onVisualizationClick, visualizationIsClickable ) : (RenderCellType => void) =>{
     const groupingManager = this.props.data;
     let value = column.getValue(row);
 
@@ -278,7 +287,7 @@ export default class TableInteractiveSummary extends Component {
       mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', 'font-weight':'bold' };
 
     if(groupingManager.isGrouped(columnIndex))
-      key = key + (columnIndex + '-' + [...Array(columnIndex+1).keys()].map(i => row[i] || 'dd').join('-')) + (row.isTotalColumnIndex || '');
+      key = key + (columnIndex + '-' + Array.from(Array(columnIndex+1).keys()).map(i => row[i] || 'dd').join('-')) + (row.isTotalColumnIndex || '');
 
     const clicked = getTableCellClickedObject(
       this.props.data,
@@ -337,7 +346,6 @@ export default class TableInteractiveSummary extends Component {
       onVisualizationClick,
       visualizationIsClickable,
     } = this.props;
-    // $FlowFixMe: not sure why flow has a problem with this
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 
@@ -416,7 +424,6 @@ export default class TableInteractiveSummary extends Component {
       onVisualizationClick,
       visualizationIsClickable,
     } = this.props;
-    // $FlowFixMe: not sure why flow has a problem with this
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 

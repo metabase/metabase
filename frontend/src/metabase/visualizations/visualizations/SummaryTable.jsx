@@ -28,11 +28,7 @@ import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 import { GroupingManager } from "../lib/GroupingManager";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type {RawSeries, SingleSeries} from "metabase/meta/types/Visualization";
-
-//todo: remove or move consts and ValueSerialized
-export const GROUPS_SOURCES = 'groupsSources';
-export const COLUMNS_SOURCE = 'columnsSource';
-export const VALUES_SOURCES = 'valuesSources';
+import type {ColumnMetadata} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
 
 
 export type ColumnName = string;
@@ -40,16 +36,16 @@ export type ColumnName = string;
 
 export const settingsAreValid = (settings: ValueSerialized, data: DatasetData) =>
   settings
-  && (!settings[COLUMNS_SOURCE] || columnsAreValid([settings[COLUMNS_SOURCE]], data))
-  && columnsAreValid(settings[GROUPS_SOURCES] || [], data)
-  && columnsAreValid(settings[VALUES_SOURCES] || [], data);
+  && (!settings.columnsSource || columnsAreValid([settings.columnsSource], data))
+  && columnsAreValid(settings.groupsSources || [], data)
+  && columnsAreValid(settings.valuesSources || [], data);
 
-export const getColumnsFromSettings = (state: ValueSerialized) => [...state[GROUPS_SOURCES] || [], ...(state[COLUMNS_SOURCE] ? [state[COLUMNS_SOURCE]] : []), ...state[VALUES_SOURCES] || []];
+export const getColumnsFromSettings = (state: ValueSerialized) => [...state.groupsSources || [], ...(state.columnsSource ? [state.columnsSource] : []), ...state.valuesSources || []];
 
 export type ValueSerialized = {
-  [GROUPS_SOURCES]: string[],
-  [COLUMNS_SOURCE]: ?string,
-  [VALUES_SOURCES]: string[],
+  groupsSources: string[],
+  columnsSource?: string,
+  valuesSources: string[],
   columnNameToMetadata: { [key: ColumnName]: ColumnMetadata },
 }
 
@@ -93,11 +89,11 @@ export default class SummaryTable extends Component {
       widget: SummaryTableColumnsSetting,
       isValid: ([{ card, data }]) =>
         settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
-      getDefault: ([{data : {columns}}]) =>
+      getDefault: ([{data : {columns}}]) : ValueSerialized =>
         {
           const gs = columns.slice(0, columns.length -1);
           const vs = columns.slice(columns.length -1);
-          return {[GROUPS_SOURCES] : gs, [VALUES_SOURCES] : vs, columnNameToMetadata: gs.reduce((acc, column) => ({...acc, [column]: {showTotals : true}}), {} )}
+          return {groupsSources : gs, valuesSources: vs, columnNameToMetadata: gs.reduce((acc, column) => ({...acc, [column]: {showTotals : true}}), {} )}
 
 
       }
@@ -144,9 +140,11 @@ export default class SummaryTable extends Component {
   }: {
     data: DatasetData,
     settings: VisualizationSettings,
+    rawSeries: RawSeries
   }) {
  {
-    const additionalSeries = ((rawSeries[0] || []).series || [])
+   const series: ?RawSeries = (rawSeries[0] || []).series;
+   const additionalSeries:RawSeries = series || []
    //todo: fix 30
    const groupingManager = new GroupingManager(30, settings, [...rawSeries,...additionalSeries]);
 
