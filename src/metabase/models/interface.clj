@@ -152,12 +152,6 @@
      *  `(partial current-user-has-partial-permissions? :write)` (you must also implement `perms-objects-set` to use
         this)"))
 
-(defn ^{:hydrate :read_only} read-only?
-  "Is this object read only? (This function exists mostly for use hydrating `read_only`, which, for historical reasons,
-  is used in some places instead of `can_write`. Prefer `can_write` going forward."
-  [instance]
-  ((complement can-write?) instance))
-
 (def IObjectPermissionsDefaults
   "Default implementations for `IObjectPermissions`."
   {:perms-objects-set (constantly nil)})

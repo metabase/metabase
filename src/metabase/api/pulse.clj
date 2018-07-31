@@ -34,7 +34,7 @@
   {archived (s/maybe su/BooleanString)}
   (as-> (pulse/retrieve-pulses {:archived? (Boolean/parseBoolean archived)}) <>
     (filter mi/can-read? <>)
-    (hydrate <> :read_only)))
+    (hydrate <> :can_write)))
 
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
@@ -74,7 +74,8 @@
 (api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID."
   [id]
-  (api/read-check (pulse/retrieve-pulse id)))
+  (-> (api/read-check (pulse/retrieve-pulse id))
+      (hydrate :can_write)))
 
 (api/defendpoint PUT "/:id"
   "Update a Pulse with `id`."

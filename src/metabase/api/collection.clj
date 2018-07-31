@@ -14,7 +14,6 @@
              [pulse :as pulse :refer [Pulse]]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -84,8 +83,9 @@
 
 (defmethod fetch-collection-children :collection
   [_ collection {:keys [archived?]}]
-  (for [child-collection (collection/effective-children collection [:= :archived archived?])]
-    (assoc child-collection :model "collection")))
+  (-> (for [child-collection (collection/effective-children collection [:= :archived archived?])]
+        (assoc child-collection :model "collection"))
+      (hydrate :can_write)))
 
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
@@ -104,7 +104,7 @@
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
-      (hydrate :parent_id :effective_location :effective_ancestors :can_write)))
+      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
 
 (s/defn ^:private collection-items
   "Return items in the Collection, restricted by `children-options`.
@@ -134,11 +134,7 @@
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
 (defn- root-collection []
-  ;; add in some things for the FE to display since the 'Root' Collection isn't real and wouldn't normally have
-  ;; these things
-  (assoc (collection-detail collection/root-collection)
-    :name (tru "Our analytics")
-    :id   "root"))
+  (collection-detail collection/root-collection-with-ui-details))
 
 (api/defendpoint GET "/root"
   "Return the 'Root' Collection object with standard details added"
