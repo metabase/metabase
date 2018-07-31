@@ -703,14 +703,33 @@ export const getCollectionsPermissionsGrid = createSelector(
       return null;
     }
 
+    const crumbs = [];
+    let parent = collections[0] && collections[0].parent;
+    if (parent) {
+      while (parent) {
+        if (crumbs.length > 0) {
+          crumbs.unshift([
+            parent.name,
+            `/admin/permissions/collections/${parent.id}`,
+          ]);
+        } else {
+          crumbs.unshift([parent.name]);
+        }
+        parent = parent.parent;
+      }
+      crumbs.unshift(["Collections", "/admin/permissions/collections"]);
+    }
+
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     return {
       type: "collection",
       icon: "collection",
+      crumbs,
       groups,
       permissions: {
         access: {
+          header: t`Collection Access`,
           options(groupId, entityId) {
             return [
               OPTION_COLLECTION_WRITE,
@@ -758,7 +777,7 @@ export const getCollectionsPermissionsGrid = createSelector(
           link: collection.children &&
             collection.children.length > 0 && {
               name: t`View collections`,
-              url: `/collections/permissions?collectionId=${collection.id}`,
+              url: `/admin/permissions/collections/${collection.id}`,
             },
         };
       }),
