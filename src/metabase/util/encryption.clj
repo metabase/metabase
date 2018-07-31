@@ -6,6 +6,7 @@
              [crypto :as crypto]
              [kdf :as kdf]
              [nonce :as nonce]]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [environ.core :as env]
             [metabase.util :as u]
@@ -73,21 +74,37 @@
        (encrypt secret-key s))
      s)))
 
+(def ^:private ^:const aes256-tag-length 32)
+(def ^:private ^:const aes256-block-size 16)
+
+(defn- possibly-encrypted-string?
+  "Returns true if it's likely that `s` is an encrypted string. Specifically we need `s` to be a non-blank, base64
+  encoded string of the correct length. The correct length is determined by the cipher's type tag and the cipher's
+  block size (AES+CBC). To compute this, we need the number of bytes in the input, subtract the bytes used by the
+  cipher type tag (`aes256-tag-length`) and what is left should be divisible by the cipher's block size
+  (`aes256-block-size`). If it's not divisible by that number it is either not encrypted or it has been corrupted as
+  it must always have a multiple of the block size or it won't decrypt."
+  [s]
+  (when-let [str-byte-length (and (not (str/blank? s))
+                                  (u/base64-string? s)
+                                  (alength ^bytes (codec/base64-decode s)))]
+    (zero? (mod (- str-byte-length aes256-tag-length)
+                aes256-block-size))))
+
 (defn maybe-decrypt
   "If `MB_ENCRYPTION_SECRET_KEY` is set and `s` is encrypted, decrypt `s`; otherwise return `s` as-is."
   (^String [^String s]
    (maybe-decrypt default-secret-key s))
   (^String [secret-key, ^String s]
-   (if (and secret-key (seq s))
+   (if (and secret-key (possibly-encrypted-string? s))
      (try
        (decrypt secret-key s)
        (catch Throwable e
-         (if (u/base64-string? s)
-           ;; if we can't decrypt `s`, but it *is* encrypted, log an error message and return `nil`
-           (log/error
-            (trs "Cannot decrypt encrypted credentials. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?")
-            (.getMessage e)
-            (u/pprint-to-str (u/filtered-stacktrace e)))
-           ;; otherwise return S without decrypting. It's probably not decrypted in the first place
-           s)))
+         ;; if we can't decrypt `s`, but it *is* probably encrypted, log a warning
+         (log/warn
+          (trs "Cannot decrypt encrypted string. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?")
+          (.getMessage e)
+          (u/pprint-to-str (u/filtered-stacktrace e)))
+         s))
+     ;; otherwise return `s` without decrypting. It's probably not decrypted in the first place
      s)))

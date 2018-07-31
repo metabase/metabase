@@ -39,6 +39,7 @@
             [toucan.util.test :as test])
   (:import com.mchange.v2.c3p0.PooledDataSource
            java.util.TimeZone
+           org.apache.log4j.Logger
            org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
@@ -339,6 +340,36 @@
   [& body]
   `(do-with-log-messages (fn [] ~@body)))
 
+(def level-kwd->level
+  "Conversion from a keyword log level to the Log4J constance mapped to that log level.
+   Not intended for use outside of the `with-mb-log-messages-at-level` macro."
+  {:error org.apache.log4j.Level/ERROR
+   :warn  org.apache.log4j.Level/WARN
+   :info  org.apache.log4j.Level/INFO
+   :debug org.apache.log4j.Level/DEBUG
+   :trace org.apache.log4j.Level/TRACE})
+
+(defn ^Logger metabase-logger
+  "Gets the root logger for all metabase namespaces. Not intended for use outside of the
+  `with-mb-log-messages-at-level` macro."
+  []
+  (Logger/getLogger "metabase"))
+
+(defmacro with-mb-log-messages-at-level
+  "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at
+  a higher threshold than the log messages you're wanting to example. As an example if the metabase logging level is
+  set to `ERROR` in the log4j.properties file and you are looking for a `WARN` message, it won't show up in the
+  `with-log-messages` call as there's a guard around the log invocation, if it's not enabled (it is set to `ERROR`)
+  the log function will never be invoked. This macro will temporarily set the logging level to `level-kwd`, then
+  invoke `with-log-messages`, then set the level back to what it was before the invocation. This allows testing log
+  messages even if the threshold is higher than the message you are looking for."
+  [level-kwd & body]
+  `(let  [orig-log-level# (.getLevel (metabase-logger))]
+     (try
+       (.setLevel (metabase-logger) (get level-kwd->level ~level-kwd))
+       (with-log-messages ~@body)
+       (finally
+         (.setLevel (metabase-logger) orig-log-level#)))))
 
 (defn vectorize-byte-arrays
   "Walk form X and convert any byte arrays in the results to standard Clojure vectors. This is useful when writing
