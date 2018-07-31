@@ -18,7 +18,7 @@ import _ from "underscore";
 
 const SECTIONS = {
   zoom: {
-    icon: "zoom",
+    icon: "zoom-in",
   },
   records: {
     icon: "table2",

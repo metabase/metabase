@@ -185,6 +185,7 @@
          {:name          "Test Dashboard"
           :creator_id    (user->id :rasta)
           :collection_id true
+          :can_write     false
           :ordered_cards [{:sizeX                  2
                            :sizeY                  2
                            :col                    0

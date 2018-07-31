@@ -3,6 +3,8 @@
   (:require [cheshire.core :as json]
             [clj-time.coerce :as t.coerce]
             [kixi.stats.core :as stats]
+            [metabase.models.field :as field]
+            [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util.date :as du]
@@ -48,7 +50,12 @@
 (defmulti
   ^{:doc "Return a fingerprinter transducer for a given field based on the field's type."
     :arglists '([field])}
-  fingerprinter (juxt :base_type (some-fn :special_type (constantly :type/*))))
+  fingerprinter (fn [{:keys [base_type special_type unit] :as field}]
+                  [(cond
+                     (du/date-extract-units unit)  :type/Integer
+                     (field/unix-timestamp? field) :type/DateTime
+                     :else                         base_type)
+                   (or special_type :type/*)]))
 
 (def ^:private global-fingerprinter
   (redux/post-complete
@@ -71,6 +78,7 @@
 (prefer-method fingerprinter [:type/* :type/FK] [:type/Text :type/*])
 (prefer-method fingerprinter [:type/* :type/PK] [:type/Number :type/*])
 (prefer-method fingerprinter [:type/* :type/PK] [:type/Text :type/*])
+(prefer-method fingerprinter [:type/DateTime :type/*] [:type/* :type/PK])
 
 (defn- with-global-fingerprinter
   [fingerprinter]
@@ -136,11 +144,19 @@
        acc)
      acc)))
 
+(defprotocol ^:private IDateCoercible
+  "Protocol for converting objects to `java.util.Date`"
+  (->date ^java.util.Date [this]
+    "Coerce object to a `java.util.Date`."))
+
+(extend-protocol IDateCoercible
+  nil                    (->date [_] nil)
+  String                 (->date [this] (-> this du/str->date-time t.coerce/to-date))
+  java.util.Date         (->date [this] this)
+  Long                   (->date [^Long this] (java.util.Date. this)))
+
 (deffingerprinter :type/DateTime
-  ((map (fn [dt]
-          (if (string? dt)
-            (-> dt du/str->date-time t.coerce/to-date-time)
-            dt)))
+  ((map ->date)
    (redux/fuse {:earliest earliest
                 :latest   latest})))
 
@@ -167,4 +183,9 @@
 (defn fingerprint-fields
   "Return a transducer for fingerprinting a resultset with fields `fields`."
   [fields]
-  (apply col-wise (map fingerprinter fields)))
+  (apply col-wise (for [field fields]
+                    (fingerprinter
+                     (cond-> field
+                       ;; Try to get a better guestimate of what we're dealing with  on first sync
+                       (every? nil? ((juxt :special_type :last_analyzed) field))
+                       (assoc :special_type (classify.name/infer-special-type field)))))))

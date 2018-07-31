@@ -1,21 +1,20 @@
 
-## Asking questions
+## Asking custom questions
 ---
 Metabase's two core concepts are questions and their corresponding answers. Everything else is based around questions and answers. To ask Metabase a question, click the New Question button at the top of the screen.
 
 ### Ways to start a new question
 
-If an administrator has [defined some metrics or segments](../administration-guide/07-segments-and-metrics.md), when you click on the New Question button, you'll see a screen like this one:
+If an administrator has [defined some metrics](../administration-guide/07-segments-and-metrics.md), when you click on the `Ask a question` button in the top bar you'll see a screen like this one:
 
 ![New question options](images/new-question-all-options.png)
 
 You can start your new question:
 - from an existing metric
-- from an existing segment
 - from scratch with the Question Builder interface
-- or using the SQL / native query editor
+- using the SQL / native query editor
 
-Asking a new question about a **metric** or a **segment** is often a great place to start.
+Asking a new question about a **metric** is often a great place to start.
 
 #### Asking a new question about a metric
 
@@ -31,25 +30,23 @@ You can also use the Action Menu in the bottom-right of the screen to choose a b
 
 ![Metric action menu](images/metric-action-menu.png)
 
-#### Asking a new question about a segment
+#### Asking a new question about a table
 
-A **segment** is any kind of list or table of things that your company cares about: returning users, orders that used a certain promo code, or sales leads that need to be followed up with are all examples of possible segments.
+Another quick way to start a new question is by clicking on one of your connected databases at the bottom of the homepage, and picking a table that you have a question about. You'll immediately see the table and the graphical question builder so that you can keep exploring.
 
-Selecting the Segment option from the new question menu will show you a list of your company's segments. When you click on one, you'll see a list, like this one:
+![Browse data](./images/browse-data.png)
 
-![Californians segment](images/segment-californians.png)
-
-When viewing a segment or a table, you can click on the headings of columns to see options for ways to explore more, like seeing the distribution of the values a column has, or the number of distinct values:
+When viewing a table you can also click on the headings of columns to see options for ways to explore more, like clicking on the Age column of your Users table to see how many Users you have per age group (that's called a "distribution"):
 
 ![Table heading actions](images/table-heading-actions.png)
 
-You can also use the Action Menu when viewing a segment or table to see any metrics that are related, or to summarize the table.
+You can also use the Action Menu when viewing a table to see any metrics in it, or to summarize the table.
 
 ![Table action menu](images/segment-actions.png)
 
 #### Asking a new custom question
 
-If your team hasn't set up any metrics or segments, or if you have a question that isn't covered by an existing question or segment, you can create a custom question using the Question Builder interface by clicking "Custom." Or, if you're an advanced user, you can click "SQL" to go straight to the SQL/native query editor.
+If you have a question that isn't covered by an existing question, you can create a new custom question using the Question Builder interface by clicking "Custom." Or, if you're an advanced user, you can click "SQL" to go straight to the SQL/native query editor.
 
 
 ### Using the Question Builder interface
@@ -61,7 +58,7 @@ Metabase has a simple graphical question builder that looks like this:
 The question builder is made up of four distinct sections, from left to right:
 - **Data**, where you pick the source data you want to ask a question about
 - **Filters**, where you can optionally add one or more filters to narrow down your source data
-- **View**, where you choose what you want to see — raw table data, a basic metric, or a saved metric
+- **View**, where you choose what you want to see — raw table data, a basic metric, or a "common" metric that an administrator has defined
 - **Groupings**, where you can group or break out your metric by time, location, or other categories
 
 #### Source data
@@ -86,7 +83,7 @@ You can use most saved questions as source data, provided you have [permission](
 
 #### Filters
 ---
-Filtering your data lets you exclude information that you don’t want. You can filter by any field in the table you're working with, or by any tables that are connected through a foreign key. Filters narrow down the source data to an interesting subset, like "active users" or "bookings after June 15th, 2015."  
+Filtering your data lets you exclude information that you don’t want. You can filter by any field in the table you're working with, or by any tables that are connected through a foreign key. Filters narrow down the source data to an interesting subset, like "active users" or "bookings after June 15th, 2015."
 
 Different fields will have different filter options based on what kind of data type they are. There are four universal filter options, or “operators,” that can be applied to any field. These operators are:
 
@@ -105,27 +102,25 @@ Fields that are comparable, like numbers or dates, can also be filtered using th
 
 ##### Filtering by dates
 
-If filtering by dates, a date picker will appear to allow you to select dates easily. You have two main options for picking your date: relative or specific.
+If filtering by dates, a date picker will appear to allow you to select dates easily, and will default to the previous 30 days.
 
-**Specific Dates**
-This is the most basic way to select dates. You just click on the date you want from the calendar. If you click on a second date, the picker will select all the dates in between the two you clicked on, creating a range. Clicking on any date while you have a range selected will clear the range. You can also use the **All before** and **All after** buttons to quickly select all dates before or after the one you’ve selected.
+Click on the first dropdown to change the kind of date filter you're using. The rest of the popup menu will change depending on this first selection.
 
-**Relative Dates**
-Relative dates are how we more commonly talk about time: “how many customers did we have **last month**?” We talk about time relative to today.
+One important thing to understand when filtering by time or dates like this is the difference between specific and relative dates:
 
-In practice, if you select **Past 30 days** from the Relative Date calendar picker, this would be the same as selecting those same dates from the Specific Date picker — *unless* you save your question and look at it again tomorrow.
+**Specific dates** are things like November 1, 2010, or June 3 – July 12, 2017; they always refer to the same date(s).
 
-Now the relative date will be referencing the past 30 days from *today*, *not* from the day you saved the question. This is a really useful way of creating and saving questions that stay up-to-date: you can always know what your total sales were in the past 7 days, for example.
+**Relative dates** are things like "the past 30 days," or "the current week;" as time passes, the dates these refer to change. Relative dates are a useful way to set up a filter on a question so that it stays up to date by showing you for example how many users visited your website in the last 7 days.
 
 ##### Using segments
-If your Metabase admins have created special named filters, called segments, for the table you’re viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are shortcuts to sets of filters that are commonly used in your organization. They might be something like “Active Users,” or “Most Popular Products.”
+If your Metabase administrators have created special named filters for the table you're viewing they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called "segments," and they're shortcuts to filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
 
 #### Selecting answer output in the View section
 ---
 The next section of the question builder is where you select what you want the output of your answer to be, under the View dropdown. You’re basically telling Metabase, “I want to view…” Metabase can output the answer to your question in four different ways:
 
 ##### 1. Raw data
-Raw Data is just a table with the answer listed in rows.  It's useful when you want to see the actual data you're working with, rather than a sum or average, etc., or when you're exploring a small table with a limited number of records.  
+Raw Data is just a table with the answer listed in rows.  It's useful when you want to see the actual data you're working with, rather than a sum or average, etc., or when you're exploring a small table with a limited number of records.
 
 When you filter your data to see groups of interesting users, orders, etc., Raw Data will show you an output of each individual record that matches your question's criteria.
 

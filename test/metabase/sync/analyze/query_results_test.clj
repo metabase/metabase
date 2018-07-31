@@ -35,7 +35,7 @@
   (->> query-map
        qp/process-query
        :data
-       results->column-metadata+fingerprint
+       results->column-metadata
        (tu/round-all-decimals 2)))
 
 (defn- query-for-card [card]
