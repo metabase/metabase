@@ -776,8 +776,8 @@
 ;; should come back in alphabetical order
 (tt/expect-with-temp [Pulse [pulse-1 {:name "ABCDEF"}]
                       Pulse [pulse-2 {:name "GHIJKL"}]]
-  [(assoc (pulse-details pulse-1) :read_only true, :collection_id true)
-   (assoc (pulse-details pulse-2) :read_only true, :collection_id true)]
+  [(assoc (pulse-details pulse-1) :can_write false, :collection_id true)
+   (assoc (pulse-details pulse-2) :can_write false, :collection_id true)]
   (with-pulses-in-readable-collection [pulse-1 pulse-2]
     ;; delete anything else in DB just to be sure; this step may not be neccesary any more
     (db/delete! Pulse :id [:not-in #{(u/get-id pulse-1)
@@ -785,11 +785,11 @@
     (for [pulse ((user->client :rasta) :get 200 "pulse")]
       (update pulse :collection_id boolean))))
 
-;; `read_only` property should get updated correctly based on whether current user can write
+;; `can_write` property should get updated correctly based on whether current user can write
 (tt/expect-with-temp [Pulse [pulse-1 {:name "ABCDEF"}]
                       Pulse [pulse-2 {:name "GHIJKL"}]]
-  [(assoc (pulse-details pulse-1) :read_only false)
-   (assoc (pulse-details pulse-2) :read_only false)]
+  [(assoc (pulse-details pulse-1) :can_write true)
+   (assoc (pulse-details pulse-2) :can_write true)]
   (do
     ;; delete anything else in DB just to be sure; this step may not be neccesary any more
     (db/delete! Pulse :id [:not-in #{(u/get-id pulse-1)
@@ -801,8 +801,8 @@
                       Pulse [pulse-2 {:name "GHIJKL"}]
                       Pulse [pulse-3 {:name            "AAAAAA"
                                       :alert_condition "rows"}]]
-  [(assoc (pulse-details pulse-1) :read_only true, :collection_id true)
-   (assoc (pulse-details pulse-2) :read_only true, :collection_id true)]
+  [(assoc (pulse-details pulse-1) :can_write false, :collection_id true)
+   (assoc (pulse-details pulse-2) :can_write false, :collection_id true)]
   (with-pulses-in-readable-collection [pulse-1 pulse-2 pulse-3]
     (for [pulse ((user->client :rasta) :get 200 "pulse")]
       (update pulse :collection_id boolean))))
@@ -830,6 +830,7 @@
 
 (tt/expect-with-temp [Pulse [pulse]]
   (assoc (pulse-details pulse)
+    :can_write     false
     :collection_id true)
   (with-pulses-in-readable-collection [pulse]
     (-> ((user->client :rasta) :get 200 (str "pulse/" (u/get-id pulse)))

@@ -54,7 +54,7 @@ const mapDispatchToProps = {
 };
 
 type TabName = "connection" | "scheduling";
-type TabOption = { name: TabName, value: string };
+type TabOption = { name: string, value: TabName };
 
 const TABS: TabOption[] = [
   { name: t`Connection`, value: "connection" },

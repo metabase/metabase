@@ -40,14 +40,10 @@
   special type with a nil special type"
   [result-metadata col]
   (update result-metadata :special_type (fn [original-value]
-                                          ;; If the original special type is a PK or FK, we don't want to use a new
-                                          ;; computed special type because it'll just be confusing as we can't do any
-                                          ;; meaningful binning etc on it. If it's not of that type and we are able to
-                                          ;; compute a special type based on the results, use that
-                                          (if-let [new-special-type (and (not (isa? original-value :type/PK))
-                                                                         (not (isa? original-value :type/FK))
-                                                                         (classify-name/infer-special-type col))]
-                                            new-special-type
+                                          ;; If we already know the special type, becouse it is stored, don't classify again.
+                                          ;; Also try to refine special type set upstream for aggregation cols (which comes back as :type/Number)
+                                          (case original-value
+                                            (nil :type/Number) (classify-name/infer-special-type col)
                                             original-value))))
 
 (s/defn ^:private stored-column-metadata->result-column-metadata :- ResultColumnMetadata
@@ -66,17 +62,12 @@
       :unit      nil})))
 
 (s/defn results->column-metadata :- ResultsMetadata
-  "Return the desired storage format for the column metadata coming back from RESULTS."
-  [results]
-  (for [col (:cols results)]
-    (-> col
-        stored-column-metadata->result-column-metadata
-        (maybe-infer-special-type col))))
-
-(s/defn results->column-metadata+fingerprint :- ResultsMetadata
   "Return the desired storage format for the column metadata coming back from RESULTS and fingerprint the RESULTS."
   [results]
-  (let [result-metadata (results->column-metadata results)]
+  (let [result-metadata (for [col (:cols results)]
+                          (-> col
+                              stored-column-metadata->result-column-metadata
+                              (maybe-infer-special-type col)))]
     (transduce identity
                (redux/post-complete
                 (apply f/col-wise (for [metadata result-metadata]

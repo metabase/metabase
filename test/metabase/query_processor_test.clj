@@ -193,7 +193,7 @@
                    :display_name "Category ID"
                    :fingerprint  (if (data/fks-supported?)
                                    {:global {:distinct-count 28}}
-                                   {:global {:distinct-count 28, :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}}}})}
+                                   {:global {:distinct-count 28}, :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}}})}
      :price       {:special_type :type/Category
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "price")
@@ -256,7 +256,7 @@
                 :display_name "User ID"
                 :fingerprint  (if (data/fks-supported?)
                                 {:global {:distinct-count 15}}
-                                {:global {:distinct-count 15, :type {:type/Number {:min 1.0, :max 15.0, :avg 7.929}}}})})))
+                                {:global {:distinct-count 15}, :type {:type/Number {:min 1.0, :max 15.0, :avg 7.929}}})})))
 
 
 ;;; #### aggregate columns
