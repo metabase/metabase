@@ -5,10 +5,6 @@ import React, {Component} from "react";
 
 import {t} from "c-3po";
 
-import {
-  columnsAreValid,
-} from "metabase/visualizations/lib/utils";
-
 import styles from './SummaryTableColumnsSettings.css';
 import Icon from "metabase/components/Icon.jsx";
 
@@ -250,11 +246,17 @@ const removeItemBuilder = (items:DraggableItem[],updateState : StateSuperType =>
 };
 
 const moveItem = (updateState : StateSuperType => Promise<*>) => async (items: DraggableItem[], {oldIndex, newIndex} : ArrayMoveArg) : Promise<*> => {
-  if(oldIndex !== newIndex)
+  if(oldIndex !== newIndex){
+    if(items[newIndex] === valueSourceItem && items[newIndex-1] !== columnSourceItem){
+      newIndex++;
+    }else if (items[newIndex-1] === columnSourceItem && items[newIndex] !== valueSourceItem ){
+      items = arrayMove(items, newIndex, newIndex+1);
+    }
   await updateState({
     items: arrayMove(items, oldIndex, newIndex),
     isChanging : false
   });
+  }
 };
 
 type FatColumnArgType = {displayName: string, columnMetadata : ColumnMetadata, onRemove: void => void, onChange: ColumnMetadata => void};
@@ -302,7 +304,7 @@ const UnusedColumn = ({displayName}) =>
     </div>;
 
 const RowHeader = ({displayName, onRemove}) =>
-  <div className={cx("p1 border-bottom relative bg-grey-0", !onRemove && "cursor-move")}>
+  <div className={cx("p1 border-bottom relative bg-grey-0", !onRemove && "cursor-move")} style={{background: onRemove &&'#EDEFF0'}}>
     <div className="px1 flex align-center relative">
       <span className="h4 flex-full text-dark no-select">{displayName}</span>
       {onRemove &&
