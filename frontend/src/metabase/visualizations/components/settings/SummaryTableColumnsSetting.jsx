@@ -117,7 +117,7 @@ const convertItemsToState = (items : DraggableItem[]) : ValueSerializedSupertype
   const gs = items.slice(0, columnSourceItemIndex).map(p => p.columnName);
   const cs = items.slice(columnSourceItemIndex+1, valueSourceItemIndex).map(p => p.columnName);
   const vs = items.slice(valueSourceItemIndex+1, unusedSourceItemIndex).map(p => p.columnName);
-  return {groupSources : gs, columnSource : cs[0], valuesSources: vs};
+  return {groupsSources : gs, columnsSource : cs[0], valuesSources: vs};
 };
 
 export default class SummaryTableColumnsSetting extends Component<any, Props, State> {
@@ -125,8 +125,7 @@ export default class SummaryTableColumnsSetting extends Component<any, Props, St
 
   constructor(props : Props) {
     super(props);
-    this.state = convertValueToState(this.props.value, this.props.columnNames)
-    console.log(this.props.value)
+    this.state = convertValueToState(this.props.value, this.props.columnNames);
   }
 
   updateState = async (newState : StateSuperType) => {
