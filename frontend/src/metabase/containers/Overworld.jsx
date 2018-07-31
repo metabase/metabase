@@ -94,7 +94,7 @@ class Overworld extends React.Component {
                         <SectionHeading>
                           {t`Not sure where to start? Try these x-rays based on your data.`}
                         </SectionHeading>
-                        <Card px={3} pb={1}>
+                        <Card mt={2} px={3} pb={1}>
                           <ExplorePane
                             candidates={candidates}
                             withMetabot={false}
