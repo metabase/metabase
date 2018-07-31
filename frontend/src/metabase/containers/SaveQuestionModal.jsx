@@ -177,7 +177,7 @@ export default class SaveQuestionModal extends Component {
               },
               { name: t`Save as new question`, value: "create" },
             ]}
-            isVertical
+            vertical
           />
         </FormField>
       );

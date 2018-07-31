@@ -305,7 +305,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => (
         { name: t`Color range`, value: "range" },
       ]}
       onChange={type => onChange({ ...DEFAULTS_BY_TYPE[type], ...rule, type })}
-      isVertical
+      vertical
     />
     {rule.type === "single" ? (
       <div>
@@ -355,7 +355,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => (
                 },
               ]
           ).concat([{ name: t`Custom value`, value: "custom" }])}
-          isVertical
+          vertical
         />
         {rule.min_type === "custom" && (
           <NumericInput
@@ -377,7 +377,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => (
                 },
               ]
           ).concat([{ name: t`Custom value`, value: "custom" }])}
-          isVertical
+          vertical
         />
         {rule.max_type === "custom" && (
           <NumericInput
