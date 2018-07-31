@@ -2,10 +2,9 @@ import {Row} from "metabase/meta/types/Dataset";
 import _ from 'lodash';
 import {
   COLUMNS_SETTINGS,
-  COLUMNS_SOURCE,
   getColumnsFromSettings,
-  GROUPS_SOURCES
 } from "metabase/visualizations/visualizations/SummaryTable";
+import type {ValueSerialized} from "metabase/visualizations/visualizations/SummaryTable";
 
 type ColumnAcc = {
   prevRow : Row,
@@ -31,7 +30,8 @@ export class GroupingManager {
     const datas = rawSeries.map(p => p.data);
     const summaryTableSettings = settings[COLUMNS_SETTINGS];
 
-    const isPivoted = settings[COLUMNS_SETTINGS].columnsSource;
+    const summarySettings: ValueSerialized = settings[COLUMNS_SETTINGS];
+    const isPivoted = summarySettings.columnsSource;
 
 
     let mappedRows = undefined;
@@ -41,9 +41,9 @@ export class GroupingManager {
       const sortOrderMethod = columnsIndexesForGrouping.map(funGen);
       let normalizedRows = datas.map(p => normalizeRows(settings, p))
 
-      if((settings[COLUMNS_SETTINGS].columnNameToMetadata[settings[COLUMNS_SETTINGS][COLUMNS_SOURCE]] || {}).showTotals)
+      if((summarySettings.columnNameToMetadata[summarySettings.groupsSources] || {}).showTotals)
       {
-        const totalLen = settings[COLUMNS_SETTINGS][GROUPS_SOURCES].filter(p => (settings[COLUMNS_SETTINGS].columnNameToMetadata[p] || {}).showTotals).length + 1;
+        const totalLen = summarySettings.groupsSources.filter(p => (summarySettings.columnNameToMetadata[p] || {}).showTotals).length + 1;
         const suff = [...normalizedRows.slice(normalizedRows.length - totalLen)];
         normalizedRows = [...normalizedRows.slice(0, normalizedRows.length - totalLen)];//+1 == mainRes, +1 == pivot
 
@@ -72,7 +72,7 @@ export class GroupingManager {
     const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length).keys()];
     const sortOrderMethod = columnsIndexesForGrouping.map(funGen);
 
-    const fooBar = ([...(settings[COLUMNS_SETTINGS][GROUPS_SOURCES] || []),...(settings[COLUMNS_SETTINGS][COLUMNS_SOURCE] ? [settings[COLUMNS_SETTINGS][COLUMNS_SOURCE]] : [])]).map((p, index) => [(settings[COLUMNS_SETTINGS].columnNameToMetadata[p] || {}).showTotals,index]).filter(p => p[0]).map(p => p[1]).reverse();
+    const fooBar = ([...(summarySettings.groupsSources || []),...(summarySettings.columnsSource ? [summarySettings.columnsSource] : [])]).map((p, index) => [(summarySettings.columnNameToMetadata[p] || {}).showTotals,index]).filter(p => p[0]).map(p => p[1]).reverse();
 
     mappedRows = mappedRows.map((rs, index) => rs.map(r => ({__proto__ : r, isTotalColumnIndex :fooBar[index - 1]})));
 
@@ -93,7 +93,7 @@ export class GroupingManager {
       // this.probeRowIndexes = [...colsTmp.map(col => this.rows.indexOf(row => col.getValue(row)))];
 
       this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
-      const grColumnsLength = (settings[COLUMNS_SETTINGS][GROUPS_SOURCES] || []).length;
+      const grColumnsLength = (summarySettings.groupsSources || []).length;
       const grCols = colsTmp.slice(0, grColumnsLength).map((col, i) => ({...col, getValue: getValueByIndex(i), parentName: ["",1] }));
       const values = colsTmp.slice(grColumnsLength + 1);
       const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: i === 0 ? [k === 'undefined' ? 'Grand totals' : k, values.length, k === 'undefined' ? undefined : colsTmp[grColumnsLength]] : undefined})).filter(col => k !== 'undefined' || canTotalize(col.base_type)))
