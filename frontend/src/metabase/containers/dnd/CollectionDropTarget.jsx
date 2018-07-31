@@ -11,6 +11,10 @@ const CollectionDropTarget = DropTarget(
     },
     canDrop(props, monitor) {
       const { item } = monitor.getItem();
+      // can't drop if can't write the  collection
+      if (props.collection.can_write === false) {
+        return false;
+      }
       return item.model !== "collection" || item.id !== props.collection.id;
     },
   },
