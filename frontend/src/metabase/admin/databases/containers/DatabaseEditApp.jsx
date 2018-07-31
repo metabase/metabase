@@ -4,7 +4,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import title from "metabase/hoc/Title";
-import cx from "classnames";
 import { t } from "c-3po";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -15,8 +14,6 @@ import ActionButton from "metabase/components/ActionButton.jsx";
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
 import Radio from "metabase/components/Radio.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-
-import colors from "metabase/lib/colors";
 
 import {
   getEditingDatabase,
@@ -57,7 +54,7 @@ const mapDispatchToProps = {
 };
 
 type TabName = "connection" | "scheduling";
-type TabOption = { name: TabName, value: string };
+type TabOption = { name: string, value: TabName };
 
 const TABS: TabOption[] = [
   { name: t`Connection`, value: "connection" },
