@@ -110,13 +110,14 @@ class SearchBar extends React.Component {
   }
 
   render() {
+    const { active, searchText } = this.state;
     return (
       <OnClickOutsideWrapper
         handleDismissal={() => this.setState({ active: false })}
       >
         <SearchWrapper
           onClick={() => this.setState({ active: true })}
-          active={this.state.active}
+          active={active}
         >
           <Icon name="search" ml={2} />
           <SearchInput
@@ -124,15 +125,15 @@ class SearchBar extends React.Component {
             py={2}
             pr={2}
             pl={1}
-            value={this.state.searchText}
+            value={searchText}
             placeholder="Search…"
             onClick={() => this.setState({ active: true })}
             onChange={e => this.setState({ searchText: e.target.value })}
             onKeyPress={e => {
-              if (e.key === "Enter") {
+              if (e.key === "Enter" && (searchText || "").trim().length > 0) {
                 this.props.onChangeLocation({
                   pathname: "search",
-                  query: { q: this.state.searchText },
+                  query: { q: searchText },
                 });
               }
             }}
