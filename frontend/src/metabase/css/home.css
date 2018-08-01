@@ -1,5 +1,6 @@
 .Nav {
   z-index: 4;
+  flex-shrink: 0;
 }
 
 .QuestionCircle {
