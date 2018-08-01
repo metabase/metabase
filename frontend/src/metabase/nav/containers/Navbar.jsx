@@ -180,6 +180,8 @@ export default class Navbar extends Component {
 
   renderAdminNav() {
     return (
+      // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
+      // TODO: hide nav using state in redux instead?
       <nav className={cx("Nav AdminNav sm-py1")}>
         <div className="sm-pl4 flex align-center pr1">
           <div className="NavTitle flex align-center">
@@ -224,6 +226,8 @@ export default class Navbar extends Component {
 
   renderEmptyNav() {
     return (
+      // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
+      // TODO: hide nav using state in redux instead?
       <nav className="Nav sm-py1 relative">
         <ul className="wrapper flex align-center">
           <li>
@@ -244,7 +248,9 @@ export default class Navbar extends Component {
   renderMainNav() {
     return (
       <Flex
-        className="relative bg-brand text-white z3"
+        // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
+        // TODO: hide nav using state in redux instead?
+        className="Nav relative bg-brand text-white z3"
         align="center"
         py={1}
         pr={2}
