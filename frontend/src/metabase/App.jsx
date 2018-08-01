@@ -7,8 +7,11 @@ import Navbar from "metabase/nav/containers/Navbar.jsx";
 
 import UndoListing from "metabase/containers/UndoListing";
 
-import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
-import Archived from "metabase/components/Archived.jsx";
+import {
+  Archived,
+  NotFound,
+  Unauthorized,
+} from "metabase/containers/ErrorPages";
 import GenericError from "metabase/components/GenericError.jsx";
 
 const mapStateToProps = (state, props) => ({

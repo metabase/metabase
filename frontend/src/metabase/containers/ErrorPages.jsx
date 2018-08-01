@@ -32,3 +32,13 @@ export const Unauthorized = () => (
     />
   </ErrorPageWrapper>
 );
+
+export const Archived = ({ entityName, linkTo }) => (
+  <ErrorPageWrapper>
+    <EmptyState
+      title={t`This ${entityName} has been archived`}
+      illustrationElement={<Icon name="viewArchive" size={100} />}
+      link={linkTo}
+    />
+  </ErrorPageWrapper>
+);
