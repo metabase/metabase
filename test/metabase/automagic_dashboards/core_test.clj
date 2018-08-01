@@ -108,7 +108,7 @@
         (->> (Metric) (every? test-automagic-analysis))))))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id
@@ -122,7 +122,7 @@
           (-> card-id Card test-automagic-analysis))))))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id
@@ -136,7 +136,7 @@
           (-> card-id Card test-automagic-analysis))))))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      nil
                                          :collection_id collection-id
@@ -149,7 +149,7 @@
           (-> card-id Card test-automagic-analysis))))))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (let [source-query {:query    {:source_table (data/id :venues)}
                         :type     :query
                         :database (data/id)}]
@@ -170,7 +170,7 @@
             (-> card-id Card test-automagic-analysis)))))))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id
@@ -184,7 +184,7 @@
           (-> card-id Card test-automagic-analysis))))))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (let [source-query {:native   {:query "select * from venues"}
                         :type     :native
                         :database (data/id)}]
@@ -205,7 +205,7 @@
             (-> card-id Card test-automagic-analysis)))))))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id
@@ -220,7 +220,7 @@
           (-> card-id Card test-automagic-analysis))))))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      nil
                                          :collection_id collection-id
@@ -233,7 +233,7 @@
           (-> card-id Card test-automagic-analysis))))))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      nil
                                          :collection_id collection-id
@@ -246,7 +246,7 @@
           (-> card-id Card test-automagic-analysis))))))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id
@@ -263,7 +263,7 @@
 
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id

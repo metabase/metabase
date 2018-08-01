@@ -62,7 +62,7 @@
   (perms/revoke-collection-permissions! (perms-group/all-users) collection-id))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id
@@ -74,7 +74,7 @@
       (api-call "question/%s" [card-id] #(revoke-collection-permissions! collection-id)))))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id
@@ -88,7 +88,7 @@
                 #(revoke-collection-permissions! collection-id)))))
 
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id

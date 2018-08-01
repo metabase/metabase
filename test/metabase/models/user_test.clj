@@ -39,7 +39,7 @@
          perms-path)))
 (expect
   #{(perms/collection-readwrite-path (collection/user->personal-collection (user->id :lucky)))}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (-> (user/permissions-set (user->id :lucky))
         remove-non-collection-perms)))
 
@@ -48,7 +48,7 @@
   #{(perms/collection-readwrite-path (collection/user->personal-collection (user->id :lucky)))
     "/collection/child/"
     "/collection/grandchild/"}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [child-collection      {:name     "child"
                                                        :location (collection/children-location
                                                                   (collection/user->personal-collection

@@ -183,7 +183,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn do-with-dash-in-collection [f]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection    [collection]
                     Dashboard     [dash  {:collection_id (u/get-id collection)}]
                     Database      [db    {:engine :h2}]

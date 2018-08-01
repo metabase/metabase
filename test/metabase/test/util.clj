@@ -608,18 +608,22 @@
                            (throw (RuntimeException. "Should not be called!")))]
      ~@body))
 
-(defn do-with-all-users-no-root-collection-perms [f]
+
+(defn do-with-non-admin-groups-no-root-collection-perms [f]
   (try
-    (perms/revoke-collection-permissions! (group/all-users) collection/root-collection)
+    (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
+      (perms/revoke-collection-permissions! group-id collection/root-collection))
     (f)
     (finally
-      (when-not (db/exists? Permissions
-                  :group_id (u/get-id (group/all-users))
-                  :object   (perms/collection-readwrite-path collection/root-collection))
-        (perms/grant-collection-readwrite-permissions! (group/all-users) collection/root-collection)))))
+      (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
+        (when-not (db/exists? Permissions
+                    :group_id group-id
+                    :object   (perms/collection-readwrite-path collection/root-collection))
+          (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))))))
 
-(defmacro with-all-users-no-root-collection-perms
-  "Temporarily remove Root Collection perms for All Users. By default, All Users have full readwrite perms for the Root
-  Collection; use this macro to test situations where an admin has removed them."
+(defmacro with-non-admin-groups-no-root-collection-perms
+  "Temporarily remove Root Collection perms for all Groups besides the Admin group (which cannot have them removed). By
+  default, all Groups have full readwrite perms for the Root Collection; use this macro to test situations where an
+  admin has removed them."
   [& body]
-  `(do-with-all-users-no-root-collection-perms (fn [] ~@body)))
+  `(do-with-non-admin-groups-no-root-collection-perms (fn [] ~@body)))
