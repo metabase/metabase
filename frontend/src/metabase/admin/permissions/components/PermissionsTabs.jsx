@@ -3,7 +3,7 @@ import React from "react";
 import Radio from "metabase/components/Radio";
 
 const PermissionsTabs = ({ tab, onChangeTab }) => (
-  <div className="px2 mt2 mb1">
+  <div className="px3 mt2 ml2">
     <Radio
       value={tab}
       options={[

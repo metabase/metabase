@@ -776,7 +776,7 @@ export const getCollectionsPermissionsGrid = createSelector(
           name: collection.name,
           link: collection.children &&
             collection.children.length > 0 && {
-              name: t`View collections`,
+              name: t`View sub-collections`,
               url: `/admin/permissions/collections/${collection.id}`,
             },
         };

@@ -66,9 +66,13 @@ const PermissionsEditor = ({
               buttons={[cancelButton, saveButton]}
             />
           )}
-          {tab && <PermissionsTabs tab={tab} onChangeTab={onChangeTab} />}
+          {tab && (
+            <div className="border-bottom mb3">
+              <PermissionsTabs tab={tab} onChangeTab={onChangeTab} />
+            </div>
+          )}
           {grid && grid.crumbs && grid.crumbs.length > 0 ? (
-            <div className="px2 pt2">
+            <div className="px2 pb1 ml3">
               <Breadcrumbs className="py1" crumbs={grid.crumbs} />
             </div>
           ) : null}

@@ -78,7 +78,7 @@ export default class CollectionPermissionsModal extends Component {
               className="spread"
               grid={grid}
               onUpdatePermission={onUpdatePermission}
-              cellHeight={40}
+              cellHeight={60}
               isPivoted={true}
               showHeader={false}
             />
