@@ -141,4 +141,4 @@ On some hosts Metabase can fail to start with an error message like:
     java.lang.OutOfMemoryError: Java heap space
 
 If that happens, you'll need to set a JVM option to manually configure the maximum amount of memory the JVM uses for the heap. Refer
-to [these instructions](./start.html#metabase-fails-to-start-due-to-heap-space-outofmemoryerrors) for details on how to do that.
+to [these instructions](../troubleshooting-guide/running.md) for details on how to do that.
