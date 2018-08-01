@@ -139,7 +139,7 @@
 (expect
   []
   (with-add-migrated-collections-cleanup
-    (tt/with-temp* [Pulse     [_ {:creator_id 1}]
+    (tt/with-temp* [Pulse     [_]
                     Card      [_]
                     Dashboard [_]]
       (#'migrations/add-migrated-collections)

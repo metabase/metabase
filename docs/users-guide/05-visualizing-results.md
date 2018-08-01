@@ -39,7 +39,32 @@ Progress bars are for comparing a single number result to a goal value that you 
 ![Progress bar](images/visualizations/progress.png)
 
 #### Tables
-The Table option is good for looking at tabular data (duh), or for lists of things like users. The options allow you to hide and rearrange fields in the table you're looking at. If your table is a result that contains one metric and two dimensions, Metabase will also automatically pivot your table, like in the example below (the example shows the count of orders grouped by the review rating for that order and the category of the product that was purchased; you can tell it's pivoted because the grouping field values are all in the first column and first row). You can turn this behavior off in the chart settings.
+The Table option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at.
+
+##### Adding or hiding fields
+
+![Additional fields](images/visualizations/add-fields.png)
+
+Open up the visualization options and you'll see the Data tab, which displays all the fields currently being shown in the table, as well as more fields from linked tables that you can add to the current table view.
+
+To hide a field, click the X icon on it; that'll send it down to the "More fields" area in case you want to bring it back. To add a linked field, just click the + icon on it, which will bring it to the "Visible fields" section. Click and drag any of the fields listed there to rearrange the order in which they appear.
+
+**Note:** changing these options doesn't change the actual table itself; it just creates a custom view of it that you can save as a "question" in Metabase and refer back to later, share with others, or add to a dashboard.
+
+##### Conditional formatting
+Sometimes is helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the `Formatting` tab.
+
+![Conditional formatting](images/visualizations/conditional-formatting.png)
+
+When you add a new rule, you'll first need to pick which column(s) should be affected. For now, you can only pick numeric columns. Your columns can be formatted in one of two ways:
+
+1. **Single color:** pick this if you want to highlight cells in the column if they're greater, less than, or equal to a specific number. You can optionally highlight the whole row of a cell that matches the condition you pick so that it's easier to spot as you scroll down your table.
+2. **Color range:** choose this option if you want to tint all the cells in the column from smallest to largest or vice a versa.
+
+You can set as many rules on a table as you want. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
+
+##### Pivoted tables
+If your table is a result that contains one metric and two dimensions, Metabase will also automatically "pivot" your table, like in the example below (the example shows the count of orders grouped by the review rating for that order and the category of the product that was purchased; you can tell it's pivoted because the grouping field values are all in the first column and first row). You can turn this behavior off in the chart settings.
 
 ![Pivot table](images/visualizations/pivot.png)
 

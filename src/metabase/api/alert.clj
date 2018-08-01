@@ -27,7 +27,7 @@
   {archived (s/maybe su/BooleanString)}
   (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)}) <>
     (filter mi/can-read? <>)
-    (hydrate <> :read_only)))
+    (hydrate <> :can_write)))
 
 (api/defendpoint GET "/question/:id"
   "Fetch all questions for the given question (`Card`) id"
@@ -35,7 +35,7 @@
   (-> (if api/*is-superuser?*
         (pulse/retrieve-alerts-for-cards id)
         (pulse/retrieve-user-alerts-for-card id api/*current-user-id*))
-      (hydrate :read_only)))
+      (hydrate :can_write)))
 
 (defn- only-alert-keys [request]
   (u/select-keys-when request
