@@ -59,7 +59,7 @@ NOTE: we never capture any specific details in any of our tracking methodology s
 
 ### Server-side Analytics
 | Metric |  An example of why we collect this |
-|---------|--------|--------------------|
+|---------|--------|
 | Number of Users/Admins and whether SSO is enabled | To understand which auth methods are being used, and whether to prioritize features that scale with # of users. |
 | Number of user groups | Action | To understand how complicated a permissions model most of our users have, and to make sure that we don't over-simplify our designs. |
 | Number of Dashboards | Action | Whether we need to provide ways to organize dashboards. |
