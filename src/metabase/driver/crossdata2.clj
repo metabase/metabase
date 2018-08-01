@@ -74,6 +74,30 @@
   "Params to include in the JDBC connection spec to disable SSL."
   {:sslmode "disable"})
 
+(defn- dash-to-underscore [s]
+  (when s
+    (s/replace s #"-" "_")))
+
+;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
+(defn- describe-table [driver {:keys [details] :as database} table]
+  (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
+    (jdbc/query {:connection conn}
+                [(if (:schema table)
+                   (format "refresh table `%s`.`%s`"
+                           (dash-to-underscore (:schema table))
+                           (dash-to-underscore (:name table)))
+                   (str "refresh table " (dash-to-underscore (:name table))))])
+    {:name (:name table)
+     :schema (:schema table)
+     :fields (set (for [result (jdbc/query {:connection conn}
+                                           [(if (:schema table)
+                                              (format "describe `%s`.`%s`"
+                                                      (dash-to-underscore (:schema table))
+                                                      (dash-to-underscore (:name table)))
+                                              (str "describe " (dash-to-underscore (:name table))))])]
+                    {:name (:col_name result)
+                     :database-type (:data_type result)
+                     :base-type (hive-like/column->base-type (keyword (:data_type result)))}))}))
 
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
@@ -290,6 +314,7 @@
                  driver/IDriver
                  (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval                     (u/drop-first-arg date-interval)
+          :describe-table     describe-table
           :details-fields                    (constantly [{:name         "host"
                                                            :display-name "Host"
                                                            :default      "localhost"}
