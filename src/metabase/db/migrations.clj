@@ -23,7 +23,7 @@
              [field :refer [Field]]
              [humanization :as humanization]
              [permissions :as perms :refer [Permissions]]
-             [permissions-group :as perm-group]
+             [permissions-group :as perm-group :refer [PermissionsGroup]]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
              [pulse :refer [Pulse]]
              [query-execution :as query-execution :refer [QueryExecution]]
@@ -344,7 +344,7 @@
 ;;
 ;; The user feedback we've received points to a UX that would do the following:
 ;;
-;; 1. Set permissions to the Root Collection to readwrite perms access for All User group.
+;; 1. Set permissions to the Root Collection to readwrite perms access for *all* Groups.
 ;;
 ;; 2. Create three new collections within the root collection: "Migrated dashboards," "Migrated pulses," and "Migrated
 ;;    questions."
@@ -356,8 +356,10 @@
 ;;    new collections.
 ;;
 (defmigration ^{:author "camsaul", :added "0.30.0"} add-migrated-collections
-  ;; 1. Grant Root Collection readwrite perms to All Users
-  (perms/grant-collection-readwrite-permissions! (perm-group/all-users) collection/root-collection)
+  ;; 1. Grant Root Collection readwrite perms to all Groups. Except for admin since they already have root (`/`)
+  ;; perms, and we don't want to put extra entries in there that confuse things
+  (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (perm-group/admin))])]
+    (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))
   ;; 2. Create the new collections.
   (doseq [[model new-collection-name] {Dashboard (trs "Migrated Dashboards")
                                        Pulse     (trs "Migrated Pulses")

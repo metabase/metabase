@@ -98,14 +98,14 @@
 ;; NOTE: Metrics and segments don't have collections, so they'll be returned
 (expect
   default-metric-segment-results
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-root-collection "test"
       (search-request :rasta :q "test"))))
 
 ;; Users that have root collection permissions should get root collection search results
 (expect
   (set (remove (comp #{"collection"} :model) default-search-results))
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-root-collection "test"
       (tt/with-temp* [PermissionsGroup           [group]
                       PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
@@ -118,7 +118,7 @@
         (map #(merge default-search-row %)
              [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
               {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-collection {:keys [collection]} "test"
       (with-search-items-in-root-collection "test2"
         (tt/with-temp* [PermissionsGroup           [group]
@@ -133,7 +133,7 @@
         (for [row default-search-results
               :when (not= "collection" (:model row))]
           (update row :name #(str/replace % "test" "test2"))))
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-collection {:keys [collection]} "test"
       (with-search-items-in-root-collection "test2"
         (tt/with-temp* [PermissionsGroup           [group]
@@ -161,7 +161,7 @@
         (map #(merge default-search-row %)
              [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
               {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-collection {coll-1 :collection} "test"
       (with-search-items-in-collection {coll-2 :collection} "test2"
         (tt/with-temp* [PermissionsGroup           [group]

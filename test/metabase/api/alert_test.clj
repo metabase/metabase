@@ -98,7 +98,7 @@
   (The name of this function is somewhat of a misnomer since the Alerts themselves aren't in Collections; it is their
   Cards that are. Alerts do not go in Collections; their perms are derived from their Cards.)"
   [grant-collection-perms-fn! alerts-or-ids f]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (grant-collection-perms-fn! (group/all-users) collection)
       ;; Go ahead and put all the Cards for all of the Alerts in the temp Collection
@@ -252,7 +252,7 @@
        (assoc-in [:card :collection_id] true)
        (update-in [:channels 0] merge {:schedule_hour 12, :schedule_type "daily", :recipients []}))
    (rasta-new-alert-email {"has any results" true})]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (db/update! Card (u/get-id card) :collection_id (u/get-id collection))
       (with-alert-setup
@@ -308,7 +308,7 @@
 ;; Check creation of a below goal alert
 (expect
   (rasta-new-alert-email {"goes below its goal" true})
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection]
                     Card       [card {:name          "My question"
                                       :display       "line"
@@ -329,7 +329,7 @@
 ;; Check creation of a above goal alert
 (expect
   (rasta-new-alert-email {"meets its goal" true})
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection]
                     Card       [card {:name          "My question"
                                       :display       "bar"
@@ -508,7 +508,7 @@
                   PulseCard             [_     (pulse-card alert card)]
                   PulseChannel          [pc    (pulse-channel alert)]
                   PulseChannelRecipient [_     (recipient pc :rasta)]]
-    (tu/with-all-users-no-root-collection-perms
+    (tu/with-non-admin-groups-no-root-collection-perms
       (with-alert-setup
         ((alert-client :rasta) :put 403 (alert-url alert)
          (default-alert-req card pc))))))
@@ -516,7 +516,7 @@
 ;; Non-admin users can't edit alerts if they're not in the recipient list
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Pulse                 [alert (basic-alert)]
                     Card                  [card]
                     PulseCard             [_     (pulse-card alert card)]
@@ -576,7 +576,7 @@
        (assoc :can_write false)
        (update-in [:channels 0] merge {:schedule_hour 15, :schedule_type "daily"})
        (assoc-in [:card :collection_id] true))]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (with-alert-setup
       (with-alerts-in-readable-collection [alert]
         ((alert-client :rasta) :get 200 (alert-question-url card))))))
@@ -796,7 +796,7 @@
 (expect
   {:count    1
    :response "You don't have permissions to do that."}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Card                  [card  (basic-alert-query)]
                     Pulse                 [alert (basic-alert)]
                     PulseCard             [_     (pulse-card alert card)]
@@ -813,7 +813,7 @@
   {:count-1  1
    :response nil
    :count-2  0}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Card                  [card  (basic-alert-query)]
                     Pulse                 [alert (basic-alert)]
                     PulseCard             [_     (pulse-card alert card)]
