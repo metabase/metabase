@@ -161,3 +161,20 @@
                   :or
                   (for [migrated-collection-id (db/select-ids Collection :name [:in migrated-collection-names])]
                     [:like :object (format "/collection/%d/%%" migrated-collection-id)]))]}))))
+
+;; ...nor should other groups that happen to exist
+(expect
+  []
+  (tt/with-temp PermissionsGroup [group]
+    (with-add-migrated-collections-cleanup
+      (tt/with-temp* [Pulse     [_]
+                      Card      [_]
+                      Dashboard [_]]
+        (#'migrations/add-migrated-collections)
+        (db/select Permissions
+          {:where [:and
+                   [:= :group_id (u/get-id group)]
+                   (cons
+                    :or
+                    (for [migrated-collection-id (db/select-ids Collection :name [:in migrated-collection-names])]
+                      [:like :object (format "/collection/%d/%%" migrated-collection-id)]))]})))))

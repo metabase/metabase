@@ -5,13 +5,14 @@
             [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.api.common :refer [*current-user-id*]]
             [metabase.models
              [interface :as i]
              [permissions-group :as group]
              [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
-            [metabase.util :as u]
-            [metabase.config :as config]
             [metabase.util
              [honeysql-extensions :as hx]
              [schema :as su]]
