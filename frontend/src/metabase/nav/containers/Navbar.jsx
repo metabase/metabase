@@ -130,7 +130,7 @@ class SearchBar extends React.Component {
             onClick={() => this.setState({ active: true })}
             onChange={e => this.setState({ searchText: e.target.value })}
             onKeyPress={e => {
-              if (e.key === "Enter" && searchText.length > 0) {
+              if (e.key === "Enter" && (searchText || "").trim().length > 0) {
                 this.props.onChangeLocation({
                   pathname: "search",
                   query: { q: searchText },
