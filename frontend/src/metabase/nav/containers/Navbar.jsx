@@ -182,7 +182,7 @@ export default class Navbar extends Component {
     return (
       // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
       // TODO: hide nav using state in redux instead?
-      <nav className={cx("Nav AdminNav sm-py1")}>
+      <nav className={"Nav AdminNav sm-py1"}>
         <div className="sm-pl4 flex align-center pr1">
           <div className="NavTitle flex align-center">
             <Icon name={"gear"} className="AdminGear" size={22} />
