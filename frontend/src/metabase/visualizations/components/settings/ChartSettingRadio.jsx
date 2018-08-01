@@ -8,7 +8,7 @@ const ChartSettingRadio = ({ value, onChange, options = [], className }) => (
     value={value}
     onChange={onChange}
     options={options}
-    isVertical
+    vertical
   />
 );
 

@@ -94,7 +94,7 @@ class Overworld extends React.Component {
                         <SectionHeading>
                           {t`Not sure where to start? Try these x-rays based on your data.`}
                         </SectionHeading>
-                        <Card px={3} pb={1}>
+                        <Card mt={2} px={3} pb={1}>
                           <ExplorePane
                             candidates={candidates}
                             withMetabot={false}
@@ -104,7 +104,7 @@ class Overworld extends React.Component {
                             description={
                               isSample
                                 ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                                : t``
+                                : ``
                             }
                           />
                         </Card>
@@ -212,7 +212,11 @@ class Overworld extends React.Component {
                             database.engine
                           }`}
                         >
-                          <Box p={3} bg={colors["bg-medium"]}>
+                          <Box
+                            p={3}
+                            bg={colors["bg-medium"]}
+                            className="hover-parent hover--visibility"
+                          >
                             <Icon
                               name="database"
                               color={normal.purple}
@@ -223,16 +227,6 @@ class Overworld extends React.Component {
                               <h3>{database.name}</h3>
                               <Box ml="auto" mr={1} className="hover-child">
                                 <Flex align="center">
-                                  <Tooltip tooltip={t`X-ray this table`}>
-                                    <Link to={`explore/${database.id}/`}>
-                                      <Icon
-                                        name="bolt"
-                                        mx={1}
-                                        color={normal.yellow}
-                                        size={20}
-                                      />
-                                    </Link>
-                                  </Tooltip>
                                   <Tooltip tooltip={t`Learn about this table`}>
                                     <Link
                                       to={`reference/databases/${database.id}`}
