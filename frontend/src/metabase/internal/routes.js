@@ -3,6 +3,14 @@
 import React from "react";
 import { Link, Route, IndexRoute } from "react-router";
 
+import {
+  Archived,
+  NotFound,
+  Unauthorized,
+} from "metabase/containers/ErrorPages";
+
+import GenericError from "metabase/components/GenericError";
+
 // $FlowFixMe: doesn't know about require.context
 const req = require.context(
   "metabase/internal/components",
@@ -64,5 +72,11 @@ export default (
           <Route path={name.toLowerCase()} component={Component} />
         )),
     )}
+    <Route path="errors">
+      <Route path="404" component={NotFound} />
+      <Route path="archived" component={Archived} />
+      <Route path="unauthorized" component={Unauthorized} />
+      <Route path="generic" component={GenericError} />
+    </Route>
   </Route>
 );
