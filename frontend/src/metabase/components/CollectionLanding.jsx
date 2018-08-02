@@ -18,13 +18,15 @@ import Modal from "metabase/components/Modal";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
-import Icon from "metabase/components/Icon";
+import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import VirtualizedList from "metabase/components/VirtualizedList";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
+
+import Tooltip from "metabase/components/Tooltip";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
@@ -225,16 +227,28 @@ class DefaultLanding extends React.Component {
             </Box>
 
             <Flex ml="auto">
+              {isAdmin &&
+                !collection.personal_owner_id && (
+                  <Tooltip
+                    tooltip={t`Edit the permissions for this collection`}
+                  >
+                    <Link
+                      to={Urls.collectionPermissions(this.props.collectionId)}
+                    >
+                      <IconWrapper>
+                        <Icon name="lock" />
+                      </IconWrapper>
+                    </Link>
+                  </Tooltip>
+                )}
               {collection &&
                 collection.can_write &&
                 !collection.personal_owner_id && (
-                  <Box ml={1}>
-                    <CollectionEditMenu
-                      collectionId={collectionId}
-                      isAdmin={isAdmin}
-                      isRoot={isRoot}
-                    />
-                  </Box>
+                  <CollectionEditMenu
+                    collectionId={collectionId}
+                    isAdmin={isAdmin}
+                    isRoot={isRoot}
+                  />
                 )}
               <Box ml={1}>
                 <CollectionBurgerMenu />
@@ -630,14 +644,6 @@ const CollectionEditMenu = ({ isRoot, isAdmin, collectionId }) => {
       icon: "editdocument",
       link: `/collection/${collectionId}/edit`,
       event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Collection Click`,
-    });
-  }
-  if (isAdmin) {
-    items.push({
-      title: t`Edit permissions`,
-      icon: "lock",
-      link: `/collection/${collectionId}/permissions`,
-      event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Permissions Click`,
     });
   }
   if (!isRoot) {
