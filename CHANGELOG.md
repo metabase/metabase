@@ -2,7 +2,7 @@
 
 ## 0.31.0 (upcoming)
 
-* Pending changelog
+* [DGPB-1345] Add more metadata refresh options
 
 ## 0.30.0-78eb83f (Built: June 27, 2018 | Released: July 13, 2018)
 
