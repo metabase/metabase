@@ -93,7 +93,7 @@ export default class ProfileLink extends Component {
     return (
       <Box>
         <EntityMenu
-          tooltip={t`Profile`}
+          tooltip={t`Settings`}
           items={this.generateOptionsForUser()}
           triggerIcon="gear"
         />
