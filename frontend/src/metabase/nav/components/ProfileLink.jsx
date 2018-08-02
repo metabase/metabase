@@ -92,7 +92,11 @@ export default class ProfileLink extends Component {
     const { tag, date, ...versionExtra } = MetabaseSettings.get("version");
     return (
       <Box>
-        <EntityMenu items={this.generateOptionsForUser()} triggerIcon="gear" />
+        <EntityMenu
+          tooltip={t`Settings`}
+          items={this.generateOptionsForUser()}
+          triggerIcon="gear"
+        />
         {modalOpen === "about" ? (
           <Modal small onClose={this.closeModal}>
             <div className="px4 pt4 pb2 text-centered relative">
