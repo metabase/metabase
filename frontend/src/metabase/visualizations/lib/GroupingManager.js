@@ -102,7 +102,7 @@ export class GroupingManager {
       cols = grCols.concat(...tt)
     }
 
-    this.probeRows = [this.rows[this.rows.length -1], ...cols.map(p => this.rows.find(row => p.getValue(row)))]
+    this.probeRows = [this.rows[this.rows.length -1], ...cols.map(p => this.rows.find(row => p.getValue(row))).filter(p => p)]
     this.cols = cols;
     this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
   }
