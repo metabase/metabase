@@ -5,7 +5,7 @@ import Tooltip from "metabase/components/Tooltip";
 
 const EntityMenuTrigger = ({ icon, onClick, open, tooltip }) => {
   return (
-    <Tooltip tooltip={tooltip}>
+    <Tooltip tooltip={tooltip} isEnabled={!open}>
       <IconWrapper onClick={onClick}>
         <Icon name={icon} m={1} />
       </IconWrapper>
