@@ -10,9 +10,9 @@ import UndoListing from "metabase/containers/UndoListing";
 import {
   Archived,
   NotFound,
+  GenericError,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
-import GenericError from "metabase/components/GenericError.jsx";
 
 const mapStateToProps = (state, props) => ({
   errorPage: state.app.errorPage,

@@ -7,12 +7,35 @@ import fitViewport from "metabase/hoc/FitViewPort";
 
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
+import ErrorDetails from "metabase/components/ErrorDetails";
 
 const ErrorPageWrapper = fitViewport(({ fitClassNames, children }) => (
-  <Flex align="center" justify="center" className={fitClassNames}>
+  <Flex
+    align="center"
+    flexDirection="column"
+    justify="center"
+    className={fitClassNames}
+  >
     {children}
   </Flex>
 ));
+
+export const GenericError = ({
+  title = t`Something's gone wrong`,
+  message = t`We've run into an error. You can try refreshing the page, or just go back.`,
+  details = null,
+}) => (
+  <ErrorPageWrapper>
+    <EmptyState
+      title={title}
+      message={message}
+      illustrationElement={
+        <div className="QueryError-image QueryError-image--serverError" />
+      }
+    />
+    <ErrorDetails className="pt2" details={details} centered />
+  </ErrorPageWrapper>
+);
 
 export const NotFound = () => (
   <ErrorPageWrapper>

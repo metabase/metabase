@@ -5,11 +5,12 @@ import { Link, Route, IndexRoute } from "react-router";
 
 import {
   Archived,
+  GenericError,
   NotFound,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 
-import GenericError from "metabase/components/GenericError";
+const ErrorWithDetails = () => <GenericError details="Example error message" />;
 
 // $FlowFixMe: doesn't know about require.context
 const req = require.context(
@@ -77,6 +78,7 @@ export default (
       <Route path="archived" component={Archived} />
       <Route path="unauthorized" component={Unauthorized} />
       <Route path="generic" component={GenericError} />
+      <Route path="details" component={ErrorWithDetails} />
     </Route>
   </Route>
 );
