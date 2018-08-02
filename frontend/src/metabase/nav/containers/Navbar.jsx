@@ -14,7 +14,7 @@ import { push } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 
 import Button from "metabase/components/Button.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import Tooltip from "metabase/components/Tooltip";
@@ -287,6 +287,7 @@ export default class Navbar extends Component {
             <Button medium>{t`Ask a question`}</Button>
           </Link>
           <EntityMenu
+            tooltip={t`Create`}
             className="hide sm-show"
             triggerIcon="add"
             items={[
@@ -305,17 +306,17 @@ export default class Navbar extends Component {
             ]}
           />
           <Tooltip tooltip={t`Reference`}>
-            <Link
-              to="reference"
-              mx={2}
-              data-metabase-event={`NavBar;Reference`}
-            >
-              <Icon name="reference" />
+            <Link to="reference" data-metabase-event={`NavBar;Reference`}>
+              <IconWrapper>
+                <Icon name="reference" />
+              </IconWrapper>
             </Link>
           </Tooltip>
           <Tooltip tooltip={t`Activity`}>
-            <Link to="activity" mx={2} data-metabase-event={`NavBar;Activity`}>
-              <Icon name="bell" />
+            <Link to="activity" data-metabase-event={`NavBar;Activity`}>
+              <IconWrapper>
+                <Icon name="bell" />
+              </IconWrapper>
             </Link>
           </Tooltip>
           <ProfileLink {...this.props} />
