@@ -997,12 +997,12 @@ export const setQueryDatabase = createThunkAction(
 
         // set the initial collection for the query if this is a native query
         // this is only used for Mongo queries which need to be ran against a specific collection
-        if (updatedCard.dataset_query.type === "native") {
-          let database = databases[databaseId],
-            tables = database ? database.tables : [],
-            table = tables.length > 0 ? tables[0] : null;
-          if (table) {
-            updatedCard.dataset_query.native.collection = table.name;
+        const question = new Question(getMetadata(getState()), updatedCard);
+        const query = question.query();
+        if (query instanceof NativeQuery && query.requiresTable()) {
+          const tables = query.tables();
+          if (tables && tables.length > 0) {
+            updatedCard.dataset_query.native.collection = tables[0].name;
           }
         }
 
