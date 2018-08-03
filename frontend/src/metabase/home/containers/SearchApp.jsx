@@ -71,7 +71,7 @@ export default class SearchApp extends React.Component {
                       <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Dashboards`}
                       </div>
-                      <Card px={2}>
+                      <Card>
                         {types.dashboard.map(item => (
                           <Link
                             to={item.getUrl()}
@@ -79,6 +79,7 @@ export default class SearchApp extends React.Component {
                             data-metabase-event="Search Results;Item Click;Dashboard"
                           >
                             <EntityItem
+                              variant="list"
                               name={item.getName()}
                               iconName={item.getIcon()}
                               iconColor={item.getColor()}
@@ -93,7 +94,7 @@ export default class SearchApp extends React.Component {
                       <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Collections`}
                       </div>
-                      <Card px={2}>
+                      <Card>
                         {types.collection.map(item => (
                           <Link
                             to={item.getUrl()}
@@ -101,6 +102,7 @@ export default class SearchApp extends React.Component {
                             data-metabase-event="Search Results;Item Click;Collection"
                           >
                             <EntityItem
+                              variant="list"
                               name={item.getName()}
                               iconName={item.getIcon()}
                               iconColor={item.getColor()}
@@ -115,7 +117,7 @@ export default class SearchApp extends React.Component {
                       <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Questions`}
                       </div>
-                      <Card px={2}>
+                      <Card>
                         {types.card.map(item => (
                           <Link
                             to={item.getUrl()}
@@ -123,6 +125,7 @@ export default class SearchApp extends React.Component {
                             data-metabase-event="Search Results;Item Click;Question"
                           >
                             <EntityItem
+                              variant="list"
                               name={item.getName()}
                               iconName={item.getIcon()}
                               iconColor={item.getColor()}
@@ -137,7 +140,7 @@ export default class SearchApp extends React.Component {
                       <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Pulse`}
                       </div>
-                      <Card px={2}>
+                      <Card>
                         {types.pulse.map(item => (
                           <Link
                             to={item.getUrl()}
@@ -145,6 +148,7 @@ export default class SearchApp extends React.Component {
                             data-metabase-event="Search Results;Item Click;Pulse"
                           >
                             <EntityItem
+                              variant="list"
                               name={item.getName()}
                               iconName={item.getIcon()}
                               iconColor={item.getColor()}
