@@ -2,9 +2,9 @@ import {Row} from "metabase/meta/types/Dataset";
 import _ from 'lodash';
 import {
   COLUMNS_SETTINGS,
-  getColumnsFromSettings,
 } from "metabase/visualizations/visualizations/SummaryTable";
-import type {ValueSerialized} from "metabase/visualizations/visualizations/SummaryTable";
+import type {ValueSerialized} from "metabase/meta/types/summary_table";
+import {getColumnsFromSettings} from "metabase/visualizations/lib/settings/summary_table";
 
 type ColumnAcc = {
   prevRow : Row,
@@ -25,9 +25,9 @@ export class GroupingManager {
 
   constructor( defaultRowHeight: Number, settings, rawSeries) {
     this.defaultRowHeight = defaultRowHeight;
-    const rawCols = rawSeries[0].data.cols;
+    const rawCols = rawSeries[0].cols;
     this.settings = settings;
-    const datas = rawSeries.map(p => p.data);
+    const datas = rawSeries;
     const summaryTableSettings = settings[COLUMNS_SETTINGS];
 
     const summarySettings: ValueSerialized = settings[COLUMNS_SETTINGS];

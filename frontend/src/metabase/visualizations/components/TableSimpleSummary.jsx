@@ -220,9 +220,9 @@ export default class TableSimpleSummary extends Component {
 
                         let mappedStyle = {... groupingManager.mapStyle(rowIndex, columnIndex, {start, stop:end}, {})};
                         if(isGrandTotal)
-                          mappedStyle = {... mappedStyle, background: '#509ee3', color: 'white', 'font-weight':'bold'};
+                          mappedStyle = {... mappedStyle, background: '#509ee3', color: 'white', fontWeight:'bold'};
                         else if (row.isTotalColumnIndex && row.isTotalColumnIndex <= columnIndex +1)
-                          mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', 'font-weight':'bold' };
+                          mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', fontWeight:'bold' };
 
 
                         let formatedRes = formatValue(cell, {

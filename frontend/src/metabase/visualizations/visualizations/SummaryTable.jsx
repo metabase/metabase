@@ -6,13 +6,7 @@ import TableInteractiveSummary from "../components/TableInteractiveSummary.jsx";
 import TableSimpleSummary from "../components/TableSimpleSummary.jsx";
 import { t } from "c-3po";
 
-//todo: remove
-import * as DataGrid from "metabase/lib/data_grid";
-
-import Query from "metabase/lib/query";
-import { isMetric, isDimension } from "metabase/lib/schema_metadata";
 import {
-  columnsAreValid,
   getFriendlyName,
 } from "metabase/visualizations/lib/utils";
 import SummaryTableColumnsSetting from "metabase/visualizations/components/settings/SummaryTableColumnsSetting.jsx";
@@ -22,40 +16,25 @@ import cx from "classnames";
 import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
-import type { DatasetData } from "metabase/meta/types/Dataset";
+import type {DatasetData, SummaryDatasetData} from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 
 import { GroupingManager } from "../lib/GroupingManager";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type {RawSeries, SingleSeries} from "metabase/meta/types/Visualization";
-import type {ColumnMetadata} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
+import type {RawSeries} from "metabase/meta/types/Visualization";
+import type {ValueSerialized} from "metabase/meta/types/summary_table";
+import {settingsAreValid} from "metabase/visualizations/lib/settings/summary_table";
+import connect from "react-redux/es/connect/connect";
 
-
-export type ColumnName = string;
-
-
-export const settingsAreValid = (settings: ValueSerialized, data: DatasetData) =>
-  settings
-  && (!settings.columnsSource || columnsAreValid([settings.columnsSource], data))
-  && columnsAreValid(settings.groupsSources || [], data)
-  && columnsAreValid(settings.valuesSources || [], data);
-
-export const getColumnsFromSettings = (state: ValueSerialized) => [...state.groupsSources || [], ...(state.columnsSource ? [state.columnsSource] : []), ...state.valuesSources || []];
-
-export type ValueSerialized = {
-  groupsSources: string[],
-  columnsSource?: string,
-  valuesSources: string[],
-  columnNameToMetadata: { [key: ColumnName]: ColumnMetadata },
-}
 
 type Props = {
   card: Card,
-  data: DatasetData,
+  data: SummaryDatasetData,
   rawSeries: RawSeries,
   settings: VisualizationSettings,
   isDashboard: boolean,
   query: StructuredQuery,
+  ddd: string;
 };
 type State = {
   data: ?DatasetData,
@@ -63,8 +42,7 @@ type State = {
 };
 
 
-export const COLUMNS_SETTINGS = "summaryTable"  + "." + "columns";
-
+export const COLUMNS_SETTINGS = "summaryTable.columns";
 
 export default class SummaryTable extends Component {
   props: Props;
@@ -93,7 +71,7 @@ export default class SummaryTable extends Component {
         {
           const gs = columns.slice(0, columns.length -1);
           const vs = columns.slice(columns.length -1);
-          return {groupsSources : gs, valuesSources: vs, columnNameToMetadata: gs.reduce((acc, column) => ({...acc, [column]: {showTotals : true}}), {} )}
+          return {groupsSources : gs, columnsSource: null, valuesSources: vs, columnNameToMetadata: gs.reduce((acc, column) => ({...acc, [column]: {showTotals : true}}), {} )}
 
 
       }
@@ -135,18 +113,16 @@ export default class SummaryTable extends Component {
   }
 
   _updateData({
-    settings,
-    rawSeries
+    data,
+    settings
   }: {
-    data: DatasetData,
-    settings: VisualizationSettings,
-    rawSeries: RawSeries
+    data: SummaryDatasetData,
+    settings: VisualizationSettings
   }) {
  {
-   const series: ?RawSeries = (rawSeries[0] || []).series;
-   const additionalSeries:RawSeries = series || []
+
    //todo: fix 30
-   const groupingManager = new GroupingManager(30, settings, [...rawSeries,...additionalSeries]);
+   const groupingManager = new GroupingManager(30, settings, [data,...(data.totalsData || [])]);
 
 
    this.setState({

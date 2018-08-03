@@ -40,7 +40,7 @@ import {
 } from "metabase/redux/metadata";
 import { push } from "react-router-redux";
 
-import {getAdditionalQueries} from "../../metabase-lib/lib/SummaryTableQueryBuilder";
+import {getAggregationQueries} from "../../metabase-lib/lib/SummaryTableQueryBuilder";
 
 import {
   DashboardApi,
@@ -485,7 +485,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     }
 
-    const queries = result && result.data && result.data.cols && getAdditionalQueries(card.visualization_settings)(card, result.data.cols)(datasetQuery, datasetQuery.parameters) || [];
+    const queries = result && result.data && result.data.cols && getAggregationQueries(card.visualization_settings)(card, result.data.cols)(datasetQuery, datasetQuery.parameters) || [];
     const seriesAll = queries.map(q => {
       const datasetQueryWithParameters = {...q,
         parameters: datasetQuery.parameters
@@ -496,13 +496,12 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
     });
     const series = await Promise.all(seriesAll);
     clearTimeout(slowCardTimer);
-
-    const r = {
+    
+    return {
       dashcard_id: dashcard.id,
       card_id: card.id,
-      result: {...result, series: series},
+      result: {...result, data: {...result.data, totalsData: series.map(p => p.data).filter(p => p)}},
     };
-    return r;
   };
 });
 

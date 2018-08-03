@@ -11,11 +11,10 @@ import Icon from "metabase/components/Icon.jsx";
 import cx from "classnames";
 import Toggle from "metabase/components/Toggle";
 import {SortableContainer, SortableElement, arrayMove} from "react-sortable-hoc";
-import type {ValueSerialized} from "metabase/visualizations/visualizations/SummaryTable";
-import {
-  getColumnsFromSettings,
-} from "metabase/visualizations/visualizations/SummaryTable";
+
 import type {ColumnName} from "metabase/meta/types/Dataset";
+import {getColumnsFromSettings} from "metabase/visualizations/lib/settings/summary_table";
+import type {ValueSerialized} from "metabase/meta/types/summary_table";
 
 
 type ArrayMoveArg ={oldIndex : number, newIndex : number};
@@ -77,6 +76,7 @@ const getUnusedColumns = (settings: ValueSerialized, columnNames): string[] => {
 
 const emptyStateSerialized: ValueSerialized = ({
   groupsSources: [],
+  columnsSource: null,
   valuesSources: [],
   columnNameToMetadata: {}
 });
@@ -249,6 +249,7 @@ const removeItemBuilder = (items:DraggableItem[],updateState : StateSuperType =>
 
 const moveItem = (updateState : StateSuperType => Promise<*>) => async (items: DraggableItem[], {oldIndex, newIndex} : ArrayMoveArg) : Promise<*> => {
   if(oldIndex !== newIndex){
+    //force: column source size <= 1
     if(items[newIndex] === valueSourceItem && items[newIndex-1] !== columnSourceItem){
       newIndex++;
     }else if (items[newIndex-1] === columnSourceItem && items[newIndex] !== valueSourceItem ){

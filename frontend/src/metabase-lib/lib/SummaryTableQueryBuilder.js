@@ -15,10 +15,16 @@ import {updateIn} from "icepick";
 import type {NativeQuery} from "metabase/meta/types/Query";
 import {NativeDatasetQuery} from "metabase/meta/types/Card";
 import type {DatabaseId} from "metabase/meta/types/Database";
-import type {ValueSerialized} from "metabase/visualizations/visualizations/SummaryTable";
+import type {
+  AggregationKey,
+  ValueSerialized
+} from "metabase/meta/types/summary_table";
 
 
-export const getAdditionalQueries = (visualizationSettings) => (card:Card, fields) => (
+
+
+
+export const getAggregationQueries = (visualizationSettings) => (card:Card, fields) => (
   query: DatasetQuery, parameters: Array<Parameter>
                         ) : DatasetQuery[] => {
 
@@ -50,7 +56,7 @@ export const getAdditionalQueries = (visualizationSettings) => (card:Card, field
   const createTotal = (name) => ['named', ["sum", createLiteral(name)], name];
   const showTotalsFor = (name) => ((settings.columnNameToMetadata|| {})[name] || {}).showTotals;
 
-  const totals = settings.valuesSources.filter(p => canTotalize(nameToTypeMap[p])).map(createTotal);
+  const totals = settings.valuesSources.sort().filter(p => canTotalize(nameToTypeMap[p])).map(createTotal);
   const groupingLiterals = settings.groupsSources.map(createLiteral);
   const pivotLiteral = settings.columnsSource && createLiteral(settings.columnsSource);
   const breakouts = pivotLiteral ? [ ... groupingLiterals, pivotLiteral] : [ ... groupingLiterals];

@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import Query from "./queries/Query";
-import {getAdditionalQueries} from "./SummaryTableQueryBuilder";
+import {getAggregationQueries} from "./SummaryTableQueryBuilder";
 
 import Metadata from "./metadata/Metadata";
 import Table from "./metadata/Table";
@@ -55,7 +55,6 @@ import {
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
-import Aggregation from "metabase-lib/lib/queries/Aggregation";
 import {WrappedQuery} from "metabase-lib/lib/queries/WrappedQuery";
 
 /**
@@ -192,11 +191,10 @@ export default class Question {
   /**
    * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
    */
-  atomicQueries(fields): DatasetQuery[] {
+  atomicQueries(): AtomicQuery[] {
     const query = this.query();
     if (query instanceof AtomicQuery) {
-      const dsq = query.datasetQuery();
-      return [dsq, ...getAdditionalQueries(this.visualizationSettings())(this.card(), fields || this.metadata().fields)(dsq)];
+      return [query];
     }
     return [];
   }
@@ -455,11 +453,11 @@ export default class Question {
    * If we have a saved and clean single-query question, we use `CardApi.query` instead of a ad-hoc dataset query.
    * This way we benefit from caching and query optimizations done by Metabase backend.
    */
-  apiGetResults({
+  async apiGetResults({
     cancelDeferred,
     isDirty = false,
     ignoreCache = false,
-  } = {}): Promise<[Dataset]> {
+  } = {}): Promise<Dataset[]> {
     // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
 
     const canUseCardApiEndpoint = !isDirty && this.isSaved();
@@ -485,8 +483,6 @@ export default class Question {
     };
 
 
-    let datasetQueries = this.atomicQueries();
-
     let mainQueryPromise : Promise<Dataset>;
 
     if (canUseCardApiEndpoint) {
@@ -500,14 +496,17 @@ export default class Question {
         cancelled: cancelDeferred.promise,
       });
     } else
-      mainQueryPromise = getDatasetQueryResult(datasetQueries[0]);
+      mainQueryPromise = getDatasetQueryResult(this.atomicQueries()[0]);
 
-    return mainQueryPromise.then(res => {
+    return mainQueryPromise.then(async res => {
       const {data : {cols}} = res;
-      const queries = this.atomicQueries(cols);
-      return Promise.all([mainQueryPromise, ...queries.slice(1).map(getDatasetQueryResult)]);
-      }
-    )
+      const queries = getAggregationQueries(this.visualizationSettings())(this.card(), cols || this.metadata().fields)(this.atomicQueries()[0].datasetQuery());
+      if(queries.length === 0 )
+        return res;
+
+      const aggregationRes = await Promise.all(queries.map(getDatasetQueryResult));
+      return {...res, data: {...res.data, totalsData: aggregationRes.map(p => p.data).filter(p => p)}};
+      }).then(p => [p]);
   }
 
   // NOTE: prefer `reduxCreate` so the store is automatically updated

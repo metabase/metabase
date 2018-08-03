@@ -282,9 +282,9 @@ export default class TableInteractiveSummary extends Component {
 
     let mappedStyle = {... groupingManager.mapStyle(rowIndex, columnIndex, visibleRowIndices, style)};
     if(isGrandTotal)
-      mappedStyle = {... mappedStyle, background: '#509ee3', color: 'white', 'font-weight':'bold'};
+      mappedStyle = {... mappedStyle, background: '#509ee3', color: 'white', fontWeight:'bold'};
     else if (row.isTotalColumnIndex && row.isTotalColumnIndex <= columnIndex +1)
-      mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', 'font-weight':'bold' };
+      mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', fontWeight:'bold' };
 
     if(groupingManager.isGrouped(columnIndex))
       key = key + (columnIndex + '-' + Array.from(Array(columnIndex+1).keys()).map(i => row[i] || 'dd').join('-')) + (row.isTotalColumnIndex || '');
