@@ -149,6 +149,8 @@ const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 
 @entityListLoader({
   entityType: "databases",
+  // set this to false to prevent a potential spinner on the main nav
+  loadingAndErrorWrapper: false,
 })
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
@@ -250,7 +252,8 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
-    const hasDataAccess = this.props.databases.length > 0;
+    const hasDataAccess =
+      this.props.databases && this.props.databases.length > 0;
     return (
       <Flex
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC

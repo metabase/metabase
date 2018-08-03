@@ -14,6 +14,7 @@ import GenericError from "metabase/components/GenericError.jsx";
 
 const mapStateToProps = (state, props) => ({
   errorPage: state.app.errorPage,
+  currentUser: state.currentUser,
 });
 
 const getErrorComponent = ({ status, data, context }) => {
@@ -50,16 +51,17 @@ export default class App extends Component {
   }
 
   render() {
-    const { children, location, errorPage } = this.props;
+    const { children, currentUser, location, errorPage } = this.props;
 
     if (this.state.hasError) {
       return <div>😢</div>;
     }
 
+    console.log("app props", this.props);
     return (
       <ScrollToTop>
         <div className="relative">
-          <Navbar location={location} />
+          {currentUser && <Navbar location={location} />}
           {errorPage ? getErrorComponent(errorPage) : children}
           <UndoListing />
         </div>
