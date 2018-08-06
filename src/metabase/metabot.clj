@@ -206,7 +206,7 @@
   "Implementation of the `metabot list cards` command."
   [& _]
   (let [cards (with-metabot-permissions
-                (filterv mi/can-read? (db/select [Card :id :name :dataset_query], {:order-by [[:id :desc]], :limit 20})))]
+                (filterv mi/can-read? (db/select [Card :id :name :dataset_query :collection_id], {:order-by [[:id :desc]], :limit 20})))]
     (tru "Here''s your {0} most recent cards:\n{1}" (count cards) (format-cards cards))))
 
 (defn- card-with-name [card-name]
