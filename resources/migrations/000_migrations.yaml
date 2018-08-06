@@ -4974,3 +4974,17 @@ databaseChangeLog:
                   name: SCHED_NAME
               - column:
                   name: TRIGGER_GROUP
+
+# Forgot to get rid of the raw_table_id and raw_column_id columns when we dropped the tables they referenced in migration 87.
+
+  - changeSet:
+      id: 91
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: raw_table_id
+        - dropColumn:
+            tableName: metabase_field
+            columnName: raw_column_id

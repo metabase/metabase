@@ -40,10 +40,10 @@
     (set (for [field (db/select [Field :name :special_type :last_analyzed] :table_id (u/get-id table))]
            (into {} field)))))
 
-;; ...but they *SHOULD* get analyzed if they ARE newly created
+;; ...but they *SHOULD* get analyzed if they ARE newly created (expcept for PK which we skip)
 (expect
   #{{:name "LATITUDE",    :special_type :type/Latitude,  :last_analyzed true}
-    {:name "ID",          :special_type :type/PK,        :last_analyzed true}
+    {:name "ID",          :special_type :type/PK,        :last_analyzed false}
     {:name "PRICE",       :special_type :type/Category,  :last_analyzed true}
     {:name "LONGITUDE",   :special_type :type/Longitude, :last_analyzed true}
     {:name "CATEGORY_ID", :special_type :type/Category,  :last_analyzed true}

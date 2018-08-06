@@ -23,6 +23,7 @@ const mapStateToProps = (state, props) => {
     isDirty: getIsDirty(state, props),
     saveError: getSaveError(state, props),
     diff: getDiff(state, props),
+    tab: "collections",
   };
 };
 
@@ -30,12 +31,14 @@ const mapDispatchToProps = {
   onUpdatePermission: updatePermission,
   onSave: savePermissions,
   onCancel: () => (window.history.length > 1 ? goBack() : push("/questions")),
+  onChangeTab: tab => push(`/admin/permissions/${tab}`),
 };
 
 const Editor = connect(mapStateToProps, mapDispatchToProps)(PermissionsEditor);
 
 @connect(null, {
   loadCollections: Collections.actions.fetchList,
+  push,
 })
 @fitViewport
 export default class CollectionsPermissionsApp extends Component {
@@ -48,12 +51,11 @@ export default class CollectionsPermissionsApp extends Component {
         {...this.props}
         load={CollectionsApi.graph}
         save={CollectionsApi.updateGraph}
-        fitClassNames={this.props.fitClassNames}
+        fitClassNames={this.props.fitClassNames + " flex-column"}
       >
         <Editor
           {...this.props}
-          collectionId={this.props.location.query.collectionId}
-          admin={false}
+          collectionId={this.props.params.collectionId}
           confirmCancel={false}
         />
       </PermissionsApp>

@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 
 const AdminEmptyText = ({ message }) => (
-  <h2 className="text-grey-3">{message}</h2>
+  <h2 className="text-medium">{message}</h2>
 );
 
 AdminEmptyText.propTypes = {

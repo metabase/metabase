@@ -284,7 +284,7 @@ export const BackButton = ({ databaseId, tableId }) => (
 );
 
 const SelectSeparator = () => (
-  <Icon name="chevronright" size={12} className="mx2 text-grey-3" />
+  <Icon name="chevronright" size={12} className="mx2 text-medium" />
 );
 
 export class FieldHeader extends Component {
@@ -469,7 +469,7 @@ export const SectionHeader = ({ title, description }) => (
   <div className="border-bottom py2 mb2">
     <h2 className="text-italic">{title}</h2>
     {description && (
-      <p className="mb0 text-grey-4 mt1 text-paragraph text-measure">
+      <p className="mb0 text-medium mt1 text-paragraph text-measure">
         {description}
       </p>
     )}
@@ -727,7 +727,7 @@ export class FieldRemapping extends Component {
                 {fkMappingField ? (
                   fkMappingField.display_name
                 ) : (
-                  <span className="text-grey-1">{t`Choose a field`}</span>
+                  <span className="text-light">{t`Choose a field`}</span>
                 )}
               </SelectButton>
             }

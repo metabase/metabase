@@ -40,7 +40,7 @@
   [{:id (test-users/user->id :crowberto), :email "crowberto@metabase.com", :first_name "Crowberto", :last_name "Corv",   :common_name "Crowberto Corv"}
    {:id (test-users/user->id :lucky),     :email "lucky@metabase.com",     :first_name "Lucky",     :last_name "Pigeon", :common_name "Lucky Pigeon"}
    {:id (test-users/user->id :rasta),     :email "rasta@metabase.com",     :first_name "Rasta",     :last_name "Toucan", :common_name "Rasta Toucan"}]
-  (do
+  (tu/with-non-admin-groups-no-root-collection-perms
     ;; Delete all the other random Users we've created so far
     (test-users/delete-temp-users!)
     ;; Make sure personal Collections have been created

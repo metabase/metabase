@@ -22,6 +22,7 @@ const EntityItemWrapper = Flex.extend`
 `;
 
 const EntityItem = ({
+  analyticsContext,
   name,
   iconName,
   iconColor,
@@ -34,22 +35,26 @@ const EntityItem = ({
   onToggleSelected,
   selectable,
   variant,
+  item,
 }) => {
   const actions = [
     onPin && {
       title: t`Pin this item`,
       icon: "pin",
       action: onPin,
+      event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
     },
     onMove && {
       title: t`Move this item`,
       icon: "move",
       action: onMove,
+      event: `${analyticsContext};Entity Item;Move Item;${item.model}`,
     },
     onArchive && {
       title: t`Archive`,
       icon: "archive",
       action: onArchive,
+      event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
     },
   ].filter(action => action);
 
@@ -102,19 +107,11 @@ const EntityItem = ({
           <Icon name={iconName} color={iconColor} size={18} />
         )}
       </IconWrapper>
-      <h3>
+      <h3 className="overflow-hidden">
         <Ellipsified>{name}</Ellipsified>
       </h3>
 
       <Flex ml="auto" align="center" onClick={e => e.preventDefault()}>
-        {(onFavorite || isFavorite) && (
-          <Icon
-            name={isFavorite ? "star" : "staroutline"}
-            mr={1}
-            className={isFavorite ? "text-gold" : "hover-child"}
-            onClick={onFavorite}
-          />
-        )}
         {actions.length > 0 && (
           <EntityMenu
             className="hover-child"

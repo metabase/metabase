@@ -188,7 +188,7 @@ export default class EmbedModalContent extends Component {
             />
           </h2>
           <Icon
-            className="text-grey-2 text-grey-4-hover cursor-pointer p2 ml-auto"
+            className="text-light text-medium-hover cursor-pointer p2 ml-auto"
             name="close"
             size={24}
             onClick={() => {
@@ -286,7 +286,7 @@ export const EmbedTitle = ({
 }) => (
   <a className="flex align-center" onClick={onClick}>
     <span className="text-brand-hover">Sharing</span>
-    {type && <Icon name="chevronright" className="mx1 text-grey-3" />}
+    {type && <Icon name="chevronright" className="mx1 text-medium" />}
     {type}
   </a>
 );

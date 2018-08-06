@@ -6,6 +6,7 @@
              [http-client :as http]]
             [metabase.models
              [collection :as collection :refer [Collection]]
+             [collection-test :as collection-test]
              [permissions :as perms]
              [permissions-group :refer [PermissionsGroup]]
              [permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -38,26 +39,32 @@
          perms-path)))
 (expect
   #{(perms/collection-readwrite-path (collection/user->personal-collection (user->id :lucky)))}
-  (-> (user/permissions-set (user->id :lucky))
-      remove-non-collection-perms))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (-> (user/permissions-set (user->id :lucky))
+        remove-non-collection-perms)))
 
 ;; ...and for any descendant Collections of my Personal Collection?
-(tt/expect-with-temp [Collection [child-collection {:location (collection/children-location
-                                                               (collection/user->personal-collection
-                                                                (user->id :lucky)))}]
-                      Collection [grandchild-collection {:location (collection/children-location child-collection)}]]
+(expect
   #{(perms/collection-readwrite-path (collection/user->personal-collection (user->id :lucky)))
-    (perms/collection-readwrite-path child-collection)
-    (perms/collection-readwrite-path grandchild-collection)}
-  (-> (user/permissions-set (user->id :lucky))
-      remove-non-collection-perms))
+    "/collection/child/"
+    "/collection/grandchild/"}
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp* [Collection [child-collection      {:name     "child"
+                                                       :location (collection/children-location
+                                                                  (collection/user->personal-collection
+                                                                   (user->id :lucky)))}]
+                    Collection [grandchild-collection {:name     "grandchild"
+                                                       :location (collection/children-location child-collection)}]]
+      (->> (user/permissions-set (user->id :lucky))
+           remove-non-collection-perms
+           (collection-test/perms-path-ids->names [child-collection grandchild-collection])))))
 
 
 ;;; Tests for invite-user and create-new-google-auth-user!
 
 (defn- maybe-accept-invite!
-  "Accept an invite if applicable. Look in the body of the content of the invite email for the reset token
-   since this is the only place to get it (the token stored in the DB is an encrypted hash)."
+  "Accept an invite if applicable. Look in the body of the content of the invite email for the reset token since this is
+  the only place to get it (the token stored in the DB is an encrypted hash)."
   [new-user-email-address]
   (when-let [[{[{invite-email :content}] :body}] (get @email-test/inbox new-user-email-address)]
     (let [[_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)#new" invite-email)]
@@ -66,7 +73,7 @@
 
 (defn sent-emails
   "Fetch the emails that have been sent in the form of a map of email address -> sequence of email subjects.
-   For test-writing convenience the random email and names assigned to the new user are replaced with `<New User>`."
+  For test-writing convenience the random email and names assigned to the new user are replaced with `<New User>`."
   [new-user-email-address new-user-first-name new-user-last-name]
   (into {} (for [[address emails] @email-test/inbox
                  :let             [address (if (= address new-user-email-address)
@@ -78,7 +85,7 @@
 
 (defn- invite-user-accept-and-check-inboxes!
   "Create user by passing INVITE-USER-ARGS to `invite-user!` or `create-new-google-auth-user!`,
-   and return a map of addresses emails were sent to to the email subjects."
+  and return a map of addresses emails were sent to to the email subjects."
   [& {:keys [google-auth? accept-invite? password invitor]
       :or   {accept-invite? true}}]
   (tu/with-temporary-setting-values [site-name "Metabase"]

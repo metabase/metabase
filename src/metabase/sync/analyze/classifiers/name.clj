@@ -21,6 +21,7 @@
 (def ^:private time-type        #{:type/Time})
 (def ^:private date-type        #{:type/Date})
 (def ^:private number-type      #{:type/Number})
+(def ^:private any-type         #{:type/*})
 
 
 (def ^:private pattern+base-types+special-type
@@ -31,7 +32,8 @@
 
    *  Convert field name to lowercase before matching against a pattern
    *  Consider a nil set-of-valid-base-types to mean \"match any base type\""
-  [[#"^.*_lat$"                    float-type       :type/Latitude]
+  [[#"^id$"                        any-type         :type/PK]
+   [#"^.*_lat$"                    float-type       :type/Latitude]
    [#"^.*_lon$"                    float-type       :type/Longitude]
    [#"^.*_lng$"                    float-type       :type/Longitude]
    [#"^.*_long$"                   float-type       :type/Longitude]
@@ -114,12 +116,12 @@
 (s/defn ^:private special-type-for-name-and-base-type :- (s/maybe su/FieldType)
   "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it."
   [field-name :- su/NonBlankString, base-type :- su/FieldType]
-  (or (when (= "id" (str/lower-case field-name)) :type/PK)
-      (some (fn [[name-pattern valid-base-types special-type]]
-              (when (and (some (partial isa? base-type) valid-base-types)
-                         (re-find name-pattern (str/lower-case field-name)))
-                special-type))
-            pattern+base-types+special-type)))
+  (let [field-name (str/lower-case field-name)]
+    (some (fn [[name-pattern valid-base-types special-type]]
+            (when (and (some (partial isa? base-type) valid-base-types)
+                       (re-find name-pattern field-name))
+              special-type))
+          pattern+base-types+special-type)))
 
 (def ^:private FieldOrColumn
   "Schema that allows a `metabase.model.field/Field` or a column from a query resultset"
@@ -140,10 +142,10 @@
   "Returns `field-or-column` with a computed special type based on the name and base type of the `field-or-column`"
   [field-or-column :- FieldOrColumn, _ :- (s/maybe i/Fingerprint)]
   (when-let [inferred-special-type (infer-special-type field-or-column)]
-      (log/debug (format "Based on the name of %s, we're giving it a special type of %s."
-                         (sync-util/name-for-logging field-or-column)
-                         inferred-special-type))
-      (assoc field-or-column :special_type inferred-special-type)))
+    (log/debug (format "Based on the name of %s, we're giving it a special type of %s."
+                       (sync-util/name-for-logging field-or-column)
+                       inferred-special-type))
+    (assoc field-or-column :special_type inferred-special-type)))
 
 (defn- prefix-or-postfix
   [s]

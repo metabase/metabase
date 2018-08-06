@@ -79,7 +79,7 @@ export default class MetadataTable extends Component {
     if (this.props.tableMetadata.visibility_type) {
       subTypes = (
         <span id="VisibilitySubTypes" className="border-left mx2">
-          <span className="mx2 text-uppercase text-grey-3">{t`Why Hide?`}</span>
+          <span className="mx2 text-uppercase text-medium">{t`Why Hide?`}</span>
           {this.renderVisibilityType(t`Technical Data`, "technical")}
           {this.renderVisibilityType(t`Irrelevant/Cruft`, "cruft")}
         </span>
@@ -117,7 +117,7 @@ export default class MetadataTable extends Component {
             placeholder={t`No table description yet`}
           />
         </div>
-        <div className="MetadataTable-header flex align-center py2 text-grey-3">
+        <div className="MetadataTable-header flex align-center py2 text-medium">
           <span className="mx1 text-uppercase">{t`Visibility`}</span>
           {this.renderVisibilityWidget()}
           <span className="flex-align-right flex align-center">

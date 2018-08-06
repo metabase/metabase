@@ -38,13 +38,11 @@ import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 
 import CollectionEdit from "metabase/collections/containers/CollectionEdit.jsx";
 import CollectionCreate from "metabase/collections/containers/CollectionCreate.jsx";
-import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/containers/CollectionPermissionsModal";
 import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
-import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
 import PulseMoveModal from "metabase/pulse/components/PulseMoveModal";
 import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp.jsx";
@@ -253,7 +251,6 @@ export const getRoutes = store => (
 
       <Route path="/collections">
         <Route path="create" component={CollectionCreate} />
-        <Route path="permissions" component={CollectionPermissions} />
       </Route>
 
       {/* REFERENCE */}
@@ -321,7 +318,8 @@ export const getRoutes = store => (
 
       {/* PULSE */}
       <Route path="/pulse" title={t`Pulses`}>
-        <IndexRoute component={PulseListApp} />
+        {/* NOTE: legacy route, not linked to in app */}
+        <IndexRedirect to="/search" query={{ type: "pulse" }} />
         <Route path="create" component={PulseEditApp} />
         <Route path=":pulseId">
           <IndexRoute component={PulseEditApp} />
@@ -365,6 +363,10 @@ export const getRoutes = store => (
       }
     />
     <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
+    <Redirect
+      from="/collections/permissions"
+      to="/admin/permissions/collections"
+    />
 
     {/* MISC */}
     <Route path="/unauthorized" component={Unauthorized} />

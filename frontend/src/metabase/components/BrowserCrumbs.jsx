@@ -9,19 +9,23 @@ import colors from "metabase/lib/colors";
 
 const Crumb = ({ children }) => (
   <h5
-    className="text-uppercase text-brand-hover text-grey-3"
+    className="text-uppercase text-brand-hover text-medium"
     style={{ fontWeight: 900 }}
   >
     {children}
   </h5>
 );
 
-const BrowserCrumbs = ({ crumbs }) => (
+const BrowserCrumbs = ({ crumbs, analyticsContext }) => (
   <Flex align="center">
     {crumbs.filter(c => c).map((crumb, index, crumbs) => [
       crumb.to && (
         <Flex align="center">
-          <Link key={"title" + index} to={crumb.to}>
+          <Link
+            key={"title" + index}
+            to={crumb.to}
+            data-metabase-event={`${analyticsContext};Bread Crumb;Click`}
+          >
             <Crumb>{crumb.title}</Crumb>
           </Link>
           {index < crumbs.length - 1 ? (

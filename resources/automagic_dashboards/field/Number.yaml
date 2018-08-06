@@ -39,10 +39,13 @@ groups:
       title: Overview
   - Breakdowns:
       title: How the [[this]] is distributed across categories
+      comparison_title: How they compare by distribution
   - Seasonality:
       title: How the [[this]] changes with time
+      comparison_title: How they compare across time
   - Geographical:
       title: How the [[this]] is distributed geographically
+      comparison_title: How they compare acrosss location
 cards:
   - Count:
       title: Count

@@ -119,7 +119,7 @@ export default class ItemPicker extends React.Component {
               />
               <Icon
                 name="close"
-                className="ml-auto pl2 text-grey-2 text-grey-4-hover cursor-pointer"
+                className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
                 onClick={() =>
                   this.setState({ searchMode: null, searchString: null })
                 }
@@ -130,41 +130,45 @@ export default class ItemPicker extends React.Component {
               <Breadcrumbs crumbs={crumbs} />
               <Icon
                 name="search"
-                className="ml-auto pl2 text-grey-2 text-grey-4-hover cursor-pointer"
+                className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
                 onClick={() => this.setState({ searchMode: true })}
               />
             </Box>
           )}
           <Box className="scroll-y">
             {!searchString
-              ? allCollections.map(collection => (
-                  <Item
-                    item={collection}
-                    name={collection.name}
-                    color={COLLECTION_ICON_COLOR}
-                    icon="all"
-                    selected={
-                      isSelected(collection) && models.has("collection")
-                    }
-                    canSelect={
-                      models.has("collection") && collection.can_edit !== false
-                    }
-                    hasChildren={
-                      (collection.children &&
-                        collection.children.length > 0 &&
-                        // exclude root since we show root's subcollections alongside it
-                        !isRoot(collection)) ||
-                      modelsIncludeNonCollections
-                    }
-                    onChange={collection =>
-                      isRoot(collection)
-                        ? // "root" collection should have `null` id
-                          onChange({ id: null, model: "collection" })
-                        : onChange(collection)
-                    }
-                    onChangeParentId={parentId => this.setState({ parentId })}
-                  />
-                ))
+              ? allCollections.map(collection => {
+                  const hasChildren =
+                    (collection.children &&
+                      collection.children.length > 0 &&
+                      // exclude root since we show root's subcollections alongside it
+                      !isRoot(collection)) ||
+                    // non-collection models are loaded on-demand so we don't know ahead of time
+                    // if they have children, so we have to assume they do
+                    modelsIncludeNonCollections;
+                  // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
+                  const canSelect =
+                    models.has("collection") && collection.can_write;
+                  // only show if collection can be selected or has children
+                  return canSelect || hasChildren ? (
+                    <Item
+                      item={collection}
+                      name={collection.name}
+                      color={COLLECTION_ICON_COLOR}
+                      icon="all"
+                      selected={canSelect && isSelected(collection)}
+                      canSelect={canSelect}
+                      hasChildren={hasChildren}
+                      onChange={collection =>
+                        isRoot(collection)
+                          ? // "root" collection should have `null` id
+                            onChange({ id: null, model: "collection" })
+                          : onChange(collection)
+                      }
+                      onChangeParentId={parentId => this.setState({ parentId })}
+                    />
+                  ) : null;
+                })
               : null}
             {(modelsIncludeNonCollections || searchString) && (
               <EntityListLoader
@@ -241,7 +245,7 @@ const Item = ({
         <Icon
           name="chevronright"
           className={cx(
-            "p1 ml-auto circular text-grey-2 border-grey-2 bordered bg-white-hover cursor-pointer",
+            "p1 ml-auto circular text-light border-grey-2 bordered bg-white-hover cursor-pointer",
             {
               "bg-brand-hover": !canSelect,
             },

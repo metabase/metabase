@@ -4,6 +4,7 @@ import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 import { assocIn } from "icepick";
+import { t } from "c-3po";
 
 import { POST, DELETE } from "metabase/lib/api";
 import { canonicalCollectionId } from "metabase/entities/collections";
@@ -86,7 +87,25 @@ const Dashboards = createEntity({
   },
 
   form: {
-    fields: [{ name: "name" }, { name: "description", type: "text" }],
+    fields: [
+      {
+        name: "name",
+        placeholder: t`What is the name of your dashboard?`,
+        validate: name => (!name ? "Name is required" : null),
+      },
+      {
+        name: "description",
+        type: "text",
+        placeholder: t`It's optional but oh, so helpful`,
+      },
+      {
+        name: "collection_id",
+        title: t`Which collection should this go in?`,
+        type: "collection",
+        validate: colelctionId =>
+          colelctionId === undefined ? "Collection is required" : null,
+      },
+    ],
   },
 });
 

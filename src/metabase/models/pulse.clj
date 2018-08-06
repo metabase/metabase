@@ -1,5 +1,5 @@
 (ns metabase.models.pulse
-  "Notifications are ways to deliver the results of Questions to users without going through the normal Metabase UI. At
+  "Notifcations are ways to deliver the results of Questions to users without going through the normal Metabase UI. At
   the time of this writing, there are two delivery mechanisms for Notifications -- email and Slack notifications;
   these destinations are known as 'Channels'. Notifications themselves are futher divied into two categories --
   'Pulses', which are sent at specified intervals, and 'Alerts', which are sent when certain conditions are met (such
@@ -51,7 +51,9 @@
    (:card alert)
    ;; otherwise fetch the associated `:cards` (if not already fetched) and then pull the first one out, since Alerts
    ;; can only have one Card
-   (-> (hydrate alert :cards) :cards first)))
+   (-> (hydrate alert :cards) :cards first)
+   ;; if there's still not a Card, throw an Exception!
+   (throw (Exception. (str (tru "Invalid Alert: Alert does not have a Card assoicated with it"))))))
 
 (defn- perms-objects-set
   "Permissions to read or write a *Pulse* are the same as those of its parent Collection.
@@ -159,8 +161,8 @@
 
 (s/defn retrieve-notification :- (s/maybe PulseInstance)
   "Fetch an Alert or Pulse, and do the 'standard' hydrations."
-  [notification-or-id]
-  (-> (Pulse (u/get-id notification-or-id))
+  [notification-or-id & additional-condtions]
+  (-> (apply Pulse :id (u/get-id notification-or-id), additional-condtions)
       hydrate-notification))
 
 (s/defn ^:private notification->alert :- PulseInstance
@@ -180,25 +182,31 @@
 
 (s/defn retrieve-alerts :- [PulseInstance]
   "Fetch all Alerts."
-  []
-  (for [alert (db/select Pulse, :alert_condition [:not= nil], {:order-by [[:%lower.name :asc]]})]
-    (-> alert
-        hydrate-notification
-        notification->alert)))
+  ([]
+   (retrieve-alerts nil))
+  ([{:keys [archived?]
+     :or   {archived? false}}]
+   (for [alert (db/select Pulse, :alert_condition [:not= nil], :archived archived?, {:order-by [[:%lower.name :asc]]})]
+     (-> alert
+         hydrate-notification
+         notification->alert))))
 
 (s/defn retrieve-pulses :- [PulseInstance]
   "Fetch all `Pulses`."
-  []
-  (for [pulse (db/select Pulse, :alert_condition nil, {:order-by [[:%lower.name :asc]]})]
-    (-> pulse
-        hydrate-notification
-        notification->pulse)))
+  ([]
+   (retrieve-pulses nil))
+  ([{:keys [archived?]
+     :or   {archived? false}}]
+   (for [pulse (db/select Pulse, :alert_condition nil, :archived archived?, {:order-by [[:%lower.name :asc]]})]
+     (-> pulse
+         hydrate-notification
+         notification->pulse))))
 
 (defn- query-as [model query]
   (db/do-post-select model (db/query query)))
 
 (defn retrieve-user-alerts-for-card
-  "Find all alerts for `CARD-ID` that `USER-ID` is set to receive"
+  "Find all alerts for `card-id` that `user-id` is set to receive"
   [card-id user-id]
   (map (comp notification->alert hydrate-notification)
        (query-as Pulse
@@ -364,15 +372,18 @@
                     (s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZero)
                     (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)
                     (s/optional-key :cards)               [CoercibleToCardRef]
-                    (s/optional-key :channels)            [su/Map]}]
+                    (s/optional-key :channels)            [su/Map]
+                    (s/optional-key :archived)            s/Bool}]
   (db/update! Pulse (u/get-id notification)
     (u/select-keys-when notification
-      :present [:collection_id :collection_position]
+      :present [:collection_id :collection_position :archived]
       :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty]))
   ;; update Cards if the 'refs' have changed
-  (update-notification-cards-if-changed! notification (map card->ref (:cards notification)))
+  (when (contains? notification :cards)
+    (update-notification-cards-if-changed! notification (map card->ref (:cards notification))))
   ;; update channels as needed
-  (update-notification-channels! notification (:channels notification)))
+  (when (contains? notification :channels)
+    (update-notification-channels! notification (:channels notification))))
 
 (s/defn update-pulse!
   "Update an existing Pulse, including all associated data such as: PulseCards, PulseChannels, and

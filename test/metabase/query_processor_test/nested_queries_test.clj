@@ -525,6 +525,10 @@
     (tt/with-temp Database [db {:details (:details (data/db)), :engine "h2"}]
       (f db))))
 
+(defmacro ^:private with-temp-copy-of-test-db {:style/indent 1} [[db-binding] & body]
+  `(do-with-temp-copy-of-test-db (fn [~(or db-binding '_)]
+                                   ~@body)))
+
 (defn- save-card-via-API-with-native-source-query!
   "Attempt to save a Card that uses a native source query and belongs to a Collection with `collection-id` via the API
   using Rasta. Use this to test how the API endpoint behaves based on certain permissions grants for the `All Users`
@@ -546,14 +550,14 @@
 ;; Card is in, and write permissions for the Collection you're trying to save the new Card in
 (expect
   :ok
-  (do-with-temp-copy-of-test-db
-   (fn [db]
-     (tt/with-temp* [Collection [source-card-collection]
-                     Collection [dest-card-collection]]
-       (perms/grant-collection-read-permissions!      (group/all-users) source-card-collection)
-       (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-       (save-card-via-API-with-native-source-query! 200 db source-card-collection dest-card-collection)
-       :ok))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-temp-copy-of-test-db [db]
+      (tt/with-temp* [Collection [source-card-collection]
+                      Collection [dest-card-collection]]
+        (perms/grant-collection-read-permissions!      (group/all-users) source-card-collection)
+        (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
+        (save-card-via-API-with-native-source-query! 200 db source-card-collection dest-card-collection)
+        :ok))))
 
 ;; however, if we do *not* have read permissions for the source Card's collection we shouldn't be allowed to save the
 ;; query. This API call should fail
@@ -561,39 +565,39 @@
 ;; Card in the Root Collection
 (expect
   "You don't have permissions to do that."
-  (do-with-temp-copy-of-test-db
-   (fn [db]
-     (tt/with-temp Collection [dest-card-collection]
-       (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-       (save-card-via-API-with-native-source-query! 403 db nil dest-card-collection)))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-temp-copy-of-test-db [db]
+      (tt/with-temp Collection [dest-card-collection]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
+        (save-card-via-API-with-native-source-query! 403 db nil dest-card-collection)))))
 
 ;; Card in a different Collection for which we do not have perms
 (expect
   "You don't have permissions to do that."
-  (do-with-temp-copy-of-test-db
-   (fn [db]
-     (tt/with-temp* [Collection [source-card-collection]
-                     Collection [dest-card-collection]]
-       (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-       (save-card-via-API-with-native-source-query! 403 db source-card-collection dest-card-collection)))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-temp-copy-of-test-db [db]
+      (tt/with-temp* [Collection [source-card-collection]
+                      Collection [dest-card-collection]]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
+        (save-card-via-API-with-native-source-query! 403 db source-card-collection dest-card-collection)))))
 
 ;; similarly, if we don't have *write* perms for the dest collection it should also fail
 
 ;; Try to save in the Root Collection
 (expect
   "You don't have permissions to do that."
-  (do-with-temp-copy-of-test-db
-   (fn [db]
-     (tt/with-temp Collection [source-card-collection]
-       (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
-       (save-card-via-API-with-native-source-query! 403 db source-card-collection nil)))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-temp-copy-of-test-db [db]
+      (tt/with-temp Collection [source-card-collection]
+        (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
+        (save-card-via-API-with-native-source-query! 403 db source-card-collection nil)))))
 
 ;; Try to save in a different Collection for which we do not have perms
 (expect
   "You don't have permissions to do that."
-  (do-with-temp-copy-of-test-db
-   (fn [db]
-     (tt/with-temp* [Collection [source-card-collection]
-                     Collection [dest-card-collection]]
-       (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
-       (save-card-via-API-with-native-source-query! 403 db source-card-collection dest-card-collection)))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-temp-copy-of-test-db [db]
+      (tt/with-temp* [Collection [source-card-collection]
+                      Collection [dest-card-collection]]
+        (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
+        (save-card-via-API-with-native-source-query! 403 db source-card-collection dest-card-collection)))))

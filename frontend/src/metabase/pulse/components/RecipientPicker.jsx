@@ -54,7 +54,11 @@ export default class RecipientPicker extends Component {
     return (
       <TokenField
         value={recipients}
-        options={users.map(user => ({ label: user.common_name, value: user }))}
+        options={
+          users
+            ? users.map(user => ({ label: user.common_name, value: user }))
+            : []
+        }
         onChange={this.handleOnChange}
         placeholder={
           recipients.length === 0

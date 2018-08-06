@@ -100,7 +100,6 @@
       :id                  $
       :created_at          $
       :fk_target_field_id  $
-      :raw_column_id       $
       :last_analyzed       $
       :fingerprint         $
       :fingerprint_version $})))
@@ -151,7 +150,6 @@
             :pk_field     (#'table/pk-field-id $$)
             :id           (data/id :venues)
             :db_id        (data/id)
-            :raw_table_id $
             :created_at   $
             :fields_hash  $}))
   ((user->client :rasta) :get 200 (format "table/%d" (data/id :venues))))
@@ -161,7 +159,7 @@
                       Table    [{table-id :id}    {:db_id database-id}]]
   "You don't have permissions to do that."
   (do
-    (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
+    (perms/revoke-permissions! (perms-group/all-users) database-id)
     ((user->client :rasta) :get 403 (str "table/" table-id))))
 
 (defn- default-dimension-options []
@@ -201,7 +199,6 @@
             :rows         nil
             :updated_at   $
             :id           (data/id :categories)
-            :raw_table_id $
             :created_at   $
             :fields_hash  $}))
   ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :categories))))
@@ -276,7 +273,6 @@
             :rows         nil
             :updated_at   $
             :id           (data/id :users)
-            :raw_table_id $
             :created_at   $
             :fields_hash  $}))
   ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (data/id :users))))
@@ -318,7 +314,6 @@
             :rows         nil
             :updated_at   $
             :id           (data/id :users)
-            :raw_table_id $
             :created_at   $
             :fields_hash  $}))
   ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :users))))
@@ -358,7 +353,6 @@
             :display_name    "Userz"
             :pk_field        (#'table/pk-field-id $$)
             :id              $
-            :raw_table_id    $
             :created_at      $
             :fields_hash     $}))
   (do ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
@@ -414,7 +408,6 @@
                                                           :rows         nil
                                                           :updated_at   $
                                                           :id           $
-                                                          :raw_table_id $
                                                           :created_at   $
                                                           :fields_hash  $}))))
       :destination    (-> (fk-field-details users-id-field)
@@ -434,7 +427,6 @@
                                                           :rows         nil
                                                           :updated_at   $
                                                           :id           $
-                                                          :raw_table_id $
                                                           :created_at   $
                                                           :fields_hash  $}))))}])
   ((user->client :rasta) :get 200 (format "table/%d/fks" (data/id :users))))

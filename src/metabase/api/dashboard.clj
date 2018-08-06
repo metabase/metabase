@@ -2,6 +2,7 @@
   "/api/dashboard endpoints."
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
+            [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase
              [events :as events]
              [query-processor :as qp]
@@ -195,7 +196,7 @@
   [id]
   (u/prog1 (-> (Dashboard id)
                api/check-404
-               (hydrate [:ordered_cards :card :series])
+               (hydrate [:ordered_cards :card :series] :can_write)
                api/read-check
                api/check-not-archived
                hide-unreadable-cards
@@ -399,12 +400,22 @@
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
+(api/defendpoint POST "/save/collection/:parent-collection-id"
+  "Save a denormalized description of dashboard into collection with ID `:parent-collection-id`."
+  [parent-collection-id :as {dashboard :body}]
+  (collection/check-write-perms-for-collection parent-collection-id)
+  (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
+       (events/publish-event! :dashboard-create)))
+
 (api/defendpoint POST "/save"
   "Save a denormalized description of dashboard."
   [:as {dashboard :body}]
-  (api/check-superuser)
-  (->> (dashboard/save-transient-dashboard! dashboard)
-       (events/publish-event! :dashboard-create)))
+  (let [parent-collection-id (if api/*is-superuser?*
+                               (:id (magic.populate/get-or-create-root-container-collection))
+                               (db/select-one-field :id 'Collection
+                                 :personal_owner_id api/*current-user-id*))]
+    (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
+         (events/publish-event! :dashboard-create))))
 
 
 (api/define-routes)

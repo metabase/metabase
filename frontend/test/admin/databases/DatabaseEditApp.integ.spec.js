@@ -14,9 +14,7 @@ import {
   MIGRATE_TO_NEW_SCHEDULING_SETTINGS,
   DEFAULT_SCHEDULES,
 } from "metabase/admin/databases/database";
-import DatabaseEditApp, {
-  Tab,
-} from "metabase/admin/databases/containers/DatabaseEditApp";
+import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp";
 import DatabaseEditForms from "metabase/admin/databases/components/DatabaseEditForms";
 import DatabaseSchedulingForm, {
   SyncOption,
@@ -26,6 +24,7 @@ import Toggle from "metabase/components/Toggle";
 import { TestModal } from "metabase/components/Modal";
 import Select from "metabase/components/Select";
 import ColumnarSelector from "metabase/components/ColumnarSelector";
+import Radio from "metabase/components/Radio";
 import { click, clickButton } from "__support__/enzyme_utils";
 import { MetabaseApi } from "metabase/services";
 import _ from "underscore";
@@ -75,14 +74,14 @@ describe("DatabaseEditApp", () => {
       click(letUserControlSchedulingField.find(Toggle));
 
       // Connection and Scheduling tabs shouldn't be visible yet
-      expect(dbEditApp.find(Tab).length).toBe(0);
+      expect(dbEditApp.find(Radio).find("li").length).toBe(0);
 
       clickButton(editForm.find('button[children="Save"]'));
 
       await store.waitForActions([UPDATE_DATABASE]);
 
       // Tabs should be now visible as user-controlled scheduling is enabled
-      expect(dbEditApp.find(Tab).length).toBe(2);
+      expect(dbEditApp.find(Radio).find("li").length).toBe(2);
     });
 
     // NOTE Atte Keinänen 8/17/17: See migrateDatabaseToNewSchedulingSettings for more information about migration process
@@ -122,7 +121,7 @@ describe("DatabaseEditApp", () => {
       expect(letUserControlSchedulingField.find(Toggle).props().value).toBe(
         false,
       );
-      expect(dbEditApp.find(Tab).length).toBe(0);
+      expect(dbEditApp.find(Radio).find("li").length).toBe(0);
     });
 
     it("shows the analysis toggle correctly for non-migrated analysis settings when `is_full_sync` is false", async () => {
@@ -153,7 +152,7 @@ describe("DatabaseEditApp", () => {
       expect(letUserControlSchedulingField.find(Toggle).props().value).toBe(
         true,
       );
-      expect(dbEditApp.find(Tab).length).toBe(2);
+      expect(dbEditApp.find(Radio).find("li").length).toBe(2);
     });
 
     afterAll(async () => {
@@ -192,7 +191,12 @@ describe("DatabaseEditApp", () => {
 
       const editForm = dbEditApp.find(DatabaseEditForms);
       expect(editForm.length).toBe(1);
-      click(dbEditApp.find(Tab).last());
+      click(
+        dbEditApp
+          .find(Radio)
+          .find("li")
+          .last(),
+      );
 
       const schedulingForm = dbEditApp.find(DatabaseSchedulingForm);
       expect(schedulingForm.length).toBe(1);
@@ -218,7 +222,12 @@ describe("DatabaseEditApp", () => {
       const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
       await store.waitForActions([INITIALIZE_DATABASE]);
 
-      click(dbEditApp.find(Tab).last());
+      click(
+        dbEditApp
+          .find(Radio)
+          .find("li")
+          .last(),
+      );
       const schedulingForm = dbEditApp.find(DatabaseSchedulingForm);
       const dbSyncSelect = schedulingForm.find(Select).first();
       click(dbSyncSelect);
@@ -244,7 +253,12 @@ describe("DatabaseEditApp", () => {
       const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
       await store.waitForActions([INITIALIZE_DATABASE]);
 
-      click(dbEditApp.find(Tab).last());
+      click(
+        dbEditApp
+          .find(Radio)
+          .find("li")
+          .last(),
+      );
       const schedulingForm = dbEditApp.find(DatabaseSchedulingForm);
       const dbSyncSelect = schedulingForm.find(Select).first();
       click(dbSyncSelect);
@@ -266,7 +280,12 @@ describe("DatabaseEditApp", () => {
       const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
       await store.waitForActions([INITIALIZE_DATABASE]);
 
-      click(dbEditApp.find(Tab).last());
+      click(
+        dbEditApp
+          .find(Radio)
+          .find("li")
+          .last(),
+      );
       const schedulingForm = dbEditApp.find(DatabaseSchedulingForm);
       expect(schedulingForm.length).toBe(1);
 

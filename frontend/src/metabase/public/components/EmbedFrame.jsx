@@ -140,7 +140,7 @@ export default class EmbedFrame extends Component {
         {footer && (
           <div className="EmbedFrame-footer p1 md-p2 lg-p3 border-top flex-no-shrink flex align-center">
             {actionButtons && (
-              <div className="flex-align-right text-grey-3">
+              <div className="flex-align-right text-medium">
                 {actionButtons}
               </div>
             )}

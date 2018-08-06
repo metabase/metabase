@@ -13,14 +13,15 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.models
              [card :refer [Card]]
-             [collection :refer [Collection]]
+             [collection :as collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [database :refer [Database]]
              [dimension :refer [Dimension]]
              [field :refer [Field]]
              [metric :refer [Metric]]
-             [permissions-group :refer [PermissionsGroup]]
+             [permissions :as perms :refer [Permissions]]
+             [permissions-group :as group :refer [PermissionsGroup]]
              [pulse :refer [Pulse]]
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
@@ -29,16 +30,17 @@
              [setting :as setting]
              [table :refer [Table]]
              [user :refer [User]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.query-processor.middleware.expand :as ql]
+            [metabase.query-processor.util :as qputil]
             [metabase.test.data :as data]
             [metabase.test.data
-             [datasets :refer [*driver*]]
-             [dataset-definitions :as defs]]
+             [dataset-definitions :as defs]
+             [datasets :refer [*driver*]]]
             [toucan.db :as db]
             [toucan.util.test :as test])
   (:import com.mchange.v2.c3p0.PooledDataSource
            java.util.TimeZone
+           org.apache.log4j.Logger
            org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
@@ -339,6 +341,36 @@
   [& body]
   `(do-with-log-messages (fn [] ~@body)))
 
+(def level-kwd->level
+  "Conversion from a keyword log level to the Log4J constance mapped to that log level.
+   Not intended for use outside of the `with-mb-log-messages-at-level` macro."
+  {:error org.apache.log4j.Level/ERROR
+   :warn  org.apache.log4j.Level/WARN
+   :info  org.apache.log4j.Level/INFO
+   :debug org.apache.log4j.Level/DEBUG
+   :trace org.apache.log4j.Level/TRACE})
+
+(defn ^Logger metabase-logger
+  "Gets the root logger for all metabase namespaces. Not intended for use outside of the
+  `with-mb-log-messages-at-level` macro."
+  []
+  (Logger/getLogger "metabase"))
+
+(defmacro with-mb-log-messages-at-level
+  "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at
+  a higher threshold than the log messages you're wanting to example. As an example if the metabase logging level is
+  set to `ERROR` in the log4j.properties file and you are looking for a `WARN` message, it won't show up in the
+  `with-log-messages` call as there's a guard around the log invocation, if it's not enabled (it is set to `ERROR`)
+  the log function will never be invoked. This macro will temporarily set the logging level to `level-kwd`, then
+  invoke `with-log-messages`, then set the level back to what it was before the invocation. This allows testing log
+  messages even if the threshold is higher than the message you are looking for."
+  [level-kwd & body]
+  `(let  [orig-log-level# (.getLevel (metabase-logger))]
+     (try
+       (.setLevel (metabase-logger) (get level-kwd->level ~level-kwd))
+       (with-log-messages ~@body)
+       (finally
+         (.setLevel (metabase-logger) orig-log-level#)))))
 
 (defn vectorize-byte-arrays
   "Walk form X and convert any byte arrays in the results to standard Clojure vectors. This is useful when writing
@@ -575,3 +607,23 @@
   `(with-redefs [~fn-var (fn [& args#]
                            (throw (RuntimeException. "Should not be called!")))]
      ~@body))
+
+
+(defn do-with-non-admin-groups-no-root-collection-perms [f]
+  (try
+    (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
+      (perms/revoke-collection-permissions! group-id collection/root-collection))
+    (f)
+    (finally
+      (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
+        (when-not (db/exists? Permissions
+                    :group_id group-id
+                    :object   (perms/collection-readwrite-path collection/root-collection))
+          (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))))))
+
+(defmacro with-non-admin-groups-no-root-collection-perms
+  "Temporarily remove Root Collection perms for all Groups besides the Admin group (which cannot have them removed). By
+  default, all Groups have full readwrite perms for the Root Collection; use this macro to test situations where an
+  admin has removed them."
+  [& body]
+  `(do-with-non-admin-groups-no-root-collection-perms (fn [] ~@body)))

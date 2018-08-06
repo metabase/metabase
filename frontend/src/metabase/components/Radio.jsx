@@ -1,6 +1,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import colors from "metabase/lib/colors";
+
 import cx from "classnames";
 import _ from "underscore";
 
@@ -12,15 +14,18 @@ export default class Radio extends Component {
     optionNameFn: PropTypes.func,
     optionValueFn: PropTypes.func,
     optionKeyFn: PropTypes.func,
-    isVertical: PropTypes.bool,
+    vertical: PropTypes.bool,
+    underlined: PropTypes.bool,
     showButtons: PropTypes.bool,
+    py: PropTypes.number,
   };
 
   static defaultProps = {
     optionNameFn: option => option.name,
     optionValueFn: option => option.value,
     optionKeyFn: option => option.value,
-    isVertical: false,
+    vertical: false,
+    underlined: false,
   };
 
   constructor(props, context) {
@@ -36,45 +41,56 @@ export default class Radio extends Component {
       optionNameFn,
       optionValueFn,
       optionKeyFn,
-      isVertical,
+      vertical,
+      underlined,
       className,
+      py,
     } = this.props;
     // show buttons for vertical only by default
     const showButtons =
-      this.props.showButtons != undefined ? this.props.showButtons : isVertical;
+      this.props.showButtons != undefined ? this.props.showButtons : vertical;
     return (
       <ul
         className={cx(className, "flex", {
-          "flex-column": isVertical,
+          "flex-column": vertical,
           "text-bold h3": !showButtons,
         })}
       >
-        {options.map(option => (
-          <li
-            key={optionKeyFn(option)}
-            className={cx("flex align-center cursor-pointer mt1 mr2", {
-              "text-brand-hover": !showButtons,
-            })}
-            onClick={e => onChange(optionValueFn(option))}
-          >
-            <input
-              className="Form-radio"
-              type="radio"
-              name={this._id}
-              value={optionValueFn(option)}
-              checked={value === optionValueFn(option)}
-              id={this._id + "-" + optionKeyFn(option)}
-            />
-            {showButtons && (
-              <label htmlFor={this._id + "-" + optionKeyFn(option)} />
-            )}
-            <span
-              className={cx({ "text-brand": value === optionValueFn(option) })}
+        {options.map(option => {
+          const selected = value === optionValueFn(option);
+
+          return (
+            <li
+              key={optionKeyFn(option)}
+              className={cx(
+                "flex align-center cursor-pointer mr3",
+                { "text-brand-hover": !showButtons },
+                py != undefined ? `py${py}` : underlined ? "py2" : "pt1",
+              )}
+              style={{
+                borderBottom: underlined ? `3px solid transparent` : undefined,
+                borderColor:
+                  selected && underlined ? colors["brand"] : "transparent",
+              }}
+              onClick={e => onChange(optionValueFn(option))}
             >
-              {optionNameFn(option)}
-            </span>
-          </li>
-        ))}
+              <input
+                className="Form-radio"
+                type="radio"
+                name={this._id}
+                value={optionValueFn(option)}
+                checked={selected}
+                id={this._id + "-" + optionKeyFn(option)}
+              />
+              {showButtons && (
+                <label htmlFor={this._id + "-" + optionKeyFn(option)} />
+              )}
+              <span className={cx({ "text-brand": selected })}>
+                {optionNameFn(option)}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     );
   }
