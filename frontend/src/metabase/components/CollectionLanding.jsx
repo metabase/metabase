@@ -223,7 +223,20 @@ class DefaultLanding extends React.Component {
                   ]}
                 />
               </Box>
-              <h1 style={{ fontWeight: 900 }}>{collection.name}</h1>
+              <Flex align="center">
+                <h1 style={{ fontWeight: 900 }}>{collection.name}</h1>
+                {collection.description && (
+                  <Tooltip tooltip={collection.description}>
+                    <Icon
+                      name="info"
+                      ml={1}
+                      mt="4px"
+                      color={colors["bg-dark"]}
+                      hover={{ color: colors["brand"] }}
+                    />
+                  </Tooltip>
+                )}
+              </Flex>
             </Box>
 
             <Flex ml="auto">
