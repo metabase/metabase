@@ -184,6 +184,12 @@
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."
   (map->RootCollection {::is-root? true}))
 
+(def ^RootCollection root-collection-with-ui-details
+  "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
+  (assoc root-collection
+    :name (tru "Our analytics")
+    :id   "root"))
+
 (defn- is-root-collection? [x]
   (instance? RootCollection x))
 
@@ -273,7 +279,7 @@
   (when-let [ancestor-ids (seq (location-path->ids location))]
     (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:%lower.name]})))
 
-(s/defn effective-ancestors :- [CollectionInstance]
+(s/defn effective-ancestors :- [(s/cond-pre RootCollection CollectionInstance)]
   "Fetch the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see. This is used
   in the UI to power the 'breadcrumb' path to the location of a given Collection. For example, suppose we have four
   Collections, nested like:
@@ -282,11 +288,11 @@
 
   The ancestors of D are:
 
-    A > B > C
+    [Root] > A > B > C
 
   If the current User is allowed to see A and C, but not B, `effective-ancestors` of D will be:
 
-    A > C
+    [Root] > A > C
 
   Thus the existence of C will be kept hidden from the current User, and for all intents and purposes the current User
   can effectively treat A as the parent of C."
@@ -294,7 +300,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (if (is-root-collection? collection)
     []
-    (filter i/can-read? (ancestors collection))))
+    (filter i/can-read? (cons root-collection-with-ui-details (ancestors collection)))))
 
 (s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
   "Get the immediate parent `collection` id, if set."
@@ -503,11 +509,10 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived false}
         :archived true)
-      (doseq [model '[Card Dashboard]]
+      (doseq [model '[Card Dashboard Pulse]]
         (db/update-where! model {:collection_id [:in affected-collection-ids]
                                  :archived      false}
-          :archived true))
-      (db/delete! 'Pulse :collection_id [:in affected-collection-ids]))))
+          :archived true)))))
 
 (s/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
@@ -518,7 +523,7 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived true}
         :archived false)
-      (doseq [model '[Card Dashboard]]
+      (doseq [model '[Card Dashboard Pulse]]
         (db/update-where! model {:collection_id [:in affected-collection-ids]
                                  :archived      true}
           :archived false)))))

@@ -39,7 +39,7 @@
 }
 
 :local(.headerSchema) {
-  composes: text-grey-2 absolute from "style";
+  composes: text-light absolute from "style";
   left: var(--icon-width);
   top: -10px;
   font-size: 12px;

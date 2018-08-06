@@ -47,9 +47,9 @@ const UserCollectionList = () => (
                               name="person"
                               mr={1}
                               color={colors["text-medium"]}
-                              size={22}
+                              size={18}
                             />
-                            <h2>{user.common_name}</h2>
+                            <h3>{user.common_name}</h3>
                           </Flex>
                         </Card>
                       </Link>

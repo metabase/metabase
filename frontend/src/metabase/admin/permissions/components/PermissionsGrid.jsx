@@ -14,7 +14,6 @@ import FixedHeaderGrid from "./FixedHeaderGrid.jsx";
 import { AutoSizer } from "react-virtualized";
 
 import { isAdminGroup } from "metabase/lib/groups";
-import { capitalize, pluralize } from "metabase/lib/formatting";
 import cx from "classnames";
 import _ from "underscore";
 
@@ -71,7 +70,7 @@ const PermissionsHeader = ({ permissions, isFirst, isLast }) => (
         }}
       >
         {permission.header && (
-          <h5 className="my1 text-centered text-grey-3 text-uppercase text-light">
+          <h5 className="my1 text-centered text-medium text-uppercase text-light">
             {permission.header}
           </h5>
         )}
@@ -117,12 +116,17 @@ const EntityHeader = ({
   isLast,
 }) => (
   <div className="flex flex-column">
-    <div className={cx("relative flex", { "align-self-center mb1": isColumn })}>
-      <Icon name={icon} className="mr1" />
-      <div className="flex-full">
+    <div
+      className={cx("relative flex", {
+        "align-self-center mb1": isColumn,
+        "align-center": !isColumn,
+      })}
+    >
+      <Icon name={icon} className="ml3 mr2 text-light" />
+      <div>
         <h4>{entity.name}</h4>
         {entity.subtitle && (
-          <div className="mt1 h5 text-monospace text-normal text-grey-2 text-uppercase">
+          <div className="mt1 h5 text-monospace text-normal text-light text-uppercase">
             {entity.subtitle}
           </div>
         )}
@@ -143,14 +147,6 @@ const EntityHeader = ({
         isLast={isLast}
       />
     )}
-  </div>
-);
-
-const CornerHeader = ({ grid }) => (
-  <div className="absolute bottom left right flex flex-column align-center pb1">
-    <div className="flex align-center">
-      <h3 className="ml1">{capitalize(pluralize(grid.type))}</h3>
-    </div>
   </div>
 );
 
@@ -483,9 +479,6 @@ const PermissionsGrid = ({
                 )}
               </div>
             )}
-            renderCorner={
-              showHeader ? () => <CornerHeader grid={grid} /> : undefined
-            }
           />
         )}
       </AutoSizer>

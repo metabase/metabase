@@ -50,7 +50,7 @@ export default class SegmentsList extends Component {
           </tbody>
         </table>
         {tableMetadata.segments.length === 0 && (
-          <div className="flex layout-centered m4 text-grey-3">
+          <div className="flex layout-centered m4 text-medium">
             {t`Create segments to add them to the Filter dropdown in the query builder`}
           </div>
         )}

@@ -110,6 +110,28 @@
         (= k (normalize-token map-k)) (recur (dissoc m map-k) more)
         :else                         (recur m                more)))))
 
+(defn assoc-in-normalized
+  "Assoc the value for normalized sequence of keys KS in map M, regardless of how the keys were
+   specified in M, whether string or keyword, lisp-case, snake_case, or SCREAMING_SNAKE_CASE."
+  [m ks v]
+  {:pre [(u/maybe? sequential? ks)]}
+  (let [ks-map (loop [[k & k-rest :as ks-all] ks
+                      [[k-map v] & m-rest]    (seq m)
+                      ks-map                  []]
+                 (cond
+                   (empty? ks-all)
+                   ks-map
+
+                   (nil? k-map)
+                   (recur k-rest (seq m) (conj ks-map k))
+
+                   (= (normalize-token k) (normalize-token k-map))
+                   (recur k-rest (when (map? v) v) (conj ks-map k-map))
+
+                   :else
+                   (recur ks-all m-rest ks-map)))]
+    (assoc-in m ks-map v)))
+
 
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 

@@ -52,7 +52,7 @@ export default class CollectionPermissionsModal extends Component {
         title={t`Permissions for this collection`}
         onClose={onClose}
         footer={[
-          <Link className="link" to="/collections/permissions">
+          <Link className="link" to="/admin/permissions/collections">
             See all collection permissions
           </Link>,
           <Button onClick={onClose}>Cancel</Button>,
@@ -78,7 +78,7 @@ export default class CollectionPermissionsModal extends Component {
               className="spread"
               grid={grid}
               onUpdatePermission={onUpdatePermission}
-              cellHeight={40}
+              cellHeight={60}
               isPivoted={true}
               showHeader={false}
             />

@@ -35,6 +35,7 @@ export default class ProfileLink extends Component {
   };
 
   generateOptionsForUser = () => {
+    const { tag } = MetabaseSettings.get("version");
     const admin = this.props.user.is_superuser;
     const adminContext = this.props.context === "admin";
     return [
@@ -42,12 +43,16 @@ export default class ProfileLink extends Component {
         title: t`Account settings`,
         icon: null,
         link: Urls.accountSettings(),
+        event: `Navbar;Profile Dropdown;Edit Profile`,
       },
       ...(admin && [
         {
           title: adminContext ? t`Exit admin` : t`Admin`,
           icon: null,
           link: adminContext ? "/" : "/admin",
+          event: `Navbar;Profile Dropdown;${
+            adminContext ? "Exit Admin" : "Enter Admin"
+          }`,
         },
       ]),
       ...(admin && [
@@ -55,17 +60,29 @@ export default class ProfileLink extends Component {
           title: t`Logs`,
           icon: null,
           action: () => this.openModal("logs"),
+          event: `Navbar;Profile Dropdown;Debugging ${tag}`,
         },
       ]),
+      {
+        title: t`Help`,
+        icon: null,
+        // HACK - for some reason if you use // react router treats the link
+        // as a non local route
+        link: `//metabase.com/docs/${tag}`,
+        externalLink: true,
+        event: `Navbar;Profile Dropdown;About ${tag}`,
+      },
       {
         title: t`About Metabase`,
         icon: null,
         action: () => this.openModal("about"),
+        event: `Navbar;Profile Dropdown;About ${tag}`,
       },
       {
         title: t`Sign out`,
         icon: null,
         link: "auth/logout",
+        event: `Navbar;Profile Dropdown;Logout`,
       },
     ];
   };
@@ -75,7 +92,11 @@ export default class ProfileLink extends Component {
     const { tag, date, ...versionExtra } = MetabaseSettings.get("version");
     return (
       <Box>
-        <EntityMenu items={this.generateOptionsForUser()} triggerIcon="gear" />
+        <EntityMenu
+          tooltip={t`Settings`}
+          items={this.generateOptionsForUser()}
+          triggerIcon="gear"
+        />
         {modalOpen === "about" ? (
           <Modal small onClose={this.closeModal}>
             <div className="px4 pt4 pb2 text-centered relative">
@@ -89,13 +110,13 @@ export default class ProfileLink extends Component {
                 <h3 className="text-dark mb1">
                   {t`You're on version`} {tag}
                 </h3>
-                <p className="text-grey-3 text-bold">
+                <p className="text-medium text-bold">
                   {t`Built on`} {date}
                 </p>
                 {!/^v\d+\.\d+\.\d+$/.test(tag) && (
                   <div>
                     {_.map(versionExtra, (value, key) => (
-                      <p key={key} className="text-grey-3 text-bold">
+                      <p key={key} className="text-medium text-bold">
                         {capitalize(key)}: {value}
                       </p>
                     ))}
@@ -105,7 +126,7 @@ export default class ProfileLink extends Component {
             </div>
             <div
               style={{ borderWidth: "2px" }}
-              className="p2 h5 text-centered text-grey-3 border-top"
+              className="p2 h5 text-centered text-medium border-top"
             >
               <span className="block">
                 <span className="text-bold">Metabase</span>{" "}

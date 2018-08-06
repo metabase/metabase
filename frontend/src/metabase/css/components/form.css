@@ -198,6 +198,7 @@
 
 .NewForm .Form-label {
   text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--color-text-medium);
   margin-bottom: 0.5em;
 }

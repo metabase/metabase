@@ -158,7 +158,7 @@ export default class DatabaseList extends Component {
                 })}
               >
                 <a
-                  className="text-grey-2 text-brand-hover no-decoration"
+                  className="text-light text-brand-hover no-decoration"
                   onClick={() => this.props.addSampleDataset()}
                 >{t`Bring the sample dataset back`}</a>
               </span>

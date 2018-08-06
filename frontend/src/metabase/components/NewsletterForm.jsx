@@ -63,7 +63,7 @@ export default class NewsletterForm extends Component {
           style={this.styles.label}
           className="absolute text-centered left right"
         >
-          <div className="px3 bg-white h5 text-bold text-grey-4 text-uppercase inline-block">
+          <div className="px3 bg-white h5 text-bold text-medium text-uppercase inline-block">
             <Icon className="mr1 float-left" name="mail" size={16} />
             <span
               className="inline-block"
@@ -76,7 +76,7 @@ export default class NewsletterForm extends Component {
           <div>
             <div
               style={{ color: colors["text-medium"] }}
-              className="text-grey-4 h3 pb3"
+              className="text-medium h3 pb3"
             >
               {t`Get infrequent emails about new releases and feature updates.`}
             </div>

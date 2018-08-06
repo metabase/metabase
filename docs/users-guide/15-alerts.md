@@ -67,5 +67,7 @@ There are a few ways alerts can be stopped:
 - If a saved question that has an alert on it gets edited in such a way that the alert doesn't make sense anymore, the alert will get deleted. For example, if a saved question with a goal line alert on it gets edited, and the goal line is removed entirely, that alert will get deleted.
 - If a question gets archived, any alerts on it will be deleted.
 
+---
+
 ## That’s it!
 If you still have questions about using alerts, you can head over to our [discussion forum](http://discourse.metabase.com/). See you there!

@@ -368,7 +368,7 @@ export default class AccordianList extends Component {
                 >
                   {type === "header" ? (
                     alwaysExpanded ? (
-                      <div className="px2 pt2 pb1 h6 text-grey-2 text-uppercase text-bold">
+                      <div className="px2 pt2 pb1 h6 text-light text-uppercase text-bold">
                         {section.name}
                       </div>
                     ) : (

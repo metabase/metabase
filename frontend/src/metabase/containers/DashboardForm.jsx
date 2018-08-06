@@ -6,11 +6,16 @@ import ModalContent from "metabase/components/ModalContent";
 const DashboardForm = ({ dashboard, onClose, ...props }) => (
   <ModalContent
     title={
-      dashboard && dashboard.id != null ? dashboard.name : t`New dashboard`
+      dashboard && dashboard.id != null ? dashboard.name : t`Create dashboard`
     }
     onClose={onClose}
   >
-    <EntityForm entityType="dashboards" entityObject={dashboard} {...props} />
+    <EntityForm
+      entityType="dashboards"
+      entityObject={dashboard}
+      onClose={onClose}
+      {...props}
+    />
   </ModalContent>
 );
 

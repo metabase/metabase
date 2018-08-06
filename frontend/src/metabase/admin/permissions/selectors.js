@@ -703,14 +703,33 @@ export const getCollectionsPermissionsGrid = createSelector(
       return null;
     }
 
+    const crumbs = [];
+    let parent = collections[0] && collections[0].parent;
+    if (parent) {
+      while (parent) {
+        if (crumbs.length > 0) {
+          crumbs.unshift([
+            parent.name,
+            `/admin/permissions/collections/${parent.id}`,
+          ]);
+        } else {
+          crumbs.unshift([parent.name]);
+        }
+        parent = parent.parent;
+      }
+      crumbs.unshift(["Collections", "/admin/permissions/collections"]);
+    }
+
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     return {
       type: "collection",
       icon: "collection",
+      crumbs,
       groups,
       permissions: {
         access: {
+          header: t`Collection Access`,
           options(groupId, entityId) {
             return [
               OPTION_COLLECTION_WRITE,
@@ -738,14 +757,33 @@ export const getCollectionsPermissionsGrid = createSelector(
             ];
           },
           warning(groupId, entityId) {
-            return getPermissionWarning(
-              getCollectionPermission,
-              null,
-              defaultGroup,
+            const collection = _.findWhere(collections, {
+              id: entityId.collectionId,
+            });
+            if (!collection) {
+              return;
+            }
+            const collectionPerm = getCollectionPermission(
               permissions,
               groupId,
               entityId,
             );
+            const descendentPerms = getCollectionsPermissionsSet(
+              collection.children,
+              permissions,
+              groupId,
+            );
+            if (
+              collectionPerm === "none" &&
+              (descendentPerms.has("read") || descendentPerms.has("write"))
+            ) {
+              return t`This group has permission to view at least one subcollection of this collection.`;
+            } else if (
+              collectionPerm === "read" &&
+              descendentPerms.has("write")
+            ) {
+              return t`This group has permission to edit at least one subcollection of this collection.`;
+            }
           },
         },
       },
@@ -757,14 +795,42 @@ export const getCollectionsPermissionsGrid = createSelector(
           name: collection.name,
           link: collection.children &&
             collection.children.length > 0 && {
-              name: t`View collections`,
-              url: `/collections/permissions?collectionId=${collection.id}`,
+              name: t`View sub-collections`,
+              url: `/admin/permissions/collections/${collection.id}`,
             },
         };
       }),
     };
   },
 );
+
+function getCollectionsPermissionsSet(
+  collections,
+  permissions,
+  groupId,
+  recursive = true,
+) {
+  let perms = collections.map(collection =>
+    getCollectionPermission(permissions, groupId, {
+      collectionId: collection.id,
+    }),
+  );
+  if (recursive) {
+    perms = perms.concat(
+      ...collections.map(collection =>
+        Array.from(
+          getCollectionsPermissionsSet(
+            collection.children,
+            permissions,
+            groupId,
+            recursive,
+          ),
+        ),
+      ),
+    );
+  }
+  return new Set(perms);
+}
 
 export const getDiff = createSelector(
   getMetadata,

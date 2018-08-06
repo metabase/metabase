@@ -146,7 +146,8 @@
                        message
                        (or (.getMessage e) (class e))
                        (u/pprint-to-str (or (seq (u/filtered-stacktrace e))
-                                            (.getStackTrace e)))))))))
+                                            (.getStackTrace e)))))
+          e))))
 
 (defmacro with-error-handling
   "Execute BODY in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so.
@@ -256,15 +257,19 @@
 (extend-protocol INameForLogging
   i/DatabaseInstance
   (name-for-logging [{database-name :name, id :id, engine :engine,}]
-    (format "%s Database %s '%s'" (name engine) (or id "") database-name))
+    (trs "{0} Database {1} ''{2}''" (name engine) (or id "") database-name))
 
   i/TableInstance
   (name-for-logging [{schema :schema, id :id, table-name :name}]
-    (format "Table %s '%s'" (or id "") (str (when (seq schema) (str schema ".")) table-name)))
+    (trs "Table {0} ''{1}''" (or id "") (str (when (seq schema) (str schema ".")) table-name)))
 
   i/FieldInstance
   (name-for-logging [{field-name :name, id :id}]
-    (format "Field %s '%s'" (or id "") field-name)))
+    (trs "Field {0} ''{1}''" (or id "") field-name))
+
+  i/ResultColumnMetadataInstance
+  (name-for-logging [{field-name :name}]
+    (trs "Field ''{0}''" field-name)))
 
 (defn calculate-hash
   "Calculate a cryptographic hash on `clj-data` and return that hash as a string"
@@ -327,8 +332,8 @@
   ([step-name sync-fn]
    (create-sync-step step-name sync-fn nil))
   ([step-name sync-fn log-summary-fn]
-   {:sync-fn sync-fn
-    :step-name step-name
+   {:sync-fn        sync-fn
+    :step-name      step-name
     :log-summary-fn log-summary-fn}))
 
 (defn- datetime->str [datetime]
@@ -399,7 +404,7 @@
 (defn sum-numbers
   "Similar to a 2-arg call to `map`, but will add all numbers that result from the invocations of `f`"
   [f coll]
-  (apply + (for [item coll
-                 :let [result (f item)]
-                 :when (number? result)]
-             result)))
+  (reduce + (for [item coll
+                  :let [result (f item)]
+                  :when (number? result)]
+              result)))
