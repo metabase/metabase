@@ -107,7 +107,7 @@ const EntityItem = ({
           <Icon name={iconName} color={iconColor} size={18} />
         )}
       </IconWrapper>
-      <h3>
+      <h3 className="overflow-hidden">
         <Ellipsified>{name}</Ellipsified>
       </h3>
 

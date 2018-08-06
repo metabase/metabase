@@ -88,6 +88,12 @@
   position: absolute;
 }
 
+@media screen and (--breakpoint-min-sm) {
+  .sm-absolute {
+    position: absolute;
+  }
+}
+
 .top,
 :local(.top) {
   top: 0;

@@ -511,7 +511,7 @@ export default class QueryHeader extends Component {
 
   render() {
     return (
-      <div className="relative">
+      <div className="relative px2 sm-px0">
         <HeaderBar
           isEditing={this.props.isEditing}
           name={this.props.isNew ? t`New question` : this.props.card.name}

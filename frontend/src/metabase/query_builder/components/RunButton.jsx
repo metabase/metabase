@@ -20,8 +20,8 @@ export default class RunButton extends Component {
     if (isRunning) {
       buttonText = (
         <div className="flex align-center">
-          <Icon className="mr1" name="close" />
-          {t`Cancel`}
+          <Icon className="sm-mr1" name="close" />
+          <span className="hide sm-show">{t`Cancel`}</span>
         </div>
       );
     } else if (isRunnable && isDirty) {
@@ -29,8 +29,8 @@ export default class RunButton extends Component {
     } else if (isRunnable && !isDirty) {
       buttonText = (
         <div className="flex align-center">
-          <Icon className="mr1" name="refresh" />
-          {t`Refresh`}
+          <Icon className="sm-mr1" name="refresh" />
+          <span className="hide sm-show">{t`Refresh`}</span>
         </div>
       );
     }
