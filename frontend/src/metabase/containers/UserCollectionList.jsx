@@ -23,7 +23,7 @@ const UserCollectionList = () => (
       <BrowserCrumbs
         crumbs={[
           { title: t`Our analytics`, to: Urls.collection() },
-          { title: t`Everyone else’s personal collections` },
+          { title: t`Everyone else's personal collections` },
         ]}
       />
     </Box>
