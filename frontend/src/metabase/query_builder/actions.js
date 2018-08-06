@@ -46,7 +46,6 @@ import {
 } from "./selectors";
 
 import {
-  getDatabases,
   getTables,
   getDatabasesList,
   getMetadata,
@@ -977,7 +976,6 @@ export const setQueryDatabase = createThunkAction(
   databaseId => {
     return async (dispatch, getState) => {
       const { qb: { card, uiControls } } = getState();
-      const databases = getDatabases(getState());
 
       // picking the same database doesn't change anything
       if (databaseId === card.dataset_query.database) {
