@@ -20,7 +20,7 @@ export default class DataPermissionsApp extends Component {
         {...this.props}
         load={PermissionsApi.graph}
         save={PermissionsApi.updateGraph}
-        fitClassNames={this.props.fitClassNames}
+        fitClassNames={this.props.fitClassNames + " flex-column"}
       />
     );
   }

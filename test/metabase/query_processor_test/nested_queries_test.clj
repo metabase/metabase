@@ -550,7 +550,7 @@
 ;; Card is in, and write permissions for the Collection you're trying to save the new Card in
 (expect
   :ok
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (with-temp-copy-of-test-db [db]
       (tt/with-temp* [Collection [source-card-collection]
                       Collection [dest-card-collection]]
@@ -565,7 +565,7 @@
 ;; Card in the Root Collection
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (with-temp-copy-of-test-db [db]
       (tt/with-temp Collection [dest-card-collection]
         (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
@@ -574,7 +574,7 @@
 ;; Card in a different Collection for which we do not have perms
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (with-temp-copy-of-test-db [db]
       (tt/with-temp* [Collection [source-card-collection]
                       Collection [dest-card-collection]]
@@ -586,7 +586,7 @@
 ;; Try to save in the Root Collection
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (with-temp-copy-of-test-db [db]
       (tt/with-temp Collection [source-card-collection]
         (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
@@ -595,7 +595,7 @@
 ;; Try to save in a different Collection for which we do not have perms
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (with-temp-copy-of-test-db [db]
       (tt/with-temp* [Collection [source-card-collection]
                       Collection [dest-card-collection]]

@@ -11,7 +11,7 @@
              [dashboard :refer [Dashboard]]
              [database :refer [Database]]
              [permissions :as perms :refer [Permissions]]
-             [permissions-group :as perm-group]
+             [permissions-group :as perm-group :refer [PermissionsGroup]]
              [pulse :refer [Pulse]]
              [user :refer [User]]]
             [metabase.util :as u]
@@ -74,8 +74,9 @@
 
 (defn- do-with-add-migrated-collections-cleanup [f]
   ;; remove the root collection perms if they're already there so we don't see warnings about duplicate perms
-  (perms/revoke-collection-permissions! (perm-group/all-users) collection/root-collection)
   (try
+    (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (perm-group/admin))])]
+      (perms/revoke-collection-permissions! group-id collection/root-collection))
     (f)
     (finally
       (doseq [collection-name migrated-collection-names]
@@ -92,6 +93,16 @@
     (db/select-field :object Permissions
       :group_id (u/get-id (perm-group/all-users))
       :object   [:like "/collection/root/%"])))
+
+;; should grant whatever other random groups perms as well
+(expect
+  #{"/collection/root/"}
+  (with-add-migrated-collections-cleanup
+    (tt/with-temp PermissionsGroup [group]
+      (#'migrations/add-migrated-collections)
+      (db/select-field :object Permissions
+                       :group_id (u/get-id group)
+                       :object   [:like "/collection/root/%"]))))
 
 ;; Should create the new Collections
 (expect
@@ -150,3 +161,20 @@
                   :or
                   (for [migrated-collection-id (db/select-ids Collection :name [:in migrated-collection-names])]
                     [:like :object (format "/collection/%d/%%" migrated-collection-id)]))]}))))
+
+;; ...nor should other groups that happen to exist
+(expect
+  []
+  (tt/with-temp PermissionsGroup [group]
+    (with-add-migrated-collections-cleanup
+      (tt/with-temp* [Pulse     [_]
+                      Card      [_]
+                      Dashboard [_]]
+        (#'migrations/add-migrated-collections)
+        (db/select Permissions
+          {:where [:and
+                   [:= :group_id (u/get-id group)]
+                   (cons
+                    :or
+                    (for [migrated-collection-id (db/select-ids Collection :name [:in migrated-collection-names])]
+                      [:like :object (format "/collection/%d/%%" migrated-collection-id)]))]})))))

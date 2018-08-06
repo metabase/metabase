@@ -61,7 +61,7 @@
   ["Our analytics"
    "Collection 1"
    "Rasta Toucan's Personal Collection"]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
                     Collection [collection-2 {:name "Collection 2"}]]
       (perms/grant-collection-read-permissions! (group/all-users) collection-1)
@@ -105,7 +105,7 @@
 ;; check that collections detail properly checks permissions
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       ((user->client :rasta) :get 403 (str "collection/" (u/get-id collection))))))
 
@@ -128,7 +128,7 @@
 
 (defn- do-with-some-children-of-collection [collection-or-id-or-nil f]
   (collection-test/force-create-personal-collections!)
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (let [collection-id-or-nil (when collection-or-id-or-nil
                                  (u/get-id collection-or-id-or-nil))]
       (tt/with-temp* [Card       [_ {:name "Birthday Card", :collection_id collection-id-or-nil}]
@@ -533,7 +533,7 @@
 ;; check that users without write perms aren't allowed to update a Collection
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection))
        {:name "My Beautiful Collection", :color "#ABCDEF"}))))
@@ -571,7 +571,7 @@
 ;; I shouldn't be allowed to archive a Collection without proper perms
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection))
        {:archived true}))))
@@ -582,7 +582,7 @@
 ;; also need perms for B
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection-a]
                     Collection [collection-b {:location (collection/children-location collection-a)}]]
       (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
@@ -609,7 +609,7 @@
 ;; If I want to move A into B, I should need permissions for both A and B
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection-a]
                     Collection [collection-b]]
       (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
@@ -626,7 +626,7 @@
 ;; C
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection-a]
                     Collection [collection-b {:location (collection/children-location collection-a)}]
                     Collection [collection-c]]
@@ -644,7 +644,7 @@
 ;; C*
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection-a]
                     Collection [collection-b {:location (collection/children-location collection-a)}]
                     Collection [collection-c]]
@@ -661,7 +661,7 @@
 ;; C*
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection-a]
                     Collection [collection-b {:location (collection/children-location collection-a)}]
                     Collection [collection-c]]

@@ -14,7 +14,7 @@ import { push } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 
 import Button from "metabase/components/Button.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import Tooltip from "metabase/components/Tooltip";
@@ -110,13 +110,14 @@ class SearchBar extends React.Component {
   }
 
   render() {
+    const { active, searchText } = this.state;
     return (
       <OnClickOutsideWrapper
         handleDismissal={() => this.setState({ active: false })}
       >
         <SearchWrapper
           onClick={() => this.setState({ active: true })}
-          active={this.state.active}
+          active={active}
         >
           <Icon name="search" ml={2} />
           <SearchInput
@@ -124,15 +125,15 @@ class SearchBar extends React.Component {
             py={2}
             pr={2}
             pl={1}
-            value={this.state.searchText}
+            value={searchText}
             placeholder="Search…"
             onClick={() => this.setState({ active: true })}
             onChange={e => this.setState({ searchText: e.target.value })}
             onKeyPress={e => {
-              if (e.key === "Enter") {
+              if (e.key === "Enter" && (searchText || "").trim().length > 0) {
                 this.props.onChangeLocation({
                   pathname: "search",
-                  query: { q: this.state.searchText },
+                  query: { q: searchText },
                 });
               }
             }}
@@ -179,7 +180,9 @@ export default class Navbar extends Component {
 
   renderAdminNav() {
     return (
-      <nav className={cx("Nav AdminNav sm-py1")}>
+      // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
+      // TODO: hide nav using state in redux instead?
+      <nav className={"Nav AdminNav sm-py1"}>
         <div className="sm-pl4 flex align-center pr1">
           <div className="NavTitle flex align-center">
             <Icon name={"gear"} className="AdminGear" size={22} />
@@ -223,6 +226,8 @@ export default class Navbar extends Component {
 
   renderEmptyNav() {
     return (
+      // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
+      // TODO: hide nav using state in redux instead?
       <nav className="Nav sm-py1 relative">
         <ul className="wrapper flex align-center">
           <li>
@@ -243,7 +248,9 @@ export default class Navbar extends Component {
   renderMainNav() {
     return (
       <Flex
-        className="relative bg-brand text-white z3"
+        // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
+        // TODO: hide nav using state in redux instead?
+        className="Nav relative bg-brand text-white z3"
         align="center"
         py={1}
         pr={2}
@@ -280,6 +287,7 @@ export default class Navbar extends Component {
             <Button medium>{t`Ask a question`}</Button>
           </Link>
           <EntityMenu
+            tooltip={t`Create`}
             className="hide sm-show"
             triggerIcon="add"
             items={[
@@ -298,17 +306,17 @@ export default class Navbar extends Component {
             ]}
           />
           <Tooltip tooltip={t`Reference`}>
-            <Link
-              to="reference"
-              mx={2}
-              data-metabase-event={`NavBar;Reference`}
-            >
-              <Icon name="reference" />
+            <Link to="reference" data-metabase-event={`NavBar;Reference`}>
+              <IconWrapper>
+                <Icon name="reference" />
+              </IconWrapper>
             </Link>
           </Tooltip>
           <Tooltip tooltip={t`Activity`}>
-            <Link to="activity" mx={2} data-metabase-event={`NavBar;Activity`}>
-              <Icon name="bell" />
+            <Link to="activity" data-metabase-event={`NavBar;Activity`}>
+              <IconWrapper>
+                <Icon name="bell" />
+              </IconWrapper>
             </Link>
           </Tooltip>
           <ProfileLink {...this.props} />

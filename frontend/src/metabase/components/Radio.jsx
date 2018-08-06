@@ -63,7 +63,7 @@ export default class Radio extends Component {
             <li
               key={optionKeyFn(option)}
               className={cx(
-                "flex align-center cursor-pointer mr2",
+                "flex align-center cursor-pointer mr3",
                 { "text-brand-hover": !showButtons },
                 py != undefined ? `py${py}` : underlined ? "py2" : "pt1",
               )}

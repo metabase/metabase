@@ -14,7 +14,6 @@ import FixedHeaderGrid from "./FixedHeaderGrid.jsx";
 import { AutoSizer } from "react-virtualized";
 
 import { isAdminGroup } from "metabase/lib/groups";
-import { capitalize, pluralize } from "metabase/lib/formatting";
 import cx from "classnames";
 import _ from "underscore";
 
@@ -123,7 +122,7 @@ const EntityHeader = ({
         "align-center": !isColumn,
       })}
     >
-      <Icon name={icon} className="mr1" />
+      <Icon name={icon} className="ml3 mr2 text-light" />
       <div>
         <h4>{entity.name}</h4>
         {entity.subtitle && (
@@ -148,14 +147,6 @@ const EntityHeader = ({
         isLast={isLast}
       />
     )}
-  </div>
-);
-
-const CornerHeader = ({ grid }) => (
-  <div className="absolute bottom left right flex flex-column align-center pb1">
-    <div className="flex align-center">
-      <h3 className="ml1">{capitalize(pluralize(grid.type))}</h3>
-    </div>
   </div>
 );
 
@@ -488,9 +479,6 @@ const PermissionsGrid = ({
                 )}
               </div>
             )}
-            renderCorner={
-              showHeader ? () => <CornerHeader grid={grid} /> : undefined
-            }
           />
         )}
       </AutoSizer>

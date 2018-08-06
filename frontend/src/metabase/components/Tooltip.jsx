@@ -40,10 +40,15 @@ export default class Tooltip extends Component {
   }
 
   static propTypes = {
+    // the tooltip to show
     tooltip: PropTypes.node,
+    // the element to be tooltipped
     children: PropTypes.element.isRequired,
+    // Can be used to show / hide the tooltip based on outside conditions
+    // like a menu being open
     isEnabled: PropTypes.bool,
     verticalAttachments: PropTypes.array,
+    // Whether the tooltip should be shown
     isOpen: PropTypes.bool,
   };
 

@@ -5,12 +5,14 @@
             [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.api.common :refer [*current-user-id*]]
             [metabase.models
              [interface :as i]
              [permissions-group :as group]
              [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
-            [metabase.util :as u]
             [metabase.util
              [honeysql-extensions :as hx]
              [schema :as su]]
@@ -420,7 +422,12 @@
        :object   path)
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
-       (log/error (u/format-color 'red (tru "Failed to grant permissions: {0}" (.getMessage e))))))))
+       (log/error (u/format-color 'red (tru "Failed to grant permissions: {0}" (.getMessage e))))
+       ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
+       ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
+       ;; to pass when they shouldn't. Don't allow this during tests
+       (when config/is-test?
+         (throw e))))))
 
 (defn revoke-native-permissions!
   "Revoke all native query permissions for `group-or-id` to database with `database-id`."

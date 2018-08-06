@@ -23,7 +23,7 @@
              [field :refer [Field]]
              [humanization :as humanization]
              [permissions :as perms :refer [Permissions]]
-             [permissions-group :as perm-group]
+             [permissions-group :as perm-group :refer [PermissionsGroup]]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
              [pulse :refer [Pulse]]
              [query-execution :as query-execution :refer [QueryExecution]]
@@ -34,7 +34,8 @@
             [puppetlabs.i18n.core :refer [trs]]
             [toucan
              [db :as db]
-             [models :as models]])
+             [models :as models]]
+            [metabase.models.permissions-group :as group])
   (:import java.util.UUID))
 
 ;;; # Migration Helpers
@@ -344,7 +345,7 @@
 ;;
 ;; The user feedback we've received points to a UX that would do the following:
 ;;
-;; 1. Set permissions to the Root Collection to readwrite perms access for All User group.
+;; 1. Set permissions to the Root Collection to readwrite perms access for *all* Groups.
 ;;
 ;; 2. Create three new collections within the root collection: "Migrated dashboards," "Migrated pulses," and "Migrated
 ;;    questions."
@@ -356,20 +357,24 @@
 ;;    new collections.
 ;;
 (defmigration ^{:author "camsaul", :added "0.30.0"} add-migrated-collections
-  ;; 1. Grant Root Collection readwrite perms to All Users
-  (perms/grant-collection-readwrite-permissions! (perm-group/all-users) collection/root-collection)
-  ;; 2. Create the new collections.
-  (doseq [[model new-collection-name] {Dashboard (trs "Migrated Dashboards")
-                                       Pulse     (trs "Migrated Pulses")
-                                       Card      (trs "Migrated Questions")}
-          :when                       (db/exists? model :collection_id nil)
-          :let                        [new-collection (db/insert! Collection
-                                                        :name  new-collection-name
-                                                        :color "#509ee3")]] ; MB brand color
-    ;; 3. make sure the All Users group doesn't have any perms for this Collection.
-    (perms/revoke-collection-permissions! (perm-group/all-users) new-collection)
-    ;; 4. move everything not in this Collection to a new Collection
-    (log/info (trs "Moving instances of {0} that aren't in a Collection to {1} Collection {2}"
-                   (name model) new-collection-name (u/get-id new-collection)))
-    (db/update-where! model {:collection_id nil}
-      :collection_id (u/get-id new-collection))))
+  (let [non-admin-group-ids (db/select-ids PermissionsGroup :id [:not= (u/get-id (perm-group/admin))])]
+    ;; 1. Grant Root Collection readwrite perms to all Groups. Except for admin since they already have root (`/`)
+    ;; perms, and we don't want to put extra entries in there that confuse things
+    (doseq [group-id non-admin-group-ids]
+      (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))
+    ;; 2. Create the new collections.
+    (doseq [[model new-collection-name] {Dashboard (trs "Migrated Dashboards")
+                                         Pulse     (trs "Migrated Pulses")
+                                         Card      (trs "Migrated Questions")}
+            :when                       (db/exists? model :collection_id nil)
+            :let                        [new-collection (db/insert! Collection
+                                                          :name  new-collection-name
+                                                          :color "#509ee3")]] ; MB brand color
+      ;; 3. make sure the non-admin groups don't have any perms for this Collection.
+      (doseq [group-id non-admin-group-ids]
+        (perms/revoke-collection-permissions! group-id new-collection))
+      ;; 4. move everything not in this Collection to a new Collection
+      (log/info (trs "Moving instances of {0} that aren't in a Collection to {1} Collection {2}"
+                     (name model) new-collection-name (u/get-id new-collection)))
+      (db/update-where! model {:collection_id nil}
+        :collection_id (u/get-id new-collection)))))

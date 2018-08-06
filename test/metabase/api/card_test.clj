@@ -90,7 +90,7 @@
 
 
 (defn do-with-cards-in-a-collection [card-or-cards-or-ids grant-perms-fn! f]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       ;; put all the Card(s) in our temp `collection`
       (doseq [card-or-id (if (sequential? card-or-cards-or-ids)
@@ -284,7 +284,7 @@
                                        :date_joined  $
                                        :email        "rasta@metabase.com"
                                        :id           $})})
-    (tu/with-all-users-no-root-collection-perms
+    (tu/with-non-admin-groups-no-root-collection-perms
       (tt/with-temp* [Database   [db]
                       Table      [table {:db_id (u/get-id db)}]
                       Collection [collection]]
@@ -306,7 +306,7 @@
     :display_name "Count Chocula"
     :name         "count_chocula"
     :special_type "type/Number"}]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (let [metadata  [{:base_type    :type/Integer
                       :display_name "Count Chocula"
                       :name         "count_chocula"
@@ -332,7 +332,7 @@
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 1},
                    :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (let [metadata  [{:base_type    :type/Integer
                       :display_name "Count Chocula"
                       :name         "count_chocula"
@@ -353,7 +353,7 @@
 ;; Make sure we can create a Card with a Collection position
 (expect
   #metabase.models.card.CardInstance{:collection_id true, :collection_position 1}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tu/with-model-cleanup [Card]
       (let [card-name (tu/random-name)]
         (tt/with-temp Collection [collection]
@@ -366,7 +366,7 @@
 ;; ...but not if we don't have permissions for the Collection
 (expect
   nil
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tu/with-model-cleanup [Card]
       (let [card-name (tu/random-name)]
         (tt/with-temp Collection [collection]
@@ -420,7 +420,7 @@
 ;; Check that a user without permissions isn't allowed to fetch the card
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Database [db]
                     Table    [table {:db_id (u/get-id db)}]
                     Card     [card  {:dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
@@ -468,7 +468,7 @@
 ;; we shouldn't be able to update archived status if we don't have collection *write* perms
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection]
                     Card       [card {:collection_id (u/get-id collection)}]]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
@@ -575,7 +575,7 @@
 ;; ...we shouldn't be able to if we don't have permissions for the Collection
 (expect
   nil
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection]
                     Card       [card {:collection_id (u/get-id collection)}]]
       ((user->client :rasta) :put 403 (str "card/" (u/get-id card))
@@ -584,7 +584,7 @@
 
 (expect
   1
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection]
                     Card       [card {:collection_id (u/get-id collection), :collection_position 1}]]
       ((user->client :rasta) :put 403 (str "card/" (u/get-id card))
@@ -622,7 +622,7 @@
    "a" 2
    "b" 3
    "d" 4}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (with-ordered-items collection [Card a
                                       Card b
@@ -639,7 +639,7 @@
    "a" 2
    "b" 3
    "c" 4}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (with-ordered-items collection [Dashboard a
                                       Dashboard b
@@ -656,7 +656,7 @@
    "c" 2
    "d" 3
    "a" 4}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (with-ordered-items collection [Card      a
                                       Dashboard b
@@ -673,7 +673,7 @@
    "b" 2
    "c" 3
    "d" 4}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{coll-id :id :as collection}]
                     Card       [_ {:name "a", :collection_id coll-id, :collection_position 1}]
                     ;; Card b does not start with a collection_position
@@ -691,7 +691,7 @@
    "b" nil
    "c" 2
    "d" 3}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (with-ordered-items collection [Card      a
                                       Card      b
@@ -713,7 +713,7 @@
    {"e" 1
     "g" 2
     "h" 3}]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection-1]
                     Collection [collection-2]]
       (with-ordered-items collection-1 [Dashboard a
@@ -741,7 +741,7 @@
    {"e" 1
     "f" 2
     "g" 3}]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection-1]
                     Collection [collection-2]]
       (with-ordered-items collection-1 [Pulse     a
@@ -770,7 +770,7 @@
     "b" 2
     "c" 3
     "d" 4}]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (tu/with-model-cleanup [Card]
         (with-ordered-items collection [Dashboard b
@@ -796,7 +796,7 @@
     "b" 2
     "c" 3
     "d" 4}]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (tu/with-model-cleanup [Card]
         (with-ordered-items collection [Card      a
@@ -822,7 +822,7 @@
     "b" 2
     "c" 3
     "d" nil}]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (tu/with-model-cleanup [Card]
         (with-ordered-items collection [Pulse     a
@@ -844,7 +844,7 @@
    "c" 4
    "e" 5
    "f" 6}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (with-ordered-items collection [Dashboard a
                                       Dashboard b
@@ -1168,7 +1168,7 @@
 
 ;; Make sure we can create a card and specify its `collection_id` at the same time
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (tu/with-model-cleanup [Card]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -1181,7 +1181,7 @@
 ;; Make sure we card creation fails if we try to set a `collection_id` we don't have permissions for
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tu/with-model-cleanup [Card]
       (tt/with-temp Collection [collection]
         ((user->client :rasta) :post 403 "card"
@@ -1199,7 +1199,7 @@
 ;; Make sure we can still change *anything* for a Card if we don't have permissions for the Collection it belongs to
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection]
                     Card       [card       {:collection_id (u/get-id collection)}]]
       ((user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:name "Number of Blueberries Consumed Per Month"}))))
@@ -1208,7 +1208,7 @@
 ;; collection
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [original-collection]
                     Collection [new-collection]
                     Card       [card                {:collection_id (u/get-id original-collection)}]]
@@ -1219,7 +1219,7 @@
 ;; collection
 (expect
   "You don't have permissions to do that."
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [original-collection]
                     Collection [new-collection]
                     Card       [card                {:collection_id (u/get-id original-collection)}]]
@@ -1228,7 +1228,7 @@
 
 ;; But if we do have permissions for both, we should be able to change it.
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [original-collection]
                     Collection [new-collection]
                     Card       [card                {:collection_id (u/get-id original-collection)}]]
@@ -1300,7 +1300,7 @@
 (expect
   {:response    "You don't have permissions to do that."
    :collections [nil nil]}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection]
                     Card       [card-1]
                     Card       [card-2]]
@@ -1310,7 +1310,7 @@
 (expect
   {:response    "You don't have permissions to do that."
    :collections ["Horseshoe Collection" "Horseshoe Collection"]}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection {:name "Horseshoe Collection"}]
                     Card       [card-1     {:collection_id (u/get-id collection)}]
                     Card       [card-2     {:collection_id (u/get-id collection)}]]
@@ -1320,7 +1320,7 @@
 (expect
   {:response    "You don't have permissions to do that."
    :collections [nil nil]}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection]
                     Database   [database]
                     Table      [table      {:db_id (u/get-id database)}]
