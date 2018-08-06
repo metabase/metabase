@@ -40,6 +40,7 @@ export const GenericError = ({
 export const NotFound = () => (
   <ErrorPageWrapper>
     <EmptyState
+      illustrationElement={<img src="../app/assets/img/no_results.svg" />}
       title={t`We're a little lost...`}
       message={t`The page you asked for couldn't be found.`}
       link={Urls.question()}

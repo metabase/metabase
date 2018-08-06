@@ -44,29 +44,32 @@ const EmptyState = ({
   <Box>
     <Flex justify="center" flexDirection="column" align="center">
       {illustrationElement && <Box mb={[2, 3]}>{illustrationElement}</Box>}
-      <LegacyIcon {...rest} />
-      <LegacyImage {...rest} />
+      <Box>
+        <LegacyIcon {...rest} />
+        <LegacyImage {...rest} />
+      </Box>
       {title && <h2>{title}</h2>}
       {message && <Text color="medium">{message}</Text>}
     </Flex>
-    <Box mt={2}>
-      {action &&
-        link && (
-          <Link
-            to={link}
-            mt={4}
-            target={link.startsWith("http") ? "_blank" : ""}
-          >
-            <Button primary>{action}</Button>
-          </Link>
-        )}
-      {action &&
-        onActionClick && (
-          <Button onClick={onActionClick} primary mt={4}>
-            {action}
-          </Button>
-        )}
-    </Box>
+    {/* TODO - we should make this children or some other more flexible way to
+      add actions
+      */}
+    <Flex mt={2}>
+      <Flex align="center" ml="auto" mr="auto">
+        {action &&
+          link && (
+            <Link to={link} target={link.startsWith("http") ? "_blank" : ""}>
+              <Button primary>{action}</Button>
+            </Link>
+          )}
+        {action &&
+          onActionClick && (
+            <Button onClick={onActionClick} primary>
+              {action}
+            </Button>
+          )}
+      </Flex>
+    </Flex>
   </Box>
 );
 
