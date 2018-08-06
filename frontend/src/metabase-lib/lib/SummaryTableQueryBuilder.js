@@ -17,9 +17,13 @@ import {NativeDatasetQuery} from "metabase/meta/types/Card";
 import type {DatabaseId} from "metabase/meta/types/Database";
 import type {
   AggregationKey,
-  ValueSerialized
+  SummaryTableSettings
 } from "metabase/meta/types/summary_table";
-
+import {
+  canTotalize,
+  getAllAggregationKeysFlatten,
+  getQueryPlan
+} from "metabase/visualizations/lib/settings/summary_table";
 
 
 
@@ -28,7 +32,7 @@ export const getAggregationQueries = (visualizationSettings) => (card:Card, fiel
   query: DatasetQuery, parameters: Array<Parameter>
                         ) : DatasetQuery[] => {
 
-  const settings : ValueSerialized = visualizationSettings[COLUMNS_SETTINGS];
+  const settings : SummaryTableSettings = visualizationSettings[COLUMNS_SETTINGS];
 
   if(card.display !== SummaryTable.identifier || !isOk(settings))
     return [];
@@ -54,27 +58,12 @@ export const getAggregationQueries = (visualizationSettings) => (card:Card, fiel
 
   const createLiteral = (name) => ['field-literal', name, nameToTypeMap[name]];
   const createTotal = (name) => ['named', ["sum", createLiteral(name)], name];
-  const showTotalsFor = (name) => ((settings.columnNameToMetadata|| {})[name] || {}).showTotals;
 
-  const totals = settings.valuesSources.sort().filter(p => canTotalize(nameToTypeMap[p])).map(createTotal);
-  const groupingLiterals = settings.groupsSources.map(createLiteral);
-  const pivotLiteral = settings.columnsSource && createLiteral(settings.columnsSource);
-  const breakouts = pivotLiteral ? [ ... groupingLiterals, pivotLiteral] : [ ... groupingLiterals];
-  const breakouts1 = [pivotLiteral, ... groupingLiterals];
+  const queryPlan = getQueryPlan(settings);
+  const allKeys = getAllAggregationKeysFlatten(queryPlan, p => canTotalize(nameToTypeMap[p]));
 
-  // const basedQuery = );// buildQuery(query.clearBreakouts().clearAggregations(), totals);
-  const queriesWithBreakouts = breakouts.reduce(({acc, prev}, br) => {
-    const next = [... prev, br];
-    const newAcc = showTotalsFor(br[1]) ? [ wrapQuery(query, totals,prev), ...acc] : acc;
-    return {acc : newAcc, prev:next};
-  }, {acc:[], prev:[]});
-  const totalsForPivot = pivotLiteral && showTotalsFor(pivotLiteral[1]) ? breakouts1.reduce(({acc, prev}, br) => {
-    const next = [... prev, br];
-    const newAcc = showTotalsFor(br[1]) ? [ wrapQuery(query, totals,prev), ...acc] : acc;
-    return {acc : newAcc, prev:next};
-  }, {acc:[], prev:[]}) : {acc:[]};
-  //totalsForPivot last is grand total
-  return [...queriesWithBreakouts.acc, ...totalsForPivot.acc];
+  return allKeys.map(([groupings, aggregations]) =>
+    wrapQuery(query, aggregations.toArray().map(createTotal), groupings.toArray().map(createLiteral)));
 };
 
 const getNameToTypeMap = (fields) => {
@@ -87,7 +76,7 @@ const buildQuery = (baseQuery : StructuredQuery, aggregations) : StructuredQuery
   return res;
 };
 
-const isOk = (settings : ValueSerialized) : Boolean => {
+const isOk = (settings : SummaryTableSettings) : Boolean => {
   return settings
       && isOk2(settings.groupsSources)
       && isOk2(settings.valuesSources)
@@ -99,4 +88,4 @@ const isOk2 = (columns : string[]) : Boolean => {
 };
 
 
-const canTotalize = (type : string) => type ==='type/Integer' || type === 'type/Float' || type === 'type/Decimal';
+

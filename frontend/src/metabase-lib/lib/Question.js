@@ -470,18 +470,17 @@ export default class Question {
 
 
 
-    const getDatasetQueryResult = datasetQuery => {
+    const getDatasetQueryResult = async datasetQuery => {
       const datasetQueryWithParameters = {
         ...datasetQuery,
         parameters,
       };
 
-      return MetabaseApi.dataset(
+      return await MetabaseApi.dataset(
         datasetQueryWithParameters,
         cancelDeferred ? { cancelled: cancelDeferred.promise } : {},
       );
     };
-
 
     let mainQueryPromise : Promise<Dataset>;
 
@@ -496,7 +495,8 @@ export default class Question {
         cancelled: cancelDeferred.promise,
       });
     } else
-      mainQueryPromise = getDatasetQueryResult(this.atomicQueries()[0]);
+      mainQueryPromise = getDatasetQueryResult(this.atomicQueries().map(p => p.datasetQuery())[0]);
+
 
     return mainQueryPromise.then(async res => {
       const {data : {cols}} = res;

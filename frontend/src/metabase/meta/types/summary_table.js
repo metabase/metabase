@@ -2,12 +2,13 @@
 
 import type {ColumnName, DatasetData} from "metabase/meta/types/Dataset";
 import type {ColumnMetadata} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
+import {Set} from 'immutable';
 
-export type Groups = [ColumnName];
-export type Aggregations = [ColumnName];
+export type Groups = Set<ColumnName>;
+export type Aggregations = Set<ColumnName>;
 export type AggregationKey = [Groups, Aggregations];
 
-export type ValueSerialized = {
+export type SummaryTableSettings = {
   groupsSources: string[],
   columnsSource: ?string,
   valuesSources: string[],
@@ -16,3 +17,5 @@ export type ValueSerialized = {
 
 
 export type ResultProvider = AggregationKey => DatasetData;
+
+export type QueryPlan = {mainQueryTotalColumn?: Groups, groupings: Groups[][], aggregations : Aggregations };

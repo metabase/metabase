@@ -22,9 +22,12 @@ import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 import { GroupingManager } from "../lib/GroupingManager";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type {RawSeries} from "metabase/meta/types/Visualization";
-import type {ValueSerialized} from "metabase/meta/types/summary_table";
-import {settingsAreValid} from "metabase/visualizations/lib/settings/summary_table";
-import connect from "react-redux/es/connect/connect";
+import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
+import {
+  buildResultProvider,
+  getQueryPlan,
+  settingsAreValid
+} from "metabase/visualizations/lib/settings/summary_table";
 
 
 type Props = {
@@ -67,7 +70,7 @@ export default class SummaryTable extends Component {
       widget: SummaryTableColumnsSetting,
       isValid: ([{ card, data }]) =>
         settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
-      getDefault: ([{data : {columns}}]) : ValueSerialized =>
+      getDefault: ([{data : {columns}}]) : SummaryTableSettings =>
         {
           const gs = columns.slice(0, columns.length -1);
           const vs = columns.slice(columns.length -1);
@@ -121,8 +124,10 @@ export default class SummaryTable extends Component {
   }) {
  {
 
+   const aaaa = buildResultProvider(data, data.totalsData);
+   const bbbb =getQueryPlan(settings[COLUMNS_SETTINGS]);
    //todo: fix 30
-   const groupingManager = new GroupingManager(30, settings, [data,...(data.totalsData || [])]);
+   const groupingManager = new GroupingManager(30, settings, data.cols, aaaa, bbbb);
 
 
    this.setState({

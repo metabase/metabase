@@ -14,7 +14,7 @@ import {SortableContainer, SortableElement, arrayMove} from "react-sortable-hoc"
 
 import type {ColumnName} from "metabase/meta/types/Dataset";
 import {getColumnsFromSettings} from "metabase/visualizations/lib/settings/summary_table";
-import type {ValueSerialized} from "metabase/meta/types/summary_table";
+import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
 
 
 type ArrayMoveArg ={oldIndex : number, newIndex : number};
@@ -45,7 +45,7 @@ type DraggableItem = {
 }
 
 type Props = {
-  value: ValueSerialized,
+  value: SummaryTableSettings,
   columnNames: { [key: string]: string },
 
   onChange: ValueSerializedSupertype => void
@@ -67,21 +67,21 @@ type ValueSerializedSupertype = {
 }
 
 
-const getUnusedColumns = (settings: ValueSerialized, columnNames): string[] => {
+const getUnusedColumns = (settings: SummaryTableSettings, columnNames): string[] => {
   const allColumns = getColumnsFromSettings(settings);
   return Object.getOwnPropertyNames(columnNames)
     .filter(p => !allColumns.includes(p));
 };
 
 
-const emptyStateSerialized: ValueSerialized = ({
+const emptyStateSerialized: SummaryTableSettings = ({
   groupsSources: [],
   columnsSource: null,
   valuesSources: [],
   columnNameToMetadata: {}
 });
 
-const convertValueToState = (stateSerialized: ValueSerialized, columnNames) : State => {
+const convertValueToState = (stateSerialized: SummaryTableSettings, columnNames) : State => {
   const fatStateSerialized = {...emptyStateSerialized, ...stateSerialized};
   const {groupsSources, columnsSource, valuesSources, columnNameToMetadata} = fatStateSerialized;
   const unusedColumns = getUnusedColumns(fatStateSerialized, columnNames);

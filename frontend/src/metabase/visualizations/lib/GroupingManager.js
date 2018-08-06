@@ -1,10 +1,17 @@
 import {Row} from "metabase/meta/types/Dataset";
 import _ from 'lodash';
+import flatMap from 'lodash.flatmap';
+import mapKeys from 'lodash.mapkeys';
+import mapValues from 'lodash.mapvalues';
 import {
   COLUMNS_SETTINGS,
 } from "metabase/visualizations/visualizations/SummaryTable";
-import type {ValueSerialized} from "metabase/meta/types/summary_table";
-import {getColumnsFromSettings} from "metabase/visualizations/lib/settings/summary_table";
+import type {AggregationKey, QueryPlan, ResultProvider, SummaryTableSettings} from "metabase/meta/types/summary_table";
+import {
+  getAllQueryKeys,
+  getColumnsFromSettings, mainKey
+} from "metabase/visualizations/lib/settings/summary_table";
+import type {ColumnName, Column} from "metabase/meta/types/Dataset";
 
 type ColumnAcc = {
   prevRow : Row,
@@ -23,61 +30,27 @@ export class GroupingManager {
   valueColsLen = 1;
 
 
-  constructor( defaultRowHeight: Number, settings, rawSeries) {
+  constructor( defaultRowHeight: Number, settings, rawCols, rp : ResultProvider, qp : QueryPlan) {
     this.defaultRowHeight = defaultRowHeight;
-    const rawCols = rawSeries[0].cols;
     this.settings = settings;
-    const datas = rawSeries;
     const summaryTableSettings = settings[COLUMNS_SETTINGS];
 
-    const summarySettings: ValueSerialized = settings[COLUMNS_SETTINGS];
+    const summarySettings: SummaryTableSettings = settings[COLUMNS_SETTINGS];
     const isPivoted = summarySettings.columnsSource;
-
-
-    let mappedRows = undefined;
-    let cols = undefined;
-    if(isPivoted){
-      const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length + (isPivoted ? 1 : 0)).keys()];
-      const sortOrderMethod = columnsIndexesForGrouping.map(funGen);
-      let normalizedRows = datas.map(p => normalizeRows(settings, p))
-
-      if((summarySettings.columnNameToMetadata[summarySettings.groupsSources] || {}).showTotals)
-      {
-        const totalLen = summarySettings.groupsSources.filter(p => (summarySettings.columnNameToMetadata[p] || {}).showTotals).length + 1;
-        const suff = [...normalizedRows.slice(normalizedRows.length - totalLen)];
-        normalizedRows = [...normalizedRows.slice(0, normalizedRows.length - totalLen)];//+1 == mainRes, +1 == pivot
-
-
-        for(let i = 2; i < normalizedRows.length; i++)
-        {
-          normalizedRows[i] = [...normalizedRows[i], ...suff[i-2]];
-
-        }
-
-        if(normalizedRows.length > 1){
-          //normalizedRows[1] - grand total column
-          normalizedRows[0] = [...normalizedRows[0], ... normalizedRows[1]]
-          normalizedRows[1] = [];
-        }
-      }
-
-      mappedRows = normalizedRows.map(rows => pivotRows(rows, sortOrderMethod))
-    } else {
-      mappedRows = datas.map(p => normalizeRows(settings, p));
-
-      const tmp = getAvailableColumnIndexes(settings, rawCols);
-      cols = tmp.map(p => rawCols[p[0]]).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
-      this.probeCols = cols;
-    }
-    const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length).keys()];
+    const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length + (isPivoted ? 1 : 0)).keys()];
     const sortOrderMethod = columnsIndexesForGrouping.map(funGen);
 
-    const fooBar = ([...(summarySettings.groupsSources || []),...(summarySettings.columnsSource ? [summarySettings.columnsSource] : [])]).map((p, index) => [(summarySettings.columnNameToMetadata[p] || {}).showTotals,index]).filter(p => p[0]).map(p => p[1]).reverse();
+    const normalizedRows = getAllQueryKeys(qp, canTotalizeBuilder(rawCols))
+      .map(keys =>[flatMap(keys , key => normalizeRows(settings, rp(key))), keys])
+      .map(res => isPivoted ? [pivotRows(res[0], sortOrderMethod), res[1]] : res)
+      .map(([rows, keys]) => tryAddColumnTotalIndex(rows, keys, summarySettings.columnsSource));
 
-    mappedRows = mappedRows.map((rs, index) => rs.map(r => ({__proto__ : r, isTotalColumnIndex :fooBar[index - 1]})));
-
-    const rows = [].concat(...mappedRows);
-
+    const tmp = getAvailableColumnIndexes(settings, rawCols);
+    let cols = tmp.map(p => rawCols[p[0]]).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
+    this.probeCols = cols;
+    //
+    const rows = [].concat(...normalizedRows);
+    //
     this.rows = _.sortBy(rows, sortOrderMethod);
     const foo = getFirstInGroupMap(this.rows);
     const res = columnsIndexesForGrouping.map(foo).map(p => p.firstInGroupIndexes);
@@ -165,6 +138,12 @@ export class GroupingManager {
 
 }
 
+
+const canTotalizeBuilder = (cols : Column[]): (ColumnName => boolean) =>{
+  const columnNameToType = cols.reduce((acc, {name, base_type})=>({...acc, [name]: base_type}), {});
+  return p => canTotalize(columnNameToType[p]);
+};
+
 const getValueByIndex = (index : Number) => (row ) => row[index];
 const getPivotValue = (key, offset ) => (index: Number) => row => (row.piv[key] || [])[index + offset];
 
@@ -242,6 +221,18 @@ const getAvailableColumnIndexes = (settings,  cols) => getColumnsFromSettings(se
 const normalizeRows = (settings, { cols, rows }) => {
   const columnIndexes = getAvailableColumnIndexes(settings, cols).map(p => p[0]);
   return rows.map(row => columnIndexes.map(i => row[i]));
+};
+
+const tryAddColumnTotalIndex = (rows : Row[], keys : AggregationKey[], columnSource : string) : Row[] =>
+{
+  if(keys.includes(mainKey))
+    return rows;
+
+  const groupings = keys[0][0];
+  const pivotCorrection = groupings.has(columnSource) ? 1 : 0;
+
+  const isTotalColumnIndex = groupings.size - pivotCorrection;
+  return rows.map(row => ({__proto__: row, isTotalColumnIndex}));
 };
 
 
