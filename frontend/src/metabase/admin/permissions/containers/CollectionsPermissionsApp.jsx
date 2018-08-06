@@ -14,7 +14,11 @@ import {
   getSaveError,
   getDiff,
 } from "../selectors";
-import { updatePermission, savePermissions } from "../permissions";
+import {
+  updatePermission,
+  savePermissions,
+  loadPermissions,
+} from "../permissions";
 import { goBack, push } from "react-router-redux";
 
 const mapStateToProps = (state, props) => {
@@ -30,7 +34,7 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   onUpdatePermission: updatePermission,
   onSave: savePermissions,
-  onCancel: () => (window.history.length > 1 ? goBack() : push("/questions")),
+  onCancel: loadPermissions,
   onChangeTab: tab => push(`/admin/permissions/${tab}`),
 };
 
