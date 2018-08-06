@@ -632,9 +632,9 @@
   ;; You also can't archive a Personal Collection
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     (throw
-     (ex-info (tru "You cannot archive a Personal Collection!")
+     (ex-info (tru "You cannot archive a Personal Collection.")
        {:status-code 400
-        :errors      {:archived (tru "You cannot archive a Personal Collection!")}}))))
+        :errors      {:archived (tru "You cannot archive a Personal Collection.")}}))))
 
 (s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
