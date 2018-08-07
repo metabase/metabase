@@ -13,7 +13,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#\n"
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-08-07 14:38-0700\n"
+"POT-Creation-Date: 2018-08-07 14:49-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2306,7 +2306,7 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/components/ArchiveCollectionModal.jsx:49
-#: frontend/src/metabase/components/CollectionLanding.jsx:580
+#: frontend/src/metabase/components/CollectionLanding.jsx:587
 #: frontend/src/metabase/components/EntityItem.jsx:54
 #: frontend/src/metabase/components/EntityMenu.info.js:31
 #: frontend/src/metabase/components/EntityMenu.info.js:87
@@ -2432,59 +2432,59 @@ msgstr ""
 msgid "Questions are a saved look at your data."
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:239
+#: frontend/src/metabase/components/CollectionLanding.jsx:246
 msgid "Edit the permissions for this collection"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:268
+#: frontend/src/metabase/components/CollectionLanding.jsx:275
 msgid "Pins"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:322
+#: frontend/src/metabase/components/CollectionLanding.jsx:329
 msgid "Drag something here to pin it to the top"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:334
+#: frontend/src/metabase/components/CollectionLanding.jsx:341
 #: frontend/src/metabase/home/containers/SearchApp.jsx:35
 #: frontend/src/metabase/home/containers/SearchApp.jsx:96
 msgid "Collections"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:404
-#: frontend/src/metabase/components/CollectionLanding.jsx:427
+#: frontend/src/metabase/components/CollectionLanding.jsx:411
+#: frontend/src/metabase/components/CollectionLanding.jsx:434
 msgid "Drag here to un-pin"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:462
+#: frontend/src/metabase/components/CollectionLanding.jsx:469
 msgid "{0} item selected"
 msgid_plural "{0} items selected"
 msgstr[0] ""
 msgstr[1] ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:480
+#: frontend/src/metabase/components/CollectionLanding.jsx:487
 msgid "Move {0} items?"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:481
+#: frontend/src/metabase/components/CollectionLanding.jsx:488
 msgid "Move \"{0}\"?"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:587
+#: frontend/src/metabase/components/CollectionLanding.jsx:594
 #: frontend/src/metabase/components/EntityMenu.info.js:29
 #: frontend/src/metabase/components/EntityMenu.info.js:85
 #: frontend/src/metabase/containers/CollectionMoveModal.jsx:78
 msgid "Move"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:649
+#: frontend/src/metabase/components/CollectionLanding.jsx:656
 msgid "Edit this collection"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:657
+#: frontend/src/metabase/components/CollectionLanding.jsx:664
 msgid "Archive this collection"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:672
+#: frontend/src/metabase/components/CollectionLanding.jsx:679
 msgid "View the archive"
 msgstr ""
 
