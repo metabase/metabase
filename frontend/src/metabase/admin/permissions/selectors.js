@@ -750,8 +750,15 @@ export const getCollectionsPermissionsGrid = createSelector(
               OPTION_NONE,
             ];
           },
-          actions(groupId, entityId) {
-            return [TogglePropagateAction];
+          actions(groupId, { collectionId }) {
+            const collection = _.findWhere(collections, {
+              id: collectionId,
+            });
+            if (collection.children.length > 0) {
+              return [TogglePropagateAction];
+            } else {
+              return [];
+            }
           },
           getter(groupId, entityId) {
             return getCollectionPermission(permissions, groupId, entityId);
