@@ -730,7 +730,7 @@ export const getCollectionsPermissionsGrid = createSelector(
         }
         parent = parent.parent;
       }
-      crumbs.unshift(["Collections", "/admin/permissions/collections"]);
+      crumbs.unshift([t`Collections`, "/admin/permissions/collections"]);
     }
 
     const defaultGroup = _.find(groups, isDefaultGroup);
