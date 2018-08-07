@@ -14,7 +14,7 @@ import Modal from "metabase/components/Modal.jsx";
 import FixedHeaderGrid from "./FixedHeaderGrid.jsx";
 import { AutoSizer } from "react-virtualized";
 
-import { isAdminGroup } from "metabase/lib/groups";
+import { isAdminGroup, getGroupNameLocalized } from "metabase/lib/groups";
 import cx from "classnames";
 import _ from "underscore";
 
@@ -90,7 +90,7 @@ const GroupHeader = ({
 }) => (
   <div>
     <h4 className="text-centered full my1 flex layout-centered">
-      {group.name}
+      {getGroupNameLocalized(group)}
       {group.tooltip && (
         <Tooltip tooltip={group.tooltip} maxWidth="24em">
           <Icon className="ml1" name="question" />

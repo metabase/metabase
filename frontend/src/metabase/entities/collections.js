@@ -79,6 +79,7 @@ const Collections = createEntity({
     ) => [
       {
         name: "name",
+        title: t`Name`,
         placeholder: "My new fantastic collection",
         validate: name =>
           (!name && t`Name is required`) ||
@@ -86,19 +87,21 @@ const Collections = createEntity({
       },
       {
         name: "description",
+        title: t`Description`,
         type: "text",
         placeholder: "It's optional but oh, so helpful",
         normalize: description => description || null, // expected to be nil or non-empty string
       },
       {
         name: "color",
+        title: t`Color`,
         type: "hidden",
         initial: () => colors.brand,
         validate: color => !color && t`Color is required`,
       },
       {
         name: "parent_id",
-        title: "Collection it's saved in",
+        title: t`Collection it's saved in`,
         type: "collection",
       },
     ],

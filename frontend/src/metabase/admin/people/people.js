@@ -9,6 +9,7 @@ import {
 import { normalize, schema } from "normalizr";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { isMetaBotGroup } from "metabase/lib/groups";
 
 import { SessionApi, UserApi, PermissionsApi } from "metabase/services";
 
@@ -215,7 +216,7 @@ const groups = handleActions(
   {
     [LOAD_GROUPS]: {
       next: (state, { payload }) =>
-        payload && payload.filter(group => group.name !== "MetaBot"),
+        payload && payload.filter(group => !isMetaBotGroup(group)),
     },
   },
   null,
