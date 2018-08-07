@@ -1,14 +1,11 @@
 (ns metabase.automagic-dashboards.comparison
-  (:require [clojure.string :as str]
-            [medley.core :as m]
+  (:require [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [core :refer [->root ->field automagic-analysis ->related-entity cell-title source-name capitalize-first encode-base64-json metric-name]]
              [filters :as filters]
              [populate :as populate]]
-            [metabase.models
-             [metric :refer [Metric]]
-             [table :refer [Table]]]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses segment-parse-filter]]
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
