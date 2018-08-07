@@ -3142,7 +3142,6 @@ msgid "Add this question to a dashboard"
 msgstr "Añadir esta pregunta a un cuadro de mando"
 
 #: frontend/src/metabase/containers/AddToDashSelectDashModal.jsx:61
-#, fuzzy
 msgid "Create a new dashboard"
 msgstr "Crea un Cuadro de Mando"
 
@@ -3199,9 +3198,8 @@ msgid "We're a little lost..."
 msgstr "Estamos un poco perdidos..."
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:45
-#, fuzzy
 msgid "The page you asked for couldn't be found."
-msgstr "La página que has pedido no se pudo encontrar"
+msgstr "La página que pidió no ha sido encontrada."
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:54
 msgid "Sorry, you don’t have permission to see that."
@@ -7976,9 +7974,8 @@ msgid "Visible fields"
 msgstr "Campos visibles"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:93
-#, fuzzy
 msgid "Formatting"
-msgstr "Estilo de formato"
+msgstr "Formato"
 
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:167
 msgid "Write here, and use Markdown if you''d like"
@@ -8870,34 +8867,28 @@ msgid "Looks like the username or password is incorrect."
 msgstr "Parece que el nombre de usuario o la contraseña son incorrectos."
 
 #: src/metabase/driver.clj
-#, fuzzy
 msgid "Host"
-msgstr "Servidor SMTP"
+msgstr "Servidor"
 
 #: src/metabase/driver.clj
-#, fuzzy
 msgid "Port"
-msgstr "Puerto SMTP"
+msgstr "Puerto"
 
 #: src/metabase/driver.clj
-#, fuzzy
 msgid "Database username"
-msgstr "Bases de Datos"
+msgstr ""
 
 #: src/metabase/driver.clj
-#, fuzzy
 msgid "What username do you use to login to the database?"
-msgstr "¿Cómo te gustaría llamar esta base de datos?"
+msgstr ""
 
 #: src/metabase/driver.clj
-#, fuzzy
 msgid "Database password"
-msgstr "Crea una contraseña"
+msgstr ""
 
 #: src/metabase/driver.clj
-#, fuzzy
 msgid "Database name"
-msgstr "Base de Datos"
+msgstr ""
 
 #: src/metabase/driver.clj
 msgid "birds_of_the_world"
@@ -8956,18 +8947,16 @@ msgid "BigQuery statements can't be parameterized!"
 msgstr "Los comandos BigQuery no soportan parámetros!"
 
 #: src/metabase/driver/bigquery.clj
-#, fuzzy
 msgid "Project ID"
-msgstr "objeto"
+msgstr ""
 
 #: src/metabase/driver/bigquery.clj
 msgid "praxis-beacon-120871"
 msgstr ""
 
 #: src/metabase/driver/bigquery.clj
-#, fuzzy
 msgid "Dataset ID"
-msgstr "Base de Datos"
+msgstr ""
 
 #: src/metabase/driver/bigquery.clj
 msgid "toucanSightings"
@@ -8982,9 +8971,8 @@ msgid "Client Secret"
 msgstr ""
 
 #: src/metabase/driver/bigquery.clj src/metabase/driver/googleanalytics.clj
-#, fuzzy
 msgid "Auth Code"
-msgstr "Código"
+msgstr ""
 
 #: src/metabase/driver/crate.clj
 msgid "Hosts"
@@ -9019,9 +9007,8 @@ msgstr ""
 "usuario de base de datos predeterminado (administrador)."
 
 #: src/metabase/driver/h2.clj
-#, fuzzy
 msgid "Connection String"
-msgstr "Conexión"
+msgstr ""
 
 #: src/metabase/driver/h2.clj
 msgid "Users/camsaul/bird_sightings/toucans"
@@ -9032,9 +9019,8 @@ msgid "carrierPigeonDeliveries"
 msgstr ""
 
 #: src/metabase/driver/mongo.clj
-#, fuzzy
 msgid "Authentication Database"
-msgstr "Autenticación"
+msgstr ""
 
 #: src/metabase/driver/mongo.clj
 msgid "Optional database to use when authenticating"
@@ -9061,14 +9047,12 @@ msgid "Oracle service name"
 msgstr ""
 
 #: src/metabase/driver/oracle.clj
-#, fuzzy
 msgid "Optional TNS alias"
-msgstr "Cláusulas opcionales"
+msgstr ""
 
 #: src/metabase/driver/presto.clj
-#, fuzzy
 msgid "hive"
-msgstr "Archivar"
+msgstr ""
 
 #: src/metabase/driver/redshift.clj
 msgid "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
@@ -9079,9 +9063,8 @@ msgid "toucan_sightings"
 msgstr ""
 
 #: src/metabase/driver/sparksql.clj
-#, fuzzy
 msgid "default"
-msgstr "Por defecto"
+msgstr "por defecto"
 
 #: src/metabase/driver/sparksql.clj
 msgid ""
@@ -9100,9 +9083,8 @@ msgid "Successfully registered metabase.driver.FixedHiveDriver with JDBC."
 msgstr "Se ha registrado metabase.driver.FixedHiveDriver con JDBC."
 
 #: src/metabase/driver/sqlite.clj
-#, fuzzy
 msgid "Filename"
-msgstr "Nombre de campo"
+msgstr ""
 
 #: src/metabase/driver/sqlite.clj
 msgid "/home/camsaul/toucan_sightings.sqlite 😋"
@@ -9113,9 +9095,8 @@ msgid "BirdsOfTheWorld"
 msgstr ""
 
 #: src/metabase/driver/sqlserver.clj
-#, fuzzy
 msgid "Database instance name"
-msgstr "Sincronizando Base de Datos"
+msgstr ""
 
 #: src/metabase/driver/sqlserver.clj
 msgid "N/A"
