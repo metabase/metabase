@@ -3,7 +3,7 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
-             [core :refer [->root ->field automagic-analysis ->related-entity cell-title source-name capitalize-first encode-base64-json]]
+             [core :refer [->root ->field automagic-analysis ->related-entity cell-title source-name capitalize-first encode-base64-json metric-name]]
              [filters :as filters]
              [populate :as populate]]
             [metabase.models
@@ -151,10 +151,8 @@
 (defn- series-labels
   [card]
   (get-in card [:visualization_settings :graph.series_labels]
-          (for [[op & args] (qp.util/get-in-normalized card [:dataset_query :query :aggregation])]
-            (if (= (qp.util/normalize-token op) :metric)
-              (-> args first Metric :name)
-              (-> op name str/capitalize)))))
+          (map (comp capitalize-first metric-name)
+               (qp.util/get-in-normalized card [:dataset_query :query :aggregation]))))
 
 (defn- unroll-multiseries
   [card]
