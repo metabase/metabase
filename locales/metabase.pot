@@ -13,7 +13,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#\n"
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-08-07 12:20-0700\n"
+"POT-Creation-Date: 2018-08-07 14:38-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -5310,8 +5310,17 @@ msgstr ""
 
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:322
 #: frontend/src/metabase/visualizations/components/LineAreaBarChart.jsx:102
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:55
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:92
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:131
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:58
+#: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:66
+#: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:73
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:54
+#: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:61
+#: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:66
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:60
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:72
 msgid "Data"
 msgstr ""
 
@@ -7145,6 +7154,25 @@ msgstr ""
 msgid "Bubble size"
 msgstr ""
 
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:156
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:169
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:177
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:200
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:206
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:217
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:233
+#: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:81
+#: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:71
+#: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:76
+#: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:82
+#: frontend/src/metabase/visualizations/visualizations/Progress.jsx:41
+#: frontend/src/metabase/visualizations/visualizations/Progress.jsx:47
+#: frontend/src/metabase/visualizations/visualizations/Text.jsx:72
+#: frontend/src/metabase/visualizations/visualizations/Text.jsx:85
+#: frontend/src/metabase/visualizations/visualizations/Text.jsx:98
+msgid "Display"
+msgstr ""
+
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:161
 #: frontend/src/metabase/visualizations/visualizations/LineChart.jsx:17
 msgid "Line"
@@ -7201,6 +7229,17 @@ msgstr ""
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:225
 msgid "Linear Interpolated"
+msgstr ""
+
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:283
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:316
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:329
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:344
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:356
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:362
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:370
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:400
+msgid "Axes"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:284
@@ -7264,6 +7303,14 @@ msgstr ""
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:401
 msgid "Use a split y-axis when necessary"
+msgstr ""
+
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:407
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:413
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:422
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:428
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:437
+msgid "Labels"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:408
@@ -7516,6 +7563,10 @@ msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:73
 msgid "Visible fields"
+msgstr ""
+
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:93
+msgid "Formatting"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:167
