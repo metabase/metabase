@@ -186,10 +186,17 @@ class DefaultLanding extends React.Component {
       unpinnedItems = unpinned.filter(u => u.model === location.query.type);
     }
 
-    const collectionIsEmpty = !unpinned.length > 0 && !collections.length > 0;
+    const collectionIsEmpty =
+      !unpinned.length > 0 && !collections.length > 0 && !pinned.length > 0;
     const collectionHasPins = pinned.length > 0;
     const collectionHasItems = unpinned.length > 0;
 
+    const showSidebar =
+      // if the user has write permissions or if there are collections then show the sidebar
+      (collection.can_write || collections.length > 0) &&
+      // there should also be at least one item, otherwise we have a different
+      // new collection CTA
+      !collectionIsEmpty;
     return (
       <Box>
         <Box>
@@ -326,8 +333,8 @@ class DefaultLanding extends React.Component {
               )}
               <Box pt={[1, 2]} px={[2, 4]}>
                 <Grid>
-                  <GridItem w={collectionWidth}>
-                    {!collectionIsEmpty && (
+                  {showSidebar && (
+                    <GridItem w={collectionWidth}>
                       <Box pr={2} className="relative">
                         <Box py={2}>
                           <CollectionSectionHeading>
@@ -342,8 +349,8 @@ class DefaultLanding extends React.Component {
                           w={collectionGridSize}
                         />
                       </Box>
-                    )}
-                  </GridItem>
+                    </GridItem>
+                  )}
                   {collectionHasItems && (
                     <GridItem w={itemWidth}>
                       <Box>
