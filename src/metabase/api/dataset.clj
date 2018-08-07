@@ -123,7 +123,9 @@
   (let [query (json/parse-string query keyword)]
     (api/read-check Database (:database query))
     (as-format export-format
-      (qp/process-query-and-save-execution! (dissoc query :constraints)
+      (qp/process-query-and-save-execution! (-> query
+                                                (dissoc :constraints)
+                                                (assoc-in [:middleware :skip-results-metadata?] true))
         {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
 
 

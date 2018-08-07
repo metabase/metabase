@@ -555,10 +555,11 @@
                   (u/emoji "💾"))
         ttl-seconds))))
 
-(defn- query-for-card [card parameters constraints]
+(defn- query-for-card [card parameters constraints middleware]
   (let [query (assoc (:dataset_query card)
                 :constraints constraints
-                :parameters  parameters)
+                :parameters  parameters
+                :middleware  middleware)
         ttl   (when (public-settings/enable-query-caching)
                 (or (:cache_ttl card)
                     (query-magic-ttl query)))]
@@ -567,12 +568,12 @@
 (defn run-query-for-card
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
   {:style/indent 1}
-  [card-id & {:keys [parameters constraints context dashboard-id]
+  [card-id & {:keys [parameters constraints context dashboard-id middleware]
               :or   {constraints qp/default-query-constraints
                      context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (api/read-check (Card card-id))
-        query   (query-for-card card parameters constraints)
+        query   (query-for-card card parameters constraints middleware)
         options {:executed-by  api/*current-user-id*
                  :context      context
                  :card-id      card-id
@@ -598,7 +599,8 @@
       (run-query-for-card card-id
         :parameters  (json/parse-string parameters keyword)
         :constraints nil
-        :context     (dataset-api/export-format->context export-format)))))
+        :context     (dataset-api/export-format->context export-format)
+        :middleware  {:skip-results-metadata? true}))))
 
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
