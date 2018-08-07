@@ -171,8 +171,7 @@ export const ExploreOption = ({ option }: { option: Candidate }) => (
       <Icon name="bolt" size={20} className="flex-no-shrink text-white" />
     </Flex>
     <div>
-      {t`A look at your`}{" "}
-      <span className="text-bold text-dark">{option.title}</span>
+      {t`A look at your`} <span className="text-bold">{option.title}</span>
     </div>
   </Link>
 );
