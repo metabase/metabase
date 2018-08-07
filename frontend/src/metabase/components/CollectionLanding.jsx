@@ -197,18 +197,12 @@ class DefaultLanding extends React.Component {
     const collectionHasPins = pinned.length > 0;
     const collectionHasItems = unpinned.length > 0;
 
-    let showSidebar = false;
-
-    if (
+    const showSidebar =
       // if the user has write permissions or if there are collections then show the sidebar
       (collection.can_write || collections.length > 0) &&
       // there should also be at least one item, otherwise we have a different
       // new collection CTA
-      collectionHasItems
-    ) {
-      showSidebar = true;
-    }
-
+      !collectionIsEmpty;
     return (
       <Box>
         <Box>
