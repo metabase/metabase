@@ -1,0 +1,12 @@
+{
+  "engine": "postgres",
+  "name": "discovery",
+  "details": {
+      "host": "pg-0001.postgrestls.mesos",
+      "port": 5432,
+      "dbname": "pruebadiscovery",
+      "user": "crossdata-1",
+      "additional-options": "ssl=true&sslmode=verify-full&sslcert=/root/kms/crossdata-1.pem&sslkey=/root/kms/crossdata-1.pk8&sslrootcert=/root/kms/root.pem",
+      "tunnel-port": 22
+  }
+}

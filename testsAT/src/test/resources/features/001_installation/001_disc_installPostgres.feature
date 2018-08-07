@@ -11,7 +11,7 @@ Feature: Install Postgres for Discovery
   @runOnEnv(DISC_VERSION=0.28.9)
   Scenario: [Basic Installation Postgres Dependencies][01] Check PostgresMD5
     Given I open a ssh connection to '${DCOS_CLI_HOST:-dcos-cli.demo.stratio.com}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
-    Then in less than '600' seconds, checking each '20' seconds, the command output 'dcos task | grep ${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc} | grep R | wc -l' contains '1'
+    Then in less than '600' seconds, checking each '20' seconds, the command output 'dcos task | grep ^${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc} | grep R | wc -l' contains '1'
     And in less than '600' seconds, checking each '20' seconds, the command output 'dcos marathon task list ${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc} | grep ${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc} | awk '{print $2}'' contains 'True'
     When I run 'dcos marathon task list ${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc} | grep ${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc} | awk '{print $5}'' in the ssh connection and save the value in environment variable 'postgresMD5_marathonId'
     Then in less than '600' seconds, checking each '20' seconds, the command output 'dcos marathon task show !{postgresMD5_marathonId} | grep TASK_RUNNING | wc -l' contains '1'
@@ -26,7 +26,7 @@ Feature: Install Postgres for Discovery
   @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
   Scenario: [Basic Installation Postgres Dependencies][01] Check PostgresTLS
     Given I open a ssh connection to '${DCOS_CLI_HOST:-dcos-cli.demo.stratio.com}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
-    Then in less than '600' seconds, checking each '20' seconds, the command output 'dcos task | grep ${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls} | grep R | wc -l' contains '1'
+    Then in less than '600' seconds, checking each '20' seconds, the command output 'dcos task | grep ^${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls} | grep R | wc -l' contains '1'
     And in less than '600' seconds, checking each '20' seconds, the command output 'dcos marathon task list ${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls} | grep ${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls} | awk '{print $2}'' contains 'True'
     When I run 'dcos marathon task list ${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls} | grep ${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls} | awk '{print $5}'' in the ssh connection and save the value in environment variable 'postgresTLS_marathonId'
     Then in less than '600' seconds, checking each '20' seconds, the command output 'dcos marathon task show !{postgresTLS_marathonId} | grep TASK_RUNNING | wc -l' contains '1'
@@ -49,8 +49,8 @@ Feature: Install Postgres for Discovery
   @runOnEnv(DISC_VERSION=0.29.0)
   Scenario: [Basic Installation Postgres Dependencies][02] Create database for Discovery on Postgrestls
 #    Given I securely send requests to '${BOOTSTRAP_IP}:443'
-    Given I set sso token using host '${CLUSTER_SSO:-nightly.labs.stratio.com}' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
-    And I securely send requests to '${CLUSTER_SSO:-nightly.labs.stratio.com}:443'
+    Given I set sso token using host '${CLUSTER_ID:-nightly}.labs.stratio.com' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
+    And I securely send requests to '${CLUSTER_ID:-nightly}.labs.stratio.com:443'
     When in less than '300' seconds, checking each '20' seconds, I send a 'GET' request to '/exhibitor/exhibitor/v1/explorer/node-data?key=%2Fdatastore%2Fcommunity%2F${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls}%2Fplan-v2-json&_=' so that the response contains 'str'
     And the service response status must be '200'
     And I save element '$.str' in environment variable 'exhibitor_answer'
@@ -66,13 +66,15 @@ Feature: Install Postgres for Discovery
     When I run 'docker ps -q | xargs -n 1 docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}} {{ .Name }}' | sed 's/ \// /'| grep !{pgIPCalico} | awk '{print $2}'' in the ssh connection and save the value in environment variable 'postgresDocker'
     When I run 'docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U postgres -c "CREATE DATABASE ${DISCOVERY_DATASTORE_DB:-discovery}"' in the ssh connection
     Then the command output contains 'CREATE DATABASE'
+    When I run 'docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U postgres -c "CREATE DATABASE ${DISCOVERY_DATA_DB:-pruebadiscovery}"' in the ssh connection
+    Then the command output contains 'CREATE DATABASE'
     When I run 'docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U postgres -c "CREATE ROLE \"${DISCOVERY_TENANT_NAME:-crossdata-1}\" with password '${DISCOVERY_DATASTORE_PASSWORD:-stratio}' SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS LOGIN"' in the ssh connection
     Then the command output contains 'CREATE ROLE'
 
   @runOnEnv(DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
   Scenario: [Basic Installation Postgres Dependencies][02] Create database for Discovery on Postgrestls
-    Given I set sso token using host '${CLUSTER_SSO:-nightly.labs.stratio.com}' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
-    And I securely send requests to '${CLUSTER_SSO:-nightly.labs.stratio.com}:443'
+    Given I set sso token using host '${CLUSTER_ID:-nightly}.labs.stratio.com' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
+    And I securely send requests to '${CLUSTER_ID:-nightly}.labs.stratio.com:443'
 #    Given I securely send requests to '${BOOTSTRAP_IP}:443'
     When in less than '300' seconds, checking each '20' seconds, I send a 'GET' request to '/exhibitor/exhibitor/v1/explorer/node-data?key=%2Fdatastore%2Fcommunity%2F${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls}%2Fplan-v2-json&_=' so that the response contains 'str'
     And the service response status must be '200'
@@ -89,10 +91,24 @@ Feature: Install Postgres for Discovery
     When I run 'docker ps -q | xargs -n 1 docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}} {{ .Name }}' | sed 's/ \// /'| grep !{pgIPCalico} | awk '{print $2}'' in the ssh connection and save the value in environment variable 'postgresDocker'
     When I run 'docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U postgres -c "CREATE DATABASE ${DISCOVERY_DATASTORE_DB:-discovery}"' in the ssh connection
     Then the command output contains 'CREATE DATABASE'
-    And I wait '30' seconds
-
+    When I run 'docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U postgres -c "CREATE DATABASE ${DISCOVERY_DATA_DB:-pruebadiscovery}"' in the ssh connection
+    Then the command output contains 'CREATE DATABASE'
+    And I wait '60' seconds
+#
+# TODO: Copy file createPGContent.sql to execute \i <path> from psql
+#
   @runOnEnv(DISC_VERSION=0.28.9)
   Scenario: [Basic Installation Postgres Dependencies][03] Create database for Discovery on PostgresMD5
     Given I connect with JDBC to database '${POSTGRES_FRAMEWORK_DEFAULT_DB:-postgres}' on host '!{postgresMD5_IP}' and port '!{postgresMD5_Port}' with user '${POSTGRES_FRAMEWORK_USER:-postgres}' and password '${POSTGRES_FRAMEWORK_PASSWORD:-stratio}'
     When I execute query 'CREATE DATABASE ${DISCOVERY_DATASTORE_DB:-discovery};'
+    Then the command output contains 'CREATE DATABASE'
+    When I execute query 'CREATE DATABASE ${DISCOVERY_DATA_DB:-pruebadiscovery};'
+    Then the command output contains 'CREATE DATABASE'
     Then I close database connection
+
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  Scenario: [Basic Installation Postgres Dependencies][04] Create data for Discovery on PostgresTLS
+    Given I open a ssh connection to '!{pgIP}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
+    And I outbound copy 'src/test/resources/schemas/createPGContent.sql' through a ssh connection to '/tmp'
+    When I run 'docker cp /tmp/createPGContent.sql !{postgresDocker}:/tmp/ ; docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U "${DISCOVERY_TENANT_NAME:-crossdata-1}" -d ${DISCOVERY_DATA_DB:-pruebadiscovery} -f /tmp/createPGContent.sql | grep "INSERT 0 1" | wc -l' in the ssh connection
+    Then the command output contains '254'

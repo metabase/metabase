@@ -11,8 +11,8 @@ Feature: Create Policy for user crossdata-1 in Gosec
   @runOnEnv(DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
   @runOnEnv(DISCOVERY_POLICIES=true)
   Scenario: [Create Policy for user crossdata-1 in Gosec][01] Creation policy user crossdata-1
-    Given I set sso token using host '${CLUSTER_SSO:-nightly.labs.stratio.com}' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
-    And I securely send requests to '${CLUSTER_SSO:-nightly.labs.stratio.com}:443'
+    Given I set sso token using host '${CLUSTER_ID:-nightly}.labs.stratio.com' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
+    And I securely send requests to '${CLUSTER_ID:-nightly}.labs.stratio.com:443'
     When I send a 'POST' request to '${BASE_END_POINT:-/service/gosecmanagement}/api/policy' based on 'schemas/objectPolicy.conf' as 'json' with:
       | $.id                                            | UPDATE  | ${DISCOVERY_POLICY_ID:-discovery}               | string |
       | $.name                                          | UPDATE  | ${DISCOVERY_POLICY_NAME:-discovery}             | string |

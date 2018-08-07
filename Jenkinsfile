@@ -21,18 +21,23 @@ hose {
     }
 
     INSTALLSERVICES = [
-            ['DCOSCLI':   ['image': 'stratio/dcos-cli:0.4.15-SNAPSHOT',
-                           'env':     ['DCOS_IP=10.200.0.205',
-                                      'SSL=true',
-                                      'SSH=true',
-                                      'TOKEN_AUTHENTICATION=true',
-                                      'DCOS_USER=admin',
-                                      'DCOS_PASSWORD=1234',
-                                      'CLI_BOOTSTRAP_USER=root',
-                        	      'CLI_BOOTSTRAP_PASSWORD=stratio'],
-                           'sleep':  120,
-                           'healthcheck': 5000]]
-        ]
+
+  	    ['CHROME': ['image': 'selenium/node-chrome-debug:3.9.1',
+            		'volumes': ['/dev/shm:/dev/shm'],
+	                'env': ['HUB_HOST=selenium391.cd','HUB_PORT=4444','SE_OPTS="-browser browserName=chrome,version=64%%JUID "']
+            	       ]],
+            ['DCOSCLI': ['image': 'stratio/dcos-cli:0.4.15-SNAPSHOT',
+                         'env': ['DCOS_IP=10.200.0.205',
+                                 'SSL=true',
+                                 'SSH=true',
+                                 'TOKEN_AUTHENTICATION=true',
+                                 'DCOS_USER=admin',
+                                 'DCOS_PASSWORD=1234',
+                                 'CLI_BOOTSTRAP_USER=root',
+                        	 'CLI_BOOTSTRAP_PASSWORD=stratio'],
+                         'sleep':  120,
+                         'healthcheck': 5000]]
+    ]
 
     INSTALLPARAMETERS = """
         | -DDCOS_CLI_HOST=%%DCOSCLI#0
@@ -41,6 +46,8 @@ hose {
         | -DCLUSTER_SSO=nightly.labs.stratio.com
         | -DDCOS_IP=10.200.0.156
         | -DBOOTSTRAP_IP=10.200.0.155
+        | -DSELENIUM_GRID=selenium391.cd:4444
+        | -DFORCE_BROWSER=chrome_64%%JUID
         | -DREMOTE_USER=operador
         | -DDISC_VERSION=0.31.0-SNAPSHOT
         | -Dquietasdefault=false
