@@ -13,7 +13,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#\n"
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-08-07 11:33-0700\n"
+"POT-Creation-Date: 2018-08-07 11:48-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2488,17 +2488,12 @@ msgstr ""
 msgid "View the archive"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionList.jsx:60
+#: frontend/src/metabase/components/CollectionList.jsx:62
 #: frontend/src/metabase/entities/collections.js:129
 msgid "My personal collection"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionList.jsx:77
-#: frontend/src/metabase/entities/collections.js:138
-msgid "Everyone else's personal collections"
-msgstr ""
-
-#: frontend/src/metabase/components/CollectionList.jsx:100
+#: frontend/src/metabase/components/CollectionList.jsx:102
 #: frontend/src/metabase/containers/CollectionForm.jsx:9
 msgid "New collection"
 msgstr ""
@@ -3340,6 +3335,10 @@ msgstr ""
 #: frontend/src/metabase/entities/collections.js:121
 #: src/metabase/models/collection.clj
 msgid "Our analytics"
+msgstr ""
+
+#: frontend/src/metabase/entities/collections.js:138
+msgid "All personal collections"
 msgstr ""
 
 #: frontend/src/metabase/entities/dashboards.js:93

@@ -135,7 +135,7 @@ export const PERSONAL_COLLECTION = {
 // fake collection for admins that contains all other user's collections
 export const PERSONAL_COLLECTIONS = {
   id: "personal", // placeholder id
-  name: t`Everyone else's personal collections`,
+  name: t`All personal collections`,
   location: "/",
   path: ["root"],
   can_write: false,
