@@ -275,14 +275,14 @@ const OPTION_COLLECTION_WRITE = {
   ...OPTION_GREEN,
   value: "write",
   title: t`Curate collection`,
-  tooltip: t`Can add and remove questions from this collection`,
+  tooltip: t`Can edit this collection and its contents`,
 };
 
 const OPTION_COLLECTION_READ = {
   ...OPTION_YELLOW,
   value: "read",
   title: t`View collection`,
-  tooltip: t`Can view questions in this collection`,
+  tooltip: t`Can view items in this collection`,
 };
 
 export const getTablesPermissionsGrid = createSelector(
