@@ -15,6 +15,7 @@
              [command :as cmd]
              [conversion :as conv]
              [db :as mdb]]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import com.mongodb.DB))
@@ -173,34 +174,19 @@
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)
           :details-fields                    (constantly (ssh/with-tunnel-config
-                                                           [{:name         "host"
-                                                             :display-name "Host"
-                                                             :default      "localhost"}
-                                                            {:name         "port"
-                                                             :display-name "Port"
-                                                             :type         :integer
-                                                             :default      27017}
-                                                            {:name         "dbname"
-                                                             :display-name "Database name"
-                                                             :placeholder  "carrierPigeonDeliveries"
-                                                             :required     true}
-                                                            {:name         "user"
-                                                             :display-name "Database username"
-                                                             :placeholder  "What username do you use to login to the database?"}
-                                                            {:name         "pass"
-                                                             :display-name "Database password"
-                                                             :type         :password
-                                                             :placeholder  "******"}
+                                                           [driver/default-host-details
+                                                            (assoc driver/default-port-details :default 27017)
+                                                            (assoc driver/default-dbname-details
+                                                              :placeholder  (tru "carrierPigeonDeliveries"))
+                                                            driver/default-user-details
+                                                            (assoc driver/default-password-details :name "pass")
                                                             {:name         "authdb"
-                                                             :display-name "Authentication Database"
-                                                             :placeholder  "Optional database to use when authenticating"}
-                                                            {:name         "ssl"
-                                                             :display-name "Use a secure connection (SSL)?"
-                                                             :type         :boolean
-                                                             :default      false}
-                                                            {:name         "additional-options"
-                                                             :display-name "Additional Mongo connection string options"
-                                                             :placeholder  "readPreference=nearest&replicaSet=test"}]))
+                                                             :display-name (tru "Authentication Database")
+                                                             :placeholder  (tru "Optional database to use when authenticating")}
+                                                            driver/default-ssl-details
+                                                            (assoc driver/default-additional-options-details
+                                                              :display-name (tru "Additional Mongo connection string options")
+                                                              :placeholder  "readPreference=nearest&replicaSet=test")]))
           :execute-query                     (u/drop-first-arg qp/execute-query)
           :features                          (constantly #{:basic-aggregations :nested-fields})
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)

@@ -6,7 +6,8 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.crate.util :as crate-util]
-            [metabase.driver.generic-sql :as sql])
+            [metabase.driver.generic-sql :as sql]
+            [puppetlabs.i18n.core :refer [tru]])
   (:import java.sql.DatabaseMetaData))
 
 (def ^:private ^:const column->base-type
@@ -109,7 +110,7 @@
           :date-interval   crate-util/date-interval
           :describe-table  describe-table
           :details-fields  (constantly [{:name         "hosts"
-                                         :display-name "Hosts"
+                                         :display-name (tru "Hosts")
                                          :default      "localhost:5432/"}])
           :features        (comp (u/rpartial disj :foreign-keys) sql/features)
           :current-db-time (driver/make-current-db-time-fn crate-db-time-query crate-date-formatters)})
