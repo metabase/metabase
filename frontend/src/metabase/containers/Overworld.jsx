@@ -75,10 +75,11 @@ class Overworld extends React.Component {
     return (
       <Box>
         <Flex px={PAGE_PADDING} pt={3} pb={1} align="center">
-          <MetabotLogo />
+          <Tooltip tooltip={t`Don't tell anyone, but you're my favorite.`}>
+            <MetabotLogo />
+          </Tooltip>
           <Box ml={2}>
             <Subhead>{Greeting.sayHello(user.first_name)}</Subhead>
-            <p className="text-paragraph m0 text-medium">{t`Don't tell anyone, but you're my favorite.`}</p>
           </Box>
         </Flex>
         <CollectionItemsLoader collectionId="root">
@@ -96,24 +97,19 @@ class Overworld extends React.Component {
                       return null;
                     }
                     return (
-                      <Box mx={PAGE_PADDING} mt={2}>
+                      <Box mx={PAGE_PADDING} mt={[1, 3]}>
                         <SectionHeading>
-                          {t`Not sure where to start? Try these x-rays based on your data.`}
+                          {t`Try these x-rays based on your data.`}
                         </SectionHeading>
-                        <Card mt={2} px={3} pb={1}>
+                        <Box>
                           <ExplorePane
                             candidates={candidates}
                             withMetabot={false}
                             title=""
                             gridColumns={[1, 1 / 3]}
-                            asCards={false}
-                            description={
-                              isSample
-                                ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                                : ``
-                            }
+                            asCards={true}
                           />
-                        </Card>
+                        </Box>
                       </Box>
                     );
                   }}
@@ -165,13 +161,14 @@ class Overworld extends React.Component {
 
         <Box px={PAGE_PADDING} my={3}>
           <SectionHeading>{ROOT_COLLECTION.name}</SectionHeading>
-          <Card p={[1, 2]} mt={2}>
+          <Box p={[1, 2]} mt={2} bg={colors["bg-medium"]}>
             {this.props.collections.filter(
               c => c.id !== user.personal_collection_id,
             ).length > 0 ? (
               <CollectionList
                 collections={this.props.collections}
                 analyticsContext="Homepage"
+                asCards={true}
               />
             ) : (
               <Box className="text-centered">
@@ -207,7 +204,7 @@ class Overworld extends React.Component {
                 </Box>
               </Flex>
             </Link>
-          </Card>
+          </Box>
         </Box>
 
         <DatabaseListLoader>
