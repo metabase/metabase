@@ -13,7 +13,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#\n"
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-07-30 12:27-0700\n"
+"POT-Creation-Date: 2018-08-07 11:33-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -45,9 +45,10 @@ msgid "Select a database type"
 msgstr ""
 
 #: frontend/src/metabase/admin/databases/components/DatabaseEditForms.jsx:75
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:192
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:170
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:435
-#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:178
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:71
+#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:182
 #: frontend/src/metabase/components/ActionButton.jsx:51
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:7
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:180
@@ -178,15 +179,16 @@ msgstr ""
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:302
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:322
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:343
-#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:47
-#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:50
-#: frontend/src/metabase/admin/permissions/selectors.js:154
-#: frontend/src/metabase/admin/permissions/selectors.js:164
-#: frontend/src/metabase/admin/permissions/selectors.js:179
-#: frontend/src/metabase/admin/permissions/selectors.js:218
+#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:49
+#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:52
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:58
+#: frontend/src/metabase/admin/permissions/selectors.js:156
+#: frontend/src/metabase/admin/permissions/selectors.js:166
+#: frontend/src/metabase/admin/permissions/selectors.js:181
+#: frontend/src/metabase/admin/permissions/selectors.js:220
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:355
-#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:177
-#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:243
+#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:181
+#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:247
 #: frontend/src/metabase/components/ConfirmContent.jsx:18
 #: frontend/src/metabase/components/DeleteModalWithConfirm.jsx:72
 #: frontend/src/metabase/components/HeaderModal.jsx:49
@@ -203,7 +205,7 @@ msgstr ""
 #: frontend/src/metabase/query_builder/containers/ArchiveQuestionModal.jsx:48
 #: frontend/src/metabase/reference/components/EditHeader.jsx:34
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:52
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:215
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:209
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:397
 msgid "Cancel"
 msgstr ""
@@ -214,31 +216,31 @@ msgstr ""
 msgid "Delete"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:151
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:60
+msgid "Connection"
+msgstr ""
+
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:61
+msgid "Scheduling"
+msgstr ""
+
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:128
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:76
-#: frontend/src/metabase/admin/permissions/selectors.js:314
-#: frontend/src/metabase/admin/permissions/selectors.js:321
-#: frontend/src/metabase/admin/permissions/selectors.js:417
+#: frontend/src/metabase/admin/permissions/selectors.js:316
+#: frontend/src/metabase/admin/permissions/selectors.js:323
+#: frontend/src/metabase/admin/permissions/selectors.js:419
 #: frontend/src/metabase/admin/routes.jsx:39
-#: frontend/src/metabase/nav/containers/Navbar.jsx:206
+#: frontend/src/metabase/nav/containers/Navbar.jsx:215
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:18
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:18
 msgid "Databases"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:152
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:129
 msgid "Add Database"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:160
-msgid "Connection"
-msgstr ""
-
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:160
-msgid "Scheduling"
-msgstr ""
-
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:192
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:170
 #: frontend/src/metabase/admin/datamodel/containers/MetricForm.jsx:78
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:84
 #: frontend/src/metabase/admin/people/components/EditUserForm.jsx:253
@@ -250,18 +252,18 @@ msgstr ""
 msgid "Save changes"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:207
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:185
 #: frontend/src/metabase/admin/datamodel/components/database/MetricsList.jsx:38
 #: frontend/src/metabase/admin/datamodel/components/database/SegmentsList.jsx:38
 msgid "Actions"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:215
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:193
 msgid "Sync database schema now"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:216
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:228
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:194
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:206
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:788
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:796
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:112
@@ -269,41 +271,41 @@ msgstr ""
 msgid "Starting…"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:217
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:195
 msgid "Failed to sync"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:218
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:196
 msgid "Sync triggered!"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:227
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:205
 msgid "Re-scan field values now"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:229
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:207
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:789
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:113
 msgid "Failed to start scan"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:230
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:208
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:790
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:114
 msgid "Scan triggered!"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:237
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:215
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:399
 msgid "Danger Zone"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:243
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:246
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:221
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:224
 msgid "Discard saved field values"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:261
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:239
 msgid "Remove this database"
 msgstr ""
 
@@ -314,7 +316,7 @@ msgstr ""
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:87
 #: frontend/src/metabase/admin/datamodel/components/database/MetricsList.jsx:36
 #: frontend/src/metabase/admin/datamodel/components/database/SegmentsList.jsx:36
-#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:464
+#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:468
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:183
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:91
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:375
@@ -421,6 +423,7 @@ msgid "No special type"
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnItem.jsx:190
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:34
 #: frontend/src/metabase/reference/components/Field.jsx:57
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:42
 msgid "Other"
@@ -530,11 +533,12 @@ msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetricsList.jsx:24
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:137
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:33
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:27
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:189
 #: frontend/src/metabase/reference/metrics/MetricList.jsx:56
 #: frontend/src/metabase/reference/metrics/MetricSidebar.jsx:18
-#: frontend/src/metabase/routes.jsx:232
+#: frontend/src/metabase/routes.jsx:231
 msgid "Metrics"
 msgstr ""
 
@@ -873,7 +877,8 @@ msgstr ""
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:91
 #: frontend/src/metabase/admin/routes.jsx:79
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:266
-#: frontend/src/metabase/nav/containers/Navbar.jsx:191
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:96
+#: frontend/src/metabase/nav/containers/Navbar.jsx:200
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:99
 msgid "Settings"
 msgstr ""
@@ -890,7 +895,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/people/components/AddRow.jsx:34
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:194
-#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:249
+#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:253
 #: frontend/src/metabase/dashboard/components/DashCard.jsx:276
 msgid "Add"
 msgstr ""
@@ -915,7 +920,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/people/components/EditUserForm.jsx:178
 #: frontend/src/metabase/auth/containers/ForgotPasswordApp.jsx:77
-#: frontend/src/metabase/auth/containers/LoginApp.jsx:156
+#: frontend/src/metabase/auth/containers/LoginApp.jsx:158
 #: frontend/src/metabase/components/NewsletterForm.jsx:94
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:470
 #: frontend/src/metabase/setup/components/UserStep.jsx:222
@@ -958,7 +963,7 @@ msgid "Members"
 msgstr ""
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:176
-#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:466
+#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:470
 #: frontend/src/metabase/admin/settings/selectors.js:107
 #: frontend/src/metabase/lib/core.js:50
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:293
@@ -1035,7 +1040,7 @@ msgstr ""
 #: frontend/src/metabase/query_builder/components/AggregationPopover.jsx:298
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:194
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:96
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:221
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:215
 msgid "Done"
 msgstr ""
 
@@ -1045,9 +1050,9 @@ msgstr ""
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:392
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:25
-#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:473
+#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:477
 #: frontend/src/metabase/admin/routes.jsx:72
-#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:150
+#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:154
 msgid "Groups"
 msgstr ""
 
@@ -1083,7 +1088,7 @@ msgstr ""
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:24
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:435
 #: frontend/src/metabase/admin/routes.jsx:70
-#: frontend/src/metabase/nav/containers/Navbar.jsx:196
+#: frontend/src/metabase/nav/containers/Navbar.jsx:205
 msgid "People"
 msgstr ""
 
@@ -1186,36 +1191,36 @@ msgstr ""
 msgid "We've sent them an email with instructions for creating a new password."
 msgstr ""
 
-#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:442
+#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:443
 msgid "Active"
 msgstr ""
 
-#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:443
-#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:469
+#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:444
+#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:473
 msgid "Deactivated"
 msgstr ""
 
-#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:455
+#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:459
 msgid "Add someone"
 msgstr ""
 
-#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:474
+#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:478
 msgid "Last Login"
 msgstr ""
 
-#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:497
+#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:501
 msgid "Signed up via Google"
 msgstr ""
 
-#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:502
+#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:506
 msgid "Signed up via LDAP"
 msgstr ""
 
-#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:514
+#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:518
 msgid "Reactivate this account"
 msgstr ""
 
-#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:541
+#: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:545
 msgid "Never"
 msgstr ""
 
@@ -1258,35 +1263,41 @@ msgstr ""
 msgid " native queries for "
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:16
-#: frontend/src/metabase/admin/permissions/routes.jsx:12
-#: frontend/src/metabase/nav/containers/Navbar.jsx:211
-msgid "Permissions"
-msgstr ""
-
-#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:30
+#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:32
 msgid "Save permissions?"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:36
+#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:38
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:161
 msgid "Save Changes"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:42
+#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:44
 msgid "Discard changes?"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:44
+#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:46
 msgid "No changes to permissions will be made."
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:63
+#: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:65
 msgid "You've made changes to permissions."
+msgstr ""
+
+#: frontend/src/metabase/admin/permissions/components/PermissionsTabs.jsx:12
+msgid "Data permissions"
+msgstr ""
+
+#: frontend/src/metabase/admin/permissions/components/PermissionsTabs.jsx:13
+msgid "Collection permissions"
 msgstr ""
 
 #: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:52
 msgid "Permissions for this collection"
+msgstr ""
+
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:56
+msgid "See all collection permissions"
 msgstr ""
 
 #: frontend/src/metabase/admin/permissions/containers/PermissionsApp.jsx:53
@@ -1297,161 +1308,186 @@ msgstr ""
 msgid "Do you want to leave this page and discard your changes?"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/permissions.js:133
+#: frontend/src/metabase/admin/permissions/containers/TogglePropagateAction.jsx:25
+msgid "Also change sub-collections"
+msgstr ""
+
+#: frontend/src/metabase/admin/permissions/permissions.js:137
 msgid "Sorry, an error occurred."
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:57
+#: frontend/src/metabase/admin/permissions/routes.jsx:12
+#: frontend/src/metabase/nav/containers/Navbar.jsx:220
+msgid "Permissions"
+msgstr ""
+
+#: frontend/src/metabase/admin/permissions/selectors.js:59
 msgid ""
 "Administrators always have the highest level of access to everything in "
 "Metabase."
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:59
+#: frontend/src/metabase/admin/permissions/selectors.js:61
 msgid ""
 "Every Metabase user belongs to the All Users group. If you want to limit or "
 "restrict a group's access to something, make sure the All Users group has an "
 "equal or lower level of access."
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:61
+#: frontend/src/metabase/admin/permissions/selectors.js:63
 msgid ""
 "MetaBot is Metabase's Slack bot. You can choose what it has access to here."
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:113
+#: frontend/src/metabase/admin/permissions/selectors.js:115
 msgid ""
 "The \"{0}\" group may have access to a different set of {1} than this group, "
 "which may give this group additional access to some {2}."
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:118
+#: frontend/src/metabase/admin/permissions/selectors.js:120
 msgid ""
 "The \"{0}\" group has a higher level of access than this, which will "
 "override this setting. You should limit or revoke the \"{1}\" group's access "
 "to this item."
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:148
+#: frontend/src/metabase/admin/permissions/selectors.js:150
 msgid "Limit"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:148
+#: frontend/src/metabase/admin/permissions/selectors.js:150
 msgid "Revoke"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:150
+#: frontend/src/metabase/admin/permissions/selectors.js:152
 msgid "access even though \"{0}\" has greater access?"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:153
-#: frontend/src/metabase/admin/permissions/selectors.js:252
+#: frontend/src/metabase/admin/permissions/selectors.js:155
+#: frontend/src/metabase/admin/permissions/selectors.js:254
 msgid "Limit access"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:153
-#: frontend/src/metabase/admin/permissions/selectors.js:217
-#: frontend/src/metabase/admin/permissions/selectors.js:260
+#: frontend/src/metabase/admin/permissions/selectors.js:155
+#: frontend/src/metabase/admin/permissions/selectors.js:219
+#: frontend/src/metabase/admin/permissions/selectors.js:262
 msgid "Revoke access"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:162
+#: frontend/src/metabase/admin/permissions/selectors.js:164
 msgid "Change access to this database to limited?"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:163
+#: frontend/src/metabase/admin/permissions/selectors.js:165
 msgid "Change"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:176
+#: frontend/src/metabase/admin/permissions/selectors.js:178
 msgid "Allow Raw Query Writing?"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:177
+#: frontend/src/metabase/admin/permissions/selectors.js:179
 msgid ""
 "This will also change this group's data access to Unrestricted for this "
 "database."
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:178
+#: frontend/src/metabase/admin/permissions/selectors.js:180
 msgid "Allow"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:215
+#: frontend/src/metabase/admin/permissions/selectors.js:217
 msgid "Revoke access to all tables?"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:216
+#: frontend/src/metabase/admin/permissions/selectors.js:218
 msgid ""
 "This will also revoke this group's access to raw queries for this database."
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:245
+#: frontend/src/metabase/admin/permissions/selectors.js:247
 msgid "Grant unrestricted access"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:246
+#: frontend/src/metabase/admin/permissions/selectors.js:248
 msgid "Unrestricted access"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:253
+#: frontend/src/metabase/admin/permissions/selectors.js:255
 msgid "Limited access"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:261
+#: frontend/src/metabase/admin/permissions/selectors.js:263
 msgid "No access"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:267
+#: frontend/src/metabase/admin/permissions/selectors.js:269
 msgid "Write raw queries"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:268
+#: frontend/src/metabase/admin/permissions/selectors.js:270
 msgid "Can write raw queries"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:275
+#: frontend/src/metabase/admin/permissions/selectors.js:277
 msgid "Curate collection"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:276
-msgid "Can add and remove questions from this collection"
+#: frontend/src/metabase/admin/permissions/selectors.js:278
+msgid "Can edit this collection and its contents"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:282
+#: frontend/src/metabase/admin/permissions/selectors.js:284
 msgid "View collection"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:283
-msgid "Can view questions in this collection"
+#: frontend/src/metabase/admin/permissions/selectors.js:285
+msgid "Can view items in this collection"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:325
-#: frontend/src/metabase/admin/permissions/selectors.js:421
-#: frontend/src/metabase/admin/permissions/selectors.js:518
+#: frontend/src/metabase/admin/permissions/selectors.js:327
+#: frontend/src/metabase/admin/permissions/selectors.js:423
+#: frontend/src/metabase/admin/permissions/selectors.js:520
 msgid "Data Access"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:486
-#: frontend/src/metabase/admin/permissions/selectors.js:643
-#: frontend/src/metabase/admin/permissions/selectors.js:648
+#: frontend/src/metabase/admin/permissions/selectors.js:488
+#: frontend/src/metabase/admin/permissions/selectors.js:645
+#: frontend/src/metabase/admin/permissions/selectors.js:650
 msgid "View tables"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:584
+#: frontend/src/metabase/admin/permissions/selectors.js:586
 msgid "SQL Queries"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:654
+#: frontend/src/metabase/admin/permissions/selectors.js:656
 msgid "View schemas"
 msgstr ""
 
-#: frontend/src/metabase/admin/permissions/selectors.js:760
-msgid "View collections"
+#: frontend/src/metabase/admin/permissions/selectors.js:745
+msgid "Collection Access"
+msgstr ""
+
+#: frontend/src/metabase/admin/permissions/selectors.js:821
+msgid ""
+"This group has permission to view at least one subcollection of this "
+"collection."
+msgstr ""
+
+#: frontend/src/metabase/admin/permissions/selectors.js:826
+msgid ""
+"This group has permission to edit at least one subcollection of this "
+"collection."
+msgstr ""
+
+#: frontend/src/metabase/admin/permissions/selectors.js:839
+msgid "View sub-collections"
 msgstr ""
 
 #: frontend/src/metabase/admin/routes.jsx:45
-#: frontend/src/metabase/nav/containers/Navbar.jsx:201
+#: frontend/src/metabase/nav/containers/Navbar.jsx:210
 msgid "Data Model"
 msgstr ""
 
@@ -1631,7 +1667,7 @@ msgid "Delete custom map"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:201
-#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:323
+#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:327
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:48
 #: frontend/src/metabase/parameters/components/ParameterWidget.jsx:177
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:104
@@ -1748,19 +1784,19 @@ msgstr ""
 msgid "Enter a token"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:130
+#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:134
 msgid "Edit Mappings"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:136
+#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:140
 msgid "Group Mappings"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:143
+#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:147
 msgid "Create a mapping"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:145
+#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:149
 msgid ""
 "Mappings allow Metabase to automatically add and remove users from groups "
 "based on the membership information provided by the\n"
@@ -1769,7 +1805,7 @@ msgid ""
 "failsafe measure."
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:150
+#: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:154
 msgid "Distinguished Name"
 msgstr ""
 
@@ -1988,7 +2024,7 @@ msgid "Username or DN"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/selectors.js:241
-#: frontend/src/metabase/auth/containers/LoginApp.jsx:186
+#: frontend/src/metabase/auth/containers/LoginApp.jsx:188
 #: frontend/src/metabase/user/components/UserSettings.jsx:72
 msgid "Password"
 msgstr ""
@@ -2001,104 +2037,104 @@ msgstr ""
 msgid "User filter"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:259
+#: frontend/src/metabase/admin/settings/selectors.js:258
 msgid "Check your parentheses"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:266
+#: frontend/src/metabase/admin/settings/selectors.js:264
 msgid "Email attribute"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:271
+#: frontend/src/metabase/admin/settings/selectors.js:269
 msgid "First name attribute"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:276
+#: frontend/src/metabase/admin/settings/selectors.js:274
 msgid "Last name attribute"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:281
+#: frontend/src/metabase/admin/settings/selectors.js:279
 msgid "Synchronize group memberships"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:287
+#: frontend/src/metabase/admin/settings/selectors.js:285
 msgid "Group search base"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:296
+#: frontend/src/metabase/admin/settings/selectors.js:294
 msgid "Maps"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:301
+#: frontend/src/metabase/admin/settings/selectors.js:299
 msgid "Map tile server URL"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:302
+#: frontend/src/metabase/admin/settings/selectors.js:300
 msgid "Metabase uses OpenStreetMaps by default."
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:307
+#: frontend/src/metabase/admin/settings/selectors.js:305
 msgid "Custom Maps"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:308
+#: frontend/src/metabase/admin/settings/selectors.js:306
 msgid ""
 "Add your own GeoJSON files to enable different region map visualizations"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:315
+#: frontend/src/metabase/admin/settings/selectors.js:313
 msgid "Public Sharing"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:320
+#: frontend/src/metabase/admin/settings/selectors.js:318
 msgid "Enable Public Sharing"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:325
+#: frontend/src/metabase/admin/settings/selectors.js:323
 msgid "Shared Dashboards"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:331
+#: frontend/src/metabase/admin/settings/selectors.js:329
 msgid "Shared Questions"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:338
+#: frontend/src/metabase/admin/settings/selectors.js:336
 msgid "Embedding in other Applications"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:365
+#: frontend/src/metabase/admin/settings/selectors.js:363
 msgid "Enable Embedding Metabase in other Applications"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:375
+#: frontend/src/metabase/admin/settings/selectors.js:373
 msgid "Embedding secret key"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:381
+#: frontend/src/metabase/admin/settings/selectors.js:379
 msgid "Embedded Dashboards"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:387
+#: frontend/src/metabase/admin/settings/selectors.js:385
 msgid "Embedded Questions"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:394
+#: frontend/src/metabase/admin/settings/selectors.js:392
 msgid "Caching"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:399
+#: frontend/src/metabase/admin/settings/selectors.js:397
 msgid "Enable Caching"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:404
+#: frontend/src/metabase/admin/settings/selectors.js:402
 msgid "Minimum Query Duration"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:411
+#: frontend/src/metabase/admin/settings/selectors.js:409
 msgid "Cache Time-To-Live (TTL) multiplier"
 msgstr ""
 
-#: frontend/src/metabase/admin/settings/selectors.js:418
+#: frontend/src/metabase/admin/settings/selectors.js:416
 msgid "Max Cache Entry Size"
 msgstr ""
 
@@ -2162,27 +2198,27 @@ msgstr ""
 msgid "Check your email for instructions on how to reset your password."
 msgstr ""
 
-#: frontend/src/metabase/auth/containers/LoginApp.jsx:126
+#: frontend/src/metabase/auth/containers/LoginApp.jsx:128
 msgid "Sign in to Metabase"
 msgstr ""
 
-#: frontend/src/metabase/auth/containers/LoginApp.jsx:136
+#: frontend/src/metabase/auth/containers/LoginApp.jsx:138
 msgid "OR"
 msgstr ""
 
-#: frontend/src/metabase/auth/containers/LoginApp.jsx:155
+#: frontend/src/metabase/auth/containers/LoginApp.jsx:157
 msgid "Username or email address"
 msgstr ""
 
-#: frontend/src/metabase/auth/containers/LoginApp.jsx:203
-msgid "Remember Me:"
+#: frontend/src/metabase/auth/containers/LoginApp.jsx:211
+msgid "Remember Me"
 msgstr ""
 
-#: frontend/src/metabase/auth/containers/LoginApp.jsx:214
+#: frontend/src/metabase/auth/containers/LoginApp.jsx:217
 msgid "Sign in"
 msgstr ""
 
-#: frontend/src/metabase/auth/containers/LoginApp.jsx:227
+#: frontend/src/metabase/auth/containers/LoginApp.jsx:230
 msgid "I seem to have forgotten my password"
 msgstr ""
 
@@ -2270,7 +2306,7 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/components/ArchiveCollectionModal.jsx:49
-#: frontend/src/metabase/components/CollectionLanding.jsx:552
+#: frontend/src/metabase/components/CollectionLanding.jsx:580
 #: frontend/src/metabase/components/EntityItem.jsx:54
 #: frontend/src/metabase/components/EntityMenu.info.js:31
 #: frontend/src/metabase/components/EntityMenu.info.js:87
@@ -2280,17 +2316,8 @@ msgstr ""
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:201
 #: frontend/src/metabase/query_builder/containers/ArchiveQuestionModal.jsx:40
 #: frontend/src/metabase/query_builder/containers/ArchiveQuestionModal.jsx:53
-#: frontend/src/metabase/routes.jsx:200
+#: frontend/src/metabase/routes.jsx:199
 msgid "Archive"
-msgstr ""
-
-#: frontend/src/metabase/components/Archived.jsx:15
-msgid "This {0} has been archived"
-msgstr ""
-
-#: frontend/src/metabase/components/Archived.jsx:20
-#: frontend/src/metabase/components/CollectionLanding.jsx:658
-msgid "View the archive"
 msgstr ""
 
 #: frontend/src/metabase/components/ArchivedItem.jsx:39
@@ -2298,18 +2325,23 @@ msgid "Unarchive this {0}"
 msgstr ""
 
 #: frontend/src/metabase/components/BrowseApp.jsx:93
-#: frontend/src/metabase/components/BrowseApp.jsx:143
-#: frontend/src/metabase/components/BrowseApp.jsx:233
-#: frontend/src/metabase/containers/Overworld.jsx:199
+#: frontend/src/metabase/components/BrowseApp.jsx:151
+#: frontend/src/metabase/components/BrowseApp.jsx:241
+#: frontend/src/metabase/containers/Overworld.jsx:220
 msgid "Our data"
 msgstr ""
 
-#: frontend/src/metabase/components/BrowseApp.jsx:178
+#: frontend/src/metabase/components/BrowseApp.jsx:117
+msgid "X-ray this schema"
+msgstr ""
+
+#: frontend/src/metabase/components/BrowseApp.jsx:186
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:51
 msgid "X-ray this table"
 msgstr ""
 
-#: frontend/src/metabase/components/BrowseApp.jsx:191
+#: frontend/src/metabase/components/BrowseApp.jsx:199
+#: frontend/src/metabase/containers/Overworld.jsx:247
 msgid "Learn about this table"
 msgstr ""
 
@@ -2372,96 +2404,101 @@ msgstr ""
 msgid "To send {0}, an admin needs to set up {1} integration."
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionEmptyState.jsx:24
+#: frontend/src/metabase/components/CollectionEmptyState.jsx:15
 msgid "This collection is empty, like a blank canvas"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionEmptyState.jsx:27
+#: frontend/src/metabase/components/CollectionEmptyState.jsx:16
 msgid ""
 "You can use collections to organize and group dashboards, questions and "
 "pulses for your team or yourself"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionEmptyState.jsx:33
+#: frontend/src/metabase/components/CollectionEmptyState.jsx:28
 msgid "Create another collection"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:67
+#: frontend/src/metabase/components/CollectionLanding.jsx:61
 msgid "Dashboards let you collect and share data in one place."
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:77
+#: frontend/src/metabase/components/CollectionLanding.jsx:70
 msgid ""
 "Pulses let you send out the latest data to your team on a schedule via email "
 "or slack."
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:86
+#: frontend/src/metabase/components/CollectionLanding.jsx:79
 msgid "Questions are a saved look at your data."
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:241
+#: frontend/src/metabase/components/CollectionLanding.jsx:239
+msgid "Edit the permissions for this collection"
+msgstr ""
+
+#: frontend/src/metabase/components/CollectionLanding.jsx:268
 msgid "Pins"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:295
+#: frontend/src/metabase/components/CollectionLanding.jsx:322
 msgid "Drag something here to pin it to the top"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:307
-#: frontend/src/metabase/home/containers/SearchApp.jsx:33
-#: frontend/src/metabase/home/containers/SearchApp.jsx:94
+#: frontend/src/metabase/components/CollectionLanding.jsx:334
+#: frontend/src/metabase/home/containers/SearchApp.jsx:35
+#: frontend/src/metabase/home/containers/SearchApp.jsx:96
 msgid "Collections"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:376
-#: frontend/src/metabase/components/CollectionLanding.jsx:399
+#: frontend/src/metabase/components/CollectionLanding.jsx:404
+#: frontend/src/metabase/components/CollectionLanding.jsx:427
 msgid "Drag here to un-pin"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:434
+#: frontend/src/metabase/components/CollectionLanding.jsx:462
 msgid "{0} item selected"
 msgid_plural "{0} items selected"
 msgstr[0] ""
 msgstr[1] ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:452
+#: frontend/src/metabase/components/CollectionLanding.jsx:480
 msgid "Move {0} items?"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:453
+#: frontend/src/metabase/components/CollectionLanding.jsx:481
 msgid "Move \"{0}\"?"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:559
+#: frontend/src/metabase/components/CollectionLanding.jsx:587
 #: frontend/src/metabase/components/EntityMenu.info.js:29
 #: frontend/src/metabase/components/EntityMenu.info.js:85
 #: frontend/src/metabase/containers/CollectionMoveModal.jsx:78
 msgid "Move"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:626
+#: frontend/src/metabase/components/CollectionLanding.jsx:649
 msgid "Edit this collection"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:634
-msgid "Edit permissions"
-msgstr ""
-
-#: frontend/src/metabase/components/CollectionLanding.jsx:642
+#: frontend/src/metabase/components/CollectionLanding.jsx:657
 msgid "Archive this collection"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionList.jsx:57
+#: frontend/src/metabase/components/CollectionLanding.jsx:672
+msgid "View the archive"
+msgstr ""
+
+#: frontend/src/metabase/components/CollectionList.jsx:60
 #: frontend/src/metabase/entities/collections.js:129
 msgid "My personal collection"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionList.jsx:74
+#: frontend/src/metabase/components/CollectionList.jsx:77
+#: frontend/src/metabase/entities/collections.js:138
 msgid "Everyone else's personal collections"
 msgstr ""
 
-#: frontend/src/metabase/components/CollectionList.jsx:97
+#: frontend/src/metabase/components/CollectionList.jsx:100
 #: frontend/src/metabase/containers/CollectionForm.jsx:9
 msgid "New collection"
 msgstr ""
@@ -2674,15 +2711,6 @@ msgstr ""
 msgid "Including every option in your filter probably won’t do much…"
 msgstr ""
 
-#: frontend/src/metabase/components/GenericError.jsx:8
-msgid "Something's gone wrong"
-msgstr ""
-
-#: frontend/src/metabase/components/GenericError.jsx:9
-msgid ""
-"We've run into an error. You can try refreshing the page, or just go back."
-msgstr ""
-
 #: frontend/src/metabase/components/Header.jsx:97
 #: frontend/src/metabase/components/HeaderBar.jsx:45
 #: frontend/src/metabase/components/ListItem.jsx:37
@@ -2760,17 +2788,17 @@ msgid "Everything"
 msgstr ""
 
 #: frontend/src/metabase/components/ItemTypeFilterBar.jsx:18
-#: frontend/src/metabase/home/containers/SearchApp.jsx:72
+#: frontend/src/metabase/home/containers/SearchApp.jsx:73
 msgid "Dashboards"
 msgstr ""
 
 #: frontend/src/metabase/components/ItemTypeFilterBar.jsx:23
-#: frontend/src/metabase/home/containers/SearchApp.jsx:116
+#: frontend/src/metabase/home/containers/SearchApp.jsx:119
 msgid "Questions"
 msgstr ""
 
 #: frontend/src/metabase/components/ItemTypeFilterBar.jsx:28
-#: frontend/src/metabase/routes.jsx:322
+#: frontend/src/metabase/routes.jsx:320
 msgid "Pulses"
 msgstr ""
 
@@ -2805,36 +2833,6 @@ msgstr ""
 
 #: frontend/src/metabase/components/NewsletterForm.jsx:106
 msgid "You're subscribed. Thanks for using Metabase!"
-msgstr ""
-
-#: frontend/src/metabase/components/NotFound.jsx:13
-msgid "We're a little lost..."
-msgstr ""
-
-#: frontend/src/metabase/components/NotFound.jsx:15
-msgid "The page you asked for couldn't be found"
-msgstr ""
-
-#: frontend/src/metabase/components/NotFound.jsx:17
-msgid ""
-"You might've been tricked by a ninja, but in all likelihood, you were just "
-"given a bad link."
-msgstr ""
-
-#: frontend/src/metabase/components/NotFound.jsx:18
-msgid "You can always:"
-msgstr ""
-
-#: frontend/src/metabase/components/NotFound.jsx:21
-msgid "Ask a new question."
-msgstr ""
-
-#: frontend/src/metabase/components/NotFound.jsx:23
-msgid "or"
-msgstr ""
-
-#: frontend/src/metabase/components/NotFound.jsx:31
-msgid "Take a kitten break."
 msgstr ""
 
 #: frontend/src/metabase/components/PasswordReveal.jsx:27
@@ -2950,24 +2948,21 @@ msgstr ""
 msgid "Nothing to select"
 msgstr ""
 
-#: frontend/src/metabase/components/Unauthorized.jsx:23
-msgid "Sorry, you don’t have permission to see that."
-msgstr ""
-
 #: frontend/src/metabase/components/form/FormMessage.jsx:5
 msgid "Unknown error encountered"
 msgstr ""
 
 #: frontend/src/metabase/components/form/StandardForm.jsx:63
+#: frontend/src/metabase/nav/containers/Navbar.jsx:300
 msgid "Create"
 msgstr ""
 
-#: frontend/src/metabase/containers/AddToDashSelectDashModal.jsx:49
-msgid "Add Question to Dashboard"
+#: frontend/src/metabase/containers/AddToDashSelectDashModal.jsx:51
+msgid "Add this question to a dashboard"
 msgstr ""
 
-#: frontend/src/metabase/containers/AddToDashSelectDashModal.jsx:57
-msgid "Create New Dashboard"
+#: frontend/src/metabase/containers/AddToDashSelectDashModal.jsx:61
+msgid "Create a new dashboard"
 msgstr ""
 
 #: frontend/src/metabase/containers/DashboardForm.jsx:9
@@ -3007,42 +3002,64 @@ msgstr ""
 msgid "of"
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:78
+#: frontend/src/metabase/containers/ErrorPages.jsx:24
+msgid "Something's gone wrong"
+msgstr ""
+
+#: frontend/src/metabase/containers/ErrorPages.jsx:25
+msgid ""
+"We've run into an error. You can try refreshing the page, or just go back."
+msgstr ""
+
+#: frontend/src/metabase/containers/ErrorPages.jsx:44
+msgid "We're a little lost..."
+msgstr ""
+
+#: frontend/src/metabase/containers/ErrorPages.jsx:45
+msgid "The page you asked for couldn't be found."
+msgstr ""
+
+#: frontend/src/metabase/containers/ErrorPages.jsx:54
+msgid "Sorry, you don’t have permission to see that."
+msgstr ""
+
+#: frontend/src/metabase/containers/ErrorPages.jsx:63
+msgid "This {0} has been archived"
+msgstr ""
+
+#: frontend/src/metabase/containers/ItemSelect.jsx:30
+msgid "Select a {0}"
+msgstr ""
+
+#: frontend/src/metabase/containers/Overworld.jsx:81
 msgid "Don't tell anyone, but you're my favorite."
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:94
+#: frontend/src/metabase/containers/Overworld.jsx:101
 msgid "Not sure where to start? Try these x-rays based on your data."
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:105
+#: frontend/src/metabase/containers/Overworld.jsx:112
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:85
 msgid ""
 "Once you connect your own data, I can show you some automatic explorations "
 "called x-rays. Here are some examples with sample data."
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:119
+#: frontend/src/metabase/containers/Overworld.jsx:130
 #: frontend/src/metabase/reference/components/GuideHeader.jsx:12
 msgid "Start here"
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:156
-#: frontend/src/metabase/containers/UserCollectionList.jsx:25
-#: frontend/src/metabase/entities/collections.js:121
-#: src/metabase/api/collection.clj
-msgid "Our analytics"
-msgstr ""
-
-#: frontend/src/metabase/containers/Overworld.jsx:175
-msgid "Save  dashboards, questions, and collections in \"Our Analytics\""
-msgstr ""
-
-#: frontend/src/metabase/containers/Overworld.jsx:176
-msgid "Access dashboards, questions, and collections in \"Our Analytics\""
+#: frontend/src/metabase/containers/Overworld.jsx:186
+msgid "Save dashboards, questions, and collections in \"{0}\""
 msgstr ""
 
 #: frontend/src/metabase/containers/Overworld.jsx:189
+msgid "Access dashboards, questions, and collections in \"{0}\""
+msgstr ""
+
+#: frontend/src/metabase/containers/Overworld.jsx:204
 msgid "Browse all items"
 msgstr ""
 
@@ -3102,10 +3119,6 @@ msgstr ""
 
 #: frontend/src/metabase/containers/UndoListing.jsx:81
 msgid "Undo"
-msgstr ""
-
-#: frontend/src/metabase/containers/UserCollectionList.jsx:26
-msgid "Everyone else’s personal collections"
 msgstr ""
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:270
@@ -3262,11 +3275,11 @@ msgstr ""
 msgid "Remove this question?"
 msgstr ""
 
-#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:71
+#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:70
 msgid "Your dashboard was saved"
 msgstr ""
 
-#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:76
+#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:75
 msgid "See it"
 msgstr ""
 
@@ -3276,6 +3289,27 @@ msgstr ""
 
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:165
 msgid "Show more about this"
+msgstr ""
+
+#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:216
+msgid "Compare"
+msgstr ""
+
+#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:220
+#: frontend/src/metabase/qb/components/drill/ZoomDrill.jsx:26
+msgid "Zoom in"
+msgstr ""
+
+#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:224
+msgid "Zoom out"
+msgstr ""
+
+#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:228
+msgid "Related"
+msgstr ""
+
+#: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:288
+msgid "More X-rays"
 msgstr ""
 
 #: frontend/src/metabase/dashboard/containers/DashCardCardParameterMapper.jsx:140
@@ -3303,8 +3337,9 @@ msgstr ""
 msgid "Color is required"
 msgstr ""
 
-#: frontend/src/metabase/entities/collections.js:138
-msgid "Personal Collections"
+#: frontend/src/metabase/entities/collections.js:121
+#: src/metabase/models/collection.clj
+msgid "Our analytics"
 msgstr ""
 
 #: frontend/src/metabase/entities/dashboards.js:93
@@ -3496,23 +3531,23 @@ msgid "Unarchive"
 msgstr ""
 
 #: frontend/src/metabase/home/containers/HomepageApp.jsx:74
-#: frontend/src/metabase/nav/containers/Navbar.jsx:309
+#: frontend/src/metabase/nav/containers/Navbar.jsx:327
 msgid "Activity"
 msgstr ""
 
-#: frontend/src/metabase/home/containers/SearchApp.jsx:27
+#: frontend/src/metabase/home/containers/SearchApp.jsx:28
 msgid "Results for \"{0}\""
 msgstr ""
 
-#: frontend/src/metabase/home/containers/SearchApp.jsx:52
-msgid "It's quiet around here..."
+#: frontend/src/metabase/home/containers/SearchApp.jsx:50
+msgid "No results"
 msgstr ""
 
-#: frontend/src/metabase/home/containers/SearchApp.jsx:53
-msgid "Metabase couldn't find any results for this."
+#: frontend/src/metabase/home/containers/SearchApp.jsx:51
+msgid "Metabase couldn't find any results for your search."
 msgstr ""
 
-#: frontend/src/metabase/home/containers/SearchApp.jsx:138
+#: frontend/src/metabase/home/containers/SearchApp.jsx:142
 msgid "Pulse"
 msgstr ""
 
@@ -4312,69 +4347,78 @@ msgstr ""
 msgid "Help"
 msgstr ""
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:73
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:76
 msgid "About Metabase"
 msgstr ""
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:79
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:82
 msgid "Sign out"
 msgstr ""
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:100
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:107
 msgid "Thanks for using"
 msgstr ""
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:104
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:111
 msgid "You're on version"
 msgstr ""
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:107
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:114
 msgid "Built on"
 msgstr ""
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:126
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:133
 msgid "is a Trademark of"
 msgstr ""
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:128
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:135
 msgid "and is built with care in San Francisco, CA"
 msgstr ""
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:186
+#: frontend/src/metabase/nav/containers/Navbar.jsx:130
+#: frontend/src/metabase/routes.jsx:198
+msgid "Search"
+msgstr ""
+
+#: frontend/src/metabase/nav/containers/Navbar.jsx:195
 msgid "Metabase Admin"
 msgstr ""
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:280
+#: frontend/src/metabase/nav/containers/Navbar.jsx:296
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:36
 #: frontend/src/metabase/reference/metrics/MetricQuestions.jsx:37
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:37
 msgid "Ask a question"
 msgstr ""
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:287
+#: frontend/src/metabase/nav/containers/Navbar.jsx:305
 msgid "New dashboard"
 msgstr ""
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:293
+#: frontend/src/metabase/nav/containers/Navbar.jsx:311
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:127
 msgid "New pulse"
 msgstr ""
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:300
+#: frontend/src/metabase/nav/containers/Navbar.jsx:319
 msgid "Reference"
 msgstr ""
 
-#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:80
+#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:83
 msgid "Which metric?"
 msgstr ""
 
-#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:95
+#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:110
 #: frontend/src/metabase/reference/metrics/MetricList.jsx:24
 msgid ""
 "Defining common metrics for your team makes it even easier to ask questions"
 msgstr ""
 
-#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:99
+#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:111
+msgid "No metrics"
+msgstr ""
+
+#: frontend/src/metabase/new_query/containers/MetricSearch.jsx:113
 msgid "How to create metrics"
 msgstr ""
 
@@ -4980,10 +5024,6 @@ msgid_plural "View these {0}"
 msgstr[0] ""
 msgstr[1] ""
 
-#: frontend/src/metabase/qb/components/drill/ZoomDrill.jsx:26
-msgid "Zoom in"
-msgstr ""
-
 #: frontend/src/metabase/query_builder/components/AggregationPopover.jsx:19
 msgid "Custom Expression"
 msgstr ""
@@ -5216,6 +5256,7 @@ msgid "Learn more about nested queries"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/DataSelector.jsx:859
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:30
 msgid "Fields"
 msgstr ""
 
@@ -5618,11 +5659,19 @@ msgstr ""
 msgid "More"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:192
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:31
+msgid "Aggregations"
+msgstr ""
+
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:32
+msgid "Operators"
+msgstr ""
+
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:200
 msgid "Invalid expression"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:267
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:275
 msgid "unknown error"
 msgstr ""
 
@@ -5648,6 +5697,10 @@ msgstr ""
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:72
 msgid "Something nice and descriptive"
+msgstr ""
+
+#: frontend/src/metabase/query_builder/components/expressions/Expressions.jsx:30
+msgid "Custom fields"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/expressions/Expressions.jsx:60
@@ -6415,19 +6468,15 @@ msgstr ""
 msgid "X-ray this segment"
 msgstr ""
 
-#: frontend/src/metabase/routes.jsx:183
+#: frontend/src/metabase/routes.jsx:182
 msgid "Login"
 msgstr ""
 
-#: frontend/src/metabase/routes.jsx:199
-msgid "Search"
-msgstr ""
-
-#: frontend/src/metabase/routes.jsx:218
+#: frontend/src/metabase/routes.jsx:217
 msgid "Dashboard"
 msgstr ""
 
-#: frontend/src/metabase/routes.jsx:228
+#: frontend/src/metabase/routes.jsx:227
 msgid "New Question"
 msgstr ""
 
@@ -6766,7 +6815,7 @@ msgstr ""
 msgid "User Details"
 msgstr ""
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:231
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:225
 msgid "Reset to defaults"
 msgstr ""
 
@@ -7647,20 +7696,6 @@ msgstr ""
 msgid "Invalid custom GeoJSON key: {0}"
 msgstr ""
 
-#: src/metabase/api/getting_started.clj
-msgid "''Some things to know'' text field for the Getting Started guide."
-msgstr ""
-
-#: src/metabase/api/getting_started.clj
-msgid ""
-"Name of somebody users can contact for help in the Getting Started guide."
-msgstr ""
-
-#: src/metabase/api/getting_started.clj
-msgid ""
-"Email of somebody users can contact for help in the Getting Started guide."
-msgstr ""
-
 #. ...but if we *still* couldn't find a match, throw an Exception, because we don't want people
 #. trying to inject new params
 #: src/metabase/api/public.clj
@@ -7921,11 +7956,13 @@ msgid "Invalid password"
 msgstr ""
 
 #: src/metabase/automagic_dashboards/comparison.clj
-msgid "Compare {0} with {1}"
+#: src/metabase/automagic_dashboards/core.clj
+msgid "Compare with {0}"
 msgstr ""
 
 #: src/metabase/automagic_dashboards/comparison.clj
-msgid "Compare {0} with the entire dataset"
+#: src/metabase/automagic_dashboards/core.clj
+msgid "Compare with entire dataset"
 msgstr ""
 
 #: src/metabase/automagic_dashboards/comparison.clj
@@ -8006,14 +8043,6 @@ msgstr ""
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "\"{0}\" question"
-msgstr ""
-
-#: src/metabase/automagic_dashboards/core.clj
-msgid "Compare with {0}"
-msgstr ""
-
-#: src/metabase/automagic_dashboards/core.clj
-msgid "Compare with entire dataset"
 msgstr ""
 
 #: src/metabase/automagic_dashboards/core.clj
@@ -8263,6 +8292,25 @@ msgstr ""
 
 #: src/metabase/db.clj
 msgid "Database Migrations Current ... "
+msgstr ""
+
+#. 2. Create the new collections.
+#: src/metabase/db/migrations.clj
+msgid "Migrated Dashboards"
+msgstr ""
+
+#: src/metabase/db/migrations.clj
+msgid "Migrated Pulses"
+msgstr ""
+
+#: src/metabase/db/migrations.clj
+msgid "Migrated Questions"
+msgstr ""
+
+#. 4. move everything not in this Collection to a new Collection
+#: src/metabase/db/migrations.clj
+msgid ""
+"Moving instances of {0} that aren't in a Collection to {1} Collection {2}"
 msgstr ""
 
 #: src/metabase/driver.clj
@@ -8678,10 +8726,6 @@ msgid "You're not allowed to move a Personal Collection."
 msgstr ""
 
 #: src/metabase/models/collection.clj
-msgid "You cannot archive a Personal Collection!"
-msgstr ""
-
-#: src/metabase/models/collection.clj
 msgid "You cannot move a Collection and archive it at the same time."
 msgstr ""
 
@@ -8746,6 +8790,10 @@ msgstr ""
 
 #: src/metabase/models/permissions.clj
 msgid "Delete it and create a new one."
+msgstr ""
+
+#: src/metabase/models/permissions.clj
+msgid "Failed to grant permissions: {0}"
 msgstr ""
 
 #: src/metabase/models/permissions.clj
@@ -8829,7 +8877,7 @@ msgstr ""
 
 #. go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
 #: src/metabase/models/setting.clj
-msgid "Error inserting new Setting:"
+msgid "Error inserting a new Setting:"
 msgstr ""
 
 #: src/metabase/models/setting.clj
@@ -8855,10 +8903,6 @@ msgstr ""
 msgid ""
 "You cannot update `settings-last-updated` yourself! This is done "
 "automatically."
-msgstr ""
-
-#: src/metabase/models/setting.clj
-msgid "Error inserting a new Setting:"
 msgstr ""
 
 #: src/metabase/models/setting.clj
@@ -9246,7 +9290,7 @@ msgstr ""
 
 #: src/metabase/util/encryption.clj
 msgid ""
-"Cannot decrypt encrypted credentials. Have you changed or forgot to set "
+"Cannot decrypt encrypted string. Have you changed or forgot to set "
 "MB_ENCRYPTION_SECRET_KEY?"
 msgstr ""
 
