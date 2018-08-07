@@ -134,7 +134,7 @@
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
 (defn- root-collection []
-  (collection-detail collection/root-collection-with-ui-details))
+  (collection-detail (collection/root-collection-with-ui-details)))
 
 (api/defendpoint GET "/root"
   "Return the 'Root' Collection object with standard details added"
