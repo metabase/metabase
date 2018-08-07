@@ -229,7 +229,8 @@
          strict-transport-security-header
          #_(public-key-pins-header)))
 
-(defn- html-page-security-headers [& {:keys [allow-iframes?] }]
+(defn- html-page-security-headers [& {:keys [allow-iframes?]
+                                      :or   {allow-iframes? false}}]
   (merge
    (cache-prevention-headers)
    strict-transport-security-header
@@ -386,29 +387,33 @@
   [^Throwable e]
   (let [{:keys [status-code], :as info} (ex-data e)
         other-info                      (dissoc info :status-code)
-        message                         (.getMessage e)]
-    {:status (or status-code 500)
-     :body   (cond
-               ;; Exceptions that include a status code *and* other info are things like Field validation exceptions.
-               ;; Return those as is
-               (and status-code
-                    (seq other-info))
-               other-info
-               ;; If status code was specified but other data wasn't, it's something like a 404. Return message as the
-               ;; body.
-               status-code
-               message
-               ;; Otherwise it's a 500. Return a body that includes exception & filtered stacktrace for debugging
-               ;; purposes
-               :else
-               (let [stacktrace (u/filtered-stacktrace e)]
-                 (merge (assoc other-info
-                          :message    message
-                          :type       (class e)
-                          :stacktrace stacktrace)
-                        (when (instance? SQLException e)
-                          {:sql-exception-chain (str/split (with-out-str (jdbc/print-sql-exception-chain e))
-                                                           #"\s*\n\s*")}))))}))
+        message                         (.getMessage e)
+        body                            (cond
+                                          ;; Exceptions that include a status code *and* other info are things like
+                                          ;; Field validation exceptions. Return those as is
+                                          (and status-code
+                                               (seq other-info))
+                                          other-info
+                                          ;; If status code was specified but other data wasn't, it's something like a
+                                          ;; 404. Return message as the (plain-text) body.
+                                          status-code
+                                          message
+                                          ;; Otherwise it's a 500. Return a body that includes exception & filtered
+                                          ;; stacktrace for debugging purposes
+                                          :else
+                                          (let [stacktrace (u/filtered-stacktrace e)]
+                                            (merge (assoc other-info
+                                                     :message    message
+                                                     :type       (class e)
+                                                     :stacktrace stacktrace)
+                                                   (when (instance? SQLException e)
+                                                     {:sql-exception-chain
+                                                      (str/split (with-out-str (jdbc/print-sql-exception-chain e))
+                                                                 #"\s*\n\s*")}))))]
+    {:status  (or status-code 500)
+     :headers (cond-> (html-page-security-headers)
+                (string? body) (assoc "Content-Type" "text/plain"))
+     :body    body}))
 
 (defn catch-api-exceptions
   "Middleware that catches API Exceptions and returns them in our normal-style format rather than the Jetty 500
