@@ -58,28 +58,28 @@ export default class PieChart extends Component {
 
   static settings = {
     "pie.dimension": {
-      section: "Data",
+      section: t`Data`,
       title: t`Dimension`,
       ...dimensionSetting("pie.dimension"),
     },
     "pie.metric": {
-      section: "Data",
+      section: t`Data`,
       title: t`Measure`,
       ...metricSetting("pie.metric"),
     },
     "pie.show_legend": {
-      section: "Display",
+      section: t`Display`,
       title: t`Show legend`,
       widget: "toggle",
     },
     "pie.show_legend_perecent": {
-      section: "Display",
+      section: t`Display`,
       title: t`Show percentages in legend`,
       widget: "toggle",
       default: true,
     },
     "pie.slice_threshold": {
-      section: "Display",
+      section: t`Display`,
       title: t`Minimum slice percentage`,
       widget: "number",
       default: SLICE_THRESHOLD * 100,

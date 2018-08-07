@@ -52,7 +52,7 @@ export const GRAPH_DATA_SETTINGS = {
     useRawSeries: true,
   },
   "graph.dimensions": {
-    section: "Data",
+    section: t`Data`,
     title: t`X-axis`,
     widget: "fields",
     isValid: ([{ card, data }], vizSettings) =>
@@ -89,7 +89,7 @@ export const GRAPH_DATA_SETTINGS = {
     useRawSeries: true,
   },
   "graph.metrics": {
-    section: "Data",
+    section: t`Data`,
     title: t`Y-axis`,
     widget: "fields",
     isValid: ([{ card, data }], vizSettings) =>
@@ -128,7 +128,7 @@ export const GRAPH_DATA_SETTINGS = {
 
 export const GRAPH_BUBBLE_SETTINGS = {
   "scatter.bubble": {
-    section: "Data",
+    section: t`Data`,
     title: t`Bubble size`,
     widget: "field",
     isValid: ([{ card, data }], vizSettings) =>
@@ -153,7 +153,7 @@ export const GRAPH_BUBBLE_SETTINGS = {
 
 export const LINE_SETTINGS = {
   "line.interpolate": {
-    section: "Display",
+    section: t`Display`,
     title: t`Style`,
     widget: "select",
     props: {
@@ -166,7 +166,7 @@ export const LINE_SETTINGS = {
     getDefault: () => "linear",
   },
   "line.marker_enabled": {
-    section: "Display",
+    section: t`Display`,
     title: t`Show point markers on lines`,
     widget: "toggle",
   },
@@ -174,7 +174,7 @@ export const LINE_SETTINGS = {
 
 export const STACKABLE_SETTINGS = {
   "stackable.stack_type": {
-    section: "Display",
+    section: t`Display`,
     title: t`Stacking`,
     widget: "radio",
     getProps: (series, vizSettings) => ({
@@ -197,13 +197,13 @@ export const STACKABLE_SETTINGS = {
 
 export const GRAPH_GOAL_SETTINGS = {
   "graph.show_goal": {
-    section: "Display",
+    section: t`Display`,
     title: t`Show goal`,
     widget: "toggle",
     default: false,
   },
   "graph.goal_value": {
-    section: "Display",
+    section: t`Display`,
     title: t`Goal value`,
     widget: "number",
     default: 0,
@@ -214,7 +214,7 @@ export const GRAPH_GOAL_SETTINGS = {
 
 export const LINE_SETTINGS_2 = {
   "line.missing": {
-    section: "Display",
+    section: t`Display`,
     title: t`Replace missing values with`,
     widget: "select",
     default: "interpolate",
@@ -230,7 +230,7 @@ export const LINE_SETTINGS_2 = {
 
 export const GRAPH_COLORS_SETTINGS = {
   "graph.colors": {
-    section: "Display",
+    section: t`Display`,
     getTitle: ([{ card: { display } }]) =>
       capitalize(display === "scatter" ? "bubble" : display) + " colors",
     widget: "colors",
@@ -280,7 +280,7 @@ export const GRAPH_AXIS_SETTINGS = {
       HISTOGRAM_DATE_EXTRACTS.has(cols[0].unit),
   },
   "graph.x_axis.scale": {
-    section: "Axes",
+    section: t`Axes`,
     title: t`X-axis scale`,
     widget: "select",
     default: "ordinal",
@@ -313,7 +313,7 @@ export const GRAPH_AXIS_SETTINGS = {
     },
   },
   "graph.y_axis.scale": {
-    section: "Axes",
+    section: t`Axes`,
     title: t`Y-axis scale`,
     widget: "select",
     default: "linear",
@@ -326,7 +326,7 @@ export const GRAPH_AXIS_SETTINGS = {
     }),
   },
   "graph.x_axis.axis_enabled": {
-    section: "Axes",
+    section: t`Axes`,
     title: t`Show x-axis line and marks`,
     widget: "select",
     props: {
@@ -341,7 +341,7 @@ export const GRAPH_AXIS_SETTINGS = {
     default: true,
   },
   "graph.y_axis.axis_enabled": {
-    section: "Axes",
+    section: t`Axes`,
     title: t`Show y-axis line and marks`,
     widget: "select",
     props: {
@@ -353,13 +353,13 @@ export const GRAPH_AXIS_SETTINGS = {
     default: true,
   },
   "graph.y_axis.auto_range": {
-    section: "Axes",
+    section: t`Axes`,
     title: t`Auto y-axis range`,
     widget: "toggle",
     default: true,
   },
   "graph.y_axis.min": {
-    section: "Axes",
+    section: t`Axes`,
     title: t`Min`,
     widget: "number",
     default: 0,
@@ -367,7 +367,7 @@ export const GRAPH_AXIS_SETTINGS = {
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
   "graph.y_axis.max": {
-    section: "Axes",
+    section: t`Axes`,
     title: t`Max`,
     widget: "number",
     default: 100,
@@ -376,20 +376,20 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   /*
   "graph.y_axis_right.auto_range": {
-      section: "Axes",
+      section: t`Axes`,
       title: t`Auto right-hand y-axis range`,
       widget: "toggle",
       default: true
   },
   "graph.y_axis_right.min": {
-      section: "Axes",
+      section: t`Axes`,
       title: t`Min`,
       widget: "number",
       default: 0,
       getHidden: (series, vizSettings) => vizSettings["graph.y_axis_right.auto_range"] !== false
   },
   "graph.y_axis_right.max": {
-      section: "Axes",
+      section: t`Axes`,
       title: t`Max`,
       widget: "number",
       default: 100,
@@ -397,20 +397,20 @@ export const GRAPH_AXIS_SETTINGS = {
   },
 */
   "graph.y_axis.auto_split": {
-    section: "Axes",
+    section: t`Axes`,
     title: t`Use a split y-axis when necessary`,
     widget: "toggle",
     default: true,
     getHidden: series => series.length < 2,
   },
   "graph.x_axis.labels_enabled": {
-    section: "Labels",
+    section: t`Labels`,
     title: t`Show label on x-axis`,
     widget: "toggle",
     default: true,
   },
   "graph.x_axis.title_text": {
-    section: "Labels",
+    section: t`Labels`,
     title: t`X-axis label`,
     widget: "input",
     getHidden: (series, vizSettings) =>
@@ -419,13 +419,13 @@ export const GRAPH_AXIS_SETTINGS = {
       series.length === 1 ? getFriendlyName(series[0].data.cols[0]) : null,
   },
   "graph.y_axis.labels_enabled": {
-    section: "Labels",
+    section: t`Labels`,
     title: t`Show label on y-axis`,
     widget: "toggle",
     default: true,
   },
   "graph.y_axis.title_text": {
-    section: "Labels",
+    section: t`Labels`,
     title: t`Y-axis label`,
     widget: "input",
     getHidden: (series, vizSettings) =>
@@ -434,7 +434,7 @@ export const GRAPH_AXIS_SETTINGS = {
       series.length === 1 ? getFriendlyName(series[0].data.cols[1]) : null,
   },
   "graph.series_labels": {
-    section: "Labels",
+    section: t`Labels`,
     title: "Series labels",
     widget: "inputGroup",
     readDependencies: ["graph.dimensions", "graph.metrics"],
