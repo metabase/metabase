@@ -125,7 +125,7 @@
     (as-format export-format
       (qp/process-query-and-save-execution! (-> query
                                                 (dissoc :constraints)
-                                                (assoc :middleware {:skip-results-metadata? true}))
+                                                (assoc-in [:middleware :skip-results-metadata?] true))
         {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
 
 
