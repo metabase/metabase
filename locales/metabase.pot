@@ -13,7 +13,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#\n"
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-08-07 11:48-0700\n"
+"POT-Creation-Date: 2018-08-07 12:20-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -8360,6 +8360,42 @@ msgstr ""
 msgid "Looks like the username or password is incorrect."
 msgstr ""
 
+#: src/metabase/driver.clj
+msgid "Host"
+msgstr ""
+
+#: src/metabase/driver.clj
+msgid "Port"
+msgstr ""
+
+#: src/metabase/driver.clj
+msgid "Database username"
+msgstr ""
+
+#: src/metabase/driver.clj
+msgid "What username do you use to login to the database?"
+msgstr ""
+
+#: src/metabase/driver.clj
+msgid "Database password"
+msgstr ""
+
+#: src/metabase/driver.clj
+msgid "Database name"
+msgstr ""
+
+#: src/metabase/driver.clj
+msgid "birds_of_the_world"
+msgstr ""
+
+#: src/metabase/driver.clj
+msgid "Use a secure connection (SSL)?"
+msgstr ""
+
+#: src/metabase/driver.clj
+msgid "Additional JDBC connection string options"
+msgstr ""
+
 #. ## CONFIG
 #: src/metabase/driver.clj
 msgid ""
@@ -8398,6 +8434,42 @@ msgstr ""
 msgid "BigQuery statements can't be parameterized!"
 msgstr ""
 
+#: src/metabase/driver/bigquery.clj
+msgid "Project ID"
+msgstr ""
+
+#: src/metabase/driver/bigquery.clj
+msgid "praxis-beacon-120871"
+msgstr ""
+
+#: src/metabase/driver/bigquery.clj
+msgid "Dataset ID"
+msgstr ""
+
+#: src/metabase/driver/bigquery.clj
+msgid "toucanSightings"
+msgstr ""
+
+#: src/metabase/driver/bigquery.clj src/metabase/driver/googleanalytics.clj
+msgid "Client ID"
+msgstr ""
+
+#: src/metabase/driver/bigquery.clj src/metabase/driver/googleanalytics.clj
+msgid "Client Secret"
+msgstr ""
+
+#: src/metabase/driver/bigquery.clj src/metabase/driver/googleanalytics.clj
+msgid "Auth Code"
+msgstr ""
+
+#: src/metabase/driver/crate.clj
+msgid "Hosts"
+msgstr ""
+
+#: src/metabase/driver/druid.clj
+msgid "Broker node port"
+msgstr ""
+
 #: src/metabase/driver/generic_sql/query_processor.clj
 msgid "Failed to set timezone:"
 msgstr ""
@@ -8408,10 +8480,74 @@ msgid ""
 "Developers Console: {0}"
 msgstr ""
 
+#: src/metabase/driver/googleanalytics.clj
+msgid "Google Analytics Account ID"
+msgstr ""
+
 #: src/metabase/driver/h2.clj
 msgid ""
 "Running SQL queries against H2 databases using the default (admin) database "
 "user is forbidden."
+msgstr ""
+
+#: src/metabase/driver/h2.clj
+msgid "Connection String"
+msgstr ""
+
+#: src/metabase/driver/h2.clj
+msgid "Users/camsaul/bird_sightings/toucans"
+msgstr ""
+
+#: src/metabase/driver/mongo.clj
+msgid "carrierPigeonDeliveries"
+msgstr ""
+
+#: src/metabase/driver/mongo.clj
+msgid "Authentication Database"
+msgstr ""
+
+#: src/metabase/driver/mongo.clj
+msgid "Optional database to use when authenticating"
+msgstr ""
+
+#: src/metabase/driver/mongo.clj
+msgid "Additional Mongo connection string options"
+msgstr ""
+
+#: src/metabase/driver/oracle.clj
+msgid "Oracle system ID (SID)"
+msgstr ""
+
+#: src/metabase/driver/oracle.clj
+msgid "Usually something like ORCL or XE."
+msgstr ""
+
+#: src/metabase/driver/oracle.clj
+msgid "Optional if using service name"
+msgstr ""
+
+#: src/metabase/driver/oracle.clj
+msgid "Oracle service name"
+msgstr ""
+
+#: src/metabase/driver/oracle.clj
+msgid "Optional TNS alias"
+msgstr ""
+
+#: src/metabase/driver/presto.clj
+msgid "hive"
+msgstr ""
+
+#: src/metabase/driver/redshift.clj
+msgid "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
+msgstr ""
+
+#: src/metabase/driver/redshift.clj
+msgid "toucan_sightings"
+msgstr ""
+
+#: src/metabase/driver/sparksql.clj
+msgid "default"
 msgstr ""
 
 #: src/metabase/driver/sparksql.clj
@@ -8426,6 +8562,30 @@ msgstr ""
 
 #: src/metabase/driver/sparksql.clj
 msgid "Successfully registered metabase.driver.FixedHiveDriver with JDBC."
+msgstr ""
+
+#: src/metabase/driver/sqlite.clj
+msgid "Filename"
+msgstr ""
+
+#: src/metabase/driver/sqlite.clj
+msgid "/home/camsaul/toucan_sightings.sqlite 😋"
+msgstr ""
+
+#: src/metabase/driver/sqlserver.clj
+msgid "BirdsOfTheWorld"
+msgstr ""
+
+#: src/metabase/driver/sqlserver.clj
+msgid "Database instance name"
+msgstr ""
+
+#: src/metabase/driver/sqlserver.clj
+msgid "N/A"
+msgstr ""
+
+#: src/metabase/driver/sqlserver.clj
+msgid "Windows domain"
 msgstr ""
 
 #. CONFIG
