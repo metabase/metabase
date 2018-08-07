@@ -121,28 +121,13 @@
          {:date-interval     (u/drop-first-arg date-interval)
           :describe-database describe-database
           :details-fields    (constantly (ssh/with-tunnel-config
-                                           [{:name         "host"
-                                             :display-name "Host"
-                                             :default      "localhost"}
-                                            {:name         "port"
-                                             :display-name "Port"
-                                             :type         :integer
-                                             :default      5433}
-                                            {:name         "dbname"
-                                             :display-name "Database name"
-                                             :placeholder  "birds_of_the_word"
-                                             :required     true}
-                                            {:name         "user"
-                                             :display-name "Database username"
-                                             :placeholder  "What username do you use to login to the database?"
-                                             :required     true}
-                                            {:name         "password"
-                                             :display-name "Database password"
-                                             :type         :password
-                                             :placeholder  "*******"}
-                                            {:name         "additional-options"
-                                             :display-name "Additional JDBC connection string options"
-                                             :placeholder  "ConnectionLoadBalance=1"}]))
+                                           [driver/default-host-details
+                                            (assoc driver/default-port-details :default 5433)
+                                            driver/default-dbname-details
+                                            driver/default-user-details
+                                            driver/default-password-details
+                                            (assoc driver/default-additional-options-details
+                                              :placeholder "ConnectionLoadBalance=1")]))
           :current-db-time   (driver/make-current-db-time-fn vertica-db-time-query vertica-date-formatters)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
