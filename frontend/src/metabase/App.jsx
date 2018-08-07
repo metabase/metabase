@@ -57,7 +57,6 @@ export default class App extends Component {
       return <div>😢</div>;
     }
 
-    console.log("app props", this.props);
     return (
       <ScrollToTop>
         <div className="relative">
