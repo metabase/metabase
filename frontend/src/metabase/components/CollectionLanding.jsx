@@ -193,7 +193,8 @@ class DefaultLanding extends React.Component {
       unpinnedItems = unpinned.filter(u => u.model === location.query.type);
     }
 
-    const collectionIsEmpty = !unpinned.length > 0 && !collections.length > 0;
+    const collectionIsEmpty =
+      !unpinned.length > 0 && !collections.length > 0 && !pinned.length > 0;
     const collectionHasPins = pinned.length > 0;
     const collectionHasItems = unpinned.length > 0;
 
