@@ -839,9 +839,10 @@ export const getCollectionsPermissionsGrid = createSelector(
 );
 
 function getDecendentCollections(collection) {
-  return collection.children
-    .concat(...collection.children.map(getDecendentCollections))
-    .filter(permissionsCollectionFilter);
+  const subCollections = collection.children.filter(
+    permissionsCollectionFilter,
+  );
+  return subCollections.concat(...subCollections.map(getDecendentCollections));
 }
 
 function getPermissionsSet(collections, permissions, groupId) {
