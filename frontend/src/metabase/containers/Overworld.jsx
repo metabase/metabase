@@ -91,7 +91,7 @@ class Overworld extends React.Component {
                   {({ candidates, sampleCandidates, isSample }) => {
                     // if there are no items to show then just hide the section
                     if (!candidates && !sampleCandidates) {
-                      return false;
+                      return null;
                     }
                     return (
                       <Box mx={PAGE_PADDING} mt={2}>
@@ -120,7 +120,7 @@ class Overworld extends React.Component {
             }
 
             if (items.length === 0) {
-              return false;
+              return null;
             }
 
             return (
@@ -207,7 +207,7 @@ class Overworld extends React.Component {
         <DatabaseListLoader>
           {({ databases }) => {
             if (databases.length === 0) {
-              return false;
+              return null;
             }
             return (
               <Box pt={2} px={PAGE_PADDING}>
