@@ -89,6 +89,10 @@ class Overworld extends React.Component {
               return (
                 <CandidateListLoader>
                   {({ candidates, sampleCandidates, isSample }) => {
+                    // if there are no items to show then just hide the section
+                    if (!candidates && !sampleCandidates) {
+                      return null;
+                    }
                     return (
                       <Box mx={PAGE_PADDING} mt={2}>
                         <SectionHeading>
@@ -113,6 +117,10 @@ class Overworld extends React.Component {
                   }}
                 </CandidateListLoader>
               );
+            }
+
+            if (items.length === 0) {
+              return null;
             }
 
             return (
@@ -196,12 +204,15 @@ class Overworld extends React.Component {
           </Card>
         </Box>
 
-        <Box pt={2} px={PAGE_PADDING}>
-          <SectionHeading>{t`Our data`}</SectionHeading>
-          <Box mb={4}>
-            <DatabaseListLoader>
-              {({ databases }) => {
-                return (
+        <DatabaseListLoader>
+          {({ databases }) => {
+            if (databases.length === 0) {
+              return null;
+            }
+            return (
+              <Box pt={2} px={PAGE_PADDING}>
+                <SectionHeading>{t`Our data`}</SectionHeading>
+                <Box mb={4}>
                   <Grid>
                     {databases.map(database => (
                       <GridItem w={[1, 1 / 3]} key={database.id}>
@@ -245,11 +256,11 @@ class Overworld extends React.Component {
                       </GridItem>
                     ))}
                   </Grid>
-                );
-              }}
-            </DatabaseListLoader>
-          </Box>
-        </Box>
+                </Box>
+              </Box>
+            );
+          }}
+        </DatabaseListLoader>
       </Box>
     );
   }
