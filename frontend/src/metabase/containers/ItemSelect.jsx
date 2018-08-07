@@ -2,6 +2,8 @@ import React from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 
+import { t } from "c-3po";
+
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/components/SelectButton";
 
@@ -25,7 +27,7 @@ export default (PickerComponent, NameComponent, type) =>
     };
 
     static defaultProps = {
-      placeholder: `Select a ${type}`,
+      placeholder: t`Select a ${type}`,
       inheritWidth: true,
     };
 

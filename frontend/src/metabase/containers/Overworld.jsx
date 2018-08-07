@@ -24,6 +24,8 @@ import { getUser } from "metabase/home/selectors";
 
 import CollectionList from "metabase/components/CollectionList";
 
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Greeting from "metabase/lib/greeting";
 
@@ -162,7 +164,7 @@ class Overworld extends React.Component {
         </CollectionItemsLoader>
 
         <Box px={PAGE_PADDING} my={3}>
-          <SectionHeading>{t`Our analytics`}</SectionHeading>
+          <SectionHeading>{ROOT_COLLECTION.name}</SectionHeading>
           <Card p={[1, 2]} mt={2}>
             {this.props.collections.filter(
               c => c.id !== user.personal_collection_id,
@@ -181,8 +183,12 @@ class Overworld extends React.Component {
                 </Box>
                 <h3 className="text-medium">
                   {user.is_superuser
-                    ? t`Save  dashboards, questions, and collections in "Our Analytics"`
-                    : t`Access dashboards, questions, and collections in "Our Analytics"`}
+                    ? t`Save dashboards, questions, and collections in "${
+                        ROOT_COLLECTION.name
+                      }"`
+                    : t`Access dashboards, questions, and collections in "${
+                        ROOT_COLLECTION.name
+                      }"`}
                 </h3>
               </Box>
             )}
