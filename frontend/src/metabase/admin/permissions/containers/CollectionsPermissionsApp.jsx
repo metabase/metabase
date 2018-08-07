@@ -19,7 +19,7 @@ import {
   savePermissions,
   loadPermissions,
 } from "../permissions";
-import { goBack, push } from "react-router-redux";
+import { push } from "react-router-redux";
 
 const mapStateToProps = (state, props) => {
   return {

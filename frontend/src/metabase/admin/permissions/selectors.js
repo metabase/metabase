@@ -754,7 +754,7 @@ export const getCollectionsPermissionsGrid = createSelector(
             const collection = _.findWhere(collections, {
               id: collectionId,
             });
-            if (collection.children.length > 0) {
+            if (collection && collection.children.length > 0) {
               return [TogglePropagateAction];
             } else {
               return [];
