@@ -42,50 +42,43 @@ import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 
+import EmptyState from "metabase/components/EmptyState";
+
 const ROW_HEIGHT = 72;
 const PAGE_PADDING = [2, 3, 4];
 
 const ANALYTICS_CONTEXT = "Collection Landing";
 
 const EmptyStateWrapper = ({ children }) => (
-  <Flex
-    align="center"
-    justify="center"
-    p={5}
-    flexDirection="column"
-    w={1}
-    h={"200px"}
-    className="text-medium"
-  >
+  <Box p={5} w={1} h={"200px"}>
     {children}
-  </Flex>
+  </Box>
 );
 
 const DashboardEmptyState = () => (
   <EmptyStateWrapper>
-    <Box>
-      <Icon name="dashboard" size={32} />
-    </Box>
-    <h3>{t`Dashboards let you collect and share data in one place.`}</h3>
+    <EmptyState
+      message={t`Dashboards let you collect and share data in one place.`}
+      illustrationElement={<Icon name="dashboard" size={32} />}
+    />
   </EmptyStateWrapper>
 );
 
 const PulseEmptyState = () => (
   <EmptyStateWrapper>
-    <Box>
-      <Icon name="pulse" size={32} />
-    </Box>
-    <h3
-    >{t`Pulses let you send out the latest data to your team on a schedule via email or slack.`}</h3>
+    <EmptyState
+      message={t`Pulses let you send out the latest data to your team on a schedule via email or slack.`}
+      illustrationElement={<Icon name="pulse" size={32} />}
+    />
   </EmptyStateWrapper>
 );
 
 const QuestionEmptyState = () => (
   <EmptyStateWrapper>
-    <Box>
-      <Icon name="beaker" size={32} />
-    </Box>
-    <h3>{t`Questions are a saved look at your data.`}</h3>
+    <EmptyState
+      message={t`Questions are a saved look at your data.`}
+      illustrationElement={<Icon name="beaker" size={32} />}
+    />
   </EmptyStateWrapper>
 );
 
