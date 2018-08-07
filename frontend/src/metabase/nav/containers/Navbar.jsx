@@ -28,6 +28,7 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
 import { getPath, getContext, getUser } from "../selectors";
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
 const mapStateToProps = (state, props) => ({
   path: getPath(state, props),
@@ -146,6 +147,11 @@ class SearchBar extends React.Component {
 
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 
+@entityListLoader({
+  entityType: "databases",
+  // set this to false to prevent a potential spinner on the main nav
+  loadingAndErrorWrapper: false,
+})
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
   state = {
@@ -246,6 +252,8 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
+    const hasDataAccess =
+      this.props.databases && this.props.databases.length > 0;
     return (
       <Flex
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
@@ -278,14 +286,16 @@ export default class Navbar extends Component {
           </Box>
         </Flex>
         <Flex ml="auto" align="center" className="relative z2">
-          <Link
-            to={Urls.newQuestion()}
-            mx={2}
-            className="hide sm-show"
-            data-metabase-event={`NavBar;New Question`}
-          >
-            <Button medium>{t`Ask a question`}</Button>
-          </Link>
+          {hasDataAccess && (
+            <Link
+              to={Urls.newQuestion()}
+              mx={2}
+              className="hide sm-show"
+              data-metabase-event={`NavBar;New Question`}
+            >
+              <Button medium>{t`Ask a question`}</Button>
+            </Link>
+          )}
           <EntityMenu
             tooltip={t`Create`}
             className="hide sm-show"
@@ -305,13 +315,15 @@ export default class Navbar extends Component {
               },
             ]}
           />
-          <Tooltip tooltip={t`Reference`}>
-            <Link to="reference" data-metabase-event={`NavBar;Reference`}>
-              <IconWrapper>
-                <Icon name="reference" />
-              </IconWrapper>
-            </Link>
-          </Tooltip>
+          {hasDataAccess && (
+            <Tooltip tooltip={t`Reference`}>
+              <Link to="reference" data-metabase-event={`NavBar;Reference`}>
+                <IconWrapper>
+                  <Icon name="reference" />
+                </IconWrapper>
+              </Link>
+            </Tooltip>
+          )}
           <Tooltip tooltip={t`Activity`}>
             <Link to="activity" data-metabase-event={`NavBar;Activity`}>
               <IconWrapper>
