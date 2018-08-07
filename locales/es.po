@@ -1378,23 +1378,20 @@ msgid "You've made changes to permissions."
 msgstr "Has realizado cambios en los permisos."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsTabs.jsx:12
-#, fuzzy
 msgid "Data permissions"
-msgstr "Edita los permisos"
+msgstr "Permisos de acceso de datos"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsTabs.jsx:13
-#, fuzzy
 msgid "Collection permissions"
-msgstr "Establecer permisos de colección"
+msgstr "Permisos de acceso de colecciones"
 
 #: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:52
 msgid "Permissions for this collection"
 msgstr "Permisos de esta colección"
 
 #: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:56
-#, fuzzy
 msgid "See all collection permissions"
-msgstr "Establecer permisos de colección"
+msgstr "Ver todos los permisos de colecciones"
 
 #: frontend/src/metabase/admin/permissions/containers/PermissionsApp.jsx:53
 msgid "You have unsaved changes"
@@ -1405,9 +1402,8 @@ msgid "Do you want to leave this page and discard your changes?"
 msgstr "¿Quieres abandonar esta página y descartar tus cambios?"
 
 #: frontend/src/metabase/admin/permissions/containers/TogglePropagateAction.jsx:25
-#, fuzzy
 msgid "Also change sub-collections"
-msgstr "Ver subcolección"
+msgstr "También cambiar sub-colecciones"
 
 #: frontend/src/metabase/admin/permissions/permissions.js:137
 msgid "Sorry, an error occurred."
@@ -1548,18 +1544,16 @@ msgid "Curate collection"
 msgstr "Mima la colección"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:278
-#, fuzzy
 msgid "Can edit this collection and its contents"
-msgstr "Edita esta colección"
+msgstr "Puede editar esta colección y sus contenidos"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:284
 msgid "View collection"
 msgstr "Ver colección"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:285
-#, fuzzy
 msgid "Can view items in this collection"
-msgstr "Puede ver preguntas en esta colección"
+msgstr "Puede ver artículos en esta colección"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:327
 #: frontend/src/metabase/admin/permissions/selectors.js:423
@@ -2609,9 +2603,8 @@ msgid "Questions are a saved look at your data."
 msgstr "Las preguntas son vistas guardadas de tus datos."
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:246
-#, fuzzy
 msgid "Edit the permissions for this collection"
-msgstr "Permisos de esta colección"
+msgstr "Editar los permisos de acceso de esta colección"
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:275
 msgid "Pins"
@@ -3145,9 +3138,8 @@ msgid "Create"
 msgstr "Crea"
 
 #: frontend/src/metabase/containers/AddToDashSelectDashModal.jsx:51
-#, fuzzy
 msgid "Add this question to a dashboard"
-msgstr "Añade una pregunta a este cuadro de mando"
+msgstr "Añadir esta pregunta a un cuadro de mando"
 
 #: frontend/src/metabase/containers/AddToDashSelectDashModal.jsx:61
 #, fuzzy
@@ -3220,9 +3212,8 @@ msgid "This {0} has been archived"
 msgstr "Este {0} ha sido archivado"
 
 #: frontend/src/metabase/containers/ItemSelect.jsx:30
-#, fuzzy
 msgid "Select a {0}"
-msgstr "Selecciona los {0}"
+msgstr "Seleccione un(a) {0}"
 
 #: frontend/src/metabase/containers/Overworld.jsx:81
 msgid "Don't tell anyone, but you're my favorite."
@@ -3249,16 +3240,12 @@ msgid "Start here"
 msgstr "Empieza aquí"
 
 #: frontend/src/metabase/containers/Overworld.jsx:186
-#, fuzzy
 msgid "Save dashboards, questions, and collections in \"{0}\""
-msgstr ""
-"Guarda cuadros de mando, preguntas y colecciones en \"Nuestra Analítica\""
+msgstr "Guardar cuadros de mando, preguntas, y colecciones en \"{0}\""
 
 #: frontend/src/metabase/containers/Overworld.jsx:189
-#, fuzzy
 msgid "Access dashboards, questions, and collections in \"{0}\""
-msgstr ""
-"Accede a cuadros de mando, preguntas y colecciones en \"Nuestra Analítica\""
+msgstr "Acceder cuadros de mando, preguntas, y colecciones en \"{0}\""
 
 #: frontend/src/metabase/containers/Overworld.jsx:204
 msgid "Browse all items"
@@ -3550,9 +3537,8 @@ msgid "Our analytics"
 msgstr "Nuestra Analítica"
 
 #: frontend/src/metabase/entities/collections.js:138
-#, fuzzy
 msgid "All personal collections"
-msgstr "Mi colección personal"
+msgstr "Todas las colecciones personales"
 
 #: frontend/src/metabase/entities/dashboards.js:93
 msgid "What is the name of your dashboard?"
@@ -3756,14 +3742,12 @@ msgid "Results for \"{0}\""
 msgstr "Resultados de \"{0}\""
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:50
-#, fuzzy
 msgid "No results"
-msgstr "Sin resultados!"
+msgstr "No hay resultados"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:51
-#, fuzzy
 msgid "Metabase couldn't find any results for your search."
-msgstr "No se han encontrado resultados para esto."
+msgstr "Metabase no pudo encontrar ningún resultado para su busqueda."
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:142
 msgid "Pulse"
@@ -4653,9 +4637,8 @@ msgstr ""
 "hacer preguntas"
 
 #: frontend/src/metabase/new_query/containers/MetricSearch.jsx:111
-#, fuzzy
 msgid "No metrics"
-msgstr "Métricas"
+msgstr "Métricas no encontradas"
 
 #: frontend/src/metabase/new_query/containers/MetricSearch.jsx:113
 msgid "How to create metrics"
@@ -5971,14 +5954,12 @@ msgid "More"
 msgstr "Más"
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:31
-#, fuzzy
 msgid "Aggregations"
-msgstr "Agregación es obligatoria"
+msgstr "Agregaciones"
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:32
-#, fuzzy
 msgid "Operators"
-msgstr "Creador"
+msgstr "Operadores"
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:200
 msgid "Invalid expression"
@@ -6017,9 +5998,8 @@ msgid "Something nice and descriptive"
 msgstr "Algo agradable y descriptivo"
 
 #: frontend/src/metabase/query_builder/components/expressions/Expressions.jsx:30
-#, fuzzy
 msgid "Custom fields"
-msgstr "Añadir un campo personalizado"
+msgstr "Campos personalizados"
 
 #: frontend/src/metabase/query_builder/components/expressions/Expressions.jsx:60
 msgid "Add a custom field"
@@ -7597,9 +7577,8 @@ msgstr "Tamaño de burbuja"
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:72
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:85
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:98
-#, fuzzy
 msgid "Display"
-msgstr "Valores mostrados"
+msgstr "Visualización"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:161
 #: frontend/src/metabase/visualizations/visualizations/LineChart.jsx:17
@@ -7668,7 +7647,7 @@ msgstr "Lineal Interpolado"
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:370
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:400
 msgid "Axes"
-msgstr ""
+msgstr "Ejes"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:284
 msgid "X-axis scale"
