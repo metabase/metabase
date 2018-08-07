@@ -16,7 +16,7 @@
             [puppetlabs.i18n.core :as i18n :refer [tru]]))
 
 (def ^:private ^{:arglists '([root])} comparison-name
-  (some-fn :comparison-name :full-name))
+  (comp capitalize-first (some-fn :comparison-name :full-name)))
 
 (defn- dashboard->cards
   [dashboard]
@@ -42,11 +42,6 @@
 (def ^:private ^{:arglists '([card])} display-type
   (comp qp.util/normalize-token :display))
 
-(defn- overlay-comparison?
-  [card]
-  (and (-> card display-type (#{:bar :line}))
-       (-> card :series empty?)))
-
 (defn- inject-filter
   "Inject filter clause into card."
   [{:keys [query-filter cell-query] :as root} card]
@@ -59,6 +54,11 @@
   (or (-> card :series not-empty)
       (-> card (qp.util/get-in-normalized [:dataset_query :query :aggregation]) count (> 1))
       (-> card (qp.util/get-in-normalized [:dataset_query :query :breakout]) count (> 1))))
+
+(defn- overlay-comparison?
+  [card]
+  (and (-> card display-type (#{:bar :line}))
+       (not (multiseries? card))))
 
 (defn- comparison-row
   [dashboard row left right card]
@@ -229,8 +229,7 @@
                              (assoc :comparison-name (->> opts
                                                           :left
                                                           :cell-query
-                                                          (cell-title left)
-                                                          capitalize-first)))
+                                                          (cell-title left))))
         right              (cond-> right
                              (part-vs-whole-comparison? left right)
                              (assoc :comparison-name (condp instance? (:entity right)
