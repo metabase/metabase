@@ -35,15 +35,15 @@
 }
 
 :local(.toggle.small) {
-  width: 36px;
-  height: 18px;
+  width: 28px;
+  height: 17px;
 }
 
 :local(.toggle.small):after {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 
 :local(.toggle.small.selected):after {
-  left: 19px;
+  left: 12px;
 }

@@ -19,11 +19,11 @@ const mapDispatchToProps = {
 const TogglePropagateAction = connect(mapStateToProps, mapDispatchToProps)(
   ({ propagate, setPropagatePermissions }) => (
     <div
-      className="flex align-center bg-medium p1 cursor-pointer"
+      className="flex align-center bg-medium px2 py1 cursor-pointer"
       onClick={() => setPropagatePermissions(!propagate)}
     >
+      <span className="mr2 text-small">{t`Also change sub-collections`}</span>
       <Toggle small value={propagate} />
-      <span className="ml1 text-bold text-small">{t`Also change sub-collections`}</span>
     </div>
   ),
 );

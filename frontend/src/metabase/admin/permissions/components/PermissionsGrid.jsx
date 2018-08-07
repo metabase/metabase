@@ -352,7 +352,7 @@ class GroupPermissionCell extends Component {
 const AccessOption = ({ value, option, onChange }) => (
   <div
     className={cx(
-      "flex py2 px2 align-center bg-brand-hover text-white-hover cursor-pointer",
+      "flex py2 pl2 pr3 align-center bg-brand-hover text-white-hover cursor-pointer text-bold",
       {
         "bg-brand text-white": value === option,
       },
@@ -361,9 +361,9 @@ const AccessOption = ({ value, option, onChange }) => (
   >
     <Icon
       name={option.icon}
-      className="mr1"
+      className="mr2"
       style={{ color: option.iconColor }}
-      size={18}
+      size={22}
     />
     {option.title}
   </div>
