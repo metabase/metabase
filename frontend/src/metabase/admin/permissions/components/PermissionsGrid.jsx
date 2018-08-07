@@ -1,6 +1,7 @@
 /* eslint-disable react/display-name */
 
 import React, { Component } from "react";
+import { connect } from "react-redux";
 
 import { Link } from "react-router";
 
@@ -186,6 +187,20 @@ const PermissionsCell = ({
   </div>
 );
 
+const ActionsList = connect()(({ actions, dispatch }) => (
+  <ul className="border-top">
+    {actions.map(action => (
+      <li>
+        {typeof action === "function" ? (
+          action()
+        ) : (
+          <AccessOption option={action} onChange={dispatch} />
+        )}
+      </li>
+    ))}
+  </ul>
+));
+
 class GroupPermissionCell extends Component {
   constructor(props, context) {
     super(props, context);
@@ -221,6 +236,8 @@ class GroupPermissionCell extends Component {
     const { confirmations } = this.state;
 
     const value = permission.getter(group.id, entity.id);
+    const actions =
+      permission.actions && permission.actions(group.id, entity.id);
     const options = permission.options(group.id, entity.id);
     const warning =
       permission.warning && permission.warning(group.id, entity.id);
@@ -324,6 +341,9 @@ class GroupPermissionCell extends Component {
             this.refs.popover.close();
           }}
         />
+        {actions && actions.length > 0 ? (
+          <ActionsList actions={actions} />
+        ) : null}
       </PopoverWithTrigger>
     );
   }
@@ -332,7 +352,7 @@ class GroupPermissionCell extends Component {
 const AccessOption = ({ value, option, onChange }) => (
   <div
     className={cx(
-      "flex py2 px2 align-center bg-brand-hover text-white-hover cursor-pointer",
+      "flex py2 pl2 pr3 align-center bg-brand-hover text-white-hover cursor-pointer text-bold",
       {
         "bg-brand text-white": value === option,
       },
@@ -341,9 +361,9 @@ const AccessOption = ({ value, option, onChange }) => (
   >
     <Icon
       name={option.icon}
-      className="mr1"
+      className="mr2"
       style={{ color: option.iconColor }}
-      size={18}
+      size={22}
     />
     {option.title}
   </div>

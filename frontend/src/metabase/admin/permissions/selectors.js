@@ -4,6 +4,8 @@ import { createSelector } from "reselect";
 
 import { push } from "react-router-redux";
 
+import TogglePropagateAction from "./containers/TogglePropagateAction";
+
 import MetabaseAnalytics from "metabase/lib/analytics";
 import colors, { alpha } from "metabase/lib/colors";
 
@@ -273,14 +275,14 @@ const OPTION_COLLECTION_WRITE = {
   ...OPTION_GREEN,
   value: "write",
   title: t`Curate collection`,
-  tooltip: t`Can add and remove questions from this collection`,
+  tooltip: t`Can edit this collection and its contents`,
 };
 
 const OPTION_COLLECTION_READ = {
   ...OPTION_YELLOW,
   value: "read",
   title: t`View collection`,
-  tooltip: t`Can view questions in this collection`,
+  tooltip: t`Can view items in this collection`,
 };
 
 export const getTablesPermissionsGrid = createSelector(
@@ -667,6 +669,8 @@ const getCollectionId = (state, props) => props && props.collectionId;
 const getSingleCollectionPermissionsMode = (state, props) =>
   (props && props.singleCollectionMode) || false;
 
+const permissionsCollectionFilter = collection => !collection.is_personal;
+
 const getCollections = createSelector(
   [
     Collections.selectors.getExpandedCollectionsById,
@@ -680,7 +684,7 @@ const getCollections = createSelector(
         return [collectionsById[collectionId]];
       } else {
         return collectionsById[collectionId].children.filter(
-          collection => !collection.is_personal,
+          permissionsCollectionFilter,
         );
       }
       // default to root collection
@@ -694,11 +698,20 @@ const getCollections = createSelector(
 const getCollectionPermission = (permissions, groupId, { collectionId }) =>
   getIn(permissions, [groupId, collectionId]);
 
+export const getPropagatePermissions = state =>
+  state.admin.permissions.propagatePermissions;
+
 export const getCollectionsPermissionsGrid = createSelector(
   getCollections,
   getGroups,
   getPermissions,
-  (collections, groups: Array<Group>, permissions: GroupsPermissions) => {
+  getPropagatePermissions,
+  (
+    collections,
+    groups: Array<Group>,
+    permissions: GroupsPermissions,
+    propagatePermissions: boolean,
+  ) => {
     if (!groups || groups.length === 0 || !permissions || !collections) {
       return null;
     }
@@ -737,11 +750,38 @@ export const getCollectionsPermissionsGrid = createSelector(
               OPTION_NONE,
             ];
           },
+          actions(groupId, { collectionId }) {
+            const collection = _.findWhere(collections, {
+              id: collectionId,
+            });
+            if (collection && collection.children.length > 0) {
+              return [TogglePropagateAction];
+            } else {
+              return [];
+            }
+          },
           getter(groupId, entityId) {
             return getCollectionPermission(permissions, groupId, entityId);
           },
           updater(groupId, { collectionId }, value) {
-            return assocIn(permissions, [groupId, collectionId], value);
+            let newPermissions = assocIn(
+              permissions,
+              [groupId, collectionId],
+              value,
+            );
+            if (propagatePermissions) {
+              const collection = _.findWhere(collections, {
+                id: collectionId,
+              });
+              for (const descendent of getDecendentCollections(collection)) {
+                newPermissions = assocIn(
+                  newPermissions,
+                  [groupId, descendent.id],
+                  value,
+                );
+              }
+            }
+            return newPermissions;
           },
           confirm(groupId, entityId, value) {
             return [
@@ -768,8 +808,9 @@ export const getCollectionsPermissionsGrid = createSelector(
               groupId,
               entityId,
             );
-            const descendentPerms = getCollectionsPermissionsSet(
-              collection.children,
+            const descendentCollections = getDecendentCollections(collection);
+            const descendentPerms = getPermissionsSet(
+              descendentCollections,
               permissions,
               groupId,
             );
@@ -804,31 +845,19 @@ export const getCollectionsPermissionsGrid = createSelector(
   },
 );
 
-function getCollectionsPermissionsSet(
-  collections,
-  permissions,
-  groupId,
-  recursive = true,
-) {
+function getDecendentCollections(collection) {
+  const subCollections = collection.children.filter(
+    permissionsCollectionFilter,
+  );
+  return subCollections.concat(...subCollections.map(getDecendentCollections));
+}
+
+function getPermissionsSet(collections, permissions, groupId) {
   let perms = collections.map(collection =>
     getCollectionPermission(permissions, groupId, {
       collectionId: collection.id,
     }),
   );
-  if (recursive) {
-    perms = perms.concat(
-      ...collections.map(collection =>
-        Array.from(
-          getCollectionsPermissionsSet(
-            collection.children,
-            permissions,
-            groupId,
-            recursive,
-          ),
-        ),
-      ),
-    );
-  }
   return new Set(perms);
 }
 
